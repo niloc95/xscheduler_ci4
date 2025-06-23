@@ -1,53 +1,44 @@
+/* ----------------------------------------------------------------------------
+ * @webSchedulr - Online Appointment Scheduler
+ *
+ * @package     @webSchedulr - Online Appointments
+ * @author      N N.Cara <nilo.cara@frontend.co.za>
+ * @copyright   Copyright (c) Nilo Cara
+ * @license     https://opensource.org/licenses/GPL-3.0 - GPLv3
+ * @link        https://webschedulr.co.za
+ * @since       v1.0.0
+ * ---------------------------------------------------------------------------- */
+
 #-------------------------
 # Operating Specific Junk Files
 #-------------------------
 
 # OS X
 .DS_Store
-.AppleDouble
-.LSOverride
+.DS_Store?
 
-# OS X Thumbnails
-._*
-
-# Windows image file caches
+# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk
-
 # Linux
 *~
-
-# KDE directory preferences
-.directory
-
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
 
 #-------------------------
 # Environment Files
 #-------------------------
-# These should never be under version control,
-# as it poses a security risk.
 .env
-.vagrant
-Vagrantfile
+.env.backup
+.env.production
+.env.local
+.env.*.local
 
 #-------------------------
-# Temporary Files
+# Temporary and Build Files
 #-------------------------
+
+# CodeIgniter 4 specific
 writable/cache/*
 !writable/cache/index.html
 
@@ -61,67 +52,306 @@ writable/uploads/*
 !writable/uploads/index.html
 
 writable/debugbar/*
-!writable/debugbar/.gitkeep
 
 php_errors.log
 
 #-------------------------
-# User Guide Temp Files
+# Node.js / NPM
 #-------------------------
-user_guide_src/build/*
-user_guide_src/cilexer/build/*
-user_guide_src/cilexer/dist/*
-user_guide_src/cilexer/pycilexer.egg-info/*
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
 
 #-------------------------
-# Test Files
+# Vite / Build Tools
 #-------------------------
-tests/coverage*
+# Build outputs
+public/build/*
+!public/build/.gitkeep
 
-# Don't save phpunit under version control.
-phpunit
+# Vite cache
+.vite/
+
+# Rollup cache
+.rollup.cache/
 
 #-------------------------
 # Composer
 #-------------------------
 vendor/
+composer.lock
 
 #-------------------------
-# IDE / Development Files
+# IDE Files
 #-------------------------
 
-# Modules Testing
-_modules/*
-
-# phpenv local config
-.php-version
-
-# Jetbrains editors (PHPStorm, etc)
+# PhpStorm / IntelliJ
 .idea/
 *.iml
+*.ipr
+*.iws
 
-# NetBeans
-/nbproject/
-/build/
-/nbbuild/
-/dist/
-/nbdist/
-/nbactions.xml
-/nb-configuration.xml
-/.nb-gradle/
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
 
 # Sublime Text
-*.tmlanguage.cache
-*.tmPreferences.cache
-*.stTheme.cache
 *.sublime-workspace
 *.sublime-project
-.phpintel
-/api/
 
-# Visual Studio Code
-.vscode/
+# Atom
+.atom/
 
-/results/
-/phpunit*.xml
-node_modules
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+#-------------------------
+# Testing
+#-------------------------
+tests/_output/*
+tests/_support/_generated
+
+# PHPUnit
+.phpunit.result.cache
+phpunit.xml
+
+# Codeception
+tests/_output/
+tests/_support/_generated/
+
+#-------------------------
+# Deployment
+#-------------------------
+# Deployment package (created by npm run package)
+xscheduler-deploy/
+
+# Deployment scripts output
+deploy.log
+deployment-*.zip
+
+#-------------------------
+# Documentation
+#-------------------------
+# Generated documentation
+docs/_build/
+docs/html/
+docs/latex/
+
+#-------------------------
+# Backup files
+#-------------------------
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+#-------------------------
+# Database
+#-------------------------
+*.sqlite
+*.sqlite3
+*.db
+
+# Database dumps
+*.sql
+*.dump
+
+#-------------------------
+# Compiled files
+#-------------------------
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+#-------------------------
+# Security & Config
+#-------------------------
+# Security files
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+
+# AWS credentials
+.aws/
+
+# Azure
+.azure/
+
+#-------------------------
+# Application Specific
+#-------------------------
+# User uploads (adjust paths as needed)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Generated reports
+reports/
+*.report
+
+# Application cache
+app/cache/*
+!app/cache/.gitkeep
+
+# Configuration files that shouldn't be committed
+config/production/
+config/staging/
+
+#-------------------------
+# Miscellaneous
+#-------------------------
+# Patch files
+*.patch
+*.diff
+
+# Lock files (keep package-lock.json, remove others if not needed)
+# package-lock.json  # Uncomment to ignore
+yarn.lock
+
+# Local configuration
+local.php
+local.env
+
+# Error logs
+error_log
+errors.log
+
+# System files
+System Volume Information/
+$RECYCLE.BIN/
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+#-------------------------
+# Keep certain files
+#-------------------------
+!.gitkeep
+!.htaccess
+!index.html
+!index.php

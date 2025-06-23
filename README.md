@@ -1,68 +1,363 @@
-# CodeIgniter 4 Application Starter
+/* ----------------------------------------------------------------------------
+ * @webSchedulr - Online Appointment Scheduler
+ *
+ * @package     @webSchedulr - Online Appointments
+ * @author      N N.Cara <nilo.cara@frontend.co.za>
+ * @copyright   Copyright (c) Nilo Cara
+ * @license     https://opensource.org/licenses/GPL-3.0 - GPLv3
+ * @link        https://webschedulr.co.za
+ * @since       v1.0.0
+ * ---------------------------------------------------------------------------- */
 
-## What is CodeIgniter?
+# @webSchedulr - Online Appointment Scheduler
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+A modern, zero-configuration scheduling application built with CodeIgniter 4 and Tailwind CSS, designed for deployment to any standard hosting provider without server configuration requirements.
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## 🚀 Features
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+- **Modern Design System**: Tailwind CSS 3.4.17 with custom component library
+- **Zero-Config Deployment**: Deploy to any hosting provider instantly
+- **Responsive Design**: Mobile-first approach with CoreUI components
+- **Reusable Components**: Standardized UI components with PHP helpers
+- **Developer Friendly**: Comprehensive style guide and documentation
+- **Production Ready**: Optimized build system with Vite
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+## 🏗️ Architecture
 
-## Installation & updates
+### Tech Stack
+- **Backend**: CodeIgniter 4 (PHP 7.4+)
+- **Frontend**: Tailwind CSS + CoreUI Components
+- **Build System**: Vite 6.3.5 with SCSS/PostCSS
+- **Asset Management**: Optimized compilation and packaging
+- **Deployment**: Standalone packages for shared hosting
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+### Design System
+- **Component Library**: Custom SCSS components with `@layer` directive
+- **PHP Helpers**: `ui_button()`, `ui_card()`, `ui_alert()` functions
+- **View Components**: Reusable layout templates and partials
+- **Style Guide**: Live documentation at `/styleguide`
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+## 📦 Quick Start
 
-## Setup
+### Development Setup
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/xscheduler-ci4.git
+   cd xscheduler-ci4
+   ```
 
-## Important Change with index.php
+2. **Install dependencies**
+   ```bash
+   # PHP dependencies
+   composer install
+   
+   # Node.js dependencies
+   npm install
+   ```
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+3. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database credentials
+   ```
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+4. **Build assets and start development**
+   ```bash
+   # Build frontend assets
+   npm run build
+   
+   # Start development server
+   php spark serve
+   ```
 
-**Please** read the user guide for a better explanation of how CI4 works!
+5. **Access the application**
+   - Main app: `http://localhost:8080`
+   - Setup wizard: `http://localhost:8080/setup`
+   - Style guide: `http://localhost:8080/styleguide`
+   - Tailwind test: `http://localhost:8080/tw`
 
-## Repository Management
+### Development Commands
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+```bash
+# Watch and compile assets during development
+npm run dev
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+# Build optimized assets for production
+npm run build
 
-## Server Requirements
+# Create deployment package
+npm run package
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+# Preview production build
+npm run preview
+```
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+## 🌐 Deployment
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+### Zero-Configuration Deployment
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+@webSchedulr is designed for hassle-free deployment to any hosting provider:
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+1. **Build deployment package**
+   ```bash
+   npm run build  # This creates the xscheduler-deploy folder
+   ```
+
+2. **Upload to hosting provider**
+   - Upload entire contents of `xscheduler-deploy/` folder
+   - Point domain/subdomain to the `public/` directory
+
+3. **Configure environment**
+   - Update `.env` file with production database credentials
+   - Set `writable/` folder permissions to 755
+
+4. **You're live!** - Zero server configuration needed
+
+### Hosting Compatibility
+
+✅ **Shared Hosting**: GoDaddy, Bluehost, HostGator, cPanel hosting  
+✅ **VPS/Cloud**: DigitalOcean, AWS, Linode, Vultr  
+✅ **Managed Hosting**: Cloudways, WP Engine, SiteGround  
+✅ **Subdomain/Subfolder**: Flexible deployment paths  
+
+**Requirements**: PHP 7.4+, Apache with mod_rewrite (or Nginx equivalent)
+
+### Deployment Options
+
+#### Subdomain Deployment
+```
+subdomain.yourdomain.com/
+├── app/
+├── system/
+├── public/          ← Point subdomain here
+└── writable/
+```
+
+#### Subfolder Deployment
+```
+yourdomain.com/scheduler/
+├── app/
+├── system/
+├── public/          ← Point folder here
+└── writable/
+```
+
+## 🎨 Design System
+
+### Component Usage
+
+#### Buttons
+```php
+<?= ui_button('Primary Action', '/action', 'primary') ?>
+<?= ui_button('Secondary Action', '/cancel', 'secondary') ?>
+```
+
+#### Cards
+```php
+<?= ui_card(
+    'Card Title',
+    '<p>Card content goes here</p>',
+    '<p>Optional footer</p>'
+) ?>
+```
+
+#### Alerts
+```php
+<?= ui_alert('Success message', 'success', 'Well done!') ?>
+<?= ui_alert('Important info', 'info', 'Notice') ?>
+<?= ui_alert('Warning message', 'warning', 'Attention') ?>
+<?= ui_alert('Error message', 'error', 'Oops!') ?>
+```
+
+#### Layout Components
+```php
+<?= $this->extend('components/layout') ?>
+<?= $this->section('content') ?>
+<div class="content-wrapper">
+    <div class="content-main">
+        <!-- Your content here -->
+    </div>
+</div>
+<?= $this->endSection() ?>
+```
+
+### CSS Component Classes
+
+```css
+/* Layout */
+.page-container     /* Container with responsive padding */
+.content-wrapper    /* Centering wrapper */
+.content-main       /* Main content area with max-width */
+
+/* Components */
+.btn-primary        /* Primary button styling */
+.btn-secondary      /* Secondary button styling */
+.card               /* Card container */
+.card-header        /* Card header with title */
+.card-body          /* Card content area */
+.alert              /* Base alert styling */
+.alert-info         /* Info alert variant */
+.form-input         /* Standardized form inputs */
+
+/* Scheduler States */
+.time-slot-available    /* Available time slots */
+.time-slot-selected     /* User-selected slots */
+.time-slot-booked      /* Unavailable slots */
+.time-slot-past        /* Past time slots */
+```
+
+## 📁 Project Structure
+
+```
+xScheduler_ci4/
+├── app/                          # CodeIgniter 4 application
+│   ├── Controllers/              # Request handlers
+│   │   ├── BaseController.php    # Base with UI helper loading
+│   │   ├── Setup.php            # Setup wizard
+│   │   └── Styleguide.php       # Design system docs
+│   ├── Helpers/                 # Custom helper functions
+│   │   └── ui_helper.php        # UI component helpers
+│   └── Views/                   # Template files
+│       ├── components/          # Reusable view components
+│       ├── styleguide/          # Design system documentation
+│       └── *.php               # Page templates
+├── resources/                   # Frontend assets
+│   ├── js/app.js               # Main JavaScript
+│   └── scss/
+│       ├── app.scss            # Main SCSS file
+│       └── components.scss     # Component definitions
+├── public/                     # Web-accessible files
+│   ├── build/assets/           # Compiled assets
+│   └── index.php              # Application entry point
+├── scripts/package.js          # Deployment packaging
+├── vite.config.js             # Build configuration
+├── tailwind.config.js         # Tailwind configuration
+└── mastercontext.md           # Complete project documentation
+```
+
+## 🛠️ Development Guidelines
+
+### Adding New Components
+
+1. **Define SCSS component**
+   ```scss
+   // resources/scss/components.scss
+   @layer components {
+     .my-component {
+       @apply bg-white rounded-lg shadow-sm border;
+     }
+   }
+   ```
+
+2. **Create PHP helper**
+   ```php
+   // app/Helpers/ui_helper.php
+   function ui_my_component($content) {
+       return "<div class=\"my-component\">{$content}</div>";
+   }
+   ```
+
+3. **Document in style guide**
+   ```php
+   // app/Views/styleguide/components.php
+   // Add usage examples and documentation
+   ```
+
+### Code Standards
+
+- **PHP**: Follow CodeIgniter 4 coding standards
+- **CSS**: Use Tailwind utilities, custom components for reuse
+- **JavaScript**: Modern ES6+, event-driven architecture
+- **Naming**: PascalCase controllers, camelCase methods, kebab-case CSS
+
+## 🔒 Security Features
+
+- **CSRF Protection**: Enabled by default in CodeIgniter 4
+- **XSS Filtering**: Built-in input sanitization
+- **Secure Headers**: Security headers in .htaccess
+- **Input Validation**: Form validation framework
+- **Safe Deployment**: Sensitive files outside web root
+
+## 📚 Documentation
+
+- **Master Context**: Complete project overview in `mastercontext.md`
+- **Style Guide**: Live documentation at `/styleguide`
+- **Deployment Guide**: Instructions in `DEPLOY-README.md`
+- **API Documentation**: Controller and helper function docs
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Build Errors**
+```bash
+# Module not found
+npm install
+
+# Tailwind classes not working
+# Check tailwind.config.js content paths
+
+# SCSS compilation errors
+# Verify @import paths in app.scss
+```
+
+**Deployment Issues**
+```bash
+# 404 errors - Check .htaccess and mod_rewrite
+# Assets not loading - Verify baseURL in App.php
+# Permission errors - Set writable/ to 755
+```
+
+**Development Issues**
+```bash
+# Routes not working - Check Routes.php syntax
+# Helper functions undefined - Verify BaseController helper loading
+# Views not rendering - Check extend/section syntax
+```
+
+## 📈 Roadmap
+
+### Current Status ✅
+- [x] CodeIgniter 4 foundation
+- [x] Tailwind CSS design system
+- [x] Component library and helpers
+- [x] Zero-config deployment
+- [x] Style guide documentation
+
+### In Progress 🔄
+- [ ] Scheduler components
+- [ ] Time slot management
+- [ ] Calendar views
+- [ ] Appointment booking
+
+### Planned Features 📋
+- [ ] Database schema
+- [ ] User authentication
+- [ ] Email notifications
+- [ ] Calendar integrations
+- [ ] Multi-timezone support
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- **Website**: [https://webschedulr.co.za](https://webschedulr.co.za)
+- **Documentation**: See `mastercontext.md` for complete technical details
+- **Style Guide**: Visit `/styleguide` in your local installation
+- **Support**: Contact [nilo.cara@frontend.co.za](mailto:nilo.cara@frontend.co.za)
+
+---
+
+**Made with ❤️ by Nilo Cara**  
+*Building modern, accessible web applications*
