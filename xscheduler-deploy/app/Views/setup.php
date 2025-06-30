@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,15 +22,24 @@
                                     <p class="text-muted">Welcome to xScheduler! Let's get you set up.</p>
                                     
                                     <div class="alert alert-info" role="alert">
-                                        <h5 class="alert-heading">Getting Started</h5>
-                                        <p class="mb-0">This setup wizard will help you configure your scheduling application.</p>
+                                        <div class="flex">
+                                            <div class="flex-shrink-0">
+                                                <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div class="ml-3">
+                                                <h5 class="text-sm font-medium text-blue-800 mb-1">Getting Started</h5>
+                                                <p class="text-sm text-blue-700 mb-0">This setup wizard will help you configure your scheduling application.</p>
+                                            </div>
+                                        </div>
                                     </div>
                                     
-                                    <hr>
+                                    <hr class="border-gray-200 mb-6">
                                     
-                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                        <a href="<?= base_url('/') ?>" class="btn btn-outline-secondary me-md-2">Back to Home</a>
-                                        <button class="btn btn-primary" type="button">Continue Setup</button>
+                                    <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                                        <a href="<?= base_url('/') ?>" class="btn-secondary">Back to Home</a>
+                                        <button class="btn-primary" type="button">Continue Setup</button>
                                     </div>
                                 </div>
                             </div>
