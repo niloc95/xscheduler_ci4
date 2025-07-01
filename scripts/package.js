@@ -11,20 +11,39 @@ console.log('📦 Creating standalone deployment package...');
 // Create deployment package
 const packageDir = path.join(projectRoot, 'xscheduler-deploy');
 if (fs.existsSync(packageDir)) {
-    fs.rmSync(packageDir, { recursive: true });
+    try {
+        fs.rmSync(packageDir, { recursive: true, force: true });
+    } catch (error) {
+        console.warn('⚠️  Could not remove existing package directory, trying alternative method...');
+        // Try to remove contents instead
+        const files = fs.readdirSync(packageDir);
+        for (const file of files) {
+            const filePath = path.join(packageDir, file);
+            try {
+                fs.rmSync(filePath, { recursive: true, force: true });
+            } catch (e) {
+                console.warn(`Could not remove ${file}, continuing...`);
+            }
+        }
+    }
 }
 fs.mkdirSync(packageDir, { recursive: true });
 
-// Copy CodeIgniter structure
+// Copy CodeIgniter structure for standalone deployment
 const essentialFiles = [
     { src: 'app', dest: 'app' },
-    { src: 'system', dest: 'system' },
     { src: 'writable', dest: 'writable' },
     { src: 'vendor', dest: 'vendor' },
     { src: 'public', dest: 'public' },
-    { src: 'dist', dest: 'public/assets' }, // Vite build output
-    { src: '.env.example', dest: '.env' }
+    { src: '.env.example', dest: '.env' },
+    // Add essential CodeIgniter files for standalone deployment
+    { src: 'vendor/codeigniter4/framework/system', dest: 'system' },
+    { src: 'spark', dest: 'spark' },
+    { src: 'preload.php', dest: 'preload.php' }
 ];
+
+// Note: public folder already includes the built assets from Vite
+// Note: Copying system directory separately for standalone deployment
 
 essentialFiles.forEach(({ src, dest }) => {
     const source = path.join(projectRoot, src);
@@ -46,27 +65,103 @@ const indexPath = path.join(packageDir, 'public/index.php');
 if (fs.existsSync(indexPath)) {
     let indexContent = fs.readFileSync(indexPath, 'utf8');
     
-    // Ensure proper paths for any subfolder deployment
+    // Update paths for standalone deployment (not using vendor/codeigniter4/framework)
     indexContent = indexContent.replace(
-        "require FCPATH . '../app/Config/Paths.php';",
+        /require\s+FCPATH\s*\.\s*['"][^'"]*vendor[^'"]*['"];?/g,
         "require FCPATH . '../app/Config/Paths.php';"
+    );
+    
+    // Ensure system path points to our standalone system directory
+    indexContent = indexContent.replace(
+        /\$pathsConfig->systemDirectory\s*=.*$/gm,
+        "$pathsConfig->systemDirectory = ROOTPATH . 'system';"
     );
     
     fs.writeFileSync(indexPath, indexContent);
     console.log('✅ Updated index.php for standalone deployment');
 }
 
-// Create simple .htaccess for subfolders
-const htaccessContent = `RewriteEngine On
+// Update Paths.php for standalone deployment
+const pathsConfigPath = path.join(packageDir, 'app/Config/Paths.php');
+if (fs.existsSync(pathsConfigPath)) {
+    let pathsContent = fs.readFileSync(pathsConfigPath, 'utf8');
+    
+    // Update system directory path for standalone deployment
+    pathsContent = pathsContent.replace(
+        /public\s+string\s+\$systemDirectory\s*=\s*__DIR__\s*\.\s*['"][^'"]*['"];?/,
+        "public string $systemDirectory = __DIR__ . '/../../system';"
+    );
+    
+    fs.writeFileSync(pathsConfigPath, pathsContent);
+    console.log('✅ Updated Paths.php for standalone deployment');
+}
+
+// Create comprehensive .htaccess for production deployment
+
+const htaccessContent = `# CodeIgniter 4 Production .htaccess
+RewriteEngine On
+
+# Handle angular front-end requests
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php/$1 [L]
 
-# Remove index.php from URLs
-RewriteCond %{THE_REQUEST} \\s/+[^/\\s]*\\.php[?/\\s] [NC]
-RewriteRule ^(.*)$ %{REQUEST_URI} [R=301,L]`;
+# Disable server signature
+ServerSignature Off
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
+
+# Prevent access to sensitive files
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "composer.json">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "composer.lock">
+    Order allow,deny
+    Deny from all
+</Files>`;
 
 fs.writeFileSync(path.join(packageDir, 'public/.htaccess'), htaccessContent);
+
+// Create root .htaccess for security
+const rootHtaccessContent = `# Deny access to sensitive directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^/(app|system|writable|vendor)(/.*)?$ [NC]
+    RewriteRule ^.*$ - [F,L]
+</IfModule>
+
+# Redirect all requests to public folder
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ public/ [L]
+    RewriteRule (.*) public/$1 [L]
+</IfModule>`;
+
+fs.writeFileSync(path.join(packageDir, '.htaccess'), rootHtaccessContent);
 
 // Create deployment README
 const readmeContent = `# xScheduler Deployment
