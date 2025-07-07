@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
         style: path.resolve(process.cwd(), 'resources/scss/app.scss'),
+        materialWeb: path.resolve(process.cwd(), 'resources/js/material-web.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

@@ -96,6 +96,27 @@ if (fs.existsSync(pathsConfigPath)) {
     console.log('✅ Updated Paths.php for standalone deployment');
 }
 
+// Update App.php for production deployment
+const appConfigPath = path.join(packageDir, 'app/Config/App.php');
+if (fs.existsSync(appConfigPath)) {
+    let appContent = fs.readFileSync(appConfigPath, 'utf8');
+    
+    // Set production base URL to be dynamic/empty for flexible deployment
+    appContent = appContent.replace(
+        /public string \$baseURL = '[^']*';/,
+        "public string $baseURL = '';"
+    );
+    
+    // Optional: Remove index.php from URLs for clean URLs (works with .htaccess)
+    appContent = appContent.replace(
+        /public string \$indexPage = '[^']*';/,
+        "public string $indexPage = '';"
+    );
+    
+    fs.writeFileSync(appConfigPath, appContent);
+    console.log('✅ Updated App.php for production deployment');
+}
+
 // Create comprehensive .htaccess for production deployment
 
 const htaccessContent = `# CodeIgniter 4 Production .htaccess

@@ -13,14 +13,16 @@
 
 ## Project Overview
 
-**xScheduler** is a modern scheduling application built with CodeIgniter 4 and Tailwind CSS, designed for deployment to standard hosting providers with zero configuration requirements.
+**xScheduler** is a modern scheduling application built with CodeIgniter 4, featuring a Material Design dashboard with Tailwind CSS, designed for deployment to standard hosting providers with zero configuration requirements.
 
 ### Core Architecture
 - **Backend**: CodeIgniter 4 (PHP framework)
-- **Frontend**: Tailwind CSS 3.4.17 with CoreUI components
-- **Build System**: Vite 6.3.5
-- **Asset Management**: SCSS with PostCSS processing
-- **Deployment**: Standalone package for shared hosting
+- **Frontend**: Tailwind CSS 3.4.17 with Material Design 3.0 components
+- **UI Framework**: Material Web Components (@material/web), CoreUI 5.4.0
+- **Charts**: Chart.js 4.5.0 for analytics and data visualization
+- **Build System**: Vite 6.3.5 with multi-entry point compilation
+- **Asset Management**: SCSS with PostCSS processing, Material Design tokens
+- **Deployment**: Production-ready standalone package for shared hosting
 
 ## Project Structure
 
@@ -29,6 +31,7 @@ xScheduler_ci4/
 ├── app/                          # CodeIgniter 4 application
 │   ├── Controllers/              # Request handlers
 │   │   ├── BaseController.php    # Base controller with UI helper loading
+│   │   ├── Dashboard.php         # Material Design dashboard controller
 │   │   ├── Home.php             # Default welcome controller
 │   │   ├── Setup.php            # Setup wizard controller
 │   │   ├── Styleguide.php       # Design system documentation
@@ -37,12 +40,17 @@ xScheduler_ci4/
 │   │   ├── App.php              # Main app config (baseURL, indexPage)
 │   │   └── Routes.php           # URL routing definitions
 │   ├── Helpers/                 # Custom helper functions
-│   │   └── ui_helper.php        # UI component helper functions
+│   │   ├── ui_helper.php        # UI component helper functions
+│   │   └── vite_helper.php      # Vite asset management helpers
 │   └── Views/                   # Template files
 │       ├── components/          # Reusable view components
 │       │   ├── layout.php       # Main layout template
 │       │   ├── header.php       # Header component
 │       │   └── footer.php       # Footer component
+│       ├── dashboard.php        # Production Material Design dashboard
+│       ├── dashboard_simple.php # Simplified dashboard variant
+│       ├── dashboard_example.php # Dashboard development examples
+│       ├── material_web_example.php # Material Web Components showcase
 │       ├── styleguide/          # Design system documentation
 │       │   ├── index.php        # Style guide home
 │       │   └── components.php   # Component showcase
@@ -50,28 +58,95 @@ xScheduler_ci4/
 │       └── tw.php               # Tailwind test page
 ├── resources/                   # Frontend assets
 │   ├── js/
-│   │   └── app.js              # Main JavaScript entry point
+│   │   ├── app.js              # Main JavaScript entry point
+│   │   ├── material-web.js     # Material Web Components setup
+│   │   └── charts.js           # Chart.js configurations and utilities
 │   └── scss/
-│       ├── app.scss            # Main SCSS file
+│       ├── app.scss            # Main SCSS file with Material Design tokens
 │       └── components.scss     # Custom component definitions
 ├── public/                     # Web-accessible files
 │   ├── build/assets/           # Compiled assets (Vite output)
+│   │   ├── style.css          # Compiled Tailwind + Material styles
+│   │   ├── main.js            # App logic + Chart.js bundle
+│   │   └── materialWeb.js     # Material Web Components bundle
 │   ├── index.php              # Application entry point
-│   └── .htaccess              # Apache rewrite rules
+│   └── .htaccess              # Apache rewrite rules with security headers
 ├── scripts/                   # Build and deployment scripts
-│   └── package.js             # Deployment packaging script
-├── system/                    # CodeIgniter 4 framework
+│   └── package.js             # Production deployment packaging script
+├── system/                    # CodeIgniter 4 framework (copied to deployment)
 ├── vendor/                    # Composer dependencies
 ├── writable/                  # Cache, logs, uploads
-├── vite.config.js            # Vite build configuration
-├── tailwind.config.js        # Tailwind CSS configuration
-└── package.json              # Node.js dependencies and scripts
+├── xscheduler-deploy/         # Production deployment package
+├── vite.config.js            # Vite build configuration (multi-entry)
+├── tailwind.config.js        # Tailwind CSS with Material Design tokens
+└── package.json              # Node.js dependencies and build scripts
 ```
 
 ## Design System Implementation
 
-### Component Architecture
-The application uses a hybrid approach combining Tailwind utilities with custom components:
+### Material Design Architecture
+The application implements Google's Material Design 3.0 specification using multiple frameworks:
+
+#### Material Web Components Integration
+- **@material/web**: Official Google Material Design web components
+- **Material Icons**: Google's icon system with 2000+ icons
+- **Material Design Tokens**: CSS custom properties for theming
+- **Responsive Components**: Mobile-first Material UI patterns
+
+#### Framework Rollup Strategy
+```scss
+// Layer-based CSS architecture
+@import '@coreui/coreui/scss/coreui.scss';      // Base UI framework
+@import 'tailwindcss/base';                     // Tailwind reset
+@import 'tailwindcss/components';               // Tailwind components
+@import 'tailwindcss/utilities';                // Tailwind utilities
+
+@layer components {
+  .btn-primary { /* Material Design button with Tailwind utilities */ }
+  .card-material { /* Material Design elevated cards */ }
+  .dashboard-grid { /* Responsive dashboard layout */ }
+}
+```
+
+#### Multi-Framework CSS Approach
+```scss
+/* Material Design 3.0 CSS Variables */
+:root {
+  --md-sys-color-primary: rgb(59, 130, 246);
+  --md-sys-color-on-primary: rgb(255, 255, 255);
+  --md-sys-color-surface: rgb(255, 255, 255);
+  --md-sys-color-outline: rgb(229, 231, 235);
+}
+
+/* Custom Material shadows */
+.material-shadow {
+  box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2),
+              0px 4px 5px 0px rgba(0, 0, 0, 0.14),
+              0px 1px 10px 0px rgba(0, 0, 0, 0.12);
+}
+```
+
+#### Chart.js Integration
+```javascript
+// Chart configurations with Material Design styling
+export const materialChartDefaults = {
+  responsive: true,
+  plugins: {
+    legend: {
+      labels: { 
+        font: { family: 'Roboto', size: 14 },
+        color: 'var(--md-sys-color-on-surface)'
+      }
+    }
+  },
+  scales: {
+    y: { 
+      grid: { color: 'var(--md-sys-color-outline)' },
+      ticks: { color: 'var(--md-sys-color-on-surface)' }
+    }
+  }
+};
+```
 
 #### SCSS Component Layer (`resources/scss/components.scss`)
 ```scss
@@ -84,14 +159,97 @@ The application uses a hybrid approach combining Tailwind utilities with custom 
 ```
 
 #### PHP Helper Functions (`app/Helpers/ui_helper.php`)
-- `ui_button($text, $href, $type, $attributes)` - Standardized button generation
-- `ui_card($title, $content, $footer)` - Card component wrapper
-- `ui_alert($message, $type, $title)` - Alert component with variants
+- `ui_button($text, $href, $type, $attributes)` - Material Design button generation
+- `ui_card($title, $content, $footer)` - Material elevated card components
+- `ui_alert($message, $type, $title)` - Material Design alert variants
+- `ui_dashboard_card($title, $value, $trend, $icon)` - Dashboard statistics cards
+
+#### Vite Asset Management (`app/Helpers/vite_helper.php`)
+- `vite_asset($path)` - Production/development asset URL resolution
+- `vite_js($entry)` - JavaScript bundle loading with HMR support
+- `vite_css($entry)` - CSS bundle loading with hot reload
+
+#### Dashboard Component System
+```php
+// Material Design dashboard cards
+echo ui_dashboard_card(
+    'Total Users', 
+    '2,345', 
+    '+12%', 
+    'people',
+    'gradient-blue'
+);
+
+// Charts integration
+echo ui_chart_container('user-growth-chart', 'line');
+```
 
 #### View Components (`app/Views/components/`)
-- **layout.php**: Master page template with header/footer inclusion
-- **header.php**: Navigation and branding
-- **footer.php**: Site footer with links
+- **layout.php**: Master page template with Material Design shell
+- **header.php**: Material top app bar with navigation drawer trigger
+- **footer.php**: Material Design footer with proper typography
+
+#### Dashboard Views (`app/Views/`)
+- **dashboard.php**: Production Material Design 3.0 dashboard
+- **dashboard_simple.php**: Lightweight Material dashboard variant
+- **dashboard_example.php**: Development examples and components showcase
+- **material_web_example.php**: Material Web Components demonstration
+
+### Styling Guide & Standards
+
+#### Material Design Implementation
+```html
+<!-- Material Web Components Usage -->
+<md-filled-button onclick="handleAction()">
+  <md-icon slot="icon">add</md-icon>
+  Create New
+</md-filled-button>
+
+<!-- Material Design Cards -->
+<div class="bg-white rounded-lg material-shadow p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-800">Card Title</h3>
+    <md-icon-button>
+      <md-icon>more_vert</md-icon>
+    </md-icon-button>
+  </div>
+</div>
+```
+
+#### Typography System (Material Design + Tailwind)
+```html
+<!-- Display styles -->
+h1.text-4xl.font-bold.text-gray-900        # Display Large
+h2.text-3xl.font-bold.text-gray-900        # Display Medium
+h3.text-2xl.font-bold.text-gray-900        # Display Small
+
+<!-- Headline styles -->
+h4.text-xl.font-semibold.text-gray-800     # Headline Large
+h5.text-lg.font-medium.text-gray-800       # Headline Medium
+h6.text-base.font-medium.text-gray-800     # Headline Small
+
+<!-- Body styles -->
+.text-base.text-gray-700                   # Body Large
+.text-sm.text-gray-600                     # Body Medium
+.text-xs.text-gray-500                     # Body Small
+```
+
+#### Color System (Material Design Tokens)
+```scss
+// Primary colors
+.bg-primary          // --md-sys-color-primary (Blue 500)
+.text-on-primary     // --md-sys-color-on-primary (White)
+
+// Surface colors  
+.bg-surface          // --md-sys-color-surface (White)
+.text-on-surface     // --md-sys-color-on-surface (Gray 900)
+
+// Gradient variants
+.gradient-blue       // Primary gradient
+.gradient-green      // Success gradient
+.gradient-orange     // Warning gradient
+.gradient-purple     // Info gradient
+```
 
 ### Standardization Patterns
 
@@ -120,11 +278,48 @@ h4.text-lg.font-medium     # Component titles
 
 ## Build System Configuration
 
-### Vite Configuration (`vite.config.js`)
-- **Input**: `resources/js/app.js`, `resources/scss/app.scss`
-- **Output**: `public/build/assets/`
-- **Base Path**: `./` for flexible deployment
-- **Asset Naming**: Static names for production consistency
+### Build System Configuration
+
+#### Vite Multi-Entry Configuration (`vite.config.js`)
+```javascript
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'resources/js/app.js'),
+        materialWeb: resolve(__dirname, 'resources/js/material-web.js'),
+        charts: resolve(__dirname, 'resources/js/charts.js'),
+        style: resolve(__dirname, 'resources/scss/app.scss')
+      },
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]'
+      }
+    }
+  }
+});
+```
+
+#### Framework Integration Points
+- **Input Entries**: 
+  - `main.js` - Core application logic + Chart.js
+  - `materialWeb.js` - Material Web Components bundle
+  - `style.css` - Tailwind + Material + CoreUI styles
+- **Output Assets**: `public/build/assets/` with static naming
+- **HMR Support**: Development hot module replacement
+- **Production Optimization**: Minification, tree-shaking, asset optimization
+
+#### Chart.js Build Integration
+```javascript
+// resources/js/charts.js
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
+
+// Material Design chart defaults
+Chart.defaults.font.family = 'Roboto, sans-serif';
+Chart.defaults.color = 'var(--md-sys-color-on-surface)';
+```
 
 ### Tailwind Configuration (`tailwind.config.js`)
 - **Content Sources**: `./app/Views/**/*.php`, `./resources/**/*.{js,ts,jsx,tsx,vue}`
@@ -180,16 +375,49 @@ xscheduler-deploy/
 }
 ```
 
-### Frontend Dependencies
+### Frontend Dependencies & Framework Rollup
 ```json
 {
-  "@coreui/coreui": "^5.4.0",
-  "@coreui/icons": "^3.0.1",
-  "tailwindcss": "^3.4.17",
-  "@tailwindcss/forms": "^0.5.7",
-  "@tailwindcss/typography": "^0.5.10",
-  "sass": "^1.89.2",
-  "vite": "^6.3.5"
+  "dependencies": {
+    "@coreui/coreui": "^5.4.0",               // Base UI framework
+    "@coreui/icons": "^3.0.1",                // CoreUI icon system
+    "@material/web": "^2.3.0",                // Material Web Components
+    "@material-tailwind/html": "^3.0.0",      // Material Tailwind HTML
+    "@material/button": "^14.0.0",            // Individual Material components
+    "@material/card": "^14.0.0",
+    "@material/drawer": "^14.0.0",
+    "@material/icon-button": "^14.0.0",
+    "@material/list": "^14.0.0",
+    "@material/textfield": "^14.0.0",
+    "@material/top-app-bar": "^14.0.0",
+    "material-icons": "^1.13.14",             // Google Material Icons
+    "chart.js": "^4.5.0",                     // Charts and data visualization
+    "tailwindcss": "^3.4.17",                 // Utility-first CSS
+    "@tailwindcss/forms": "^0.5.7",           // Form styling
+    "@tailwindcss/typography": "^0.5.10",     // Typography utilities
+    "@headlessui/tailwindcss": "^0.2.2",      // Headless UI integration
+    "sass": "^1.89.2",                        // SCSS processing
+    "vite": "^6.3.5"                          // Build system
+  }
+}
+```
+
+#### CSS Framework Architecture
+```scss
+// Import order for optimal cascade
+@import '@coreui/coreui/scss/coreui.scss';      // 1. Base framework
+@import '@material/button/styles.scss';         // 2. Material components
+@import '@material/card/styles.scss';
+@import 'tailwindcss/base';                     // 3. Tailwind reset
+@import 'tailwindcss/components';               // 4. Tailwind components  
+@import 'tailwindcss/utilities';                // 5. Tailwind utilities
+
+// Custom layer for Material + Tailwind hybrid
+@layer components {
+  .dashboard-card {
+    @apply bg-white rounded-lg p-6;
+    box-shadow: var(--md-elevation-2);
+  }
 }
 ```
 
