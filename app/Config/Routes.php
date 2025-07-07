@@ -6,7 +6,12 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 $routes->get('/', 'Home::index');
-$routes->get('setup', 'Setup::setup');
+
+// Setup Routes
+$routes->get('setup', 'Setup::index');
+$routes->post('setup/process', 'Setup::process');
+$routes->post('setup/test-connection', 'Setup::testConnection');
+
 $routes->get('tw', 'Tw::tw');
 
 // Dashboard Routes

@@ -467,6 +467,67 @@ CI_ENVIRONMENT = production
 app.baseURL = ''  # Flexible for any domain
 ```
 
+## Application Entry Points
+
+### Setup View - Initial Configuration Entry Point
+
+The Setup View serves as the primary entry point for new installations, providing a comprehensive wizard for initial system configuration.
+
+#### Features
+- **System Administrator Registration**: Full name, User ID, password with strength validation
+- **Database Configuration**: Choice between MySQL connection and zero-config SQLite
+- **Real-time Validation**: Form validation with immediate feedback
+- **Connection Testing**: MySQL connection verification before setup
+- **Progress Tracking**: Visual progress indicator during setup process
+- **Security**: CSRF protection, rate limiting, one-time setup enforcement
+
+#### Implementation Details
+
+**Controller**: `app/Controllers/Setup.php`
+- `index()` - Display setup form (redirect if already completed)
+- `process()` - Handle setup form submission with validation
+- `testConnection()` - Test MySQL database connection
+
+**View**: `app/Views/setup.php`
+- Material Design 3.0 interface with responsive layout
+- Progressive form with database type selection
+- Password strength indicator and validation
+- Loading overlay with progress tracking
+
+**JavaScript**: `resources/js/setup.js`
+- `SetupWizard` class for form management
+- Real-time validation and password strength checking
+- AJAX connection testing and form submission
+- Error handling and user feedback
+
+**Database Helper**: `app/Helpers/DatabaseSetup.php`
+- Automated table creation for both MySQL and SQLite
+- Admin user creation with secure password hashing
+- Database configuration file generation
+
+#### Post-Setup Behavior
+1. **Setup Completion**: Creates `writable/setup_completed.flag`
+2. **Route Protection**: Setup route redirects to dashboard when completed
+3. **SPA Transition**: Redirects to Material Design dashboard (SPA mode)
+4. **Database Ready**: All necessary tables and admin user created
+
+### Dashboard SPA - Main Application Interface
+
+After successful setup completion, users are redirected to the dashboard which operates as a Single Page Application (SPA).
+
+#### SPA Features
+- **Material Design 3.0**: Complete Material Web Components integration
+- **Chart.js Analytics**: Real-time data visualization
+- **Responsive Design**: Mobile-first approach with collapsible navigation
+- **Hot Module Replacement**: Development-time asset reloading
+- **Production Optimized**: Minified assets with static naming for deployment
+
+#### Entry Point Flow
+```
+Setup View (First Time) → Database Configuration → Dashboard SPA
+Dashboard (Returning) → Authentication Check → Dashboard SPA
+```
+
 ## Current Implementation Status
 
 ### ✅ Completed Features
