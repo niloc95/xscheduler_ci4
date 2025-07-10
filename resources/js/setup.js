@@ -98,12 +98,13 @@ class SetupWizard {
 
     updatePasswordStrengthIndicator(strength) {
         const passwordStrength = document.getElementById('password_strength');
-        const bars = passwordStrength.querySelectorAll('.h-1');
+        const bars = passwordStrength.querySelectorAll('.strength-bar');
         const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500'];
         const labels = ['Weak', 'Fair', 'Good', 'Strong'];
         
         bars.forEach((bar, index) => {
-            bar.className = 'h-1 w-full rounded';
+            // Reset classes
+            bar.className = 'h-1 w-full rounded strength-bar';
             if (index < strength) {
                 bar.classList.add(colors[Math.min(strength - 1, 3)]);
             } else {
@@ -111,7 +112,7 @@ class SetupWizard {
             }
         });
 
-        const label = passwordStrength.querySelector('p');
+        const label = document.getElementById('password_strength_text');
         if (strength > 0) {
             label.textContent = `Password strength: ${labels[Math.min(strength - 1, 3)]}`;
             label.className = `text-xs mt-1 ${strength >= 3 ? 'text-green-600' : strength >= 2 ? 'text-yellow-600' : 'text-red-600'}`;
@@ -171,7 +172,8 @@ class SetupWizard {
         this.setConnectionTestState(true);
 
         try {
-            const response = await fetch('/setup/test-connection', {
+            // Use relative URL for better compatibility
+            const response = await fetch('setup/test-connection', {
                 method: 'POST',
                 body: formData
             });
@@ -188,10 +190,21 @@ class SetupWizard {
     setConnectionTestState(testing) {
         if (testing) {
             this.testConnectionBtn.disabled = true;
-            this.testConnectionBtn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-r-transparent rounded-full mr-2"></span>Testing...';
+            this.testConnectionBtn.innerHTML = `
+                <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Testing...
+            `;
         } else {
             this.testConnectionBtn.disabled = false;
-            this.testConnectionBtn.innerHTML = '<md-icon slot="icon">wifi_protected_setup</md-icon>Test Connection';
+            this.testConnectionBtn.innerHTML = `
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+                </svg>
+                Test Connection
+            `;
         }
     }
 
@@ -202,11 +215,11 @@ class SetupWizard {
                 : 'bg-red-100 text-red-800 border border-red-200'
         }`;
         
-        const icon = success ? 'check_circle' : 'error';
-        this.connectionResult.innerHTML = `
-            <md-icon class="mr-2">${icon}</md-icon>
-            ${message}
-        `;
+        const iconSvg = success 
+            ? '<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+            : '<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+        
+        this.connectionResult.innerHTML = `${iconSvg}${message}`;
         this.connectionResult.classList.remove('hidden');
     }
 
@@ -225,7 +238,8 @@ class SetupWizard {
         try {
             this.updateProgress(40, 'Setting up database...');
             
-            const response = await fetch('/setup/process', {
+            // Use relative URL for better compatibility
+            const response = await fetch('setup/process', {
                 method: 'POST',
                 body: formData
             });
@@ -237,7 +251,7 @@ class SetupWizard {
                 await this.delay(500);
                 this.updateProgress(100, 'Setup complete! Redirecting...');
                 await this.delay(1000);
-                window.location.href = result.redirect || '/dashboard';
+                window.location.href = result.redirect || 'dashboard';
             } else {
                 this.hideLoadingOverlay();
                 this.showFormErrors(result.errors || { general: [result.message] });
@@ -331,29 +345,44 @@ class SetupWizard {
     }
 
     showNotification(type, message) {
-        // Create a temporary notification
+        // Remove any existing notifications
+        document.querySelectorAll('.notification').forEach(n => n.remove());
+        
+        // Create a new notification
         const notification = document.createElement('div');
-        notification.className = `fixed top-4 right-4 z-50 max-w-sm p-4 rounded-lg shadow-lg ${
+        notification.className = `notification fixed top-4 right-4 z-50 max-w-sm p-4 rounded-lg shadow-lg ${
             type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'
         }`;
+        
+        const iconSvg = type === 'error' 
+            ? '<svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>'
+            : '<svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+        
         notification.innerHTML = `
             <div class="flex items-start">
-                <md-icon class="mr-2 mt-0.5">${type === 'error' ? 'error' : 'check_circle'}</md-icon>
-                <div class="flex-1">${message}</div>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-400 hover:text-gray-600">
-                    <md-icon>close</md-icon>
+                ${iconSvg}
+                <div class="flex-1 text-sm">${message}</div>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
                 </button>
             </div>
         `;
         
         document.body.appendChild(notification);
         
-        // Auto-remove after 5 seconds
+        // Auto-remove after 7 seconds with fade-out animation
         setTimeout(() => {
             if (notification.parentElement) {
-                notification.remove();
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
             }
-        }, 5000);
+        }, 7000);
     }
 
     showLoadingOverlay() {

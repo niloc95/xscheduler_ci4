@@ -136,116 +136,138 @@ class DatabaseSetup
     {
         $forge = \Config\Database::forge($db);
 
-        // Users table
-        $forge->addField([
-            'id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'auto_increment' => true,
-            ],
-            'userid' => [
-                'type' => 'VARCHAR',
-                'constraint' => 50,
-                'unique' => true,
-            ],
-            'name' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-            ],
-            'email' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-                'null' => true,
-            ],
-            'password_hash' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255,
-            ],
-            'role' => [
-                'type' => 'ENUM',
-                'constraint' => ['admin', 'user'],
-                'default' => 'user',
-            ],
-            'is_active' => [
-                'type' => 'BOOLEAN',
-                'default' => true,
-            ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-            'updated_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-        ]);
-        $forge->addKey('id', true);
-        $forge->addUniqueKey('userid');
-        $forge->createTable('users');
+        try {
+            // Users table
+            if (!$db->tableExists('users')) {
+                $forge->addField([
+                    'id' => [
+                        'type' => 'INT',
+                        'constraint' => 11,
+                        'unsigned' => true,
+                        'auto_increment' => true,
+                    ],
+                    'userid' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 50,
+                        'unique' => true,
+                    ],
+                    'name' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 100,
+                    ],
+                    'email' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 100,
+                        'null' => true,
+                    ],
+                    'password_hash' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 255,
+                    ],
+                    'role' => [
+                        'type' => 'ENUM',
+                        'constraint' => ['admin', 'user'],
+                        'default' => 'user',
+                    ],
+                    'is_active' => [
+                        'type' => 'BOOLEAN',
+                        'default' => true,
+                    ],
+                    'created_at' => [
+                        'type' => 'DATETIME',
+                        'null' => true,
+                    ],
+                    'updated_at' => [
+                        'type' => 'DATETIME',
+                        'null' => true,
+                    ],
+                ]);
+                $forge->addKey('id', true);
+                $forge->addUniqueKey('userid');
+                
+                if (!$forge->createTable('users')) {
+                    throw new \Exception('Failed to create users table');
+                }
+                log_message('info', 'Users table created successfully');
+            }
 
-        // Settings table
-        $forge->addField([
-            'id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true,
-                'auto_increment' => true,
-            ],
-            'setting_key' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
-                'unique' => true,
-            ],
-            'setting_value' => [
-                'type' => 'TEXT',
-                'null' => true,
-            ],
-            'setting_type' => [
-                'type' => 'VARCHAR',
-                'constraint' => 20,
-                'default' => 'string',
-            ],
-            'created_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-            'updated_at' => [
-                'type' => 'DATETIME',
-                'null' => true,
-            ],
-        ]);
-        $forge->addKey('id', true);
-        $forge->addUniqueKey('setting_key');
-        $forge->createTable('settings');
+            // Settings table
+            if (!$db->tableExists('settings')) {
+                $forge->addField([
+                    'id' => [
+                        'type' => 'INT',
+                        'constraint' => 11,
+                        'unsigned' => true,
+                        'auto_increment' => true,
+                    ],
+                    'setting_key' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 100,
+                        'unique' => true,
+                    ],
+                    'setting_value' => [
+                        'type' => 'TEXT',
+                        'null' => true,
+                    ],
+                    'setting_type' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 20,
+                        'default' => 'string',
+                    ],
+                    'created_at' => [
+                        'type' => 'DATETIME',
+                        'null' => true,
+                    ],
+                    'updated_at' => [
+                        'type' => 'DATETIME',
+                        'null' => true,
+                    ],
+                ]);
+                $forge->addKey('id', true);
+                $forge->addUniqueKey('setting_key');
+                
+                if (!$forge->createTable('settings')) {
+                    throw new \Exception('Failed to create settings table');
+                }
+                log_message('info', 'Settings table created successfully');
+            }
 
-        // Sessions table (if not already created by CI4)
-        if (!$db->tableExists('ci_sessions')) {
-            $forge->addField([
-                'id' => [
-                    'type' => 'VARCHAR',
-                    'constraint' => 128,
-                ],
-                'ip_address' => [
-                    'type' => 'VARCHAR',
-                    'constraint' => 45,
-                ],
-                'timestamp' => [
-                    'type' => 'INT',
-                    'constraint' => 10,
-                    'unsigned' => true,
-                    'default' => 0,
-                ],
-                'data' => [
-                    'type' => 'BLOB',
-                ],
-            ]);
-            $forge->addKey('id', true);
-            $forge->addKey('timestamp');
-            $forge->createTable('ci_sessions');
+            // Sessions table (if not already created by CI4)
+            if (!$db->tableExists('ci_sessions')) {
+                $forge->addField([
+                    'id' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 128,
+                    ],
+                    'ip_address' => [
+                        'type' => 'VARCHAR',
+                        'constraint' => 45,
+                    ],
+                    'timestamp' => [
+                        'type' => 'INT',
+                        'constraint' => 10,
+                        'unsigned' => true,
+                        'default' => 0,
+                    ],
+                    'data' => [
+                        'type' => 'BLOB',
+                    ],
+                ]);
+                $forge->addKey('id', true);
+                $forge->addKey('timestamp');
+                
+                if (!$forge->createTable('ci_sessions')) {
+                    throw new \Exception('Failed to create sessions table');
+                }
+                log_message('info', 'Sessions table created successfully');
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Database table creation failed: ' . $e->getMessage());
+            throw new \Exception('Database table creation failed: ' . $e->getMessage());
         }
 
-        log_message('info', 'Database tables created successfully');
+        log_message('info', 'All database tables created successfully');
     }
 
     /**
@@ -253,20 +275,39 @@ class DatabaseSetup
      */
     private function createAdminUser($db): void
     {
-        $adminData = [
-            'userid' => $this->setupData['admin']['userid'],
-            'name' => $this->setupData['admin']['name'],
-            'password_hash' => $this->setupData['admin']['password'],
-            'role' => 'admin',
-            'is_active' => true,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
+        try {
+            $adminData = [
+                'userid' => $this->setupData['admin']['userid'],
+                'name' => $this->setupData['admin']['name'],
+                'password_hash' => $this->setupData['admin']['password'],
+                'role' => 'admin',
+                'is_active' => true,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
 
-        $builder = $db->table('users');
-        $builder->insert($adminData);
-
-        log_message('info', 'Admin user created: ' . $adminData['userid']);
+            $builder = $db->table('users');
+            
+            // Check if admin user already exists
+            $existingUser = $builder->where('userid', $adminData['userid'])->get()->getRow();
+            if ($existingUser) {
+                log_message('info', 'Admin user already exists, updating: ' . $adminData['userid']);
+                $builder->where('userid', $adminData['userid'])->update([
+                    'name' => $adminData['name'],
+                    'password_hash' => $adminData['password_hash'],
+                    'updated_at' => $adminData['updated_at']
+                ]);
+            } else {
+                if (!$builder->insert($adminData)) {
+                    throw new \Exception('Failed to insert admin user into database');
+                }
+                log_message('info', 'Admin user created successfully: ' . $adminData['userid']);
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Admin user creation failed: ' . $e->getMessage());
+            throw new \Exception('Admin user creation failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -275,18 +316,62 @@ class DatabaseSetup
     private function saveDatabase(array $config): void
     {
         $configPath = APPPATH . 'Config/Database.php';
-        $configContent = "<?php\n\nnamespace Config;\n\nuse CodeIgniter\Database\Config;\n\nclass Database extends Config\n{\n";
-        $configContent .= "    public string \$filesPath = APPPATH . 'Database' . DIRECTORY_SEPARATOR;\n";
+        
+        // Backup the original config file
+        if (file_exists($configPath)) {
+            copy($configPath, $configPath . '.backup');
+        }
+        
+        $configContent = "<?php\n\nnamespace Config;\n\nuse CodeIgniter\\Database\\Config;\n\n";
+        $configContent .= "/**\n * Database Configuration\n */\n";
+        $configContent .= "class Database extends Config\n{\n";
+        $configContent .= "    /**\n     * The directory that holds the Migrations and Seeds directories.\n     */\n";
+        $configContent .= "    public string \$filesPath = APPPATH . 'Database' . DIRECTORY_SEPARATOR;\n\n";
+        $configContent .= "    /**\n     * Lets you choose which connection group to use if no other is specified.\n     */\n";
         $configContent .= "    public string \$defaultGroup = 'default';\n\n";
 
         foreach ($config as $group => $settings) {
+            $configContent .= "    /**\n     * {$group} database configuration\n     */\n";
             $configContent .= "    public array \${$group} = [\n";
             foreach ($settings as $key => $value) {
-                $formattedValue = is_string($value) ? "'{$value}'" : ($value === true ? 'true' : ($value === false ? 'false' : $value));
+                if (is_string($value)) {
+                    $formattedValue = "'" . addslashes($value) . "'";
+                } elseif (is_bool($value)) {
+                    $formattedValue = $value ? 'true' : 'false';
+                } elseif (is_array($value)) {
+                    $formattedValue = '[]';
+                } elseif (is_null($value)) {
+                    $formattedValue = 'null';
+                } else {
+                    $formattedValue = $value;
+                }
                 $configContent .= "        '{$key}' => {$formattedValue},\n";
             }
             $configContent .= "    ];\n\n";
         }
+
+        $configContent .= "    /**\n     * This database connection is used when running PHPUnit database tests.\n     */\n";
+        $configContent .= "    public array \$tests = [\n";
+        $configContent .= "        'DSN'         => '',\n";
+        $configContent .= "        'hostname'    => '127.0.0.1',\n";
+        $configContent .= "        'username'    => 'root',\n";
+        $configContent .= "        'password'    => '',\n";
+        $configContent .= "        'database'    => ':memory:',\n";
+        $configContent .= "        'DBDriver'    => 'SQLite3',\n";
+        $configContent .= "        'DBPrefix'    => 'db_',\n";
+        $configContent .= "        'pConnect'    => false,\n";
+        $configContent .= "        'DBDebug'     => true,\n";
+        $configContent .= "        'charset'     => 'utf8',\n";
+        $configContent .= "        'DBCollat'    => '',\n";
+        $configContent .= "        'swapPre'     => '',\n";
+        $configContent .= "        'encrypt'     => false,\n";
+        $configContent .= "        'compress'    => false,\n";
+        $configContent .= "        'strictOn'    => false,\n";
+        $configContent .= "        'failover'    => [],\n";
+        $configContent .= "        'port'        => 3306,\n";
+        $configContent .= "        'foreignKeys' => true,\n";
+        $configContent .= "        'busyTimeout' => 1000,\n";
+        $configContent .= "    ];\n\n";
 
         $configContent .= "    public function __construct()\n    {\n        parent::__construct();\n\n";
         $configContent .= "        // Ensure that we always set the database group to 'tests' if\n";
@@ -295,7 +380,10 @@ class DatabaseSetup
         $configContent .= "        if (ENVIRONMENT === 'testing') {\n";
         $configContent .= "            \$this->defaultGroup = 'tests';\n        }\n    }\n}\n";
 
-        file_put_contents($configPath, $configContent);
-        log_message('info', 'Database configuration saved');
+        if (file_put_contents($configPath, $configContent) === false) {
+            throw new \Exception('Failed to save database configuration file');
+        }
+        
+        log_message('info', 'Database configuration saved successfully');
     }
 }

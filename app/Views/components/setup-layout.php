@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,13 +10,9 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="flex flex-col min-h-screen">
-        <?= $this->include('components/header') ?>
-        
         <div class="flex-1">
             <main class="min-h-screen">
-                <div class="page-container">
-                    <?= $this->renderSection('content') ?>
-                </div>
+                <?= $this->renderSection('content') ?>
             </main>
         </div>
         

@@ -37,11 +37,11 @@ class Setup extends BaseController
         }
 
         // CSRF protection
-        if (!$this->validate(['csrf_token' => 'required'])) {
+        if (!$this->validate(['csrf_test_name' => 'required'])) {
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'CSRF token validation failed.',
-                'errors' => $this->validator->getErrors()
+                'errors' => ['csrf' => ['CSRF token is required']]
             ])->setStatusCode(400);
         }
 
@@ -181,8 +181,14 @@ class Setup extends BaseController
 
     private function initializeDatabase(array $setupData): void
     {
-        // Implementation will depend on your database schema
-        // This is a placeholder for database initialization
+        // Load the DatabaseSetup helper
+        require_once APPPATH . 'Helpers/DatabaseSetup.php';
+        $databaseSetup = new \App\Helpers\DatabaseSetup($setupData);
+        
+        if (!$databaseSetup->initialize()) {
+            throw new \Exception('Failed to initialize database');
+        }
+        
         log_message('info', 'Database initialization completed for: ' . $setupData['database']['type']);
     }
 
