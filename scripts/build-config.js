@@ -113,6 +113,13 @@ class BuildManager {
      */
     async configureEnvironment() {
         const config = CONFIG.environments[this.targetEnv];
+        
+        // Don't modify .env for deployment builds
+        if (this.targetEnv === 'production' && process.argv.includes('deploy')) {
+            console.log('⚠️  Skipping .env modification during deployment package creation');
+            return;
+        }
+        
         const envContent = fs.readFileSync(CONFIG.paths.env, 'utf8');
         
         let updatedContent = envContent;
@@ -173,8 +180,13 @@ class BuildManager {
             // Clear cache
             this.clearCache();
             
-            // Optimize Composer autoloader
-            execSync('composer dump-autoload --optimize --no-dev', { stdio: 'inherit' });
+            // Only optimize composer if not doing deployment packaging
+            if (!process.argv.includes('deploy')) {
+                // Optimize Composer autoloader
+                execSync('composer dump-autoload --optimize --no-dev', { stdio: 'inherit' });
+            } else {
+                console.log('⚠️  Skipping composer optimization during deployment packaging');
+            }
             
             console.log('✅ Production optimizations applied');
         }
@@ -243,10 +255,27 @@ class BuildManager {
     async createDeploymentPackage() {
         console.log('📦 Creating deployment package...');
         
-        // Build for production first
-        await this.build('production');
+        // Don't modify local environment during packaging
+        // Just ensure dependencies are installed and build assets
         
-        // Run the existing package script
+        // Check Node.js dependencies
+        if (!fs.existsSync('node_modules')) {
+            console.log('📦 Installing Node.js dependencies...');
+            execSync('npm install', { stdio: 'inherit' });
+        }
+
+        // Check PHP dependencies (with dev dependencies for complete package)
+        if (!fs.existsSync('vendor')) {
+            console.log('📦 Installing PHP dependencies...');
+            execSync('composer install', { stdio: 'inherit' });
+        }
+        
+        // Build production assets
+        console.log('🎨 Building production assets...');
+        process.env.NODE_ENV = 'production';
+        execSync('vite build', { stdio: 'inherit' });
+        
+        // Run the package script
         execSync('node scripts/package.js', { stdio: 'inherit' });
         
         console.log('✅ Deployment package created');
