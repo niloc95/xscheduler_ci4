@@ -146,8 +146,49 @@ if (fs.existsSync(appConfigPath)) {
         "public string $indexPage = '';"
     );
     
+    // Add constructor for robust baseURL auto-detection if not already present
+    if (!appContent.includes('public function __construct()')) {
+        const constructorCode = `
+    /**
+     * Constructor - Auto-detect baseURL for production environments
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        
+        // Auto-detect baseURL if empty (production deployment)
+        if (empty($this->baseURL) && !empty($_SERVER['HTTP_HOST'])) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+                       (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+                       (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
+                       (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443') 
+                       ? 'https://' : 'http://';
+            
+            $host = $_SERVER['HTTP_HOST'];
+            
+            // Handle subdirectory installations
+            $path = '';
+            if (!empty($_SERVER['SCRIPT_NAME'])) {
+                $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+                if ($scriptDir !== '/' && $scriptDir !== '.') {
+                    $path = $scriptDir;
+                }
+            }
+            
+            $this->baseURL = $protocol . $host . $path . '/';
+        }
+    }
+`;
+        
+        // Insert constructor after the baseURL property
+        appContent = appContent.replace(
+            /(public string \$baseURL = '';)/,
+            `$1${constructorCode}`
+        );
+    }
+    
     fs.writeFileSync(appConfigPath, appContent);
-    console.log('✅ Updated App.php for production deployment');
+    console.log('✅ Updated App.php for production deployment with robust URL detection');
 } else {
     console.warn('⚠️  App.php not found in deployment package');
 }

@@ -161,27 +161,43 @@ class SetupWizard {
     }
 
     async testConnection() {
-        const formData = new FormData();
-        formData.append('database_type', 'mysql');
-        
-        const fields = ['mysql_hostname', 'mysql_port', 'mysql_database', 'mysql_username', 'mysql_password'];
-        fields.forEach(field => {
-            formData.append(field, document.getElementById(field).value);
-        });
+        // Get the CSRF token from the meta tag or window object
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         window.appConfig?.csrfToken || 
+                         document.querySelector('input[name="csrf_test_name"]')?.value;
+
+        const connectionData = {
+            db_driver: 'MySQLi',
+            db_hostname: document.getElementById('mysql_hostname').value,
+            db_port: document.getElementById('mysql_port').value || '3306',
+            db_database: document.getElementById('mysql_database').value,
+            db_username: document.getElementById('mysql_username').value,
+            db_password: document.getElementById('mysql_password').value
+        };
 
         this.setConnectionTestState(true);
 
         try {
-            // Use relative URL for better compatibility
+            // Use relative URL for better compatibility and send JSON
             const response = await fetch('setup/test-connection', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken })
+                },
+                body: JSON.stringify(connectionData)
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
             const result = await response.json();
             this.showConnectionResult(result.success, result.message);
         } catch (error) {
-            this.showConnectionResult(false, 'Connection test failed');
+            console.error('Connection test error:', error);
+            this.showConnectionResult(false, `Connection test failed: ${error.message}`);
         } finally {
             this.setConnectionTestState(false);
         }

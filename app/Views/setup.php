@@ -266,6 +266,7 @@ window.appConfig = {
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                         value="localhost"
                                         placeholder="localhost">
+                                    <div id="mysql_hostname_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                 </div>
 
                                 <div>
@@ -279,6 +280,7 @@ window.appConfig = {
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                         value="3306"
                                         placeholder="3306">
+                                    <div id="mysql_port_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                 </div>
 
                                 <div>
@@ -291,6 +293,7 @@ window.appConfig = {
                                         name="mysql_database"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="xscheduler">
+                                    <div id="mysql_database_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                 </div>
 
                                 <div>
@@ -303,6 +306,7 @@ window.appConfig = {
                                         name="mysql_username"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="Database username">
+                                    <div id="mysql_username_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                 </div>
 
                                 <div class="md:col-span-2">
@@ -315,6 +319,7 @@ window.appConfig = {
                                         name="mysql_password"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="Database password (optional)">
+                                    <div id="mysql_password_error" class="mt-1 text-sm text-red-600 hidden"></div>
                                 </div>
                             </div>
 

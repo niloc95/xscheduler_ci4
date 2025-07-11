@@ -17,6 +17,36 @@ class App extends BaseConfig
      * E.g., http://example.com/
      */
     public string $baseURL = '';
+    /**
+     * Constructor - Auto-detect baseURL for production environments
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        
+        // Auto-detect baseURL if empty (production deployment)
+        if (empty($this->baseURL) && !empty($_SERVER['HTTP_HOST'])) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+                       (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+                       (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
+                       (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443') 
+                       ? 'https://' : 'http://';
+            
+            $host = $_SERVER['HTTP_HOST'];
+            
+            // Handle subdirectory installations
+            $path = '';
+            if (!empty($_SERVER['SCRIPT_NAME'])) {
+                $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+                if ($scriptDir !== '/' && $scriptDir !== '.') {
+                    $path = $scriptDir;
+                }
+            }
+            
+            $this->baseURL = $protocol . $host . $path . '/';
+        }
+    }
+
 
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.

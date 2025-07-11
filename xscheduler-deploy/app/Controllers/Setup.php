@@ -216,14 +216,22 @@ class Setup extends BaseController
     {
         // Determine environment mode
         $environment = ENVIRONMENT === 'development' ? 'development' : 'production';
-        $baseURL = $environment === 'development' ? 'http://localhost:8081/' : '';
+        
+        // Smart baseURL detection for production environments
+        $baseURL = '';
+        if ($environment === 'development') {
+            $baseURL = 'http://localhost:8081/';
+        } else {
+            // Auto-detect production URL from current request
+            $baseURL = $this->detectProductionURL();
+        }
 
         // Define replacement patterns
         $replacements = [
             // Environment settings
             'CI_ENVIRONMENT = production' => "CI_ENVIRONMENT = {$environment}",
 
-            // App settings
+            // App settings - use detected URL or leave empty for auto-detection
             "app.baseURL = ''" => "app.baseURL = '{$baseURL}'",
             'app.forceGlobalSecureRequests = true' => 'app.forceGlobalSecureRequests = ' . ($environment === 'production' ? 'true' : 'false'),
             'app.CSPEnabled = true' => 'app.CSPEnabled = ' . ($environment === 'production' ? 'true' : 'false'),
@@ -260,6 +268,38 @@ class Setup extends BaseController
     }
 
     /**
+     * Detect production URL from current request
+     */
+    protected function detectProductionURL(): string
+    {
+        // In production, prefer to leave empty for App.php auto-detection
+        // But if we can reliably detect the URL, use it
+        if (!empty($_SERVER['HTTP_HOST'])) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+                       (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
+                       (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
+                       (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443') 
+                       ? 'https://' : 'http://';
+            
+            $host = $_SERVER['HTTP_HOST'];
+            
+            // Handle subdirectory installations
+            $path = '';
+            if (!empty($_SERVER['SCRIPT_NAME'])) {
+                $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+                if ($scriptDir !== '/' && $scriptDir !== '.') {
+                    $path = $scriptDir;
+                }
+            }
+            
+            return $protocol . $host . $path . '/';
+        }
+        
+        // Fallback: leave empty for App.php constructor to handle
+        return '';
+    }
+
+    /**
      * Generate a secure encryption key
      */
     protected function generateEncryptionKey(): string
@@ -272,22 +312,57 @@ class Setup extends BaseController
      */
     public function testConnection(): ResponseInterface
     {
-        $json = $this->request->getJSON(true);
-
-        // Validate required fields
-        $required = ['db_driver', 'db_hostname', 'db_database', 'db_username', 'db_password', 'db_port'];
-        foreach ($required as $field) {
-            if (empty($json[$field]) && $json[$field] !== '0') {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => "Missing required field: {$field}"
-                ])->setStatusCode(400);
-            }
-        }
-
-        // Test the connection
         try {
-            $testResult = $this->testDatabaseConnection($json);
+            // Handle both JSON and form data
+            $data = [];
+            $contentType = $this->request->getHeaderLine('Content-Type');
+            
+            if (strpos($contentType, 'application/json') !== false) {
+                // Handle JSON request
+                $json = $this->request->getJSON(true);
+                if (!$json) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Invalid JSON data received'
+                    ])->setStatusCode(400);
+                }
+                $data = $json;
+            } else {
+                // Handle form data
+                $post = $this->request->getPost();
+                $data = [
+                    'db_driver' => 'MySQLi',
+                    'db_hostname' => $post['mysql_hostname'] ?? '',
+                    'db_port' => $post['mysql_port'] ?? '3306',
+                    'db_database' => $post['mysql_database'] ?? '',
+                    'db_username' => $post['mysql_username'] ?? '',
+                    'db_password' => $post['mysql_password'] ?? ''
+                ];
+            }
+
+            // Validate required fields
+            $required = ['db_driver', 'db_hostname', 'db_database', 'db_username'];
+            foreach ($required as $field) {
+                if (empty($data[$field])) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => "Missing required field: {$field}"
+                    ])->setStatusCode(400);
+                }
+            }
+
+            // Ensure port is set
+            if (empty($data['db_port'])) {
+                $data['db_port'] = '3306';
+            }
+
+            // Ensure password is set (can be empty)
+            if (!isset($data['db_password'])) {
+                $data['db_password'] = '';
+            }
+
+            // Test the connection
+            $testResult = $this->testDatabaseConnection($data);
 
             return $this->response->setJSON([
                 'success' => $testResult['success'],
@@ -295,6 +370,7 @@ class Setup extends BaseController
             ]);
 
         } catch (Exception $e) {
+            log_message('error', 'Database connection test failed: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Connection test failed: ' . $e->getMessage()
