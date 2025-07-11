@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\HTTP\ResponseInterface;
+use Exception;
 
 class Setup extends BaseController
 {
@@ -74,7 +75,7 @@ class Setup extends BaseController
         }
 
         try {
-            // Process setup
+            // Process setup with proper database configuration for .env generation
             $setupData = [
                 'admin' => [
                     'name' => $this->request->getPost('admin_name'),
@@ -86,27 +87,66 @@ class Setup extends BaseController
                 ]
             ];
 
+            // Prepare database configuration for .env generation
+            $dbConfig = [];
+            
             if ($setupData['database']['type'] === 'mysql') {
-                $setupData['database']['mysql'] = [
-                    'hostname' => $this->request->getPost('mysql_hostname'),
-                    'port' => (int)$this->request->getPost('mysql_port'),
-                    'database' => $this->request->getPost('mysql_database'),
-                    'username' => $this->request->getPost('mysql_username'),
-                    'password' => $this->request->getPost('mysql_password')
+                $dbConfig = [
+                    'db_driver' => 'MySQLi',
+                    'db_hostname' => $this->request->getPost('mysql_hostname'),
+                    'db_port' => $this->request->getPost('mysql_port') ?: '3306',
+                    'db_database' => $this->request->getPost('mysql_database'),
+                    'db_username' => $this->request->getPost('mysql_username'),
+                    'db_password' => $this->request->getPost('mysql_password')
                 ];
 
-                // Test MySQL connection
-                if (!$this->testMySQLConnection($setupData['database']['mysql'])) {
+                $setupData['database']['mysql'] = [
+                    'hostname' => $dbConfig['db_hostname'],
+                    'port' => (int)$dbConfig['db_port'],
+                    'database' => $dbConfig['db_database'],
+                    'username' => $dbConfig['db_username'],
+                    'password' => $dbConfig['db_password']
+                ];
+
+                // Test MySQL connection before proceeding
+                $connectionTest = $this->testDatabaseConnection($dbConfig);
+                if (!$connectionTest['success']) {
                     return $this->response->setJSON([
                         'success' => false,
-                        'message' => 'Failed to connect to MySQL database. Please check your credentials.'
+                        'message' => $connectionTest['message']
                     ])->setStatusCode(400);
                 }
             } else {
-                // Setup SQLite
-                $setupData['database']['sqlite'] = [
-                    'path' => WRITEPATH . 'database/appdb.sqlite'
+                // SQLite configuration
+                $dbConfig = [
+                    'db_driver' => 'SQLite3',
+                    'db_hostname' => '',
+                    'db_port' => '',
+                    'db_database' => 'xscheduler.db',
+                    'db_username' => '',
+                    'db_password' => ''
                 ];
+
+                $setupData['database']['sqlite'] = [
+                    'path' => WRITEPATH . 'database/xscheduler.db'
+                ];
+                
+                // Test SQLite setup
+                $connectionTest = $this->testDatabaseConnection($dbConfig);
+                if (!$connectionTest['success']) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => $connectionTest['message']
+                    ])->setStatusCode(400);
+                }
+            }
+
+            // Generate .env file first - this is critical for the application to work
+            if (!$this->generateEnvFile($dbConfig)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to generate environment configuration file.'
+                ])->setStatusCode(500);
             }
 
             // Initialize database and create admin user
@@ -130,36 +170,226 @@ class Setup extends BaseController
         }
     }
 
+    /**
+     * Generate .env file from template and user inputs
+     */
+    protected function generateEnvFile(array $data): bool
+    {
+        $envExamplePath = ROOTPATH . '.env.example';
+        $envPath = ROOTPATH . '.env';
+
+        // Check if .env.example exists
+        if (!file_exists($envExamplePath)) {
+            log_message('error', 'Setup: .env.example template not found');
+            return false;
+        }
+
+        try {
+            // Read the template
+            $envTemplate = file_get_contents($envExamplePath);
+
+            // Replace template variables with user inputs
+            $envContent = $this->populateEnvTemplate($envTemplate, $data);
+
+            // Write the new .env file
+            if (file_put_contents($envPath, $envContent) === false) {
+                log_message('error', 'Setup: Failed to write .env file');
+                return false;
+            }
+
+            // Set proper permissions
+            chmod($envPath, 0644);
+
+            log_message('info', 'Setup: .env file generated successfully');
+            return true;
+
+        } catch (Exception $e) {
+            log_message('error', 'Setup: Error generating .env file - ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Populate .env template with user configuration
+     */
+    protected function populateEnvTemplate(string $template, array $data): string
+    {
+        // Determine environment mode
+        $environment = ENVIRONMENT === 'development' ? 'development' : 'production';
+        $baseURL = $environment === 'development' ? 'http://localhost:8081/' : '';
+
+        // Define replacement patterns
+        $replacements = [
+            // Environment settings
+            'CI_ENVIRONMENT = production' => "CI_ENVIRONMENT = {$environment}",
+
+            // App settings
+            "app.baseURL = ''" => "app.baseURL = '{$baseURL}'",
+            'app.forceGlobalSecureRequests = true' => 'app.forceGlobalSecureRequests = ' . ($environment === 'production' ? 'true' : 'false'),
+            'app.CSPEnabled = true' => 'app.CSPEnabled = ' . ($environment === 'production' ? 'true' : 'false'),
+
+            // Database settings
+            'database.default.hostname = localhost' => "database.default.hostname = {$data['db_hostname']}",
+            'database.default.database = xscheduler_prod' => "database.default.database = {$data['db_database']}",
+            'database.default.username = your_db_user' => "database.default.username = {$data['db_username']}",
+            'database.default.password = your_db_password' => "database.default.password = {$data['db_password']}",
+            'database.default.DBDriver = MySQLi' => "database.default.DBDriver = {$data['db_driver']}",
+            'database.default.port = 3306' => "database.default.port = {$data['db_port']}",
+
+            // Generate encryption key
+            'encryption.key = your_32_character_encryption_key_here' => 'encryption.key = ' . $this->generateEncryptionKey(),
+
+            // Security settings for production
+            'security.CSRFProtection = true' => 'security.CSRFProtection = ' . ($environment === 'production' ? 'true' : 'false'),
+
+            // Setup completion flag
+            'setup.enabled = true' => 'setup.enabled = false',
+            'setup.allowMultipleRuns = false' => 'setup.allowMultipleRuns = false',
+        ];
+
+        // Apply replacements
+        $envContent = $template;
+        foreach ($replacements as $search => $replace) {
+            $envContent = str_replace($search, $replace, $envContent);
+        }
+
+        // Add setup completion timestamp
+        $envContent .= "\n# Setup completed on " . date('Y-m-d H:i:s') . "\n";
+
+        return $envContent;
+    }
+
+    /**
+     * Generate a secure encryption key
+     */
+    protected function generateEncryptionKey(): string
+    {
+        return 'hex2bin:' . bin2hex(random_bytes(32));
+    }
+
+    /**
+     * Test database connection with provided credentials
+     */
     public function testConnection(): ResponseInterface
     {
-        $dbType = $this->request->getPost('database_type');
-        
-        if ($dbType === 'mysql') {
-            $config = [
-                'hostname' => $this->request->getPost('mysql_hostname'),
-                'port' => (int)$this->request->getPost('mysql_port'),
-                'database' => $this->request->getPost('mysql_database'),
-                'username' => $this->request->getPost('mysql_username'),
-                'password' => $this->request->getPost('mysql_password')
-            ];
+        $json = $this->request->getJSON(true);
 
-            if ($this->testMySQLConnection($config)) {
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Connection successful!'
-                ]);
-            } else {
+        // Validate required fields
+        $required = ['db_driver', 'db_hostname', 'db_database', 'db_username', 'db_password', 'db_port'];
+        foreach ($required as $field) {
+            if (empty($json[$field]) && $json[$field] !== '0') {
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Connection failed. Please check your credentials.'
-                ]);
+                    'message' => "Missing required field: {$field}"
+                ])->setStatusCode(400);
             }
         }
 
-        return $this->response->setJSON([
-            'success' => false,
-            'message' => 'Invalid database type.'
-        ]);
+        // Test the connection
+        try {
+            $testResult = $this->testDatabaseConnection($json);
+
+            return $this->response->setJSON([
+                'success' => $testResult['success'],
+                'message' => $testResult['message']
+            ]);
+
+        } catch (Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Connection test failed: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Actually test the database connection
+     */
+    protected function testDatabaseConnection(array $config): array
+    {
+        if ($config['db_driver'] === 'SQLite3') {
+            return $this->testSQLiteConnection($config);
+        } else {
+            return $this->testMySQLConnection($config);
+        }
+    }
+
+    /**
+     * Test SQLite connection
+     */
+    protected function testSQLiteConnection(array $config): array
+    {
+        try {
+            $dbPath = ROOTPATH . 'writable/database/' . $config['db_database'];
+            $dbDir = dirname($dbPath);
+
+            // Ensure directory exists and is writable
+            if (!is_dir($dbDir)) {
+                mkdir($dbDir, 0755, true);
+            }
+
+            if (!is_writable($dbDir)) {
+                return [
+                    'success' => false,
+                    'message' => 'Database directory is not writable: ' . $dbDir
+                ];
+            }
+
+            // Test SQLite connection
+            $pdo = new \PDO('sqlite:' . $dbPath);
+            $pdo->exec('SELECT 1');
+
+            return [
+                'success' => true,
+                'message' => 'SQLite connection successful. Database will be created automatically.'
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'SQLite connection failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Test MySQL connection
+     */
+    protected function testMySQLConnection(array $config): array
+    {
+        try {
+            $dsn = "mysql:host={$config['db_hostname']};port={$config['db_port']};charset=utf8mb4";
+            $pdo = new \PDO($dsn, $config['db_username'], $config['db_password'], [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                \PDO::ATTR_TIMEOUT => 5
+            ]);
+
+            // Check if database exists
+            $stmt = $pdo->prepare("SHOW DATABASES LIKE ?");
+            $stmt->execute([$config['db_database']]);
+            $dbExists = $stmt->fetch() !== false;
+
+            if (!$dbExists) {
+                return [
+                    'success' => false,
+                    'message' => "Database '{$config['db_database']}' does not exist. Please create it first."
+                ];
+            }
+
+            // Test selecting the database
+            $pdo->exec("USE `{$config['db_database']}`");
+
+            return [
+                'success' => true,
+                'message' => 'MySQL connection successful. Database exists and is accessible.'
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'MySQL connection failed: ' . $e->getMessage()
+            ];
+        }
     }
 
     private function isSetupCompleted(): bool
@@ -167,28 +397,16 @@ class Setup extends BaseController
         return file_exists(WRITEPATH . 'setup_completed.flag');
     }
 
-    private function testMySQLConnection(array $config): bool
-    {
-        try {
-            $dsn = "mysql:host={$config['hostname']};port={$config['port']};dbname={$config['database']}";
-            $pdo = new \PDO($dsn, $config['username'], $config['password']);
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
     private function initializeDatabase(array $setupData): void
     {
         // Load the DatabaseSetup helper
         require_once APPPATH . 'Helpers/DatabaseSetup.php';
         $databaseSetup = new \App\Helpers\DatabaseSetup($setupData);
-        
+
         if (!$databaseSetup->initialize()) {
             throw new \Exception('Failed to initialize database');
         }
-        
+
         log_message('info', 'Database initialization completed for: ' . $setupData['database']['type']);
     }
 
@@ -200,7 +418,7 @@ class Setup extends BaseController
             'admin_userid' => $setupData['admin']['userid'],
             'database_type' => $setupData['database']['type']
         ];
-        
+
         file_put_contents(WRITEPATH . 'setup_completed.flag', json_encode($flagData));
     }
 }

@@ -8,16 +8,14 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && node scripts/package.js",
+    "build": "vite build",
     "preview": "vite preview",
     "package": "node scripts/package.js",
     "build:dev": "node scripts/build-config.js build development",
-    "build:staging": "node scripts/build-config.js build staging",
+    "build:staging": "node scripts/build-config.js build staging", 
     "build:prod": "node scripts/build-config.js build production",
-    "deploy": "node scripts/build-config.js deploy",
-    "env:config": "node scripts/build-config.js env"
+    "deploy": "node scripts/build-config.js deploy"
   },
   "keywords": [],
   "author": "",

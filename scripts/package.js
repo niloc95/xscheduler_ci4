@@ -37,15 +37,12 @@ const essentialFiles = [
     { src: 'writable', dest: 'writable' },
     { src: 'vendor', dest: 'vendor' },
     { src: 'public', dest: 'public' },
-    // .env will be created from .env.example below
-    // Add essential CodeIgniter files for standalone deployment
-    { src: 'vendor/codeigniter4/framework/system', dest: 'system' },
     { src: 'spark', dest: 'spark' },
     { src: 'preload.php', dest: 'preload.php' }
 ];
 
-// Note: public folder already includes the built assets from Vite
-// Note: Copying system directory separately for standalone deployment
+// Note: vendor already includes vendor/codeigniter4/framework/system
+// We'll copy it separately for standalone deployment structure
 
 essentialFiles.forEach(({ src, dest }) => {
     const source = path.join(projectRoot, src);
@@ -67,6 +64,21 @@ essentialFiles.forEach(({ src, dest }) => {
         console.warn(`⚠️  Source not found: ${src}`);
     }
 });
+
+// Copy system directory separately for standalone deployment
+const systemSource = path.join(projectRoot, 'vendor/codeigniter4/framework/system');
+const systemDest = path.join(packageDir, 'system');
+
+if (fs.existsSync(systemSource)) {
+    try {
+        fs.cpSync(systemSource, systemDest, { recursive: true });
+        console.log(`✅ Copied vendor/codeigniter4/framework/system → system`);
+    } catch (error) {
+        console.error(`❌ Failed to copy system directory: ${error.message}`);
+    }
+} else {
+    console.warn(`⚠️  System directory not found: ${systemSource}`);
+}
 
 // Update index.php for standalone deployment
 const indexPath = path.join(packageDir, 'public/index.php');
@@ -467,17 +479,34 @@ async function createZipFile() {
 
         // Handle errors
         archive.on('error', (err) => {
+            console.error('❌ Archive error:', err);
             reject(err);
+        });
+
+        // Handle progress
+        archive.on('progress', (progress) => {
+            if (progress.entries.processed % 100 === 0) {
+                console.log(`📝 Processing: ${progress.entries.processed} files, ${progress.entries.total} total`);
+            }
         });
 
         // Pipe archive data to the file
         archive.pipe(output);
 
+        // Check if source directory exists and has files
+        if (!fs.existsSync(packageDir)) {
+            reject(new Error(`Package directory does not exist: ${packageDir}`));
+            return;
+        }
+
+        const files = fs.readdirSync(packageDir);
+        console.log(`📂 Adding ${files.length} items to ZIP: ${files.join(', ')}`);
+
         // Add entire directory contents to ZIP
         archive.directory(packageDir, false);
 
         // Add a deployment timestamp file
-        archive.append(`Deployment package created: ${new Date().toISOString()}\nVersion: xScheduler CI4\nPackaged by: package.js script`, { name: 'DEPLOYMENT-INFO.txt' });
+        archive.append(`Deployment package created: ${new Date().toISOString()}\nVersion: xScheduler CI4\nPackaged by: package.js script\nSource directory: ${packageDir}\nFiles included: ${files.join(', ')}`, { name: 'DEPLOYMENT-INFO.txt' });
 
         // Finalize the archive (ie we are done appending files but streams have to finish yet)
         archive.finalize();
