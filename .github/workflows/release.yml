@@ -1,0 +1,133 @@
+name: Release xScheduler
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.1.0)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  PHP_VERSION: '8.1'
+
+jobs:
+  create-release:
+    name: Create Release Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, fileinfo, tokenizer, gd, curl, zip
+          tools: composer:v2
+          
+      - name: Install dependencies
+        run: |
+          npm ci
+          composer install --no-dev --optimize-autoloader --no-interaction
+          
+      - name: Build production assets
+        run: npm run build
+        
+      - name: Create deployment package
+        run: npm run package
+        
+      - name: Get release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## What's New in ${{ steps.tag.outputs.tag }}" > changelog.md
+          echo "" >> changelog.md
+          
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            echo "### Changes since $LAST_TAG:" >> changelog.md
+            git log --pretty=format:"- %s" $LAST_TAG..HEAD >> changelog.md
+          else
+            echo "### Initial Release Features:" >> changelog.md
+            echo "- ✅ Complete setup wizard with MySQL/SQLite support" >> changelog.md
+            echo "- ✅ Production URL auto-detection" >> changelog.md
+            echo "- ✅ Zero-configuration deployment" >> changelog.md
+            echo "- ✅ Material Design 3.0 interface" >> changelog.md
+            echo "- ✅ Vite build system with asset optimization" >> changelog.md
+            echo "- ✅ Universal hosting compatibility" >> changelog.md
+          fi
+          
+          echo "" >> changelog.md
+          echo "## Installation" >> changelog.md
+          echo "1. Download the \`xscheduler-deploy.zip\` file below" >> changelog.md
+          echo "2. Extract to your hosting provider" >> changelog.md
+          echo "3. Point your domain to the \`public/\` folder" >> changelog.md
+          echo "4. Run the setup wizard at \`/setup\`" >> changelog.md
+          echo "" >> changelog.md
+          echo "## System Requirements" >> changelog.md
+          echo "- PHP 7.4 or higher" >> changelog.md
+          echo "- Apache/Nginx with mod_rewrite" >> changelog.md
+          echo "- MySQL 5.7+ or SQLite 3.x" >> changelog.md
+          echo "- 50MB disk space minimum" >> changelog.md
+          echo "" >> changelog.md
+          echo "## Support" >> changelog.md
+          echo "- 📧 Email: nilo.cara@frontend.co.za" >> changelog.md
+          echo "- 📖 Documentation: [GitHub Repository](https://github.com/niloc95/xscheduler_ci4)" >> changelog.md
+          
+          # Set output for release body
+          {
+            echo 'body<<EOF'
+            cat changelog.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+          
+      - name: Rename deployment package
+        run: |
+          mv xscheduler-deploy.zip xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: xScheduler ${{ steps.tag.outputs.tag }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: |
+            xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+            docs/deployment/MYSQL-TEST-CONNECTION-FIX.md
+            docs/deployment/PRODUCTION-URL-AUTO-DETECTION.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.tag.outputs.tag }}
+          path: |
+            xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+            changelog.md
+          retention-days: 365

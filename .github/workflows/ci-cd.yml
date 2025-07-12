@@ -1,0 +1,319 @@
+name: xScheduler CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, env-setup-config-build ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  NODE_VERSION: '18'
+  PHP_VERSION: '8.1'
+
+jobs:
+  # Build and Test Job
+  build-and-test:
+    name: Build & Test Assets
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, fileinfo, tokenizer, gd, curl, zip
+          tools: composer:v2
+          coverage: none
+          
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+          
+      - name: Install Node.js dependencies
+        run: npm ci
+        
+      - name: Install PHP dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+        
+      - name: Build frontend assets
+        run: npm run build
+        
+      - name: Validate build output
+        run: |
+          echo "Checking build assets..."
+          test -f public/build/assets/style.css || { echo "❌ style.css not found"; exit 1; }
+          test -f public/build/assets/main.js || { echo "❌ main.js not found"; exit 1; }
+          test -f public/build/assets/materialWeb.js || { echo "❌ materialWeb.js not found"; exit 1; }
+          test -f public/build/assets/setup.js || { echo "❌ setup.js not found"; exit 1; }
+          echo "✅ All build assets found"
+          
+      - name: Check asset sizes
+        run: |
+          echo "Asset sizes:"
+          ls -lh public/build/assets/
+          echo "Total build size:"
+          du -sh public/build/
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-assets-${{ github.sha }}
+          path: public/build/
+          retention-days: 7
+
+  # Setup Functionality Test
+  setup-test:
+    name: Test Setup Wizard
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: xscheduler_test
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, fileinfo, tokenizer, gd, curl, zip, pdo_mysql
+          tools: composer:v2
+          
+      - name: Install PHP dependencies
+        run: composer install --no-interaction
+        
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets-${{ github.sha }}
+          path: public/build/
+          
+      - name: Setup test environment
+        run: |
+          cp .env.example .env
+          echo "CI_ENVIRONMENT = testing" >> .env
+          echo "app.baseURL = 'http://localhost:8080/'" >> .env
+          
+      - name: Start CodeIgniter development server
+        run: |
+          php spark serve --port=8080 &
+          sleep 5
+          
+      - name: Test setup page accessibility
+        run: |
+          echo "Testing setup page..."
+          curl -f http://localhost:8080/setup || { echo "❌ Setup page not accessible"; exit 1; }
+          echo "✅ Setup page accessible"
+          
+      - name: Test MySQL connection endpoint
+        run: |
+          echo "Testing MySQL connection endpoint..."
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "db_driver": "MySQLi",
+              "db_hostname": "127.0.0.1",
+              "db_port": "3306",
+              "db_database": "xscheduler_test",
+              "db_username": "test_user",
+              "db_password": "test_password"
+            }' \
+            http://localhost:8080/setup/test-connection || { echo "❌ MySQL connection test failed"; exit 1; }
+          echo "✅ MySQL connection test passed"
+
+  # Deployment Package Creation
+  create-deployment-package:
+    name: Create Deployment Package
+    runs-on: ubuntu-latest
+    needs: [build-and-test, setup-test]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/env-setup-config-build'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, json, fileinfo, tokenizer, gd, curl, zip
+          tools: composer:v2
+          
+      - name: Install dependencies
+        run: |
+          npm ci
+          composer install --no-dev --optimize-autoloader --no-interaction
+          
+      - name: Build production assets
+        run: npm run build
+        
+      - name: Create deployment package
+        run: npm run package
+        
+      - name: Validate deployment package
+        run: |
+          echo "Validating deployment package..."
+          test -f xscheduler-deploy.zip || { echo "❌ Deployment ZIP not created"; exit 1; }
+          
+          # Check ZIP contents
+          unzip -l xscheduler-deploy.zip | grep -E "(app/|system/|vendor/|public/|writable/)" || { echo "❌ Missing directories in ZIP"; exit 1; }
+          
+          # Check ZIP size
+          ZIP_SIZE=$(stat -f%z xscheduler-deploy.zip 2>/dev/null || stat -c%s xscheduler-deploy.zip)
+          ZIP_SIZE_MB=$((ZIP_SIZE / 1024 / 1024))
+          echo "📦 Deployment package size: ${ZIP_SIZE_MB}MB"
+          
+          if [ $ZIP_SIZE_MB -lt 1 ]; then
+            echo "❌ Deployment package too small (${ZIP_SIZE_MB}MB)"
+            exit 1
+          fi
+          
+          echo "✅ Deployment package validation passed"
+          
+      - name: Generate deployment info
+        run: |
+          echo "# xScheduler Deployment Package" > deployment-info.md
+          echo "" >> deployment-info.md
+          echo "**Built from:** \`${{ github.ref_name }}\`" >> deployment-info.md
+          echo "**Commit:** \`${{ github.sha }}\`" >> deployment-info.md
+          echo "**Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> deployment-info.md
+          echo "**Package Size:** $(ls -lh xscheduler-deploy.zip | awk '{print $5}')" >> deployment-info.md
+          echo "" >> deployment-info.md
+          echo "## Installation" >> deployment-info.md
+          echo "1. Download the \`xscheduler-deploy.zip\` file" >> deployment-info.md
+          echo "2. Extract to your hosting provider" >> deployment-info.md
+          echo "3. Point domain to the \`public/\` folder" >> deployment-info.md
+          echo "4. Run the setup wizard at \`/setup\`" >> deployment-info.md
+          echo "" >> deployment-info.md
+          echo "## Features" >> deployment-info.md
+          echo "- ✅ MySQL test connection fixes" >> deployment-info.md
+          echo "- ✅ Production URL auto-detection" >> deployment-info.md
+          echo "- ✅ Zero-configuration deployment" >> deployment-info.md
+          echo "- ✅ Universal hosting compatibility" >> deployment-info.md
+          
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: xscheduler-deployment-${{ github.ref_name }}-${{ github.sha }}
+          path: |
+            xscheduler-deploy.zip
+            deployment-info.md
+          retention-days: 90
+          
+      - name: Upload deployment directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: xscheduler-deploy-directory-${{ github.ref_name }}-${{ github.sha }}
+          path: xscheduler-deploy/
+          retention-days: 30
+
+  # Code Quality & Security Checks
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install Node.js dependencies
+        run: npm ci
+        
+      - name: Check for security vulnerabilities
+        run: npm audit --audit-level=moderate
+        
+      - name: Check for outdated packages
+        run: npm outdated || true
+        
+      - name: Validate package.json
+        run: npm run build --dry-run || npm run build
+        
+      - name: Check file permissions
+        run: |
+          echo "Checking file permissions..."
+          find . -name "*.php" -perm /u+x | grep -v vendor | head -5 || echo "No executable PHP files found"
+          echo "✅ File permissions check completed"
+
+  # Performance & Asset Analysis
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets-${{ github.sha }}
+          path: public/build/
+          
+      - name: Analyze bundle sizes
+        run: |
+          echo "## Asset Size Analysis" > asset-analysis.md
+          echo "" >> asset-analysis.md
+          echo "| Asset | Size | Gzipped |" >> asset-analysis.md
+          echo "|-------|------|---------|" >> asset-analysis.md
+          
+          for file in public/build/assets/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              size=$(ls -lh "$file" | awk '{print $5}')
+              gzipped=$(gzip -c "$file" | wc -c | awk '{print int($1/1024)"KB"}')
+              echo "| $filename | $size | $gzipped |" >> asset-analysis.md
+            fi
+          done
+          
+          echo "" >> asset-analysis.md
+          echo "**Total build size:** $(du -sh public/build/ | awk '{print $1}')" >> asset-analysis.md
+          
+          cat asset-analysis.md
+          
+      - name: Upload analysis report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-analysis-${{ github.sha }}
+          path: asset-analysis.md
+          retention-days: 30
