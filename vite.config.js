@@ -9,7 +9,7 @@ export default defineConfig({
   build: {
     outDir: 'public/build',
     emptyOutDir: true,
-    manifest: false,
+    manifest: true,
     rollupOptions: {
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
