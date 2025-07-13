@@ -117,12 +117,12 @@ class Setup extends BaseController
                     ])->setStatusCode(400);
                 }
             } else {
-                // SQLite configuration
+                // SQLite configuration - use full path
                 $dbConfig = [
                     'db_driver' => 'SQLite3',
                     'db_hostname' => '',
                     'db_port' => '',
-                    'db_database' => 'xscheduler.db',
+                    'db_database' => WRITEPATH . 'database/xscheduler.db',
                     'db_username' => '',
                     'db_password' => ''
                 ];
@@ -469,7 +469,7 @@ class Setup extends BaseController
             $baseURL = $this->detectProductionURL();
         }
 
-        // Define replacement patterns
+        // Define replacement patterns based on .env.example content
         $replacements = [
             // Environment settings
             'CI_ENVIRONMENT = production' => "CI_ENVIRONMENT = {$environment}",
@@ -479,7 +479,7 @@ class Setup extends BaseController
             'app.forceGlobalSecureRequests = true' => 'app.forceGlobalSecureRequests = ' . ($environment === 'production' ? 'true' : 'false'),
             'app.CSPEnabled = true' => 'app.CSPEnabled = ' . ($environment === 'production' ? 'true' : 'false'),
 
-            // Database settings
+            // Database settings - match exact patterns from .env.example
             'database.default.hostname = localhost' => "database.default.hostname = {$data['db_hostname']}",
             'database.default.database = xscheduler_prod' => "database.default.database = {$data['db_database']}",
             'database.default.username = your_db_user' => "database.default.username = {$data['db_username']}",
@@ -487,7 +487,7 @@ class Setup extends BaseController
             'database.default.DBDriver = MySQLi' => "database.default.DBDriver = {$data['db_driver']}",
             'database.default.port = 3306' => "database.default.port = {$data['db_port']}",
 
-            // Generate encryption key
+            // Generate encryption key - match exact pattern from .env.example
             'encryption.key = your_32_character_encryption_key_here' => 'encryption.key = ' . $this->generateEncryptionKey(),
 
             // Security settings for production
@@ -639,7 +639,8 @@ class Setup extends BaseController
     protected function testSQLiteConnection(array $config): array
     {
         try {
-            $dbPath = ROOTPATH . 'writable/database/' . $config['db_database'];
+            // Use the full path directly from config
+            $dbPath = $config['db_database'];
             $dbDir = dirname($dbPath);
 
             // Ensure directory exists and is writable
