@@ -80,7 +80,7 @@ class Setup extends BaseController
                 'admin' => [
                     'name' => $this->request->getPost('admin_name'),
                     'userid' => $this->request->getPost('admin_userid'),
-                    'password' => password_hash($this->request->getPost('admin_password'), PASSWORD_ARGON2ID)
+                    'password' => $this->request->getPost('admin_password') // Store raw password for finalizeSetup
                 ],
                 'database' => [
                     'type' => $this->request->getPost('database_type')
@@ -149,11 +149,15 @@ class Setup extends BaseController
                 ])->setStatusCode(500);
             }
 
-            // Initialize database and create admin user
-            $this->initializeDatabase($setupData);
-
-            // Create setup completion flag
-            $this->markSetupCompleted($setupData);
+            // Finalize setup: run migrations, create admin user, mark completed
+            $finalizeResult = $this->finalizeSetup($setupData);
+            
+            if (!$finalizeResult['success']) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $finalizeResult['message']
+                ])->setStatusCode(500);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -168,6 +172,245 @@ class Setup extends BaseController
                 'message' => 'Setup failed: ' . $e->getMessage()
             ])->setStatusCode(500);
         }
+    }
+
+    /**
+     * Finalize setup process:
+     * - Run database migrations
+     * - Seed initial data (if exists)
+     * - Create admin user
+     * - Write setup completion flag
+     */
+    protected function finalizeSetup(array $setupData): array
+    {
+        try {
+            // Step 1: Run all migrations
+            $migrationsResult = $this->runMigrations();
+            if (!$migrationsResult['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Migration failed: ' . $migrationsResult['message']
+                ];
+            }
+
+            // Step 2: Run seeders (optional)
+            $seedsResult = $this->runSeeders();
+            if (!$seedsResult['success']) {
+                log_message('warning', 'Seeder failed: ' . $seedsResult['message']);
+                // Don't fail setup if seeders fail, just log it
+            }
+
+            // Step 3: Create admin user
+            $adminResult = $this->createAdminUser($setupData['admin']);
+            if (!$adminResult['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to create admin user: ' . $adminResult['message']
+                ];
+            }
+
+            // Step 4: Write setup completion flag
+            $this->writeSetupCompletedFlag($setupData);
+
+            return [
+                'success' => true,
+                'message' => 'Setup finalized successfully'
+            ];
+
+        } catch (\Exception $e) {
+            log_message('error', 'Setup finalization failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Setup finalization failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Run database migrations
+     */
+    protected function runMigrations(): array
+    {
+        try {
+            $migrate = \Config\Services::migrations();
+            
+            // Get all migrations
+            $migrations = $migrate->findMigrations();
+            
+            if (empty($migrations)) {
+                return [
+                    'success' => true,
+                    'message' => 'No migrations found to run'
+                ];
+            }
+
+            // Run migrations to latest
+            $result = $migrate->latest();
+            
+            if ($result === false) {
+                $error = $migrate->getCliMessages();
+                return [
+                    'success' => false,
+                    'message' => 'Migration failed: ' . implode(', ', $error)
+                ];
+            }
+
+            log_message('info', 'Migrations completed successfully');
+            return [
+                'success' => true,
+                'message' => 'Migrations completed successfully'
+            ];
+
+        } catch (\Exception $e) {
+            log_message('error', 'Migration error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Run database seeders (optional)
+     */
+    protected function runSeeders(): array
+    {
+        try {
+            $seeder = \Config\Database::seeder();
+            
+            // Check if default seeder exists
+            $seederClass = 'App\Database\Seeds\MainSeeder';
+            
+            if (!class_exists($seederClass)) {
+                // Try alternative seeder names
+                $alternativeClasses = [
+                    'App\Database\Seeds\DatabaseSeeder',
+                    'App\Database\Seeds\InitialSeeder',
+                    'App\Database\Seeds\DefaultSeeder'
+                ];
+                
+                $seederClass = null;
+                foreach ($alternativeClasses as $class) {
+                    if (class_exists($class)) {
+                        $seederClass = $class;
+                        break;
+                    }
+                }
+                
+                if (!$seederClass) {
+                    return [
+                        'success' => true,
+                        'message' => 'No seeders found to run'
+                    ];
+                }
+            }
+
+            // Run the seeder
+            $seeder->call($seederClass);
+            
+            log_message('info', 'Database seeding completed');
+            return [
+                'success' => true,
+                'message' => 'Database seeding completed'
+            ];
+
+        } catch (\Exception $e) {
+            log_message('warning', 'Seeder error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Create the admin user in the users table
+     */
+    protected function createAdminUser(array $adminData): array
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if users table exists
+            if (!$db->tableExists('users')) {
+                return [
+                    'success' => false,
+                    'message' => 'Users table does not exist. Please ensure migrations have run properly.'
+                ];
+            }
+
+            // Check if admin user already exists
+            $existingUser = $db->table('users')
+                              ->where('email', $adminData['userid'])
+                              ->orWhere('email', $adminData['userid'] . '@admin.local')
+                              ->get()
+                              ->getRow();
+
+            if ($existingUser) {
+                log_message('info', 'Admin user already exists, skipping creation');
+                return [
+                    'success' => true,
+                    'message' => 'Admin user already exists'
+                ];
+            }
+
+            // Prepare admin user data
+            $userData = [
+                'name' => $adminData['name'],
+                'email' => filter_var($adminData['userid'], FILTER_VALIDATE_EMAIL) ? 
+                          $adminData['userid'] : 
+                          $adminData['userid'] . '@admin.local',
+                'phone' => null,
+                'password_hash' => password_hash($adminData['password'], PASSWORD_DEFAULT),
+                'role' => 'admin',
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Insert admin user
+            $result = $db->table('users')->insert($userData);
+            
+            if (!$result) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to insert admin user into database'
+                ];
+            }
+
+            log_message('info', 'Admin user created successfully: ' . $userData['email']);
+            return [
+                'success' => true,
+                'message' => 'Admin user created successfully'
+            ];
+
+        } catch (\Exception $e) {
+            log_message('error', 'Admin user creation failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Write setup completion flag file
+     */
+    protected function writeSetupCompletedFlag(array $setupData): void
+    {
+        $flagData = [
+            'completed_at' => date('Y-m-d H:i:s'),
+            'admin_email' => isset($setupData['admin']['userid']) ? 
+                           (filter_var($setupData['admin']['userid'], FILTER_VALIDATE_EMAIL) ? 
+                            $setupData['admin']['userid'] : 
+                            $setupData['admin']['userid'] . '@admin.local') : 
+                           'admin@setup.local',
+            'database_type' => $setupData['database']['type'],
+            'version' => '1.0.0'
+        ];
+
+        $flagPath = WRITEPATH . 'setup_completed.flag';
+        file_put_contents($flagPath, json_encode($flagData, JSON_PRETTY_PRINT));
+        
+        log_message('info', 'Setup completion flag written: ' . $flagPath);
     }
 
     /**
@@ -471,30 +714,5 @@ class Setup extends BaseController
     private function isSetupCompleted(): bool
     {
         return file_exists(WRITEPATH . 'setup_completed.flag');
-    }
-
-    private function initializeDatabase(array $setupData): void
-    {
-        // Load the DatabaseSetup helper
-        require_once APPPATH . 'Helpers/DatabaseSetup.php';
-        $databaseSetup = new \App\Helpers\DatabaseSetup($setupData);
-
-        if (!$databaseSetup->initialize()) {
-            throw new \Exception('Failed to initialize database');
-        }
-
-        log_message('info', 'Database initialization completed for: ' . $setupData['database']['type']);
-    }
-
-    private function markSetupCompleted(array $setupData): void
-    {
-        // Create setup completion flag
-        $flagData = [
-            'completed_at' => date('Y-m-d H:i:s'),
-            'admin_userid' => $setupData['admin']['userid'],
-            'database_type' => $setupData['database']['type']
-        ];
-
-        file_put_contents(WRITEPATH . 'setup_completed.flag', json_encode($flagData));
     }
 }
