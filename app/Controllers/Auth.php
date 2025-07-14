@@ -22,6 +22,11 @@ class Auth extends BaseController
      */
     public function login()
     {
+        // Check if setup is completed first
+        if (!$this->isSetupCompleted()) {
+            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+        }
+
         // If user is already logged in, redirect to dashboard
         if (session()->get('user_id')) {
             return redirect()->to('/dashboard');
@@ -240,5 +245,14 @@ class Auth extends BaseController
         if (!$this->email->send()) {
             throw new \Exception('Failed to send email: ' . $this->email->printDebugger());
         }
+    }
+
+    /**
+     * Check if the application setup has been completed
+     */
+    private function isSetupCompleted(): bool
+    {
+        $flagPath = WRITEPATH . 'setup_completed.flag';
+        return file_exists($flagPath);
     }
 }

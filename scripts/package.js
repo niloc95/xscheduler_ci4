@@ -9,6 +9,8 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 console.log('📦 Creating standalone deployment package...');
+console.log('⚠️  NOTE: setup_completed.flag will be excluded from deployment package');
+console.log('   This ensures fresh installations start with the setup wizard');
 
 // Create deployment package
 const packageDir = path.join(projectRoot, 'xscheduler-deploy');
@@ -38,11 +40,49 @@ const essentialFiles = [
     { src: 'vendor', dest: 'vendor' },
     { src: 'public', dest: 'public' },
     { src: 'spark', dest: 'spark' },
-    { src: 'preload.php', dest: 'preload.php' }
+    { src: 'preload.php', dest: 'preload.php' },
+    { src: '.env.example', dest: '.env.example' }
 ];
 
 // Note: vendor already includes vendor/codeigniter4/framework/system
 // We'll copy it separately for standalone deployment structure
+
+// Function to copy directory with exclusions
+function copyDirectoryWithFilter(src, dest, excludePatterns = []) {
+    if (!fs.existsSync(src)) return false;
+    
+    fs.mkdirSync(dest, { recursive: true });
+    
+    const items = fs.readdirSync(src);
+    
+    for (const item of items) {
+        const srcPath = path.join(src, item);
+        const destPath = path.join(dest, item);
+        
+        // Check if item matches any exclude pattern
+        const shouldExclude = excludePatterns.some(pattern => {
+            if (typeof pattern === 'string') {
+                return item === pattern;
+            } else if (pattern instanceof RegExp) {
+                return pattern.test(item);
+            }
+            return false;
+        });
+        
+        if (shouldExclude) {
+            console.log(`⏭️  Excluded: ${srcPath}`);
+            continue;
+        }
+        
+        if (fs.statSync(srcPath).isDirectory()) {
+            copyDirectoryWithFilter(srcPath, destPath, excludePatterns);
+        } else {
+            fs.copyFileSync(srcPath, destPath);
+        }
+    }
+    
+    return true;
+}
 
 essentialFiles.forEach(({ src, dest }) => {
     const source = path.join(projectRoot, src);
@@ -51,12 +91,20 @@ essentialFiles.forEach(({ src, dest }) => {
     if (fs.existsSync(source)) {
         try {
             if (fs.statSync(source).isDirectory()) {
-                fs.cpSync(source, destination, { recursive: true });
+                // Special handling for writable directory to exclude setup_completed.flag
+                if (src === 'writable') {
+                    const excludePatterns = ['setup_completed.flag'];
+                    copyDirectoryWithFilter(source, destination, excludePatterns);
+                    console.log(`✅ Copied ${src} → ${dest} (excluded setup_completed.flag)`);
+                } else {
+                    fs.cpSync(source, destination, { recursive: true });
+                    console.log(`✅ Copied ${src} → ${dest}`);
+                }
             } else {
                 fs.mkdirSync(path.dirname(destination), { recursive: true });
                 fs.copyFileSync(source, destination);
+                console.log(`✅ Copied ${src} → ${dest}`);
             }
-            console.log(`✅ Copied ${src} → ${dest}`);
         } catch (error) {
             console.error(`❌ Failed to copy ${src}: ${error.message}`);
         }
@@ -78,6 +126,19 @@ if (fs.existsSync(systemSource)) {
     }
 } else {
     console.warn(`⚠️  System directory not found: ${systemSource}`);
+}
+
+// Ensure no real .env file is included (only .env.example should be present)
+const envFile = path.join(packageDir, '.env');
+if (fs.existsSync(envFile)) {
+    fs.unlinkSync(envFile);
+    console.log('⚠️  Removed .env file from deployment package (only .env.example should be included)');
+}
+
+// Verify .env.example exists
+const envExampleFile = path.join(packageDir, '.env.example');
+if (!fs.existsSync(envExampleFile)) {
+    console.error('❌ .env.example file missing from deployment package - setup will fail!');
 }
 
 // Update index.php for standalone deployment

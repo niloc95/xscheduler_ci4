@@ -16,7 +16,7 @@ class Setup extends BaseController
     {
         // Check if setup is already completed
         if ($this->isSetupCompleted()) {
-            return redirect()->to('/dashboard')->with('error', 'Setup has already been completed.');
+            return redirect()->to('/auth/login')->with('info', 'Setup has already been completed. Please log in.');
         }
 
         return view('setup');
@@ -49,6 +49,7 @@ class Setup extends BaseController
         // Validation rules
         $rules = [
             'admin_name' => 'required|min_length[2]|max_length[50]',
+            'admin_email' => 'required|valid_email|max_length[100]',
             'admin_userid' => 'required|min_length[3]|max_length[20]|alpha_numeric',
             'admin_password' => 'required|min_length[8]',
             'admin_password_confirm' => 'required|matches[admin_password]',
@@ -79,6 +80,7 @@ class Setup extends BaseController
             $setupData = [
                 'admin' => [
                     'name' => $this->request->getPost('admin_name'),
+                    'email' => $this->request->getPost('admin_email'),
                     'userid' => $this->request->getPost('admin_userid'),
                     'password' => $this->request->getPost('admin_password') // Store raw password for finalizeSetup
                 ],
@@ -117,12 +119,12 @@ class Setup extends BaseController
                     ])->setStatusCode(400);
                 }
             } else {
-                // SQLite configuration
+                // SQLite configuration - use full path
                 $dbConfig = [
                     'db_driver' => 'SQLite3',
                     'db_hostname' => '',
                     'db_port' => '',
-                    'db_database' => 'xscheduler.db',
+                    'db_database' => WRITEPATH . 'database/xscheduler.db',
                     'db_username' => '',
                     'db_password' => ''
                 ];
@@ -161,8 +163,8 @@ class Setup extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Setup completed successfully!',
-                'redirect' => '/dashboard'
+                'message' => 'Setup completed successfully! Please log in with your admin account.',
+                'redirect' => '/auth/login'
             ]);
 
         } catch (\Exception $e) {
@@ -341,7 +343,7 @@ class Setup extends BaseController
 
             // Check if admin user already exists
             $existingUser = $db->table('users')
-                              ->where('email', $adminData['userid'])
+                              ->where('email', $adminData['email'])
                               ->orWhere('email', $adminData['userid'] . '@admin.local')
                               ->get()
                               ->getRow();
@@ -357,9 +359,7 @@ class Setup extends BaseController
             // Prepare admin user data
             $userData = [
                 'name' => $adminData['name'],
-                'email' => filter_var($adminData['userid'], FILTER_VALIDATE_EMAIL) ? 
-                          $adminData['userid'] : 
-                          $adminData['userid'] . '@admin.local',
+                'email' => $adminData['email'], // Use the actual email provided
                 'phone' => null,
                 'password_hash' => password_hash($adminData['password'], PASSWORD_DEFAULT),
                 'role' => 'admin',
@@ -423,27 +423,43 @@ class Setup extends BaseController
 
         // Check if .env.example exists
         if (!file_exists($envExamplePath)) {
-            log_message('error', 'Setup: .env.example template not found');
+            log_message('error', 'Setup: .env.example template not found at: ' . $envExamplePath);
             return false;
+        }
+
+        // Check if .env already exists
+        if (file_exists($envPath)) {
+            log_message('warning', 'Setup: .env file already exists, backing up as .env.backup');
+            if (!copy($envPath, $envPath . '.backup')) {
+                log_message('error', 'Setup: Failed to backup existing .env file');
+            }
         }
 
         try {
             // Read the template
             $envTemplate = file_get_contents($envExamplePath);
+            
+            if ($envTemplate === false) {
+                log_message('error', 'Setup: Failed to read .env.example template');
+                return false;
+            }
 
             // Replace template variables with user inputs
             $envContent = $this->populateEnvTemplate($envTemplate, $data);
 
             // Write the new .env file
-            if (file_put_contents($envPath, $envContent) === false) {
-                log_message('error', 'Setup: Failed to write .env file');
+            $writeResult = file_put_contents($envPath, $envContent);
+            if ($writeResult === false) {
+                log_message('error', 'Setup: Failed to write .env file to: ' . $envPath);
                 return false;
             }
 
             // Set proper permissions
-            chmod($envPath, 0644);
+            if (!chmod($envPath, 0644)) {
+                log_message('warning', 'Setup: Failed to set .env file permissions');
+            }
 
-            log_message('info', 'Setup: .env file generated successfully');
+            log_message('info', 'Setup: .env file generated successfully at: ' . $envPath);
             return true;
 
         } catch (Exception $e) {
@@ -463,13 +479,13 @@ class Setup extends BaseController
         // Smart baseURL detection for production environments
         $baseURL = '';
         if ($environment === 'development') {
-            $baseURL = 'http://localhost:8081/';
+            $baseURL = 'http://localhost:8080/';
         } else {
             // Auto-detect production URL from current request
             $baseURL = $this->detectProductionURL();
         }
 
-        // Define replacement patterns
+        // Define replacement patterns based on .env.example content
         $replacements = [
             // Environment settings
             'CI_ENVIRONMENT = production' => "CI_ENVIRONMENT = {$environment}",
@@ -479,7 +495,7 @@ class Setup extends BaseController
             'app.forceGlobalSecureRequests = true' => 'app.forceGlobalSecureRequests = ' . ($environment === 'production' ? 'true' : 'false'),
             'app.CSPEnabled = true' => 'app.CSPEnabled = ' . ($environment === 'production' ? 'true' : 'false'),
 
-            // Database settings
+            // Database settings - match exact patterns from .env.example
             'database.default.hostname = localhost' => "database.default.hostname = {$data['db_hostname']}",
             'database.default.database = xscheduler_prod' => "database.default.database = {$data['db_database']}",
             'database.default.username = your_db_user' => "database.default.username = {$data['db_username']}",
@@ -487,7 +503,7 @@ class Setup extends BaseController
             'database.default.DBDriver = MySQLi' => "database.default.DBDriver = {$data['db_driver']}",
             'database.default.port = 3306' => "database.default.port = {$data['db_port']}",
 
-            // Generate encryption key
+            // Generate encryption key - match exact pattern from .env.example
             'encryption.key = your_32_character_encryption_key_here' => 'encryption.key = ' . $this->generateEncryptionKey(),
 
             // Security settings for production
@@ -639,7 +655,8 @@ class Setup extends BaseController
     protected function testSQLiteConnection(array $config): array
     {
         try {
-            $dbPath = ROOTPATH . 'writable/database/' . $config['db_database'];
+            // Use the full path directly from config
+            $dbPath = $config['db_database'];
             $dbDir = dirname($dbPath);
 
             // Ensure directory exists and is writable

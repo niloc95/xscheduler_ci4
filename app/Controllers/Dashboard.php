@@ -19,8 +19,22 @@ class Dashboard extends BaseController
         $this->appointmentModel = new AppointmentModel();
     }
 
+    /**
+     * Check if the application setup has been completed
+     */
+    private function isSetupCompleted(): bool
+    {
+        $flagPath = WRITEPATH . 'setup_completed.flag';
+        return file_exists($flagPath);
+    }
+
     public function index()
     {
+        // Check if setup is completed first
+        if (!$this->isSetupCompleted()) {
+            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+        }
+
         try {
             // Get current user (from session or fallback to first admin user)
             $currentUser = session()->get('user');

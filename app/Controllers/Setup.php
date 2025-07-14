@@ -16,7 +16,7 @@ class Setup extends BaseController
     {
         // Check if setup is already completed
         if ($this->isSetupCompleted()) {
-            return redirect()->to('/dashboard')->with('error', 'Setup has already been completed.');
+            return redirect()->to('/auth/login')->with('info', 'Setup has already been completed. Please log in.');
         }
 
         return view('setup');
@@ -163,8 +163,8 @@ class Setup extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Setup completed successfully!',
-                'redirect' => '/dashboard'
+                'message' => 'Setup completed successfully! Please log in with your admin account.',
+                'redirect' => '/auth/login'
             ]);
 
         } catch (\Exception $e) {
@@ -423,27 +423,43 @@ class Setup extends BaseController
 
         // Check if .env.example exists
         if (!file_exists($envExamplePath)) {
-            log_message('error', 'Setup: .env.example template not found');
+            log_message('error', 'Setup: .env.example template not found at: ' . $envExamplePath);
             return false;
+        }
+
+        // Check if .env already exists
+        if (file_exists($envPath)) {
+            log_message('warning', 'Setup: .env file already exists, backing up as .env.backup');
+            if (!copy($envPath, $envPath . '.backup')) {
+                log_message('error', 'Setup: Failed to backup existing .env file');
+            }
         }
 
         try {
             // Read the template
             $envTemplate = file_get_contents($envExamplePath);
+            
+            if ($envTemplate === false) {
+                log_message('error', 'Setup: Failed to read .env.example template');
+                return false;
+            }
 
             // Replace template variables with user inputs
             $envContent = $this->populateEnvTemplate($envTemplate, $data);
 
             // Write the new .env file
-            if (file_put_contents($envPath, $envContent) === false) {
-                log_message('error', 'Setup: Failed to write .env file');
+            $writeResult = file_put_contents($envPath, $envContent);
+            if ($writeResult === false) {
+                log_message('error', 'Setup: Failed to write .env file to: ' . $envPath);
                 return false;
             }
 
             // Set proper permissions
-            chmod($envPath, 0644);
+            if (!chmod($envPath, 0644)) {
+                log_message('warning', 'Setup: Failed to set .env file permissions');
+            }
 
-            log_message('info', 'Setup: .env file generated successfully');
+            log_message('info', 'Setup: .env file generated successfully at: ' . $envPath);
             return true;
 
         } catch (Exception $e) {

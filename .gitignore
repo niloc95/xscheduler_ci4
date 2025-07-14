@@ -290,6 +290,9 @@ id_ed25519.pub
 #-------------------------
 # Application Specific
 #-------------------------
+# Setup completion flag - should never be committed as it's environment-specific
+writable/setup_completed.flag
+
 # User uploads (adjust paths as needed)
 public/uploads/*
 !public/uploads/.gitkeep
