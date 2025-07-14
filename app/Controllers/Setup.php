@@ -49,6 +49,7 @@ class Setup extends BaseController
         // Validation rules
         $rules = [
             'admin_name' => 'required|min_length[2]|max_length[50]',
+            'admin_email' => 'required|valid_email|max_length[100]',
             'admin_userid' => 'required|min_length[3]|max_length[20]|alpha_numeric',
             'admin_password' => 'required|min_length[8]',
             'admin_password_confirm' => 'required|matches[admin_password]',
@@ -79,6 +80,7 @@ class Setup extends BaseController
             $setupData = [
                 'admin' => [
                     'name' => $this->request->getPost('admin_name'),
+                    'email' => $this->request->getPost('admin_email'),
                     'userid' => $this->request->getPost('admin_userid'),
                     'password' => $this->request->getPost('admin_password') // Store raw password for finalizeSetup
                 ],
@@ -341,7 +343,7 @@ class Setup extends BaseController
 
             // Check if admin user already exists
             $existingUser = $db->table('users')
-                              ->where('email', $adminData['userid'])
+                              ->where('email', $adminData['email'])
                               ->orWhere('email', $adminData['userid'] . '@admin.local')
                               ->get()
                               ->getRow();
@@ -357,9 +359,7 @@ class Setup extends BaseController
             // Prepare admin user data
             $userData = [
                 'name' => $adminData['name'],
-                'email' => filter_var($adminData['userid'], FILTER_VALIDATE_EMAIL) ? 
-                          $adminData['userid'] : 
-                          $adminData['userid'] . '@admin.local',
+                'email' => $adminData['email'], // Use the actual email provided
                 'phone' => null,
                 'password_hash' => password_hash($adminData['password'], PASSWORD_DEFAULT),
                 'role' => 'admin',
@@ -463,7 +463,7 @@ class Setup extends BaseController
         // Smart baseURL detection for production environments
         $baseURL = '';
         if ($environment === 'development') {
-            $baseURL = 'http://localhost:8081/';
+            $baseURL = 'http://localhost:8080/';
         } else {
             // Auto-detect production URL from current request
             $baseURL = $this->detectProductionURL();

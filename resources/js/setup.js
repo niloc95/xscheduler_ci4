@@ -49,6 +49,7 @@ class SetupWizard {
     bindRealTimeValidation() {
         const fields = [
             { id: 'admin_name', validator: this.validateAdminName },
+            { id: 'admin_email', validator: this.validateAdminEmail },
             { id: 'admin_userid', validator: this.validateAdminUserId },
             { id: 'admin_password', validator: this.validateAdminPassword }
         ];
@@ -143,6 +144,11 @@ class SetupWizard {
         return name.trim().length >= 2;
     }
 
+    validateAdminEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email.trim()) && email.trim().length <= 100;
+    }
+
     validateAdminUserId(userid) {
         return /^[a-zA-Z0-9]{3,20}$/.test(userid.trim());
     }
@@ -154,6 +160,7 @@ class SetupWizard {
     getValidationMessage(fieldId) {
         const messages = {
             'admin_name': 'Full name must be at least 2 characters',
+            'admin_email': 'Please enter a valid email address',
             'admin_userid': 'User ID must be 3-20 alphanumeric characters',
             'admin_password': 'Password must be at least 8 characters with good strength'
         };
@@ -286,12 +293,18 @@ class SetupWizard {
 
         // Validate admin fields
         const adminName = document.getElementById('admin_name').value.trim();
+        const adminEmail = document.getElementById('admin_email').value.trim();
         const adminUserId = document.getElementById('admin_userid').value.trim();
         const adminPassword = document.getElementById('admin_password').value;
         const adminPasswordConfirm = document.getElementById('admin_password_confirm').value;
 
         if (!this.validateAdminName(adminName)) {
             this.showFieldError('admin_name', this.getValidationMessage('admin_name'));
+            isValid = false;
+        }
+
+        if (!this.validateAdminEmail(adminEmail)) {
+            this.showFieldError('admin_email', this.getValidationMessage('admin_email'));
             isValid = false;
         }
 

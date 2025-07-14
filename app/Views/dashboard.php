@@ -16,6 +16,52 @@
     <style>
         body {
             font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Force proper layout - high specificity */
+        .main-content {
+            min-height: 100vh;
+            padding: 1rem !important;
+            margin-left: 0 !important;
+        }
+        
+        /* Desktop layout - force sidebar positioning */
+        @media (min-width: 1024px) {
+            .main-content {
+                margin-left: 16rem !important; /* Force 256px offset for sidebar */
+                padding: 1rem !important;
+                width: calc(100% - 16rem) !important;
+            }
+            
+            .sidebar {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 16rem !important;
+                height: 100vh !important;
+                z-index: 40 !important;
+                transform: translateX(0) !important;
+            }
+        }
+        
+        /* Mobile layout */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%) !important;
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0) !important;
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding: 1rem !important;
+            }
         }
         
         /* Material Web Components custom properties */
@@ -42,22 +88,6 @@
             position: relative;
             height: 300px;
             width: 100%;
-        }
-        
-        /* Mobile responsiveness */
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
-            
-            .sidebar.open {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0 !important;
-            }
         }
     </style>
 </head>
@@ -125,7 +155,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="main-content p-4 lg:ml-64">
+    <div class="main-content p-4">
         <!-- Top Bar -->
         <div class="bg-white material-shadow rounded-lg p-4 mb-6">
             <div class="flex justify-between items-center">
