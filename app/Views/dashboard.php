@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XScheduler Dashboard - Material Design</title>
+    <title>xScheduler Dashboard - Material Design</title>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -105,7 +105,7 @@
                     <md-icon-button class="text-blue-600">
                         <md-icon>schedule</md-icon>
                     </md-icon-button>
-                    <span class="text-xl font-semibold text-gray-800 ml-2">XScheduler</span>
+                    <span class="text-xl font-semibold text-gray-800 ml-2">xScheduler</span>
                 </div>
                 <md-icon-button id="closeSidebar" class="lg:hidden">
                     <md-icon>close</md-icon>
@@ -199,7 +199,7 @@
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Card 1 -->
-            <md-outlined-card class="p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <md-outlined-card class="p-6 text-white" style="background-color: #003049;">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="text-blue-100 text-sm">Total Users</p>
@@ -214,47 +214,47 @@
             </md-outlined-card>
 
             <!-- Card 2 -->
-            <md-outlined-card class="p-6 bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <md-outlined-card class="p-6 text-white" style="background-color: #FCBF49; color: #003049;">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="text-green-100 text-sm">Active Sessions</p>
+                        <p class="opacity-80 text-sm">Active Sessions</p>
                         <p class="text-3xl font-bold"><?= number_format($stats['active_sessions'] ?? 1789) ?></p>
                     </div>
-                    <md-icon class="text-4xl text-green-200">event</md-icon>
+                    <md-icon class="text-4xl opacity-80">event</md-icon>
                 </div>
                 <div class="flex items-center text-sm">
-                    <md-icon class="text-sm mr-1 text-green-300">trending_up</md-icon>
-                    <span class="text-green-100">+8% from last month</span>
+                    <md-icon class="text-sm mr-1">trending_up</md-icon>
+                    <span class="opacity-80">+8% from last month</span>
                 </div>
             </md-outlined-card>
 
             <!-- Card 3 -->
-            <md-outlined-card class="p-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+            <md-outlined-card class="p-6 text-white" style="background-color: #F77F00;">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="text-orange-100 text-sm">Pending Tasks</p>
+                        <p class="opacity-80 text-sm">Pending Tasks</p>
                         <p class="text-3xl font-bold"><?= number_format($stats['pending_tasks'] ?? 456) ?></p>
                     </div>
-                    <md-icon class="text-4xl text-orange-200">pending_actions</md-icon>
+                    <md-icon class="text-4xl opacity-80">pending_actions</md-icon>
                 </div>
                 <div class="flex items-center text-sm">
                     <md-icon class="text-sm mr-1 text-red-300">trending_down</md-icon>
-                    <span class="text-orange-100">-3% from last month</span>
+                    <span class="opacity-80">-3% from last month</span>
                 </div>
             </md-outlined-card>
 
             <!-- Card 4 -->
-            <md-outlined-card class="p-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <md-outlined-card class="p-6 text-white" style="background-color: #D62828;">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="text-purple-100 text-sm">Revenue</p>
+                        <p class="opacity-80 text-sm">Revenue</p>
                         <p class="text-3xl font-bold">$<?= number_format($stats['revenue'] ?? 12456) ?></p>
                     </div>
-                    <md-icon class="text-4xl text-purple-200">attach_money</md-icon>
+                    <md-icon class="text-4xl opacity-80">attach_money</md-icon>
                 </div>
                 <div class="flex items-center text-sm">
                     <md-icon class="text-sm mr-1 text-green-300">trending_up</md-icon>
-                    <span class="text-purple-100">+15% from last month</span>
+                    <span class="opacity-80">+15% from last month</span>
                 </div>
             </md-outlined-card>
         </div>

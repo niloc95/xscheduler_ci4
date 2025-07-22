@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Login - XScheduler' ?></title>
+    <title><?= $title ?? 'Login - xScheduler' ?></title>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -19,31 +19,27 @@
         
         /* Material Web Components custom properties */
         :root {
-            --md-sys-color-primary: rgb(59, 130, 246);
+            --md-sys-color-primary: #003049;
             --md-sys-color-on-primary: rgb(255, 255, 255);
             --md-sys-color-surface: rgb(255, 255, 255);
-            --md-sys-color-on-surface: rgb(17, 24, 39);
-            --md-sys-color-surface-variant: rgb(248, 250, 252);
+            --md-sys-color-on-surface: #003049;
+            --md-sys-color-surface-variant: #F3F4F6;
             --md-sys-color-outline: rgb(229, 231, 235);
-            --md-sys-color-error: rgb(239, 68, 68);
+            --md-sys-color-error: #D62828;
         }
         
         .login-container {
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #F3F4F6;
         }
         
         .login-card {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
         .brand-logo {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #003049;
         }
     </style>
 </head>
@@ -53,11 +49,11 @@
             <!-- Logo and Header -->
             <div class="text-center mb-8">
                 <div class="flex justify-center mb-4">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background-color: #003049;">
                         <span class="material-symbols-outlined text-white text-3xl">schedule</span>
                     </div>
                 </div>
-                <h1 class="brand-logo text-3xl font-bold mb-2">XScheduler</h1>
+                <h1 class="brand-logo text-3xl font-bold mb-2">xScheduler</h1>
                 <p class="text-gray-600">Sign in to your account</p>
             </div>
 
@@ -129,23 +125,25 @@
                     </label>
                     
                     <a href="<?= base_url('auth/forgot-password') ?>" 
-                       class="text-sm text-blue-600 hover:text-blue-500 transition-colors">
+                       class="text-sm hover:text-blue-700 transition-colors" style="color: #003049;">
                         Forgot Password?
                     </a>
                 </div>
 
                 <!-- Login Button -->
-                <md-filled-button type="submit" class="w-full">
-                    <span slot="icon" class="material-symbols-outlined">login</span>
+                <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200" style="background-color: #F77F00;">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
                     Sign In
-                </md-filled-button>
+                </button>
             </form>
 
             <!-- Footer -->
             <div class="mt-8 text-center">
                 <p class="text-sm text-gray-600">
                     Don't have an account? 
-                    <a href="<?= base_url('auth/register') ?>" class="text-blue-600 hover:text-blue-500 transition-colors font-medium">
+                    <a href="<?= base_url('auth/register') ?>" class="hover:text-blue-700 transition-colors font-medium" style="color: #003049;">
                         Contact Administrator
                     </a>
                 </p>

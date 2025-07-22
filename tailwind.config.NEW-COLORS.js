@@ -131,6 +131,12 @@ module.exports = {
       boxShadow: {
         'brand': '0 4px 14px 0 rgba(0, 48, 73, 0.15)',
         'brand-lg': '0 10px 25px -3px rgba(0, 48, 73, 0.25)',
+      },
+      
+      backgroundImage: {
+        'gradient-brand': 'linear-gradient(135deg, #003049 0%, #F77F00 100%)',
+        'gradient-success': 'linear-gradient(135deg, #FCBF49 0%, #F77F00 100%)',
+        'gradient-warm': 'linear-gradient(135deg, #EAE2B7 0%, #FCBF49 100%)',
       }
     },
   },

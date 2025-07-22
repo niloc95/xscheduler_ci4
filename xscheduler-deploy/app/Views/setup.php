@@ -74,57 +74,52 @@ window.appConfig = {
             Contact
         </a>
     </div>
-</div>
-
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-    <div class="max-w-4xl w-full">
-        <!-- Setup Header -->
-        <div class="text-center mb-8">
-            <div class="bg-white rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center material-shadow">
-                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+</div>    <div class="min-h-screen flex items-center justify-center p-4" style="background-color: #F3F4F6;">
+        <div class="max-w-4xl w-full">
+            <!-- Setup Header -->
+            <div class="text-center mb-8">
+                <div class="bg-white rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-brand">
+                    <svg class="w-8 h-8 text-brand-ocean" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
+            </div>                <h1 class="text-3xl font-bold text-brand-ocean mb-2">Welcome to xScheduler</h1>
+                <p class="text-neutral-600">Let's set up your scheduling application in just a few steps</p>
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome to xScheduler</h1>
-            <p class="text-gray-600">Let's set up your scheduling application in just a few steps</p>
-        </div>
 
-        <!-- Setup Form Card -->
-        <div class="bg-white rounded-xl material-shadow overflow-hidden">
-            <!-- Progress Steps -->
-            <div class="bg-gray-50 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                            <span class="text-white text-sm font-semibold">1</span>
+            <!-- Setup Form Card -->
+            <div class="bg-white rounded-xl shadow-brand overflow-hidden">                <!-- Progress Steps -->
+                <div class="bg-brand-cream px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-brand-ocean rounded-full flex items-center justify-center">
+                                <span class="text-white text-sm font-semibold">1</span>
+                            </div>
+                            <span class="text-sm font-medium text-brand-ocean">Initial Configuration</span>
                         </div>
-                        <span class="text-sm font-medium text-gray-900">Initial Configuration</span>
-                    </div>
-                    <div class="flex items-center space-x-2 opacity-50">
-                        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                            <span class="text-gray-600 text-sm font-semibold">2</span>
+                        <div class="flex items-center space-x-2 opacity-50">
+                            <div class="w-8 h-8 bg-neutral-300 rounded-full flex items-center justify-center">
+                                <span class="text-neutral-600 text-sm font-semibold">2</span>
+                            </div>
+                            <span class="text-sm font-medium text-neutral-600">Dashboard Access</span>
                         </div>
-                        <span class="text-sm font-medium text-gray-600">Dashboard Access</span>
                     </div>
                 </div>
-            </div>
 
             <!-- Setup Form -->
             <form id="setupForm" class="p-6 space-y-8">
                 <?= csrf_field() ?>
                 
-                <!-- Admin Account Section -->
-                <div class="space-y-6">
-                    <div class="border-b border-gray-200 pb-4">
-                        <h2 class="text-xl font-semibold text-gray-900 flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            System Administrator Account
-                        </h2>
-                        <p class="text-sm text-gray-600 mt-1">Create your admin account to manage the scheduling system</p>
-                    </div>
+                <!-- Admin Account Section -->                    <div class="space-y-6">
+                        <div class="border-b border-neutral-200 pb-4">
+                            <h2 class="text-xl font-semibold text-brand-ocean flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                System Administrator Account
+                            </h2>
+                            <p class="text-sm text-neutral-600 mt-1">Create your admin account to manage the scheduling system</p>
+                        </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -136,7 +131,7 @@ window.appConfig = {
                                 id="admin_name"
                                 name="admin_name"
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                class="form-input-brand w-full"
                                 placeholder="Enter your full name">
                             <div id="admin_name_error" class="mt-1 text-sm text-red-600 hidden"></div>
                         </div>
@@ -150,7 +145,7 @@ window.appConfig = {
                                 id="admin_email"
                                 name="admin_email"
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                class="form-input-brand w-full"
                                 placeholder="Enter your email address">
                             <div id="admin_email_error" class="mt-1 text-sm text-red-600 hidden"></div>
                             <p class="mt-1 text-xs text-gray-500">Used for login and password recovery</p>
@@ -210,17 +205,16 @@ window.appConfig = {
                     </div>
                 </div>
 
-                <!-- Database Configuration Section -->
-                <div class="space-y-6">
-                    <div class="border-b border-gray-200 pb-4">
-                        <h2 class="text-xl font-semibold text-gray-900 flex items-center">
-                            <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
-                            </svg>
-                            Database Configuration
-                        </h2>
-                        <p class="text-sm text-gray-600 mt-1">Choose your preferred database setup</p>
-                    </div>
+                <!-- Database Configuration Section -->                        <div class="space-y-6">
+                            <div class="border-b border-neutral-200 pb-4">
+                                <h2 class="text-xl font-semibold text-brand-ocean flex items-center">
+                                    <svg class="w-6 h-6 mr-2 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                                    </svg>
+                                    Database Configuration
+                                </h2>
+                                <p class="text-sm text-neutral-600 mt-1">Choose your preferred database setup</p>
+                            </div>
 
                     <!-- Database Type Selection -->
                     <div class="space-y-4">
@@ -228,15 +222,15 @@ window.appConfig = {
                             <!-- MySQL Option -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="database_type" value="mysql" class="sr-only peer" id="db_mysql">
-                                <div class="border-2 border-gray-200 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-gray-300">
+                                <div class="border-2 border-neutral-200 rounded-lg p-4 peer-checked:border-brand-ocean peer-checked:bg-blue-50 transition-all hover:border-neutral-300">
                                     <div class="flex items-center justify-between mb-2">
-                                        <h3 class="font-semibold text-gray-900">MySQL Database</h3>
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <h3 class="font-semibold text-brand-ocean">MySQL Database</h3>
+                                        <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
                                         </svg>
                                     </div>
-                                    <p class="text-sm text-gray-600">Connect to an existing MySQL server</p>
-                                    <ul class="mt-2 text-xs text-gray-500 space-y-1">
+                                    <p class="text-sm text-neutral-600">Connect to an existing MySQL server</p>
+                                    <ul class="mt-2 text-xs text-neutral-500 space-y-1">
                                         <li>• High performance and scalability</li>
                                         <li>• Requires database server setup</li>
                                         <li>• Recommended for production</li>
@@ -247,15 +241,15 @@ window.appConfig = {
                             <!-- SQLite Option -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="database_type" value="sqlite" class="sr-only peer" id="db_sqlite" checked>
-                                <div class="border-2 border-gray-200 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-gray-300">
+                                <div class="border-2 border-neutral-200 rounded-lg p-4 peer-checked:border-brand-ocean peer-checked:bg-blue-50 transition-all hover:border-neutral-300">
                                     <div class="flex items-center justify-between mb-2">
-                                        <h3 class="font-semibold text-gray-900">SQLite Database</h3>
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <h3 class="font-semibold text-brand-ocean">SQLite Database</h3>
+                                        <svg class="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
                                     </div>
-                                    <p class="text-sm text-gray-600">Zero-configuration file-based database</p>
-                                    <ul class="mt-2 text-xs text-gray-500 space-y-1">
+                                    <p class="text-sm text-neutral-600">Zero-configuration file-based database</p>
+                                    <ul class="mt-2 text-xs text-neutral-500 space-y-1">
                                         <li>• No server setup required</li>
                                         <li>• Perfect for getting started</li>
                                         <li>• Automatic database creation</li>
@@ -265,10 +259,9 @@ window.appConfig = {
                         </div>
                     </div>
 
-                    <!-- MySQL Configuration Fields -->
-                    <div id="mysql_config" class="space-y-4 hidden">
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <h4 class="font-medium text-blue-900 mb-3">MySQL Connection Settings</h4>
+                    <!-- MySQL Configuration Fields -->                        <div id="mysql_config" class="space-y-4 hidden">
+                            <div class="bg-blue-50 border border-brand-ocean rounded-lg p-4">
+                                <h4 class="font-medium text-brand-ocean mb-3">MySQL Connection Settings</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="mysql_hostname" class="block text-sm font-medium text-gray-700 mb-2">
@@ -340,7 +333,7 @@ window.appConfig = {
 
                             <!-- Test Connection Button -->
                             <div class="mt-4 flex justify-end">
-                                <button id="test_connection_btn" type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <button id="test_connection_btn" type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-brand-ocean hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-ocean transition-all duration-200">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
                                     </svg>
@@ -349,33 +342,30 @@ window.appConfig = {
                             </div>
                             <div id="connection_result" class="mt-2 hidden"></div>
                         </div>
-                    </div>
-
-                    <!-- SQLite Configuration Display -->
-                    <div id="sqlite_config" class="space-y-4">
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <h4 class="font-medium text-green-900 mb-2">SQLite Auto-Configuration</h4>
-                            <div class="flex items-start space-x-3">
-                                <svg class="w-5 h-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    </div>                        <!-- SQLite Configuration Display -->
+                        <div id="sqlite_config" class="space-y-4">
+                            <div class="bg-green-50 border border-brand-golden rounded-lg p-4">
+                                <h4 class="font-medium text-brand-ocean mb-2">SQLite Auto-Configuration</h4>
+                                <div class="flex items-start space-x-3">
+                                    <svg class="w-5 h-5 text-brand-golden mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                </svg>
-                                <div>
-                                    <p class="text-sm text-green-800">Database will be automatically created at:</p>
-                                    <code class="block mt-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-mono">
-                                        ./writable/database/appdb.sqlite
-                                    </code>
-                                    <p class="text-xs text-green-700 mt-2">
-                                        No additional configuration required. The application will create and manage the SQLite database automatically.
-                                    </p>
-                                </div>
+                                </svg>                                    <div>
+                                        <p class="text-sm text-brand-ocean">Database will be automatically created at:</p>
+                                        <code class="block mt-1 text-xs bg-brand-cream text-brand-ocean px-2 py-1 rounded font-mono">
+                                            ./writable/database/appdb.sqlite
+                                        </code>
+                                        <p class="text-xs text-neutral-700 mt-2">
+                                            No additional configuration required. The application will create and manage the SQLite database automatically.
+                                        </p>
+                                    </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Form Actions -->
-                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
-                    <button type="button" onclick="window.location.href='/'" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-neutral-200">
+                    <button type="button" onclick="window.location.href='/'" class="inline-flex items-center px-4 py-2 border border-neutral-300 shadow-sm text-sm font-medium rounded-md text-neutral-700 bg-white hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-ocean">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                         </svg>
@@ -384,7 +374,7 @@ window.appConfig = {
                     
                     <div class="flex-1"></div>
                     
-                    <button id="setup_submit_btn" type="submit" class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button id="setup_submit_btn" type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-brand-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-all duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
@@ -392,23 +382,21 @@ window.appConfig = {
                     </button>
                 </div>
             </form>
-        </div>
-
-        <!-- Loading Overlay -->
-        <div id="loading_overlay" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-                <div class="flex items-center space-x-3">
-                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    <span class="text-gray-900">Processing setup...</span>
-                </div>
-                <div class="mt-4">
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div id="progress_bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>                <!-- Loading Overlay -->
+                <div id="loading_overlay" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-ocean"></div>
+                            <span class="text-brand-ocean">Processing setup...</span>
+                        </div>
+                        <div class="mt-4">
+                            <div class="w-full bg-neutral-200 rounded-full h-2">
+                                <div id="progress_bar" class="bg-brand-orange h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p id="progress_text" class="text-sm text-neutral-600 mt-2">Initializing...</p>
+                        </div>
                     </div>
-                    <p id="progress_text" class="text-sm text-gray-600 mt-2">Initializing...</p>
                 </div>
-            </div>
-        </div>
     </div>
 </div>
 

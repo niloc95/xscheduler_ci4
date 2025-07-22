@@ -106,20 +106,20 @@
     }
   }
   
-  /* Card Styles with New Palette - Solid Colors */
+  /* Card Styles with New Palette */
   .card-ocean {
-    @apply text-white;
-    background-color: #003049;
+    @apply bg-gradient-to-br from-primary-500 to-primary-700 text-white;
+    background: linear-gradient(135deg, theme('colors.brand.ocean') 0%, #004d6b 100%);
   }
   
   .card-warm {
-    @apply text-primary-900;
-    background-color: #EAE2B7;
+    @apply bg-gradient-to-br text-primary-900;
+    background: linear-gradient(135deg, theme('colors.brand.cream') 0%, theme('colors.brand.golden') 100%);
   }
   
   .card-energetic {
-    @apply text-white;
-    background-color: #F77F00;
+    @apply bg-gradient-to-br text-white;
+    background: linear-gradient(135deg, theme('colors.brand.orange') 0%, #ff9800 100%);
   }
   
   /* Button Variations */
@@ -158,9 +158,9 @@
     }
   }
   
-  /* Navigation Styles - Solid Color */
+  /* Navigation Styles */
   .nav-ocean {
-    background-color: #003049;
+    background: linear-gradient(180deg, theme('colors.brand.ocean') 0%, #004d6b 100%);
     color: white;
     
     .nav-link {
@@ -227,13 +227,13 @@
     }
   }
   
-  /* Progress Indicators - Solid Color */
+  /* Progress Indicators */
   .progress-brand {
     @apply w-full bg-neutral-200 rounded-full h-3 overflow-hidden;
     
     .progress-bar {
       @apply h-full rounded-full transition-all duration-500;
-      background-color: #F77F00;
+      background: linear-gradient(90deg, theme('colors.brand.golden') 0%, theme('colors.brand.orange') 100%);
     }
   }
   
