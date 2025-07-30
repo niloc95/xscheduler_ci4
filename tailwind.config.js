@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class', // Enable class-based dark mode
   content: [
     "./app/Views/**/*.php",
     "./resources/**/*.{js,ts,jsx,tsx,vue}",
@@ -111,7 +112,24 @@ module.exports = {
           'medium': '#F77F00',     // Orange - moderate urgency  
           'high': '#D62828',       // Crimson - high urgency
           'critical': '#7C2D12',   // Dark red - critical
-        }
+        },
+
+        // CSS Variable-based colors for dark mode
+        'xs-bg': {
+          'primary': 'var(--xs-bg-primary)',
+          'secondary': 'var(--xs-bg-secondary)',
+          'tertiary': 'var(--xs-bg-tertiary)',
+        },
+        'xs-text': {
+          'primary': 'var(--xs-text-primary)',
+          'secondary': 'var(--xs-text-secondary)',
+          'muted': 'var(--xs-text-muted)',
+        },
+        'xs-border': 'var(--xs-border)',
+        'xs-accent': 'var(--xs-accent)',
+        'xs-success': 'var(--xs-success)',
+        'xs-error': 'var(--xs-error)',
+        'xs-warning': 'var(--xs-warning)',
       },
       
       fontFamily: {

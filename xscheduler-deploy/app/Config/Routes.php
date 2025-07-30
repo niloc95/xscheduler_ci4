@@ -55,3 +55,6 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
 $routes->get('styleguide', 'Styleguide::index');
 $routes->get('styleguide/components', 'Styleguide::components');
 $routes->get('styleguide/scheduler', 'Styleguide::scheduler');
+
+// Dark Mode Test Route
+$routes->get('dark-mode-test', 'DarkModeTest::index');

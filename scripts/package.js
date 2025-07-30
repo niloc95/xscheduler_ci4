@@ -11,6 +11,8 @@ const projectRoot = path.resolve(__dirname, '..');
 console.log('📦 Creating standalone deployment package...');
 console.log('⚠️  NOTE: setup_completed.flag will be excluded from deployment package');
 console.log('   This ensures fresh installations start with the setup wizard');
+console.log('⚠️  NOTE: app/Views/test/ folder will be excluded from deployment package');
+console.log('   Test and example views are not needed in production');
 
 // Create deployment package
 const packageDir = path.join(projectRoot, 'xscheduler-deploy');
@@ -96,6 +98,11 @@ essentialFiles.forEach(({ src, dest }) => {
                     const excludePatterns = ['setup_completed.flag'];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
                     console.log(`✅ Copied ${src} → ${dest} (excluded setup_completed.flag)`);
+                } else if (src === 'app') {
+                    // Exclude test views from production deployment
+                    const excludePatterns = ['Views/test'];
+                    copyDirectoryWithFilter(source, destination, excludePatterns);
+                    console.log(`✅ Copied ${src} → ${dest} (excluded Views/test)`);
                 } else {
                     fs.cpSync(source, destination, { recursive: true });
                     console.log(`✅ Copied ${src} → ${dest}`);

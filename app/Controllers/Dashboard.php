@@ -217,7 +217,7 @@ class Dashboard extends BaseController
     public function test()
     {
         // Simple test endpoint
-        return view('welcome_message');
+        return view('test/welcome_message');
     }
 
     public function simple()
@@ -233,7 +233,7 @@ class Dashboard extends BaseController
             ]
         ];
         
-        return view('dashboard_test', $data);
+        return view('test/dashboard_test', $data);
     }
 
     /**

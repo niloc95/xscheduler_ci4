@@ -9,7 +9,7 @@ class Styleguide extends BaseController
         $data = [
             'title' => 'Style Guide - xScheduler'
         ];
-        return view('styleguide/index', $data);
+        return view('test/styleguide/index', $data);
     }
     
     public function components()
@@ -17,7 +17,7 @@ class Styleguide extends BaseController
         $data = [
             'title' => 'Components - Style Guide'
         ];
-        return view('styleguide/components', $data);
+        return view('test/styleguide/components', $data);
     }
     
     public function scheduler()
@@ -25,6 +25,6 @@ class Styleguide extends BaseController
         $data = [
             'title' => 'Scheduler Components - Style Guide'
         ];
-        return view('styleguide/scheduler', $data);
+        return view('test/styleguide/scheduler', $data);
     }
 }

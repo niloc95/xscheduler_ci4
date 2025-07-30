@@ -1,9 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="transition-colors duration-200">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Reset Password - XScheduler' ?></title>
+    
+    <!-- Dark mode initialization script -->
+    <script>
+        (function() {
+            const storedTheme = localStorage.getItem('xs-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = storedTheme || (prefersDark ? 'dark' : 'light');
+            
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -17,44 +30,36 @@
             font-family: 'Roboto', sans-serif;
         }
         
-        /* Material Web Components custom properties */
-        :root {
-            --md-sys-color-primary: #003049;
-            --md-sys-color-on-primary: rgb(255, 255, 255);
-            --md-sys-color-surface: rgb(255, 255, 255);
-            --md-sys-color-on-surface: #003049;
-            --md-sys-color-surface-variant: #F3F4F6;
-            --md-sys-color-outline: rgb(229, 231, 235);
-            --md-sys-color-error: #D62828;
-        }
-        
         .login-container {
             min-height: 100vh;
-            background-color: #F3F4F6;
         }
         
         .login-card {
-            background: rgba(255, 255, 255, 1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
-        .brand-logo {
-            color: #003049;
+        .dark .login-card {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
     <div class="login-container flex items-center justify-center p-4">
-        <div class="login-card w-full max-w-md rounded-2xl p-8">
+        <!-- Dark Mode Toggle (Top Right) -->
+        <div class="absolute top-4 right-4">
+            <?= $this->include('components/dark-mode-toggle') ?>
+        </div>
+        
+        <div class="login-card bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
             <!-- Logo and Header -->
             <div class="text-center mb-8">
                 <div class="flex justify-center mb-4">
-                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center" style="background-color: #003049;">
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
                         <span class="material-symbols-outlined text-white text-3xl">password</span>
                     </div>
                 </div>
-                <h1 class="brand-logo text-3xl font-bold mb-2">Reset Password</h1>
-                <p class="text-gray-600">Enter your new password below</p>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">Reset Password</h1>
+                <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Enter your new password below</p>
             </div>
 
             <!-- Flash Messages -->

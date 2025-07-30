@@ -1,4 +1,4 @@
-/* NEW COLOR PALETTE - Material Design 3.0 Integration */
+/* NEW COLOR PALETTE - Material Design 3.0 Integration with Dark Mode */
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +7,7 @@
 /* Import existing styles */
 @import 'components';
 
-/* Material Design 3.0 Custom Properties with Your New Palette */
+/* Light Theme - Material Design 3.0 Custom Properties with xScheduler Brand Palette */
 :root {
   /* Primary Colors - Ocean Blue */
   --md-sys-color-primary: #003049;
@@ -33,7 +33,7 @@
   --md-sys-color-error-container: #ffebee;
   --md-sys-color-on-error-container: #7f1d1d;
   
-  /* Background & Surface - Cream */
+  /* Background & Surface - Light Theme */
   --md-sys-color-background: #EAE2B7;
   --md-sys-color-on-background: #003049;
   --md-sys-color-surface: #ffffff;
@@ -46,6 +46,83 @@
   --md-sys-color-outline-variant: rgba(0, 48, 73, 0.1);
   --md-sys-color-shadow: rgba(0, 48, 73, 0.2);
   --md-sys-color-surface-tint: #003049;
+
+  /* Custom xScheduler Theme Variables - Light */
+  --xs-bg-primary: #ffffff;
+  --xs-bg-secondary: #f8fafc;
+  --xs-bg-tertiary: #EAE2B7;
+  --xs-text-primary: #003049;
+  --xs-text-secondary: #475569;
+  --xs-text-muted: #64748b;
+  --xs-border: #e2e8f0;
+  --xs-border-light: #f1f5f9;
+  --xs-accent: #F77F00;
+  --xs-accent-hover: #e06900;
+  --xs-success: #FCBF49;
+  --xs-error: #D62828;
+  --xs-warning: #F77F00;
+  --xs-surface-elevated: #ffffff;
+  --xs-shadow: rgba(0, 48, 73, 0.1);
+  --xs-shadow-lg: rgba(0, 48, 73, 0.15);
+}
+
+/* Dark Theme - Material Design 3.0 Custom Properties */
+html.dark {
+  /* Primary Colors - Ocean Blue (adjusted for dark) */
+  --md-sys-color-primary: #7FC8E8;
+  --md-sys-color-on-primary: #003447;
+  --md-sys-color-primary-container: #004d6b;
+  --md-sys-color-on-primary-container: #c6e7ff;
+  
+  /* Secondary Colors - Orange (adjusted for dark) */
+  --md-sys-color-secondary: #FFB366;
+  --md-sys-color-on-secondary: #4d2800;
+  --md-sys-color-secondary-container: #663600;
+  --md-sys-color-on-secondary-container: #ffcc80;
+  
+  /* Tertiary Colors - Golden (adjusted for dark) */
+  --md-sys-color-tertiary: #FFD166;
+  --md-sys-color-on-tertiary: #4d3d00;
+  --md-sys-color-tertiary-container: #665000;
+  --md-sys-color-on-tertiary-container: #ffe082;
+  
+  /* Error Colors - Crimson (adjusted for dark) */
+  --md-sys-color-error: #FF6B6B;
+  --md-sys-color-on-error: #4d0000;
+  --md-sys-color-error-container: #661a1a;
+  --md-sys-color-on-error-container: #ffcdd2;
+  
+  /* Background & Surface - Dark Theme */
+  --md-sys-color-background: #0f1419;
+  --md-sys-color-on-background: #e2e8f0;
+  --md-sys-color-surface: #1a202c;
+  --md-sys-color-on-surface: #f1f5f9;
+  --md-sys-color-surface-variant: #2d3748;
+  --md-sys-color-on-surface-variant: #a0aec0;
+  
+  /* Outline & Shadow - Dark Theme */
+  --md-sys-color-outline: rgba(160, 174, 192, 0.3);
+  --md-sys-color-outline-variant: rgba(160, 174, 192, 0.1);
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.4);
+  --md-sys-color-surface-tint: #7FC8E8;
+
+  /* Custom xScheduler Theme Variables - Dark */
+  --xs-bg-primary: #1a202c;
+  --xs-bg-secondary: #2d3748;
+  --xs-bg-tertiary: #4a5568;
+  --xs-text-primary: #f7fafc;
+  --xs-text-secondary: #e2e8f0;
+  --xs-text-muted: #a0aec0;
+  --xs-border: #4a5568;
+  --xs-border-light: #2d3748;
+  --xs-accent: #FFB366;
+  --xs-accent-hover: #FF9933;
+  --xs-success: #FFD166;
+  --xs-error: #FF6B6B;
+  --xs-warning: #FFB366;
+  --xs-surface-elevated: #2d3748;
+  --xs-shadow: rgba(0, 0, 0, 0.3);
+  --xs-shadow-lg: rgba(0, 0, 0, 0.5);
 }
 
 /* Dark Mode Support */

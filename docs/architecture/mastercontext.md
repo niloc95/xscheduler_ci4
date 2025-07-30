@@ -1521,3 +1521,185 @@ This application flow control implementation represents a major architectural im
 **Next Phase**: Ready for dashboard interface development and user authentication features
 
 The xScheduler application now has enterprise-grade application flow control and deployment systems, providing a solid foundation for core scheduling functionality development.
+
+### July 2025 - Dark Mode System Implementation & Views Organization
+
+**Phase**: Complete Dark Mode Integration and Code Organization Enhancement
+
+This comprehensive update implements a complete dark mode system across all application views and reorganizes the view structure for better maintainability and production readiness.
+
+#### 🌙 Complete Dark Mode System Implementation
+- **Comprehensive Coverage**: Full dark mode support implemented across setup wizard, dashboard, and authentication views
+- **CSS Variable System**: Material Design 3.0 color tokens with automatic light/dark theme adaptation
+- **Component Integration**: Dark mode toggle component integrated throughout the application
+- **JavaScript Management**: `DarkModeManager` class with localStorage persistence and system preference detection
+- **Build System**: Vite configuration updated to include dark-mode.js as separate entry point
+
+**Technical Implementation**:
+```scss
+// Dual-theme CSS variables system
+:root {
+  --md-sys-color-primary: rgb(59, 130, 246);
+  --md-sys-color-surface: rgb(255, 255, 255);
+}
+
+html.dark {
+  --md-sys-color-primary: rgb(96, 165, 250);
+  --md-sys-color-surface: rgb(31, 41, 55);
+}
+```
+
+```javascript
+// Dark mode management system
+class DarkModeManager {
+  constructor() {
+    this.initializeTheme();
+    this.setupToggleHandlers();
+  }
+  
+  initializeTheme() {
+    const isDark = localStorage.getItem('darkMode') === 'true' || 
+                   (!localStorage.getItem('darkMode') && 
+                    window.matchMedia('(prefers-color-scheme: dark)').matches);
+    this.applyTheme(isDark);
+  }
+}
+```
+
+#### 🎨 Dark Mode Features Implemented
+
+**Setup Wizard Dark Mode**:
+- ✅ Complete form styling with dark mode classes and CSS variables
+- ✅ Database configuration sections with dark theme support
+- ✅ Progress indicators and validation messages
+- ✅ Test connection buttons and loading overlays
+
+**Dashboard Dark Mode**:
+- ✅ Sidebar navigation with Material Design dark theme
+- ✅ Statistics cards using CSS variables for consistent theming
+- ✅ Charts and data tables with dark mode support
+- ✅ User interface elements and action buttons
+
+**Authentication Dark Mode**:
+- ✅ Login, forgot password, and reset password views
+- ✅ Form inputs and validation messages
+- ✅ Brand color integration with dark theme variants
+
+#### 📁 Views Folder Organization & Cleanup
+- **Structure Reorganization**: Moved all test and example views to dedicated `app/Views/test/` folder
+- **Production Readiness**: Main views folder now contains only production-ready views
+- **Controller Updates**: Updated all controller references to use new view paths
+- **Documentation**: Added comprehensive README.md in test folder explaining purpose and contents
+
+**New Views Structure**:
+```
+app/Views/
+├── auth/                    # Production authentication views
+├── components/              # Reusable view components
+├── errors/                  # Error page templates
+├── dashboard.php           # Main dashboard (production)
+├── setup.php              # Setup wizard (production)
+└── test/                   # Development and testing views
+    ├── README.md           # Documentation
+    ├── styleguide/         # Design system documentation
+    ├── dashboard_*.php     # Dashboard variants and tests
+    ├── dark_mode_test.php  # Dark mode testing
+    ├── material_web_example.php
+    ├── tw.php              # Tailwind testing
+    └── welcome_message.php # Default CI4 welcome
+```
+
+**Moved Files**:
+- `dark_mode_test.php` → `test/dark_mode_test.php`
+- `dashboard_example.php` → `test/dashboard_example.php`
+- `dashboard_fixed.php` → `test/dashboard_fixed.php`
+- `dashboard_real_data.php` → `test/dashboard_real_data.php`
+- `dashboard_simple.php` → `test/dashboard_simple.php`
+- `dashboard_test.php` → `test/dashboard_test.php`
+- `material_web_example.php` → `test/material_web_example.php`
+- `tw.php` → `test/tw.php`
+- `welcome_message.php` → `test/welcome_message.php`
+- `styleguide/` → `test/styleguide/`
+
+#### 🛠️ Technical Enhancements
+
+**Dark Mode Toggle Component** (`components/dark-mode-toggle.php`):
+```php
+<button id="darkModeToggle" class="relative inline-flex items-center justify-center w-10 h-10 text-sm font-medium rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600" aria-label="Toggle dark mode">
+    <!-- Sun/Moon icons with transitions -->
+</button>
+```
+
+**CSS Variables Integration**:
+- Material Design 3.0 color tokens
+- Automatic theme switching with smooth transitions
+- Consistent color usage across all components
+- Accessible contrast ratios in both themes
+
+**Build System Updates**:
+```javascript
+// vite.config.js - Updated entry points
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'resources/js/app.js',
+        style: 'resources/scss/app.scss',
+        darkMode: 'resources/js/dark-mode.js', // New entry point
+        // ... other entries
+      }
+    }
+  }
+});
+```
+
+#### 🎯 User Experience Benefits
+
+**Seamless Theme Switching**:
+- ✅ Instant theme transitions with 300ms duration
+- ✅ Persistent theme preferences across sessions
+- ✅ System preference detection and automatic application
+- ✅ Accessible toggle controls with proper ARIA labels
+
+**Professional Dark Theme**:
+- ✅ Material Design 3.0 compliant color scheme
+- ✅ Proper contrast ratios for accessibility
+- ✅ Consistent theming across all application areas
+- ✅ Reduced eye strain for extended usage
+
+**Code Organization Benefits**:
+- ✅ Clean separation of production and development views
+- ✅ Easier maintenance and deployment preparation
+- ✅ Clear documentation of test and example purposes
+- ✅ Streamlined controller structure
+
+### Development Impact - Dark Mode & Organization
+
+This dark mode implementation and views organization represents a major user experience and maintainability improvement:
+
+1. **User Experience**: Modern dark mode system enhances usability and accessibility
+2. **Code Quality**: Clean separation of production and development views
+3. **Maintainability**: Organized structure simplifies ongoing development
+4. **Professional Appeal**: Complete dark mode support creates modern, professional impression
+5. **Developer Experience**: Clear documentation and organized test structure
+
+### Technical Achievements - July 2025
+
+- ✅ Complete dark mode system across all application views
+- ✅ CSS variables and Material Design 3.0 integration
+- ✅ JavaScript dark mode manager with persistence
+- ✅ Views folder organization with test/production separation
+- ✅ Updated controllers and route references
+- ✅ Build system integration for dark mode assets
+- ✅ Comprehensive documentation and README files
+
+### Dark Mode & Organization Status
+
+**Dark Mode System**: Complete with comprehensive coverage
+**Theme Management**: Persistent with system preference detection
+**Views Organization**: Clean separation of production and test files
+**Controller Updates**: All references updated to new structure
+**Documentation**: Comprehensive with clear purpose definitions
+**Build Integration**: Dark mode assets properly compiled and included
+
+The xScheduler application now provides a complete, modern dark mode experience with organized, maintainable code structure ready for production deployment.
