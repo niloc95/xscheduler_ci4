@@ -4,9 +4,14 @@ namespace App\Controllers;
 
 class Home extends BaseController
 {
-    public function index(): string
+    public function index()
     {
-        return view('welcome_message');
+        // Check if setup is completed
+        if (!file_exists(WRITEPATH . 'setup_completed.flag')) {
+            return redirect()->to('/setup');
+        }
+
+        // If setup is completed, redirect to dashboard
+        return redirect()->to('/dashboard');
     }
-  
 }

@@ -8,11 +8,14 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
-    "build": "vite build && node scripts/package.js",
+    "build": "vite build",
     "preview": "vite preview",
-    "package": "node scripts/package.js"
+    "package": "node scripts/package.js",
+    "build:dev": "node scripts/build-config.js build development",
+    "build:staging": "node scripts/build-config.js build staging", 
+    "build:prod": "node scripts/build-config.js build production",
+    "deploy": "node scripts/build-config.js deploy"
   },
   "keywords": [],
   "author": "",
@@ -38,6 +41,7 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.10",
+    "archiver": "^7.0.1",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17"

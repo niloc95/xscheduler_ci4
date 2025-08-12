@@ -6,7 +6,7 @@ class Tw extends BaseController
 {
     public function tw(): string
     {
-        return view('tw');
+        return view('test/tw');
     }
   
 }

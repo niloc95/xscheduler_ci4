@@ -9,12 +9,14 @@ export default defineConfig({
   build: {
     outDir: 'public/build',
     emptyOutDir: true,
-    manifest: false,
+    manifest: true,
     rollupOptions: {
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
         style: path.resolve(process.cwd(), 'resources/scss/app.scss'),
         materialWeb: path.resolve(process.cwd(), 'resources/js/material-web.js'),
+        setup: path.resolve(process.cwd(), 'resources/js/setup.js'),
+        'dark-mode': path.resolve(process.cwd(), 'resources/js/dark-mode.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

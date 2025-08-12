@@ -1,0 +1,244 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main, env-setup-config-build ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '**.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install markdown tools
+        run: |
+          npm install -g markdownlint-cli
+          npm install -g markdown-link-check
+          
+      - name: Lint Markdown files
+        run: |
+          echo "## Markdown Linting Results" > docs-report.md
+          echo "" >> docs-report.md
+          
+          # Find all markdown files
+          MARKDOWN_FILES=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./vendor/*")
+          
+          if [ -n "$MARKDOWN_FILES" ]; then
+            echo "Found markdown files:" >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+            echo "$MARKDOWN_FILES" >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+            echo "" >> docs-report.md
+            
+            # Run markdownlint
+            if markdownlint $MARKDOWN_FILES; then
+              echo "✅ All markdown files pass linting" >> docs-report.md
+            else
+              echo "⚠️ Markdown linting issues found" >> docs-report.md
+            fi
+          else
+            echo "No markdown files found" >> docs-report.md
+          fi
+          
+      - name: Check documentation links
+        run: |
+          echo "" >> docs-report.md
+          echo "## Link Validation" >> docs-report.md
+          echo "" >> docs-report.md
+          
+          # Check links in documentation
+          DOCS_FILES=$(find docs/ -name "*.md" 2>/dev/null || echo "")
+          if [ -n "$DOCS_FILES" ]; then
+            for file in $DOCS_FILES; do
+              echo "Checking links in $file..." >> docs-report.md
+              if markdown-link-check "$file" >> docs-report.md 2>&1; then
+                echo "✅ Links in $file are valid" >> docs-report.md
+              else
+                echo "⚠️ Issues found in $file" >> docs-report.md
+              fi
+              echo "" >> docs-report.md
+            done
+          else
+            echo "No documentation files found in docs/ directory" >> docs-report.md
+          fi
+          
+      - name: Validate mastercontext.md structure
+        run: |
+          echo "" >> docs-report.md
+          echo "## Master Context Validation" >> docs-report.md
+          echo "" >> docs-report.md
+          
+          MASTERCONTEXT="docs/architecture/mastercontext.md"
+          if [ -f "$MASTERCONTEXT" ]; then
+            # Check for required sections
+            REQUIRED_SECTIONS=("Project Overview" "Core Architecture" "Build System" "Deployment Strategy" "Recent Development Updates")
+            MISSING_SECTIONS=""
+            
+            for section in "${REQUIRED_SECTIONS[@]}"; do
+              if ! grep -q "## $section" "$MASTERCONTEXT"; then
+                MISSING_SECTIONS="$MISSING_SECTIONS\n- $section"
+              fi
+            done
+            
+            if [ -n "$MISSING_SECTIONS" ]; then
+              echo "⚠️ Missing required sections in mastercontext.md:" >> docs-report.md
+              echo -e "$MISSING_SECTIONS" >> docs-report.md
+            else
+              echo "✅ All required sections found in mastercontext.md" >> docs-report.md
+            fi
+            
+            # Check document length
+            LINE_COUNT=$(wc -l < "$MASTERCONTEXT")
+            echo "" >> docs-report.md
+            echo "📊 Master context document: $LINE_COUNT lines" >> docs-report.md
+            
+            if [ $LINE_COUNT -gt 1000 ]; then
+              echo "ℹ️ Document is comprehensive (>1000 lines)" >> docs-report.md
+            fi
+          else
+            echo "❌ mastercontext.md not found at expected location" >> docs-report.md
+          fi
+          
+      - name: Check for documentation TODOs
+        run: |
+          echo "" >> docs-report.md
+          echo "## Documentation TODOs" >> docs-report.md
+          echo "" >> docs-report.md
+          
+          # Find TODO items in documentation
+          TODOS=$(grep -r -i "todo\|fixme\|xxx" docs/ --include="*.md" || echo "")
+          if [ -n "$TODOS" ]; then
+            echo "📝 Found TODO items:" >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+            echo "$TODOS" >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+          else
+            echo "✅ No TODO items found in documentation" >> docs-report.md
+          fi
+          
+      - name: Generate documentation summary
+        run: |
+          echo "" >> docs-report.md
+          echo "## Documentation Summary" >> docs-report.md
+          echo "" >> docs-report.md
+          
+          # Count documentation files
+          MD_COUNT=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./vendor/*" | wc -l)
+          DOCS_COUNT=$(find docs/ -name "*.md" 2>/dev/null | wc -l || echo "0")
+          
+          echo "📄 Total markdown files: $MD_COUNT" >> docs-report.md
+          echo "📁 Files in docs/: $DOCS_COUNT" >> docs-report.md
+          
+          # List documentation structure
+          if [ -d "docs" ]; then
+            echo "" >> docs-report.md
+            echo "### Documentation Structure:" >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+            tree docs/ -I "node_modules|vendor" || find docs/ -type f -name "*.md" | sort >> docs-report.md
+            echo "\`\`\`" >> docs-report.md
+          fi
+          
+      - name: Upload documentation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-report-${{ github.sha }}
+          path: docs-report.md
+          retention-days: 30
+          
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('docs-report.md')) {
+              const report = fs.readFileSync('docs-report.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 📚 Documentation Validation Results\n\n${report}`
+              });
+            }
+
+  generate-docs-index:
+    name: Generate Documentation Index
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Generate documentation index
+        run: |
+          echo "# xScheduler Documentation Index" > docs/README.md
+          echo "" >> docs/README.md
+          echo "Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/README.md
+          echo "" >> docs/README.md
+          
+          echo "## 📋 Documentation Structure" >> docs/README.md
+          echo "" >> docs/README.md
+          
+          # Generate table of contents
+          find docs/ -name "*.md" -not -name "README.md" | sort | while read file; do
+            # Get relative path
+            rel_path=${file#docs/}
+            # Get first line as title (remove # if present)
+            title=$(head -n 1 "$file" | sed 's/^# *//' | sed 's/^## *//')
+            if [ -z "$title" ]; then
+              title=$(basename "$file" .md)
+            fi
+            echo "- [$title]($rel_path)" >> docs/README.md
+          done
+          
+          echo "" >> docs/README.md
+          echo "## 🏗️ Architecture Documentation" >> docs/README.md
+          echo "" >> docs/README.md
+          echo "The main architectural documentation is maintained in:" >> docs/README.md
+          echo "- [Master Context Document](architecture/mastercontext.md) - Complete project overview and development history" >> docs/README.md
+          echo "" >> docs/README.md
+          echo "## 🚀 Deployment Documentation" >> docs/README.md
+          echo "" >> docs/README.md
+          echo "Deployment guides and troubleshooting:" >> docs/README.md
+          if [ -d "docs/deployment" ]; then
+            find docs/deployment -name "*.md" | sort | while read file; do
+              rel_path=${file#docs/}
+              title=$(basename "$file" .md | tr '-' ' ' | tr '_' ' ')
+              echo "- [$title]($rel_path)" >> docs/README.md
+            done
+          fi
+          
+          echo "" >> docs/README.md
+          echo "## 📈 Project Status" >> docs/README.md
+          echo "" >> docs/README.md
+          echo "- **Current Version**: 1.1.0" >> docs/README.md
+          echo "- **Build Status**: ![CI/CD](https://github.com/niloc95/xscheduler_ci4/workflows/xScheduler%20CI/CD%20Pipeline/badge.svg)" >> docs/README.md
+          echo "- **Last Updated**: $(date -u '+%Y-%m-%d')" >> docs/README.md
+          
+      - name: Commit documentation index
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/README.md
+          git diff --staged --quiet || git commit -m "docs: Update documentation index [skip ci]"
+          git push || echo "No changes to push"

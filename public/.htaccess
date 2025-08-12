@@ -47,3 +47,34 @@ Options -Indexes
 # Disable server signature start
 ServerSignature Off
 # Disable server signature end
+
+# Security Headers (Production Environment)
+<IfModule mod_headers.c>
+    # HTTP Strict Transport Security (HSTS) - Force HTTPS for 1 year
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options nosniff
+    
+    # Prevent clickjacking attacks
+    Header always set X-Frame-Options DENY
+    
+    # Enable XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Control referrer information
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Prevent access to sensitive files
+    Header always set X-Robots-Tag "noindex, nofollow"
+    
+    # Remove server information
+    Header unset Server
+    Header unset X-Powered-By
+</IfModule>
+
+# Content Security Policy (Enable in production)
+<IfModule mod_headers.c>
+    # Basic CSP - customize based on your needs
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
+</IfModule>
