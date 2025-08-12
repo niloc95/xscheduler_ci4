@@ -358,7 +358,7 @@ window.appConfig = {
                                 </svg>                                    <div>
                                         <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200">Database will be automatically created at:</p>
                                         <code class="block mt-1 text-xs px-2 py-1 rounded font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-200">
-                                            ./writable/database/appdb.sqlite
+                                            ./writable/database/xscheduler.db
                                         </code>
                                         <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-200">
                                             No additional configuration required. The application will create and manage the SQLite database automatically.

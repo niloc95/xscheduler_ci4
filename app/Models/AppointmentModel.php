@@ -40,22 +40,31 @@ class AppointmentModel extends Model
      */
     public function getStats()
     {
-        $total = $this->countAll();
-        $today = date('Y-m-d');
+    $total = $this->countAll();
+    // Standardize time windows to avoid DB-specific functions (SQLite lacks YEAR/MONTH/DATE)
+    $now        = date('Y-m-d H:i:s');
+    $todayStart = date('Y-m-d 00:00:00');
+    $todayEnd   = date('Y-m-d 23:59:59');
+    $weekStart  = date('Y-m-d 00:00:00', strtotime('monday this week'));
+    $weekEnd    = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+    $monthStart = date('Y-m-01 00:00:00');
+    $monthEnd   = date('Y-m-t 23:59:59');
         
         return [
             'total' => $total,
-            'today' => $this->where('DATE(start_time)', $today)->countAllResults(false),
-            'upcoming' => $this->where('start_time >', date('Y-m-d H:i:s'))
+            'today' => $this->where('start_time >=', $todayStart)
+                             ->where('start_time <=', $todayEnd)
+                             ->countAllResults(false),
+            'upcoming' => $this->where('start_time >', $now)
                                ->where('status', 'booked')
                                ->countAllResults(false),
             'completed' => $this->where('status', 'completed')->countAllResults(false),
             'cancelled' => $this->where('status', 'cancelled')->countAllResults(false),
-            'this_week' => $this->where('start_time >=', date('Y-m-d', strtotime('monday this week')))
-                                ->where('start_time <=', date('Y-m-d', strtotime('sunday this week')))
+            'this_week' => $this->where('start_time >=', $weekStart)
+                                ->where('start_time <=', $weekEnd)
                                 ->countAllResults(false),
-            'this_month' => $this->where('YEAR(start_time)', date('Y'))
-                                 ->where('MONTH(start_time)', date('m'))
+            'this_month' => $this->where('start_time >=', $monthStart)
+                                 ->where('start_time <=', $monthEnd)
                                  ->countAllResults(false)
         ];
     }
@@ -103,23 +112,26 @@ class AppointmentModel extends Model
         $data = [];
         $labels = [];
         
-        if ($period === 'week') {
+    if ($period === 'week') {
             // Last 7 days
             for ($i = 6; $i >= 0; $i--) {
-                $date = date('Y-m-d', strtotime("-{$i} days"));
-                $count = $this->where('DATE(start_time)', $date)->countAllResults(false);
-                
-                $labels[] = date('M j', strtotime($date));
+        $dayStart = date('Y-m-d 00:00:00', strtotime("-{$i} days"));
+        $dayEnd   = date('Y-m-d 23:59:59', strtotime("-{$i} days"));
+        $count = $this->where('start_time >=', $dayStart)
+                  ->where('start_time <=', $dayEnd)
+                  ->countAllResults(false);
+
+        $labels[] = date('M j', strtotime($dayStart));
                 $data[] = $count;
             }
         } else if ($period === 'month') {
             // Last 4 weeks
             for ($i = 3; $i >= 0; $i--) {
-                $startDate = date('Y-m-d', strtotime("-{$i} weeks monday"));
-                $endDate = date('Y-m-d', strtotime("-{$i} weeks sunday"));
-                
-                $count = $this->where('DATE(start_time) >=', $startDate)
-                              ->where('DATE(start_time) <=', $endDate)
+        $startDate = date('Y-m-d 00:00:00', strtotime("-{$i} weeks monday"));
+        $endDate   = date('Y-m-d 23:59:59', strtotime("-{$i} weeks sunday"));
+
+        $count = $this->where('start_time >=', $startDate)
+                  ->where('start_time <=', $endDate)
                               ->countAllResults(false);
                 
                 $labels[] = 'Week ' . (4 - $i);
@@ -167,13 +179,20 @@ class AppointmentModel extends Model
         $completedCount = $this->where('status', 'completed');
         
         if ($period === 'month') {
-            $completedCount->where('YEAR(start_time)', date('Y'))
-                          ->where('MONTH(start_time)', date('m'));
+            $monthStart = date('Y-m-01 00:00:00');
+            $monthEnd   = date('Y-m-t 23:59:59');
+            $completedCount->where('start_time >=', $monthStart)
+                           ->where('start_time <=', $monthEnd);
         } elseif ($period === 'week') {
-            $completedCount->where('start_time >=', date('Y-m-d', strtotime('monday this week')))
-                          ->where('start_time <=', date('Y-m-d', strtotime('sunday this week')));
+            $weekStart = date('Y-m-d 00:00:00', strtotime('monday this week'));
+            $weekEnd   = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+            $completedCount->where('start_time >=', $weekStart)
+                           ->where('start_time <=', $weekEnd);
         } elseif ($period === 'today') {
-            $completedCount->where('DATE(start_time)', date('Y-m-d'));
+            $todayStart = date('Y-m-d 00:00:00');
+            $todayEnd   = date('Y-m-d 23:59:59');
+            $completedCount->where('start_time >=', $todayStart)
+                           ->where('start_time <=', $todayEnd);
         }
         
         $count = $completedCount->countAllResults();

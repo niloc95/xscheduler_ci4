@@ -49,40 +49,42 @@ const essentialFiles = [
 // Note: vendor already includes vendor/codeigniter4/framework/system
 // We'll copy it separately for standalone deployment structure
 
-// Function to copy directory with exclusions
-function copyDirectoryWithFilter(src, dest, excludePatterns = []) {
+// Function to copy directory with exclusions (supports matching by relative path)
+function copyDirectoryWithFilter(src, dest, excludePatterns = [], root = null) {
     if (!fs.existsSync(src)) return false;
-    
+
+    const rootBase = root || src; // root of this copy operation
     fs.mkdirSync(dest, { recursive: true });
-    
+
     const items = fs.readdirSync(src);
-    
+
     for (const item of items) {
         const srcPath = path.join(src, item);
         const destPath = path.join(dest, item);
-        
-        // Check if item matches any exclude pattern
+        const relPath = path.relative(rootBase, srcPath).replace(/\\/g, '/');
+
+        // Check if item matches any exclude pattern by name or by relative path
         const shouldExclude = excludePatterns.some(pattern => {
             if (typeof pattern === 'string') {
-                return item === pattern;
+                return item === pattern || relPath === pattern;
             } else if (pattern instanceof RegExp) {
-                return pattern.test(item);
+                return pattern.test(item) || pattern.test(relPath);
             }
             return false;
         });
-        
+
         if (shouldExclude) {
-            console.log(`⏭️  Excluded: ${srcPath}`);
+            console.log(`⏭️  Excluded: ${relPath}`);
             continue;
         }
-        
+
         if (fs.statSync(srcPath).isDirectory()) {
-            copyDirectoryWithFilter(srcPath, destPath, excludePatterns);
+            copyDirectoryWithFilter(srcPath, destPath, excludePatterns, rootBase);
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
     }
-    
+
     return true;
 }
 
@@ -95,9 +97,13 @@ essentialFiles.forEach(({ src, dest }) => {
             if (fs.statSync(source).isDirectory()) {
                 // Special handling for writable directory to exclude setup_completed.flag
                 if (src === 'writable') {
-                    const excludePatterns = ['setup_completed.flag'];
+                    // Exclude setup flag and any SQLite DB files under writable/database
+                    const excludePatterns = [
+                        'setup_completed.flag',
+                        /^database\/.*\.db$/i
+                    ];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
-                    console.log(`✅ Copied ${src} → ${dest} (excluded setup_completed.flag)`);
+                    console.log(`✅ Copied ${src} → ${dest} (excluded setup_completed.flag and SQLite .db files)`);
                 } else if (src === 'app') {
                     // Exclude test views from production deployment
                     const excludePatterns = ['Views/test'];

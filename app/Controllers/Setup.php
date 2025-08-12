@@ -143,6 +143,9 @@ class Setup extends BaseController
                 }
             }
 
+            // Apply runtime DB config so this request (migrations) uses the correct driver
+            $this->applyRuntimeDatabaseConfig($dbConfig);
+
             // Generate .env file first - this is critical for the application to work
             if (!$this->generateEnvFile($dbConfig)) {
                 return $this->response->setJSON([
@@ -161,18 +164,40 @@ class Setup extends BaseController
                 ])->setStatusCode(500);
             }
 
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Setup completed successfully! Please log in with your admin account.',
-                'redirect' => '/auth/login'
-            ]);
+            // If this was an AJAX request, return JSON so client JS can redirect.
+            // Otherwise, fall back to a normal redirect so the browser navigates automatically.
+            $isAjax = $this->request->isAJAX() || 
+                      stripos($this->request->getHeaderLine('X-Requested-With'), 'XMLHttpRequest') !== false ||
+                      stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
+
+            if ($isAjax) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Setup completed successfully! Please log in with your admin account.',
+                    'redirect' => '/auth/login'
+                ]);
+            }
+
+            // Non-AJAX fallback
+            session()->setFlashdata('success', 'Setup completed successfully! Please log in with your admin account.');
+            return redirect()->to('/auth/login');
 
         } catch (\Exception $e) {
             log_message('error', 'Setup process failed: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Setup failed: ' . $e->getMessage()
-            ])->setStatusCode(500);
+            // On error, honor AJAX vs non-AJAX as well
+            $isAjax = $this->request->isAJAX() || 
+                      stripos($this->request->getHeaderLine('X-Requested-With'), 'XMLHttpRequest') !== false ||
+                      stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
+
+            if ($isAjax) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Setup failed: ' . $e->getMessage()
+                ])->setStatusCode(500);
+            }
+
+            session()->setFlashdata('error', 'Setup failed: ' . $e->getMessage());
+            return redirect()->back();
         }
     }
 
@@ -212,7 +237,13 @@ class Setup extends BaseController
             }
 
             // Step 4: Write setup completion flag
-            $this->writeSetupCompletedFlag($setupData);
+            $flagResult = $this->writeSetupCompletedFlag($setupData);
+            if (!$flagResult['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to write setup completion flag: ' . $flagResult['message']
+                ];
+            }
 
             return [
                 'success' => true,
@@ -234,6 +265,16 @@ class Setup extends BaseController
     protected function runMigrations(): array
     {
         try {
+            // Log current DB connection details for diagnostics
+            try {
+                $db = \Config\Database::connect();
+                $driver = property_exists($db, 'DBDriver') ? $db->DBDriver : 'unknown';
+                $dbname = property_exists($db, 'database') ? $db->database : '';
+                log_message('info', 'Setup: Running migrations with DB driver=' . $driver . ' database=' . $dbname);
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: Could not log DB connection details: ' . $e->getMessage());
+            }
+
             $migrate = \Config\Services::migrations();
             
             // Get all migrations
@@ -394,23 +435,64 @@ class Setup extends BaseController
     /**
      * Write setup completion flag file
      */
-    protected function writeSetupCompletedFlag(array $setupData): void
+    protected function writeSetupCompletedFlag(array $setupData): array
     {
+        // Prefer the provided admin email; if missing, derive from userid; else use default
+        $adminEmail = null;
+        if (!empty($setupData['admin']['email']) && filter_var($setupData['admin']['email'], FILTER_VALIDATE_EMAIL)) {
+            $adminEmail = $setupData['admin']['email'];
+        } elseif (!empty($setupData['admin']['userid'])) {
+            $userId = (string) $setupData['admin']['userid'];
+            $adminEmail = filter_var($userId, FILTER_VALIDATE_EMAIL) ? $userId : ($userId . '@admin.local');
+        } else {
+            $adminEmail = 'admin@setup.local';
+        }
+
         $flagData = [
             'completed_at' => date('Y-m-d H:i:s'),
-            'admin_email' => isset($setupData['admin']['userid']) ? 
-                           (filter_var($setupData['admin']['userid'], FILTER_VALIDATE_EMAIL) ? 
-                            $setupData['admin']['userid'] : 
-                            $setupData['admin']['userid'] . '@admin.local') : 
-                           'admin@setup.local',
-            'database_type' => $setupData['database']['type'],
+            'admin_email' => $adminEmail,
+            'database_type' => $setupData['database']['type'] ?? 'unknown',
             'version' => '1.0.0'
         ];
 
         $flagPath = WRITEPATH . 'setup_completed.flag';
-        file_put_contents($flagPath, json_encode($flagData, JSON_PRETTY_PRINT));
-        
+        $flagDir = dirname($flagPath);
+
+        // Ensure directory exists
+        if (!is_dir($flagDir)) {
+            if (!@mkdir($flagDir, 0755, true) && !is_dir($flagDir)) {
+                $msg = 'Unable to create writable directory: ' . $flagDir;
+                log_message('error', 'Setup: ' . $msg);
+                return [ 'success' => false, 'message' => $msg ];
+            }
+        }
+
+        // Ensure directory writable
+        if (!is_writable($flagDir)) {
+            // Attempt to set permissions
+            @chmod($flagDir, 0775);
+            if (!is_writable($flagDir)) {
+                $msg = 'Directory not writable for setup flag: ' . $flagDir;
+                log_message('error', 'Setup: ' . $msg);
+                return [ 'success' => false, 'message' => $msg ];
+            }
+        }
+
+        // Attempt to write the flag
+        $bytes = @file_put_contents($flagPath, json_encode($flagData, JSON_PRETTY_PRINT));
+        if ($bytes === false) {
+            $msg = 'Failed to write setup flag at path: ' . $flagPath;
+            log_message('error', 'Setup: ' . $msg);
+            return [ 'success' => false, 'message' => $msg ];
+        }
+
+        // Best-effort set perms on the flag file
+        if (!@chmod($flagPath, 0644)) {
+            log_message('warning', 'Setup: Unable to set permissions on setup flag: ' . $flagPath);
+        }
+
         log_message('info', 'Setup completion flag written: ' . $flagPath);
+        return [ 'success' => true, 'message' => 'Flag written' ];
     }
 
     /**
@@ -475,55 +557,76 @@ class Setup extends BaseController
     {
         // Determine environment mode
         $environment = ENVIRONMENT === 'development' ? 'development' : 'production';
-        
+
         // Smart baseURL detection for production environments
-        $baseURL = '';
-        if ($environment === 'development') {
-            $baseURL = 'http://localhost:8080/';
-        } else {
-            // Auto-detect production URL from current request
-            $baseURL = $this->detectProductionURL();
-        }
+        $baseURL = $environment === 'development' ? 'http://localhost:8080/' : $this->detectProductionURL();
 
-        // Define replacement patterns based on .env.example content
-        $replacements = [
-            // Environment settings
-            'CI_ENVIRONMENT = production' => "CI_ENVIRONMENT = {$environment}",
-
-            // App settings - use detected URL or leave empty for auto-detection
-            "app.baseURL = ''" => "app.baseURL = '{$baseURL}'",
-            'app.forceGlobalSecureRequests = true' => 'app.forceGlobalSecureRequests = ' . ($environment === 'production' ? 'true' : 'false'),
-            'app.CSPEnabled = true' => 'app.CSPEnabled = ' . ($environment === 'production' ? 'true' : 'false'),
-
-            // Database settings - match exact patterns from .env.example
-            'database.default.hostname = localhost' => "database.default.hostname = {$data['db_hostname']}",
-            'database.default.database = xscheduler_prod' => "database.default.database = {$data['db_database']}",
-            'database.default.username = your_db_user' => "database.default.username = {$data['db_username']}",
-            'database.default.password = your_db_password' => "database.default.password = {$data['db_password']}",
-            'database.default.DBDriver = MySQLi' => "database.default.DBDriver = {$data['db_driver']}",
-            'database.default.port = 3306' => "database.default.port = {$data['db_port']}",
-
-            // Generate encryption key - match exact pattern from .env.example
-            'encryption.key = your_32_character_encryption_key_here' => 'encryption.key = ' . $this->generateEncryptionKey(),
-
-            // Security settings for production
-            'security.CSRFProtection = true' => 'security.CSRFProtection = ' . ($environment === 'production' ? 'true' : 'false'),
-
-            // Setup completion flag
-            'setup.enabled = true' => 'setup.enabled = false',
-            'setup.allowMultipleRuns = false' => 'setup.allowMultipleRuns = false',
-        ];
-
-        // Apply replacements
         $envContent = $template;
-        foreach ($replacements as $search => $replace) {
-            $envContent = str_replace($search, $replace, $envContent);
-        }
+
+        // Helper regex replacer that updates a key line or appends if missing
+        $replaceKey = function (string $content, string $key, string $value) {
+            $pattern = '/^' . preg_quote($key, '/') . '\\s*=.*$/m';
+            $replacement = $key . ' = ' . $value;
+            if (preg_match($pattern, $content)) {
+                return preg_replace($pattern, $replacement, $content);
+            }
+            // Append if not found
+            return rtrim($content, "\r\n") . "\n" . $replacement . "\n";
+        };
+
+        // Environment/app settings
+        $envContent = $replaceKey($envContent, 'CI_ENVIRONMENT', $environment);
+        $envContent = $replaceKey($envContent, 'app.baseURL', "'{$baseURL}'");
+        $envContent = $replaceKey($envContent, 'app.forceGlobalSecureRequests', $environment === 'production' ? 'true' : 'false');
+        $envContent = $replaceKey($envContent, 'app.CSPEnabled', $environment === 'production' ? 'true' : 'false');
+
+        // Database settings
+        $envContent = $replaceKey($envContent, 'database.default.DBDriver', $data['db_driver'] ?? 'MySQLi');
+        $envContent = $replaceKey($envContent, 'database.default.hostname', $data['db_hostname'] ?? 'localhost');
+        $envContent = $replaceKey($envContent, 'database.default.database', $data['db_database'] ?? '');
+        $envContent = $replaceKey($envContent, 'database.default.username', $data['db_username'] ?? '');
+        $envContent = $replaceKey($envContent, 'database.default.password', $data['db_password'] ?? '');
+        $envContent = $replaceKey($envContent, 'database.default.port', $data['db_port'] ?? '3306');
+
+        // Encryption key
+        $envContent = $replaceKey($envContent, 'encryption.key', $this->generateEncryptionKey());
+
+        // Setup flags
+        $envContent = $replaceKey($envContent, 'setup.enabled', 'false');
+        $envContent = $replaceKey($envContent, 'setup.allowMultipleRuns', 'false');
 
         // Add setup completion timestamp
         $envContent .= "\n# Setup completed on " . date('Y-m-d H:i:s') . "\n";
 
         return $envContent;
+    }
+
+    /**
+     * Apply runtime DB configuration for the current request so migrations use selected DB
+     */
+    protected function applyRuntimeDatabaseConfig(array $data): void
+    {
+        try {
+            $dbConfig = config('Database');
+            if (!is_object($dbConfig)) {
+                return;
+            }
+
+            // Update default group
+            if (property_exists($dbConfig, 'default') && is_array($dbConfig->default)) {
+                $dbConfig->default['DBDriver'] = $data['db_driver'] ?? $dbConfig->default['DBDriver'] ?? 'MySQLi';
+                $dbConfig->default['hostname'] = $data['db_hostname'] ?? $dbConfig->default['hostname'] ?? 'localhost';
+                $dbConfig->default['database'] = $data['db_database'] ?? $dbConfig->default['database'] ?? '';
+                $dbConfig->default['username'] = $data['db_username'] ?? $dbConfig->default['username'] ?? '';
+                $dbConfig->default['password'] = $data['db_password'] ?? $dbConfig->default['password'] ?? '';
+                // Port only relevant for MySQL
+                if (!empty($data['db_port'])) {
+                    $dbConfig->default['port'] = $data['db_port'];
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Could not apply runtime DB config: ' . $e->getMessage());
+        }
     }
 
     /**

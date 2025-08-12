@@ -124,7 +124,8 @@ class Dashboard extends BaseController
                 'recent_activities' => $formattedActivities
             ];
 
-            return view('dashboard_fixed', $data);
+            // Use the populated dashboard view (dashboard.php); dashboard_fixed.php is empty in this branch.
+            return view('dashboard', $data);
         } catch (\Exception $e) {
             // If there's an error, return a simple message with database fallback
             log_message('error', 'Dashboard Error: ' . $e->getMessage());
@@ -145,7 +146,7 @@ class Dashboard extends BaseController
                 'recent_activities' => []
             ];
             
-            return view('dashboard_fixed', $fallbackData);
+            return view('dashboard', $fallbackData);
         }
     }
 
