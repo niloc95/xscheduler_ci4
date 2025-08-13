@@ -88,9 +88,11 @@
         <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 mb-6 transition-colors duration-300">
             <div class="flex justify-between items-center">
                 <div class="flex items-center">
-                    <md-icon-button id="menuToggle" class="lg:hidden mr-2 text-gray-600 dark:text-gray-400">
-                        <md-icon>menu</md-icon>
-                    </md-icon-button>
+                    <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                     <div>
                         <h1 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Dashboard</h1>
                         <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">Welcome back, <?= $user['name'] ?? 'User' ?></p>
@@ -502,6 +504,20 @@
                             // Simulate search action
                             alert(`Searching for: "${query}"`);
                         }
+                    }
+                });
+            }
+
+            // Mobile menu functionality
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('backdrop');
+
+            if (menuToggle && sidebar) {
+                menuToggle.addEventListener('click', function() {
+                    sidebar.classList.add('open');
+                    if (backdrop) {
+                        backdrop.classList.remove('hidden');
                     }
                 });
             }

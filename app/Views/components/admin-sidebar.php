@@ -20,9 +20,11 @@
                 </div>
                 <span class="text-xl font-semibold text-white">xScheduler</span>
             </div>
-            <md-icon-button id="closeSidebar" class="lg:hidden text-gray-400">
-                <md-icon>close</md-icon>
-            </md-icon-button>
+            <button id="closeSidebar" class="lg:hidden p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg transition-colors duration-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
         
         <!-- Navigation -->
