@@ -230,9 +230,11 @@
             <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Growth</h3>
-                    <md-icon-button class="text-gray-600 dark:text-gray-400">
-                        <md-icon>more_vert</md-icon>
-                    </md-icon-button>
+                    <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div class="chart-container">
                     <canvas id="userGrowthChart"></canvas>
@@ -243,9 +245,11 @@
             <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Activity Overview</h3>
-                    <md-icon-button class="text-gray-600 dark:text-gray-400">
-                        <md-icon>more_vert</md-icon>
-                    </md-icon-button>
+                    <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div class="chart-container">
                     <canvas id="activityChart"></canvas>
