@@ -258,7 +258,7 @@
         </div>
 
         <!-- Data Table -->
-        <md-outlined-card class="p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+        <div class="p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
@@ -272,7 +272,7 @@
                 </button>
             </div>
             
-            <div class="overflow-x-auto">
+            <div class="">
                 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300">
                     <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600 transition-colors duration-300">
                         <tr>
@@ -346,7 +346,7 @@
                     </tbody>
                 </table>
             </div>
-        </md-outlined-card>
+        </div>
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
