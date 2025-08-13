@@ -258,13 +258,13 @@
         </div>
 
         <!-- Data Table -->
-        <div class="p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
-            <div class="flex justify-between items-center mb-6">
+        <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <div>
-                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
+                    <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
                     <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Latest user activities and updates</p>
                 </div>
-                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 w-full sm:w-auto justify-center">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
@@ -272,7 +272,8 @@
                 </button>
             </div>
             
-            <div class="">
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300">
                     <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600 transition-colors duration-300">
                         <tr>
@@ -345,6 +346,69 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card Layout -->
+            <div class="md:hidden space-y-4">
+                <?php if (isset($recent_activities) && !empty($recent_activities)): ?>
+                    <?php foreach ($recent_activities as $activity): ?>
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">
+                                        <?= strtoupper(substr($activity['user_name'], 0, 2)) ?>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300"><?= esc($activity['user_name']) ?></p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300"><?= date('M j, Y', strtotime($activity['date'])) ?></p>
+                                    </div>
+                                </div>
+                                <span class="bg-<?= $activity['status'] === 'active' ? 'green' : ($activity['status'] === 'pending' ? 'orange' : 'red') ?>-100 dark:bg-<?= $activity['status'] === 'active' ? 'green' : ($activity['status'] === 'pending' ? 'orange' : 'red') ?>-900 text-<?= $activity['status'] === 'active' ? 'green' : ($activity['status'] === 'pending' ? 'orange' : 'red') ?>-800 dark:text-<?= $activity['status'] === 'active' ? 'green' : ($activity['status'] === 'pending' ? 'orange' : 'red') ?>-200 text-xs font-medium px-2.5 py-0.5 rounded capitalize transition-colors duration-300">
+                                    <?= esc($activity['status']) ?>
+                                </span>
+                            </div>
+                            <p class="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300"><?= esc($activity['activity']) ?></p>
+                            <div class="flex justify-end space-x-2">
+                                <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                                <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">JD</div>
+                                <div>
+                                    <p class="font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300">John Doe</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Jan 1, 2025</p>
+                                </div>
+                            </div>
+                            <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded transition-colors duration-300">Active</span>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Scheduled meeting</p>
+                        <div class="flex justify-end space-x-2">
+                            <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
