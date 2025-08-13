@@ -140,7 +140,7 @@
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Card 1 - Total Users -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-primary);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-primary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Total Users</p>
@@ -161,7 +161,7 @@
             </md-outlined-card>
 
             <!-- Card 2 - Active Appointments -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Active Appointments</p>
@@ -182,7 +182,7 @@
             </md-outlined-card>
 
             <!-- Card 3 - Pending Requests -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-tertiary);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-tertiary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Pending Requests</p>
@@ -203,7 +203,7 @@
             </md-outlined-card>
 
             <!-- Card 4 - Monthly Revenue -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Monthly Revenue</p>
@@ -227,7 +227,7 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- User Growth Chart -->
-            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300">
+            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Growth</h3>
                     <md-icon-button class="text-gray-600 dark:text-gray-400">
@@ -240,7 +240,7 @@
             </md-outlined-card>
 
             <!-- Activity Overview Chart -->
-            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300">
+            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Activity Overview</h3>
                     <md-icon-button class="text-gray-600 dark:text-gray-400">
@@ -254,7 +254,7 @@
         </div>
 
         <!-- Data Table -->
-        <md-outlined-card class="p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300">
+        <md-outlined-card class="p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
@@ -332,7 +332,7 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -348,7 +348,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
@@ -364,7 +364,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
                 <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
