@@ -11,16 +11,16 @@
 <div id="sidebar" class="sidebar fixed top-4 left-4 z-40 w-64 h-[calc(100vh-2rem)] rounded-2xl shadow-2xl">
     <div class="h-full px-4 py-6 overflow-y-auto">
         <!-- Logo -->
-        <div class="flex items-center justify-between mb-8 p-3 bg-gradient-to-r from-blue-500/10 to-purple-600/10 rounded-xl border border-blue-500/20">
+        <div class="flex items-center justify-between mb-8 p-3 bg-gradient-to-r from-orange-500/10 to-yellow-400/10 rounded-xl border border-orange-500/20">
             <div class="flex items-center">
-                <div class="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                <div class="w-11 h-11 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-xl flex items-center justify-center mr-3 shadow-lg">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
                 </div>
-                <span class="text-xl font-bold text-white tracking-tight">xScheduler</span>
+                <span class="text-xl font-bold text-slate-100 tracking-tight">xScheduler</span>
             </div>
-            <button id="closeSidebar" class="lg:hidden p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded-xl transition-all duration-200">
+            <button id="closeSidebar" class="lg:hidden p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-xl transition-all duration-200">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -91,10 +91,10 @@
     /* Sidebar Styles */
     .sidebar {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 25px 50px -12px rgba(0, 48, 73, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(20px);
-        background: rgba(31, 41, 55, 0.95);
-        border: 1px solid rgba(55, 65, 81, 0.3);
+        background: rgba(26, 32, 44, 0.95);
+        border: 1px solid rgba(45, 55, 72, 0.3);
         animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -111,9 +111,9 @@
 
     /* Dark mode background override */
     html.dark .sidebar {
-        background: rgba(17, 24, 39, 0.95);
-        border-color: rgba(75, 85, 99, 0.3);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
+        background: rgba(15, 20, 25, 0.95);
+        border-color: rgba(45, 55, 72, 0.3);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(127, 200, 232, 0.08);
     }
 
     /* Logo Area */
@@ -121,13 +121,13 @@
         font-weight: 700;
         font-size: 1.5rem;
         letter-spacing: -0.025em;
-        color: #ffffff;
+        color: #f7fafc;
         margin: 0;
         padding: 0;
     }
 
     .sidebar .text-xl {
-        color: #ffffff;
+        color: #f7fafc;
         font-weight: 600;
     }
 
@@ -139,7 +139,7 @@
         margin: 6px 12px;
         border-radius: 14px;
         text-decoration: none;
-        color: #9ca3af;
+        color: #a0aec0;
         transition: all 0.2s ease;
         position: relative;
         cursor: pointer;
@@ -149,16 +149,16 @@
     }
 
     .nav-item:hover {
-        background: rgba(99, 102, 241, 0.12);
-        color: #e5e7eb;
+        background: rgba(247, 127, 0, 0.12);
+        color: #f7fafc;
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(247, 127, 0, 0.15);
     }
 
     .nav-item.active {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-        color: #ffffff;
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+        background: linear-gradient(135deg, #F77F00 0%, #FCBF49 100%);
+        color: #003049;
+        box-shadow: 0 8px 20px rgba(247, 127, 0, 0.35);
         transform: translateY(-2px);
     }
 
@@ -170,9 +170,9 @@
         transform: translateY(-50%);
         width: 4px;
         height: 28px;
-        background: linear-gradient(to bottom, #6366f1, #8b5cf6);
+        background: linear-gradient(to bottom, #F77F00, #FCBF49);
         border-radius: 2px;
-        box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+        box-shadow: 0 0 8px rgba(247, 127, 0, 0.5);
     }
 
     /* Icon Styles */
@@ -202,7 +202,7 @@
     /* Divider */
     .nav-divider {
         height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(55, 65, 81, 0.6), transparent);
+        background: linear-gradient(90deg, transparent, rgba(45, 55, 72, 0.6), transparent);
         margin: 20px 16px;
         opacity: 0.8;
         border-radius: 1px;
@@ -289,7 +289,7 @@
         inset: 0;
         border-radius: 1rem;
         padding: 1px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3), transparent);
+        background: linear-gradient(135deg, rgba(247, 127, 0, 0.3), rgba(252, 191, 73, 0.3), transparent);
         mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         mask-composite: subtract;
         pointer-events: none;
@@ -301,7 +301,7 @@
         position: absolute;
         inset: 2px;
         border-radius: calc(1rem - 2px);
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05), transparent);
+        background: linear-gradient(135deg, rgba(247, 127, 0, 0.05), rgba(252, 191, 73, 0.05), transparent);
         pointer-events: none;
     }
 </style>
