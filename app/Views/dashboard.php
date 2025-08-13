@@ -13,12 +13,24 @@
     <!-- Built CSS -->
     <link href="<?= base_url('/build/assets/style.css') ?>" rel="stylesheet">
 
-    <!-- Prevent flash of unstyled content (apply dark early) -->
+    <!-- Prevent flash of unstyled content (apply dark early, using xs-theme key) -->
     <script>
         (function() {
-            const isDark = localStorage.getItem('darkMode') === 'true' ||
-                          (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            if (isDark) document.documentElement.classList.add('dark');
+            try {
+                const stored = localStorage.getItem('xs-theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const isDark = stored ? stored === 'dark' : prefersDark;
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch (e) {
+                // Fallback to media query
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            }
         })();
     </script>
 

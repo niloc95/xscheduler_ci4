@@ -163,10 +163,15 @@ class DarkModeManager {
     }
 }
 
-// Initialize dark mode when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize dark mode ASAP, even if DOMContentLoaded already fired
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.darkMode = new DarkModeManager();
+    });
+} else {
+    // Document already parsed
     window.darkMode = new DarkModeManager();
-});
+}
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {
