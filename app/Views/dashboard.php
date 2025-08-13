@@ -264,21 +264,23 @@
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
                     <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Latest user activities and updates</p>
                 </div>
-                <md-filled-button>
-                    <md-icon slot="icon">add</md-icon>
-                    Add New
-                </md-filled-button>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Add New</span>
+                </button>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                    <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700 transition-colors duration-300">
+                    <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600 transition-colors duration-300">
                         <tr>
-                            <th class="px-6 py-3">User</th>
-                            <th class="px-6 py-3">Activity</th>
-                            <th class="px-6 py-3">Status</th>
-                            <th class="px-6 py-3">Date</th>
-                            <th class="px-6 py-3">Actions</th>
+                            <th class="px-6 py-4 font-semibold">User</th>
+                            <th class="px-6 py-4 font-semibold">Activity</th>
+                            <th class="px-6 py-4 font-semibold">Status</th>
+                            <th class="px-6 py-4 font-semibold">Date</th>
+                            <th class="px-6 py-4 font-semibold">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -301,12 +303,16 @@
                                     </td>
                                     <td class="px-6 py-4"><?= date('M j, Y', strtotime($activity['date'])) ?></td>
                                     <td class="px-6 py-4">
-                                        <md-icon-button class="text-gray-600 dark:text-gray-400">
-                                            <md-icon>edit</md-icon>
-                                        </md-icon-button>
-                                        <md-icon-button class="text-gray-600 dark:text-gray-400">
-                                            <md-icon>delete</md-icon>
-                                        </md-icon-button>
+                                        <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 mr-2">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -324,8 +330,16 @@
                                 </td>
                                 <td class="px-6 py-4">Jan 1, 2025</td>
                                 <td class="px-6 py-4">
-                                    <md-icon-button class="text-gray-600 dark:text-gray-400"><md-icon>edit</md-icon></md-icon-button>
-                                    <md-icon-button class="text-gray-600 dark:text-gray-400"><md-icon>delete</md-icon></md-icon-button>
+                                    <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 mr-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                         <?php endif; ?>
