@@ -83,7 +83,7 @@
     <?= $this->include('components/admin-sidebar', ['current_page' => 'dashboard']) ?>
 
     <!-- Main Content -->
-    <div class="main-content p-4 lg:ml-64">
+    <div class="main-content p-4 lg:ml-72">
         <!-- Top Bar -->
         <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 mb-6 transition-colors duration-300">
             <div class="flex justify-between items-center">
