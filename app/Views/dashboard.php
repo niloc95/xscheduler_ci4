@@ -486,13 +486,7 @@
 
     <!-- Custom JavaScript -->
     <script>
-        // Initialize dark mode
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize DarkModeManager if available
-            if (typeof DarkModeManager !== 'undefined') {
-                new DarkModeManager();
-            }
-
             // Search functionality
             const searchInput = document.getElementById('dashboardSearch');
             if (searchInput) {
