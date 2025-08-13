@@ -89,6 +89,12 @@
     html.dark #sidebar md-list md-list-item:hover { background: rgba(255,255,255,0.06); }
     #sidebar md-list md-list-item[selected] { background: rgba(59,130,246,0.12); }
     html.dark #sidebar md-list md-list-item[selected] { background: rgba(96,165,250,0.16); }
+        
+        /* Ensure filled buttons are visibly primary-colored */
+        md-filled-button {
+            --md-filled-button-container-color: var(--md-sys-color-primary);
+            --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -155,7 +161,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="main-content p-4 lg:pl-64">
+    <div class="main-content p-4 lg:ml-64">
         <!-- Top Bar -->
         <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 mb-6 transition-colors duration-300">
             <div class="flex justify-between items-center">
@@ -380,7 +386,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
                 <md-icon class="text-4xl text-green-500 mb-4">group_add</md-icon>
                 <h3 class="text-lg font-semibold text-gray-800 mb-2">Add User</h3>
                 <p class="text-gray-600 text-sm mb-4">Invite a new user to the system</p>
@@ -390,7 +396,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
                 <md-icon class="text-4xl text-purple-500 mb-4">assessment</md-icon>
                 <h3 class="text-lg font-semibold text-gray-800 mb-2">View Reports</h3>
                 <p class="text-gray-600 text-sm mb-4">Generate detailed analytics reports</p>
