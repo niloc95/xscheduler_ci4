@@ -102,10 +102,16 @@
                     <?= $this->include('components/dark-mode-toggle') ?>
                     
                     <!-- Search -->
-                    <div class="hidden md:block">
-                        <md-outlined-text-field label="Search" type="search" class="w-64">
-                            <md-icon slot="leading-icon">search</md-icon>
-                        </md-outlined-text-field>
+                    <div class="hidden md:block relative">
+                        <div class="relative">
+                            <input type="search" 
+                                   placeholder="Search users, appointments..." 
+                                   class="w-80 pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-300"
+                                   id="dashboardSearch">
+                            <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
                     </div>
                     
                     <!-- Notifications -->
@@ -129,62 +135,86 @@
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <!-- Card 1 -->
+            <!-- Card 1 - Total Users -->
             <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-primary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Total Users</p>
                         <p class="text-3xl font-bold"><?= number_format($stats['total_users'] ?? 2345) ?></p>
                     </div>
-                    <md-icon class="text-4xl opacity-80">people</md-icon>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <md-icon class="text-sm mr-1 text-green-300">trending_up</md-icon>
+                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
                     <span class="opacity-80">+12% from last month</span>
                 </div>
             </md-outlined-card>
 
-            <!-- Card 2 -->
+            <!-- Card 2 - Active Appointments -->
             <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="opacity-80 text-sm">Active Sessions</p>
+                        <p class="opacity-80 text-sm">Active Appointments</p>
                         <p class="text-3xl font-bold"><?= number_format($stats['active_sessions'] ?? 1789) ?></p>
                     </div>
-                    <md-icon class="text-4xl opacity-80">event</md-icon>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <md-icon class="text-sm mr-1">trending_up</md-icon>
+                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
                     <span class="opacity-80">+8% from last month</span>
                 </div>
             </md-outlined-card>
 
-            <!-- Card 3 -->
+            <!-- Card 3 - Pending Requests -->
             <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background-color: var(--md-sys-color-tertiary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="opacity-80 text-sm">Pending Tasks</p>
+                        <p class="opacity-80 text-sm">Pending Requests</p>
                         <p class="text-3xl font-bold"><?= number_format($stats['pending_tasks'] ?? 456) ?></p>
                     </div>
-                    <md-icon class="text-4xl opacity-80">pending_actions</md-icon>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <md-icon class="text-sm mr-1 text-red-300">trending_down</md-icon>
+                    <svg class="w-4 h-4 mr-1 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                    </svg>
                     <span class="opacity-80">-3% from last month</span>
                 </div>
             </md-outlined-card>
 
-            <!-- Card 4 -->
-            <md-outlined-card class="p-6 text-white bg-red-600 dark:bg-red-700 transition-colors duration-300">
+            <!-- Card 4 - Monthly Revenue -->
+            <md-outlined-card class="p-6 text-white transition-colors duration-300" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="opacity-80 text-sm">Revenue</p>
+                        <p class="opacity-80 text-sm">Monthly Revenue</p>
                         <p class="text-3xl font-bold">$<?= number_format($stats['revenue'] ?? 12456) ?></p>
                     </div>
-                    <md-icon class="text-4xl opacity-80">attach_money</md-icon>
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <md-icon class="text-sm mr-1 text-green-300">trending_up</md-icon>
+                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
                     <span class="opacity-80">+15% from last month</span>
                 </div>
             </md-outlined-card>
@@ -299,31 +329,49 @@
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
-                <md-icon class="text-4xl text-blue-500 dark:text-blue-400 mb-4 transition-colors duration-300">event_available</md-icon>
+                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Schedule Meeting</h3>
-                <p class="text-gray-600 text-sm mb-4">Create a new meeting or appointment</p>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Create a new meeting or appointment</p>
                 <md-filled-button>
-                    <md-icon slot="icon">add</md-icon>
+                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
                     Schedule
                 </md-filled-button>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
-                <md-icon class="text-4xl text-green-500 mb-4">group_add</md-icon>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">Add User</h3>
-                <p class="text-gray-600 text-sm mb-4">Invite a new user to the system</p>
+                <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Add User</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Invite a new user to the system</p>
                 <md-filled-button>
-                    <md-icon slot="icon">person_add</md-icon>
+                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
                     Add User
                 </md-filled-button>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
-                <md-icon class="text-4xl text-purple-500 mb-4">assessment</md-icon>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">View Reports</h3>
-                <p class="text-gray-600 text-sm mb-4">Generate detailed analytics reports</p>
+                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">View Reports</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Generate detailed analytics reports</p>
                 <md-filled-button>
-                    <md-icon slot="icon">bar_chart</md-icon>
+                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
                     Reports
                 </md-filled-button>
             </md-outlined-card>
@@ -343,6 +391,33 @@
             // Initialize DarkModeManager if available
             if (typeof DarkModeManager !== 'undefined') {
                 new DarkModeManager();
+            }
+
+            // Search functionality
+            const searchInput = document.getElementById('dashboardSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const query = e.target.value.toLowerCase();
+                    // Simple search feedback
+                    if (query.length > 2) {
+                        console.log('Searching for:', query);
+                        // Here you could implement actual search functionality
+                        // For now, just show visual feedback
+                        e.target.classList.add('ring-2', 'ring-blue-500');
+                    } else {
+                        e.target.classList.remove('ring-2', 'ring-blue-500');
+                    }
+                });
+
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const query = e.target.value;
+                        if (query.trim()) {
+                            // Simulate search action
+                            alert(`Searching for: "${query}"`);
+                        }
+                    }
+                });
             }
         });
 
