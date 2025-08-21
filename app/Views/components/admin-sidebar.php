@@ -69,11 +69,6 @@
 
             <div class="nav-divider"></div>
 
-            <!-- Appearance / Dark Mode Toggle -->
-            <div class="mx-3 mt-4 mb-2 p-3 rounded-xl border border-slate-700/40 bg-white/5 flex items-center justify-between">
-                <span class="text-sm font-medium text-slate-200">Appearance</span>
-                <?= $this->include('components/dark-mode-toggle') ?>
-            </div>
 
             <a href="<?= base_url('/settings') ?>" class="nav-item <?= (isset($current_page) && $current_page === 'settings') ? 'active' : '' ?>">
                 <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,10 +92,11 @@
     /* Sidebar Styles */
     .sidebar {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 25px 50px -12px rgba(0, 48, 73, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 25px 50px -12px rgba(0, 48, 73, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.03);
         backdrop-filter: blur(20px);
-        background: rgba(26, 32, 44, 0.95);
-        border: 1px solid rgba(45, 55, 72, 0.3);
+        /* Light theme default */
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(229, 231, 235, 0.7);
         animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -118,7 +114,7 @@
     /* Dark mode background override */
     html.dark .sidebar {
         background: rgba(15, 20, 25, 0.95);
-        border-color: rgba(45, 55, 72, 0.3);
+        border-color: rgba(45, 55, 72, 0.35);
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(127, 200, 232, 0.08);
     }
 
@@ -133,8 +129,12 @@
     }
 
     .sidebar .text-xl {
-        color: #f7fafc;
+        color: #1f2937; /* slate-800 for light */
         font-weight: 600;
+    }
+
+    html.dark .sidebar .text-xl {
+        color: #f7fafc;
     }
 
     /* Navigation Styles */
@@ -145,7 +145,7 @@
         margin: 6px 12px;
         border-radius: 14px;
         text-decoration: none;
-        color: #a0aec0;
+        color: #334155; /* slate-700 light */
         transition: all 0.2s ease;
         position: relative;
         cursor: pointer;
@@ -154,12 +154,16 @@
         outline: none;
     }
 
+    html.dark .nav-item { color: #a0aec0; }
+
     .nav-item:hover {
         background: rgba(247, 127, 0, 0.12);
-        color: #f7fafc;
+        color: #0f172a; /* slate-900 in light */
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(247, 127, 0, 0.15);
     }
+
+    html.dark .nav-item:hover { color: #f7fafc; }
 
     .nav-item.active {
         background: linear-gradient(135deg, #F77F00 0%, #FCBF49 100%);
