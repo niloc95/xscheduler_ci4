@@ -1,6 +1,6 @@
 
 <footer class="bg-transparent transition-colors duration-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div class="page-container py-4">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand px-4 sm:px-6 lg:px-8">
             <div class="py-4 flex flex-col md:flex-row justify-between items-center">
                 <div class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
