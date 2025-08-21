@@ -166,7 +166,7 @@
 
     <!-- Scripts -->
     <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
-    <script src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
+    <script type="module" src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
 </body>
 </html>
 

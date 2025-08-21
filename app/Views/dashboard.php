@@ -478,8 +478,8 @@
     </div>
     <!-- Material Web Components -->
     <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
-    <!-- Dark Mode manager (if exists) and site scripts -->
-    <script src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
+    <!-- Dark Mode manager as ES module (built file exports a default) -->
+    <script type="module" src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
     <script src="<?= base_url('/build/assets/main.js') ?>"></script>
 
     <!-- Custom JavaScript -->
