@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="transition-colors duration-300">
 <head>
@@ -477,7 +476,6 @@
             </md-outlined-card>
         </div>
     </div>
-
     <!-- Material Web Components -->
     <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
     <!-- Dark Mode manager (if exists) and site scripts -->
@@ -541,5 +539,9 @@
             });
         });
     </script>
+    
+    <div class="lg:ml-72">
+        <?= $this->include('components/footer') ?>
+    </div>
 </body>
 </html>

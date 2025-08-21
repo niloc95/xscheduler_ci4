@@ -262,10 +262,27 @@ class SetupWizard {
             this.updateProgress(40, 'Setting up database...');
             
             // Use relative URL for better compatibility
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                              window.appConfig?.csrfToken || 
+                              document.querySelector('input[name="csrf_test_name"]')?.value;
+
             const response = await fetch('setup/process', {
                 method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken })
+                },
                 body: formData
             });
+
+            // If server redirected (non-AJAX fallback), follow it in the browser
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                // Likely HTML due to redirect; navigate to the final URL or login
+                window.location.href = response.url || '/auth/login';
+                return;
+            }
 
             const result = await response.json();
 
@@ -273,14 +290,19 @@ class SetupWizard {
                 this.updateProgress(80, 'Finalizing setup...');
                 await this.delay(500);
                 this.updateProgress(100, 'Setup complete! Redirecting...');
-                await this.delay(1000);
-                window.location.href = result.redirect || 'dashboard';
+                await this.delay(600);
+                window.location.href = result.redirect || '/auth/login';
             } else {
                 this.hideLoadingOverlay();
                 this.showFormErrors(result.errors || { general: [result.message] });
             }
         } catch (error) {
             this.hideLoadingOverlay();
+            // If the request ended up as a non-JSON redirect, just go to login
+            if (error?.name === 'SyntaxError') {
+                window.location.href = '/auth/login';
+                return;
+            }
             this.showFormErrors({ general: ['Setup failed. Please try again.'] });
         }
     }
