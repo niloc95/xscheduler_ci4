@@ -667,8 +667,8 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 
 ---
 
-**Last Updated**: July 2025
-**Version**: 1.1.0
+**Last Updated**: August 2025
+**Version**: 1.2.0
 **Maintainer**: Development Team
 
 ## Recent Development Updates
@@ -1810,3 +1810,37 @@ This environment configuration and organization update represents a significant 
 **Build System**: Validated and functional across all reorganization changes
 
 The xScheduler application now provides a robust, well-organized development environment with seamless production deployment capabilities, ensuring consistent functionality across all hosting environments while maintaining clean, maintainable code structure.
+
+### August 2025 - UI Polish: Layout Container Standardization, Card Radius Consistency, and Dark Mode Toggle Consolidation
+
+**Phase**: Dashboard shell refinements and design system alignment
+
+This update standardizes container widths, rounds, and theme behavior for a cohesive dashboard experience.
+
+#### 📐 Container Width Standardization
+- Adopted a single responsive container utility: `.page-container` for top-level sections (header, content, footer)
+- Updated footer to use `.page-container` instead of `max-w-7xl` to align exactly with dashboard content width
+- Ensures consistent horizontal rhythm across pages and breakpoints
+
+#### ⭕ Card Radius Standardization
+- Established `rounded-lg` as the default card corner radius across dashboard cards
+- Updated footer inner card to `rounded-lg` to match dashboard cards (previously `rounded-2xl`)
+- Sidebar and header retain their intended visual hierarchy while aligning with card radius where applicable
+
+#### 🌙 Dark Mode Toggle Consolidation
+- Consolidated to a single global dark mode toggle in the top app bar (next to search)
+- Removed duplicate toggle from the sidebar and wired all components to respond to the global `html.dark` class
+- Persistence via `localStorage` ensures theme selection is remembered across sessions
+- Sidebar, header, footer, and cards now uniformly adapt to theme changes without component-level toggles
+
+#### 🔧 Implementation Notes
+- Views affected: `app/Views/components/footer.php`, `app/Views/components/header.php`, `app/Views/dashboard.php`
+- Theme initialization runs early in `layout.php` to avoid FOUC; `dark-mode.js` manages runtime toggling
+- Design tokens continue to drive color across light/dark themes; Tailwind utilities apply the structure
+
+#### 🧭 Standards Summary
+- Container: Use `.page-container` for page-level horizontal layout
+- Card radius: Default to `rounded-lg` for cards and card-like surfaces
+- Theme: Rely on `html.dark` class; do not place per-component toggles
+
+These changes deliver a consistent shell and improve perceived polish, matching the dashboard’s visual language across all layout regions.
