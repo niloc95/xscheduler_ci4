@@ -70,6 +70,15 @@ $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup'], function($routes) {
+    // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
+
+    // Versioned API v1
+    $routes->group('v1', function($routes) {
+        $routes->get('availabilities', 'Api\V1\Availabilities::index');
+        $routes->resource('appointments', ['controller' => 'Api\V1\Appointments']);
+        $routes->get('services', 'Api\V1\Services::index');
+        $routes->get('providers', 'Api\V1\Providers::index');
+    });
 });

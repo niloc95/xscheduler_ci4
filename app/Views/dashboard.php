@@ -425,6 +425,26 @@
             </div>
         </div>
 
+        <!-- Scheduler (embedded SPA-like section) -->
+        <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+                <div>
+                    <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Scheduler</h2>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Find and book time slots</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full sm:w-auto">
+                    <select id="sch-service" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <?php foreach (($servicesList ?? []) as $s): ?>
+                            <option value="<?= esc($s['id']) ?>"><?= esc($s['name']) ?> (<?= esc($s['duration_min']) ?> min)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input id="sch-provider" type="number" min="1" value="1" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Provider ID" />
+                    <input id="sch-date" type="date" value="<?= date('Y-m-d') ?>" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                </div>
+            </div>
+            <div id="sch-slots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
@@ -537,6 +557,54 @@
                     container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 transition-colors duration-300"><p>Chart data will be displayed here</p></div>';
                 });
             });
+        });
+
+        // Embedded Scheduler logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const svc = document.getElementById('sch-service');
+            const prov = document.getElementById('sch-provider');
+            const dateEl = document.getElementById('sch-date');
+            const slots = document.getElementById('sch-slots');
+            async function loadSlots() {
+                if (!svc || !prov || !dateEl || !slots) return;
+                slots.innerHTML = '';
+                const params = new URLSearchParams({
+                    service_id: svc.value,
+                    provider_id: prov.value,
+                    date: dateEl.value
+                });
+                try {
+                    const res = await fetch('<?= base_url('api/slots') ?>?' + params.toString());
+                    const data = await res.json();
+                    (data.slots || []).forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'p-3 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between';
+                        const span = document.createElement('span');
+                        span.className = 'text-sm text-gray-700 dark:text-gray-200';
+                        span.textContent = `${s.start} - ${s.end}`;
+                        const btn = document.createElement('button');
+                        btn.className = 'px-3 py-1 rounded-md text-white';
+                        btn.style.backgroundColor = 'var(--md-sys-color-primary)';
+                        btn.textContent = 'Book';
+                        btn.addEventListener('click', () => {
+                            alert(`Book ${s.start}-${s.end} (stub)`);
+                        });
+                        div.append(span, btn);
+                        slots.appendChild(div);
+                    });
+                    if (!data.slots || data.slots.length === 0) {
+                        slots.innerHTML = '<div class="text-sm text-gray-500 dark:text-gray-400">No available slots.</div>';
+                    }
+                } catch (e) {
+                    slots.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Failed to load slots.</div>';
+                }
+            }
+            if (svc && prov && dateEl) {
+                svc.addEventListener('change', loadSlots);
+                prov.addEventListener('change', loadSlots);
+                dateEl.addEventListener('change', loadSlots);
+                loadSlots();
+            }
         });
     </script>
     

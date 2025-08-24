@@ -111,6 +111,8 @@ class Dashboard extends BaseController
                     'pending_tasks' => $appointmentStats['today'], // Today's appointments as pending tasks
                     'revenue' => round($monthlyRevenue, 2)
                 ],
+                // Provide services list for embedded scheduler section
+                'servicesList' => $this->serviceModel->orderBy('name', 'ASC')->findAll(),
                 'detailed_stats' => [
                     'users' => $userStats,
                     'appointments' => $appointmentStats,

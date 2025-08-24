@@ -13,7 +13,9 @@ class Scheduler extends BaseController
     // Admin/staff dashboard-facing scheduler view
     public function dashboard()
     {
-        return view('scheduler/dashboard');
+    $serviceModel = new ServiceModel();
+    $services = $serviceModel->orderBy('name', 'ASC')->findAll();
+    return view('scheduler/dashboard', ['services' => $services]);
     }
 
     // Public/client-facing scheduler view
