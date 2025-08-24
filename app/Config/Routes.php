@@ -51,6 +51,14 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
 // $routes->get('dashboard/analytics', 'Dashboard::analytics', ['filter' => 'setup_auth']);
 // $routes->get('dashboard/status', 'Dashboard::status', ['filter' => 'setup_auth']);
 
+// Scheduler Routes (require setup only - auth temporarily disabled for demo)
+$routes->group('scheduler', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'Scheduler::index');
+    $routes->get('book', 'Scheduler::book');
+    $routes->post('process-booking', 'Scheduler::processBooking');
+    $routes->get('available-slots', 'Scheduler::getAvailableSlots');
+});
+
 // Style Guide Routes
 $routes->get('styleguide', 'Styleguide::index');
 $routes->get('styleguide/components', 'Styleguide::components');

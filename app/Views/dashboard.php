@@ -180,7 +180,7 @@
                     <div slot="headline">Dashboard</div>
                 </md-list-item>
                 
-                <md-list-item href="#" class="mb-1">
+                <md-list-item href="/scheduler" class="mb-1">
                     <md-icon slot="start">event</md-icon>
                     <div slot="headline">Schedule</div>
                 </md-list-item>
@@ -434,8 +434,8 @@
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300">
                 <md-icon class="text-4xl text-blue-500 dark:text-blue-400 mb-4 transition-colors duration-300">event_available</md-icon>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Schedule Meeting</h3>
-                <p class="text-gray-600 text-sm mb-4">Create a new meeting or appointment</p>
-                <md-filled-button>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Create a new meeting or appointment</p>
+                <md-filled-button onclick="window.location.href='/scheduler'">
                     <md-icon slot="icon">add</md-icon>
                     Schedule
                 </md-filled-button>
