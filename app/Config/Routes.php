@@ -58,3 +58,18 @@ $routes->get('styleguide/scheduler', 'Styleguide::scheduler');
 
 // Dark Mode Test Route
 $routes->get('dark-mode-test', 'DarkModeTest::index');
+
+// Scheduler Routes
+// Admin/staff dashboard-facing scheduler (requires setup + auth)
+$routes->group('scheduler', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'Scheduler::dashboard', ['filter' => 'auth']);
+});
+
+// Public/client-facing booking view
+$routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
+
+// Scheduler API routes
+$routes->group('api', ['filter' => 'setup'], function($routes) {
+    $routes->get('slots', 'Scheduler::slots');
+    $routes->post('book', 'Scheduler::book');
+});
