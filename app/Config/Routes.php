@@ -69,16 +69,22 @@ $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
 $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 
 // Scheduler API routes
-$routes->group('api', ['filter' => 'setup'], function($routes) {
+$routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
 
     // Versioned API v1
-    $routes->group('v1', function($routes) {
-        $routes->get('availabilities', 'Api\V1\Availabilities::index');
-        $routes->resource('appointments', ['controller' => 'Api\V1\Appointments']);
-        $routes->get('services', 'Api\V1\Services::index');
-        $routes->get('providers', 'Api\V1\Providers::index');
+    $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
+        $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
+        $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
+        $routes->get('services', 'Api\\V1\\Services::index');
+        $routes->get('providers', 'Api\\V1\\Providers::index');
     });
+});
+
+// Settings (require setup + auth)
+$routes->group('', ['filter' => 'setup'], function($routes) {
+    $routes->get('settings', 'Settings::index', ['filter' => 'auth']);
+    $routes->post('settings', 'Settings::save', ['filter' => 'auth']);
 });

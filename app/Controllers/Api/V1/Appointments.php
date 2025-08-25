@@ -2,29 +2,45 @@
 
 namespace App\Controllers\Api\V1;
 
-use App\Controllers\BaseController;
 use App\Models\AppointmentModel;
-use App\Models\ServiceModel;
-use App\Models\UserModel;
-use App\Libraries\SlotGenerator;
+use App\Services\SchedulingService;
 
-class Appointments extends BaseController
+class Appointments extends BaseApiController
 {
     // GET /api/v1/appointments?providerId=&date=
     public function index()
     {
+        $rules = [
+            'providerId' => 'permit_empty|is_natural_no_zero',
+            'date' => 'permit_empty|valid_date[Y-m-d]',
+        ];
+        if (!$this->validate($rules)) {
+            return $this->error(400, 'Invalid parameters', 'validation_error', $this->validator->getErrors());
+        }
+
+        [$page, $length, $offset] = $this->paginationParams();
+        [$sortField, $sortDir] = $this->sortParam(['id','start_time','end_time','provider_id','service_id','status'], 'start_time');
+
         $providerId = (int) ($this->request->getGet('providerId') ?? 0);
         $date = $this->request->getGet('date');
         $model = new AppointmentModel();
-        $builder = $model->orderBy('start_time', 'ASC');
+        $builder = $model->orderBy($sortField, strtoupper($sortDir));
         if ($providerId > 0) {
             $builder = $builder->where('provider_id', $providerId);
         }
         if ($date) {
             $builder = $builder->where('DATE(start_time)', $date);
         }
-        $rows = $builder->findAll();
-        $items = array_map(function ($r) {
+    $rows = $builder->findAll($length, $offset);
+    $totalBuilder = $model->builder();
+    if ($providerId > 0) {
+        $totalBuilder->where('provider_id', $providerId);
+    }
+    if ($date) {
+        $totalBuilder->where('DATE(start_time)', $date);
+    }
+    $total = $totalBuilder->countAllResults();
+    $items = array_map(function ($r) {
             return [
                 'id' => (int)$r['id'],
                 'providerId' => (int)$r['provider_id'],
@@ -35,9 +51,13 @@ class Appointments extends BaseController
                 'status' => $r['status'] ?? 'booked',
                 'notes' => $r['notes'] ?? null,
             ];
-        }, $rows);
-
-        return $this->response->setJSON(['data' => $items]);
+    }, $rows);
+    return $this->ok($items, [
+        'page' => $page,
+        'length' => $length,
+        'total' => (int)$total,
+        'sort' => $sortField . ':' . $sortDir,
+    ]);
     }
 
     // POST /api/v1/appointments
@@ -45,68 +65,28 @@ class Appointments extends BaseController
     public function create()
     {
         $payload = $this->request->getJSON(true) ?? $this->request->getPost();
-        $required = ['name','email','providerId','serviceId','date','start'];
-        foreach ($required as $r) {
-            if (empty($payload[$r])) {
-                return $this->response->setStatusCode(400)->setJSON(['error' => "Missing field: $r"]);
-            }
+        $rules = [
+            'name' => 'required|min_length[2]',
+            'email' => 'required|valid_email',
+            'providerId' => 'required|is_natural_no_zero',
+            'serviceId' => 'required|is_natural_no_zero',
+            'date' => 'required|valid_date[Y-m-d]',
+            'start' => 'required|regex_match[/^\\d{2}:\\d{2}$/]',
+            'phone' => 'permit_empty|string',
+            'notes' => 'permit_empty|string',
+        ];
+        if (!$this->validateData($payload, $rules)) {
+            return $this->error(400, 'Invalid request body', 'validation_error', $this->validator->getErrors());
         }
-
-        $providerId = (int)$payload['providerId'];
-        $serviceId  = (int)$payload['serviceId'];
-        $date       = $payload['date'];
-        $start      = $payload['start'];
-
-        // Service and duration
-        $service = (new ServiceModel())->find($serviceId);
-        if (!$service) return $this->response->setStatusCode(404)->setJSON(['error' => 'Service not found']);
-        $duration = (int)($service['duration_min'] ?? 30);
-
-        $startDT = strtotime($date . ' ' . $start);
-        $endDT   = $startDT + ($duration * 60);
-
-        // Upsert customer by email
-        $userModel = new UserModel();
-        $user = $userModel->where('email', $payload['email'])->first();
-        if (!$user) {
-            $userId = $userModel->insert([
-                'name' => $payload['name'],
-                'email' => $payload['email'],
-                'phone' => $payload['phone'] ?? null,
-                'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
-                'role' => 'customer',
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        } else {
-            $userId = $user['id'];
+        $svc = new SchedulingService();
+        try {
+            $res = $svc->createAppointment($payload);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error(400, $e->getMessage());
+        } catch (\RuntimeException $e) {
+            $status = $e->getMessage() === 'Service not found' ? 404 : 409;
+            return $this->error($status, $e->getMessage());
         }
-
-        // Availability check
-        $slotGen = new SlotGenerator();
-        $available = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
-        $isAvailable = false;
-        foreach ($available as $s) {
-            if ($s['start'] === date('H:i', $startDT) && $s['end'] === date('H:i', $endDT)) {
-                $isAvailable = true; break;
-            }
-        }
-        if (!$isAvailable) {
-            return $this->response->setStatusCode(409)->setJSON(['error' => 'Time slot no longer available']);
-        }
-
-        // Create appointment
-        $apptModel = new AppointmentModel();
-        $id = $apptModel->insert([
-            'user_id' => $userId,
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'start_time' => date('Y-m-d H:i:s', $startDT),
-            'end_time' => date('Y-m-d H:i:s', $endDT),
-            'status' => 'booked',
-            'notes' => $payload['notes'] ?? null,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->response->setJSON(['ok' => true, 'appointmentId' => $id]);
+        return $this->created($res);
     }
 }

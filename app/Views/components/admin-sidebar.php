@@ -8,12 +8,12 @@
 <div id="backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
 
 <!-- Sidebar -->
-<div id="sidebar" class="sidebar fixed top-4 left-4 z-40 w-64 h-[calc(100vh-2rem)] rounded-2xl shadow-2xl">
+<div id="sidebar" class="sidebar fixed top-4 left-4 z-40 w-64 h-[calc(100vh-2rem)] rounded-lg border border-gray-200 dark:border-gray-700">
     <div class="h-full px-4 py-6 overflow-y-auto">
-        <!-- Logo -->
-        <div class="flex items-center justify-between mb-8 p-3 bg-gradient-to-r from-orange-500/10 to-yellow-400/10 rounded-xl border border-orange-500/20">
+    <!-- Logo -->
+    <div class="flex items-center justify-between mb-8 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/60">
             <div class="flex items-center">
-                <div class="w-11 h-11 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+        <div class="w-11 h-11 bg-slate-900 dark:bg-slate-700 rounded-xl flex items-center justify-center mr-3 shadow-lg">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                     </svg>
@@ -37,7 +37,7 @@
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <a href="<?= base_url('/schedule') ?>" class="nav-item <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
+            <a href="<?= base_url('/scheduler') ?>" class="nav-item <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
                 <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
@@ -92,12 +92,16 @@
     /* Sidebar Styles */
     .sidebar {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 25px 50px -12px rgba(0, 48, 73, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.03);
+        /* Material-like subtle elevation to match header */
+        box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2),
+                    0px 4px 5px 0px rgba(0, 0, 0, 0.14),
+                    0px 1px 10px 0px rgba(0, 0, 0, 0.12);
         backdrop-filter: blur(20px);
         /* Light theme default */
         background: rgba(255, 255, 255, 0.9);
         border: 1px solid rgba(229, 231, 235, 0.7);
         animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 0.5rem; /* rounded-lg */
     }
 
     @keyframes slideInFromLeft {
@@ -115,7 +119,10 @@
     html.dark .sidebar {
         background: rgba(15, 20, 25, 0.95);
         border-color: rgba(45, 55, 72, 0.35);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(127, 200, 232, 0.08);
+        /* Slightly adjusted elevation for dark mode */
+        box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.5),
+                    0px 6px 8px 0px rgba(0, 0, 0, 0.35),
+                    0px 1px 12px 0px rgba(0, 0, 0, 0.3);
     }
 
     /* Logo Area */
@@ -292,28 +299,7 @@
         left: 100%;
     }
 
-    /* Card-like glow effect on sidebar */
-    .sidebar::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 1rem;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(247, 127, 0, 0.3), rgba(252, 191, 73, 0.3), transparent);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask-composite: subtract;
-        pointer-events: none;
-    }
-
-    /* Subtle inner glow */
-    .sidebar::after {
-        content: '';
-        position: absolute;
-        inset: 2px;
-        border-radius: calc(1rem - 2px);
-        background: linear-gradient(135deg, rgba(247, 127, 0, 0.05), rgba(252, 191, 73, 0.05), transparent);
-        pointer-events: none;
-    }
+    /* Remove previous orange/yellow glow borders */
 </style>
 
 <script>

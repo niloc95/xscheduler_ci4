@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html lang="en" class="transition-colors duration-200">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Book an Appointment</title>
-  <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-  <?= $this->include('components/header') ?>
+<?= $this->extend('components/layout') ?>
 
-  <main class="page-container py-6">
+<?= $this->section('content') ?>
+  <main class="page-container py-6 lg:ml-72">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-6">
       <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Book an Appointment</h1>
       <p class="text-gray-600 dark:text-gray-300 mb-6">Select a service and a time slot to proceed.</p>
@@ -59,62 +51,65 @@
     </div>
   </main>
 
-  <?= $this->include('components/footer') ?>
-  <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
   <script>
-    const service = document.getElementById('service');
-    const provider = document.getElementById('provider');
-    const dateEl = document.getElementById('date');
-    const slotsEl = document.getElementById('slots');
-    const startInput = document.getElementById('start');
+    function initClientScheduler() {
+      const service = document.getElementById('service');
+      const provider = document.getElementById('provider');
+      const dateEl = document.getElementById('date');
+      const slotsEl = document.getElementById('slots');
+      const startInput = document.getElementById('start');
+      const form = document.getElementById('booking-form');
+      if (!service || !provider || !dateEl || !slotsEl || !startInput || !form) return;
 
-    async function loadSlots() {
-      slotsEl.innerHTML = '';
-      if (!service.value || !provider.value || !dateEl.value) return;
-      const params = new URLSearchParams({
-        service_id: service.value,
-        provider_id: provider.value,
-        date: dateEl.value
-      });
-      const res = await fetch(`<?= base_url('api/slots') ?>?${params.toString()}`);
-      const data = await res.json();
-      (data.slots || []).forEach(s => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'p-3 rounded-lg border dark:border-gray-700 text-left bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200';
-        btn.textContent = `${s.start} - ${s.end}`;
-        btn.addEventListener('click', () => {
-          startInput.value = s.start;
-          document.querySelectorAll('#slots button').forEach(b => b.classList.remove('ring-2','ring-blue-500'));
-          btn.classList.add('ring-2','ring-blue-500');
+      async function loadSlots() {
+        slotsEl.innerHTML = '';
+        if (!service.value || !provider.value || !dateEl.value) return;
+        const params = new URLSearchParams({
+          service_id: service.value,
+          provider_id: provider.value,
+          date: dateEl.value
         });
-        slotsEl.appendChild(btn);
+        const res = await fetch(`<?= base_url('api/slots') ?>?${params.toString()}`);
+        const data = await res.json();
+        (data.slots || []).forEach(s => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'p-3 rounded-lg border dark:border-gray-700 text-left bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200';
+          btn.textContent = `${s.start} - ${s.end}`;
+          btn.addEventListener('click', () => {
+            startInput.value = s.start;
+            document.querySelectorAll('#slots button').forEach(b => b.classList.remove('ring-2','ring-blue-500'));
+            btn.classList.add('ring-2','ring-blue-500');
+          });
+          slotsEl.appendChild(btn);
+        });
+      }
+      service.addEventListener('change', loadSlots);
+      provider.addEventListener('change', loadSlots);
+      dateEl.addEventListener('change', loadSlots);
+      loadSlots();
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!startInput.value) { alert('Please select a time slot.'); return; }
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+        const res = await fetch('<?= base_url('api/book') ?>', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert('Appointment booked!');
+          window.xsSPA ? window.xsSPA.navigate('<?= base_url('/') ?>') : (window.location.href = '<?= base_url('/') ?>');
+        } else {
+          alert(data.error || 'Booking failed');
+          loadSlots();
+        }
       });
     }
-    service.addEventListener('change', loadSlots);
-    provider.addEventListener('change', loadSlots);
-    dateEl.addEventListener('change', loadSlots);
-    window.addEventListener('DOMContentLoaded', loadSlots);
-
-    document.getElementById('booking-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!startInput.value) { alert('Please select a time slot.'); return; }
-      const form = new FormData(e.target);
-      const payload = Object.fromEntries(form.entries());
-      const res = await fetch('<?= base_url('api/book') ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (data.ok) {
-        alert('Appointment booked!');
-        window.location.href = '<?= base_url('/') ?>';
-      } else {
-        alert(data.error || 'Booking failed');
-        loadSlots();
-      }
-    });
+    document.addEventListener('DOMContentLoaded', initClientScheduler);
+    document.addEventListener('spa:navigated', initClientScheduler);
   </script>
-</body>
-</html>
+<?= $this->endSection() ?>

@@ -1,15 +1,11 @@
-<!DOCTYPE html>
-<html lang="en" class="transition-colors duration-200">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scheduler - Dashboard</title>
-  <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-  <?= $this->include('components/header') ?>
+<?= $this->extend('components/layout') ?>
 
-  <main class="page-container py-6">
+<?= $this->section('sidebar') ?>
+  <?= $this->include('components/admin-sidebar', ['current_page' => 'schedule']) ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+  <main class="page-container py-6 lg:ml-72">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-6">
       <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Scheduling - Admin Dashboard View</h1>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -34,42 +30,43 @@
       <div id="slots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
     </div>
   </main>
-
-  <?= $this->include('components/footer') ?>
-  <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
   <script>
-    const service = document.getElementById('service');
-    const provider = document.getElementById('provider');
-    const dateEl = document.getElementById('date');
-    const slotsEl = document.getElementById('slots');
-    async function loadSlots() {
-      slotsEl.innerHTML = '';
-      const params = new URLSearchParams({
-        service_id: service.value,
-        provider_id: provider.value,
-        date: dateEl.value
-      });
-      const res = await fetch(`<?= base_url('api/slots') ?>?${params.toString()}`);
-      const data = await res.json();
-      (data.slots || []).forEach(s => {
-        const div = document.createElement('div');
-        div.className = 'p-3 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between';
-        const span = document.createElement('span');
-        span.className = 'text-sm text-gray-700 dark:text-gray-200';
-        span.textContent = `${s.start} - ${s.end}`;
-        const bookBtn = document.createElement('button');
-        bookBtn.className = 'px-3 py-1 rounded-md text-white';
-        bookBtn.style.backgroundColor = 'var(--md-sys-color-primary)';
-        bookBtn.textContent = 'Hold';
-        bookBtn.addEventListener('click', () => alert(`Hold ${s.start}-${s.end}`));
-        div.append(span, bookBtn);
-        slotsEl.appendChild(div);
-      });
+    function initSchedulerDashboard() {
+      const service = document.getElementById('service');
+      const provider = document.getElementById('provider');
+      const dateEl = document.getElementById('date');
+      const slotsEl = document.getElementById('slots');
+      if (!service || !provider || !dateEl || !slotsEl) return;
+      async function loadSlots() {
+        slotsEl.innerHTML = '';
+        const params = new URLSearchParams({
+          service_id: service.value,
+          provider_id: provider.value,
+          date: dateEl.value
+        });
+        const res = await fetch(`<?= base_url('api/slots') ?>?${params.toString()}`);
+        const data = await res.json();
+        (data.slots || []).forEach(s => {
+          const div = document.createElement('div');
+          div.className = 'p-3 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between';
+          const span = document.createElement('span');
+          span.className = 'text-sm text-gray-700 dark:text-gray-200';
+          span.textContent = `${s.start} - ${s.end}`;
+          const bookBtn = document.createElement('button');
+          bookBtn.className = 'px-3 py-1 rounded-md text-white';
+          bookBtn.style.backgroundColor = 'var(--md-sys-color-primary)';
+          bookBtn.textContent = 'Hold';
+          bookBtn.addEventListener('click', () => alert(`Hold ${s.start}-${s.end}`));
+          div.append(span, bookBtn);
+          slotsEl.appendChild(div);
+        });
+      }
+      service.addEventListener('change', loadSlots);
+      provider.addEventListener('change', loadSlots);
+      dateEl.addEventListener('change', loadSlots);
+      loadSlots();
     }
-    service.addEventListener('change', loadSlots);
-    provider.addEventListener('change', loadSlots);
-    dateEl.addEventListener('change', loadSlots);
-    window.addEventListener('DOMContentLoaded', loadSlots);
+    document.addEventListener('DOMContentLoaded', initSchedulerDashboard);
+    document.addEventListener('spa:navigated', initSchedulerDashboard);
   </script>
-</body>
-</html>
+<?= $this->endSection() ?>

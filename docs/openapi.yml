@@ -5,114 +5,12 @@ info:
   description: Minimal spec for versioned endpoints used by the dashboard and clients.
 servers:
   - url: http://localhost:8080/api/v1
-paths:
-  /availabilities:
-    get:
-      summary: List available time slots for a provider/service/date
-      parameters:
-        - in: query
-          name: providerId
-          schema: { type: integer }
-          required: true
-        - in: query
-          name: serviceId
-          schema: { type: integer }
-          required: true
-        - in: query
-          name: date
-          schema: { type: string, format: date }
-          required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  providerId: { type: integer }
-                  serviceId: { type: integer }
-                  date: { type: string, format: date }
-                  slots:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        start: { type: string, example: "09:00" }
-                        end: { type: string, example: "09:30" }
-  /appointments:
-    get:
-      summary: List appointments
-      parameters:
-        - in: query
-          name: providerId
-          schema: { type: integer }
-        - in: query
-          name: date
-          schema: { type: string, format: date }
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Appointment'
-    post:
-      summary: Create an appointment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AppointmentCreate'
-      responses:
-        '200':
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  appointmentId: { type: integer }
-        '409':
-          description: Slot conflict
-  /services:
-    get:
-      summary: List services
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Service'
-  /providers:
-    get:
-      summary: List providers
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Provider'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Service:
       type: object
@@ -153,3 +51,170 @@ components:
         date: { type: string, format: date }
         start: { type: string, example: "09:00" }
         notes: { type: string, nullable: true }
+paths:
+  /availabilities:
+    get:
+      summary: List available time slots for a provider/service/date
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: providerId
+          schema: { type: integer }
+          required: true
+        - in: query
+          name: serviceId
+          schema: { type: integer }
+          required: true
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providerId: { type: integer }
+                  serviceId: { type: integer }
+                  date: { type: string, format: date }
+                  slots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        start: { type: string, example: "09:00" }
+                        end: { type: string, example: "09:30" }
+  /appointments:
+    get:
+      summary: List appointments
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: providerId
+          schema: { type: integer }
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: length
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: sort
+          schema: { type: string, example: "start_time:asc" }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appointment'
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      length: { type: integer }
+                      total: { type: integer }
+                      sort: { type: string }
+    post:
+      summary: Create an appointment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCreate'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  appointmentId: { type: integer }
+        '409':
+          description: Slot conflict
+  /services:
+    get:
+      summary: List services
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: length
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: sort
+          schema: { type: string, example: "name:asc" }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Service'
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      length: { type: integer }
+                      total: { type: integer }
+                      sort: { type: string }
+  /providers:
+    get:
+      summary: List providers
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: length
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - in: query
+          name: sort
+          schema: { type: string, example: "name:asc" }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provider'
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      length: { type: integer }
+                      total: { type: integer }
+                      sort: { type: string }

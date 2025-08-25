@@ -2,28 +2,29 @@
 
 namespace App\Controllers\Api\V1;
 
-use App\Controllers\BaseController;
-use App\Libraries\SlotGenerator;
+use App\Services\SchedulingService;
 
-class Availabilities extends BaseController
+class Availabilities extends BaseApiController
 {
     // GET /api/v1/availabilities?providerId=1&serviceId=2&date=YYYY-MM-DD
     public function index()
     {
-        $providerId = (int) ($this->request->getGet('providerId') ?? 0);
-        $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
-        $date       = $this->request->getGet('date') ?? date('Y-m-d');
-
-        if ($providerId <= 0 || $serviceId <= 0) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'error' => 'providerId and serviceId are required',
-            ]);
+        $rules = [
+            'providerId' => 'required|is_natural_no_zero',
+            'serviceId'  => 'required|is_natural_no_zero',
+            'date'       => 'required|valid_date[Y-m-d]'
+        ];
+        if (!$this->validate($rules)) {
+            return $this->error(400, 'Invalid parameters', 'validation_error', $this->validator->getErrors());
         }
 
-        $slotGen = new SlotGenerator();
-        $slots = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $providerId = (int) $this->request->getGet('providerId');
+        $serviceId  = (int) $this->request->getGet('serviceId');
+        $date       = $this->request->getGet('date');
 
-        return $this->response->setJSON([
+        $svc = new SchedulingService();
+        $slots = $svc->getAvailabilities($providerId, $serviceId, $date);
+        return $this->ok([
             'providerId' => $providerId,
             'serviceId' => $serviceId,
             'date' => $date,

@@ -1,18 +1,22 @@
 <?php
 
 namespace App\Controllers\Api\V1;
-
-use App\Controllers\BaseController;
 use App\Models\UserModel;
 
-class Providers extends BaseController
+class Providers extends BaseApiController
 {
     // GET /api/v1/providers
     public function index()
     {
+        [$page, $length, $offset] = $this->paginationParams();
+        [$sortField, $sortDir] = $this->sortParam(['id','name','email','active'], 'name');
+
         $model = new UserModel();
         // Assuming providers identified by role = 'provider'
-        $providers = $model->where('role', 'provider')->orderBy('name', 'ASC')->findAll();
+        $builder = $model->where('role', 'provider')->orderBy($sortField, strtoupper($sortDir));
+        $rows = $builder->findAll($length, $offset);
+        $total = $model->where('role', 'provider')->countAllResults();
+
         $items = array_map(function ($p) {
             return [
                 'id' => (int)$p['id'],
@@ -21,8 +25,13 @@ class Providers extends BaseController
                 'phone' => $p['phone'] ?? null,
                 'active' => isset($p['active']) ? (bool)$p['active'] : true,
             ];
-        }, $providers);
+        }, $rows);
 
-        return $this->response->setJSON(['data' => $items]);
+        return $this->ok($items, [
+            'page' => $page,
+            'length' => $length,
+            'total' => (int)$total,
+            'sort' => $sortField . ':' . $sortDir,
+        ]);
     }
 }

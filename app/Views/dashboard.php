@@ -1,38 +1,6 @@
-<!DOCTYPE html>
-<html lang="en" class="transition-colors duration-300">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>xScheduler Dashboard - Material Design</title>
+<?= $this->extend('components/layout') ?>
 
-    <!-- Material Symbols (for md-icon glyphs) -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,opsz@20..48,FILL@0..1,GRAD@-50..200&display=swap" rel="stylesheet">
-    <!-- Roboto font -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- Built CSS -->
-    <link href="<?= base_url('/build/assets/style.css') ?>" rel="stylesheet">
-
-    <!-- Prevent flash of unstyled content (apply dark early, using xs-theme key) -->
-    <script>
-        (function() {
-            try {
-                const stored = localStorage.getItem('xs-theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const isDark = stored ? stored === 'dark' : prefersDark;
-                if (isDark) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-            } catch (e) {
-                // Fallback to media query
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.classList.add('dark');
-                }
-            }
-        })();
-    </script>
-
+<?= $this->section('head') ?>
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -88,72 +56,21 @@
             --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
         }
     </style>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+<?= $this->endSection() ?>
 
+<?= $this->section('sidebar') ?>
     <?= $this->include('components/admin-sidebar', ['current_page' => 'dashboard']) ?>
+<?= $this->endSection() ?>
 
-    <!-- Main Content -->
-    <div class="main-content p-4 lg:ml-72">
-        <!-- Top Bar -->
-        <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 mb-6 transition-colors duration-300">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
-                    <div>
-                        <h1 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Dashboard</h1>
-                        <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">Welcome back, <?= $user['name'] ?? 'User' ?></p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                    <!-- Dark Mode Toggle -->
-                    <?= $this->include('components/dark-mode-toggle') ?>
-                    
-                    <!-- Search -->
-                    <div class="hidden md:block relative">
-                        <div class="relative">
-                            <input type="search" 
-                                   placeholder="Search users, appointments..." 
-                                   class="w-80 h-12 pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-300 text-sm leading-relaxed"
-                                   id="dashboardSearch">
-                            <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                    
-                    <!-- Notifications -->
-                    <md-icon-button class="text-gray-600 dark:text-gray-400">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.73 21a2 2 0 01-3.46 0"></path>
-                        </svg>
-                    </md-icon-button>
-                    
-                    <!-- User Menu -->
-                    <div class="flex items-center space-x-2">
-                        <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white font-medium transition-colors duration-300">
-                            <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
-                        </div>
-                        <div class="hidden md:block">
-                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-300"><?= $user['name'] ?? 'User' ?></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300"><?= $user['role'] ?? 'Administrator' ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+    <div class="main-content" data-page-title="Dashboard">
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Card 1 - Total Users -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-primary);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-primary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Total Users</p>
@@ -174,7 +91,7 @@
             </md-outlined-card>
 
             <!-- Card 2 - Active Appointments -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Active Appointments</p>
@@ -195,7 +112,7 @@
             </md-outlined-card>
 
             <!-- Card 3 - Pending Requests -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background-color: var(--md-sys-color-tertiary);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-tertiary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Pending Requests</p>
@@ -216,7 +133,7 @@
             </md-outlined-card>
 
             <!-- Card 4 - Monthly Revenue -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Monthly Revenue</p>
@@ -240,7 +157,7 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- User Growth Chart -->
-            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Growth</h3>
                     <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
@@ -255,7 +172,7 @@
             </md-outlined-card>
 
             <!-- Activity Overview Chart -->
-            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Activity Overview</h3>
                     <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
@@ -271,7 +188,7 @@
         </div>
 
         <!-- Data Table -->
-        <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
+    <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <div>
                     <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Recent Activities</h2>
@@ -365,7 +282,7 @@
             <div class="md:hidden space-y-4">
                 <?php if (isset($recent_activities) && !empty($recent_activities)): ?>
                     <?php foreach ($recent_activities as $activity): ?>
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300">
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300 shadow-brand">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">
@@ -396,7 +313,7 @@
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300">
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300 shadow-brand">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center">
                                 <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">JD</div>
@@ -426,7 +343,7 @@
         </div>
 
         <!-- Scheduler (embedded SPA-like section) -->
-        <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg material-shadow">
+    <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <div>
                     <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Scheduler</h2>
@@ -447,7 +364,7 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -463,7 +380,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
@@ -479,7 +396,7 @@
                 </md-filled-button>
             </md-outlined-card>
 
-            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg">
+            <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
@@ -496,13 +413,7 @@
             </md-outlined-card>
         </div>
     </div>
-    <!-- Material Web Components -->
-    <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
-    <!-- Dark Mode manager as ES module (built file exports a default) -->
-    <script type="module" src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
-    <script src="<?= base_url('/build/assets/main.js') ?>"></script>
-
-    <!-- Custom JavaScript -->
+    <!-- Page Scripts -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Search functionality
@@ -547,8 +458,7 @@
             }
         });
 
-        // Initialize charts when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
+        function initCharts() {
             import('<?= base_url('/build/assets/charts.js') ?>').then(module => {
                 if (module?.default?.initAllCharts) module.default.initAllCharts();
             }).catch(error => {
@@ -557,10 +467,9 @@
                     container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 transition-colors duration-300"><p>Chart data will be displayed here</p></div>';
                 });
             });
-        });
+        }
 
-        // Embedded Scheduler logic
-        document.addEventListener('DOMContentLoaded', function() {
+        function initEmbeddedScheduler() {
             const svc = document.getElementById('sch-service');
             const prov = document.getElementById('sch-provider');
             const dateEl = document.getElementById('sch-date');
@@ -605,11 +514,16 @@
                 dateEl.addEventListener('change', loadSlots);
                 loadSlots();
             }
+        }
+
+        // Initialize on first load
+        initCharts();
+        initEmbeddedScheduler();
+
+        // Re-init on SPA navigations
+        document.addEventListener('spa:navigated', () => {
+            initCharts();
+            initEmbeddedScheduler();
         });
     </script>
-    
-    <div class="lg:ml-72">
-        <?= $this->include('components/footer') ?>
-    </div>
-</body>
-</html>
+<?= $this->endSection() ?>
