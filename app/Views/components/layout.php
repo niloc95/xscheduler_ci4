@@ -89,8 +89,8 @@
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 0px);">
-                    <div id="spa-content" aria-live="polite" aria-busy="false">
+                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 234px);">
+                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: var(--xs-header-gap, 234px);">
                         <?= $this->renderSection('content') ?>
                     </div>
                 </main>

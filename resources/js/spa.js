@@ -71,7 +71,11 @@ const SPA = (() => {
     if (!el) return;
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Respect sticky header height when scrolling to new content
+    const headerGap = parseFloat(getComputedStyle(document.querySelector('main'))
+      .getPropertyValue('--xs-header-gap') || '0') || 0;
+    const y = el.getBoundingClientRect().top + window.scrollY - headerGap;
+    window.scrollTo({ top: y, behavior: 'smooth' });
   };
 
   const init = () => {
