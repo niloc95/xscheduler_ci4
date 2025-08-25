@@ -32,7 +32,7 @@
             <!-- Unified container to align header and page content -->
             <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 mb-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
+                <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
@@ -89,7 +89,7 @@
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen">
+                <main class="min-h-screen pt-4">
                     <div id="spa-content" aria-live="polite" aria-busy="false">
                         <?= $this->renderSection('content') ?>
                     </div>
