@@ -89,8 +89,8 @@
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 24px);">
-                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: var(--xs-header-gap, 24px);">
+                <main class="min-h-screen pt-0" style="padding-top: 24px;">
+                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: calc(var(--xs-header-offset, 0px) + 24px);">
                         <?= $this->renderSection('content') ?>
                     </div>
                 </main>
@@ -119,7 +119,7 @@
                 try { document.title = t + ' • xScheduler'; } catch (e) {}
             }
         }
-        function xsetHeaderGap() {
+        function xsetHeaderOffset() {
             const header = document.querySelector('[data-sticky-header]');
             const root = document.querySelector('main');
             if (!header || !root) return;
@@ -133,23 +133,21 @@
                 const parsed = parseFloat(topVal);
                 if (!Number.isNaN(parsed)) topOffset = parsed;
             }
-            // Add standard content spacing (24px) to match card gaps
-            const STANDARD_SPACE = 24; // px
-            const gap = Math.ceil(rect.height + topOffset + STANDARD_SPACE);
-            const clamped = Math.max(gap, STANDARD_SPACE);
-            root.style.setProperty('--xs-header-gap', clamped + 'px');
+            // Store just the header's effective height (including sticky top offset)
+            const offset = Math.ceil(rect.height + topOffset);
+            root.style.setProperty('--xs-header-offset', offset + 'px');
         }
 
         // Recalc on load, resize, and SPA navigations
         document.addEventListener('DOMContentLoaded', () => {
             xsyncHeaderTitle();
-            xsetHeaderGap();
+            xsetHeaderOffset();
         });
-        window.addEventListener('resize', xsetHeaderGap);
+        window.addEventListener('resize', xsetHeaderOffset);
         document.addEventListener('spa:navigated', () => {
             xsyncHeaderTitle();
             // Wait a tick in case content size affects header (e.g., title change wraps)
-            requestAnimationFrame(() => xsetHeaderGap());
+            requestAnimationFrame(() => xsetHeaderOffset());
         });
     </script>
 </body>

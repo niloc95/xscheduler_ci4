@@ -72,9 +72,10 @@ const SPA = (() => {
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
     // Respect sticky header height when scrolling to new content
-    const headerGap = parseFloat(getComputedStyle(document.querySelector('main'))
-      .getPropertyValue('--xs-header-gap') || '24') || 24;
-    const y = el.getBoundingClientRect().top + window.scrollY - headerGap;
+  const cs = getComputedStyle(document.querySelector('main'));
+  const headerOffset = parseFloat(cs.getPropertyValue('--xs-header-offset') || '0') || 0;
+  const standard = 24; // match layout padding
+  const y = el.getBoundingClientRect().top + window.scrollY - (headerOffset + standard);
     window.scrollTo({ top: y, behavior: 'smooth' });
   };
 
