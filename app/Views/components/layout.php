@@ -30,7 +30,7 @@
 
         <div class="flex-1">
             <!-- Unified container to align header and page content -->
-            <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+            <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
                 <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
                     <div class="flex justify-between items-center">
@@ -90,7 +90,7 @@
 
                 <!-- Page Content (SPA swaps only this area) -->
                 <main class="min-h-screen pt-0">
-                    <div id="spa-content" class="mt-6" aria-live="polite" aria-busy="false">
+                    <div id="spa-content" aria-live="polite" aria-busy="false">
                         <?= $this->renderSection('content') ?>
                     </div>
                 </main>
