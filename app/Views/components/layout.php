@@ -32,7 +32,7 @@
             <!-- Unified container to align header and page content -->
             <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
+                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
@@ -88,11 +88,8 @@
                     </div>
                 </div>
 
-                <!-- Fixed spacer to ensure gap under sticky header across all views -->
-                <div class="h-4 md:h-5 lg:h-6"></div>
-
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0">
+                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 0px);">
                     <div id="spa-content" aria-live="polite" aria-busy="false">
                         <?= $this->renderSection('content') ?>
                     </div>
@@ -122,8 +119,36 @@
                 try { document.title = t + ' • xScheduler'; } catch (e) {}
             }
         }
-        document.addEventListener('DOMContentLoaded', xsyncHeaderTitle);
-        document.addEventListener('spa:navigated', xsyncHeaderTitle);
+        function xsetHeaderGap() {
+            const header = document.querySelector('[data-sticky-header]');
+            const root = document.querySelector('main');
+            if (!header || !root) return;
+            // Because the header is sticky with top 0/1rem, we need header height + computed top gap
+            const rect = header.getBoundingClientRect();
+            // Determine effective top offset from sticky positioning (0 on small, 16px on lg)
+            let topOffset = 0;
+            const style = window.getComputedStyle(header);
+            const topVal = style.top;
+            if (topVal && topVal !== 'auto') {
+                const parsed = parseFloat(topVal);
+                if (!Number.isNaN(parsed)) topOffset = parsed;
+            }
+            // Add a small content breathing space (4px) to avoid touch overlap
+            const gap = Math.ceil(rect.height + topOffset + 4);
+            root.style.setProperty('--xs-header-gap', gap + 'px');
+        }
+
+        // Recalc on load, resize, and SPA navigations
+        document.addEventListener('DOMContentLoaded', () => {
+            xsyncHeaderTitle();
+            xsetHeaderGap();
+        });
+        window.addEventListener('resize', xsetHeaderGap);
+        document.addEventListener('spa:navigated', () => {
+            xsyncHeaderTitle();
+            // Wait a tick in case content size affects header (e.g., title change wraps)
+            requestAnimationFrame(() => xsetHeaderGap());
+        });
     </script>
 </body>
 </html>
