@@ -89,8 +89,8 @@
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 234px);">
-                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: var(--xs-header-gap, 234px);">
+                <main class="min-h-screen pt-0" style="padding-top: var(--xs-header-gap, 24px);">
+                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: var(--xs-header-gap, 24px);">
                         <?= $this->renderSection('content') ?>
                     </div>
                 </main>
@@ -133,9 +133,11 @@
                 const parsed = parseFloat(topVal);
                 if (!Number.isNaN(parsed)) topOffset = parsed;
             }
-            // Add a small content breathing space (4px) to avoid touch overlap
-            const gap = Math.ceil(rect.height + topOffset + 4);
-            root.style.setProperty('--xs-header-gap', gap + 'px');
+            // Add standard content spacing (24px) to match card gaps
+            const STANDARD_SPACE = 24; // px
+            const gap = Math.ceil(rect.height + topOffset + STANDARD_SPACE);
+            const clamped = Math.max(gap, STANDARD_SPACE);
+            root.style.setProperty('--xs-header-gap', clamped + 'px');
         }
 
         // Recalc on load, resize, and SPA navigations

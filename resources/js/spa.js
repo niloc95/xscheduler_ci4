@@ -73,7 +73,7 @@ const SPA = (() => {
     el.focus({ preventScroll: true });
     // Respect sticky header height when scrolling to new content
     const headerGap = parseFloat(getComputedStyle(document.querySelector('main'))
-      .getPropertyValue('--xs-header-gap') || '0') || 0;
+      .getPropertyValue('--xs-header-gap') || '24') || 24;
     const y = el.getBoundingClientRect().top + window.scrollY - headerGap;
     window.scrollTo({ top: y, behavior: 'smooth' });
   };
