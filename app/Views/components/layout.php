@@ -89,8 +89,8 @@
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-4">
-                    <div id="spa-content" aria-live="polite" aria-busy="false">
+                <main class="min-h-screen pt-0">
+                    <div id="spa-content" class="mt-6" aria-live="polite" aria-busy="false">
                         <?= $this->renderSection('content') ?>
                     </div>
                 </main>
