@@ -88,6 +88,9 @@
                     </div>
                 </div>
 
+                <!-- Fixed spacer to ensure gap under sticky header across all views -->
+                <div class="h-4 md:h-5 lg:h-6"></div>
+
                 <!-- Page Content (SPA swaps only this area) -->
                 <main class="min-h-screen pt-0">
                     <div id="spa-content" aria-live="polite" aria-busy="false">
