@@ -53,10 +53,7 @@
                         <input type="file" name="company_logo" accept="image/*" class="form-input file-input" />
                         <p class="form-help">PNG/JPG, max 2MB</p>
                     </div>
-                    <div class="form-field">
-                        <label class="form-label">Company Color</label>
-                        <input type="color" name="company_color" class="form-input h-11 p-1" />
-                    </div>
+                    
                     
                 </div>
             </section>
