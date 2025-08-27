@@ -139,6 +139,30 @@ html.dark {
 
 /* Scheduling App Specific Components */
 @layer components {
+  /* Settings: Tabs */
+  .tab-btn {
+    @apply px-3 py-2 text-sm rounded-t-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors;
+  }
+  .tab-btn.active {
+    @apply bg-white dark:bg-gray-800 border-x border-t border-gray-200 dark:border-gray-700 -mb-px text-gray-900 dark:text-gray-100;
+  }
+  .tab-panel { /* container for each tab */ }
+
+  /* Settings: Form elements to match dashboard */
+  .form-label { @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1; }
+  .form-input {
+    @apply w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 shadow-sm;
+  }
+  .form-help { @apply text-xs text-gray-500 dark:text-gray-400 mt-1; }
+  .form-field { /* spacing handled by grids/containers */ }
+  .checkbox { @apply rounded text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400; }
+  .req { @apply text-red-600 dark:text-red-400; }
+  .file-input { @apply bg-white dark:bg-gray-700; }
+
+/* Ensure native controls render appropriate theme chrome */
+@layer base {
+  input, select, textarea { color-scheme: light dark; }
+}
   
   /* Status Badge System */
   .status-badge {

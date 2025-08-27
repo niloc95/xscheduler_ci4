@@ -254,30 +254,7 @@
     </div>
 </div>
 
-<?= $this->endSection() ?>
-
-<?= $this->section('head') ?>
-<style>
-    .tab-btn {
-        @apply px-3 py-2 text-sm rounded-t-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700;
-    }
-    .tab-btn.active {
-        @apply bg-white dark:bg-gray-800 border-x border-t border-gray-200 dark:border-gray-700 -mb-px text-gray-900 dark:text-gray-100;
-    }
-    .tab-panel { }
-
-    .form-label { @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1; }
-    .form-input { @apply w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400; }
-    .form-help { @apply text-xs text-gray-500 dark:text-gray-400 mt-1; }
-    .form-field { }
-    .checkbox { @apply rounded text-blue-600 focus:ring-blue-500; }
-    .req { @apply text-red-600; }
-    .file-input { @apply bg-white dark:bg-gray-700; }
-</style>
-<?= $this->endSection() ?>
-
-<?= $this->section('content') ?>
-<script>
+    <script>
     document.addEventListener('DOMContentLoaded', () => {
         const tabs = document.querySelectorAll('.tab-btn');
         const panels = {
@@ -303,5 +280,5 @@
             document.getElementById('settingsForm')?.requestSubmit();
         });
     });
-</script>
+    </script>
 <?= $this->endSection() ?>
