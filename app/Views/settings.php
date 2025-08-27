@@ -24,7 +24,7 @@
         </div>
 
         <!-- Tab Panels -->
-        <form id="settingsForm" method="post" enctype="multipart/form-data" action="<?= base_url('settings') ?>" class="mt-4 space-y-6">
+    <form id="settingsForm" class="mt-4 space-y-6">
             <!-- General Settings -->
             <section id="panel-general" class="tab-panel">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -277,5 +277,64 @@
     </div>
 </div>
 
-    
+        <script>
+        // General tab API integration: load on view and save via PUT to /api/v1/settings
+        document.addEventListener('DOMContentLoaded', () => initSettingsApi());
+        document.addEventListener('spa:navigated', () => initSettingsApi());
+
+        function initSettingsApi() {
+                const root = document.getElementById('spa-content');
+                if (!root) return;
+                const generalPanel = root.querySelector('#panel-general');
+                const form = root.querySelector('#settingsForm');
+                if (!generalPanel || !form || form.dataset.apiWired === 'true') return;
+
+                const apiBase = '<?= base_url('api/v1/settings') ?>';
+                // Load
+                fetch(`${apiBase}?prefix=general.`)
+                    .then(r => r.json())
+                    .then(({ ok, data }) => {
+                        if (!ok || !data) return;
+                        const map = {
+                            company_name: 'general.company_name',
+                            company_email: 'general.company_email',
+                            company_link: 'general.company_link',
+                        };
+                        Object.entries(map).forEach(([field, key]) => {
+                            const input = generalPanel.querySelector(`[name="${field}"]`);
+                            if (input && key in data) input.value = data[key] ?? '';
+                        });
+                    }).catch(() => {});
+
+                // Save
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(form);
+                    // Only general fields for now
+                    const payload = {
+                        'general.company_name': fd.get('company_name') || '',
+                        'general.company_email': fd.get('company_email') || '',
+                        'general.company_link': fd.get('company_link') || '',
+                    };
+                    try {
+                        const res = await fetch(apiBase, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const json = await res.json();
+                        if (json.ok) {
+                            // Simple toast replacement
+                            alert('Settings saved');
+                        } else {
+                            alert('Failed to save settings');
+                        }
+                    } catch (err) {
+                        alert('Failed to save settings');
+                    }
+                }, { once: true });
+
+                form.dataset.apiWired = 'true';
+        }
+        </script>
 <?= $this->endSection() ?>

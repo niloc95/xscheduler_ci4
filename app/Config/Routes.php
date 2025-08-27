@@ -80,6 +80,9 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
+    // Settings API
+    $routes->get('settings', 'Api\\V1\\Settings::index');
+    $routes->put('settings', 'Api\\V1\\Settings::update');
     });
 });
 
