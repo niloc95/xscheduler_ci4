@@ -44,7 +44,7 @@
                                 <h1 id="headerTitle" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-200">
                                     <?= $this->renderSection('header_title') ?: (isset($pageTitle) ? esc($pageTitle) : ($this->renderSection('title') ?: 'Dashboard')) ?>
                                 </h1>
-                                <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Welcome back, <?= isset($user) ? ($user['name'] ?? 'User') : 'User' ?></p>
+                                <p id="headerSubtitle" class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Welcome back, <?= isset($user) ? ($user['name'] ?? 'User') : 'User' ?></p>
                             </div>
                         </div>
                         
@@ -106,17 +106,27 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script>
-        // Sync header title with current view's declared page title, if present
+        // Sync header title/subtitle with current view's declared page attributes, if present
+    let XS_DEFAULT_SUBTITLE = null;
         function xsyncHeaderTitle() {
             const header = document.getElementById('headerTitle');
+            const sub = document.getElementById('headerSubtitle');
             const container = document.getElementById('spa-content');
             if (!header || !container) return;
             // Look for any element that declares a data-page-title within the current content
             const el = container.querySelector('[data-page-title]');
             const t = el?.getAttribute('data-page-title');
+            const s = el?.getAttribute('data-page-subtitle') || container.querySelector('[data-page-subtitle]')?.getAttribute('data-page-subtitle');
             if (t) {
                 header.textContent = t;
                 try { document.title = t + ' • xScheduler'; } catch (e) {}
+            }
+            if (sub) {
+                if (s) {
+                    sub.textContent = s;
+                } else if (XS_DEFAULT_SUBTITLE !== null) {
+                    sub.textContent = XS_DEFAULT_SUBTITLE;
+                }
             }
         }
         function xsetHeaderOffset() {
@@ -140,6 +150,11 @@
 
         // Recalc on load, resize, and SPA navigations
         document.addEventListener('DOMContentLoaded', () => {
+            // Capture the default subtitle once (e.g., Welcome back, <User>)
+            const sub = document.getElementById('headerSubtitle');
+            if (sub && XS_DEFAULT_SUBTITLE === null) {
+                XS_DEFAULT_SUBTITLE = sub.textContent;
+            }
             xsyncHeaderTitle();
             xsetHeaderOffset();
         });

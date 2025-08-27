@@ -5,9 +5,8 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-  <main class="page-container py-6 lg:ml-72">
+  <div class="main-content" data-page-title="Schedule" data-page-subtitle="Manage appointments, slots, and availability">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-6">
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Scheduling - Admin Dashboard View</h1>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service</label>
@@ -29,7 +28,7 @@
 
       <div id="slots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
     </div>
-  </main>
+  </div>
   <script>
     function initSchedulerDashboard() {
       const service = document.getElementById('service');

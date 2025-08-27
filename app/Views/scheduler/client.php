@@ -1,10 +1,8 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('content') ?>
-  <main class="page-container py-6 lg:ml-72">
+  <div class="main-content" data-page-title="Book an Appointment" data-page-subtitle="Select a service and a time slot to proceed">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-6">
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Book an Appointment</h1>
-      <p class="text-gray-600 dark:text-gray-300 mb-6">Select a service and a time slot to proceed.</p>
 
       <form id="booking-form" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -49,7 +47,7 @@
         </div>
       </form>
     </div>
-  </main>
+  </div>
 
   <script>
     function initClientScheduler() {

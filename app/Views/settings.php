@@ -7,15 +7,8 @@
 <?= $this->section('header_title') ?>Settings<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Settings">
+<div class="main-content" data-page-title="Settings" data-page-subtitle="Manage your application configuration">
     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Settings</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Manage your application configuration</p>
-            </div>
-            
-        </div>
 
         <!-- Tabs -->
         <div class="overflow-x-auto">

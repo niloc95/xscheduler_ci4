@@ -2,6 +2,35 @@
 
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
+  // Initialize simple tab UI inside current SPA content if present
+  const initTabsInSpaContent = () => {
+    const el = content();
+    if (!el) return;
+    const tablist = el.querySelector('[role="tablist"]');
+    if (!tablist || tablist.dataset.tabsInitialized === 'true') return;
+    const tabs = Array.from(tablist.querySelectorAll('.tab-btn'));
+    const panels = Array.from(el.querySelectorAll('.tab-panel'));
+    if (!tabs.length || !panels.length) return;
+
+    const showTab = (name) => {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      panels.forEach(p => p.classList.toggle('hidden', p.id !== `panel-${name}`));
+    };
+
+    tabs.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const name = btn.dataset.tab;
+        if (!name) return;
+        showTab(name);
+      });
+    });
+
+    // Initialize first active or first tab
+    const active = tabs.find(t => t.classList.contains('active')) || tabs[0];
+    if (active) showTab(active.dataset.tab);
+    tablist.dataset.tabsInitialized = 'true';
+  };
   const sameOrigin = (url) => {
     try { const u = new URL(url, window.location.origin); return u.origin === window.location.origin; } catch { return false; }
   };
@@ -40,6 +69,8 @@ const SPA = (() => {
       setBusy(true);
       const html = await fetchPage(url);
       el.innerHTML = html;
+  // Initialize any tabs rendered in the new content
+  initTabsInSpaContent();
       if (push) history.pushState({ spa: true }, '', url);
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
@@ -84,6 +115,8 @@ const SPA = (() => {
     window.addEventListener('popstate', popstateHandler);
     // On load, mark current history entry as SPA-aware
     history.replaceState({ spa: true }, '', window.location.href);
+  // Initialize tabs for server-rendered initial content
+  initTabsInSpaContent();
   };
 
   return { init, navigate };
