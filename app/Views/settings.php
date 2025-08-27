@@ -277,30 +277,5 @@
     </div>
 </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const tabs = document.querySelectorAll('.tab-btn');
-        const panels = {
-            general: document.getElementById('panel-general'),
-            localization: document.getElementById('panel-localization'),
-            booking: document.getElementById('panel-booking'),
-            business: document.getElementById('panel-business'),
-            legal: document.getElementById('panel-legal'),
-            integrations: document.getElementById('panel-integrations'),
-            users: document.getElementById('panel-users'),
-        };
-
-        function showTab(name) {
-            tabs.forEach(t => t.classList.remove('active'));
-            Object.values(panels).forEach(p => p.classList.add('hidden'));
-            document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
-            panels[name]?.classList.remove('hidden');
-        }
-
-        tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
-        showTab('general');
-
-    // Top Save button removed; bottom Save Settings button submits the form
-    });
-    </script>
+    
 <?= $this->endSection() ?>
