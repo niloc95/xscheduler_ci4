@@ -14,9 +14,7 @@
                 <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Settings</h2>
                 <p class="text-sm text-gray-600 dark:text-gray-400">Manage your application configuration</p>
             </div>
-            <div class="flex gap-2">
-                <button id="saveSettingsTop" class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">Save</button>
-            </div>
+            
         </div>
 
         <!-- Tabs -->
@@ -59,13 +57,7 @@
                         <label class="form-label">Company Color</label>
                         <input type="color" name="company_color" class="form-input h-11 p-1" />
                     </div>
-                    <div class="form-field">
-                        <label class="form-label">Theme</label>
-                        <select name="theme" class="form-input">
-                            <option value="default">Default</option>
-                            <option value="cosmo">Cosmo</option>
-                        </select>
-                    </div>
+                    
                 </div>
             </section>
 
@@ -276,9 +268,7 @@
         tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
         showTab('general');
 
-        document.getElementById('saveSettingsTop')?.addEventListener('click', () => {
-            document.getElementById('settingsForm')?.requestSubmit();
-        });
+    // Top Save button removed; bottom Save Settings button submits the form
     });
     </script>
 <?= $this->endSection() ?>
