@@ -38,7 +38,18 @@ class Logger extends BaseConfig
      *
      * @var int|list<int>
      */
-    public $threshold = (ENVIRONMENT === 'production') ? 4 : 9;
+    public $threshold = 9;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $envT = getenv('logger.threshold');
+        if ($envT !== false && is_numeric($envT)) {
+            $this->threshold = (int) $envT;
+        } else {
+            $this->threshold = (ENVIRONMENT === 'production') ? 4 : 9;
+        }
+    }
 
     /**
      * --------------------------------------------------------------------------
@@ -109,7 +120,7 @@ class Logger extends BaseConfig
              * IMPORTANT: This MUST be an integer (no quotes) and you MUST use octal
              * integer notation (i.e. 0700, 0644, etc.)
              */
-            'filePermissions' => 0644,
+            'filePermissions' => 0664,
 
             /*
              * Logging Directory Path

@@ -11,6 +11,19 @@ class ApiAuthFilter implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
+        // Allow same-origin requests from logged-in users (session-based auth)
+        // This enables internal UI (e.g., Settings page) to call API without a Bearer token.
+        try {
+            if (function_exists('session')) {
+                $sess = session();
+                if ($sess && $sess->get('isLoggedIn')) {
+                    return; // Authorized by session
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fall through to token checks
+        }
+
         $config = config(ApiConfig::class);
         $auth = $request->getHeaderLine('Authorization');
 

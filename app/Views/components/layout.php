@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="transition-colors duration-200">
 <head>
@@ -40,6 +39,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                                 </svg>
                             </button>
+                            <?php $logoUrl = setting_url('general.company_logo'); ?>
+                            <?php if ($logoUrl): ?>
+                                <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-10 w-auto mr-3 rounded" style="object-fit: contain;" />
+                            <?php endif; ?>
                             <div>
                                 <h1 id="headerTitle" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-200">
                                     <?= $this->renderSection('header_title') ?: (isset($pageTitle) ? esc($pageTitle) : ($this->renderSection('title') ?: 'Dashboard')) ?>
@@ -163,6 +166,30 @@
             // Wait a tick in case content size affects header (e.g., title change wraps)
             requestAnimationFrame(() => xsetHeaderOffset());
         });
+
+        // Global delegated handler for Settings logo upload so SPA swaps don't drop listeners
+        (function wireGlobalSettingsLogoHandler(){
+            const onFileChange = (e) => {
+                const input = e.target;
+                if (!input || input.id !== 'company_logo') return;
+                const form = input.closest('form');
+                if (!form) return;
+                // Preview
+                try {
+                    const img = document.querySelector('#spa-content #company_logo_preview_img');
+                    const file = input.files && input.files[0];
+                    if (img && file && file.type && file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => { img.src = ev.target?.result || ''; img.classList.remove('hidden'); };
+                        reader.readAsDataURL(file);
+                    }
+                } catch (_) {}
+                // Auto-submit
+                try { form.requestSubmit(); } catch (_) { form.submit(); }
+            };
+            // Use capture to ensure we see the change even if other handlers stop propagation
+            document.addEventListener('change', onFileChange, true);
+        })();
     </script>
 </body>
 </html>

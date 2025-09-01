@@ -13,7 +13,7 @@ class UserModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'name', 'email', 'phone', 'password_hash', 'role', 'reset_token', 'reset_expires'
+        'name', 'email', 'phone', 'profile_image', 'password_hash', 'role', 'status', 'reset_token', 'reset_expires'
     ];
 
     // Dates
@@ -26,7 +26,8 @@ class UserModel extends Model
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[customer,provider,admin]'
+    'role'  => 'required|in_list[customer,provider,admin]',
+    'status'=> 'permit_empty|in_list[active,inactive,suspended]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;

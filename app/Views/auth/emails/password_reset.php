@@ -37,6 +37,11 @@
             margin-bottom: 10px;
             display: block;
         }
+        .logo {
+            display: block;
+            margin: 0 auto 10px;
+            max-height: 48px;
+        }
         .content {
             padding: 40px 30px;
         }
@@ -115,7 +120,12 @@
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <span class="icon">🔐</span>
+            <?php $logoUrl = setting_url('general.company_logo'); ?>
+            <?php if ($logoUrl): ?>
+                <img class="logo" src="<?= esc($logoUrl) ?>" alt="Company logo" />
+            <?php else: ?>
+                <span class="icon">🔐</span>
+            <?php endif; ?>
             <h1>XScheduler</h1>
         </div>
 

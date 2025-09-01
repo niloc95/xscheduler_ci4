@@ -45,11 +45,12 @@ class Settings extends BaseController
         if (!is_array($payload)) {
             return $this->failValidationErrors('Invalid JSON payload');
         }
+        $userId = session()->get('user_id');
         $count = 0;
         foreach ($payload as $key => $value) {
             // Infer type: JSON if array/object; boolean if true/false; else string
             $type = is_array($value) ? 'json' : (is_bool($value) ? 'bool' : 'string');
-            if ($this->model->upsert($key, $value, $type)) {
+            if ($this->model->upsert($key, $value, $type, $userId)) {
                 $count++;
             }
         }

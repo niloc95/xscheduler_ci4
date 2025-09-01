@@ -13,6 +13,7 @@ class SettingModel extends Model
         'setting_key',
         'setting_value',
         'setting_type',
+    'updated_by',
         'created_at',
         'updated_at',
     ];
@@ -55,13 +56,16 @@ class SettingModel extends Model
     /**
      * Upsert a single setting.
      */
-    public function upsert(string $key, $value, string $type = 'string'): bool
+    public function upsert(string $key, $value, string $type = 'string', ?int $updatedBy = null): bool
     {
         $payload = [
             'setting_key' => $key,
             'setting_value' => $this->serializeValue($value, $type),
             'setting_type' => $type,
         ];
+        if ($updatedBy !== null) {
+            $payload['updated_by'] = $updatedBy;
+        }
         $existing = $this->where('setting_key', $key)->first();
         if ($existing) {
             return (bool) $this->update($existing['id'], $payload);
