@@ -35,6 +35,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
     'auth'          => \App\Filters\AuthFilter::class,
+    'role'          => \App\Filters\RoleFilter::class,
     'api_cors'      => \App\Filters\CorsFilter::class,
     'api_auth'      => \App\Filters\ApiAuthFilter::class,
         'setup'         => \App\Filters\SetupFilter::class,

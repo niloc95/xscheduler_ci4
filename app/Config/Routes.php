@@ -40,6 +40,17 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
 });
 
+// User Management Routes (admin and provider access with different permissions)
+$routes->group('user-management', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'UserManagement::index', ['filter' => 'role:admin,provider']);
+    $routes->get('create', 'UserManagement::create', ['filter' => 'role:admin,provider']);
+    $routes->post('store', 'UserManagement::store', ['filter' => 'role:admin,provider']);
+    $routes->get('edit/(:num)', 'UserManagement::edit/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('update/(:num)', 'UserManagement::update/$1', ['filter' => 'role:admin,provider']);
+    $routes->get('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
+    $routes->get('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+});
+
 // Alternative Method 2: Using combined filter (uncomment to use instead)
 // $routes->get('dashboard', 'Dashboard::index', ['filter' => 'setup_auth']);
 // $routes->get('dashboard/simple', 'Dashboard::simple', ['filter' => 'setup_auth']);
@@ -87,11 +98,11 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     });
 });
 
-// Settings (require setup + auth)
+// Settings (require setup + auth + admin role)
 $routes->group('', ['filter' => 'setup'], function($routes) {
-    $routes->get('settings', 'Settings::index', ['filter' => 'auth']);
+    $routes->get('settings', 'Settings::index', ['filter' => 'role:admin']);
     // Temporarily allow POST without auth to debug uploads
-    $routes->post('settings', 'Settings::save');
+    $routes->post('settings', 'Settings::save', ['filter' => 'role:admin']);
 });
 
 // Development override: allow Settings POST without auth to debug file uploads

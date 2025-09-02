@@ -59,7 +59,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/admin-sidebar', ['current_page' => 'dashboard']) ?>
+    <?= $this->include('components/role-based-sidebar', ['current_page' => 'dashboard']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>

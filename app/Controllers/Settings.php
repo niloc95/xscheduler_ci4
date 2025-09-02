@@ -10,12 +10,48 @@ class Settings extends BaseController
     {
         $this->localUploadLog('index_hit', []);
         
+        // Load current settings to pass to the view
+        $settingModel = new SettingModel();
+        $settings = $settingModel->getByKeys([
+            'general.company_name',
+            'general.company_email', 
+            'general.company_link',
+            'localization.date_format',
+            'localization.time_format',
+            'localization.first_day',
+            'localization.language',
+            'localization.timezone',
+            'booking.custom_fields',
+            'booking.statuses',
+            'business.work_start',
+            'business.work_end',
+            'business.break_start', 
+            'business.break_end',
+            'business.blocked_periods',
+            'business.reschedule',
+            'business.cancel',
+            'business.future_limit',
+            'legal.cookie_notice',
+            'legal.terms',
+            'legal.privacy',
+            'integrations.webhook_url',
+            'integrations.analytics',
+            'integrations.api_integrations',
+            'integrations.ldap_enabled',
+            'integrations.ldap_host',
+            'integrations.ldap_dn',
+            'users.default_role',
+            'users.require_2fa',
+            'users.access_policies'
+        ]);
+        
         $data = [
             'user' => session()->get('user') ?? [
                 'name' => 'System Administrator',
                 'role' => 'admin',
                 'email' => 'admin@xscheduler.com',
             ],
+            'settings' => $settings, // Pass settings to view
         ];
 
         return view('settings', $data);

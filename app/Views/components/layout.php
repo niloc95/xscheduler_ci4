@@ -47,7 +47,17 @@
                                 <h1 id="headerTitle" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-200">
                                     <?= $this->renderSection('header_title') ?: (isset($pageTitle) ? esc($pageTitle) : ($this->renderSection('title') ?: 'Dashboard')) ?>
                                 </h1>
-                                <p id="headerSubtitle" class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Welcome back, <?= isset($user) ? ($user['name'] ?? 'User') : 'User' ?></p>
+                                <p id="headerSubtitle" class="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+                                    <?php 
+                                    $currentUser = session()->get('user');
+                                    $currentRole = $currentUser['role'] ?? 'User';
+                                    $displayRole = ucfirst($currentRole);
+                                    if ($currentRole === 'admin') $displayRole = 'Administrator';
+                                    elseif ($currentRole === 'provider') $displayRole = 'Service Provider';
+                                    elseif ($currentRole === 'staff') $displayRole = 'Staff Member';
+                                    ?>
+                                    Welcome back, <span class="font-medium"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></span> • <span class="text-blue-600 dark:text-blue-400 font-medium"><?= $displayRole ?></span>
+                                </p>
                             </div>
                         </div>
                         
@@ -78,12 +88,22 @@
                             
                             <!-- User Menu -->
                             <div class="flex items-center space-x-2">
+                                <?php $currentUser = session()->get('user'); ?>
                                 <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white font-medium transition-colors duration-200">
-                                    <?= strtoupper(substr(isset($user) ? ($user['name'] ?? 'U') : 'U', 0, 2)) ?>
+                                    <?= strtoupper(substr(isset($currentUser) ? ($currentUser['name'] ?? 'U') : 'U', 0, 2)) ?>
                                 </div>
                                 <div class="hidden md:block">
-                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-200"><?= isset($user) ? ($user['name'] ?? 'User') : 'User' ?></p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200"><?= isset($user) ? ($user['role'] ?? 'Administrator') : 'Administrator' ?></p>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-200"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                                        <?php 
+                                        $currentRole = $currentUser['role'] ?? 'user';
+                                        $displayRole = ucfirst($currentRole);
+                                        if ($currentRole === 'admin') $displayRole = 'Administrator';
+                                        elseif ($currentRole === 'provider') $displayRole = 'Service Provider';
+                                        elseif ($currentRole === 'staff') $displayRole = 'Staff Member';
+                                        ?>
+                                        <?= $displayRole ?>
+                                    </p>
                                 </div>
                             </div>
                         </div>

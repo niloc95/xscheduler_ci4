@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/admin-sidebar', ['current_page' => 'settings']) ?>
+    <?= $this->include('components/role-based-sidebar', ['current_page' => 'settings']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>Settings<?= $this->endSection() ?>
@@ -53,17 +53,17 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-field">
                         <label class="form-label">Company Name <span class="req">*</span></label>
-                        <input name="company_name" required class="form-input" placeholder="Acme Inc." />
+                        <input name="company_name" required class="form-input" placeholder="Acme Inc." value="<?= esc($settings['general.company_name'] ?? '') ?>" />
                         <p class="form-help">Displayed throughout the system</p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Company Email <span class="req">*</span></label>
-                        <input type="email" name="company_email" required class="form-input" placeholder="info@acme.com" />
+                        <input type="email" name="company_email" required class="form-input" placeholder="info@acme.com" value="<?= esc($settings['general.company_email'] ?? '') ?>" />
                         <p class="form-help">Used as sender/reply address for system emails</p>
                     </div>
                     <div class="form-field md:col-span-2">
                         <label class="form-label">Company Link <span class="req">*</span></label>
-                        <input type="url" name="company_link" required class="form-input" placeholder="https://acme.com" />
+                        <input type="url" name="company_link" required class="form-input" placeholder="https://acme.com" value="<?= esc($settings['general.company_link'] ?? '') ?>" />
                     </div>
                                         <div class="form-field">
                         <label class="form-label">Company Logo</label>
@@ -91,38 +91,38 @@
                     <div class="form-field">
                         <label class="form-label">Date Format</label>
                         <select name="date_format" class="form-input">
-                            <option value="DMY">DMY</option>
-                            <option value="MDY">MDY</option>
-                            <option value="YMD">YMD</option>
+                            <option value="DMY" <?= ($settings['localization.date_format'] ?? '') === 'DMY' ? 'selected' : '' ?>>DMY</option>
+                            <option value="MDY" <?= ($settings['localization.date_format'] ?? '') === 'MDY' ? 'selected' : '' ?>>MDY</option>
+                            <option value="YMD" <?= ($settings['localization.date_format'] ?? '') === 'YMD' ? 'selected' : '' ?>>YMD</option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Time Format</label>
                         <select name="time_format" class="form-input">
-                            <option value="24h">HH:MM (24h)</option>
-                            <option value="12h">hh:mm AM/PM (12h)</option>
+                            <option value="24h" <?= ($settings['localization.time_format'] ?? '') === '24h' ? 'selected' : '' ?>>HH:MM (24h)</option>
+                            <option value="12h" <?= ($settings['localization.time_format'] ?? '') === '12h' ? 'selected' : '' ?>>hh:mm AM/PM (12h)</option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label class="form-label">First Day of Week</label>
                         <select name="first_day" class="form-input">
-                            <option>Sunday</option>
-                            <option>Monday</option>
+                            <option value="Sunday" <?= ($settings['localization.first_day'] ?? '') === 'Sunday' ? 'selected' : '' ?>>Sunday</option>
+                            <option value="Monday" <?= ($settings['localization.first_day'] ?? '') === 'Monday' ? 'selected' : '' ?>>Monday</option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Default Language</label>
                         <select name="language" class="form-input">
-                            <option>English</option>
-                            <option>Portuguese-BR</option>
-                            <option>Spanish</option>
+                            <option value="English" <?= ($settings['localization.language'] ?? '') === 'English' ? 'selected' : '' ?>>English</option>
+                            <option value="Portuguese-BR" <?= ($settings['localization.language'] ?? '') === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
+                            <option value="Spanish" <?= ($settings['localization.language'] ?? '') === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
                         </select>
                     </div>
                     <div class="form-field md:col-span-2">
                         <label class="form-label">Default Timezone</label>
                         <select name="timezone" class="form-input">
-                            <option>UTC</option>
-                            <option>Sao_Paulo -3:00</option>
+                            <option value="UTC" <?= ($settings['localization.timezone'] ?? '') === 'UTC' ? 'selected' : '' ?>>UTC</option>
+                            <option value="America/Sao_Paulo" <?= ($settings['localization.timezone'] ?? '') === 'America/Sao_Paulo' ? 'selected' : '' ?>>Sao_Paulo -3:00</option>
                             <option>New_York -5:00</option>
                         </select>
                     </div>
@@ -157,20 +157,20 @@
                     <div class="form-field">
                         <label class="form-label">Default Working Hours</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <input type="time" name="work_start" class="form-input" value="09:00">
-                            <input type="time" name="work_end" class="form-input" value="17:00">
+                            <input type="time" name="work_start" class="form-input" value="<?= esc($settings['business.work_start'] ?? '09:00') ?>">
+                            <input type="time" name="work_end" class="form-input" value="<?= esc($settings['business.work_end'] ?? '17:00') ?>">
                         </div>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Breaks</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <input type="time" name="break_start" class="form-input" value="12:00">
-                            <input type="time" name="break_end" class="form-input" value="13:00">
+                            <input type="time" name="break_start" class="form-input" value="<?= esc($settings['business.break_start'] ?? '12:00') ?>">
+                            <input type="time" name="break_end" class="form-input" value="<?= esc($settings['business.break_end'] ?? '13:00') ?>">
                         </div>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Blocked Periods</label>
-                        <textarea name="blocked_periods" rows="3" class="form-input" placeholder='["2025-12-25","2025-12-31"]'></textarea>
+                        <textarea name="blocked_periods" rows="3" class="form-input" placeholder='["2025-12-25","2025-12-31"]'><?= esc(is_array($settings['business.blocked_periods'] ?? '') ? json_encode($settings['business.blocked_periods']) : ($settings['business.blocked_periods'] ?? '')) ?></textarea>
                         <p class="form-help">Holidays, closures, etc. (JSON array of dates)</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -322,17 +322,22 @@
                 const form = root.querySelector('#settingsForm');
                 if (!generalPanel || !form || form.dataset.apiWired === 'true') return;
 
-                const apiBase = '<?= base_url('api/v1/settings') ?>';
                 const btnEdit = generalPanel.querySelector('#general-edit-btn');
                 const btnCancel = generalPanel.querySelector('#general-cancel-btn');
                 const globalSaveBtn = form.querySelector('#global-save-btn');
                 const inputs = Array.from(generalPanel.querySelectorAll('input, select, textarea'));
-                let lastSaved = { company_name: '', company_email: '', company_link: '' };
                 let editing = false;
+                // Store initial values for cancel functionality
+                let initialValues = {
+                    company_name: (generalPanel.querySelector('[name="company_name"]')?.value || ''),
+                    company_email: (generalPanel.querySelector('[name="company_email"]')?.value || ''),
+                    company_link: (generalPanel.querySelector('[name="company_link"]')?.value || '')
+                };
+                
                 // Live preview refs for logo
                 const logoInput = generalPanel.querySelector('#company_logo');
                 const logoImg = generalPanel.querySelector('#company_logo_preview_img');
-                const originalLogoSrc = logoImg ? logoImg.getAttribute('data-src') || '' : '';
+                const originalLogoSrc = logoImg ? logoImg.getAttribute('data-src') || logoImg.src || '' : '';
 
                 function applyValues(values) {
                     const { company_name, company_email, company_link } = values;
@@ -370,22 +375,8 @@
                     if (globalSaveBtn) globalSaveBtn.classList.remove('hidden');
                 }
 
-                // Load existing values
-                fetch(`${apiBase}?prefix=general.`)
-                    .then(r => r.json())
-                    .then(({ ok, data }) => {
-                        if (!ok || !data) return;
-                        lastSaved = {
-                            company_name: data['general.company_name'] ?? '',
-                            company_email: data['general.company_email'] ?? '',
-                            company_link: data['general.company_link'] ?? ''
-                        };
-                        applyValues(lastSaved);
-                    })
-                    .catch(() => {})
-                    .finally(() => {
-                        setLockedState(true); // default to locked with Edit visible
-                    });
+                // Start locked by default - values are already populated from server
+                setLockedState(true);
 
                 // Edit -> unlock
                 btnEdit?.addEventListener('click', () => {
@@ -393,12 +384,17 @@
                     setLockedState(false);
                 });
 
-                // Save button is now type="submit" - no event listener needed
-
                 // Cancel -> revert and lock
                 btnCancel?.addEventListener('click', () => {
-                    applyValues(lastSaved);
-                    // Don't reset logo preview on cancel - keep current saved logo
+                    applyValues(initialValues);
+                    // Reset logo preview to original on cancel
+                    if (logoImg && originalLogoSrc) {
+                        logoImg.src = originalLogoSrc;
+                        logoImg.classList.remove('hidden');
+                    }
+                    // Clear file input
+                    const logoInputEl = document.getElementById('company_logo');
+                    if (logoInputEl) logoInputEl.value = '';
                     setLockedState(true);
                 });
 
@@ -410,6 +406,7 @@
                         console.log('Submitting settings form normally');
                         // Don't prevent default - let it submit normally
                         btnCancel?.setAttribute('disabled', 'disabled');
+                        // Update initial values after successful submit (will be done on page reload)
                         return; // Allow normal form submission
                     } else {
                         // If not in edit mode, prevent submission
