@@ -1,0 +1,134 @@
+// ===========================
+// Material Icons Utilities
+// ===========================
+
+// Material Icons Component Classes
+.material-icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  
+  // Icon variations
+  &.outlined {
+    font-family: 'Material Symbols Outlined';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  &.rounded {
+    font-family: 'Material Symbols Rounded';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  &.filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  // Size variants
+  &.xs { font-size: 16px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+  &.sm { font-size: 20px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+  &.md { font-size: 24px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  &.lg { font-size: 32px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 40; }
+  &.xl { font-size: 48px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48; }
+  
+  // Weight variants
+  &.thin { font-variation-settings: 'FILL' 0, 'wght' 100, 'GRAD' 0, 'opsz' 24; }
+  &.light { font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24; }
+  &.regular { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  &.medium { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  &.bold { font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24; }
+  
+  // Color utilities
+  &.text-primary { color: var(--xs-text-primary); }
+  &.text-secondary { color: var(--xs-text-secondary); }
+  &.text-muted { color: var(--xs-text-muted); }
+  &.text-accent { color: var(--xs-accent); }
+  &.text-success { color: var(--xs-success); }
+  &.text-warning { color: var(--xs-warning); }
+  &.text-error { color: var(--xs-error); }
+  &.text-info { color: var(--xs-info); }
+}
+
+// Quick utility classes for common icons
+.icon {
+  @extend .material-icon;
+  
+  // Common scheduling icons
+  &.schedule::before { content: 'schedule'; }
+  &.event::before { content: 'event'; }
+  &.person::before { content: 'person'; }
+  &.people::before { content: 'people'; }
+  &.business::before { content: 'business'; }
+  &.home::before { content: 'home'; }
+  &.dashboard::before { content: 'dashboard'; }
+  &.settings::before { content: 'settings'; }
+  &.notifications::before { content: 'notifications'; }
+  &.calendar-today::before { content: 'calendar_today'; }
+  &.calendar-month::before { content: 'calendar_month'; }
+  &.access-time::before { content: 'access_time'; }
+  
+  // Status icons
+  &.check-circle::before { content: 'check_circle'; }
+  &.cancel::before { content: 'cancel'; }
+  &.pending::before { content: 'pending'; }
+  &.warning::before { content: 'warning'; }
+  &.error::before { content: 'error'; }
+  &.info::before { content: 'info'; }
+  
+  // Navigation icons
+  &.menu::before { content: 'menu'; }
+  &.close::before { content: 'close'; }
+  &.arrow-back::before { content: 'arrow_back'; }
+  &.arrow-forward::before { content: 'arrow_forward'; }
+  &.expand-more::before { content: 'expand_more'; }
+  &.expand-less::before { content: 'expand_less'; }
+  
+  // Action icons
+  &.add::before { content: 'add'; }
+  &.edit::before { content: 'edit'; }
+  &.delete::before { content: 'delete'; }
+  &.save::before { content: 'save'; }
+  &.download::before { content: 'download'; }
+  &.upload::before { content: 'upload'; }
+  &.share::before { content: 'share'; }
+  &.print::before { content: 'print'; }
+  
+  // Content icons
+  &.search::before { content: 'search'; }
+  &.filter-list::before { content: 'filter_list'; }
+  &.sort::before { content: 'sort'; }
+  &.visibility::before { content: 'visibility'; }
+  &.visibility-off::before { content: 'visibility_off'; }
+  
+  // Communication icons
+  &.mail::before { content: 'mail'; }
+  &.phone::before { content: 'phone'; }
+  &.message::before { content: 'message'; }
+  
+  // File icons
+  &.folder::before { content: 'folder'; }
+  &.insert-drive-file::before { content: 'insert_drive_file'; }
+  &.picture-as-pdf::before { content: 'picture_as_pdf'; }
+  
+  // Dark mode toggle
+  &.light-mode::before { content: 'light_mode'; }
+  &.dark-mode::before { content: 'dark_mode'; }
+  
+  // Special XScheduler icons
+  &.appointment::before { content: 'event_note'; }
+  &.service::before { content: 'room_service'; }
+  &.client::before { content: 'person_outline'; }
+  &.provider::before { content: 'badge'; }
+  &.analytics::before { content: 'analytics'; }
+  &.revenue::before { content: 'payments'; }
+}

@@ -13,7 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
-        style: path.resolve(process.cwd(), 'resources/scss/app.scss'),
+        style: path.resolve(process.cwd(), 'resources/scss/app-consolidated.scss'),
         materialWeb: path.resolve(process.cwd(), 'resources/js/material-web.js'),
         setup: path.resolve(process.cwd(), 'resources/js/setup.js'),
         'dark-mode': path.resolve(process.cwd(), 'resources/js/dark-mode.js'),
