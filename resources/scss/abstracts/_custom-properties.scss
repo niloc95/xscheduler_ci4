@@ -1,0 +1,135 @@
+// ======================================
+// Material Design 3.0 Custom Properties
+// ======================================
+
+:root {
+  /* Primary Colors - Ocean Blue */
+  --md-sys-color-primary: #{$brand-ocean};
+  --md-sys-color-on-primary: #{$white};
+  --md-sys-color-primary-container: #{$brand-ocean-light};
+  --md-sys-color-on-primary-container: #c6e7ff;
+  
+  /* Secondary Colors - Orange */
+  --md-sys-color-secondary: #{$brand-orange};
+  --md-sys-color-on-secondary: #{$white};
+  --md-sys-color-secondary-container: #{$brand-orange-light};
+  --md-sys-color-on-secondary-container: #{$brand-ocean};
+  
+  /* Tertiary Colors - Golden */
+  --md-sys-color-tertiary: #{$brand-golden};
+  --md-sys-color-on-tertiary: #{$brand-ocean};
+  --md-sys-color-tertiary-container: #{$brand-golden-light};
+  --md-sys-color-on-tertiary-container: #{$brand-ocean};
+  
+  /* Error Colors - Crimson */
+  --md-sys-color-error: #{$brand-crimson};
+  --md-sys-color-on-error: #{$white};
+  --md-sys-color-error-container: #ffebee;
+  --md-sys-color-on-error-container: #7f1d1d;
+  
+  /* Background & Surface - Light Theme */
+  --md-sys-color-background: #{$brand-cream};
+  --md-sys-color-on-background: #{$brand-ocean};
+  --md-sys-color-surface: #{$white};
+  --md-sys-color-on-surface: #{$brand-ocean};
+  --md-sys-color-surface-variant: #{$gray-50};
+  --md-sys-color-on-surface-variant: #{$gray-600};
+  
+  /* Outline & Shadow */
+  --md-sys-color-outline: rgba(0, 48, 73, 0.3);
+  --md-sys-color-outline-variant: rgba(0, 48, 73, 0.1);
+  --md-sys-color-shadow: rgba(0, 48, 73, 0.2);
+  --md-sys-color-surface-tint: #{$brand-ocean};
+
+  /* Custom xScheduler Theme Variables - Light */
+  --xs-bg-primary: #{$white};
+  --xs-bg-secondary: #{$gray-50};
+  --xs-bg-tertiary: #{$brand-cream};
+  --xs-text-primary: #{$brand-ocean};
+  --xs-text-secondary: #{$gray-600};
+  --xs-text-muted: #{$gray-500};
+  --xs-border: #{$gray-200};
+  --xs-border-light: #{$gray-100};
+  --xs-accent: #{$brand-orange};
+  --xs-accent-hover: #{$brand-orange-dark};
+  --xs-success: #{$success};
+  --xs-error: #{$error};
+  --xs-warning: #{$warning};
+  --xs-info: #{$info};
+  --xs-surface-elevated: #{$white};
+  --xs-shadow: #{rgba($brand-ocean, 0.1)};
+  --xs-shadow-lg: #{rgba($brand-ocean, 0.15)};
+}
+
+/* Dark Theme - Material Design 3.0 Custom Properties */
+html.dark,
+[data-theme="dark"] {
+  /* Primary Colors - Ocean Blue (adjusted for dark) */
+  --md-sys-color-primary: #7FC8E8;
+  --md-sys-color-on-primary: #003447;
+  --md-sys-color-primary-container: #{$brand-ocean-light};
+  --md-sys-color-on-primary-container: #c6e7ff;
+  
+  /* Secondary Colors - Orange (adjusted for dark) */
+  --md-sys-color-secondary: #FFB366;
+  --md-sys-color-on-secondary: #4d2800;
+  --md-sys-color-secondary-container: #663600;
+  --md-sys-color-on-secondary-container: #ffcc80;
+  
+  /* Tertiary Colors - Golden (adjusted for dark) */
+  --md-sys-color-tertiary: #FFD166;
+  --md-sys-color-on-tertiary: #4d3d00;
+  --md-sys-color-tertiary-container: #665000;
+  --md-sys-color-on-tertiary-container: #ffe082;
+  
+  /* Error Colors - Crimson (adjusted for dark) */
+  --md-sys-color-error: #FF6B6B;
+  --md-sys-color-on-error: #4d0000;
+  --md-sys-color-error-container: #661a1a;
+  --md-sys-color-on-error-container: #ffcdd2;
+  
+  /* Background & Surface - Dark Theme */
+  --md-sys-color-background: #{$dark-bg-primary};
+  --md-sys-color-on-background: #{$dark-text-secondary};
+  --md-sys-color-surface: #{$dark-bg-secondary};
+  --md-sys-color-on-surface: #{$dark-text-primary};
+  --md-sys-color-surface-variant: #{$dark-bg-tertiary};
+  --md-sys-color-on-surface-variant: #{$dark-text-muted};
+  
+  /* Outline & Shadow - Dark Theme */
+  --md-sys-color-outline: rgba(160, 174, 192, 0.3);
+  --md-sys-color-outline-variant: rgba(160, 174, 192, 0.1);
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.4);
+  --md-sys-color-surface-tint: #7FC8E8;
+
+  /* Custom xScheduler Theme Variables - Dark */
+  --xs-bg-primary: #{$dark-bg-secondary};
+  --xs-bg-secondary: #{$dark-bg-tertiary};
+  --xs-bg-tertiary: #{$gray-600};
+  --xs-text-primary: #{$dark-text-primary};
+  --xs-text-secondary: #{$dark-text-secondary};
+  --xs-text-muted: #{$dark-text-muted};
+  --xs-border: #{$gray-600};
+  --xs-border-light: #{$dark-bg-tertiary};
+  --xs-accent: #FFB366;
+  --xs-accent-hover: #FF9933;
+  --xs-success: #FFD166;
+  --xs-error: #FF6B6B;
+  --xs-warning: #FFB366;
+  --xs-info: #7FC8E8;
+  --xs-surface-elevated: #{$dark-bg-tertiary};
+  --xs-shadow: rgba(0, 0, 0, 0.3);
+  --xs-shadow-lg: rgba(0, 0, 0, 0.5);
+}
+
+/* Automatic Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --md-sys-color-primary: #7dd3fc;
+    --md-sys-color-on-primary: #{$brand-ocean};
+    --md-sys-color-background: #{$dark-bg-primary};
+    --md-sys-color-on-background: #{$brand-cream};
+    --md-sys-color-surface: #{$dark-bg-secondary};
+    --md-sys-color-on-surface: #{$brand-cream};
+  }
+}

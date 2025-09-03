@@ -1,0 +1,272 @@
+// ===========================
+// Authentication Pages Styles
+// ===========================
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, $brand-cream 0%, lighten($brand-cream, 10%) 100%);
+  padding: $spacing-2xl;
+  
+  .auth-container {
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--xs-bg-primary);
+    border-radius: $border-radius-2xl;
+    box-shadow: $shadow-2xl;
+    overflow: hidden;
+  }
+  
+  .auth-header {
+    text-align: center;
+    padding: $spacing-4xl $spacing-3xl $spacing-2xl;
+    
+    .auth-logo {
+      width: 4rem;
+      height: 4rem;
+      margin: 0 auto $spacing-lg;
+      border-radius: $border-radius-xl;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: $border-radius-lg;
+        background-color: $white;
+        padding: $spacing-sm;
+      }
+      
+      svg {
+        width: 2rem;
+        height: 2rem;
+      }
+    }
+    
+    .auth-title {
+      font-size: $font-size-3xl;
+      font-weight: $font-weight-bold;
+      color: var(--md-sys-color-primary);
+      margin: 0 0 $spacing-sm 0;
+    }
+    
+    .auth-subtitle {
+      color: var(--xs-text-muted);
+      margin: 0;
+    }
+  }
+  
+  .auth-form {
+    padding: 0 $spacing-3xl $spacing-4xl;
+    
+    .form-group {
+      margin-bottom: $spacing-2xl;
+    }
+    
+    .form-actions {
+      margin-top: $spacing-3xl;
+      border-top: none;
+      padding-top: 0;
+      
+      .btn {
+        width: 100%;
+        justify-content: center;
+        padding: $spacing-lg;
+        font-weight: $font-weight-medium;
+        background-color: var(--md-sys-color-secondary);
+        color: var(--md-sys-color-on-secondary);
+        border: none;
+        
+        &:hover {
+          background-color: var(--xs-accent-hover);
+          transform: translateY(-1px);
+        }
+      }
+    }
+    
+    .form-footer {
+      text-align: center;
+      margin-top: $spacing-2xl;
+      
+      a {
+        color: var(--md-sys-color-primary);
+        font-weight: $font-weight-medium;
+        
+        &:hover {
+          color: var(--xs-accent-hover);
+          opacity: 0.8;
+        }
+      }
+    }
+    
+    .forgot-password-link {
+      display: block;
+      text-align: center;
+      margin-top: $spacing-lg;
+      font-size: $font-size-sm;
+      color: var(--md-sys-color-primary);
+      
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+  
+  // Remember me checkbox
+  .remember-me {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin: $spacing-lg 0;
+    
+    input[type="checkbox"] {
+      accent-color: var(--xs-accent);
+    }
+    
+    label {
+      font-size: $font-size-sm;
+      color: var(--xs-text-secondary);
+    }
+  }
+  
+  // Two-factor authentication
+  .two-factor-section {
+    background-color: var(--xs-bg-secondary);
+    padding: $spacing-lg;
+    border-radius: $border-radius-lg;
+    margin-bottom: $spacing-2xl;
+    
+    .two-factor-title {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      color: var(--xs-text-primary);
+      margin-bottom: $spacing-sm;
+    }
+    
+    .two-factor-code {
+      display: flex;
+      gap: $spacing-sm;
+      justify-content: center;
+      
+      input {
+        width: 3rem;
+        height: 3rem;
+        text-align: center;
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        border: 2px solid var(--xs-border);
+        border-radius: $border-radius-lg;
+        background-color: var(--xs-bg-primary);
+        
+        &:focus {
+          border-color: var(--xs-accent);
+          box-shadow: 0 0 0 3px rgba(var(--xs-accent), 0.1);
+        }
+      }
+    }
+  }
+}
+
+// Specific page variants
+.login-page {
+  position: relative; // Login specific styles placeholder
+}
+
+.register-page {
+  .auth-container {
+    max-width: 480px;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-lg;
+    
+    .form-group {
+      margin-bottom: $spacing-lg;
+    }
+    
+    .form-group-full {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.forgot-password-page {
+  .auth-header {
+    .auth-title {
+      font-size: $font-size-2xl;
+    }
+  }
+}
+
+.reset-password-page {
+  .password-requirements {
+    background-color: var(--xs-bg-secondary);
+    padding: $spacing-lg;
+    border-radius: $border-radius-lg;
+    margin-bottom: $spacing-lg;
+    
+    .requirements-title {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      color: var(--xs-text-primary);
+      margin-bottom: $spacing-sm;
+    }
+    
+    .requirements-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      
+      li {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        font-size: $font-size-xs;
+        color: var(--xs-text-muted);
+        margin-bottom: $spacing-xs;
+        
+        &.valid {
+          color: var(--xs-success);
+        }
+        
+        &.invalid {
+          color: var(--xs-error);
+        }
+        
+        &::before {
+          content: '○';
+          
+          &.valid {
+            content: '✓';
+            color: var(--xs-success);
+          }
+          
+          &.invalid {
+            content: '✗';
+            color: var(--xs-error);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Dark mode adaptations
+html.dark {
+  .auth-page {
+    background: linear-gradient(135deg, $dark-bg-primary 0%, $dark-bg-secondary 100%);
+    
+    .auth-container {
+      background-color: var(--xs-bg-primary);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+  }
+}

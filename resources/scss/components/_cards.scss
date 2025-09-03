@@ -1,0 +1,167 @@
+// ===========================
+// Card Components
+// ===========================
+
+.card {
+  @include card-base;
+  
+  // Card Variants
+  &.card-elevated {
+    box-shadow: $shadow-lg;
+    
+    &:hover {
+      box-shadow: $shadow-xl;
+    }
+  }
+  
+  &.card-flat {
+    box-shadow: none;
+    border: 1px solid var(--xs-border);
+    
+    &:hover {
+      box-shadow: $shadow-md;
+    }
+  }
+  
+  // Semantic Variants
+  &.card-primary {
+    border-left: 4px solid $brand-ocean;
+  }
+  
+  &.card-success {
+    border-left: 4px solid $brand-golden;
+  }
+  
+  &.card-warning {
+    border-left: 4px solid $brand-orange;
+  }
+  
+  &.card-danger {
+    border-left: 4px solid $brand-crimson;
+  }
+}
+
+.card-header {
+  padding: $spacing-2xl $spacing-2xl $spacing-lg;
+  border-bottom: 1px solid var(--xs-border-light);
+  background-color: var(--xs-bg-secondary);
+  border-radius: $border-radius-xl $border-radius-xl 0 0;
+  
+  .card-title {
+    margin: 0;
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    color: var(--xs-text-primary);
+  }
+  
+  .card-subtitle {
+    margin: $spacing-sm 0 0;
+    font-size: $font-size-sm;
+    color: var(--xs-text-muted);
+  }
+}
+
+.card-body {
+  padding: $spacing-2xl;
+  
+  // Compact variant
+  .card.card-compact & {
+    padding: $spacing-lg;
+  }
+  
+  // Spacious variant
+  .card.card-spacious & {
+    padding: $spacing-3xl;
+  }
+}
+
+.card-footer {
+  padding: $spacing-lg $spacing-2xl $spacing-2xl;
+  border-top: 1px solid var(--xs-border-light);
+  background-color: var(--xs-bg-secondary);
+  border-radius: 0 0 $border-radius-xl $border-radius-xl;
+  
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-md;
+  
+  &.card-footer-split {
+    justify-content: space-between;
+  }
+}
+
+// Special Card Types
+.stat-card {
+  @include card-base;
+  padding: $spacing-2xl;
+  text-align: center;
+  
+  .stat-icon {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto $spacing-lg;
+    border-radius: $border-radius-lg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-size-xl;
+    color: $white;
+    
+    &.stat-icon-appointments { background-color: $brand-ocean; }
+    &.stat-icon-revenue { background-color: $brand-golden; }
+    &.stat-icon-customers { background-color: $brand-orange; }
+    &.stat-icon-growth { background-color: $brand-crimson; }
+  }
+  
+  .stat-value {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: var(--xs-text-primary);
+    margin: 0 0 $spacing-sm;
+  }
+  
+  .stat-label {
+    font-size: $font-size-sm;
+    color: var(--xs-text-muted);
+    margin: 0;
+  }
+  
+  .stat-change {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    margin-top: $spacing-sm;
+    
+    &.positive { color: var(--xs-success); }
+    &.negative { color: var(--xs-error); }
+    &.neutral { color: var(--xs-text-muted); }
+  }
+}
+
+.appointment-card {
+  @include card-base;
+  padding: $spacing-2xl;
+  
+  // Status indicators
+  &.status-confirmed { border-left: 4px solid $brand-golden; }
+  &.status-pending { border-left: 4px solid $brand-orange; }
+  &.status-cancelled { border-left: 4px solid $brand-crimson; }
+  &.status-completed { border-left: 4px solid $brand-ocean; }
+  
+  .appointment-time {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: var(--xs-text-primary);
+    margin-bottom: $spacing-sm;
+  }
+  
+  .appointment-client {
+    font-size: $font-size-base;
+    color: var(--xs-text-secondary);
+    margin-bottom: $spacing-xs;
+  }
+  
+  .appointment-service {
+    font-size: $font-size-sm;
+    color: var(--xs-text-muted);
+  }
+}

@@ -1,0 +1,257 @@
+// ===========================
+// Grid and Layout Components
+// ===========================
+
+// Container System
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $spacing-lg;
+  
+  &.container-sm {
+    max-width: 640px;
+  }
+  
+  &.container-md {
+    max-width: 768px;
+  }
+  
+  &.container-lg {
+    max-width: 1024px;
+  }
+  
+  &.container-xl {
+    max-width: 1280px;
+  }
+  
+  &.container-fluid {
+    max-width: none;
+  }
+}
+
+// Main Layout Structure
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  
+  .main-content {
+    flex: 1;
+    margin-left: 16rem; // Sidebar width
+    min-height: 100vh;
+    
+    @include mobile {
+      margin-left: 0;
+    }
+  }
+}
+
+.page-header {
+  background-color: var(--xs-bg-primary);
+  border-bottom: 1px solid var(--xs-border);
+  padding: $spacing-2xl;
+  margin-bottom: $spacing-3xl;
+  
+  .page-title {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-semibold;
+    color: var(--xs-text-primary);
+    margin: 0 0 $spacing-sm 0;
+  }
+  
+  .page-subtitle {
+    color: var(--xs-text-muted);
+    margin: 0;
+  }
+  
+  .page-actions {
+    display: flex;
+    gap: $spacing-md;
+    margin-top: $spacing-lg;
+    
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+}
+
+.page-content {
+  padding: 0 $spacing-2xl $spacing-3xl;
+  
+  @include mobile {
+    padding: 0 $spacing-lg $spacing-2xl;
+  }
+}
+
+// Grid System
+.grid {
+  display: grid;
+  gap: $spacing-2xl;
+  
+  // Column variants
+  &.grid-1 { grid-template-columns: 1fr; }
+  &.grid-2 { grid-template-columns: repeat(2, 1fr); }
+  &.grid-3 { grid-template-columns: repeat(3, 1fr); }
+  &.grid-4 { grid-template-columns: repeat(4, 1fr); }
+  &.grid-5 { grid-template-columns: repeat(5, 1fr); }
+  &.grid-6 { grid-template-columns: repeat(6, 1fr); }
+  
+  // Responsive grid
+  &.grid-responsive {
+    &.grid-2 {
+      @include mobile {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    &.grid-3 {
+      @include mobile {
+        grid-template-columns: 1fr;
+      }
+      
+      @include tablet {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    &.grid-4 {
+      @include mobile {
+        grid-template-columns: 1fr;
+      }
+      
+      @include tablet {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      @include desktop {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  }
+  
+  // Gap variants
+  &.gap-sm { gap: $spacing-md; }
+  &.gap-lg { gap: $spacing-3xl; }
+  &.gap-xl { gap: $spacing-4xl; }
+}
+
+// Flexbox Utilities
+.flex {
+  display: flex;
+  
+  &.flex-col { flex-direction: column; }
+  &.flex-row { flex-direction: row; }
+  &.flex-wrap { flex-wrap: wrap; }
+  &.flex-nowrap { flex-wrap: nowrap; }
+  
+  // Justify Content
+  &.justify-start { justify-content: flex-start; }
+  &.justify-end { justify-content: flex-end; }
+  &.justify-center { justify-content: center; }
+  &.justify-between { justify-content: space-between; }
+  &.justify-around { justify-content: space-around; }
+  &.justify-evenly { justify-content: space-evenly; }
+  
+  // Align Items
+  &.items-start { align-items: flex-start; }
+  &.items-end { align-items: flex-end; }
+  &.items-center { align-items: center; }
+  &.items-baseline { align-items: baseline; }
+  &.items-stretch { align-items: stretch; }
+  
+  // Gap
+  &.gap-xs { gap: $spacing-xs; }
+  &.gap-sm { gap: $spacing-sm; }
+  &.gap-md { gap: $spacing-md; }
+  &.gap-lg { gap: $spacing-lg; }
+  &.gap-xl { gap: $spacing-xl; }
+  &.gap-2xl { gap: $spacing-2xl; }
+  &.gap-3xl { gap: $spacing-3xl; }
+}
+
+// Section Layouts
+.section {
+  margin-bottom: $spacing-4xl;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  .section-header {
+    margin-bottom: $spacing-2xl;
+    
+    .section-title {
+      font-size: $font-size-2xl;
+      font-weight: $font-weight-semibold;
+      color: var(--xs-text-primary);
+      margin: 0 0 $spacing-sm 0;
+    }
+    
+    .section-subtitle {
+      color: var(--xs-text-muted);
+      margin: 0;
+    }
+  }
+  
+  .section-content {
+    position: relative; // Placeholder to avoid empty ruleset
+  }
+}
+
+// Two-column layouts
+.two-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: $spacing-3xl;
+  
+  @include tablet {
+    grid-template-columns: 1fr;
+    gap: $spacing-2xl;
+  }
+  
+  .main-col {
+    position: relative; // Main content area
+  }
+  
+  .aside-col {
+    position: relative; // Sidebar content area
+  }
+}
+
+// Three-column layouts
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: $spacing-2xl;
+  
+  @include desktop {
+    grid-template-columns: 1fr;
+    gap: $spacing-2xl;
+  }
+}
+
+// Spacing Utilities
+.space-y > * + * {
+  margin-top: $spacing-2xl;
+}
+
+.space-y-sm > * + * {
+  margin-top: $spacing-md;
+}
+
+.space-y-lg > * + * {
+  margin-top: $spacing-3xl;
+}
+
+// Responsive visibility
+.mobile-only {
+  @include tablet {
+    display: none !important;
+  }
+}
+
+.desktop-only {
+  @include mobile {
+    display: none !important;
+  }
+}

@@ -1,0 +1,123 @@
+// ===================================
+// XScheduler Design System Variables
+// ===================================
+
+// Brand Colors - Core Palette
+$brand-ocean: #003049;
+$brand-crimson: #D62828;
+$brand-orange: #F77F00;
+$brand-golden: #FCBF49;
+$brand-cream: #EAE2B7;
+
+// Extended Palette
+$brand-ocean-light: #004d6b;
+$brand-ocean-dark: #001f2e;
+$brand-orange-light: #ffa726;
+$brand-orange-dark: #e06900;
+$brand-golden-light: #ffd54f;
+$brand-golden-dark: #ca8a04;
+
+// Semantic Colors
+$success: $brand-golden;
+$warning: $brand-orange;
+$error: $brand-crimson;
+$info: $brand-ocean;
+
+// Neutral Colors
+$white: #ffffff;
+$black: #000000;
+
+// Gray Scale
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+
+// Dark Mode Colors
+$dark-bg-primary: #0f1419;
+$dark-bg-secondary: #1a202c;
+$dark-bg-tertiary: #2d3748;
+$dark-text-primary: #f7fafc;
+$dark-text-secondary: #e2e8f0;
+$dark-text-muted: #a0aec0;
+
+// Typography
+$font-family-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+$font-size-xs: 0.75rem;    // 12px
+$font-size-sm: 0.875rem;   // 14px
+$font-size-base: 1rem;     // 16px
+$font-size-lg: 1.125rem;   // 18px
+$font-size-xl: 1.25rem;    // 20px
+$font-size-2xl: 1.5rem;    // 24px
+$font-size-3xl: 1.875rem;  // 30px
+$font-size-4xl: 2.25rem;   // 36px
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// Spacing Scale
+$spacing-xs: 0.25rem;   // 4px
+$spacing-sm: 0.5rem;    // 8px
+$spacing-md: 0.75rem;   // 12px
+$spacing-lg: 1rem;      // 16px
+$spacing-xl: 1.25rem;   // 20px
+$spacing-2xl: 1.5rem;   // 24px
+$spacing-3xl: 2rem;     // 32px
+$spacing-4xl: 2.5rem;   // 40px
+$spacing-5xl: 3rem;     // 48px
+$spacing-6xl: 4rem;     // 64px
+
+// Border Radius
+$border-radius-sm: 0.375rem;  // 6px
+$border-radius-md: 0.5rem;    // 8px
+$border-radius-lg: 0.75rem;   // 12px
+$border-radius-xl: 1rem;      // 16px
+$border-radius-2xl: 1.5rem;   // 24px
+$border-radius-full: 9999px;
+
+// Shadows
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+// Brand Shadows
+$shadow-brand: 0 4px 14px 0 rgba(0, 48, 73, 0.15);
+$shadow-brand-lg: 0 10px 25px -3px rgba(0, 48, 73, 0.25);
+
+// Material Design Shadows
+$material-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
+$material-shadow-lg: 0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+
+// Transitions
+$transition-fast: 150ms ease;
+$transition-normal: 200ms ease;
+$transition-slow: 300ms ease;
+
+// Breakpoints (matching Tailwind CSS)
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+$breakpoint-2xl: 1536px;
+
+// Z-index Scale
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+$z-toast: 1080;
