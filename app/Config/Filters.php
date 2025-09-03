@@ -29,12 +29,16 @@ class Filters extends BaseFilters
         'toolbar'       => DebugToolbar::class,
         'honeypot'      => Honeypot::class,
         'invalidchars'  => InvalidChars::class,
+        'securityheaders' => \App\Filters\SecurityHeaders::class,
         'secureheaders' => SecureHeaders::class,
         'cors'          => Cors::class,
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
-        'auth'          => \App\Filters\AuthFilter::class,
+    'auth'          => \App\Filters\AuthFilter::class,
+    'role'          => \App\Filters\RoleFilter::class,
+    'api_cors'      => \App\Filters\CorsFilter::class,
+    'api_auth'      => \App\Filters\ApiAuthFilter::class,
         'setup'         => \App\Filters\SetupFilter::class,
         'setup_auth'    => \App\Filters\SetupAuthFilter::class,
     ];
@@ -54,13 +58,11 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
-            'forcehttps', // Force Global Secure Requests
-            'pagecache',  // Web Page Caching
+            // In production you may enable 'forcehttps' and 'pagecache'
         ],
         'after' => [
-            'pagecache',   // Web Page Caching
-            'performance', // Performance Metrics
-            'toolbar',     // Debug Toolbar
+            // In production you may enable 'pagecache' and 'performance'
+            'toolbar', // Debug Toolbar
         ],
     ];
 
@@ -72,6 +74,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'securityheaders',
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',

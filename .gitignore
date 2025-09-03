@@ -287,6 +287,25 @@ id_ed25519.pub
 # Azure
 .azure/
 
+# Additional security-sensitive files
+*.secrets
+*.credentials
+.env.*
+.env_*
+config.production.php
+secrets.json
+private.key
+certificate.*
+
+# API keys and tokens
+.api_keys
+tokens/
+secrets/
+
+# Database connection files with credentials
+database.production.php
+db.production.php
+
 #-------------------------
 # Application Specific
 #-------------------------

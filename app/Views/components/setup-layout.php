@@ -36,6 +36,6 @@
     
     <!-- Scripts -->
     <script src="<?= base_url('build/assets/main.js') ?>"></script>
-    <script src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
 </body>
 </html>

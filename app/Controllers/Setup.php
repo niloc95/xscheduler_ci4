@@ -92,11 +92,12 @@ class Setup extends BaseController
             // Prepare database configuration for .env generation
             $dbConfig = [];
             
-            if ($setupData['database']['type'] === 'mysql') {
+        if ($setupData['database']['type'] === 'mysql') {
                 $dbConfig = [
                     'db_driver' => 'MySQLi',
                     'db_hostname' => $this->request->getPost('mysql_hostname'),
-                    'db_port' => $this->request->getPost('mysql_port') ?: '3306',
+            // Ensure port is an integer to satisfy mysqli strict types
+            'db_port' => (int) ($this->request->getPost('mysql_port') ?: 3306),
                     'db_database' => $this->request->getPost('mysql_database'),
                     'db_username' => $this->request->getPost('mysql_username'),
                     'db_password' => $this->request->getPost('mysql_password')
@@ -104,7 +105,7 @@ class Setup extends BaseController
 
                 $setupData['database']['mysql'] = [
                     'hostname' => $dbConfig['db_hostname'],
-                    'port' => (int)$dbConfig['db_port'],
+                    'port' => (int) $dbConfig['db_port'],
                     'database' => $dbConfig['db_database'],
                     'username' => $dbConfig['db_username'],
                     'password' => $dbConfig['db_password']
@@ -586,7 +587,9 @@ class Setup extends BaseController
         $envContent = $replaceKey($envContent, 'database.default.database', $data['db_database'] ?? '');
         $envContent = $replaceKey($envContent, 'database.default.username', $data['db_username'] ?? '');
         $envContent = $replaceKey($envContent, 'database.default.password', $data['db_password'] ?? '');
-        $envContent = $replaceKey($envContent, 'database.default.port', $data['db_port'] ?? '3306');
+    // Ensure port written as numeric value in .env
+    $portValue = isset($data['db_port']) ? (int) $data['db_port'] : 3306;
+    $envContent = $replaceKey($envContent, 'database.default.port', (string) $portValue);
 
         // Encryption key
         $envContent = $replaceKey($envContent, 'encryption.key', $this->generateEncryptionKey());
@@ -619,9 +622,9 @@ class Setup extends BaseController
                 $dbConfig->default['database'] = $data['db_database'] ?? $dbConfig->default['database'] ?? '';
                 $dbConfig->default['username'] = $data['db_username'] ?? $dbConfig->default['username'] ?? '';
                 $dbConfig->default['password'] = $data['db_password'] ?? $dbConfig->default['password'] ?? '';
-                // Port only relevant for MySQL
+                // Port only relevant for MySQL - ensure it's an integer
                 if (!empty($data['db_port'])) {
-                    $dbConfig->default['port'] = $data['db_port'];
+                    $dbConfig->default['port'] = (int) $data['db_port'];
                 }
             }
         } catch (\Throwable $e) {
@@ -713,9 +716,11 @@ class Setup extends BaseController
                 }
             }
 
-            // Ensure port is set
+            // Ensure port is set and cast to integer for strict drivers
             if (empty($data['db_port'])) {
-                $data['db_port'] = '3306';
+                $data['db_port'] = 3306;
+            } else {
+                $data['db_port'] = (int) $data['db_port'];
             }
 
             // Ensure password is set (can be empty)

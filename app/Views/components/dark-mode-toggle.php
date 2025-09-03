@@ -49,3 +49,11 @@
         />
     </svg>
 </button>
+
+<noscript>
+    <style>
+        /* Ensure readable defaults when JS is disabled */
+        html { background: #ffffff; color: #003049; }
+    </style>
+    <!-- Dark mode requires JavaScript -->
+</noscript>

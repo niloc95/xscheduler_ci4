@@ -2,24 +2,25 @@
 
 namespace App\Filters;
 
+use App\Models\UserPermissionModel;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class AuthFilter implements FilterInterface
 {
+    protected $permissionModel;
+
+    public function __construct()
+    {
+        $this->permissionModel = new UserPermissionModel();
+    }
+
     /**
-     * Do whatever processing this filter needs to do.
-     * By default it should not return anything during
-     * normal execution. However, when an abnormal state
-     * is found, it should return an instance of
-     * CodeIgniter\HTTP\Response. If it does, script
-     * execution will end and that Response will be
-     * sent back to the client, allowing for error pages,
-     * redirects, etc.
-     *
+     * Enhanced authentication with basic role/permission support
+     * 
      * @param RequestInterface $request
-     * @param array|null       $arguments
+     * @param array|null       $arguments - Optional: roles or permissions to check
      *
      * @return mixed
      */
@@ -33,6 +34,34 @@ class AuthFilter implements FilterInterface
             // Redirect to login page
             return redirect()->to('/auth/login')->with('error', 'Please log in to access this page.');
         }
+
+        // If arguments are provided, do additional role/permission checks
+        if (!empty($arguments)) {
+            $userId = session()->get('user_id');
+            $user = session()->get('user');
+
+            if (!$userId || !$user) {
+                return redirect()->to('/auth/login')->with('error', 'Invalid session. Please log in again.');
+            }
+
+            // Simple role check if arguments are role names
+            $validRoles = ['admin', 'provider', 'staff', 'customer'];
+            $hasValidRole = false;
+
+            foreach ($arguments as $arg) {
+                if (in_array($arg, $validRoles) && $user['role'] === $arg) {
+                    $hasValidRole = true;
+                    break;
+                }
+            }
+
+            // If we're doing role checks and user doesn't have required role
+            if (!empty(array_intersect($arguments, $validRoles)) && !$hasValidRole) {
+                return $this->unauthorizedResponse();
+            }
+        }
+
+        return;
     }
 
     /**
@@ -50,5 +79,21 @@ class AuthFilter implements FilterInterface
     public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
     {
         // Do nothing
+    }
+
+    /**
+     * Return unauthorized response
+     */
+    private function unauthorizedResponse()
+    {
+        // Check if this is an API request
+        if (service('request')->isAJAX() || service('request')->getHeaderLine('Accept') === 'application/json') {
+            return service('response')
+                ->setStatusCode(403)
+                ->setJSON(['error' => ['message' => 'Access denied. Insufficient permissions.', 'code' => 'forbidden']]);
+        }
+
+        // Web request - redirect to dashboard with error
+        return redirect()->to('/dashboard')->with('error', 'Access denied. You do not have permission to access that resource.');
     }
 }

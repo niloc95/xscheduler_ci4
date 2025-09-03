@@ -13,7 +13,7 @@ class AppointmentModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'user_id', 'provider_id', 'service_id', 'start_time', 'end_time', 'status', 'notes'
+        'user_id', 'provider_id', 'service_id', 'start_time', 'end_time', 'status', 'notes', 'reminder_sent'
     ];
 
     // Dates
@@ -29,7 +29,8 @@ class AppointmentModel extends Model
         'service_id'  => 'required|integer',
         'start_time'  => 'required|valid_date',
         'end_time'    => 'required|valid_date',
-        'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]'
+    'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]',
+    'reminder_sent' => 'permit_empty|in_list[0,1]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;

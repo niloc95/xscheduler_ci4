@@ -54,9 +54,14 @@
             <!-- Logo and Header -->
             <div class="text-center mb-8">
                 <div class="flex justify-center mb-4">
-                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
-                        <span class="material-symbols-outlined text-white text-3xl">schedule</span>
-                    </div>
+                    <?php $logoUrl = setting_url('general.company_logo'); ?>
+                    <?php if ($logoUrl): ?>
+                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700" style="object-fit: contain;" />
+                    <?php else: ?>
+                        <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
+                            <span class="material-symbols-outlined text-white text-3xl">schedule</span>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">xScheduler</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Sign in to your account</p>
@@ -166,7 +171,7 @@
 
     <!-- Scripts -->
     <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
-    <script src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
+    <script type="module" src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
 </body>
 </html>
 
