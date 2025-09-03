@@ -21,6 +21,8 @@ A modern, zero-configuration scheduling application built with CodeIgniter 4 and
 - **Reusable Components**: Standardized UI components with PHP helpers
 - **Developer Friendly**: Comprehensive style guide and documentation
 - **Production Ready**: Optimized build system with Vite
+- **Security Enhanced**: IP protection, security headers, and proprietary licensing
+- **Role-Based Access**: Complete user management with role-based permissions
 
 ## 🏗️ Architecture
 
@@ -346,7 +348,41 @@ npm install
 4. Push to branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
-## 📄 License
+## � Documentation
+
+Comprehensive documentation is organized in the `/docs` directory:
+
+### 🏗️ Architecture
+- **[Master Context](docs/architecture/mastercontext.md)** - Complete technical overview
+- **[Role-Based System](docs/architecture/ROLE_BASED_SYSTEM.md)** - User permissions and access control
+- **[Implementation Plan](docs/architecture/IMPLEMENTATION-PLAN.md)** - Development roadmap
+
+### 🔧 Configuration  
+- **[Settings Implementation](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Settings system guide
+- **[Contact Fields](docs/configuration/SETTINGS_CONTACT_FIELDS.md)** - Contact information setup
+- **[Localization Updates](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language support
+
+### 🚀 Deployment
+- **[Merge Summary](docs/deployment/MERGE_SUMMARY.md)** - Branch consolidation history
+- **[Production Guide](docs/deployment/PRODUCTION_FIX_GUIDE.md)** - Production deployment steps
+- **[ZIP Deployment](docs/deployment/ZIP-DEPLOYMENT-SUMMARY.md)** - Package deployment method
+
+### 🛡️ Security
+- **[Implementation Guide](docs/security/SECURITY_IMPLEMENTATION_GUIDE.md)** - Security setup instructions
+- **[Security Status](docs/security/SECURITY_STATUS.md)** - Current security measures
+- **[Compliance](docs/compliance/)** - Security compliance documentation
+
+### 🔧 Technical
+- **[SPA Settings Fix](docs/technical/SPA_SETTINGS_FIX.md)** - Single-page app configuration
+- **[Commands Reference](docs/technical/command.md)** - CLI commands and usage
+- **[Icon Display Fix](docs/technical/ICON-DISPLAY-FIX.md)** - UI icon troubleshooting
+
+### 📋 Project Files
+- **[Requirements](docs/REQUIREMENTS.md)** - System requirements and specifications
+- **[Setup Workflow](docs/SETUP-WORKFLOW-COMPLETE.md)** - Complete setup guide
+- **[Notes](docs/Notes.md)** - Development notes and changelog
+
+## �📄 License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 

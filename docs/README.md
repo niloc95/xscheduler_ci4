@@ -1,24 +1,51 @@
-# xScheduler Documentation
+# XScheduler CI4 Documentation
 
-Welcome to the xScheduler documentation! This directory contains comprehensive guides, reports, and technical documentation for the xScheduler appointment scheduling application.
+Welcome to the XScheduler CI4 documentation! This directory contains comprehensive guides, reports, and technical documentation for the professional appointment scheduling application.
 
 ## 📚 Documentation Index
 
-### 🏗️ Architecture & Overview
-- **[Master Context](architecture/mastercontext.md)** - Complete project overview, architecture, and development context
-- **[Material Dashboard Guide](architecture/MATERIAL_DASHBOARD_GUIDE.md)** - Material Design 3.0 dashboard implementation
+### 📋 Project Overview
+- **[System Requirements](REQUIREMENTS.md)** - Prerequisites and dependencies
+- **[Complete Setup Guide](SETUP-WORKFLOW-COMPLETE.md)** - Full installation process
+- **[Development Notes](Notes.md)** - Important development information and changelog
 
-### 🔧 Configuration & Setup
-- **[Environment Configuration Guide](configuration/ENV-CONFIGURATION-GUIDE.md)** - Complete .env setup and deployment configuration
-- **[Setup Completion Report](configuration/SETUP_COMPLETION_REPORT.md)** - Setup wizard implementation and features
+### 🏗️ Architecture & Design
+- **[Master Context](architecture/mastercontext.md)** - Complete technical overview and architecture
+- **[Role-Based System](architecture/ROLE_BASED_SYSTEM.md)** - User permissions and access control system
+- **[Implementation Plan](architecture/IMPLEMENTATION-PLAN.md)** - Development roadmap and milestones
+- **[Material Dashboard Guide](architecture/MATERIAL_DASHBOARD_GUIDE.md)** - Material Design 3.0 dashboard implementation
+- **[Multi-Tenant SaaS Architecture](architecture/MULTI-TENANT-SAAS-ARCHITECTURE.md)** - SaaS architecture design
+
+### 🔧 Configuration & Settings
+- **[Settings Implementation Verified](configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Settings system verification
+- **[Contact Fields Setup](configuration/SETTINGS_CONTACT_FIELDS.md)** - Contact information configuration  
+- **[Localization Updates](configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language and regional settings
+- **[Environment Configuration Guide](configuration/ENV-CONFIGURATION-GUIDE.md)** - Environment setup
+
+### 🛡️ Security & Compliance
+- **[Security Implementation Guide](security/SECURITY_IMPLEMENTATION_GUIDE.md)** - Complete security setup instructions
+- **[Security Status](security/SECURITY_STATUS.md)** - Current security measures and IP protection
+- **[Compliance Documentation](compliance/)** - Security and legal compliance guides
 
 ### 🚀 Deployment & Production
-- **[Production Fix Guide](deployment/PRODUCTION_FIX_GUIDE.md)** - Production deployment fixes and optimizations
-- **[ZIP Deployment Summary](deployment/ZIP-DEPLOYMENT-SUMMARY.md)** - Automated deployment packaging system
+- **[Merge Summary](deployment/MERGE_SUMMARY.md)** - Branch consolidation and development history
+- **[Production Fix Guide](deployment/PRODUCTION_FIX_GUIDE.md)** - Production deployment steps and fixes
+- **[ZIP Deployment Summary](deployment/ZIP-DEPLOYMENT-SUMMARY.md)** - Package deployment method
+- **[MySQL Connection Fix](deployment/MYSQL-TEST-CONNECTION-FIX.md)** - Database connection troubleshooting
+- **[Production URL Auto-Detection](deployment/PRODUCTION-URL-AUTO-DETECTION.md)** - URL configuration
 
-### 🛠️ Technical Fixes & Solutions
-- **[Icon Display Fix](technical/ICON-DISPLAY-FIX.md)** - Universal icon compatibility solution
-- **[Production URL Fix](technical/PRODUCTION-URL-FIX.md)** - Production URL handling and routing fixes
+### � Technical Guides & Fixes
+- **[SPA Settings Fix](technical/SPA_SETTINGS_FIX.md)** - Single-page application configuration
+- **[Commands Reference](technical/command.md)** - CLI commands and usage guide
+- **[Icon Display Fix](technical/ICON-DISPLAY-FIX.md)** - UI icon troubleshooting and solutions
+- **[Production URL Fix](technical/PRODUCTION-URL-FIX.md)** - URL handling and routing fixes
+
+### 🎨 Design & UI
+- **[Dark Mode Implementation](dark-mode/)** - Dark mode system documentation
+- **[Design System](design/)** - UI components and design guidelines
+
+### 📡 API Documentation
+- **[OpenAPI Specification](openapi.yml)** - Complete RESTful API reference
 
 ## 🗂️ Documentation Categories
 
