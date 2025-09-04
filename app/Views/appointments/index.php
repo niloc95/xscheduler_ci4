@@ -5,22 +5,11 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="<?= esc($title) ?>">
+<div class="main-content" data-page-title="<?= esc($title) ?>" data-page-subtitle="<?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?>">
     <!-- Page Header -->
     <div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-                    <?= esc($title) ?>
-                </h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-300">
-                    <?php if ($user_role === 'customer'): ?>
-                        View and manage your upcoming and past appointments
-                    <?php else: ?>
-                        Manage appointments for your business
-                    <?php endif; ?>
-                </p>
-            </div>
+            <div></div>
             
             <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
             <div class="mt-4 sm:mt-0">

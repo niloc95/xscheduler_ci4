@@ -5,18 +5,11 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Analytics">
+<div class="main-content" data-page-title="Analytics" data-page-subtitle="Monitor your business performance and insights">
     <!-- Page Header -->
     <div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-                    <?= esc($title) ?>
-                </h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-300">
-                    Monitor your business performance and insights
-                </p>
-            </div>
+            <div></div>
             
             <div class="mt-4 sm:mt-0">
                 <select id="timeframe" class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">

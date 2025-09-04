@@ -5,28 +5,18 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Help & Support">
-    <!-- Page Header -->
-    <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-            Help Center
-        </h1>
-        <p class="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Find answers to your questions, learn how to use features, and get the support you need
-        </p>
-        
-        <!-- Search Bar -->
-        <div class="mt-8 max-w-md mx-auto">
-            <form action="<?= base_url('/help/search') ?>" method="get" class="relative">
-                <input type="text" 
-                       name="query" 
-                       placeholder="Search for help..."
-                       class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span class="material-symbols-rounded text-gray-400 text-lg">search</span>
-                </div>
-            </form>
-        </div>
+<div class="main-content" data-page-title="Help & Support" data-page-subtitle="Find answers to your questions, learn how to use features, and get the support you need">
+    <!-- Quick Search -->
+    <div class="mb-8 max-w-md mx-auto">
+        <form action="<?= base_url('/help/search') ?>" method="get" class="relative">
+            <input type="text" 
+                   name="query" 
+                   placeholder="Search for help..."
+                   class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="material-symbols-rounded text-gray-400 text-lg">search</span>
+            </div>
+        </form>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -229,7 +219,7 @@
 <script>
 function toggleFaq(button) {
     const content = button.nextElementSibling;
-    const icon = button.querySelector('svg');
+    const icon = button.querySelector('.material-symbols-rounded');
     
     if (content.classList.contains('hidden')) {
         content.classList.remove('hidden');

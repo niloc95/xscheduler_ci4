@@ -332,10 +332,10 @@
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Schedule Meeting</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Create a new meeting or appointment</p>
-                <md-filled-button>
-                    <span slot="icon" class="material-symbols-outlined">add</span>
-                    Schedule
-                </md-filled-button>
+                <a href="<?= base_url('scheduler') ?>" class="btn btn-primary inline-flex items-center gap-2 justify-center">
+                    <span class="material-symbols-outlined text-base">add</span>
+                    <span>Schedule</span>
+                </a>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
@@ -344,10 +344,10 @@
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Add User</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Invite a new user to the system</p>
-                <md-filled-button>
-                    <span slot="icon" class="material-symbols-outlined">person</span>
-                    Add User
-                </md-filled-button>
+                <a href="<?= base_url('user-management/create') ?>" class="btn btn-secondary inline-flex items-center gap-2 justify-center">
+                    <span class="material-symbols-outlined text-base">person</span>
+                    <span>Add User</span>
+                </a>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
@@ -356,10 +356,10 @@
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">View Reports</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Generate detailed analytics reports</p>
-                <md-filled-button>
-                    <span slot="icon" class="material-symbols-outlined">insights</span>
-                    Reports
-                </md-filled-button>
+                <a href="<?= base_url('analytics') ?>" class="btn btn-primary inline-flex items-center gap-2 justify-center">
+                    <span class="material-symbols-outlined text-base">insights</span>
+                    <span>Reports</span>
+                </a>
             </md-outlined-card>
         </div>
     </div>

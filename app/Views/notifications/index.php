@@ -5,18 +5,11 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Notifications">
+<div class="main-content" data-page-title="Notifications" data-page-subtitle="Stay updated with your latest activity">
     <!-- Page Header -->
     <div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-                    Notifications
-                </h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-300">
-                    Stay updated with your latest activity
-                </p>
-            </div>
+            <div></div>
             
             <div class="mt-4 sm:mt-0 flex space-x-3">
                      <?php if ($unread_count > 0): ?>

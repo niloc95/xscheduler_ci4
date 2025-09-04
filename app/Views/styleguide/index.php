@@ -3,14 +3,10 @@
 <?= $this->section('header_title') ?>Design System<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="content-wrapper" data-page-title="Design System">
+<div class="content-wrapper" data-page-title="Design System" data-page-subtitle="A comprehensive guide to our UI components and patterns">
     <div class="content-main space-y-8">
         
-        <!-- Header -->
-        <div class="text-center">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">xScheduler Design System</h1>
-            <p class="text-lg text-gray-600 dark:text-gray-300">A comprehensive guide to our UI components and patterns</p>
-        </div>
+    <!-- Header removed in favor of dynamic page header -->
         
         <!-- Color System -->
         <div id="colors" class="card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand">

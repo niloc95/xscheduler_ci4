@@ -5,18 +5,11 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Services">
+<div class="main-content" data-page-title="Services" data-page-subtitle="Browse and manage available services">
     <!-- Page Header -->
     <div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-                    Services
-                </h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-300">
-                    Browse and manage available services
-                </p>
-            </div>
+            <div></div>
             
             <div class="mt-4 sm:mt-0 flex space-x-3">
                 <a href="<?= base_url('/services/categories') ?>" 

@@ -5,16 +5,9 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="My Profile">
+<div class="main-content" data-page-title="My Profile" data-page-subtitle="Manage your account information and preferences">
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
-            My Profile
-        </h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">
-            Manage your account information and preferences
-        </p>
-    </div>
+    <div class="mb-6"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Profile Overview -->
