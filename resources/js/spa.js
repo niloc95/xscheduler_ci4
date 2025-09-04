@@ -102,12 +102,16 @@ const SPA = (() => {
     if (!el) return;
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
-    // Respect sticky header height when scrolling to new content
-  const cs = getComputedStyle(document.querySelector('main'));
-  const headerOffset = parseFloat(cs.getPropertyValue('--xs-header-offset') || '0') || 0;
-  const standard = 24; // match layout padding
-  const y = el.getBoundingClientRect().top + window.scrollY - (headerOffset + standard);
-    window.scrollTo({ top: y, behavior: 'smooth' });
+    // Gentle scroll to top for new content, but don't interfere with fixed elements
+    // Only scroll if we're significantly below the content area
+    const currentScroll = window.scrollY;
+    const contentTop = el.getBoundingClientRect().top + currentScroll;
+    const headerOffset = 80; // rough header height
+    
+    // Only scroll if user is way down the page (more than 200px below content)
+    if (currentScroll > contentTop + 200) {
+      window.scrollTo({ top: Math.max(0, contentTop - headerOffset), behavior: 'smooth' });
+    }
   };
 
   const init = () => {

@@ -34,7 +34,7 @@
 
         <div class="flex-1">
             <!-- Unified container to align header and page content -->
-            <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
+            <div class="p-4 lg:ml-64 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
                 <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
                     <div class="flex justify-between items-center">
@@ -132,6 +132,7 @@
     <script src="<?= base_url('build/assets/main.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
     <script>
         // Sync header title/subtitle with current view's declared page attributes, if present
     let XS_DEFAULT_SUBTITLE = null;

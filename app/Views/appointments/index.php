@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/role-based-sidebar', ['current_page' => 'appointments']) ?>
+    <?= $this->include('components/unified-sidebar', ['current_page' => 'appointments']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>

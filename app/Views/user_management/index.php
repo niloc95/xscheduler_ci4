@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/role-based-sidebar', ['current_page' => 'user-management']) ?>
+    <?= $this->include('components/unified-sidebar', ['current_page' => 'user-management']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>User Management<?= $this->endSection() ?>

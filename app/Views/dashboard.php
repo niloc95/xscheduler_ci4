@@ -59,7 +59,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/role-based-sidebar', ['current_page' => 'dashboard']) ?>
+    <?= $this->include('components/unified-sidebar', ['current_page' => 'dashboard']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
@@ -439,20 +439,6 @@
                             // Simulate search action
                             alert(`Searching for: "${query}"`);
                         }
-                    }
-                });
-            }
-
-            // Mobile menu functionality
-            const menuToggle = document.getElementById('menuToggle');
-            const sidebar = document.getElementById('sidebar');
-            const backdrop = document.getElementById('backdrop');
-
-            if (menuToggle && sidebar) {
-                menuToggle.addEventListener('click', function() {
-                    sidebar.classList.add('open');
-                    if (backdrop) {
-                        backdrop.classList.remove('hidden');
                     }
                 });
             }
