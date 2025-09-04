@@ -212,10 +212,6 @@ md-outlined-card {
   // Improve text rendering
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
-  // Optimize animations
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 // Will-change for animated elements

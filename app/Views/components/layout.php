@@ -19,6 +19,42 @@
         })();
     </script>
     
+    <!-- Sidebar positioning fix -->
+    <style>
+        @media (min-width: 1024px) {
+            /* Sidebar offset + gutter (matches SCSS) */
+            .main-content-container {
+                margin-left: calc(16rem + 2rem) !important;
+            }
+        }
+        
+        .unified-sidebar,
+        #main-sidebar {
+            position: fixed !important;
+            width: 16rem !important;
+            z-index: 50 !important;
+        }
+        
+    @media (max-width: 1023px) {
+            .unified-sidebar,
+            #main-sidebar {
+                transform: translateX(-100%) !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+            }
+            
+            .unified-sidebar.open,
+            #main-sidebar.open {
+                transform: translateX(0) !important;
+            }
+            
+            .main-content-container {
+                margin-left: 0 !important;
+            }
+        }
+    </style>
+    
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
     
     <!-- Material Design Icons -->
@@ -29,14 +65,14 @@
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-    <div class="flex flex-col min-h-screen">
+    <div class="min-h-screen">
     <?= $this->renderSection('sidebar') ?>
 
-        <div class="flex-1">
+        <div class="ml-0">
             <!-- Unified container to align header and page content -->
-            <div class="p-4 lg:ml-64 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
+            <div class="main-content-container p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
+                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-40">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">

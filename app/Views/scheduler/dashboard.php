@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
-  <?= $this->include('components/admin-sidebar', ['current_page' => 'schedule']) ?>
+  <?= $this->include('components/unified-sidebar', ['current_page' => 'schedule']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>

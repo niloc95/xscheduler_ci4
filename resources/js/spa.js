@@ -74,7 +74,8 @@ const SPA = (() => {
       if (push) history.pushState({ spa: true }, '', url);
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
-      focusMain();
+  // Always reset scroll position to top when switching views
+  focusMain(true);
     } catch (e) {
       console.error('SPA navigation failed:', e);
       window.location.href = url; // graceful fallback
@@ -97,30 +98,28 @@ const SPA = (() => {
     }
   };
 
-  const focusMain = () => {
+  const focusMain = (resetScroll = false) => {
     const el = content();
     if (!el) return;
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
-    // Gentle scroll to top for new content, but don't interfere with fixed elements
-    // Only scroll if we're significantly below the content area
-    const currentScroll = window.scrollY;
-    const contentTop = el.getBoundingClientRect().top + currentScroll;
-    const headerOffset = 80; // rough header height
-    
-    // Only scroll if user is way down the page (more than 200px below content)
-    if (currentScroll > contentTop + 200) {
-      window.scrollTo({ top: Math.max(0, contentTop - headerOffset), behavior: 'smooth' });
+    if (resetScroll) {
+      // Reset to page top; header is sticky so 0 is appropriate
+      window.scrollTo({ top: 0, behavior: 'auto' });
     }
   };
 
   const init = () => {
+    // Disable browser automatic scroll restoration; SPA manages scroll explicitly
+    if ('scrollRestoration' in history) {
+      try { history.scrollRestoration = 'manual'; } catch (_) {}
+    }
     document.addEventListener('click', clickHandler);
     window.addEventListener('popstate', popstateHandler);
     // On load, mark current history entry as SPA-aware
     history.replaceState({ spa: true }, '', window.location.href);
-  // Initialize tabs for server-rendered initial content
-  initTabsInSpaContent();
+    // Initialize tabs for server-rendered initial content
+    initTabsInSpaContent();
   };
 
   return { init, navigate };
