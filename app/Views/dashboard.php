@@ -77,15 +77,11 @@
                         <p class="text-3xl font-bold"><?= number_format($stats['total_users'] ?? 2345) ?></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                        </svg>
+                        <span class="material-symbols-outlined text-white text-2xl">group</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
                     <span class="opacity-80">+12% from last month</span>
                 </div>
             </md-outlined-card>
@@ -98,15 +94,11 @@
                         <p class="text-3xl font-bold"><?= number_format($stats['active_sessions'] ?? 1789) ?></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
+                        <span class="material-symbols-outlined text-white text-2xl">calendar_month</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
                     <span class="opacity-80">+8% from last month</span>
                 </div>
             </md-outlined-card>
@@ -119,15 +111,11 @@
                         <p class="text-3xl font-bold"><?= number_format($stats['pending_tasks'] ?? 456) ?></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                        <span class="material-symbols-outlined text-white text-2xl">schedule</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 mr-1 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-1 text-red-300 text-base">trending_down</span>
                     <span class="opacity-80">-3% from last month</span>
                 </div>
             </md-outlined-card>
@@ -140,15 +128,11 @@
                         <p class="text-3xl font-bold">$<?= number_format($stats['revenue'] ?? 12456) ?></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                        </svg>
+                        <span class="material-symbols-outlined text-white text-2xl">attach_money</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <svg class="w-4 h-4 mr-1 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
                     <span class="opacity-80">+15% from last month</span>
                 </div>
             </md-outlined-card>
@@ -161,9 +145,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Growth</h3>
                     <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                        </svg>
+                        <span class="material-symbols-outlined">more_vert</span>
                     </button>
                 </div>
                 <div class="chart-container">
@@ -176,9 +158,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Activity Overview</h3>
                     <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                        </svg>
+                        <span class="material-symbols-outlined">more_vert</span>
                     </button>
                 </div>
                 <div class="chart-container">
@@ -195,9 +175,7 @@
                     <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Latest user activities and updates</p>
                 </div>
                 <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 w-full sm:w-auto justify-center">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
+                    <span class="material-symbols-outlined text-base">add</span>
                     <span>Add New</span>
                 </button>
             </div>
@@ -235,14 +213,10 @@
                                     <td class="px-6 py-4"><?= date('M j, Y', strtotime($activity['date'])) ?></td>
                                     <td class="px-6 py-4">
                                         <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 mr-2">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
+                                            <span class="material-symbols-outlined text-base">edit</span>
                                         </button>
                                         <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
+                                            <span class="material-symbols-outlined text-base">delete</span>
                                         </button>
                                     </td>
                                 </tr>
@@ -262,14 +236,10 @@
                                 <td class="px-6 py-4">Jan 1, 2025</td>
                                 <td class="px-6 py-4">
                                     <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 mr-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                        </svg>
+                                        <span class="material-symbols-outlined text-base">edit</span>
                                     </button>
                                     <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
+                                        <span class="material-symbols-outlined text-base">delete</span>
                                     </button>
                                 </td>
                             </tr>
@@ -300,14 +270,10 @@
                             <p class="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300"><?= esc($activity['activity']) ?></p>
                             <div class="flex justify-end space-x-2">
                                 <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
+                                    <span class="material-symbols-outlined text-base">edit</span>
                                 </button>
                                 <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
+                                    <span class="material-symbols-outlined text-base">delete</span>
                                 </button>
                             </div>
                         </div>
@@ -327,14 +293,10 @@
                         <p class="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Scheduled meeting</p>
                         <div class="flex justify-end space-x-2">
                             <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
+                                <span class="material-symbols-outlined text-base">edit</span>
                             </button>
                             <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
+                                <span class="material-symbols-outlined text-base">delete</span>
                             </button>
                         </div>
                     </div>
@@ -366,48 +328,36 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
+                    <span class="material-symbols-outlined text-blue-500 dark:text-blue-400 text-4xl">calendar_month</span>
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Schedule Meeting</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Create a new meeting or appointment</p>
                 <md-filled-button>
-                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
+                    <span slot="icon" class="material-symbols-outlined">add</span>
                     Schedule
                 </md-filled-button>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                    </svg>
+                    <span class="material-symbols-outlined text-green-500 dark:text-green-400 text-4xl">person_add</span>
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">Add User</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Invite a new user to the system</p>
                 <md-filled-button>
-                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
+                    <span slot="icon" class="material-symbols-outlined">person</span>
                     Add User
                 </md-filled-button>
             </md-outlined-card>
 
             <md-outlined-card class="p-6 text-center bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
+                    <span class="material-symbols-outlined text-purple-500 dark:text-purple-400 text-4xl">analytics</span>
                 </div>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2 transition-colors duration-300">View Reports</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 transition-colors duration-300">Generate detailed analytics reports</p>
                 <md-filled-button>
-                    <svg slot="icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
+                    <span slot="icon" class="material-symbols-outlined">insights</span>
                     Reports
                 </md-filled-button>
             </md-outlined-card>

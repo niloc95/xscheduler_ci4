@@ -72,13 +72,11 @@
             <!-- Unified container to align header and page content -->
             <div class="main-content-container p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-40">
+                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm material-shadow p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-40">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                                </svg>
+                                <span class="material-symbols-outlined text-2xl">menu</span>
                             </button>
                             <?php $logoUrl = setting_url('general.company_logo'); ?>
                             <?php if ($logoUrl): ?>
@@ -113,18 +111,13 @@
                                         placeholder="Search users, appointments..." 
                                         class="w-80 h-12 pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200 text-sm leading-relaxed"
                                         id="dashboardSearch">
-                                    <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
+                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-base">search</span>
                                 </div>
                             </div>
                             
                             <!-- Notifications -->
                             <md-icon-button class="text-gray-600 dark:text-gray-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.73 21a2 2 0 01-3.46 0"></path>
-                                </svg>
+                                <span class="material-symbols-outlined">notifications</span>
                             </md-icon-button>
                             
                             <!-- User Menu -->

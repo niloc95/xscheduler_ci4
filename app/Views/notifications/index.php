@@ -19,21 +19,16 @@
             </div>
             
             <div class="mt-4 sm:mt-0 flex space-x-3">
-                <?php if ($unread_count > 0): ?>
-                <a href="<?= base_url('/notifications/mark-all-read') ?>" 
-                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Mark All Read
-                </a>
-                <?php endif; ?>
+                     <?php if ($unread_count > 0): ?>
+                     <a href="<?= base_url('/notifications/mark-all-read') ?>" 
+                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
+                          <span class="material-symbols-rounded mr-2 text-base align-middle">done_all</span>
+                          Mark All Read
+                     </a>
+                     <?php endif; ?>
                 <a href="<?= base_url('/notifications/settings') ?>" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
+                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+                          <span class="material-symbols-rounded mr-2 text-base align-middle">settings</span>
                     Settings
                 </a>
             </div>
@@ -46,10 +41,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">notifications_active</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -63,9 +55,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-2xl">mark_email_unread</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -79,9 +69,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">done_all</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -95,9 +83,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">today</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -147,39 +133,21 @@
                                     <?php else: ?>bg-gray-100 dark:bg-gray-900<?php endif; ?>">
                                     
                                     <?php if ($notification['icon'] === 'calendar'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">calendar_month</span>
                                     <?php elseif ($notification['icon'] === 'bell'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">notifications</span>
                                     <?php elseif ($notification['icon'] === 'x-circle'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">cancel</span>
                                     <?php elseif ($notification['icon'] === 'credit-card'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">credit_card</span>
                                     <?php elseif ($notification['icon'] === 'star'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">star</span>
                                     <?php elseif ($notification['icon'] === 'users'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13.5 8.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">group</span>
                                     <?php elseif ($notification['icon'] === 'gift'): ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">card_giftcard</span>
                                     <?php else: ?>
-                                        <svg class="w-5 h-5 text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">settings</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -219,10 +187,7 @@
             </div>
         <?php else: ?>
             <div class="p-12 text-center">
-                <svg class="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z"></path>
-                </svg>
+                <span class="material-symbols-rounded w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4 text-5xl block">notifications_off</span>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications</h3>
                 <p class="text-gray-600 dark:text-gray-400">You're all caught up! No new notifications to show.</p>
             </div>

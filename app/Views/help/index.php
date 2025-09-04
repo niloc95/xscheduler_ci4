@@ -23,9 +23,7 @@
                        placeholder="Search for help..."
                        class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
+                    <span class="material-symbols-rounded text-gray-400 text-lg">search</span>
                 </div>
             </form>
         </div>
@@ -40,9 +38,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
+                            <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">rocket_launch</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Getting Started</h3>
                     </div>
@@ -59,9 +55,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
+                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Appointments</h3>
                     </div>
@@ -78,9 +72,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-                            </svg>
+                            <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">handyman</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Services</h3>
                     </div>
@@ -97,9 +89,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                            </svg>
+                            <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-2xl">account_balance_wallet</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Account & Billing</h3>
                     </div>
@@ -126,10 +116,7 @@
                                     <h3 class="text-lg font-medium text-gray-900 dark:text-white pr-4">
                                         <?= esc($faq['question']) ?>
                                     </h3>
-                                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400 transform transition-transform duration-200" 
-                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
+                                    <span class="material-symbols-rounded text-gray-500 dark:text-gray-400 transform transition-transform duration-200">expand_more</span>
                                 </button>
                                 <div class="faq-content hidden mt-3 text-gray-600 dark:text-gray-300">
                                     <p><?= esc($faq['answer']) ?></p>
@@ -152,16 +139,12 @@
                 <div class="space-y-3">
                     <a href="<?= base_url('/help/contact') ?>" 
                        class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded mr-2 text-base align-middle">mail</span>
                         Contact Support
                     </a>
                     <a href="<?= base_url('/help/chat') ?>" 
                        class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded mr-2 text-base align-middle">chat</span>
                         Live Chat
                     </a>
                 </div>

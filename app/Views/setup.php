@@ -60,9 +60,7 @@ window.appConfig = {
     <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
         <!-- Logo -->
         <div class="flex items-center">
-            <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 mr-3 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
+            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 mr-3 text-3xl transition-colors duration-200">rocket_launch</span>
             <h1 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200">xScheduler</h1>
         </div>
         
@@ -73,9 +71,7 @@ window.appConfig = {
             
             <!-- Contact Button -->
             <a href="mailto:support@xscheduler.com" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
+                <span class="material-symbols-rounded mr-2 text-base align-middle">mail</span>
                 Contact
             </a>
         </div>
@@ -85,11 +81,9 @@ window.appConfig = {
             <!-- Setup Header -->
             <div class="text-center mb-8">
                 <div class="bg-white dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-brand border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <svg class="w-8 h-8" style="color: var(--md-sys-color-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-            </div>                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">Welcome to xScheduler</h1>
+                    <span class="material-symbols-rounded text-4xl" style="color: var(--md-sys-color-primary);">rocket_launch</span>
+                </div>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">Welcome to xScheduler</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Let's set up your scheduling application in just a few steps</p>
             </div>
 
@@ -119,9 +113,7 @@ window.appConfig = {
                 <!-- Admin Account Section -->                    <div class="space-y-6">
                         <div class="border-b border-gray-200 dark:border-gray-600 pb-4 transition-colors duration-200">
                             <h2 class="text-xl font-semibold flex items-center transition-colors duration-200" style="color: var(--md-sys-color-primary);">
-                                <svg class="w-6 h-6 mr-2" style="color: var(--md-sys-color-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
+                                <span class="material-symbols-rounded mr-2" style="color: var(--md-sys-color-secondary);">shield_person</span>
                                 System Administrator Account
                             </h2>
                             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-200">Create your admin account to manage the scheduling system</p>
@@ -214,9 +206,7 @@ window.appConfig = {
                 <!-- Database Configuration Section -->                        <div class="space-y-6">
                             <div class="border-b border-gray-200 dark:border-gray-600 pb-4 transition-colors duration-200">
                                 <h2 class="text-xl font-semibold flex items-center transition-colors duration-200" style="color: var(--md-sys-color-primary);">
-                                    <svg class="w-6 h-6 mr-2" style="color: var(--md-sys-color-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
-                                    </svg>
+                                    <span class="material-symbols-rounded mr-2" style="color: var(--md-sys-color-secondary);">storage</span>
                                     Database Configuration
                                 </h2>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-200">Choose your preferred database setup</p>
@@ -231,9 +221,7 @@ window.appConfig = {
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
                                         <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200" style="color: var(--md-sys-color-primary);">MySQL Database</h3>
-                                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-gray-400 dark:text-gray-500 transition-colors duration-200">storage</span>
                                     </div>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Connect to an existing MySQL server</p>
                                     <ul class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1 transition-colors duration-200">
@@ -250,9 +238,7 @@ window.appConfig = {
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
                                         <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200" style="color: var(--md-sys-color-primary);">SQLite Database</h3>
-                                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
+                                        <span class="material-symbols-rounded text-gray-400 dark:text-gray-500 transition-colors duration-200">description</span>
                                     </div>
                                     <p class="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Zero-configuration file-based database</p>
                                     <ul class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1 transition-colors duration-200">
@@ -340,9 +326,7 @@ window.appConfig = {
                             <!-- Test Connection Button -->
                             <div class="mt-4 flex justify-end">
                                 <button id="test_connection_btn" type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-brand-ocean hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-ocean transition-all duration-200">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
-                                    </svg>
+                                    <span class="material-symbols-rounded mr-2 text-base align-middle">wifi</span>
                                     Test Connection
                                 </button>
                             </div>
@@ -353,9 +337,8 @@ window.appConfig = {
                             <div class="bg-green-50 dark:bg-green-900/20 border border-gray-300 dark:border-green-600 rounded-lg p-4 transition-colors duration-200">
                                 <h4 class="font-medium mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">SQLite Auto-Configuration</h4>
                                 <div class="flex items-start space-x-3">
-                                    <svg class="w-5 h-5 mt-0.5 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" style="color: var(--md-sys-color-secondary);">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                </svg>                                    <div>
+                                    <span class="material-symbols-rounded mt-0.5 transition-colors duration-200" style="color: var(--md-sys-color-secondary);">check_circle</span>
+                                    <div>
                                         <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200">Database will be automatically created at:</p>
                                         <code class="block mt-1 text-xs px-2 py-1 rounded font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-200">
                                             ./writable/database/xscheduler.db
@@ -372,18 +355,14 @@ window.appConfig = {
                 <!-- Form Actions -->
                 <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200">
                     <button type="button" onclick="window.location.href='/'" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-all duration-200">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
+                        <span class="material-symbols-rounded mr-2 text-base align-middle">arrow_back</span>
                         Back to Home
                     </button>
                     
                     <div class="flex-1"></div>
                     
                     <button id="setup_submit_btn" type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 dark:focus:ring-offset-gray-800" style="background-color: var(--md-sys-color-tertiary);">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
+                        <span class="material-symbols-rounded mr-2 text-base align-middle">rocket_launch</span>
                         Complete Setup
                     </button>
                 </div>
