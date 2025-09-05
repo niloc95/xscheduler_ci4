@@ -19,6 +19,7 @@ export default defineConfig({
         'dark-mode': path.resolve(process.cwd(), 'resources/js/dark-mode.js'),
         spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
         'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
+  'custom-cal': path.resolve(process.cwd(), 'resources/js/custom-cal.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',
