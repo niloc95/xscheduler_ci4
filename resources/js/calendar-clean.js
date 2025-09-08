@@ -476,20 +476,20 @@ function setupEventListeners() {
 
   // View switching
   $('viewDay')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
     console.log('Day view clicked');
     changeView('day');
   });
   $('viewWeek')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
     console.log('Week view clicked');
     changeView('week');
   });
   $('viewMonth')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation();
     console.log('Month view clicked');
     changeView('month');
   });

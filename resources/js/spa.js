@@ -40,6 +40,9 @@ const SPA = (() => {
     const href = a.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return false;
     if (!sameOrigin(href)) return false;
+  // Do not intercept FullCalendar internal navigation links
+  if (a.hasAttribute('data-navlink')) return false;
+  if (a.closest('.fc')) return false;
     // opt-out
     if (a.dataset?.noSpa === 'true' || a.classList.contains('no-spa')) return false;
     return true;
