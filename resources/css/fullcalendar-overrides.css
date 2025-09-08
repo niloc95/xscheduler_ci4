@@ -1,0 +1,83 @@
+/* FullCalendar overrides to match Tailwind/Material look and dark mode */
+
+/* Base colors via CSS variables for light/dark */
+.fc {
+  --fc-border-color: rgba(229, 231, 235, 1); /* gray-200 */
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-today-bg-color: rgba(59, 130, 246, 0.08); /* primary-ish */
+  --fc-event-bg-color: transparent; /* we'll style via content render */
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: inherit;
+}
+
+.dark .fc {
+  --fc-border-color: rgba(55, 65, 81, 1); /* gray-700 */
+  --fc-today-bg-color: rgba(96, 165, 250, 0.12);
+}
+
+/* Remove default header (we use our own) */
+.fc .fc-header-toolbar { display: none; }
+
+/* Day grid cells */
+.fc .fc-scrollgrid {
+  border: 1px solid var(--fc-border-color);
+  border-radius: 0.75rem; /* rounded-xl */
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(1px);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dark .fc .fc-scrollgrid {
+  background-color: rgba(31, 41, 55, 0.9); /* gray-800 */
+}
+
+.fc .fc-daygrid-day {
+  transition: box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background-color: rgba(249, 250, 251, 0.6); /* gray-50 */
+}
+
+.dark .fc .fc-daygrid-day:hover {
+  background-color: rgba(31, 41, 55, 0.4); /* gray-800/40 */
+}
+
+/* Day number styling */
+.fc .fc-daygrid-day-top {
+  padding: 0.5rem 0.75rem;
+}
+
+.fc .fc-daygrid-day-number {
+  font-weight: 600;
+  color: rgb(55, 65, 81); /* gray-700 */
+}
+
+.dark .fc .fc-daygrid-day-number { color: rgb(209, 213, 219); /* gray-300 */ }
+
+/* Today indicator accent */
+.fc .fc-day-today {
+  box-shadow: inset 0.25rem 0 0 0 rgba(59, 130, 246, 0.9); /* primary-ish */
+}
+
+/* Non-current month days */
+.fc .fc-day-other .fc-daygrid-day-number { color: rgb(156, 163, 175); /* gray-400 */ }
+.dark .fc .fc-day-other .fc-daygrid-day-number { color: rgb(107, 114, 128); /* gray-500 */ }
+
+/* Event pill base (we inject content via eventContent) */
+.fc-xs-pill { cursor: pointer; }
+
+/* Event hover subtle */
+.fc .fc-event:hover .fc-xs-pill { filter: brightness(1.05); }
+
+/* Event more link */
+.fc .fc-daygrid-more-link { color: rgb(37, 99, 235); font-weight: 500; }
+.dark .fc .fc-daygrid-more-link { color: rgb(96, 165, 250); }
+
+/* Spacing inside day cells */
+.fc .fc-daygrid-day-events { padding: 0 0.25rem 0.25rem 0.25rem; }
+
+/* Remove default event padding */
+.fc .fc-daygrid-event { padding: 0; border: none; background: transparent; }
+

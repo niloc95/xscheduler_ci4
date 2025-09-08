@@ -12,17 +12,26 @@
       <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div class="flex items-center justify-between">
           <!-- Title & Navigation (chevrons on either side) -->
-          <div class="flex items-center gap-2">
-            <button id="calPrev" type="button" class="btn btn-icon h-10 w-10 flex items-center justify-center" aria-label="Previous">
-              <span class="material-symbols-outlined text-2xl leading-none">chevron_left</span>
+       <div class="flex items-center gap-2">
+            <!-- Prev -->
+            <button id="calPrev" type="button"
+                class="btn btn-icon flex items-center justify-center"
+                aria-label="Previous">
+                <span class="material-symbols-outlined text-2xl align-middle">chevron_left</span>
             </button>
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 leading-none h-10 flex items-center">
-              <time id="calTitle" datetime="" class="leading-none">Schedule</time>
+
+            <!-- Date Title -->
+            <h1 class="m-0 text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+                <time id="calTitle" datetime="" class="align-middle">Schedule</time>
             </h1>
-            <button id="calNext" type="button" class="btn btn-icon h-10 w-10 flex items-center justify-center" aria-label="Next">
-              <span class="material-symbols-outlined text-2xl leading-none">chevron_right</span>
+
+            <!-- Next -->
+            <button id="calNext" type="button"
+                class="btn btn-icon flex items-center justify-center"
+                aria-label="Next">
+                <span class="material-symbols-outlined text-2xl align-middle">chevron_right</span>
             </button>
-          </div>
+            </div>
 
           <!-- View Switcher & Actions -->
           <div class="flex items-center space-x-4">
@@ -47,41 +56,56 @@
                 </select>
               </div>
             </div>
-            <!-- View Tabs -->
-            <div class="flex items-center gap-2">
+            <!-- View Tabs (desktop only) -->
+            <div class="hidden md:flex items-center gap-2">
               <button id="viewDay" data-view="day" class="btn btn-outline btn-sm">Day</button>
               <button id="viewWeek" data-view="week" class="btn btn-outline btn-sm">Week</button>
               <button id="viewMonth" data-view="month" class="btn btn-outline btn-sm">Month</button>
             </div>
             
-            <!-- Add Button -->
-            <button id="calAdd" type="button" class="btn btn-primary btn-sm inline-flex items-center gap-2">
+            <!-- Add Button: desktop -->
+            <button id="calAdd" type="button" class="hidden md:inline-flex btn btn-primary btn-sm items-center gap-2">
               <span class="material-symbols-outlined text-base">add</span>
               Add Appointment
             </button>
+            
+          </div>
+        </div>
+
+        <!-- Mobile: row below date with filters and quick-select -->
+        <div class="md:hidden mt-3 space-y-2">
+          <div class="flex items-center gap-3">
+            <label for="viewSelectMobile" class="sr-only">View</label>
+            <select id="viewSelectMobile" class="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-3">
+            <select id="filterServiceMobile" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <option value="">All Services</option>
+              <?php foreach (($services ?? []) as $s): ?>
+                <option value="<?= esc($s['id']) ?>"><?= esc($s['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <select id="filterProviderMobile" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <option value="">All Providers</option>
+              <?php foreach (($providers ?? []) as $p): ?>
+                <option value="<?= esc($p['id']) ?>"><?= esc($p['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div data-quick-select class="overflow-x-auto hide-scrollbar">
+            <!-- quick-select chips injected here on mobile -->
           </div>
         </div>
       </header>
 
       <!-- Calendar Content -->
       <div class="p-4">
-        <!-- Mobile filters -->
-        <div class="md:hidden mb-3 flex items-center gap-3">
-          <select id="filterServiceMobile" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-            <option value="">All Services</option>
-            <?php foreach (($services ?? []) as $s): ?>
-              <option value="<?= esc($s['id']) ?>"><?= esc($s['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-          <select id="filterProviderMobile" class="flex-1 px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-            <option value="">All Providers</option>
-            <?php foreach (($providers ?? []) as $p): ?>
-              <option value="<?= esc($p['id']) ?>"><?= esc($p['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <!-- Date quick-select line (rendered by JS per view) -->
-        <div id="dateQuickSelect" class="mb-4 overflow-x-auto hide-scrollbar">
+        <!-- Date quick-select line (desktop/tablet) -->
+        <div id="dateQuickSelect" data-quick-select class="hidden md:block mb-4 overflow-x-auto hide-scrollbar">
           <!-- chips injected here -->
         </div>
         <div id="calendarRoot" class="min-h-[600px]" data-service="" data-provider=""></div>
