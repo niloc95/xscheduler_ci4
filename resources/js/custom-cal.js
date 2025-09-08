@@ -1,9 +1,10 @@
 // Modern TailwindCSS Calendar with Material Design
 // Features: Day, Week, Month views | API Integration | Material Icons | Responsive
 
-// FullCalendar (Month view integration)
+// FullCalendar (All views integration)
 import { Calendar as FullCalendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import '../css/fullcalendar-overrides.css';
 
@@ -63,7 +64,7 @@ const state = {
   }
 };
 
-// FullCalendar instance for Month view
+// FullCalendar instance (all views)
 let __fc = null;
 
 // Utility functions
@@ -293,8 +294,8 @@ function ensureFullCalendar(root) {
 
   if (!__fc) {
     __fc = new FullCalendar(mount, {
-      plugins: [dayGridPlugin, interactionPlugin],
-      initialView: 'dayGridMonth',
+      plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+      initialView: state.view === 'week' ? 'timeGridWeek' : (state.view === 'day' ? 'timeGridDay' : 'dayGridMonth'),
       headerToolbar: false,
       firstDay: 0,
       fixedWeekCount: false,
@@ -303,14 +304,27 @@ function ensureFullCalendar(root) {
       selectable: true,
       selectMirror: true,
       initialDate: state.cursor,
+  height: 'auto',
+  contentHeight: 'auto',
+  handleWindowResize: true,
+      allDaySlot: true,
+      slotMinTime: '00:00:00',
+      slotMaxTime: '24:00:00',
+  slotDuration: '00:30:00',
+      expandRows: true,
+      nowIndicator: true,
       events: toFullCalendarEvents(state.appointments),
       datesSet(info) {
-        // Use the view's currentStart (first day of the focused month),
-        // not the visible grid start which can be in the previous month.
-        const curStart = (info.view && info.view.currentStart)
-          ? info.view.currentStart
-          : new Date(info.start.getFullYear(), info.start.getMonth(), 1);
-        state.cursor = new Date(curStart.getFullYear(), curStart.getMonth(), 1);
+        // Sync state.view and state.cursor with the current FullCalendar view
+        const vType = info.view?.type || 'dayGridMonth';
+        state.view = vType === 'timeGridWeek' ? 'week' : (vType === 'timeGridDay' ? 'day' : 'month');
+        // Anchor cursor to start of period for header formatting/filters
+        const curStart = info.view?.currentStart || info.start;
+        if (state.view === 'month') {
+          state.cursor = new Date(curStart.getFullYear(), curStart.getMonth(), 1);
+        } else {
+          state.cursor = new Date(curStart);
+        }
         updateTitle();
         renderQuickSelect();
         updateViewTabs();
@@ -327,7 +341,6 @@ function ensureFullCalendar(root) {
       },
       dateClick: (info) => {
         // Placeholder for add flow
-        // console.log('Add appointment on', info.dateStr);
       },
       eventContent(arg) {
         const raw = arg.event.extendedProps?.raw || {};
@@ -349,168 +362,29 @@ function ensureFullCalendar(root) {
     });
     __fc.render();
   } else {
-    __fc.gotoDate(state.cursor);
+    // Ensure the correct view
+    const targetView = state.view === 'week' ? 'timeGridWeek' : (state.view === 'day' ? 'timeGridDay' : 'dayGridMonth');
+    if (__fc.view?.type !== targetView) {
+      __fc.changeView(targetView, state.cursor);
+    } else {
+      __fc.gotoDate(state.cursor);
+    }
     __fc.removeAllEvents();
     __fc.addEventSource(toFullCalendarEvents(state.appointments));
   }
 }
 
-function renderMonthView(root) {
-  ensureFullCalendar(root);
-}
-
-function renderWeekView(root) {
-  const weekStart = dayjs(state.cursor).startOf('week');
-  const today = dayjs(state.today);
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  const timeColumn = hours.map(hour => `
-    <div class="h-16 border-b border-gray-100 dark:border-gray-700 flex items-start justify-end pr-2 text-xs text-gray-500 dark:text-gray-400">
-      ${hour.toString().padStart(2, '0')}:00
-    </div>
-  `).join('');
-
-  const dayColumns = Array.from({ length: 7 }, (_, dayIndex) => {
-    const current = dayjs(weekStart.d.getTime() + dayIndex * 86400000);
-    const isToday = current.isSame(today, 'day');
-    const dayAppts = state.appointments.filter(a => 
-      a.start?.slice(0, 10) === current.format('YYYY-MM-DD')
-    );
-
-    const headerClasses = isToday 
-      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold'
-      : 'text-gray-700 dark:text-gray-300';
-
-    const dayHeader = `
-      <div class="h-16 border-b border-gray-200 dark:border-gray-700 ${headerClasses} flex flex-col items-center justify-center">
-        <div class="text-xs font-medium">${current.d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
-        <div class="text-lg font-semibold">${current.d.getDate()}</div>
-      </div>
-    `;
-
-    const hourSlots = hours.map(hour => {
-      const slotAppts = dayAppts.filter(a => {
-        const startHour = parseDate(a.start).getHours();
-        return startHour === hour;
-      });
-
-      const appointments = slotAppts.map(apt => {
-        const start = parseDate(apt.start);
-        const end = parseDate(apt.end);
-        const duration = (end - start) / (1000 * 60);
-        const height = Math.max(24, duration * 1.2);
-
-        return `
-          <div class="absolute left-1 right-1 ${getStatusClasses(apt.status)} rounded-lg p-2 shadow-sm cursor-pointer hover:shadow-md transition-all transform hover:scale-105 z-10"
-               style="height: ${height}px; top: 2px;"
-               data-event-id="${apt.id}">
-            <div class="text-xs font-medium truncate">${apt.title || 'Appointment'}</div>
-            <div class="text-xs opacity-90">${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-          </div>
-        `;
-      }).join('');
-
-      return `
-        <div class="relative h-16 border-b border-gray-100 dark:border-gray-700 bg-transparent hover:bg-gray-50/40 dark:hover:bg-gray-800/40 transition-colors">
-          ${appointments}
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="border-r border-gray-200 dark:border-gray-700 last:border-r-0">
-        ${dayHeader}
-        ${hourSlots}
-      </div>
-    `;
-  }).join('');
-
-  root.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-brand border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="flex">
-        <div class="w-16 bg-transparent border-r border-gray-200 dark:border-gray-700">
-          <div class="h-16 border-b border-gray-200 dark:border-gray-700"></div>
-          ${timeColumn}
-        </div>
-        <div class="flex-1 grid grid-cols-7">
-          ${dayColumns}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderDayView(root) {
-  const current = dayjs(state.cursor);
-  const today = dayjs(state.today);
-  const isToday = current.isSame(today, 'day');
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-  const dayAppts = state.appointments.filter(a => 
-    a.start?.slice(0, 10) === current.format('YYYY-MM-DD')
-  );
-
-  const hourSlots = hours.map(hour => {
-    const slotAppts = dayAppts.filter(a => {
-      const startHour = parseDate(a.start).getHours();
-      return startHour === hour;
-    });
-
-    const appointments = slotAppts.map(apt => {
-      const start = parseDate(apt.start);
-      const end = parseDate(apt.end);
-      const duration = (end - start) / (1000 * 60);
-
-      return `
-        <div class="${getStatusClasses(apt.status)} rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-all transform hover:scale-105 mb-2"
-             data-event-id="${apt.id}">
-          <div class="font-medium">${apt.title || 'Appointment'}</div>
-          <div class="text-sm opacity-90">
-            ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
-            ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="flex border-b border-gray-100 dark:border-gray-700 min-h-[4rem] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-        <div class="w-16 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2 pt-2">
-          <span class="text-xs text-gray-500 dark:text-gray-400">${hour.toString().padStart(2, '0')}:00</span>
-        </div>
-        <div class="flex-1 p-2">
-          ${appointments}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  const todayIndicator = isToday ? 'border-l-4 border-primary-500' : '';
-
-  root.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-brand border border-gray-200 dark:border-gray-700 overflow-hidden ${todayIndicator}">
-      <div class="max-h-[600px] overflow-y-auto">
-        ${hourSlots}
-      </div>
-    </div>
-  `;
-
-  if (isToday) {
-    const container = root.querySelector('.overflow-y-auto');
-    const currentHour = new Date().getHours();
-    const scrollTarget = container.children[Math.max(0, currentHour - 1)];
-    if (scrollTarget) {
-      scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
-}
+function renderMonthView(root) { ensureFullCalendar(root); }
+function renderWeekView(root) { ensureFullCalendar(root); }
+function renderDayView(root) { ensureFullCalendar(root); }
 
 // Main render
 function render() {
   const root = $('calendarRoot');
   if (!root) return;
 
-  // Don't nuke the FullCalendar mount when it's already rendered; otherwise show a loader
-  const showLoader = !(state.view === 'month' && __fc);
+  // Show a loader only until FullCalendar is mounted
+  const showLoader = !__fc;
   if (showLoader) {
     root.innerHTML = '<div class="flex items-center justify-center h-64"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
   }
@@ -605,48 +479,47 @@ function editAppointment(id) {
 // Navigation & init
 function changeView(newView) {
   if (state.view === newView) return;
-  if (state.view === 'month' && newView !== 'month' && __fc) {
-    try { __fc.destroy(); } catch (_) {}
-    __fc = null;
-  }
   state.view = newView;
-  if (newView === 'month') {
-    const d = state.cursor instanceof Date ? state.cursor : new Date(state.cursor);
-    state.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+  // Switch FullCalendar view directly if mounted
+  if (__fc) {
+    const viewName = newView === 'week' ? 'timeGridWeek' : (newView === 'day' ? 'timeGridDay' : 'dayGridMonth');
+    if (newView === 'month') {
+      const d = state.cursor instanceof Date ? state.cursor : new Date(state.cursor);
+      state.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+    }
+    __fc.changeView(viewName, state.cursor);
+    updateTitle();
+    renderQuickSelect();
+    updateViewTabs();
   }
   refresh();
 }
 
 function navigate(direction) {
-  if (state.view === 'month') {
-    const d = state.cursor instanceof Date ? state.cursor : new Date(state.cursor);
-    // Anchor to the 1st to avoid JS month overflow (e.g., Jan 31 + 1 month)
-    const newDate = new Date(d.getFullYear(), d.getMonth() + direction, 1);
-    state.cursor = newDate;
-    if (__fc) __fc.gotoDate(newDate);
+  if (__fc) {
+    if (direction < 0) __fc.prev(); else __fc.next();
+    // state will sync in datesSet, but still refresh events
     refresh();
-    return;
+  } else {
+    // Fallback (shouldn’t happen once FC is primary)
+    const unit = state.view === 'month' ? 'month' : (state.view === 'day' ? 'day' : 'week');
+    state.cursor = dayjs(state.cursor).add(direction, unit).d;
+    refresh();
   }
-  const unit = state.view === 'day' ? 'day' : 'week';
-  const newDate = dayjs(state.cursor).add(direction, unit).d;
-  state.cursor = newDate;
-  refresh();
 }
 
 function goToToday() {
   const now = new Date();
-  state.cursor = (state.view === 'month')
-    ? new Date(now.getFullYear(), now.getMonth(), 1)
-    : now;
-  if (state.view === 'month' && __fc) {
-    __fc.gotoDate(state.cursor);
+  if (__fc) {
+    __fc.today();
   }
+  state.cursor = now;
   refresh();
 }
 
 async function refresh() {
   await loadAppointments();
-  if (state.view === 'month' && __fc) {
+  if (__fc) {
     __fc.removeAllEvents();
     __fc.addEventSource(toFullCalendarEvents(state.appointments));
   }

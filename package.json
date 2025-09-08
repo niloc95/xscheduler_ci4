@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "package": "node scripts/package.js",
     "build:dev": "node scripts/build-config.js build development",
-    "build:staging": "node scripts/build-config.js build staging", 
+    "build:staging": "node scripts/build-config.js build staging",
     "build:prod": "node scripts/build-config.js build production",
     "deploy": "node scripts/build-config.js deploy"
   },
@@ -23,6 +23,10 @@
   "dependencies": {
     "@coreui/coreui": "^5.4.0",
     "@coreui/icons": "^3.0.1",
+    "@fullcalendar/core": "^6.1.15",
+    "@fullcalendar/daygrid": "^6.1.15",
+    "@fullcalendar/interaction": "^6.1.15",
+    "@fullcalendar/timegrid": "^6.1.19",
     "@headlessui/tailwindcss": "^0.2.2",
     "@material-tailwind/html": "^3.0.0-beta.7",
     "@material/button": "^14.0.0",
@@ -36,10 +40,7 @@
     "chart.js": "^4.5.0",
     "material-icons": "^1.13.14",
     "sass": "^1.89.2",
-  "vite": "^6.3.5",
-  "@fullcalendar/core": "^6.1.15",
-  "@fullcalendar/daygrid": "^6.1.15",
-  "@fullcalendar/interaction": "^6.1.15"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",

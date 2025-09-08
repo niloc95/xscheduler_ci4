@@ -81,3 +81,33 @@
 /* Remove default event padding */
 .fc .fc-daygrid-event { padding: 0; border: none; background: transparent; }
 
+/* TimeGrid (week/day) tweaks */
+.fc .fc-timegrid {
+  border: 1px solid var(--fc-border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.fc .fc-view-harness,
+.fc .fc-view-harness-active { height: auto; }
+.fc .fc-timegrid-body,
+.fc .fc-timegrid-body table,
+.fc .fc-timegrid-slots table,
+.fc .fc-timegrid-cols table { width: 100%; border-collapse: collapse; }
+.fc .fc-timegrid-slots tr { height: 3rem; }
+.fc .fc-timegrid-slot { height: 3rem; }
+.fc .fc-timegrid-slot, .fc .fc-timegrid-axis, .fc .fc-timegrid-col { border-color: var(--fc-border-color); }
+.fc .fc-timegrid-slot-label { color: rgb(107, 114, 128); font-size: 0.75rem; }
+.dark .fc .fc-timegrid-slot-label { color: rgb(156, 163, 175); }
+.fc .fc-timegrid-axis-cushion { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.fc .fc-timegrid-axis { width: 3.25rem; }
+.fc .fc-timegrid-col-frame { min-height: 24rem; }
+.fc .fc-timegrid-allday { border-bottom: 1px solid var(--fc-border-color); }
+.fc .fc-col-header-cell-cushion { padding: 0.5rem; font-weight: 600; color: rgb(55,65,81); }
+.dark .fc .fc-col-header-cell-cushion { color: rgb(209,213,219); }
+.fc .fc-timegrid-col:hover { background-color: rgba(249, 250, 251, 0.5); }
+.dark .fc .fc-timegrid-col:hover { background-color: rgba(31, 41, 55, 0.4); }
+.fc .fc-timegrid-event { padding: 0; border: none; background: transparent; }
+.fc .fc-timegrid-event .fc-event-main { padding: 0; }
+.fc .fc-timegrid-now-indicator-line { border-color: rgba(59, 130, 246, 0.9); }
+.fc .fc-timegrid-now-indicator-arrow { border-color: transparent transparent rgba(59, 130, 246, 0.9) transparent; }
+
