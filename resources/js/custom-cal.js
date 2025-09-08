@@ -66,6 +66,8 @@ const state = {
 
 // FullCalendar instance (all views)
 let __fc = null;
+let __refreshing = false;
+let __refreshQueued = false;
 
 // Utility functions
 const $ = (id) => document.getElementById(id);
@@ -284,6 +286,7 @@ function ensureFullCalendar(root) {
   if (!mount) {
     mount = document.createElement('div');
     mount.id = 'fcMonth';
+  mount.className = 'fc';
     root.innerHTML = '';
     root.appendChild(mount);
   } else if (!root.contains(mount)) {
@@ -393,6 +396,7 @@ function render() {
   renderQuickSelect();
   updateViewTabs();
 
+  // Always ensure/mount FullCalendar for current view
   if (state.view === 'month') {
     renderMonthView(root);
   } else if (state.view === 'week') {
@@ -400,6 +404,7 @@ function render() {
   } else {
     renderDayView(root);
   }
+  // When FC is mounted, ensureFullCalendar manages DOM; render() should only update UI chrome
 }
 
 // Event handling
@@ -487,10 +492,7 @@ function changeView(newView) {
       const d = state.cursor instanceof Date ? state.cursor : new Date(state.cursor);
       state.cursor = new Date(d.getFullYear(), d.getMonth(), 1);
     }
-    __fc.changeView(viewName, state.cursor);
-    updateTitle();
-    renderQuickSelect();
-    updateViewTabs();
+  __fc.changeView(viewName, state.cursor);
   }
   refresh();
 }
@@ -518,12 +520,27 @@ function goToToday() {
 }
 
 async function refresh() {
-  await loadAppointments();
-  if (__fc) {
-    __fc.removeAllEvents();
-    __fc.addEventSource(toFullCalendarEvents(state.appointments));
+  if (__refreshing) { __refreshQueued = true; return; }
+  __refreshing = true;
+  try {
+    await loadAppointments();
+    if (__fc) {
+      __fc.removeAllEvents();
+      __fc.addEventSource(toFullCalendarEvents(state.appointments));
+      // datesSet will update UI; avoid re-rendering FC container
+    } else {
+      render();
+    }
+  } catch (e) {
+    console.error('Calendar refresh failed:', e);
+  } finally {
+    __refreshing = false;
+    if (__refreshQueued) {
+      __refreshQueued = false;
+      // Run one more refresh to include any missed updates
+      setTimeout(() => refresh(), 0);
+    }
   }
-  render();
 }
 
 // Event listeners
@@ -601,7 +618,8 @@ function setupEventListeners() {
 function bootCalendarIfPresent(force = false) {
   const root = $('calendarRoot');
   if (!root) return;
-  if (!window.__XS_CAL_WIRED__ || force || !root.dataset.wired) {
+  // Only wire once; ignore `force` for wiring to avoid duplicate handlers
+  if (!window.__XS_CAL_WIRED__ || !root.dataset.wired) {
     setupEventListeners();
     root.dataset.wired = '1';
     window.__XS_CAL_WIRED__ = true;
@@ -634,14 +652,31 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('spa:navigated', () => {
+  // Force a refresh of data/calendar without re-wiring listeners
   setTimeout(() => bootCalendarIfPresent(true), 0);
 });
 
+// Avoid observing the entire document subtree which causes loops with FullCalendar DOM changes.
+// Instead, watch only #spa-content for top-level additions that include #calendarRoot.
 if (!window.__XS_CAL_OBS__) {
-  const target = document.getElementById('spa-content') || document.body;
+  const target = document.getElementById('spa-content');
   try {
-    const mo = new MutationObserver(() => bootCalendarIfPresent());
-    mo.observe(target, { childList: true, subtree: true });
+    if (target) {
+    const mo = new MutationObserver((mutations) => {
+        const addedCalendar = mutations.some(m =>
+          Array.from(m.addedNodes || []).some(n => {
+            if (!(n instanceof Element)) return false;
+            return n.id === 'calendarRoot' || !!n.querySelector?.('#calendarRoot');
+          })
+        );
+        if (addedCalendar) {
+          // Debounce to group multiple micro-mutations into a single boot
+          clearTimeout(window.__XS_CAL_OBS_T);
+      window.__XS_CAL_OBS_T = setTimeout(() => bootCalendarIfPresent(true), 50);
+        }
+      });
+      mo.observe(target, { childList: true });
+    }
     window.__XS_CAL_OBS__ = true;
   } catch (_) {}
 }

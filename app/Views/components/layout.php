@@ -90,6 +90,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     
     <script type="module" src="<?= base_url('build/assets/materialWeb.js') ?>"></script>
+    <script>
+        // Global base URL for API and asset helpers
+        window.__BASE_URL__ = '<?= base_url() ?>';
+    </script>
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
@@ -224,6 +228,8 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
+    <!-- Load calendar module globally so it can handle SPA navigations on scheduler page -->
+    <script type="module" src="<?= base_url('build/assets/calendar-clean.js') ?>"></script>
     <script>
         // Sync header title/subtitle with current view's declared page attributes, if present
     let XS_DEFAULT_SUBTITLE = null;

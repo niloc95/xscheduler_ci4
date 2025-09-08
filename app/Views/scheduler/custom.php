@@ -58,9 +58,9 @@
             </div>
             <!-- View Tabs (desktop only) -->
             <div class="hidden md:flex items-center gap-2">
-              <button id="viewDay" data-view="day" class="btn btn-outline btn-sm">Day</button>
-              <button id="viewWeek" data-view="week" class="btn btn-outline btn-sm">Week</button>
-              <button id="viewMonth" data-view="month" class="btn btn-outline btn-sm">Month</button>
+              <button type="button" id="viewDay" data-view="day" class="btn btn-outline btn-sm">Day</button>
+              <button type="button" id="viewWeek" data-view="week" class="btn btn-outline btn-sm">Week</button>
+              <button type="button" id="viewMonth" data-view="month" class="btn btn-outline btn-sm">Month</button>
             </div>
             
             <!-- Add Button: desktop -->
@@ -132,8 +132,27 @@
     </div>
   </div>
 
-  <script>
-    window.__BASE_URL__ = '<?= base_url() ?>';
-  </script>
-  <script type="module" src="<?= base_url('build/assets/custom-cal.js') ?>"></script>
+  
+  <style>
+    /* Basic calendar styling to ensure visibility */
+    #calendarRoot {
+  min-height: 520px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+    }
+
+    .dark #calendarRoot {
+      background: #1f2937;
+      border-color: #374151;
+    }
+
+    /* Ensure FullCalendar elements are visible */
+    .fc {
+      font-family: inherit;
+    }
+
+  /* Avoid forcing min-heights that can cause resize loops; let FC autosize */
+  </style>
+  <!-- calendar-clean.js is loaded globally in the layout to support SPA navigations -->
 <?= $this->endSection() ?>
