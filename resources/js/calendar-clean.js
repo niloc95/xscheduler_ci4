@@ -301,14 +301,19 @@ async function initCalendar() {
       initialDate: state.currentDate,
       headerToolbar: false, // We use custom header
       height: 'auto',
-      expandRows: true,
+      contentHeight: 'auto',
+      expandRows: false,
+      handleWindowResize: false,
+      stickyHeaderDates: false,
+      navLinks: false,
+      lazyFetching: true,
 
       // Day/Week view settings
       allDaySlot: true,
       slotMinTime: state.businessHours.start,
       slotMaxTime: state.businessHours.end,
       slotDuration: '00:30:00',
-      nowIndicator: true,
+  nowIndicator: true,
       scrollTime: state.businessHours.start,
       businessHours: {
         // show business hours background on grid views
@@ -320,7 +325,11 @@ async function initCalendar() {
       // Month view settings
       fixedWeekCount: false,
       showNonCurrentDates: true,
-      dayMaxEventRows: 3,
+  dayMaxEventRows: 3,
+  progressiveEventRendering: true,
+  eventOverlap: false,
+  slotEventOverlap: false,
+  forceEventDuration: true,
 
       // Interaction
       selectable: true,
@@ -330,7 +339,7 @@ async function initCalendar() {
       events: loadAppointments,
 
       // Event handlers
-      datesSet: (() => {
+  datesSet: (() => {
         let t = null;
         return (info) => {
           // Debounce to avoid rapid loops on view switches
@@ -433,15 +442,18 @@ function changeView(newView) {
     console.log(`🔄 Switching to ${newView} view`);
     state.isSwitching = true;
     const token = ++state.switchToken;
-    try {
-      state.view = newView;
-      state.calendar.changeView(fcView);
-      // UI update right away to reflect active tab
-      updateViewTabs();
-    } finally {
-      // Only clear if no newer switch started
-      if (token === state.switchToken) state.isSwitching = false;
-    }
+    // Defer actual view change to next microtask to coalesce multiple clicks
+    Promise.resolve().then(() => {
+      if (token !== state.switchToken) return; // a newer switch superseded this
+      try {
+        state.view = newView;
+        state.calendar.changeView(fcView);
+        // UI update right away to reflect active tab
+        updateViewTabs();
+      } finally {
+        if (token === state.switchToken) state.isSwitching = false;
+      }
+    });
   }
 }
 
@@ -483,25 +495,25 @@ function setupEventListeners() {
   if (state.__eventsWired) return;
   state.__eventsWired = true;
   // Navigation
-  $('calPrev')?.addEventListener('click', () => navigate(-1));
-  $('calNext')?.addEventListener('click', () => navigate(1));
+  $('calPrev')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); navigate(-1); });
+  $('calNext')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); navigate(1); });
 
   // View switching
   $('viewDay')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     console.log('Day view clicked');
     changeView('day');
   });
   $('viewWeek')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     console.log('Week view clicked');
     changeView('week');
   });
   $('viewMonth')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     console.log('Month view clicked');
     changeView('month');
   });
@@ -617,14 +629,18 @@ async function init() {
 function handleSPANavigation() {
   const isScheduler = window.location.pathname.includes('/schedule') || window.location.pathname.includes('/scheduler');
   if (isScheduler) {
-    // SPA replaced content; always rebuild a fresh calendar binding to new DOM
-    if (state.calendar) {
-      try { state.calendar.destroy(); } catch (_) {}
-      state.calendar = null;
-    }
-    state.initialized = false;
-    // small delay to allow DOM to settle
-    setTimeout(init, 0);
+    // SPA replaced content; rebuild once after DOM settles
+    if (state.__spaNavPending) return;
+    state.__spaNavPending = true;
+    setTimeout(() => {
+      state.__spaNavPending = false;
+      if (state.calendar) {
+        try { state.calendar.destroy(); } catch (_) {}
+        state.calendar = null;
+      }
+      state.initialized = false;
+      init();
+    }, 0);
     return;
   }
 

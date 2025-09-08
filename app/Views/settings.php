@@ -28,7 +28,7 @@
                 <button class="tab-btn" data-tab="users">Users</button>
                 <button class="tab-btn" data-tab="localization">Localization</button>
                 <button class="tab-btn" data-tab="booking">Booking</button>
-                <button class="tab-btn" data-tab="business">Business Logic</button>
+                <button class="tab-btn" data-tab="business">Business hours</button>
                 <button class="tab-btn" data-tab="legal">Legal Contents</button>
                 <button class="tab-btn" data-tab="integrations">Integrations</button>
                 
@@ -220,7 +220,7 @@
                 </div>
             </section>
 
-            <!-- Business Logic -->
+            <!-- Business hours -->
             <section id="panel-business" class="tab-panel hidden">
                 <div class="space-y-6">
                     <div class="form-field">
