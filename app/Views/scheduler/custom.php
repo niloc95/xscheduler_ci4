@@ -11,23 +11,17 @@
       <!-- Header Bar -->
       <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div class="flex items-center justify-between">
-          <!-- Title & Navigation -->
-          <div class="flex items-center space-x-4">
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              <time id="calTitle" datetime="">Schedule</time>
+          <!-- Title & Navigation (chevrons on either side) -->
+          <div class="flex items-center gap-2">
+            <button id="calPrev" type="button" class="btn btn-icon h-10 w-10 flex items-center justify-center" aria-label="Previous">
+              <span class="material-symbols-outlined text-2xl leading-none">chevron_left</span>
+            </button>
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 leading-none h-10 flex items-center">
+              <time id="calTitle" datetime="" class="leading-none">Schedule</time>
             </h1>
-            <div class="flex items-center gap-2">
-              <button id="calPrev" type="button" class="btn btn-icon" aria-label="Previous">
-                <span class="material-symbols-outlined">chevron_left</span>
-              </button>
-              <button id="calToday" type="button" class="btn btn-secondary btn-sm">
-                <span class="material-symbols-outlined text-base mr-1">calendar_today</span>
-                Today
-              </button>
-              <button id="calNext" type="button" class="btn btn-icon" aria-label="Next">
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
-            </div>
+            <button id="calNext" type="button" class="btn btn-icon h-10 w-10 flex items-center justify-center" aria-label="Next">
+              <span class="material-symbols-outlined text-2xl leading-none">chevron_right</span>
+            </button>
           </div>
 
           <!-- View Switcher & Actions -->
@@ -85,6 +79,10 @@
               <option value="<?= esc($p['id']) ?>"><?= esc($p['name']) ?></option>
             <?php endforeach; ?>
           </select>
+        </div>
+        <!-- Date quick-select line (rendered by JS per view) -->
+        <div id="dateQuickSelect" class="mb-4 overflow-x-auto hide-scrollbar">
+          <!-- chips injected here -->
         </div>
         <div id="calendarRoot" class="min-h-[600px]" data-service="" data-provider=""></div>
       </div>

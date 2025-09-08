@@ -106,11 +106,11 @@
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
                                 <span class="material-symbols-outlined text-2xl">menu</span>
                             </button>
-                            <div>
-                                <h1 id="headerTitle" class="text-3xl font-extrabold tracking-tight text-gray-800 dark:text-gray-200 transition-colors duration-200">
+                            <div class="min-w-0">
+                                <h1 id="headerTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-800 dark:text-gray-200 transition-colors duration-200 truncate whitespace-nowrap">
                                     <?= $this->renderSection('header_title') ?: (isset($pageTitle) ? esc($pageTitle) : ($this->renderSection('title') ?: 'Dashboard')) ?>
                                 </h1>
-                                <p id="headerSubtitle" class="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+                                <p id="headerSubtitle" class="hidden sm:block text-gray-600 dark:text-gray-400 transition-colors duration-200">
                                     <?php 
                                     $currentUser = session()->get('user');
                                     $currentRole = $currentUser['role'] ?? 'User';
@@ -124,7 +124,7 @@
                             </div>
                         </div>
                         
-                        <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
                             <!-- Dark Mode Toggle -->
                             <?= $this->include('components/dark-mode-toggle') ?>
                             
@@ -194,10 +194,20 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Mobile search row: full-width under title + icons -->
+                    <div class="md:hidden mt-2">
+                        <div class="relative">
+                            <input type="search" 
+                                placeholder="Search users, appointments..." 
+                                class="w-full h-11 pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200 text-sm leading-relaxed"
+                                id="dashboardSearchMobile">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-base">search</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0" style="padding-top: 24px;">
+                <main class="pt-0" style="padding-top: 24px;">
                     <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: calc(var(--xs-header-offset, 0px) + 24px);">
                         <?= $this->renderSection('content') ?>
                     </div>

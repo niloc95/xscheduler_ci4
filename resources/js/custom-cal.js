@@ -135,22 +135,126 @@ async function loadAppointments() {
 }
 
 // View rendering functions
+function formatHeaderTitle() {
+  const d = dayjs(state.cursor);
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const weekday = d.d.toLocaleDateString(undefined, { weekday: 'short' }); // Mon
+  const day = pad2(d.d.getDate()); // 04
+  const monthShort = d.d.toLocaleDateString(undefined, { month: 'short' }); // Sep
+  const monthLong = d.d.toLocaleDateString(undefined, { month: 'long' }); // September
+  const year = d.d.getFullYear(); // 2025
+
+  if (state.view === 'day') {
+    return `${weekday}, ${day} ${monthShort} ${year}`; // Mon, 04 Sep 2025
+  }
+  if (state.view === 'week') {
+    // Compute ISO week number
+    const start = d.startOf('week');
+    const end = d.endOf('week');
+    // ISO week: Thursday-based
+    const isoWeek = (date) => {
+      const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+      return weekNo;
+    };
+    const wk = isoWeek(d.d);
+    const startDay = String(start.d.getDate()).padStart(2, '0');
+    const endDay = String(end.d.getDate()).padStart(2, '0');
+    const monthShortStart = start.d.toLocaleDateString(undefined, { month: 'short' });
+    const monthShortEnd = end.d.toLocaleDateString(undefined, { month: 'short' });
+    const yr = d.d.getFullYear();
+    return `Week ${wk} (${startDay} – ${endDay} ${monthShortEnd} ${yr})`;
+  }
+  // month
+  return `${monthLong} ${year}`; // September 2025
+}
+
+function renderQuickSelect() {
+  const host = document.getElementById('dateQuickSelect');
+  if (!host) return;
+
+  const d = dayjs(state.cursor);
+  host.innerHTML = '';
+
+  // Helper to build chip
+  const chip = (label, selected = false) => `
+    <button class="inline-flex items-center whitespace-nowrap px-3 py-1.5 mr-2 mb-2 rounded-full text-sm border transition-colors ${selected ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}" data-chip="1">
+      ${label}
+    </button>`;
+
+  if (state.view === 'day') {
+    // Show days around current (e.g., 14-day window centered on cursor)
+    const start = d.add(-7, 'day');
+    const days = Array.from({ length: 21 }, (_, i) => dayjs(start.d.getTime() + i * 86400000));
+    host.innerHTML = days.map(x => {
+      const label = `${x.d.toLocaleDateString(undefined, { weekday: 'short' })} ${String(x.d.getDate()).padStart(2, '0')}`;
+      const sel = x.isSame(d.d, 'day');
+      return `<span data-date="${x.format('YYYY-MM-DD')}" class="qs-item">${chip(label, sel)}</span>`;
+    }).join('');
+  } else if (state.view === 'week') {
+    // Show sequence of week chips: Week N
+    const center = d.startOf('week');
+    const start = center.add(-4, 'week');
+    const weeks = Array.from({ length: 12 }, (_, i) => start.add(i, 'week'));
+    const isoWeek = (date) => {
+      const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+    };
+    host.innerHTML = weeks.map(x => {
+      const wk = isoWeek(x.d);
+      const label = `Week ${wk}`;
+      const sel = x.isSame(center.d, 'day');
+      return `<span data-week-start="${x.format('YYYY-MM-DD')}" class="qs-item">${chip(label, sel)}</span>`;
+    }).join('');
+  } else if (state.view === 'month') {
+    // Optional: Year view quick scroll (years)
+    const year = d.d.getFullYear();
+    const startYear = year - 2;
+    const years = Array.from({ length: 5 }, (_, i) => startYear + i);
+    host.innerHTML = years.map(y => {
+      const label = `${y}`;
+      const sel = y === year;
+      return `<span data-year="${y}" class="qs-item">${chip(label, sel)}</span>`;
+    }).join('');
+  }
+
+  // Attach events
+  host.querySelectorAll('.qs-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const el = e.currentTarget;
+      const ymd = el.getAttribute('data-date');
+      const weekStart = el.getAttribute('data-week-start');
+      const yr = el.getAttribute('data-year');
+      if (ymd) {
+        state.cursor = new Date(ymd);
+      } else if (weekStart) {
+        state.cursor = new Date(weekStart);
+      } else if (yr) {
+        const cur = dayjs(state.cursor);
+        state.cursor = new Date(Number(yr), cur.d.getMonth(), Math.min(cur.d.getDate(), 28));
+      }
+      refresh();
+    });
+  });
+}
+
+// Update title with new formatting
 function updateTitle() {
   const titleEl = $('calTitle');
   if (!titleEl) return;
-  
-  const d = dayjs(state.cursor);
+  const txt = formatHeaderTitle();
+  titleEl.textContent = txt;
+  // datetime attribute for semantics
   if (state.view === 'month') {
-    titleEl.textContent = d.format('MMMM YYYY');
-    titleEl.setAttribute('datetime', d.format('YYYY-MM'));
-  } else if (state.view === 'week') {
-    const start = d.startOf('week');
-    const end = d.endOf('week');
-    titleEl.textContent = `${start.format('MMM')} ${start.d.getDate()} – ${end.format('MMM')} ${end.d.getDate()}, ${d.d.getFullYear()}`;
+    titleEl.setAttribute('datetime', dayjs(state.cursor).format('YYYY-MM'));
   } else {
-    titleEl.textContent = d.d.toLocaleDateString(undefined, { 
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
-    });
+    titleEl.setAttribute('datetime', dayjs(state.cursor).format('YYYY-MM-DD'));
   }
 }
 
@@ -392,11 +496,6 @@ function renderDayView(root) {
   
   root.innerHTML = `
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-brand border border-gray-200 dark:border-gray-700 overflow-hidden ${todayIndicator}">
-      <div class="bg-transparent border-b border-gray-200 dark:border-gray-700 p-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          ${current.d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-        </h2>
-      </div>
       <div class="max-h-[600px] overflow-y-auto">
         ${hourSlots}
       </div>
@@ -418,12 +517,13 @@ function renderDayView(root) {
 function render() {
   const root = $('calendarRoot');
   if (!root) return;
-  
+
   root.innerHTML = '<div class="flex items-center justify-center h-64"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>';
-  
+
   updateTitle();
+  renderQuickSelect();
   updateViewTabs();
-  
+
   if (state.view === 'month') {
     renderMonthView(root);
   } else if (state.view === 'week') {
@@ -536,7 +636,6 @@ async function refresh() {
 function setupEventListeners() {
   // Navigation
   $('calPrev')?.addEventListener('click', () => navigate(-1));
-  $('calToday')?.addEventListener('click', goToToday);
   $('calNext')?.addEventListener('click', () => navigate(1));
   
   // View switching
