@@ -605,11 +605,14 @@ async function init() {
 function handleSPANavigation() {
   const isScheduler = window.location.pathname.includes('/schedule') || window.location.pathname.includes('/scheduler');
   if (isScheduler) {
-    // If we navigated into the scheduler, (re)init if needed
-    if (!state.initialized) {
-      // small delay to allow DOM to settle
-      setTimeout(init, 0);
+    // SPA replaced content; always rebuild a fresh calendar binding to new DOM
+    if (state.calendar) {
+      try { state.calendar.destroy(); } catch (_) {}
+      state.calendar = null;
     }
+    state.initialized = false;
+    // small delay to allow DOM to settle
+    setTimeout(init, 0);
     return;
   }
 
