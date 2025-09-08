@@ -15,6 +15,7 @@ const state = {
   initialized: false,
   // prevent re-entrant view switching
   isSwitching: false,
+  switchToken: 0,
   // business hours loaded from settings (defaults)
   businessHours: {
     start: '09:00:00',
@@ -329,12 +330,19 @@ async function initCalendar() {
       events: loadAppointments,
 
       // Event handlers
-      datesSet(info) {
-        console.log('📅 Dates set:', info.view.type, info.start, info.end);
-        state.currentDate = new Date(info.start);
-        updateTitle();
-        updateViewTabs();
-      },
+      datesSet: (() => {
+        let t = null;
+        return (info) => {
+          // Debounce to avoid rapid loops on view switches
+          if (t) cancelAnimationFrame(t);
+          t = requestAnimationFrame(() => {
+            console.log('📅 Dates set:', info.view.type, info.start, info.end);
+            state.currentDate = new Date(info.start);
+            updateTitle();
+            updateViewTabs();
+          });
+        };
+      })(),
 
       eventClick(info) {
         console.log('📅 Event clicked:', info.event.title);
@@ -424,13 +432,15 @@ function changeView(newView) {
   if (fcView && state.view !== newView) {
     console.log(`🔄 Switching to ${newView} view`);
     state.isSwitching = true;
+    const token = ++state.switchToken;
     try {
       state.view = newView;
       state.calendar.changeView(fcView);
       // UI update right away to reflect active tab
       updateViewTabs();
     } finally {
-      state.isSwitching = false;
+      // Only clear if no newer switch started
+      if (token === state.switchToken) state.isSwitching = false;
     }
   }
 }
@@ -470,6 +480,8 @@ async function applyFilters() {
 
 // Event listeners
 function setupEventListeners() {
+  if (state.__eventsWired) return;
+  state.__eventsWired = true;
   // Navigation
   $('calPrev')?.addEventListener('click', () => navigate(-1));
   $('calNext')?.addEventListener('click', () => navigate(1));

@@ -69,6 +69,15 @@ const SPA = (() => {
     const el = content();
     if (!el) return;
     try {
+      // If navigating to the same path (ignoring hash), do nothing
+      const dest = new URL(url, window.location.href);
+      const cur = new URL(window.location.href);
+      if (dest.pathname === cur.pathname && dest.search === cur.search) {
+        if (push && dest.hash !== cur.hash) {
+          history.pushState({ spa: true }, '', dest.href);
+        }
+        return;
+      }
       setBusy(true);
       const html = await fetchPage(url);
       el.innerHTML = html;
@@ -88,6 +97,10 @@ const SPA = (() => {
   };
 
   const clickHandler = (e) => {
+    // Only left-clicks without modifier keys and not already handled
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return; // left click only
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest('a');
     if (!a) return;
     if (!shouldIntercept(a)) return;
