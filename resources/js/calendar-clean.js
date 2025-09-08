@@ -15,6 +15,11 @@ const state = {
   initialized: false,
   // prevent re-entrant view switching
   isSwitching: false,
+  // business hours loaded from settings (defaults)
+  businessHours: {
+    start: '09:00:00',
+    end: '17:00:00'
+  }
 };
 
 // Utility functions
@@ -88,6 +93,53 @@ async function loadAppointments() {
   } catch (error) {
     console.error('Failed to load appointments:', error);
     return [];
+  }
+}
+
+// Load business hours from settings API (prefix business.)
+async function loadBusinessHours() {
+  try {
+    const url = `${apiBase()}/v1/settings?prefix=business.`;
+    const data = await fetchJSON(url);
+
+    const rawStart = (data['business.work_start'] || '09:00').toString();
+    const rawEnd = (data['business.work_end'] || '17:00').toString();
+
+    const normalize = (t) => {
+      // Accept HH:MM or HH:MM:SS
+      const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m) return null;
+      let hh = Math.max(0, Math.min(24, parseInt(m[1], 10)));
+      let mm = Math.max(0, Math.min(59, parseInt(m[2], 10)));
+      let ss = m[3] ? Math.max(0, Math.min(59, parseInt(m[3], 10))) : 0;
+      // Special case: 24:00 -> allow for slotMaxTime
+      if (hh === 24) { mm = 0; ss = 0; }
+      return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+    };
+
+    const start = normalize(rawStart) || '09:00:00';
+    const end = normalize(rawEnd) || '17:00:00';
+
+    // Ensure end is after start; if not, default to start + 1h
+    const toSec = (s) => {
+      const [h, m, sec] = s.split(':').map((x) => parseInt(x, 10) || 0);
+      return h * 3600 + m * 60 + sec;
+    };
+    let ns = toSec(start);
+    let ne = toSec(end);
+    if (ne <= ns) {
+      ne = Math.min(ns + 3600, 24 * 3600); // +1h, cap at 24:00
+      const h = Math.floor(ne / 3600);
+      const m = Math.floor((ne % 3600) / 60);
+      const s = ne % 60;
+      state.businessHours.end = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    } else {
+      state.businessHours.end = end;
+    }
+    state.businessHours.start = start;
+  } catch (e) {
+    console.warn('Failed to load business hours, using defaults', e);
+    // Keep defaults
   }
 }
 
@@ -252,10 +304,17 @@ async function initCalendar() {
 
       // Day/Week view settings
       allDaySlot: true,
-      slotMinTime: '06:00:00',
-      slotMaxTime: '22:00:00',
+      slotMinTime: state.businessHours.start,
+      slotMaxTime: state.businessHours.end,
       slotDuration: '00:30:00',
       nowIndicator: true,
+      scrollTime: state.businessHours.start,
+      businessHours: {
+        // show business hours background on grid views
+        daysOfWeek: [0,1,2,3,4,5,6],
+        startTime: state.businessHours.start,
+        endTime: state.businessHours.end,
+      },
 
       // Month view settings
       fixedWeekCount: false,
@@ -519,6 +578,9 @@ async function init() {
 
     // Setup event listeners
     setupEventListeners();
+
+  // Load business hours before initializing calendar
+  await loadBusinessHours();
 
     // Initialize calendar
     await initCalendar();
