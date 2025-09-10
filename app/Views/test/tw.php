@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tailwind - xScheduler</title>
+    <title>Tailwind - WebSchedulr</title>
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
 </head>
 <body class="bg-gray-50 min-h-screen">

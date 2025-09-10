@@ -213,6 +213,6 @@ Your proposed colors are:
 - Ready for multi-tenant SaaS deployment
 - Accessible and inclusive
 
-This palette will make xScheduler feel **premium, trustworthy, and distinctive** - exactly what you need for a successful SaaS platform.
+This palette will make WebSchedulr feel **premium, trustworthy, and distinctive** - exactly what you need for a successful SaaS platform.
 
 Would you like me to implement this new color scheme across your dashboard and components?

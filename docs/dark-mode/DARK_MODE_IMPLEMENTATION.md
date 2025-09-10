@@ -1,8 +1,8 @@
-# xScheduler Dark Mode Implementation Guide
+# WebSchedulr Dark Mode Implementation Guide
 
 ## Overview
 
-The xScheduler dark mode system provides a comprehensive theme switching solution that maintains brand consistency while offering both light and dark themes. The implementation uses CSS custom properties (variables) with Tailwind CSS classes for seamless theme transitions.
+The WebSchedulr dark mode system provides a comprehensive theme switching solution that maintains brand consistency while offering both light and dark themes. The implementation uses CSS custom properties (variables) with Tailwind CSS classes for seamless theme transitions.
 
 ## Architecture
 
@@ -19,7 +19,7 @@ The dark mode system is built on CSS custom properties defined in `resources/scs
   --md-sys-color-tertiary: #FCBF49;     /* Golden Yellow */
   --md-sys-color-error: #D62828;        /* Crimson Red */
   
-  /* Custom xScheduler Variables */
+  /* Custom WebSchedulr Variables */
   --xs-bg-primary: #ffffff;
   --xs-bg-secondary: #f8fafc;
   --xs-text-primary: #003049;
@@ -178,7 +178,7 @@ All elements include transition classes:
 - Screen reader friendly
 
 ### 5. Brand Consistency
-- xScheduler brand colors adapt appropriately for each theme
+- WebSchedulr brand colors adapt appropriately for each theme
 - Material Design 3.0 color system integration
 - Professional appearance in both themes
 
@@ -203,7 +203,7 @@ All elements include transition classes:
   Primary Button
 </button>
 
-<!-- Custom xScheduler variables -->
+<!-- Custom WebSchedulr variables -->
 <div style="background-color: var(--xs-bg-primary); color: var(--xs-text-primary);">
   Adaptive content
 </div>
@@ -364,4 +364,4 @@ To add dark mode to existing components:
 - `/dark-mode-test` - Comprehensive test page
 - `/auth/login` - Dark mode authentication example
 
-The xScheduler dark mode system provides a professional, accessible, and maintainable solution for theme switching while preserving the distinctive brand identity across all themes.
+The WebSchedulr dark mode system provides a professional, accessible, and maintainable solution for theme switching while preserving the distinctive brand identity across all themes.

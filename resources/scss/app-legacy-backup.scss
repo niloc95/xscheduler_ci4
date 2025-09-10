@@ -7,7 +7,7 @@
 /* Import existing styles */
 @import 'components';
 
-/* Light Theme - Material Design 3.0 Custom Properties with xScheduler Brand Palette */
+/* Light Theme - Material Design 3.0 Custom Properties with WebSchedulr Brand Palette */
 :root {
   /* Primary Colors - Ocean Blue */
   --md-sys-color-primary: #003049;
@@ -47,7 +47,7 @@
   --md-sys-color-shadow: rgba(0, 48, 73, 0.2);
   --md-sys-color-surface-tint: #003049;
 
-  /* Custom xScheduler Theme Variables - Light */
+  /* Custom WebSchedulr Theme Variables - Light */
   --xs-bg-primary: #ffffff;
   --xs-bg-secondary: #f8fafc;
   --xs-bg-tertiary: #EAE2B7;
@@ -106,7 +106,7 @@ html.dark {
   --md-sys-color-shadow: rgba(0, 0, 0, 0.4);
   --md-sys-color-surface-tint: #7FC8E8;
 
-  /* Custom xScheduler Theme Variables - Dark */
+  /* Custom WebSchedulr Theme Variables - Dark */
   --xs-bg-primary: #1a202c;
   --xs-bg-secondary: #2d3748;
   --xs-bg-tertiary: #4a5568;

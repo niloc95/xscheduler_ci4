@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Material Web Components - XScheduler</title>
+    <title>Material Web Components - WebSchedulr</title>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
@@ -41,7 +41,7 @@
                     <md-icon-button>
                         <md-icon>schedule</md-icon>
                     </md-icon-button>
-                    <span class="text-xl font-semibold text-gray-800 ml-2">XScheduler</span>
+                    <span class="text-xl font-semibold text-gray-800 ml-2">WebSchedulr</span>
                 </div>
                 
                 <!-- Navigation List -->

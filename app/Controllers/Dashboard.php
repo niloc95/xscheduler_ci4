@@ -53,7 +53,7 @@ class Dashboard extends BaseController
                     $currentUser = [
                         'name' => 'System Administrator',
                         'role' => 'admin',
-                        'email' => 'admin@xscheduler.com'
+                        'email' => 'admin@webschedulr.com'
                     ];
                 }
             }
@@ -137,7 +137,7 @@ class Dashboard extends BaseController
                 'user' => [
                     'name' => 'System Administrator',
                     'role' => 'admin',
-                    'email' => 'admin@xscheduler.com'
+                    'email' => 'admin@webschedulr.com'
                 ],
                 'stats' => [
                     'total_users' => 0,
@@ -227,7 +227,7 @@ class Dashboard extends BaseController
     {
         // Very basic dashboard without complex assets
         $data = [
-            'title' => 'XScheduler Dashboard',
+            'title' => 'WebSchedulr Dashboard',
             'message' => 'Dashboard is working!',
             'stats' => [
                 'users' => 150,
@@ -327,7 +327,7 @@ class Dashboard extends BaseController
             $currentUser = session()->get('user') ?? [
                 'name' => 'System Administrator',
                 'role' => 'admin',
-                'email' => 'admin@xscheduler.com'
+                'email' => 'admin@webschedulr.com'
             ];
 
             // Get real statistics from database
@@ -395,7 +395,7 @@ class Dashboard extends BaseController
                 'user' => [
                     'name' => 'System Administrator',
                     'role' => 'admin',
-                    'email' => 'admin@xscheduler.com'
+                    'email' => 'admin@webschedulr.com'
                 ],
                 'stats' => [
                     'total_users' => 0,

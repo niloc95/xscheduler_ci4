@@ -162,7 +162,7 @@ class Notifications extends BaseController
                 'id' => 6,
                 'type' => 'system',
                 'title' => 'System Update',
-                'message' => 'XScheduler has been updated with new features and improvements',
+                'message' => 'WebSchedulr has been updated with new features and improvements',
                 'time' => '2 days ago',
                 'read' => true,
                 'icon' => 'cog',

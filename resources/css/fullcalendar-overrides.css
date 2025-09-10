@@ -2,17 +2,22 @@
 
 /* Main container */
 .fc {
-  @apply font-sans bg-transparent;
+  @apply font-sans bg-transparent w-full h-full;
 }
 
-/* Calendar table */
+/* Remove any outer border from FullCalendar scrollgrid across all views */
+.fc-scrollgrid {
+  @apply border-0;
+}
+
+/* Calendar table - no inner bg/border/radius so it docks flush */
 .fc-view-harness {
-  @apply bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700;
+  @apply bg-transparent rounded-none;
 }
 
 /* Table header (days of week) */
 .fc-col-header {
-  @apply bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+  @apply bg-gray-50 dark:bg-gray-800;
 }
 
 .fc-col-header-cell {
@@ -25,16 +30,12 @@
 
 /* Scrollable content area */
 .fc-scroller {
-  @apply overflow-y-auto;
+  @apply overflow-y-visible;
 }
 
 /* Day grid (month view) */
 .fc-daygrid-day {
-  @apply border-r border-gray-200 dark:border-gray-700 min-h-[120px];
-}
-
-.fc-daygrid-day:last-child {
-  @apply border-r-0;
+  @apply min-h-[120px];
 }
 
 .fc-daygrid-day-frame {
@@ -65,7 +66,7 @@
 
 /* Time grid (day/week views) */
 .fc-timegrid {
-  @apply border border-gray-200 dark:border-gray-700;
+  @apply border-0;
 }
 
 .fc-timegrid-slot {
@@ -184,10 +185,7 @@
   .fc-daygrid-day {
     @apply min-h-[80px];
   }
-  
-  .fc-daygrid-day-frame {
-    @apply p-1;
-  }
+
   
   .fc-xs-pill {
     @apply text-[10px] px-1;
@@ -216,5 +214,38 @@
 
 .fc-loading {
   @apply opacity-50;
+}
+
+
+/* ================================
+   Remove all outer/inner borders
+   across Month/Week/Day views
+   ================================ */
+/* Outer grid and table cells */
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard .fc-scrollgrid table,
+.fc-theme-standard .fc-scrollgrid td,
+.fc-theme-standard .fc-scrollgrid th,
+.fc-scrollgrid,
+.fc-scrollgrid table,
+.fc-scrollgrid td,
+.fc-scrollgrid th {
+  border: 0 !important;
+}
+
+/* Week/Day timegrid internals */
+.fc-timegrid,
+.fc-timegrid-col,
+.fc-timegrid-slot,
+.fc-timegrid-slot-minor,
+.fc-timegrid-axis,
+.fc-timegrid-divider {
+  border: 0 !important;
+}
+
+/* Header row (days of week) */
+.fc-col-header,
+.fc-col-header-cell {
+  border: 0 !important;
 }
 

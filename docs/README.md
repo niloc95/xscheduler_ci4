@@ -1,6 +1,6 @@
-# XScheduler CI4 Documentation
+# WebSchedulr CI4 Documentation
 
-Welcome to the XScheduler CI4 documentation! This directory contains comprehensive guides, reports, and technical documentation for the professional appointment scheduling application.
+Welcome to the WebSchedulr CI4 documentation! This directory contains comprehensive guides, reports, and technical documentation for the professional appointment scheduling application.
 
 ## 📚 Documentation Index
 
@@ -63,7 +63,7 @@ Detailed technical fixes, solutions, and implementation guides for specific feat
 
 ## 📋 Quick Start Guide
 
-1. **New to xScheduler?** Start with the [Master Context](architecture/mastercontext.md)
+1. **New to WebSchedulr?** Start with the [Master Context](architecture/mastercontext.md)
 2. **Setting up for development?** See [Environment Configuration Guide](configuration/ENV-CONFIGURATION-GUIDE.md)
 3. **Deploying to production?** Follow [Production Fix Guide](deployment/PRODUCTION_FIX_GUIDE.md)
 4. **Need the setup wizard?** Check [Setup Completion Report](configuration/SETUP_COMPLETION_REPORT.md)
@@ -137,7 +137,7 @@ docs/
 
 ---
 
-**Project**: xScheduler - Online Appointment Scheduler  
+**Project**: WebSchedulr - Online Appointment Scheduler  
 **Documentation Version**: 1.0.0  
 **Last Updated**: July 2025  
-**Maintained by**: xScheduler Development Team
+**Maintained by**: WebSchedulr Development Team

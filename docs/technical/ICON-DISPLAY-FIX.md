@@ -44,7 +44,7 @@ Instead of seeing strange text like `settings`, `admin_panel_settings`, etc., us
 ## **Files Updated**
 - ✅ `app/Views/setup.php` - Replaced all md-icon elements with SVG icons
 - ✅ Assets rebuilt and deployment package updated
-- ✅ `xscheduler-deploy.zip` updated with the icon fixes
+- ✅ `webschedulr-deploy.zip` updated with the icon fixes
 
 ## **Production Ready**
 The setup wizard now displays beautiful, crisp icons that work perfectly in all environments, including:

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Forgot Password - XScheduler' ?></title>
+    <title><?= $title ?? 'Forgot Password - WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script -->
     <script>

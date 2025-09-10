@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $this->renderSection('title') ?: 'xScheduler' ?></title>
+    <title><?= $this->renderSection('title') ?: 'WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script (must be before any styling) -->
     <script>
@@ -244,7 +244,7 @@
             const s = el?.getAttribute('data-page-subtitle') || container.querySelector('[data-page-subtitle]')?.getAttribute('data-page-subtitle');
             if (t) {
                 header.textContent = t;
-                try { document.title = t + ' • xScheduler'; } catch (e) {}
+                try { document.title = t + ' • WebSchedulr'; } catch (e) {}
             }
             if (sub) {
                 if (s) {

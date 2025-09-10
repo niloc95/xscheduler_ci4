@@ -26,7 +26,7 @@ $currentRole = current_user_role();
                         <span class="brand-icon material-symbols-rounded">calendar_month</span>
                     </div>
                 <?php endif; ?>
-                <span class="brand-name">xScheduler</span>
+                <span class="brand-name">WebSchedulr</span>
                 <button id="sidebar-close-btn" class="close-button lg:hidden">
                     <span class="close-icon material-symbols-outlined">close</span>
                 </button>

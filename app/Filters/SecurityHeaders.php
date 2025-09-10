@@ -1,6 +1,6 @@
 <?php
 /**
- * Enhanced Security Middleware for XScheduler CI4
+ * Enhanced Security Middleware for WebSchedulr CI4
  * 
  * PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
  * Copyright (c) 2025 niloc95. All rights reserved.

@@ -1,4 +1,4 @@
-name: Release xScheduler
+name: Release WebSchedulr
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
           
           echo "" >> changelog.md
           echo "## Installation" >> changelog.md
-          echo "1. Download the \`xscheduler-deploy.zip\` file below" >> changelog.md
+          echo "1. Download the \`webschedulr-deploy.zip\` file below" >> changelog.md
           echo "2. Extract to your hosting provider" >> changelog.md
           echo "3. Point your domain to the \`public/\` folder" >> changelog.md
           echo "4. Run the setup wizard at \`/setup\`" >> changelog.md
@@ -95,7 +95,7 @@ jobs:
           echo "" >> changelog.md
           echo "## Support" >> changelog.md
           echo "- 📧 Email: nilo.cara@frontend.co.za" >> changelog.md
-          echo "- 📖 Documentation: [GitHub Repository](https://github.com/niloc95/xscheduler_ci4)" >> changelog.md
+          echo "- 📖 Documentation: [GitHub Repository](https://github.com/niloc95/webschedulr_ci4)" >> changelog.md
           
           # Set output for release body
           {
@@ -106,16 +106,16 @@ jobs:
           
       - name: Rename deployment package
         run: |
-          mv xscheduler-deploy.zip xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+          mv webschedulr-deploy.zip webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: xScheduler ${{ steps.tag.outputs.tag }}
+          name: WebSchedulr ${{ steps.tag.outputs.tag }}
           body: ${{ steps.changelog.outputs.body }}
           files: |
-            xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+            webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
             docs/deployment/MYSQL-TEST-CONNECTION-FIX.md
             docs/deployment/PRODUCTION-URL-AUTO-DETECTION.md
           draft: false
@@ -128,6 +128,6 @@ jobs:
         with:
           name: release-${{ steps.tag.outputs.tag }}
           path: |
-            xscheduler-${{ steps.tag.outputs.tag }}-deploy.zip
+            webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
             changelog.md
           retention-days: 365

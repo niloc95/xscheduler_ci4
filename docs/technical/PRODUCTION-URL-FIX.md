@@ -33,10 +33,10 @@ The JavaScript in `setup.js` was using absolute URLs that didn't work correctly 
 - ✅ `resources/js/setup.js` - Fixed URL handling
 - ✅ `app/Views/setup.php` - Added app configuration
 - ✅ `public/build/assets/setup.js` - Rebuilt with fixes
-- ✅ `xscheduler-deploy.zip` - Updated deployment package
+- ✅ `webschedulr-deploy.zip` - Updated deployment package
 
 ## **Production Deployment**
-The updated `xscheduler-deploy.zip` file now includes:
+The updated `webschedulr-deploy.zip` file now includes:
 - ✅ **Fixed test connection functionality**
 - ✅ **Proper URL handling for all hosting environments**
 - ✅ **Robust error handling and fallbacks**
@@ -49,7 +49,7 @@ The updated `xscheduler-deploy.zip` file now includes:
 - ✅ Handles both index.php and clean URL configurations
 
 ## **Next Steps**
-1. Upload the new `xscheduler-deploy.zip` file to your hosting provider
+1. Upload the new `webschedulr-deploy.zip` file to your hosting provider
 2. Extract it to your hosting root directory
 3. Point your domain to the `public/` folder
 4. The setup wizard will now work correctly, including the test connection feature

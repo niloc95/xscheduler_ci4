@@ -1,7 +1,7 @@
 # Material Icons Usage Guide
 
 ## Overview
-XScheduler now includes Google Material Symbols with comprehensive utility classes for easy icon usage throughout the application.
+WebSchedulr now includes Google Material Symbols with comprehensive utility classes for easy icon usage throughout the application.
 
 ## CDN Integration
 Material Symbols fonts are loaded via CDN in the main layout:
@@ -152,7 +152,7 @@ Material Symbols fonts are loaded via CDN in the main layout:
 - `.rounded`: Rounded style (uses Material Symbols Rounded font)
 
 ## Color Integration
-Icons work seamlessly with XScheduler's design system colors:
+Icons work seamlessly with WebSchedulr's design system colors:
 - `.text-primary` - Primary text color
 - `.text-secondary` - Secondary text color  
 - `.text-muted` - Muted text color

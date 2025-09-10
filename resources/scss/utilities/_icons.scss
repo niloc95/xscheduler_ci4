@@ -49,14 +49,14 @@
   &.bold { font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24; }
   
   // Color utilities
-  &.text-primary { color: var(--xs-text-primary); }
-  &.text-secondary { color: var(--xs-text-secondary); }
-  &.text-muted { color: var(--xs-text-muted); }
-  &.text-accent { color: var(--xs-accent); }
-  &.text-success { color: var(--xs-success); }
-  &.text-warning { color: var(--xs-warning); }
-  &.text-error { color: var(--xs-error); }
-  &.text-info { color: var(--xs-info); }
+  &.text-primary { color: var(--ws-text-primary); }
+  &.text-secondary { color: var(--ws-text-secondary); }
+  &.text-muted { color: var(--ws-text-muted); }
+  &.text-accent { color: var(--ws-accent); }
+  &.text-success { color: var(--ws-success); }
+  &.text-warning { color: var(--ws-warning); }
+  &.text-error { color: var(--ws-error); }
+  &.text-info { color: var(--ws-info); }
 }
 
 // Quick utility classes for common icons
@@ -124,7 +124,7 @@
   &.light-mode::before { content: 'light_mode'; }
   &.dark-mode::before { content: 'dark_mode'; }
   
-  // Special XScheduler icons
+  // Special WebSchedulr icons
   &.appointment::before { content: 'event_note'; }
   &.service::before { content: 'room_service'; }
   &.client::before { content: 'person_outline'; }

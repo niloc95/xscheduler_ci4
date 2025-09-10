@@ -65,7 +65,7 @@ public string $baseURL = 'https://yourdomain.com/';
 - ✅ Material Icons integration
 
 ### Deployment Package:
-- ✅ `xscheduler-deploy/` - Complete standalone package
+- ✅ `webschedulr-deploy/` - Complete standalone package
 - ✅ All dependencies included
 - ✅ Production-optimized
 
@@ -99,7 +99,7 @@ Your dashboard includes:
 
 ## 🚀 Next Steps
 
-1. **Deploy**: Upload `xscheduler-deploy/` contents to your web server
+1. **Deploy**: Upload `webschedulr-deploy/` contents to your web server
 2. **Configure**: Update base URL and database settings
 3. **Test**: Visit your dashboard URLs
 4. **Customize**: Add your real data and branding

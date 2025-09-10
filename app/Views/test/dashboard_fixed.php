@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XScheduler Dashboard</title>
+    <title>WebSchedulr Dashboard</title>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -78,7 +78,7 @@
                 <!-- Logo -->
                 <div class="flex items-center mb-8">
                     <span class="material-symbols-outlined text-blue-600 text-2xl mr-2">schedule</span>
-                    <span class="text-xl font-semibold text-gray-800">XScheduler</span>
+                    <span class="text-xl font-semibold text-gray-800">WebSchedulr</span>
                 </div>
                 
                 <!-- Navigation -->
@@ -121,7 +121,7 @@
                 <div class="flex items-center justify-between mb-8">
                     <div class="flex items-center">
                         <span class="material-symbols-outlined text-blue-600 text-2xl mr-2">schedule</span>
-                        <span class="text-xl font-semibold text-gray-800">XScheduler</span>
+                        <span class="text-xl font-semibold text-gray-800">WebSchedulr</span>
                     </div>
                     <button id="closeSidebar" class="p-2 rounded-lg hover:bg-gray-100">
                         <span class="material-symbols-outlined">close</span>

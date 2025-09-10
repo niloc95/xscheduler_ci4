@@ -108,7 +108,7 @@
         <div id="dateQuickSelect" data-quick-select class="hidden md:block mb-4 overflow-x-auto hide-scrollbar">
           <!-- chips injected here -->
         </div>
-        <div id="calendarRoot" class="min-h-[600px]" data-service="" data-provider=""></div>
+  <div id="calendarRoot" class="min-h-[600px] -mx-4 -mb-4" data-service="" data-provider=""></div>
       </div>
     </div>
   </div>
@@ -136,15 +136,12 @@
   <style>
     /* Basic calendar styling to ensure visibility */
     #calendarRoot {
-  min-height: 520px;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background: white;
+      /* Dock calendar: let the parent card control padding/background/borders */
+      min-height: 600px;
     }
 
     .dark #calendarRoot {
-      background: #1f2937;
-      border-color: #374151;
+      /* No explicit bg/border; inherit from parent */
     }
 
     /* Ensure FullCalendar elements are visible */
@@ -152,7 +149,15 @@
       font-family: inherit;
     }
 
-  /* Avoid forcing min-heights that can cause resize loops; let FC autosize */
+    .fc-view-harness {
+      /* Let FullCalendar size naturally inside the content area */
+      min-height: 0;
+    }
+
+    .fc-daygrid-body {
+      /* Avoid forcing extra height beyond container */
+      min-height: 0;
+    }
   </style>
   <!-- calendar-clean.js is loaded globally in the layout to support SPA navigations -->
 <?= $this->endSection() ?>

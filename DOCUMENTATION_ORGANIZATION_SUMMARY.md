@@ -109,4 +109,4 @@ Both main `README.md` and `docs/README.md` have been updated with:
 
 **🎉 Documentation organization completed successfully!**
 
-Your XScheduler CI4 project now has a professional, well-organized documentation structure that's easy to navigate and maintain.
+Your WebSchedulr CI4 project now has a professional, well-organized documentation structure that's easy to navigate and maintain.

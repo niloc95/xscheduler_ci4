@@ -1,8 +1,8 @@
-# Environment Configuration Guide for xScheduler
+# Environment Configuration Guide for WebSchedulr
 
 ## Overview
 
-This guide explains how to configure the xScheduler application for different environments (development, staging, production) using the `.env` file.
+This guide explains how to configure the WebSchedulr application for different environments (development, staging, production) using the `.env` file.
 
 ## Quick Setup
 
@@ -44,7 +44,7 @@ This guide explains how to configure the xScheduler application for different en
 #### MySQL/MariaDB (Recommended for Production)
 ```env
 database.default.hostname = localhost
-database.default.database = xscheduler_prod
+database.default.database = webschedulr_prod
 database.default.username = your_db_user
 database.default.password = your_secure_password
 database.default.DBDriver = MySQLi
@@ -55,7 +55,7 @@ database.default.port = 3306
 #### SQLite (Simple Deployment)
 ```env
 database.default.hostname = 
-database.default.database = writable/database/xscheduler.db
+database.default.database = writable/database/webschedulr.db
 database.default.username = 
 database.default.password = 
 database.default.DBDriver = SQLite3
@@ -103,10 +103,10 @@ email.SMTPPass = your-email-password
 email.SMTPPort = 587
 email.SMTPCrypto = tls
 email.fromEmail = noreply@yourdomain.com
-email.fromName = xScheduler
+email.fromName = WebSchedulr
 ```
 
-## Custom xScheduler Settings
+## Custom WebSchedulr Settings
 
 ### Application Settings
 ```env
@@ -206,4 +206,4 @@ features.apiAccess = false           # API access
 
 **Last Updated**: July 2025  
 **Version**: 1.0.0  
-**Author**: xScheduler Development Team
+**Author**: WebSchedulr Development Team

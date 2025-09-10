@@ -52,7 +52,7 @@ class Settings extends BaseController
             'user' => session()->get('user') ?? [
                 'name' => 'System Administrator',
                 'role' => 'admin',
-                'email' => 'admin@xscheduler.com',
+                'email' => 'admin@webschedulr.com',
             ],
             'settings' => $settings, // Pass settings to view
         ];

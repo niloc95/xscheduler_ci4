@@ -25,7 +25,7 @@ $currentRole = current_user_role();
                     <span class="material-symbols-rounded text-white text-xl">calendar_month</span>
                 </div>
         <?php endif; ?>
-                <span class="text-xl font-bold text-slate-100 tracking-tight">xScheduler</span>
+                <span class="text-xl font-bold text-slate-100 tracking-tight">WebSchedulr</span>
             </div>
             <button id="closeSidebar" class="lg:hidden p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-xl transition-all duration-200">
                 <span class="material-symbols-outlined text-base">close</span>

@@ -5,12 +5,12 @@
 The packaging script now creates both a folder and ZIP version for maximum deployment flexibility.
 
 ### **What's Included:**
-- **📁 Folder Version**: `xscheduler-deploy/` - Individual files for FTP upload
-- **📦 ZIP Version**: `xscheduler-deploy.zip` (2.6 MB) - Single file for easy upload
+- **📁 Folder Version**: `webschedulr-deploy/` - Individual files for FTP upload
+- **📦 ZIP Version**: `webschedulr-deploy.zip` (2.6 MB) - Single file for easy upload
 
 ### **ZIP Package Contents:**
 ```
-xscheduler-deploy.zip
+webschedulr-deploy.zip
 ├── app/                    # CodeIgniter application
 ├── public/                 # Web root (point domain here)
 │   ├── index.php          # Entry point
@@ -31,10 +31,10 @@ xscheduler-deploy.zip
 ### **Option 1: ZIP Upload (Easiest)**
 ```bash
 # 1. Upload the ZIP file
-Upload: xscheduler-deploy.zip
+Upload: webschedulr-deploy.zip
 
 # 2. Extract on server
-unzip xscheduler-deploy.zip
+unzip webschedulr-deploy.zip
 
 # 3. Set permissions
 chmod -R 755 writable/
@@ -44,7 +44,7 @@ chmod -R 755 writable/
 
 ### **Option 2: FTP Upload (Traditional)**
 ```bash
-# Upload individual files from xscheduler-deploy/ folder
+# Upload individual files from webschedulr-deploy/ folder
 # Good for hosts without shell access
 ```
 
@@ -61,8 +61,8 @@ chmod -R 755 writable/
 // Auto-creates both versions
 npm run package
 // Creates:
-// 1. xscheduler-deploy/ folder
-// 2. xscheduler-deploy.zip file
+// 1. webschedulr-deploy/ folder
+// 2. webschedulr-deploy.zip file
 ```
 
 ### **Validation & Quality Control:**
@@ -88,7 +88,7 @@ npm run package
 The ZIP deployment feature is now **complete and production-ready**:
 
 1. **Run**: `npm run package`
-2. **Get**: `xscheduler-deploy.zip` (2.6 MB)
+2. **Get**: `webschedulr-deploy.zip` (2.6 MB)
 3. **Upload**: Single file to hosting
 4. **Extract**: Unzip on server
 5. **Configure**: Point domain to `public/` folder

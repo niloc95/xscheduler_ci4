@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Material Dashboard - XScheduler</title>
+    <title>Material Dashboard - WebSchedulr</title>
     
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -33,7 +33,7 @@
             <!-- Logo -->
             <div class="flex items-center mb-5 p-2">
                 <span class="material-icons text-blue-600 text-2xl mr-3">schedule</span>
-                <span class="text-xl font-semibold text-gray-800">XScheduler</span>
+                <span class="text-xl font-semibold text-gray-800">WebSchedulr</span>
             </div>
             
             <!-- Navigation -->
@@ -79,7 +79,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-800">Dashboard</h1>
-                    <p class="text-gray-600">Welcome back to XScheduler</p>
+                    <p class="text-gray-600">Welcome back to WebSchedulr</p>
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Search -->

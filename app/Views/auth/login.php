@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Login - xScheduler' ?></title>
+    <title><?= $title ?? 'Login - WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script (prevents flash) -->
     <script>
@@ -56,14 +56,14 @@
                 <div class="flex justify-center mb-4">
                     <?php $logoUrl = setting_url('general.company_logo'); ?>
                     <?php if ($logoUrl): ?>
-                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700" style="object-fit: contain;" />
+                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2" style="object-fit: contain;" />
                     <?php else: ?>
                         <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
                             <span class="material-symbols-outlined text-white text-3xl">schedule</span>
                         </div>
                     <?php endif; ?>
                 </div>
-                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">xScheduler</h1>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);"></h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Sign in to your account</p>
             </div>
 
@@ -161,6 +161,11 @@
                     Don't have an account? 
                     <a href="<?= base_url('auth/register') ?>" class="hover:opacity-80 transition-all duration-200 font-medium" style="color: var(--md-sys-color-primary);">
                         Contact Administrator
+                    </a>
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-4">
+                    <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
+                        Engineered by WebSchedulr
                     </a>
                 </p>
             </div>
