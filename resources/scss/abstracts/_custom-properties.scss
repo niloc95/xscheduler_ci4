@@ -59,6 +59,25 @@
   --ws-surface-elevated: #{$white};
   --ws-shadow: #{rgba($brand-ocean, 0.1)};
   --ws-shadow-lg: #{rgba($brand-ocean, 0.15)};
+
+  /* Legacy alias variables (xs-*) for existing components */
+  --xs-bg-primary: var(--ws-bg-primary);
+  --xs-bg-secondary: var(--ws-bg-secondary);
+  --xs-bg-tertiary: var(--ws-bg-tertiary);
+  --xs-text-primary: var(--ws-text-primary);
+  --xs-text-secondary: var(--ws-text-secondary);
+  --xs-text-muted: var(--ws-text-muted);
+  --xs-border: var(--ws-border);
+  --xs-border-light: var(--ws-border-light);
+  --xs-accent: var(--ws-accent);
+  --xs-accent-hover: var(--ws-accent-hover);
+  --xs-success: var(--ws-success);
+  --xs-error: var(--ws-error);
+  --xs-warning: var(--ws-warning);
+  --xs-info: var(--ws-info);
+  --xs-surface-elevated: var(--ws-surface-elevated);
+  --xs-shadow: var(--ws-shadow);
+  --xs-shadow-lg: var(--ws-shadow-lg);
 }
 
 /* Dark Theme - Material Design 3.0 Custom Properties */
@@ -120,6 +139,25 @@ html.dark,
   --ws-surface-elevated: #{$dark-bg-tertiary};
   --ws-shadow: rgba(0, 0, 0, 0.3);
   --ws-shadow-lg: rgba(0, 0, 0, 0.5);
+
+  /* Legacy alias variables (xs-*) for dark theme */
+  --xs-bg-primary: var(--ws-bg-primary);
+  --xs-bg-secondary: var(--ws-bg-secondary);
+  --xs-bg-tertiary: var(--ws-bg-tertiary);
+  --xs-text-primary: var(--ws-text-primary);
+  --xs-text-secondary: var(--ws-text-secondary);
+  --xs-text-muted: var(--ws-text-muted);
+  --xs-border: var(--ws-border);
+  --xs-border-light: var(--ws-border-light);
+  --xs-accent: var(--ws-accent);
+  --xs-accent-hover: var(--ws-accent-hover);
+  --xs-success: var(--ws-success);
+  --xs-error: var(--ws-error);
+  --xs-warning: var(--ws-warning);
+  --xs-info: var(--ws-info);
+  --xs-surface-elevated: var(--ws-surface-elevated);
+  --xs-shadow: var(--ws-shadow);
+  --xs-shadow-lg: var(--ws-shadow-lg);
 }
 
 /* Automatic Dark Mode Support */

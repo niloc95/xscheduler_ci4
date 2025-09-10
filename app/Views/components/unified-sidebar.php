@@ -26,7 +26,11 @@ $currentRole = current_user_role();
                         <span class="brand-icon material-symbols-rounded">calendar_month</span>
                     </div>
                 <?php endif; ?>
-                <span class="brand-name">WebSchedulr</span>
+                <?php 
+                $brandName = trim((string) setting('general.company_name', ''));
+                if ($brandName === '') { $brandName = 'WebSchedulr'; }
+                ?>
+                <span class="brand-name" id="sidebarBrandName"><?= esc($brandName) ?></span>
                 <button id="sidebar-close-btn" class="close-button lg:hidden">
                     <span class="close-icon material-symbols-outlined">close</span>
                 </button>
@@ -107,5 +111,13 @@ $currentRole = current_user_role();
                 <span class="nav-text">Help</span>
             </a>
         </nav>
+
+        <!-- Sidebar Footer -->
+    <div class="nav-divider"></div>
+    <div class="px-4 pb-4 text-xs text-gray-500 dark:text-gray-500 text-center">
+            <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
+                Engineered by WebSchedulr
+            </a>
+        </div>
     </div>
 </aside>

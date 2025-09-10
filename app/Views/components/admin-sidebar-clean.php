@@ -20,8 +20,12 @@
         <div class="w-11 h-11 bg-slate-900 dark:bg-slate-700 rounded-xl flex items-center justify-center mr-3 shadow-lg">
                     <span class="material-symbols-rounded text-white text-xl">calendar_month</span>
                 </div>
-        <?php endif; ?>
-                <span class="text-xl font-bold text-slate-100 tracking-tight">WebSchedulr</span>
+    <?php endif; ?>
+        <?php 
+        $brandName = trim((string) setting('general.company_name', ''));
+        if ($brandName === '') { $brandName = 'WebSchedulr'; }
+        ?>
+        <span class="text-xl font-bold text-slate-100 tracking-tight" id="sidebarBrandName"><?= esc($brandName) ?></span>
             </div>
             <button id="closeSidebar" class="lg:hidden p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded-xl transition-all duration-200">
                 <span class="material-symbols-outlined text-base">close</span>
@@ -68,6 +72,13 @@
                 <span class="nav-text">Help</span>
             </a>
         </nav>
+
+    <div class="nav-divider"></div>
+    <div class="px-4 pb-2 text-xs text-slate-400 text-center">
+            <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-slate-200 transition-colors duration-200">
+                Engineered by WebSchedulr
+            </a>
+        </div>
     </div>
 </div>
 
