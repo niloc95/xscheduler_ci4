@@ -36,6 +36,22 @@ function saveState(cal){
 
 async function fetchEvents(info, success, failure){
   const debug = [];
+  const fetchStart = performance.now();
+  console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr });
+  let finished = false;
+  // Hard timeout safeguard (network hang, etc.)
+  const timeoutMs = 10000; // 10s
+  const timeoutId = setTimeout(() => {
+    if (finished) return;
+    finished = true;
+    console.warn('[schedule-core] fetchEvents timeout exceeded', { timeoutMs, debug });
+    const statusEl = document.getElementById('scheduleStatus');
+    if(statusEl){
+      statusEl.textContent = 'Request timeout fetching appointments';
+      statusEl.classList.add('text-amber-600');
+    }
+    try { failure(new Error('timeout')); } catch(_){}
+  }, timeoutMs);
   try {
     const startDate = info.startStr.substring(0,10);
     const endDate = info.endStr.substring(0,10);
@@ -64,10 +80,14 @@ async function fetchEvents(info, success, failure){
       extendedProps: a,
     })) : [];
     if(events.length === 0) debug.push(['emptyEvents']);
-    console.log('[schedule-core] events loaded', debug);
-    success(events);
+  const dur = (performance.now() - fetchStart).toFixed(1);
+  debug.push(['durationMs', dur]);
+  console.log('[schedule-core] events loaded', { debug, count: events.length });
+  finished = true; clearTimeout(timeoutId);
+  success(events);
   } catch(err){
-    console.error('[schedule-core] events load failed', err, debug);
+  finished = true; clearTimeout(timeoutId);
+  console.error('[schedule-core] events load failed', err, debug);
     const statusEl = document.getElementById('scheduleStatus');
     if(statusEl){
       statusEl.textContent = 'Failed to load appointments';
@@ -100,6 +120,24 @@ function init(){
     loading(isLoading){
       const overlay = document.getElementById('calendarLoading');
       if(overlay){ overlay.classList.toggle('hidden', !isLoading); }
+      // Secondary failsafe: hide loader after 12s even if FullCalendar misses callback
+      if(isLoading){
+        if(window.__scheduleLoadingTimer) clearTimeout(window.__scheduleLoadingTimer);
+        window.__scheduleLoadingTimer = setTimeout(()=>{
+          const ov = document.getElementById('calendarLoading');
+          if(ov && !ov.classList.contains('hidden')){
+            console.warn('[schedule-core] loading overlay auto-hidden after failsafe interval');
+            ov.classList.add('hidden');
+            const statusEl = document.getElementById('scheduleStatus');
+            if(statusEl && !statusEl.textContent){
+              statusEl.textContent = 'Calendar loaded (failsafe)';
+              statusEl.classList.add('text-amber-600');
+            }
+          }
+        }, 12000);
+      } else {
+        if(window.__scheduleLoadingTimer) { clearTimeout(window.__scheduleLoadingTimer); window.__scheduleLoadingTimer = null; }
+      }
       if(!isLoading){
         const statusEl = document.getElementById('scheduleStatus');
         if(statusEl && !statusEl.textContent){
