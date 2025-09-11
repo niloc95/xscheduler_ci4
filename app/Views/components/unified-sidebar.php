@@ -47,7 +47,7 @@ $currentRole = current_user_role();
 
             <!-- Schedule/Calendar - Available to admin, provider, staff -->
             <?php if (has_role(['admin', 'provider', 'staff'])): ?>
-            <a href="<?= base_url('/scheduler') ?>" class="nav-link <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
+            <a href="<?= base_url('/schedule') ?>" class="nav-link <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
                 <span class="nav-icon material-symbols-outlined">calendar_month</span>
                 <span class="nav-text">Schedule</span>
             </a>

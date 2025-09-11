@@ -39,7 +39,7 @@
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <a href="<?= base_url('/scheduler') ?>" class="nav-item <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
+            <a href="<?= base_url('/schedule') ?>" class="nav-item <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
                 <span class="nav-icon material-symbols-outlined">calendar_month</span>
                 <span class="nav-text">Schedule</span>
             </a>
