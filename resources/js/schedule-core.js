@@ -1,4 +1,9 @@
 // FullCalendar core scheduler rebuild entry
+if (window.__scheduleLoaded) {
+  console.log('[schedule-core] Already loaded, skipping second evaluation');
+} else {
+  window.__scheduleLoaded = true;
+}
 import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';

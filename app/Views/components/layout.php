@@ -228,13 +228,43 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
-    <!-- Calendar module temporarily removed during scheduler rebuild -->
+    <!-- Scheduler script: load only on schedule-related routes OR lazily when calendar element appears -->
     <?php 
-    $currentPath = parse_url(current_url(), PHP_URL_PATH);
-    if ($currentPath === '/schedule'): 
+        $currentPath = parse_url(current_url(), PHP_URL_PATH) ?: '';
+        $normalized = trim($currentPath, '/');
+        $shouldLoadSchedule = (
+            $normalized === 'schedule' ||
+            str_starts_with($normalized, 'schedule/') ||
+            str_starts_with($normalized, 'scheduler')
+        );
+        if ($shouldLoadSchedule):
     ?>
         <script type="module" src="<?= base_url('build/assets/schedule-core.js') ?>"></script>
     <?php endif; ?>
+    <script>
+        // SPA lazy loader: if navigating to a view that injects a #calendar element and schedule-core not yet loaded
+        (function(){
+            const SCHEDULE_SRC = '<?= base_url('build/assets/schedule-core.js') ?>';
+            function loadSchedule(){
+                if (window.__scheduleLoaded || document.querySelector('script[data-schedule-core]')) return;
+                // Create a module script tag for wider compatibility vs dynamic import (handles mixed CSP)
+                const s = document.createElement('script');
+                s.type='module';
+                s.src = SCHEDULE_SRC + '?v=' + Date.now(); // cache-bust to avoid stale during dev
+                s.setAttribute('data-schedule-core','1');
+                document.head.appendChild(s);
+            }
+            function maybeInit(){
+                if (document.getElementById('calendar')) loadSchedule();
+            }
+            document.addEventListener('DOMContentLoaded', maybeInit);
+            document.addEventListener('spa:navigated', () => {
+                // Defer a tick for injected DOM
+                setTimeout(maybeInit, 0);
+            });
+        })();
+    </script>
+    <?= $this->renderSection('scripts') ?>
     
     <!-- Global Modal & Toast Containers -->
     <style>
