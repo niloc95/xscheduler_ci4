@@ -229,9 +229,7 @@
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
     <!-- Calendar module temporarily removed during scheduler rebuild -->
-    <?php if (current_url(true)->getPath() === 'schedule'): ?>
-        <script type="module" src="<?= base_url('build/assets/schedule-core.js') ?>"></script>
-    <?php endif; ?>
+    <script type="module" src="<?= base_url('build/assets/schedule-core.js') ?>"></script>
     
     <!-- Global Modal & Toast Containers -->
     <style>

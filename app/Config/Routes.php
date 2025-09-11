@@ -150,15 +150,13 @@ $routes->get('dark-mode-test', 'DarkModeTest::index');
 
 // Scheduler Routes (temporarily removed for full rebuild)
 // (New scheduler implementation will reintroduce routes here.)
+$routes->get('schedule', 'Schedule::index');
 
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
-
-    // Unversioned appointments resource (alias to v1 controller)
-    $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
 
     // Versioned API v1
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
@@ -172,6 +170,9 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->put('settings', 'Api\\V1\\Settings::update');
     });
 });
+
+// Unversioned appointments endpoint (no filters for calendar)
+$routes->get('api/appointments', 'Api\\Appointments::index');
 
 // Settings (require setup + auth + admin role)
 $routes->group('', ['filter' => 'setup'], function($routes) {

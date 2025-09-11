@@ -30,10 +30,11 @@ function saveState(cal){
 }
 
 async function fetchEvents(info, success, failure){
+  const debug = [];
   try {
-    // API expects Y-m-d dates (no time); unversioned endpoint avoids auth token requirement
     const startDate = info.startStr.substring(0,10);
     const endDate = info.endStr.substring(0,10);
+    debug.push(['range', startDate, endDate]);
     const params = new URLSearchParams();
     params.set('start', startDate);
     params.set('end', endDate);
@@ -42,27 +43,41 @@ async function fetchEvents(info, success, failure){
     if(service) params.set('serviceId', service);
     if(provider) params.set('providerId', provider);
     const url = '/api/appointments?' + params.toString();
+    debug.push(['url', url]);
     const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    debug.push(['status', res.status]);
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
+    debug.push(['payloadKeys', Object.keys(data)]);
     const src = data.data || data || [];
-    const events = src.map(a => ({
+    if(!Array.isArray(src)) debug.push(['nonArrayData', src]);
+    const events = Array.isArray(src) ? src.map(a => ({
       id: a.id,
       title: a.title || a.serviceName || a.service_name || 'Appointment',
       start: a.start || a.start_time || a.start_at,
       end: a.end || a.end_time || a.end_at,
       extendedProps: a,
-    }));
+    })) : [];
+    if(events.length === 0) debug.push(['emptyEvents']);
+    console.log('[schedule-core] events loaded', debug);
     success(events);
   } catch(err){
-    console.error('Events load failed', err);
+    console.error('[schedule-core] events load failed', err, debug);
+    const statusEl = document.getElementById('scheduleStatus');
+    if(statusEl){
+      statusEl.textContent = 'Failed to load appointments';
+      statusEl.classList.add('text-red-600');
+    }
     failure(err);
   }
 }
 
 function init(){
   const el = document.getElementById('calendar');
-  if(!el) return;
+  if(!el){
+    console.warn('[schedule-core] #calendar element not found. Aborting init.');
+    return;
+  }
 
   const calendar = new Calendar(el, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -78,6 +93,13 @@ function init(){
     loading(isLoading){
       const overlay = document.getElementById('calendarLoading');
       if(overlay){ overlay.classList.toggle('hidden', !isLoading); }
+      if(!isLoading){
+        const statusEl = document.getElementById('scheduleStatus');
+        if(statusEl && !statusEl.textContent){
+          statusEl.textContent = 'Loaded';
+          setTimeout(()=>{ if(statusEl.textContent==='Loaded') statusEl.textContent=''; }, 1500);
+        }
+      }
     }
   });
 
@@ -85,7 +107,14 @@ function init(){
     try { calendar.gotoDate(new Date(state.currentDate)); } catch(e) {}
   }
 
-  calendar.render();
+  try {
+    calendar.render();
+  } catch(e){
+    console.error('[schedule-core] calendar.render failed', e);
+    const statusEl = document.getElementById('scheduleStatus');
+    if(statusEl){ statusEl.textContent='Calendar failed to initialize'; statusEl.classList.add('text-red-600'); }
+    return;
+  }
   state.calendar = calendar;
   wireControls();
 }
