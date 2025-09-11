@@ -4,7 +4,7 @@ import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
 export default defineConfig({
-  base: './',
+  base: '/',
   publicDir: false,
   build: {
     outDir: 'public/build',
