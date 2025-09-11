@@ -31,21 +31,26 @@ function saveState(cal){
 
 async function fetchEvents(info, success, failure){
   try {
+    // API expects Y-m-d dates (no time); unversioned endpoint avoids auth token requirement
+    const startDate = info.startStr.substring(0,10);
+    const endDate = info.endStr.substring(0,10);
     const params = new URLSearchParams();
-    params.set('start', info.startStr);
-    params.set('end', info.endStr);
+    params.set('start', startDate);
+    params.set('end', endDate);
     const service = document.getElementById('filterService')?.value || '';
     const provider = document.getElementById('filterProvider')?.value || '';
-    if(service) params.set('service_id', service);
-    if(provider) params.set('provider_id', provider);
-    const res = await fetch('/api/v1/appointments?'+params.toString(), { headers: { 'Accept': 'application/json' } });
-    if(!res.ok) throw new Error('Network '+res.status);
+    if(service) params.set('serviceId', service);
+    if(provider) params.set('providerId', provider);
+    const url = '/api/appointments?' + params.toString();
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
-    const events = (data.data || data || []).map(a => ({
+    const src = data.data || data || [];
+    const events = src.map(a => ({
       id: a.id,
-      title: a.title || a.service_name || 'Appointment',
-      start: a.start_time || a.start || a.start_at,
-      end: a.end_time || a.end || a.end_at,
+      title: a.title || a.serviceName || a.service_name || 'Appointment',
+      start: a.start || a.start_time || a.start_at,
+      end: a.end || a.end_time || a.end_at,
       extendedProps: a,
     }));
     success(events);
