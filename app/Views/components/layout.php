@@ -228,8 +228,7 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
-    <!-- Load calendar module globally so it can handle SPA navigations on scheduler page -->
-    <script type="module" src="<?= base_url('build/assets/calendar-clean.js') ?>"></script>
+    <!-- Calendar module temporarily removed during scheduler rebuild -->
     
     <!-- Global Modal & Toast Containers -->
     <style>
