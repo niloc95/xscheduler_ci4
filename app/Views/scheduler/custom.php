@@ -4,6 +4,10 @@
   <?= $this->include('components/unified-sidebar', ['current_page' => 'schedule']) ?>
 <?= $this->endSection() ?>
 
+<?= $this->section('head') ?>
+  <!-- FullCalendar CDN styles removed due to network/origin blocking (ERR_BLOCKED_BY_ORB). Using internal injected minimal styles. -->
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
   <div class="main-content" data-page-title="Schedule" data-page-subtitle="Modern calendar with Day, Week, and Month views">
     <!-- Material-style Calendar Card -->
@@ -56,6 +60,9 @@
                 </select>
               </div>
             </div>
+            <!-- Today Button -->
+            <button type="button" id="calToday" class="hidden md:inline-flex btn btn-outline btn-sm">Today</button>
+
             <!-- View Tabs (desktop only) -->
             <div class="hidden md:flex items-center gap-2">
               <button type="button" id="viewDay" data-view="day" class="btn btn-outline btn-sm">Day</button>
@@ -108,7 +115,7 @@
         <div id="dateQuickSelect" data-quick-select class="hidden md:block mb-4 overflow-x-auto hide-scrollbar">
           <!-- chips injected here -->
         </div>
-  <div id="calendarRoot" class="min-h-[600px] -mx-4 -mb-4" data-service="" data-provider=""></div>
+  <div id="calendarRoot" class="min-h-[600px]" data-service="" data-provider=""></div>
       </div>
     </div>
   </div>
