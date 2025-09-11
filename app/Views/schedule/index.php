@@ -3,7 +3,7 @@
  * New Scheduler (FullCalendar) root view
  */
 ?>
-<div class="px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0">
+<div class="px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0" data-page-title="Schedule" data-page-subtitle="Manage appointments and calendar">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">Schedule</h1>
         <div class="text-sm text-gray-500" id="scheduleStatus"></div>

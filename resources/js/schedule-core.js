@@ -75,9 +75,11 @@ async function fetchEvents(info, success, failure){
 function init(){
   const el = document.getElementById('calendar');
   if(!el){
-    console.warn('[schedule-core] #calendar element not found. Aborting init.');
+    console.log('[schedule-core] #calendar element not found. Script loaded but calendar container not present on this page.');
     return;
   }
+
+  console.log('[schedule-core] Initializing calendar...');
 
   const calendar = new Calendar(el, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
