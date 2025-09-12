@@ -28,6 +28,7 @@ const state = {
   currentView: localStorage.getItem('scheduler.view') || 'dayGridMonth',
   currentDate: localStorage.getItem('scheduler.date') || null,
   activeLoads: 0,
+  isLoading: false,
 };
 
 function saveState(cal){
@@ -38,8 +39,7 @@ function saveState(cal){
 async function fetchEvents(info, success, failure){
   const debug = [];
   const fetchStart = performance.now();
-  state.activeLoads++;
-  updateOverlay();
+  beginLoad('events');
   console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr });
   let finished = false;
   // Hard timeout safeguard (network hang, etc.)
@@ -86,10 +86,10 @@ async function fetchEvents(info, success, failure){
   const dur = (performance.now() - fetchStart).toFixed(1);
   debug.push(['durationMs', dur]);
   console.log('[schedule-core] events loaded', { debug, count: events.length });
-  finished = true; clearTimeout(timeoutId);
+    finished = true; clearTimeout(timeoutId);
   success(events);
   } catch(err){
-  finished = true; clearTimeout(timeoutId);
+    finished = true; clearTimeout(timeoutId);
   console.error('[schedule-core] events load failed', err, debug);
     const statusEl = document.getElementById('scheduleStatus');
     if(statusEl){
@@ -98,19 +98,30 @@ async function fetchEvents(info, success, failure){
     }
     failure(err);
   }
-  state.activeLoads = Math.max(0, state.activeLoads - 1);
-  updateOverlay();
+  endLoad('events');
 }
 
 function updateOverlay(){
   const overlay = document.getElementById('calendarLoading');
+  const refreshBtn = document.getElementById('refreshCalendar');
   if(!overlay) return;
   if(state.activeLoads > 0){
     overlay.classList.remove('hidden');
     overlay.textContent = state.activeLoads > 1 ? 'Loading ('+state.activeLoads+')...' : 'Loading...';
+    if(refreshBtn){ refreshBtn.disabled = true; refreshBtn.classList.add('opacity-50','cursor-not-allowed'); }
   } else {
     overlay.classList.add('hidden');
+    if(refreshBtn){ refreshBtn.disabled = false; refreshBtn.classList.remove('opacity-50','cursor-not-allowed'); }
   }
+}
+
+function beginLoad(tag){
+  state.activeLoads++;
+  updateOverlay();
+}
+function endLoad(tag){
+  state.activeLoads = Math.max(0, state.activeLoads - 1);
+  updateOverlay();
 }
 
 function init(){
@@ -133,32 +144,15 @@ function init(){
     eventClick(info){
       alert('Appointment '+ info.event.id);
     },
+    // Retain loading callback only as a safety signal; we no longer mutate counters here to avoid double counting
     loading(isLoading){
-      if(isLoading){ state.activeLoads++; } else { state.activeLoads = Math.max(0, state.activeLoads - 1); }
-      updateOverlay();
-      // Secondary failsafe: hide loader after 12s even if FullCalendar misses callback
-      if(isLoading){
-        if(window.__scheduleLoadingTimer) clearTimeout(window.__scheduleLoadingTimer);
-        window.__scheduleLoadingTimer = setTimeout(()=>{
-          const ov = document.getElementById('calendarLoading');
-          if(ov && !ov.classList.contains('hidden')){
-            console.warn('[schedule-core] loading overlay auto-hidden after failsafe interval');
-            ov.classList.add('hidden');
-            const statusEl = document.getElementById('scheduleStatus');
-            if(statusEl && !statusEl.textContent){
-              statusEl.textContent = 'Calendar loaded (failsafe)';
-              statusEl.classList.add('text-amber-600');
-            }
-          }
-        }, 12000);
-      } else {
-        if(window.__scheduleLoadingTimer) { clearTimeout(window.__scheduleLoadingTimer); window.__scheduleLoadingTimer = null; }
-      }
       if(!isLoading){
+        // On completion, ensure overlay reflects counter state & show transient status if not already set
+        updateOverlay();
         const statusEl = document.getElementById('scheduleStatus');
         if(statusEl && !statusEl.textContent){
           statusEl.textContent = 'Loaded';
-          setTimeout(()=>{ if(statusEl.textContent==='Loaded') statusEl.textContent=''; }, 1500);
+          setTimeout(()=>{ if(statusEl.textContent==='Loaded') statusEl.textContent=''; }, 1200);
         }
       }
     }
