@@ -1,15 +1,18 @@
-// FullCalendar core scheduler rebuild entry
-if (window.__scheduleLoaded) {
-  console.log('[schedule-core] Already loaded, skipping second evaluation');
+// Unified scheduler module (merged schedule-core + schedule.js)
+// Guards ------------------------------------------------------------
+if (window.__scheduleInit) {
+  console.log('[scheduler] Already initialized, skipping.');
 } else {
-  window.__scheduleLoaded = true;
+  window.__scheduleInit = true;
 }
+
+// Imports -----------------------------------------------------------
 import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
-// Basic minimal CSS injection (we can refine later or compile SCSS)
+// Style Injection (minimal baseline) -------------------------------
 (function injectStyles(){
   if(document.getElementById('fc-base-styles')) return;
   const style=document.createElement('style');
@@ -19,157 +22,50 @@ import interactionPlugin from '@fullcalendar/interaction';
   .fc .fc-toolbar-title { font-size:1.1rem; }
   .fc-daygrid-day-number { font-size:0.65rem; padding:2px 4px; }
   .fc-event { font-size:0.65rem; }
+  .fc .fc-scrollgrid { border-radius: 4px; }
   `;
   document.head.appendChild(style);
 })();
 
+// State -------------------------------------------------------------
 const state = {
   calendar: null,
   currentView: localStorage.getItem('scheduler.view') || 'dayGridMonth',
   currentDate: localStorage.getItem('scheduler.date') || null,
   activeLoads: 0,
-  isLoading: false,
   currentRequest: null,
   debounceTimer: null,
 };
 
-function saveState(cal){
-  localStorage.setItem('scheduler.view', cal.view.type);
-  localStorage.setItem('scheduler.date', cal.getDate().toISOString());
-}
-
-async function fetchEvents(info, success, failure){
-  const debug = [];
-  const fetchStart = performance.now();
-  
-  // Cancel any existing request to prevent overlapping
-  if (state.currentRequest) {
-    console.log('[schedule-core] Cancelling previous request');
-    state.currentRequest = null;
-  }
-  
-  const requestId = Date.now();
-  state.currentRequest = requestId;
-  
-  console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr, requestId });
-  
-  let finished = false;
-  beginLoad('events');
-  
-  // Hard timeout safeguard (network hang, etc.)
-  const timeoutMs = 10000; // 10s
-  const timeoutId = setTimeout(() => {
-    if (finished || state.currentRequest !== requestId) return;
-    finished = true;
-    console.warn('[schedule-core] fetchEvents timeout exceeded', { timeoutMs, debug, requestId });
-    const statusEl = document.getElementById('scheduleStatus');
-    if(statusEl){
-      statusEl.textContent = 'Request timeout fetching appointments';
-      statusEl.classList.add('text-amber-600');
-    }
-    endLoad('events');
-    try { failure(new Error('timeout')); } catch(_){}
-  }, timeoutMs);
-
-  try {
-    const startDate = info.startStr.substring(0,10);
-    const endDate = info.endStr.substring(0,10);
-    debug.push(['range', startDate, endDate]);
-    const params = new URLSearchParams();
-    params.set('start', startDate);
-    params.set('end', endDate);
-    const service = document.getElementById('filterService')?.value || '';
-    const provider = document.getElementById('filterProvider')?.value || '';
-    if(service) params.set('serviceId', service);
-    if(provider) params.set('providerId', provider);
-    const url = '/api/appointments?' + params.toString();
-    debug.push(['url', url]);
-    
-    // Check if this request is still current
-    if (state.currentRequest !== requestId) {
-      console.log('[schedule-core] Request superseded, aborting', { requestId });
-      return;
-    }
-    
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    debug.push(['status', res.status]);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    
-    // Final check before processing response
-    if (state.currentRequest !== requestId) {
-      console.log('[schedule-core] Request superseded after fetch, aborting', { requestId });
-      return;
-    }
-    
-    const data = await res.json();
-    debug.push(['payloadKeys', Object.keys(data)]);
-    const src = data.data || data || [];
-    if(!Array.isArray(src)) debug.push(['nonArrayData', src]);
-    const events = Array.isArray(src) ? src.map(a => ({
-      id: a.id,
-      title: a.title || a.serviceName || a.service_name || 'Appointment',
-      start: a.start || a.start_time || a.start_at,
-      end: a.end || a.end_time || a.end_at,
-      extendedProps: a,
-    })) : [];
-    if(events.length === 0) debug.push(['emptyEvents']);
-    const dur = (performance.now() - fetchStart).toFixed(1);
-    debug.push(['durationMs', dur]);
-    console.log('[schedule-core] events loaded', { debug, count: events.length, requestId });
-    
-    if (state.currentRequest === requestId) {
-      finished = true; 
-      clearTimeout(timeoutId);
-      success(events);
-    }
-  } catch(err){
-    if (state.currentRequest === requestId) {
-      finished = true; 
-      clearTimeout(timeoutId);
-      console.error('[schedule-core] events load failed', err, debug, { requestId });
-      const statusEl = document.getElementById('scheduleStatus');
-      if(statusEl){
-        statusEl.textContent = 'Failed to load appointments';
-        statusEl.classList.add('text-red-600');
-      }
-      failure(err);
-    }
-  } finally {
-    if (state.currentRequest === requestId) {
-      endLoad('events');
-      state.currentRequest = null;
-    }
-  }
-}function updateOverlay(){
+// Status / Overlay Helpers -----------------------------------------
+function updateOverlay(){
   const overlay = document.getElementById('calendarLoading');
   const loadingText = document.getElementById('calendarLoadingText');
   const refreshBtn = document.getElementById('refreshCalendar');
   if(!overlay) return;
-  
   if(state.activeLoads > 0){
     overlay.classList.remove('hidden');
     overlay.style.opacity = '1';
-    if(loadingText) {
+    if(loadingText){
       loadingText.textContent = state.activeLoads > 1 ? `Loading (${state.activeLoads})...` : 'Loading...';
     }
-    if(refreshBtn){ 
-      refreshBtn.disabled = true; 
-      refreshBtn.classList.add('opacity-50','cursor-not-allowed'); 
+    if(refreshBtn){
+      refreshBtn.disabled = true;
+      refreshBtn.classList.add('opacity-50','cursor-not-allowed');
     }
   } else {
     overlay.style.opacity = '0';
-    setTimeout(() => {
-      if(state.activeLoads === 0) {
+    setTimeout(()=>{
+      if(state.activeLoads === 0){
         overlay.classList.add('hidden');
       }
-    }, 200); // Match CSS transition duration
-    if(refreshBtn){ 
-      refreshBtn.disabled = false; 
-      refreshBtn.classList.remove('opacity-50','cursor-not-allowed'); 
+    },200);
+    if(refreshBtn){
+      refreshBtn.disabled = false;
+      refreshBtn.classList.remove('opacity-50','cursor-not-allowed');
     }
   }
 }
-
 function beginLoad(tag){
   state.activeLoads++;
   updateOverlay();
@@ -179,47 +75,229 @@ function endLoad(tag){
   updateOverlay();
 }
 
+// Local Storage -----------------------------------------------------
+// (saveState defined later after merge; first duplicate removed during consolidation)
+
+// Appointment / Event Helpers --------------------------------------
+const STATUS_COLORS = {
+  booked: 'bg-blue-500 text-white',
+  confirmed: 'bg-green-500 text-white',
+  rescheduled: 'bg-amber-500 text-gray-900',
+  cancelled: 'bg-red-500 text-white',
+  completed: 'bg-gray-400 text-white',
+};
+function getStatusClass(status){
+  return STATUS_COLORS[status] || 'bg-blue-500 text-white';
+}
+async function fetchJSON(url, opts){
+  const res = await fetch(url, opts);
+  if(!res.ok) throw new Error('Request failed: '+res.status);
+  return await res.json();
+}
+function buildEventFromAppointment(appt){
+  return {
+    id: String(appt.id),
+    title: `${appt.customer_name || 'Customer'} • ${appt.service_name || appt.service || 'Service'}`,
+    start: appt.start_time || appt.start || appt.start_at,
+    end: appt.end_time || appt.end || appt.end_at,
+    extendedProps: {
+      status: appt.status,
+      customer: { name: appt.customer_name, email: appt.customer_email },
+      service: { id: appt.service_id, name: appt.service_name || appt.service, duration: appt.duration_min || appt.duration },
+      provider_id: appt.provider_id,
+      notes: appt.notes || '',
+    },
+  };
+}
+function eventClassNames(arg){
+  const status = arg.event.extendedProps.status;
+  const base = 'rounded-md px-2 py-1 text-xs md:text-sm shadow-sm border border-white/20 flex items-center gap-1';
+  return [base, getStatusClass(status)];
+}
+function renderEventContent(arg){
+  const status = arg.event.extendedProps.status;
+  const label = status ? status.charAt(0).toUpperCase()+status.slice(1) : '';
+  const title = arg.event.title;
+  return { html: `<div class="flex items-center gap-2"><span class="inline-flex items-center justify-center text-[10px] leading-none px-1.5 py-0.5 rounded bg-white/20">${label}</span><span class="truncate">${title}</span></div>` };
+}
+function openModal(node){
+  const modal = document.getElementById('scheduleModal');
+  const content = document.getElementById('scheduleModalContent');
+  if(!modal || !content) return;
+  content.innerHTML='';
+  content.appendChild(node);
+  modal.classList.remove('hidden');
+}
+function closeModal(){
+  const modal = document.getElementById('scheduleModal');
+  if(modal) modal.classList.add('hidden');
+}
+function buildAppointmentView(event){
+  const d = document.createElement('div');
+  const p = event.extendedProps || {};
+  d.className='space-y-3';
+  d.innerHTML=`
+    <div class="flex items-start justify-between">
+      <div>
+        <h3 class="text-lg font-semibold">Appointment</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">${new Date(event.start).toLocaleString()} - ${new Date(event.end).toLocaleTimeString()}</p>
+      </div>
+      <span class="inline-flex ${getStatusClass(p.status)} rounded px-2 py-0.5 text-xs">${p.status}</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="p-3 rounded border dark:border-gray-700">
+        <div class="text-xs uppercase text-gray-500 mb-1">Customer</div>
+        <div class="text-sm">${p.customer?.name || 'N/A'}</div>
+        <div class="text-xs text-gray-500">${p.customer?.email || ''}</div>
+      </div>
+      <div class="p-3 rounded border dark:border-gray-700">
+        <div class="text-xs uppercase text-gray-500 mb-1">Service</div>
+        <div class="text-sm">${p.service?.name || 'N/A'}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 pt-2">
+      <button id="actReschedule" class="btn btn-secondary">Reschedule</button>
+      <button id="actConfirm" class="btn btn-primary">Confirm</button>
+      <button id="actCancel" class="btn bg-red-500 hover:bg-red-600 text-white rounded px-3 py-2 text-sm">Cancel</button>
+    </div>`;
+  d.querySelector('#actReschedule')?.addEventListener('click',()=>{ closeModal(); });
+  d.querySelector('#actConfirm')?.addEventListener('click', async ()=>{
+    try {
+      beginLoad('confirm');
+      await fetchJSON(`${window.__BASE_URL__ || ''}/api/appointments/update`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ id: event.id, status:'confirmed' })
+      });
+      event.setExtendedProp('status','confirmed');
+      closeModal();
+    } catch(e){ console.error(e); } finally { endLoad('confirm'); }
+  });
+  d.querySelector('#actCancel')?.addEventListener('click', async ()=>{
+    if(!confirm('Cancel this appointment?')) return;
+    try {
+      beginLoad('cancel');
+      await fetchJSON(`${window.__BASE_URL__ || ''}/api/appointments/delete`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ id: event.id })
+      });
+      event.remove();
+      closeModal();
+    } catch(e){ console.error(e); } finally { endLoad('cancel'); }
+  });
+  return d;
+}
+function buildCreateForm(info){
+  const d = document.createElement('div');
+  d.className='space-y-3';
+  const start = info.startStr; const end = info.endStr;
+  d.innerHTML=`
+    <h3 class="text-lg font-semibold">New Appointment</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><label class="text-sm">Customer Name</label><input id="new_name" class="w-full px-3 py-2 border rounded dark:bg-gray-800"/></div>
+      <div><label class="text-sm">Email</label><input id="new_email" type="email" class="w-full px-3 py-2 border rounded dark:bg-gray-800"/></div>
+      <div><label class="text-sm">Service ID</label><input id="new_service" type="number" class="w-full px-3 py-2 border rounded dark:bg-gray-800"/></div>
+      <div><label class="text-sm">Provider ID</label><input id="new_provider" type="number" class="w-full px-3 py-2 border rounded dark:bg-gray-800"/></div>
+    </div>
+    <div class="text-sm text-gray-500">${new Date(start).toLocaleString()} - ${new Date(end).toLocaleTimeString()}</div>
+    <div class="flex items-center gap-2">
+      <button id="createBtn" class="btn btn-primary">Create</button>
+      <button id="cancelBtn" class="btn">Close</button>
+    </div>`;
+  d.querySelector('#cancelBtn')?.addEventListener('click', closeModal);
+  d.querySelector('#createBtn')?.addEventListener('click', async ()=>{
+    const payload = {
+      name: d.querySelector('#new_name').value,
+      email: d.querySelector('#new_email').value,
+      provider_id: parseInt(d.querySelector('#new_provider').value || '1',10),
+      service_id: parseInt(d.querySelector('#new_service').value || '1',10),
+      date: start.substring(0,10),
+      start: new Date(start).toTimeString().substring(0,5),
+      notes: ''
+    };
+    try {
+      beginLoad('create');
+      await fetchJSON(`${window.__BASE_URL__ || ''}/api/book`,{
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      closeModal();
+      window.dispatchEvent(new CustomEvent('schedule:refresh'));
+    } catch(e){ console.error(e); } finally { endLoad('create'); }
+  });
+  return d;
+}
+
+// Events loader (merged with overlay) -------------------------------
+async function loadEvents(fetchInfo, success, failure){
+  beginLoad('events');
+  try {
+    const base = window.__BASE_URL__ || '';
+    const url = `${base}/api/appointments/get?start=${encodeURIComponent(fetchInfo.startStr)}&end=${encodeURIComponent(fetchInfo.endStr)}`;
+    const data = await fetchJSON(url);
+    const appts = Array.isArray(data) ? data : (data.appointments || data.data || []);
+    const events = appts.map(buildEventFromAppointment);
+    success(events);
+  } catch(e){
+    console.error('[scheduler] events load failed', e);
+    failure(e);
+  } finally { endLoad('events'); }
+}
+
+function saveState(cal){
+  localStorage.setItem('scheduler.view', cal.view.type);
+  localStorage.setItem('scheduler.date', cal.getDate().toISOString());
+}
+
+// (Removed old fetchEvents + duplicate overlay functions during merge)
+
 function init(){
   const el = document.getElementById('calendar');
   if(!el){
-    console.log('[schedule-core] #calendar element not found. Script loaded but calendar container not present on this page.');
+    console.log('[scheduler] #calendar not found (page without scheduler).');
     return;
   }
+  console.log('[scheduler] Initializing unified calendar...');
 
-  console.log('[schedule-core] Initializing calendar...');
-
+  const base = window.__BASE_URL__ || '';
   const calendar = new Calendar(el, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: state.currentView,
     headerToolbar: false,
     height: 'auto',
     firstDay: 0,
-    events: fetchEvents,
-    datesSet(dateInfo){ 
-      // Only save state, don't trigger additional fetches
-      console.log('[schedule-core] datesSet triggered', { view: dateInfo.view.type, start: dateInfo.startStr, end: dateInfo.endStr });
-      saveState(calendar); 
+    selectable: true,
+    editable: true,
+    nowIndicator: true,
+    events: loadEvents,
+    eventClassNames,
+    eventContent: renderEventContent,
+    datesSet(info){
+      saveState(calendar);
     },
     viewDidMount(viewInfo){
-      // View has changed and mounted - this is where we update UI state
-      console.log('[schedule-core] viewDidMount', { view: viewInfo.view.type });
       state.currentView = viewInfo.view.type;
-      // Update view button highlighting
       document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('bg-indigo-50','dark:bg-indigo-900','text-indigo-700','dark:text-indigo-200'));
       const activeBtn = document.querySelector(`[data-view="${viewInfo.view.type}"]`);
       if(activeBtn) activeBtn.classList.add('bg-indigo-50','dark:bg-indigo-900','text-indigo-700','dark:text-indigo-200');
     },
-    eventClick(info){
-      alert('Appointment '+ info.event.id);
+    select(info){ openModal(buildCreateForm(info)); },
+    eventClick(info){ openModal(buildAppointmentView(info.event)); },
+    eventDrop: async (info) => {
+      try {
+        beginLoad('drag');
+        await fetchJSON(`${base}/appointments/update`,{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: info.event.id, start_time: info.event.start.toISOString(), end_time: info.event.end?.toISOString() || null })
+        });
+      } catch(e){ console.error(e); info.revert(); } finally { endLoad('drag'); }
     },
-    // Retain loading callback only as a safety signal; we no longer mutate counters here to avoid double counting
     loading(isLoading){
       if(!isLoading){
-        // On completion, ensure overlay reflects counter state & show transient status if not already set
         updateOverlay();
         const statusEl = document.getElementById('scheduleStatus');
         if(statusEl && !statusEl.textContent){
-          statusEl.textContent = 'Loaded';
+          statusEl.textContent='Loaded';
           setTimeout(()=>{ if(statusEl.textContent==='Loaded') statusEl.textContent=''; }, 1200);
         }
       }
@@ -230,16 +308,17 @@ function init(){
     try { calendar.gotoDate(new Date(state.currentDate)); } catch(e) {}
   }
 
-  try {
-    calendar.render();
-  } catch(e){
-    console.error('[schedule-core] calendar.render failed', e);
+  try { calendar.render(); }
+  catch(e){
+    console.error('[scheduler] render failed', e);
     const statusEl = document.getElementById('scheduleStatus');
     if(statusEl){ statusEl.textContent='Calendar failed to initialize'; statusEl.classList.add('text-red-600'); }
     return;
   }
   state.calendar = calendar;
   wireControls();
+  // External triggers
+  window.addEventListener('schedule:refresh', ()=> calendar.refetchEvents());
 }
 
 function wireControls(){
@@ -278,11 +357,19 @@ function wireControls(){
   document.getElementById('filterProvider')?.addEventListener('change', debouncedRefetch);
 }
 
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', init);
-}else{
-  init();
+if(!window.__scheduleCalendarBootstrapped){
+  window.__scheduleCalendarBootstrapped = true;
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  document.addEventListener('spa:navigated', () => {
+    // Attempt re-init only if calendar not present
+    if(!state.calendar) init();
+  });
 }
 
-// Expose for debug
+// Debug handle
 window.__scheduleDebug = state;
+window.__scheduleRefresh = () => state.calendar?.refetchEvents();
