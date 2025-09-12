@@ -3,6 +3,33 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'schedule']) ?>
 <?= $this->endSection() ?>
 <?= $this->section('title') ?>Schedule<?= $this->endSection() ?>
+<?= $this->section('head') ?>
+<script>
+// Fallback: detect if core stylesheet failed to apply (rare direct-load issue) and attempt reinjection
+document.addEventListener('DOMContentLoaded', function(){
+    try {
+        const test = window.getComputedStyle(document.body).backgroundColor;
+        // If value is transparent or blank (some UA return 'rgba(0, 0, 0, 0)' when no styles applied), try reinject
+        if (!test || test === 'transparent' || test === 'rgba(0, 0, 0, 0)') {
+            console.warn('[schedule] Detected missing global styles; attempting fallback reinjection');
+            if (!document.querySelector('link[href*="build/assets/style.css"]')) {
+                const l = document.createElement('link');
+                l.rel='stylesheet';
+                l.href='<?= base_url('build/assets/style.css') ?>';
+                document.head.appendChild(l);
+            }
+            // Inject minimal critical styles as immediate safety net
+            if (!document.getElementById('schedule-critical-fallback')) {
+                const s=document.createElement('style');
+                s.id='schedule-critical-fallback';
+                s.textContent='body{font-family:system-ui,sans-serif;background:#f3f4f6;color:#1f2937;} .main-content{max-width:1600px;margin:0 auto;}';
+                document.head.appendChild(s);
+            }
+        }
+    } catch(e){ console.debug('[schedule] style check failed', e); }
+});
+</script>
+<?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="main-content px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0" data-page-title="Schedule" data-page-subtitle="Manage appointments and calendar">
     <div class="flex items-center justify-between">

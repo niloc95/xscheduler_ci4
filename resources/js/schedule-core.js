@@ -27,6 +27,7 @@ const state = {
   calendar: null,
   currentView: localStorage.getItem('scheduler.view') || 'dayGridMonth',
   currentDate: localStorage.getItem('scheduler.date') || null,
+  activeLoads: 0,
 };
 
 function saveState(cal){
@@ -37,6 +38,8 @@ function saveState(cal){
 async function fetchEvents(info, success, failure){
   const debug = [];
   const fetchStart = performance.now();
+  state.activeLoads++;
+  updateOverlay();
   console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr });
   let finished = false;
   // Hard timeout safeguard (network hang, etc.)
@@ -95,6 +98,19 @@ async function fetchEvents(info, success, failure){
     }
     failure(err);
   }
+  state.activeLoads = Math.max(0, state.activeLoads - 1);
+  updateOverlay();
+}
+
+function updateOverlay(){
+  const overlay = document.getElementById('calendarLoading');
+  if(!overlay) return;
+  if(state.activeLoads > 0){
+    overlay.classList.remove('hidden');
+    overlay.textContent = state.activeLoads > 1 ? 'Loading ('+state.activeLoads+')...' : 'Loading...';
+  } else {
+    overlay.classList.add('hidden');
+  }
 }
 
 function init(){
@@ -118,8 +134,8 @@ function init(){
       alert('Appointment '+ info.event.id);
     },
     loading(isLoading){
-      const overlay = document.getElementById('calendarLoading');
-      if(overlay){ overlay.classList.toggle('hidden', !isLoading); }
+      if(isLoading){ state.activeLoads++; } else { state.activeLoads = Math.max(0, state.activeLoads - 1); }
+      updateOverlay();
       // Secondary failsafe: hide loader after 12s even if FullCalendar misses callback
       if(isLoading){
         if(window.__scheduleLoadingTimer) clearTimeout(window.__scheduleLoadingTimer);
