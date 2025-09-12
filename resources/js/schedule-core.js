@@ -195,12 +195,24 @@ function init(){
     height: 'auto',
     firstDay: 0,
     events: fetchEvents,
-    datesSet(){ saveState(calendar); },
+    datesSet(dateInfo){
+      console.log('[schedule-core] datesSet triggered', { 
+        view: dateInfo.view.type, 
+        start: dateInfo.startStr, 
+        end: dateInfo.endStr 
+      });
+      // Only save state, don't trigger additional fetches here
+      saveState(calendar); 
+    },
+    viewDidMount(info) {
+      console.log('[schedule-core] viewDidMount', { view: info.view.type });
+    },
     eventClick(info){
       alert('Appointment '+ info.event.id);
     },
     // Retain loading callback only as a safety signal; we no longer mutate counters here to avoid double counting
     loading(isLoading){
+      console.log('[schedule-core] FullCalendar loading callback', { isLoading });
       if(!isLoading){
         // On completion, ensure overlay reflects counter state & show transient status if not already set
         updateOverlay();
@@ -231,33 +243,65 @@ function init(){
 
 function wireControls(){
   const c = state.calendar; if(!c) return;
-  document.getElementById('todayBtn')?.addEventListener('click', () => c.today());
-  document.getElementById('prevBtn')?.addEventListener('click', () => c.prev());
-  document.getElementById('nextBtn')?.addEventListener('click', () => c.next());
+  document.getElementById('todayBtn')?.addEventListener('click', () => {
+    console.log('[schedule-core] today button clicked');
+    c.today();
+  });
+  document.getElementById('prevBtn')?.addEventListener('click', () => {
+    console.log('[schedule-core] prev button clicked');
+    c.prev();
+  });
+  document.getElementById('nextBtn')?.addEventListener('click', () => {
+    console.log('[schedule-core] next button clicked');
+    c.next();
+  });
   document.getElementById('refreshCalendar')?.addEventListener('click', () => { 
-    console.log('[schedule-core] manual refresh'); 
+    console.log('[schedule-core] manual refresh button clicked'); 
     c.refetchEvents(); 
   });
+  
+  // View buttons with explicit refetch prevention
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.getAttribute('data-view');
-      c.changeView(type);
+      const currentView = c.view.type;
+      
+      console.log('[schedule-core] view button clicked', { from: currentView, to: type });
+      
+      if (currentView === type) {
+        console.log('[schedule-core] same view clicked, ignoring');
+        return;
+      }
+      
+      // Update UI immediately
       document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('bg-indigo-50','dark:bg-indigo-900','text-indigo-700','dark:text-indigo-200'));
       btn.classList.add('bg-indigo-50','dark:bg-indigo-900','text-indigo-700','dark:text-indigo-200');
+      
+      // Change view - this will trigger datesSet callback but should not cause infinite loop
+      c.changeView(type);
     });
   });
   
   // Debounced filter handlers to prevent rapid-fire requests
-  const debouncedRefetch = () => {
-    if (state.debounceTimer) clearTimeout(state.debounceTimer);
+  const debouncedRefetch = (source) => {
+    if (state.debounceTimer) {
+      console.log('[schedule-core] clearing previous debounce timer');
+      clearTimeout(state.debounceTimer);
+    }
     state.debounceTimer = setTimeout(() => {
-      console.log('[schedule-core] debounced filter refetch');
+      console.log('[schedule-core] debounced filter refetch triggered by:', source);
       c.refetchEvents();
     }, 300);
   };
   
-  document.getElementById('filterService')?.addEventListener('change', debouncedRefetch);
-  document.getElementById('filterProvider')?.addEventListener('change', debouncedRefetch);
+  document.getElementById('filterService')?.addEventListener('change', (e) => {
+    console.log('[schedule-core] service filter changed to:', e.target.value);
+    debouncedRefetch('service-filter');
+  });
+  document.getElementById('filterProvider')?.addEventListener('change', (e) => {
+    console.log('[schedule-core] provider filter changed to:', e.target.value);
+    debouncedRefetch('provider-filter');
+  });
 }
 
 if(document.readyState === 'loading'){
