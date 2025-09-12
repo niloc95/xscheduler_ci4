@@ -1,18 +1,19 @@
-<?php
-/**
- * New Scheduler (FullCalendar) root view
- */
-?>
-<div class="px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0" data-page-title="Schedule" data-page-subtitle="Manage appointments and calendar">
+<?= $this->extend('components/layout') ?>
+<?= $this->section('title') ?>Schedule<?= $this->endSection() ?>
+<?= $this->section('content') ?>
+<div class="main-content px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0" data-page-title="Schedule" data-page-subtitle="Manage appointments and calendar">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">Schedule</h1>
-        <div class="text-sm text-gray-500" id="scheduleStatus"></div>
+        <div class="flex items-center gap-3">
+            <div class="text-sm text-gray-500 dark:text-gray-400" id="scheduleStatus"></div>
+            <button id="refreshCalendar" class="px-2 py-1 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600">Refresh</button>
+        </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded shadow p-4 space-y-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-4">
         <div class="flex flex-wrap gap-3 items-center" id="scheduleFilters">
             <label class="text-sm font-medium text-gray-600 dark:text-gray-300">Service
-                <select id="filterService" class="ml-2 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-100">
+                <select id="filterService" class="ml-2 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
                     <option value="">All</option>
                     <?php foreach ($services as $s): ?>
                         <option value="<?= esc($s['id']) ?>"><?= esc($s['name']) ?></option>
@@ -20,7 +21,7 @@
                 </select>
             </label>
             <label class="text-sm font-medium text-gray-600 dark:text-gray-300">Provider
-                <select id="filterProvider" class="ml-2 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-gray-100">
+                <select id="filterProvider" class="ml-2 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
                     <option value="">All</option>
                     <?php foreach ($providers as $p): ?>
                         <option value="<?= esc($p['id']) ?>"><?= esc($p['name'] ?? ($p['first_name'] . ' ' . $p['last_name'])) ?></option>
@@ -44,3 +45,4 @@
         </div>
     </div>
 </div>
+<?= $this->endSection() ?>

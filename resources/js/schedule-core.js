@@ -169,6 +169,7 @@ function wireControls(){
   document.getElementById('todayBtn')?.addEventListener('click', () => c.today());
   document.getElementById('prevBtn')?.addEventListener('click', () => c.prev());
   document.getElementById('nextBtn')?.addEventListener('click', () => c.next());
+  document.getElementById('refreshCalendar')?.addEventListener('click', () => { console.log('[schedule-core] manual refresh'); c.refetchEvents(); });
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.getAttribute('data-view');
