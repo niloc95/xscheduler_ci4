@@ -70,7 +70,14 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
         </div>
         <div id="calendarContainer" class="relative">
-            <div id="calendarLoading" class="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70 text-gray-600 dark:text-gray-300 text-sm hidden">Loading...</div>
+            <div id="calendarLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 text-gray-600 dark:text-gray-300 text-sm hidden backdrop-blur-sm z-50 transition-opacity duration-200">
+                <div class="bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                        <span id="calendarLoadingText">Loading...</span>
+                    </div>
+                </div>
+            </div>
             <div id="calendar" class="fc-reset"></div>
         </div>
     </div>

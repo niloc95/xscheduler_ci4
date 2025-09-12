@@ -29,6 +29,8 @@ const state = {
   currentDate: localStorage.getItem('scheduler.date') || null,
   activeLoads: 0,
   isLoading: false,
+  currentRequest: null,
+  debounceTimer: null,
 };
 
 function saveState(cal){
@@ -39,22 +41,36 @@ function saveState(cal){
 async function fetchEvents(info, success, failure){
   const debug = [];
   const fetchStart = performance.now();
-  beginLoad('events');
-  console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr });
+  
+  // Cancel any existing request to prevent overlapping
+  if (state.currentRequest) {
+    console.log('[schedule-core] Cancelling previous request');
+    state.currentRequest = null;
+  }
+  
+  const requestId = Date.now();
+  state.currentRequest = requestId;
+  
+  console.log('[schedule-core] fetchEvents -> start', { rangeStart: info.startStr, rangeEnd: info.endStr, requestId });
+  
   let finished = false;
+  beginLoad('events');
+  
   // Hard timeout safeguard (network hang, etc.)
   const timeoutMs = 10000; // 10s
   const timeoutId = setTimeout(() => {
-    if (finished) return;
+    if (finished || state.currentRequest !== requestId) return;
     finished = true;
-    console.warn('[schedule-core] fetchEvents timeout exceeded', { timeoutMs, debug });
+    console.warn('[schedule-core] fetchEvents timeout exceeded', { timeoutMs, debug, requestId });
     const statusEl = document.getElementById('scheduleStatus');
     if(statusEl){
       statusEl.textContent = 'Request timeout fetching appointments';
       statusEl.classList.add('text-amber-600');
     }
+    endLoad('events');
     try { failure(new Error('timeout')); } catch(_){}
   }, timeoutMs);
+
   try {
     const startDate = info.startStr.substring(0,10);
     const endDate = info.endStr.substring(0,10);
@@ -68,9 +84,23 @@ async function fetchEvents(info, success, failure){
     if(provider) params.set('providerId', provider);
     const url = '/api/appointments?' + params.toString();
     debug.push(['url', url]);
+    
+    // Check if this request is still current
+    if (state.currentRequest !== requestId) {
+      console.log('[schedule-core] Request superseded, aborting', { requestId });
+      return;
+    }
+    
     const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
     debug.push(['status', res.status]);
     if(!res.ok) throw new Error('HTTP '+res.status);
+    
+    // Final check before processing response
+    if (state.currentRequest !== requestId) {
+      console.log('[schedule-core] Request superseded after fetch, aborting', { requestId });
+      return;
+    }
+    
     const data = await res.json();
     debug.push(['payloadKeys', Object.keys(data)]);
     const src = data.data || data || [];
@@ -83,35 +113,60 @@ async function fetchEvents(info, success, failure){
       extendedProps: a,
     })) : [];
     if(events.length === 0) debug.push(['emptyEvents']);
-  const dur = (performance.now() - fetchStart).toFixed(1);
-  debug.push(['durationMs', dur]);
-  console.log('[schedule-core] events loaded', { debug, count: events.length });
-    finished = true; clearTimeout(timeoutId);
-  success(events);
-  } catch(err){
-    finished = true; clearTimeout(timeoutId);
-  console.error('[schedule-core] events load failed', err, debug);
-    const statusEl = document.getElementById('scheduleStatus');
-    if(statusEl){
-      statusEl.textContent = 'Failed to load appointments';
-      statusEl.classList.add('text-red-600');
+    const dur = (performance.now() - fetchStart).toFixed(1);
+    debug.push(['durationMs', dur]);
+    console.log('[schedule-core] events loaded', { debug, count: events.length, requestId });
+    
+    if (state.currentRequest === requestId) {
+      finished = true; 
+      clearTimeout(timeoutId);
+      success(events);
     }
-    failure(err);
+  } catch(err){
+    if (state.currentRequest === requestId) {
+      finished = true; 
+      clearTimeout(timeoutId);
+      console.error('[schedule-core] events load failed', err, debug, { requestId });
+      const statusEl = document.getElementById('scheduleStatus');
+      if(statusEl){
+        statusEl.textContent = 'Failed to load appointments';
+        statusEl.classList.add('text-red-600');
+      }
+      failure(err);
+    }
+  } finally {
+    if (state.currentRequest === requestId) {
+      endLoad('events');
+      state.currentRequest = null;
+    }
   }
-  endLoad('events');
-}
-
-function updateOverlay(){
+}function updateOverlay(){
   const overlay = document.getElementById('calendarLoading');
+  const loadingText = document.getElementById('calendarLoadingText');
   const refreshBtn = document.getElementById('refreshCalendar');
   if(!overlay) return;
+  
   if(state.activeLoads > 0){
     overlay.classList.remove('hidden');
-    overlay.textContent = state.activeLoads > 1 ? 'Loading ('+state.activeLoads+')...' : 'Loading...';
-    if(refreshBtn){ refreshBtn.disabled = true; refreshBtn.classList.add('opacity-50','cursor-not-allowed'); }
+    overlay.style.opacity = '1';
+    if(loadingText) {
+      loadingText.textContent = state.activeLoads > 1 ? `Loading (${state.activeLoads})...` : 'Loading...';
+    }
+    if(refreshBtn){ 
+      refreshBtn.disabled = true; 
+      refreshBtn.classList.add('opacity-50','cursor-not-allowed'); 
+    }
   } else {
-    overlay.classList.add('hidden');
-    if(refreshBtn){ refreshBtn.disabled = false; refreshBtn.classList.remove('opacity-50','cursor-not-allowed'); }
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      if(state.activeLoads === 0) {
+        overlay.classList.add('hidden');
+      }
+    }, 200); // Match CSS transition duration
+    if(refreshBtn){ 
+      refreshBtn.disabled = false; 
+      refreshBtn.classList.remove('opacity-50','cursor-not-allowed'); 
+    }
   }
 }
 
@@ -179,7 +234,10 @@ function wireControls(){
   document.getElementById('todayBtn')?.addEventListener('click', () => c.today());
   document.getElementById('prevBtn')?.addEventListener('click', () => c.prev());
   document.getElementById('nextBtn')?.addEventListener('click', () => c.next());
-  document.getElementById('refreshCalendar')?.addEventListener('click', () => { console.log('[schedule-core] manual refresh'); c.refetchEvents(); });
+  document.getElementById('refreshCalendar')?.addEventListener('click', () => { 
+    console.log('[schedule-core] manual refresh'); 
+    c.refetchEvents(); 
+  });
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.getAttribute('data-view');
@@ -188,8 +246,18 @@ function wireControls(){
       btn.classList.add('bg-indigo-50','dark:bg-indigo-900','text-indigo-700','dark:text-indigo-200');
     });
   });
-  document.getElementById('filterService')?.addEventListener('change', ()=> c.refetchEvents());
-  document.getElementById('filterProvider')?.addEventListener('change', ()=> c.refetchEvents());
+  
+  // Debounced filter handlers to prevent rapid-fire requests
+  const debouncedRefetch = () => {
+    if (state.debounceTimer) clearTimeout(state.debounceTimer);
+    state.debounceTimer = setTimeout(() => {
+      console.log('[schedule-core] debounced filter refetch');
+      c.refetchEvents();
+    }, 300);
+  };
+  
+  document.getElementById('filterService')?.addEventListener('change', debouncedRefetch);
+  document.getElementById('filterProvider')?.addEventListener('change', debouncedRefetch);
 }
 
 if(document.readyState === 'loading'){
