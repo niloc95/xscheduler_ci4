@@ -1,4 +1,7 @@
 <?= $this->extend('components/layout') ?>
+<?= $this->section('sidebar') ?>
+    <?= $this->include('components/unified-sidebar', ['current_page' => 'schedule']) ?>
+<?= $this->endSection() ?>
 <?= $this->section('title') ?>Schedule<?= $this->endSection() ?>
 <?= $this->section('content') ?>
 <div class="main-content px-6 py-4 space-y-4" id="scheduler-page" data-scheduler-version="1.0.0" data-page-title="Schedule" data-page-subtitle="Manage appointments and calendar">
