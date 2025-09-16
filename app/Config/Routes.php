@@ -42,6 +42,10 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
 });
 
+// Global user/customer lightweight API endpoints (session-auth protected)
+$routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
+$routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
+
 // User Management Routes (admin and provider access with different permissions)
 $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'UserManagement::index', ['filter' => 'role:admin,provider']);

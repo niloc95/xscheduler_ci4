@@ -24,7 +24,7 @@
 
     <!-- Role Filter Cards (interactive) -->
     <div class="mb-6">
-        <div id="role-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div id="role-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" aria-live="polite">
             <!-- Card Template (cloned in JS) -->
             <template id="role-card-template">
                 <div class="role-card group cursor-pointer p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col relative overflow-hidden">
@@ -62,7 +62,7 @@
         
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300" id="usersTable">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300" id="usersTable" aria-live="polite">
                 <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600 transition-colors duration-300">
                     <tr>
                         <th class="px-6 py-4 font-semibold">User</th>
@@ -238,6 +238,8 @@
 }
 </style>
 
+<div id="users-error" class="hidden mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200"></div>
+
 <script>
 // Dynamic role cards & filtering
 document.addEventListener('DOMContentLoaded', () => {
@@ -300,6 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function roleLabel(r){ return {admin:'Admin',provider:'Provider',staff:'Staff',customer:'Customer'}[r] || r; }
     function baseUrl(path){ return `${window.location.origin.replace(/\/$/,'')}/${path}`; }
 
+    function showError(msg){
+        const box = document.getElementById('users-error');
+        box.textContent = msg;
+        box.classList.remove('hidden');
+    }
+    function clearError(){
+        const box = document.getElementById('users-error');
+        box.classList.add('hidden');
+        box.textContent='';
+    }
+
     async function loadCounts() {
         try {
             const res = await fetch(baseUrl('api/user-counts'));
@@ -307,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const json = await res.json();
             renderCards(json.counts || {});
         } catch (e) {
+            console.warn(e);
             // fallback with PHP-provided stats
             renderCards({
                 total: <?= (int)($stats['total'] ?? 0) ?>,
@@ -315,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 staff: <?= (int)($stats['staff'] ?? 0) ?>,
                 customers: <?= (int)($stats['customers'] ?? 0) ?>
             });
+            showError('Live counts unavailable, showing cached values.');
         }
     }
 
@@ -323,7 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = new URL(baseUrl('api/users'));
         if (role !== 'all') url.searchParams.set('role', role);
         try {
-            tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center text-gray-500 dark:text-gray-400'>Loading...</td></tr>`;
+            clearError();
+            tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center'><div class='flex items-center justify-center gap-3 text-gray-500 dark:text-gray-400'><svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> Loading...</div></td></tr>`;
             const res = await fetch(url.toString());
             if(!res.ok) throw new Error('Failed users');
             const json = await res.json();
@@ -334,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             tableBody.innerHTML = items.map(userRow).join('');
         } catch(e) {
+            console.error(e);
+            showError('Unable to load users. Please try again later.');
             tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center text-red-500'>Error loading users.</td></tr>`;
         }
     }
