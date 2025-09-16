@@ -1,56 +1,64 @@
 <?php
-
 namespace App\Models;
 
-use CodeIgniter\Model;
-
-class AppointmentModel extends Model
+/**
+ * Unified AppointmentModel after user->customer split.
+ * Keeps legacy dashboard/stat methods while adopting new customer_id field.
+ */
+class AppointmentModel extends BaseModel
 {
-    protected $table            = 'appointments';
-    protected $primaryKey       = 'id';
-    protected $useAutoIncrement = true;
-    protected $returnType       = 'array';
-    protected $useSoftDeletes   = false;
-    protected $protectFields    = true;
-    protected $allowedFields    = [
-        'user_id', 'provider_id', 'service_id', 'start_time', 'end_time', 'status', 'notes', 'reminder_sent'
+    protected $table = 'appointments';
+    protected $primaryKey = 'id';
+    protected $allowedFields = [
+        'customer_id','provider_id','service_id','start_time','end_time','status','notes','reminder_sent','created_at','updated_at'
     ];
-
-    // Dates
     protected $useTimestamps = true;
-    protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
-    // Validation
-    protected $validationRules      = [
-        'user_id'     => 'required|integer',
-        'provider_id' => 'required|integer',
-        'service_id'  => 'required|integer',
+    protected $validationRules = [
+        'customer_id' => 'required|is_natural_no_zero',
+        'provider_id' => 'required|is_natural_no_zero',
+        'service_id'  => 'required|is_natural_no_zero',
         'start_time'  => 'required|valid_date',
         'end_time'    => 'required|valid_date',
-    'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]',
-    'reminder_sent' => 'permit_empty|in_list[0,1]'
+        'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]',
+        'reminder_sent' => 'permit_empty|in_list[0,1]'
     ];
-    protected $validationMessages   = [];
-    protected $skipValidation       = false;
-    protected $cleanValidationRules = true;
 
-    /**
-     * Get appointment statistics
-     */
-    public function getStats()
+    public function upcomingForProvider(int $providerId, int $days = 30): array
     {
-    $total = $this->countAll();
-    // Standardize time windows to avoid DB-specific functions (SQLite lacks YEAR/MONTH/DATE)
-    $now        = date('Y-m-d H:i:s');
-    $todayStart = date('Y-m-d 00:00:00');
-    $todayEnd   = date('Y-m-d 23:59:59');
-    $weekStart  = date('Y-m-d 00:00:00', strtotime('monday this week'));
-    $weekEnd    = date('Y-m-d 23:59:59', strtotime('sunday this week'));
-    $monthStart = date('Y-m-01 00:00:00');
-    $monthEnd   = date('Y-m-t 23:59:59');
-        
+        return $this->builder()
+            ->select('appointments.*, c.first_name, c.last_name, s.name as service_name')
+            ->join('customers c', 'c.id = appointments.customer_id', 'left')
+            ->join('services s', 's.id = appointments.service_id', 'left')
+            ->where('provider_id', $providerId)
+            ->where('start_time >=', date('Y-m-d H:i:s'))
+            ->where('start_time <', date('Y-m-d H:i:s', strtotime("+{$days} days")))
+            ->orderBy('start_time','ASC')
+            ->get()->getResultArray();
+    }
+
+    public function book(array $data): int|false
+    {
+        if (!$this->insert($data, false)) {
+            return false;
+        }
+        return (int)$this->getInsertID();
+    }
+
+    // Dashboard / analytics helpers (adapted from legacy model)
+    public function getStats(): array
+    {
+        $total = $this->countAll();
+        $now        = date('Y-m-d H:i:s');
+        $todayStart = date('Y-m-d 00:00:00');
+        $todayEnd   = date('Y-m-d 23:59:59');
+        $weekStart  = date('Y-m-d 00:00:00', strtotime('monday this week'));
+        $weekEnd    = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+        $monthStart = date('Y-m-01 00:00:00');
+        $monthEnd   = date('Y-m-t 23:59:59');
+
         return [
             'total' => $total,
             'today' => $this->where('start_time >=', $todayStart)
@@ -70,136 +78,84 @@ class AppointmentModel extends Model
         ];
     }
 
-    /**
-     * Get recent appointments with user and service details
-     */
-    public function getRecentAppointments($limit = 10)
+    public function getRecentAppointments(int $limit = 10): array
     {
-        // Simplified version - return basic appointment data
         return $this->orderBy('created_at', 'DESC')
                     ->limit($limit)
                     ->find();
     }
 
-    /**
-     * Get appointment activity for dashboard (recent changes)
-     */
-    public function getRecentActivity($limit = 5)
+    public function getRecentActivity(int $limit = 5): array
     {
-        // Simplified version without joins to avoid table prefix issues
         $appointments = $this->orderBy('updated_at', 'DESC')
                              ->limit($limit)
                              ->find();
-        
-        // For now, return mock data structure that matches expected format
         $activities = [];
         foreach ($appointments as $appointment) {
             $activities[] = [
-                'customer_name' => 'User #' . $appointment['user_id'],
-                'service_name' => 'Service #' . $appointment['service_id'],
-                'status' => $appointment['status'],
-                'updated_at' => $appointment['updated_at']
+                'customer_id' => $appointment['customer_id'] ?? null,
+                'service_id'  => $appointment['service_id'] ?? null,
+                'status'      => $appointment['status'] ?? null,
+                'updated_at'  => $appointment['updated_at'] ?? null,
             ];
         }
-        
         return $activities;
     }
 
-    /**
-     * Get appointment data for charts
-     */
-    public function getChartData($period = 'week')
+    public function getChartData(string $period = 'week'): array
     {
         $data = [];
         $labels = [];
-        
-    if ($period === 'week') {
-            // Last 7 days
+        if ($period === 'week') {
             for ($i = 6; $i >= 0; $i--) {
-        $dayStart = date('Y-m-d 00:00:00', strtotime("-{$i} days"));
-        $dayEnd   = date('Y-m-d 23:59:59', strtotime("-{$i} days"));
-        $count = $this->where('start_time >=', $dayStart)
-                  ->where('start_time <=', $dayEnd)
-                  ->countAllResults(false);
-
-        $labels[] = date('M j', strtotime($dayStart));
+                $dayStart = date('Y-m-d 00:00:00', strtotime("-{$i} days"));
+                $dayEnd   = date('Y-m-d 23:59:59', strtotime("-{$i} days"));
+                $count = $this->where('start_time >=', $dayStart)
+                              ->where('start_time <=', $dayEnd)
+                              ->countAllResults(false);
+                $labels[] = date('M j', strtotime($dayStart));
                 $data[] = $count;
             }
-        } else if ($period === 'month') {
-            // Last 4 weeks
+        } elseif ($period === 'month') {
             for ($i = 3; $i >= 0; $i--) {
-        $startDate = date('Y-m-d 00:00:00', strtotime("-{$i} weeks monday"));
-        $endDate   = date('Y-m-d 23:59:59', strtotime("-{$i} weeks sunday"));
-
-        $count = $this->where('start_time >=', $startDate)
-                  ->where('start_time <=', $endDate)
+                $startDate = date('Y-m-d 00:00:00', strtotime("-{$i} weeks monday"));
+                $endDate   = date('Y-m-d 23:59:59', strtotime("-{$i} weeks sunday"));
+                $count = $this->where('start_time >=', $startDate)
+                              ->where('start_time <=', $endDate)
                               ->countAllResults(false);
-                
                 $labels[] = 'Week ' . (4 - $i);
                 $data[] = $count;
             }
         }
-        
-        return [
-            'labels' => $labels,
-            'data' => $data
-        ];
+        return ['labels' => $labels, 'data' => $data];
     }
 
-    /**
-     * Get status distribution for pie chart
-     */
-    public function getStatusDistribution()
+    public function getStatusDistribution(): array
     {
         $statuses = ['booked', 'completed', 'cancelled', 'rescheduled'];
         $data = [];
         $labels = [];
-        
         foreach ($statuses as $status) {
             $count = $this->where('status', $status)->countAllResults(false);
-            if ($count > 0) {
-                $labels[] = ucfirst($status);
-                $data[] = $count;
-            }
+            if ($count > 0) { $labels[] = ucfirst($status); $data[] = $count; }
         }
-        
-        return [
-            'labels' => $labels,
-            'data' => $data
-        ];
+        return ['labels' => $labels, 'data' => $data];
     }
 
-    /**
-     * Calculate revenue from completed appointments
-     */
-    public function getRevenue($period = 'month')
+    public function getRevenue(string $period = 'month'): int
     {
-        // For now, return a simple calculation or 0 if no completed appointments
-        // This avoids the complex join issue until we can solve the table prefix problem
-        
-        $completedCount = $this->where('status', 'completed');
-        
+        $completed = $this->where('status', 'completed');
         if ($period === 'month') {
-            $monthStart = date('Y-m-01 00:00:00');
-            $monthEnd   = date('Y-m-t 23:59:59');
-            $completedCount->where('start_time >=', $monthStart)
-                           ->where('start_time <=', $monthEnd);
+            $completed->where('start_time >=', date('Y-m-01 00:00:00'))
+                      ->where('start_time <=', date('Y-m-t 23:59:59'));
         } elseif ($period === 'week') {
-            $weekStart = date('Y-m-d 00:00:00', strtotime('monday this week'));
-            $weekEnd   = date('Y-m-d 23:59:59', strtotime('sunday this week'));
-            $completedCount->where('start_time >=', $weekStart)
-                           ->where('start_time <=', $weekEnd);
+            $completed->where('start_time >=', date('Y-m-d 00:00:00', strtotime('monday this week')))
+                      ->where('start_time <=', date('Y-m-d 23:59:59', strtotime('sunday this week')));
         } elseif ($period === 'today') {
-            $todayStart = date('Y-m-d 00:00:00');
-            $todayEnd   = date('Y-m-d 23:59:59');
-            $completedCount->where('start_time >=', $todayStart)
-                           ->where('start_time <=', $todayEnd);
+            $completed->where('start_time >=', date('Y-m-d 00:00:00'))
+                      ->where('start_time <=', date('Y-m-d 23:59:59'));
         }
-        
-        $count = $completedCount->countAllResults();
-        
-        // Simple revenue calculation: average price of $50 per appointment
-        // In a real scenario, this should calculate actual revenue from service prices
-        return $count * 50;
+        $count = $completed->countAllResults();
+        return $count * 50; // placeholder average revenue
     }
 }

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 
-class SettingModel extends Model
+class SettingModel extends BaseModel
 {
     protected $table = 'settings';
     protected $primaryKey = 'id';
@@ -18,9 +18,7 @@ class SettingModel extends Model
         'updated_at',
     ];
 
-    protected $useTimestamps = true;
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
+    // ...existing code...
 
     /**
      * Get settings by keys (array) preserving associative mapping.
