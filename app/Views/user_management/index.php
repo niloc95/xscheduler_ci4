@@ -349,6 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             tableBody.innerHTML = items.map(userRow).join('');
+            // Refresh counts after list load to ensure consistency if data changed
+            loadCounts();
         } catch(e) {
             console.error(e);
             showError('Unable to load users. Please try again later.');

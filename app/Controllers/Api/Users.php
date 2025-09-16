@@ -23,12 +23,14 @@ class Users extends BaseController
     public function counts()
     {
         try {
-            $counts = [
-                'admins'    => (int)$this->users->where('role','admin')->countAllResults(false),
-                'providers' => (int)$this->users->where('role','provider')->countAllResults(false),
-                'staff'     => (int)$this->users->whereIn('role',['staff','receptionist'])->countAllResults(false),
-            ];
-            $customersViaUsers = (int)$this->users->where('role','customer')->countAllResults(false);
+            // IMPORTANT: countAllResults(false) does NOT reset builder; previous version caused cascading WHERE conditions
+            // Use default reset (true) to ensure independent counts
+            $counts = [];
+            $counts['admins']    = (int)$this->users->where('role','admin')->countAllResults();
+            $counts['providers'] = (int)$this->users->where('role','provider')->countAllResults();
+            $counts['staff']     = (int)$this->users->whereIn('role',['staff','receptionist'])->countAllResults();
+            // Customers that might still reside in users table (legacy)
+            $customersViaUsers   = (int)$this->users->where('role','customer')->countAllResults();
             $customersReal = $this->customers? $this->customers->countAllSafe() : 0;
             $counts['customers'] = max($customersViaUsers, $customersReal);
             $counts['total'] = $counts['admins'] + $counts['providers'] + $counts['staff'] + $counts['customers'];
