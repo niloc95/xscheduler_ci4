@@ -67,8 +67,7 @@
 <?= $this->section('content') ?>
     <div class="main-content" data-page-title="Dashboard">
 
-        <!-- Role-Based User Summary Cards -->
-        <div id="role-user-cards" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"></div>
+    <!-- User summary cards removed (now only shown in User Management module) -->
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -397,82 +396,7 @@
             }
         });
 
-        // Role card defs & functions
-        const ROLE_DEFS = [
-            { key: 'total', label: 'Total Users', icon: 'groups' },
-            { key: 'admins', label: 'Admins', icon: 'shield_person' },
-            { key: 'providers', label: 'Providers', icon: 'badge' },
-            { key: 'staff', label: 'Staff', icon: 'support_agent' },
-            { key: 'customers', label: 'Customers', icon: 'person' },
-        ];
-        async function loadRoleCounts() {
-            try {
-                const res = await fetch('<?= base_url('api/user-counts') ?>');
-                const json = await res.json();
-                if (json.status !== 'ok') throw new Error('Bad status');
-                renderRoleCards(json.counts);
-            } catch(e) {
-                console.warn('Role counts failed', e);
-            }
-        }
-        function renderRoleCards(counts) {
-            const host = document.getElementById('role-user-cards');
-            if (!host) return;
-            host.innerHTML = '';
-            ROLE_DEFS.forEach(def => {
-                const val = counts[def.key] ?? 0;
-                const card = document.createElement('div');
-                card.className = 'cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card';
-                card.dataset.role = def.key;
-                card.innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div>
-                            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${def.label}</p>
-                            <p class="text-2xl font-semibold text-gray-800 dark:text-gray-100" data-count>${val}</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300">
-                            <span class="material-symbols-outlined">${def.icon}</span>
-                        </div>
-                    </div>`;
-                card.addEventListener('click', () => {
-                    setActiveRole(def.key);
-                    loadUserList(def.key === 'total' ? 'all' : def.key);
-                });
-                host.appendChild(card);
-            });
-            setActiveRole('total');
-            // Load initial list
-            loadUserList('all');
-        }
-        function setActiveRole(roleKey) {
-            document.querySelectorAll('#role-user-cards .role-card').forEach(el => {
-                if (el.dataset.role === roleKey) {
-                    el.classList.add('ring-2','ring-blue-500');
-                } else {
-                    el.classList.remove('ring-2','ring-blue-500');
-                }
-            });
-        }
-        async function loadUserList(role) {
-            const host = document.getElementById('user-list-table-body');
-            if (!host) return;
-            host.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">Loading...</td></tr>';
-            try {
-                const url = new URL('<?= base_url('api/users') ?>', window.location.origin);
-                if (role && role !== 'all') url.searchParams.set('role', role);
-                const res = await fetch(url.toString());
-                const json = await res.json();
-                if (json.status !== 'ok') throw new Error('Bad status');
-                const rows = json.items.map(item => {
-                    const name = item.name || (item.first_name ? `${item.first_name} ${item.last_name||''}` : '—');
-                    const roleDisp = item._type === 'customer' ? 'Customer' : (item.role || '—');
-                    return `<tr class=\"border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition\">\n<td class=\"px-4 py-3 font-medium text-gray-800 dark:text-gray-100\">${name}</td>\n<td class=\"px-4 py-3 text-gray-600 dark:text-gray-300\">${roleDisp}</td>\n<td class=\"px-4 py-3 text-gray-600 dark:text-gray-300\">${item.email ?? item.phone ?? ''}</td>\n<td class=\"px-4 py-3 text-gray-500 dark:text-gray-400 text-xs\">${item.created_at ?? ''}</td>\n<td class=\"px-4 py-3 text-right\"><button class=\"text-blue-600 dark:text-blue-400 text-xs hover:underline\">View</button></td>\n</tr>`;
-                }).join('');
-                host.innerHTML = rows || '<tr><td colspan="5" class="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">No users found.</td></tr>';
-            } catch (e) {
-                host.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-sm text-red-600 dark:text-red-400">Failed to load users.</td></tr>';
-            }
-        }
+        // (Removed role-based user summary cards and dynamic user list for dashboard. This functionality now lives only in User Management module.)
 
         function initCharts() {
             import('<?= base_url('/build/assets/charts.js') ?>').then(module => {
