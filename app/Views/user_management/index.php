@@ -22,27 +22,9 @@
         </div>
     <?php endif; ?>
 
-    <!-- Role Filter Cards (interactive) -->
+    <!-- Role Filter Cards (replicated dashboard layout) -->
     <div class="mb-6">
-        <div id="role-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" aria-live="polite">
-            <!-- Card Template (cloned in JS) -->
-            <template id="role-card-template">
-                <div class="role-card group cursor-pointer p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col relative overflow-hidden">
-                    <div class="absolute inset-0 opacity-0 group-[.active]:opacity-100 transition-opacity duration-200 pointer-events-none" style="background: linear-gradient(135deg,var(--tw-gradient-from,#2563eb),var(--tw-gradient-to,#7c3aed)); mix-blend: multiply;"></div>
-                    <div class="relative z-10 flex items-start justify-between mb-2">
-                        <div>
-                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 group-[.active]:text-indigo-100">Label</p>
-                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100 group-[.active]:text-white" data-count>0</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-gray-700 group-[.active]:bg-white/20">
-                            <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-xl group-[.active]:text-white" data-icon>group</span>
-                        </div>
-                    </div>
-                    <div class="relative z-10 mt-auto flex items-center text-xs text-gray-500 dark:text-gray-400 group-[.active]:text-indigo-100" data-sub>Subtitle</div>
-                    <div class="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent group-[.active]:ring-indigo-500/70 pointer-events-none transition-all duration-200"></div>
-                </div>
-            </template>
-        </div>
+        <div id="role-user-cards" class="grid grid-cols-2 md:grid-cols-5 gap-4" aria-live="polite"></div>
     </div>
 
     <!-- Users Table -->
@@ -241,39 +223,44 @@
 <div id="users-error" class="hidden mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200"></div>
 
 <script>
-// Dynamic role cards & filtering
+// Dynamic role cards & filtering (dashboard-style)
 document.addEventListener('DOMContentLoaded', () => {
-    const roleMeta = [
-        { key:'all',        label:'Total Users',   icon:'group',                sub:'All users & customers' },
-        { key:'admin',      label:'Admins',        icon:'admin_panel_settings', sub:'Full access' },
-        { key:'provider',   label:'Providers',     icon:'storefront',           sub:'Business owners' },
-        { key:'staff',      label:'Staff',         icon:'groups',               sub:'Staff & reception' },
-        { key:'customer',   label:'Customers',     icon:'person',               sub:'Registered clients' },
+    const ROLE_DEFS = [
+        { key:'total',     label:'Total Users', icon:'groups' },
+        { key:'admins',    label:'Admins',      icon:'shield_person' },
+        { key:'providers', label:'Providers',   icon:'badge' },
+        { key:'staff',     label:'Staff',       icon:'support_agent' },
+        { key:'customers', label:'Customers',   icon:'person' },
     ];
-    const cardsHost = document.getElementById('role-cards');
-    const tpl = document.getElementById('role-card-template');
+    const cardsHost = document.getElementById('role-user-cards');
     const tableBody = document.getElementById('users-table-body');
-    let activeRole = 'all';
+    let activeRole = 'total';
 
     function formatDate(str){ try { return new Date(str).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});} catch(e) { return str || ''; } }
 
-    function renderCards(counts) {
-        cardsHost.querySelectorAll('.role-card').forEach(el=>el.remove());
-        roleMeta.forEach(meta => {
-            const node = tpl.content.firstElementChild.cloneNode(true);
-            node.dataset.role = meta.key;
-            node.querySelector('[data-count]').textContent = counts[meta.key==='all'?'total':meta.key] ?? 0;
-            node.querySelector('[data-icon]').textContent = meta.icon;
-            node.querySelector('p').textContent = meta.label;
-            node.querySelector('[data-sub]').textContent = meta.sub;
-            if(meta.key === activeRole) node.classList.add('active');
-            node.addEventListener('click', () => {
-                if(activeRole === meta.key) return; // no-op
-                activeRole = meta.key;
-                cardsHost.querySelectorAll('.role-card').forEach(c=>c.classList.toggle('active', c.dataset.role===activeRole));
+    function renderRoleCards(counts){
+        if(!cardsHost) return;
+        cardsHost.innerHTML='';
+        ROLE_DEFS.forEach(def => {
+            const val = counts[def.key] ?? 0;
+            const card = document.createElement('div');
+            card.className = 'cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card';
+            card.dataset.role = def.key;
+            card.innerHTML = `<div class="flex items-center justify-between mb-2"><div><p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${def.label}</p><p class="text-2xl font-semibold text-gray-800 dark:text-gray-100" data-count>${val}</p></div><div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300"><span class="material-symbols-outlined">${def.icon}</span></div></div>`;
+            card.addEventListener('click', () => {
+                if(activeRole === def.key) return;
+                activeRole = def.key;
+                setActiveRole();
                 loadUsers();
             });
-            cardsHost.appendChild(node);
+            cardsHost.appendChild(card);
+        });
+        setActiveRole();
+    }
+    function setActiveRole(){
+        document.querySelectorAll('#role-user-cards .role-card').forEach(el => {
+            el.classList.toggle('ring-2', el.dataset.role===activeRole);
+            el.classList.toggle('ring-blue-500', el.dataset.role===activeRole);
         });
     }
 
@@ -318,11 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(baseUrl('api/user-counts'));
             if(!res.ok) throw new Error('Failed counts');
             const json = await res.json();
-            renderCards(json.counts || {});
+            renderRoleCards(json.counts || {});
         } catch (e) {
             console.warn(e);
             // fallback with PHP-provided stats
-            renderCards({
+            renderRoleCards({
                 total: <?= (int)($stats['total'] ?? 0) ?>,
                 admins: <?= (int)($stats['admins'] ?? 0) ?>,
                 providers: <?= (int)($stats['providers'] ?? 0) ?>,
@@ -334,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadUsers() {
-        const role = activeRole;
+    const role = activeRole === 'total' ? 'all' : activeRole;
         const url = new URL(baseUrl('api/users'));
         if (role !== 'all') url.searchParams.set('role', role);
         try {
@@ -359,8 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial
-    loadCounts();
-    loadUsers();
+    loadCounts().then(()=> loadUsers());
 });
 </script>
 <?= $this->endSection() ?>
