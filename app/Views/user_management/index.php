@@ -29,17 +29,17 @@
 
     <!-- Users Table (main container starts here) -->
     <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
-            <div>
-                <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">System Users</h2>
-                <p class="text-gray-600 dark:text-gray-400 text-sm">Manage user accounts and permissions</p>
+        <div class="mb-6">
+            <div class="flex flex-col items-end space-y-2 text-right">
+                <h2 id="users-dynamic-title" class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">System Users</h2>
+                <p id="users-dynamic-subtitle" class="text-gray-600 dark:text-gray-400 text-sm">Manage user accounts and permissions</p>
+                <?php if (($canCreateAdmin ?? false) || ($canCreateProvider ?? false) || ($canCreateStaff ?? false)): ?>
+                <a href="<?= base_url('user-management/create') ?>" class="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg items-center space-x-2 transition-colors duration-200">
+                    <span class="material-symbols-outlined">person_add</span>
+                    <span>Add New User</span>
+                </a>
+                <?php endif; ?>
             </div>
-            <?php if (($canCreateAdmin ?? false) || ($canCreateProvider ?? false) || ($canCreateStaff ?? false)): ?>
-            <a href="<?= base_url('user-management/create') ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200 w-full sm:w-auto justify-center">
-                <span class="material-symbols-outlined">person_add</span>
-                <span>Add New User</span>
-            </a>
-            <?php endif; ?>
         </div>
         <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" id="usersTable">
@@ -186,3 +186,42 @@
     window.initUserManagementDashboard=init; document.addEventListener('DOMContentLoaded',()=>init()); document.addEventListener('spa:navigated',()=>init());
 })();
 // (Script continues below with unified initializer)
+
+// Dynamic title handling for right-aligned header
+(function(){
+    function setDefaultTitle(){
+        const titleEl=document.getElementById('users-dynamic-title');
+        const subEl=document.getElementById('users-dynamic-subtitle');
+        if(!titleEl) return;
+        const total = (window.__userCounts && window.__userCounts.total) || document.querySelectorAll('#users-table-body tr').length || 0;
+        titleEl.textContent = `Total Users: ${total}`;
+        if(subEl && !subEl.dataset.locked){ subEl.textContent = 'Manage user accounts and permissions'; }
+    }
+    function setSelectedTitle(name){
+        const titleEl=document.getElementById('users-dynamic-title');
+        if(titleEl){ titleEl.textContent = `Selected User: ${name||'Unknown'}`; }
+    }
+    function extractNameFromRow(tr){
+        const nameEl = tr.querySelector('td div.font-medium');
+        return nameEl ? nameEl.textContent.trim() : 'Unknown';
+    }
+    function bindRowSelection(){
+        const body=document.getElementById('users-table-body'); if(!body) return;
+        body.addEventListener('click',e=>{
+            let tr=e.target.closest('tr');
+            if(!tr) return;
+            // Ignore clicks on action buttons/forms
+            if(e.target.closest('form')||e.target.closest('a')) return;
+            body.querySelectorAll('tr').forEach(r=>r.classList.remove('ring-2','ring-blue-400'));
+            tr.classList.add('ring-2','ring-blue-400');
+            setSelectedTitle(extractNameFromRow(tr));
+        });
+    }
+    document.addEventListener('DOMContentLoaded',()=>{ setTimeout(setDefaultTitle, 50); bindRowSelection(); });
+    document.addEventListener('spa:navigated',()=>{ setTimeout(setDefaultTitle, 50); });
+    // When counts refreshed passively, store globally and update title if showing total
+    const origRefresh = window.refreshCountsPassive;
+    if(typeof origRefresh === 'function'){
+        window.refreshCountsPassive = async function(){ await origRefresh(); try { const cards=document.querySelectorAll('#role-user-cards .role-card'); let totalCard=[...cards].find(c=>c.dataset.role==='total'); if(totalCard){ const valEl=totalCard.querySelector('[data-count]'); if(valEl){ window.__userCounts = window.__userCounts||{}; window.__userCounts.total=parseInt(valEl.textContent)||0; const titleEl=document.getElementById('users-dynamic-title'); if(titleEl && titleEl.textContent.startsWith('Total Users:')) setDefaultTitle(); } } }catch(e){} };
+    }
+})();
