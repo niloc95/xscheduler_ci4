@@ -321,7 +321,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadUsers() {
-    const role = activeRole === 'total' ? 'all' : activeRole;
+        // Map card key to API role parameter
+        const map = {
+            'total': 'all',
+            'admins': 'admin',
+            'providers': 'provider',
+            'staff': 'staff', // includes receptionist in API
+            'customers': 'customer'
+        };
+        const role = map[activeRole] || 'all';
         const url = new URL(baseUrl('api/users'));
         if (role !== 'all') url.searchParams.set('role', role);
         try {
@@ -336,8 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             tableBody.innerHTML = items.map(userRow).join('');
-            // Refresh counts after list load to ensure consistency if data changed
-            loadCounts();
+            // Only refresh counts if we loaded 'all' to minimize redundant queries
+            if (role === 'all') loadCounts();
         } catch(e) {
             console.error(e);
             showError('Unable to load users. Please try again later.');
@@ -383,7 +391,8 @@ document.addEventListener('spa:navigated', (e) => {
                                 card.addEventListener('click', () => {
                                     document.querySelectorAll('#role-user-cards .role-card').forEach(c=>c.classList.toggle('ring-2', c===card));
                                     document.querySelectorAll('#role-user-cards .role-card').forEach(c=>c.classList.toggle('ring-blue-500', c===card));
-                                    const r = def.key === 'total' ? 'all' : def.key;
+                                    const map = { total:'all', admins:'admin', providers:'provider', staff:'staff', customers:'customer'};
+                                    const r = map[def.key] || 'all';
                                     fetch(`${baseUrl('api/users')}${r==='all'?'':'?role='+r}`).then(rsp=>rsp.json()).then(data=>{
                                         const tb = document.getElementById('users-table-body');
                                         if(!tb) return;

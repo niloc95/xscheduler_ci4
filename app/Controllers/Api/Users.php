@@ -55,7 +55,11 @@ class Users extends BaseController
                 } else {
                     $users = $this->users->where('role','customer')->like('name',$q ?? '', 'both')->limit($limit)->find();
                 }
-            } elseif (in_array((string)$role, ['admin','provider','staff','receptionist'], true)) {
+            } elseif ($role === 'staff') {
+                // Include both staff and receptionist roles under unified 'staff' filter
+                $users = $this->users->groupStart()->where('role','staff')->orWhere('role','receptionist')->groupEnd()
+                    ->like('name',$q ?? '', 'both')->limit($limit)->find();
+            } elseif (in_array((string)$role, ['admin','provider','receptionist'], true)) {
                 $users = $this->users->where('role',$role)->like('name',$q ?? '', 'both')->limit($limit)->find();
             } else { // all
                 $users = $this->users->like('name',$q ?? '', 'both')->limit($limit)->find();
