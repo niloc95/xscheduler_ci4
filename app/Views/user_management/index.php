@@ -109,196 +109,124 @@
                                 </a>
                                 <?php if ($user['id'] !== session()->get('user_id')): ?>
                                     <?php if ($user['is_active'] ?? true): ?>
-                                        <a href="<?= base_url('user-management/deactivate/' . $user['id']) ?>" 
-                                           onclick="return confirm('Are you sure you want to deactivate this user?')"
-                                           class="p-1 text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors duration-200">
-                                            <span class="material-symbols-outlined">block</span>
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="<?= base_url('user-management/activate/' . $user['id']) ?>" 
-                                           class="p-1 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200">
-                                            <span class="material-symbols-outlined">check_circle</span>
-                                        </a>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+                                        <script>
+                                        // Unified, idempotent initializer for User Management summary cards & table
+                                        (function(){
+                                            const ROLE_DEFS = [
+                                                { key:'total',     label:'Total Users', icon:'groups' },
+                                                { key:'admins',    label:'Admins',      icon:'shield_person' },
+                                                { key:'providers', label:'Providers',   icon:'badge' },
+                                                { key:'staff',     label:'Staff',       icon:'support_agent' },
+                                                { key:'customers', label:'Customers',   icon:'person' },
+                                            ];
+                                            const roleKeyToApi = { total:'all', admins:'admin', providers:'provider', staff:'staff', customers:'customer' };
+                                            const state = {
+                                                activeRole: 'total',
+                                                initialized: false,
+                                                lastCounts: null
+                                            };
 
-        <!-- Mobile Card Layout -->
-        <div class="md:hidden space-y-4">
-            <?php foreach ($users as $user): ?>
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300 shadow-brand">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
-                            <?= strtoupper(substr($user['name'], 0, 1)) ?>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300"><?= esc($user['name']) ?></p>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300"><?= esc($user['email']) ?></p>
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-1 items-end">
-                        <?php
-                        $badgeColors = [
-                            'admin' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-                            'provider' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                            'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                            'customer' => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        ];
-                        ?>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badgeColors[$user['role']] ?? $badgeColors['customer'] ?>">
-                            <?= get_role_display_name($user['role']) ?>
-                        </span>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= ($user['is_active'] ?? true) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' ?>">
-                            <?= ($user['is_active'] ?? true) ? 'Active' : 'Inactive' ?>
-                        </span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    <span>Created: <?= date('M j, Y', strtotime($user['created_at'])) ?></span>
-                    <?php if ($user['provider_id'] ?? false): ?>
-                        <?php
-                        $provider = array_filter($users, fn($u) => $u['id'] == $user['provider_id']);
-                        $provider = reset($provider);
-                        ?>
-                        <span>Provider: <?= $provider ? esc($provider['name']) : 'Unknown' ?></span>
-                    <?php endif; ?>
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <a href="<?= base_url('user-management/edit/' . $user['id']) ?>" class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                        <span class="material-symbols-outlined">edit</span>
-                    </a>
-                    <?php if ($user['id'] !== session()->get('user_id')): ?>
-                        <?php if ($user['is_active'] ?? true): ?>
-                            <a href="<?= base_url('user-management/deactivate/' . $user['id']) ?>" 
-                               onclick="return confirm('Are you sure you want to deactivate this user?')"
-                               class="p-2 text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <span class="material-symbols-outlined">block</span>
-                            </a>
-                        <?php else: ?>
-                            <a href="<?= base_url('user-management/activate/' . $user['id']) ?>" 
-                               class="p-2 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <span class="material-symbols-outlined">check_circle</span>
-                            </a>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</div>
+                                            function baseUrl(path){ return `${window.location.origin.replace(/\/$/,'')}/${path}`; }
+                                            function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+                                            function roleLabel(r){ return {admin:'Admin',provider:'Provider',staff:'Staff',customer:'Customer'}[r] || r; }
+                                            function formatDate(str){ try { return new Date(str).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});} catch(e){ return str||''; } }
+                                            function showError(msg){ const box=document.getElementById('users-error'); if(!box) return; box.textContent=msg; box.classList.remove('hidden'); }
+                                            function clearError(){ const box=document.getElementById('users-error'); if(!box) return; box.classList.add('hidden'); box.textContent=''; }
 
-<style>
-.avatar-sm {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-    font-weight: 600;
-}
+                                            function userRow(u){
+                                                const role=u.role || (u._type==='customer'?'customer':'');
+                                                const isActive=(u.is_active??true) && role!=='customer';
+                                                const badgeColors={admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',customer:'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'};
+                                                const displayName=u.name || [u.first_name,u.last_name].filter(Boolean).join(' ') || '—';
+                                                const email=u.email||'—';
+                                                return `<tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">`
+                                                    +`<td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${escapeHtml(displayName.substring(0,1).toUpperCase())}</div><div><div class="font-medium">${escapeHtml(displayName)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${u.phone?`<div class='text-gray-400 dark:text-gray-500 text-xs'>${escapeHtml(u.phone)}</div>`:''}</div></div></td>`
+                                                    +`<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role]||badgeColors.customer}">${roleLabel(role)}</span></td>`
+                                                    +`<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(isActive?'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200':'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200')}">${isActive?'Active':'Inactive'}</span></td>`
+                                                    +`<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${u.provider_id?`#${u.provider_id}`:'—'}</td>`
+                                                    +`<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${formatDate(u.created_at)}</td>`
+                                                    +`<td class="px-6 py-4">${role==='customer'?'':`<div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div>`}</td>`
+                                                    +`</tr>`;
+                                            }
 
-.border-left-primary {
-    border-left: 0.25rem solid #4e73df !important;
-}
+                                            async function fetchCounts(){
+                                                try { const r=await fetch(baseUrl('api/user-counts')); if(!r.ok) throw 0; const j=await r.json(); state.lastCounts=j.counts||null; return state.lastCounts; }
+                                                catch(_){
+                                                    state.lastCounts = {
+                                                        total: <?= (int)($stats['total'] ?? 0) ?>,
+                                                        admins: <?= (int)($stats['admins'] ?? 0) ?>,
+                                                        providers: <?= (int)($stats['providers'] ?? 0) ?>,
+                                                        staff: <?= (int)($stats['staff'] ?? 0) ?>,
+                                                        customers: <?= (int)($stats['customers'] ?? 0) ?>
+                                                    };
+                                                    showError('Live counts unavailable, showing cached values.');
+                                                    return state.lastCounts;
+                                                }
+                                            }
 
-.border-left-success {
-    border-left: 0.25rem solid #1cc88a !important;
-}
+                                            function renderCards(counts){
+                                                const host=document.getElementById('role-user-cards'); if(!host) return;
+                                                host.innerHTML='';
+                                                ROLE_DEFS.forEach(def=>{
+                                                    const val=counts[def.key]??0;
+                                                    const card=document.createElement('div');
+                                                    card.className='cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card';
+                                                    card.dataset.role=def.key;
+                                                    card.innerHTML=`<div class="flex items-center justify-between mb-2"><div><p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${def.label}</p><p class="text-2xl font-semibold text-gray-800 dark:text-gray-100" data-count>${val}</p></div><div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300"><span class="material-symbols-outlined">${def.icon}</span></div></div>`;
+                                                    card.addEventListener('click',()=>{ if(state.activeRole===def.key) return; state.activeRole=def.key; highlightActive(); loadUsers(); });
+                                                    host.appendChild(card);
+                                                });
+                                                highlightActive();
+                                            }
 
-.border-left-info {
-    border-left: 0.25rem solid #36b9cc !important;
-}
+                                            function highlightActive(){
+                                                document.querySelectorAll('#role-user-cards .role-card').forEach(el=>{
+                                                    const on=el.dataset.role===state.activeRole; el.classList.toggle('ring-2',on); el.classList.toggle('ring-blue-500',on);
+                                                });
+                                            }
 
-.border-left-warning {
-    border-left: 0.25rem solid #f6c23e !important;
-}
-</style>
+                                            async function loadUsers(){
+                                                const tableBody=document.getElementById('users-table-body'); if(!tableBody) return;
+                                                const role=roleKeyToApi[state.activeRole]||'all';
+                                                const url=new URL(baseUrl('api/users')); if(role!=='all') url.searchParams.set('role',role);
+                                                try {
+                                                    clearError();
+                                                    tableBody.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center'><div class='flex items-center justify-center gap-3 text-gray-500 dark:text-gray-400'><svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> Loading...</div></td></tr>`;
+                                                    const r=await fetch(url.toString()); if(!r.ok) throw 0; const j=await r.json(); const items=j.items||[];
+                                                    if(!items.length){ tableBody.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center text-gray-500 dark:text-gray-400'>No users found.</td></tr>`; return; }
+                                                    tableBody.innerHTML=items.map(userRow).join('');
+                                                    if(role==='all') refreshCountsPassive();
+                                                } catch(_){
+                                                    showError('Unable to load users. Please try again later.');
+                                                    tableBody.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center text-red-500'>Error loading users.</td></tr>`;
+                                                }
+                                            }
 
-<div id="users-error" class="hidden mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200"></div>
+                                            async function refreshCountsPassive(){
+                                                const counts=await fetchCounts(); if(!counts) return; // Keep active card highlight; only update numbers
+                                                document.querySelectorAll('#role-user-cards .role-card').forEach(card=>{
+                                                    const key=card.dataset.role; const val=counts[key]; const countEl=card.querySelector('[data-count]'); if(countEl && typeof val!=='undefined') countEl.textContent=val;
+                                                });
+                                            }
 
-<script>
-// Dynamic role cards & filtering (dashboard-style)
-document.addEventListener('DOMContentLoaded', () => {
-    const ROLE_DEFS = [
-        { key:'total',     label:'Total Users', icon:'groups' },
-        { key:'admins',    label:'Admins',      icon:'shield_person' },
-        { key:'providers', label:'Providers',   icon:'badge' },
-        { key:'staff',     label:'Staff',       icon:'support_agent' },
-        { key:'customers', label:'Customers',   icon:'person' },
-    ];
-    const cardsHost = document.getElementById('role-user-cards');
-    const tableBody = document.getElementById('users-table-body');
-    let activeRole = 'total';
+                                            async function init(force=false){
+                                                const host=document.getElementById('role-user-cards');
+                                                if(!host) return; // Not on page
+                                                const stale = !host.querySelector('.role-card');
+                                                if(!force && state.initialized && !stale) return; // Already good
+                                                const counts = state.lastCounts || await fetchCounts();
+                                                renderCards(counts || {});
+                                                await loadUsers();
+                                                state.initialized = true;
+                                            }
 
-    function formatDate(str){ try { return new Date(str).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});} catch(e) { return str || ''; } }
+                                            // Expose for debugging / manual trigger
+                                            window.initUserManagementDashboard = init;
 
-    function renderRoleCards(counts){
-        if(!cardsHost) return;
-        cardsHost.innerHTML='';
-        ROLE_DEFS.forEach(def => {
-            const val = counts[def.key] ?? 0;
-            const card = document.createElement('div');
-            card.className = 'cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card';
-            card.dataset.role = def.key;
-            card.innerHTML = `<div class="flex items-center justify-between mb-2"><div><p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">${def.label}</p><p class="text-2xl font-semibold text-gray-800 dark:text-gray-100" data-count>${val}</p></div><div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300"><span class="material-symbols-outlined">${def.icon}</span></div></div>`;
-            card.addEventListener('click', () => {
-                if(activeRole === def.key) return;
-                activeRole = def.key;
-                setActiveRole();
-                loadUsers();
-            });
-            cardsHost.appendChild(card);
-        });
-        setActiveRole();
-    }
-    function setActiveRole(){
-        document.querySelectorAll('#role-user-cards .role-card').forEach(el => {
-            el.classList.toggle('ring-2', el.dataset.role===activeRole);
-            el.classList.toggle('ring-blue-500', el.dataset.role===activeRole);
-        });
-    }
-
-    function userRow(u) {
-        const role = u.role || (u._type === 'customer' ? 'customer' : '');
-        const isActive = (u.is_active ?? true) && role !== 'customer'; // customers assumed active
-        const badgeColors = {
-            admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-            provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            customer:'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-        };
-        const displayName = u.name || [u.first_name,u.last_name].filter(Boolean).join(' ') || '—';
-        const email = u.email || '—';
-        return `<tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
-            <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${displayName.substring(0,1).toUpperCase()}</div><div><div class="font-medium">${escapeHtml(displayName)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${u.phone?`<div class='text-gray-400 dark:text-gray-500 text-xs'>${escapeHtml(u.phone)}</div>`:''}</div></div></td>
-            <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role] || badgeColors.customer}">${roleLabel(role)}</span></td>
-            <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive?'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200':'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">${isActive?'Active':'Inactive'}</span></td>
-            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${u.provider_id?`#${u.provider_id}`:'—'}</td>
-            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${formatDate(u.created_at)}</td>
-            <td class="px-6 py-4">${role==='customer'?'' : `<div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div>`}</td>
-        </tr>`;
-    }
-
-    function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
-    function roleLabel(r){ return {admin:'Admin',provider:'Provider',staff:'Staff',customer:'Customer'}[r] || r; }
-    function baseUrl(path){ return `${window.location.origin.replace(/\/$/,'')}/${path}`; }
-
-    function showError(msg){
-        const box = document.getElementById('users-error');
-        box.textContent = msg;
-        box.classList.remove('hidden');
-    }
-    function clearError(){
-        const box = document.getElementById('users-error');
-        box.classList.add('hidden');
-        box.textContent='';
-    }
+                                            document.addEventListener('DOMContentLoaded', ()=> init());
+                                            document.addEventListener('spa:navigated', ()=> init());
+                                        })();
+                                        </script>
 
     async function loadCounts() {
         try {
