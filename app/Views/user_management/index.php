@@ -32,7 +32,7 @@
         <div class="mb-6">
             <div class="flex flex-col items-end space-y-2 text-right">
                 <h2 id="users-dynamic-title" class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">Total Users</h2>
-                <p id="users-dynamic-subtitle" class="text-gray-600 dark:text-gray-400 text-sm">Manage user accounts and permissions</p>
+               
                 <?php if (($canCreateAdmin ?? false) || ($canCreateProvider ?? false) || ($canCreateStaff ?? false)): ?>
                 <a href="<?= base_url('user-management/create') ?>" class="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg items-center space-x-2 transition-colors duration-200">
                     <span class="material-symbols-outlined">person_add</span>
