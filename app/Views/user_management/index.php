@@ -31,7 +31,7 @@
     <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <div class="mb-6">
             <div class="flex flex-col items-end space-y-2 text-right">
-                <h2 id="users-dynamic-title" class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">System Users</h2>
+                <h2 id="users-dynamic-title" class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">Total Users</h2>
                 <p id="users-dynamic-subtitle" class="text-gray-600 dark:text-gray-400 text-sm">Manage user accounts and permissions</p>
                 <?php if (($canCreateAdmin ?? false) || ($canCreateProvider ?? false) || ($canCreateStaff ?? false)): ?>
                 <a href="<?= base_url('user-management/create') ?>" class="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg items-center space-x-2 transition-colors duration-200">
@@ -174,54 +174,22 @@
                 customers: <?= (int)($stats['customers'] ?? 0) ?>
             }; showError('Live counts unavailable, showing cached values.'); return state.lastCounts; }
     }
+    function updateHeaderTitle(){
+        const titleEl=document.getElementById('users-dynamic-title');
+        if(!titleEl) return;
+        const labelMap={ total:'Total Users', admins:'Admin Users', providers:'Provider Users', staff:'Staff Users', customers:'Customer Users' };
+        titleEl.textContent = labelMap[state.activeRole] || 'Total Users';
+    }
     function renderCards(counts){
         const host=document.getElementById('role-user-cards'); if(!host) return; host.innerHTML='';
-        ROLE_DEFS.forEach(def=>{ const val=counts[def.key]??0; const card=document.createElement('div'); card.className='cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card'; card.dataset.role=def.key; card.innerHTML=`<div class=\"flex items-center justify-between mb-2\"><div><p class=\"text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400\">${def.label}</p><p class=\"text-2xl font-semibold text-gray-800 dark:text-gray-100\" data-count>${val}</p></div><div class=\"w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300\"><span class=\"material-symbols-outlined\">${def.icon}</span></div></div>`; card.addEventListener('click',()=>{ if(state.activeRole===def.key) return; state.activeRole=def.key; highlightActive(); loadUsers(); }); host.appendChild(card); });
+        ROLE_DEFS.forEach(def=>{ const val=counts[def.key]??0; const card=document.createElement('div'); card.className='cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card'; card.dataset.role=def.key; card.innerHTML=`<div class=\"flex items-center justify-between mb-2\"><div><p class=\"text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400\">${def.label}</p><p class=\"text-2xl font-semibold text-gray-800 dark:text-gray-100\" data-count>${val}</p></div><div class=\"w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300\"><span class=\"material-symbols-outlined\">${def.icon}</span></div></div>`; card.addEventListener('click',()=>{ if(state.activeRole===def.key) return; state.activeRole=def.key; highlightActive(); updateHeaderTitle(); loadUsers(); }); host.appendChild(card); });
         highlightActive();
+        updateHeaderTitle();
     }
     function highlightActive(){ document.querySelectorAll('#role-user-cards .role-card').forEach(el=>{ const on=el.dataset.role===state.activeRole; el.classList.toggle('ring-2',on); el.classList.toggle('ring-blue-500',on); }); }
     async function loadUsers(){ const body=document.getElementById('users-table-body'); if(!body)return; const role=roleMap[state.activeRole]||'all'; const url=new URL(baseUrl('api/users')); if(role!=='all') url.searchParams.set('role',role); try{ clearError(); body.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center'><div class='flex items-center justify-center gap-3 text-gray-500 dark:text-gray-400'><svg class=\"animate-spin h-5 w-5 text-indigo-500\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle><path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z\"></path></svg> Loading...</div></td></tr>`; const r=await fetch(url.toString()); if(!r.ok) throw 0; const j=await r.json(); const items=j.items||[]; if(!items.length){ body.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center text-gray-500 dark:text-gray-400'>No users found.</td></tr>`; return;} body.innerHTML=items.map(userRow).join(''); if(role==='all') refreshCountsPassive(); }catch(_){ showError('Unable to load users. Please try again later.'); body.innerHTML=`<tr><td colspan='6' class='px-6 py-6 text-center text-red-500'>Error loading users.</td></tr>`; }}
     async function refreshCountsPassive(){ const counts=await fetchCounts(); if(!counts)return; document.querySelectorAll('#role-user-cards .role-card').forEach(card=>{ const k=card.dataset.role; const v=counts[k]; const el=card.querySelector('[data-count]'); if(el && typeof v!=='undefined') el.textContent=v; }); }
-    async function init(force=false){ const host=document.getElementById('role-user-cards'); if(!host)return; const stale=!host.querySelector('.role-card'); if(!force && state.initialized && !stale) return; const counts=state.lastCounts||await fetchCounts(); renderCards(counts||{}); await loadUsers(); state.initialized=true; }
+    async function init(force=false){ const host=document.getElementById('role-user-cards'); if(!host)return; const stale=!host.querySelector('.role-card'); if(!force && state.initialized && !stale) return; const counts=state.lastCounts||await fetchCounts(); renderCards(counts||{}); updateHeaderTitle(); await loadUsers(); state.initialized=true; }
     window.initUserManagementDashboard=init; document.addEventListener('DOMContentLoaded',()=>init()); document.addEventListener('spa:navigated',()=>init());
 })();
-// (Script continues below with unified initializer)
-
-// Dynamic title handling for right-aligned header
-(function(){
-    function setDefaultTitle(){
-        const titleEl=document.getElementById('users-dynamic-title');
-        const subEl=document.getElementById('users-dynamic-subtitle');
-        if(!titleEl) return;
-        const total = (window.__userCounts && window.__userCounts.total) || document.querySelectorAll('#users-table-body tr').length || 0;
-        titleEl.textContent = `Total Users: ${total}`;
-        if(subEl && !subEl.dataset.locked){ subEl.textContent = 'Manage user accounts and permissions'; }
-    }
-    function setSelectedTitle(name){
-        const titleEl=document.getElementById('users-dynamic-title');
-        if(titleEl){ titleEl.textContent = `Selected User: ${name||'Unknown'}`; }
-    }
-    function extractNameFromRow(tr){
-        const nameEl = tr.querySelector('td div.font-medium');
-        return nameEl ? nameEl.textContent.trim() : 'Unknown';
-    }
-    function bindRowSelection(){
-        const body=document.getElementById('users-table-body'); if(!body) return;
-        body.addEventListener('click',e=>{
-            let tr=e.target.closest('tr');
-            if(!tr) return;
-            // Ignore clicks on action buttons/forms
-            if(e.target.closest('form')||e.target.closest('a')) return;
-            body.querySelectorAll('tr').forEach(r=>r.classList.remove('ring-2','ring-blue-400'));
-            tr.classList.add('ring-2','ring-blue-400');
-            setSelectedTitle(extractNameFromRow(tr));
-        });
-    }
-    document.addEventListener('DOMContentLoaded',()=>{ setTimeout(setDefaultTitle, 50); bindRowSelection(); });
-    document.addEventListener('spa:navigated',()=>{ setTimeout(setDefaultTitle, 50); });
-    // When counts refreshed passively, store globally and update title if showing total
-    const origRefresh = window.refreshCountsPassive;
-    if(typeof origRefresh === 'function'){
-        window.refreshCountsPassive = async function(){ await origRefresh(); try { const cards=document.querySelectorAll('#role-user-cards .role-card'); let totalCard=[...cards].find(c=>c.dataset.role==='total'); if(totalCard){ const valEl=totalCard.querySelector('[data-count]'); if(valEl){ window.__userCounts = window.__userCounts||{}; window.__userCounts.total=parseInt(valEl.textContent)||0; const titleEl=document.getElementById('users-dynamic-title'); if(titleEl && titleEl.textContent.startsWith('Total Users:')) setDefaultTitle(); } } }catch(e){} };
-    }
-})();
+// (Removed previous row-selection based dynamic header script; header now tracks active role card only.)
