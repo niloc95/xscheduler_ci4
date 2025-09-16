@@ -348,5 +348,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial
     loadCounts().then(()=> loadUsers());
 });
+
+// Re-initialize when returning via SPA navigation
+document.addEventListener('spa:navigated', (e) => {
+    if (!document.getElementById('role-user-cards')) return; // Not on user management view
+    // If cards already present with counts, skip
+    const existing = document.querySelectorAll('#role-user-cards .role-card');
+    if (existing.length === 0) {
+        // Re-run init logic by dispatching DOMContentLoaded-like sequence
+        // Minimal reinvoke: fetch counts & users again
+        (async function reinit(){
+            try {
+                const res = await fetch(baseUrl('api/user-counts'));
+                if(res.ok){
+                    const json = await res.json();
+                    if(json.counts){
+                        // Mirror renderRoleCards path (function is inside earlier closure, so reimplement lightweight here)
+                        const host = document.getElementById('role-user-cards');
+                        if(host){
+                            const defs = [
+                                { key:'total',label:'Total Users',icon:'groups' },
+                                { key:'admins',label:'Admins',icon:'shield_person' },
+                                { key:'providers',label:'Providers',icon:'badge' },
+                                { key:'staff',label:'Staff',icon:'support_agent' },
+                                { key:'customers',label:'Customers',icon:'person' },
+                            ];
+                            host.innerHTML='';
+                            defs.forEach(def => {
+                                const val = json.counts[def.key] ?? 0;
+                                const card = document.createElement('div');
+                                card.className='cursor-pointer rounded-lg p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition group role-card';
+                                card.dataset.role=def.key;
+                                card.innerHTML=`<div class=\"flex items-center justify-between mb-2\"><div><p class=\"text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400\">${def.label}</p><p class=\"text-2xl font-semibold text-gray-800 dark:text-gray-100\" data-count>${val}</p></div><div class=\"w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300\"><span class=\"material-symbols-outlined\">${def.icon}</span></div></div>`;
+                                card.addEventListener('click', () => {
+                                    document.querySelectorAll('#role-user-cards .role-card').forEach(c=>c.classList.toggle('ring-2', c===card));
+                                    document.querySelectorAll('#role-user-cards .role-card').forEach(c=>c.classList.toggle('ring-blue-500', c===card));
+                                    const r = def.key === 'total' ? 'all' : def.key;
+                                    fetch(`${baseUrl('api/users')}${r==='all'?'':'?role='+r}`).then(rsp=>rsp.json()).then(data=>{
+                                        const tb = document.getElementById('users-table-body');
+                                        if(!tb) return;
+                                        const items = data.items||[];
+                                        tb.innerHTML = items.length? items.map(u=>`<tr class=\"border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition\"><td class=\"px-6 py-4 font-medium text-gray-900 dark:text-gray-100\">${(u.name||u.first_name||'').toString()}</td><td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${u.role||u._type||''}</td><td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${u.email||''}</td><td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${u.created_at||''}</td><td class=\"px-6 py-4 text-right text-xs text-blue-600\">View</td></tr>`).join('') : '<tr><td colspan=6 class=\"px-6 py-6 text-center text-gray-500 dark:text-gray-400\">No users found.</td></tr>';
+                                    });
+                                });
+                                host.appendChild(card);
+                            });
+                            // Activate first card
+                            const first = host.querySelector('.role-card');
+                            if(first) first.click();
+                        }
+                    }
+                }
+            } catch(_){}
+        })();
+    }
+});
 </script>
 <?= $this->endSection() ?>
