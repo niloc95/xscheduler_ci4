@@ -36,5 +36,32 @@ class CustomerModel extends Model
 		if (!empty($opts['limit'])) $builder->limit((int)$opts['limit']);
 		return $builder->orderBy('created_at','DESC')->get()->getResultArray();
 	}
+
+	/**
+	 * Backward compatibility helper for legacy calls expecting getAllCustomers().
+	 * Optional $limit to keep large lists manageable.
+	 */
+	public function getAllCustomers(int $limit = 0): array
+	{
+		if ($limit > 0) {
+			return $this->orderBy('created_at','DESC')->findAll($limit);
+		}
+		return $this->orderBy('created_at','DESC')->findAll();
+	}
+
+	/**
+	 * Backward compatibility for legacy controllers expecting countAllCustomers().
+	 */
+	public function countAllCustomers(): int
+	{
+		// Use Query Builder directly to avoid potential soft delete filters if added later.
+		return (int)$this->builder()->countAllResults();
+	}
+
+	/** Return a single customer by email (legacy helper). */
+	public function findByEmail(string $email): ?array
+	{
+		return $this->where('email', $email)->first();
+	}
 }
 

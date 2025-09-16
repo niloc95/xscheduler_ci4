@@ -4,16 +4,19 @@ namespace App\Controllers;
 
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
+use App\Models\CustomerModel;
 
 class UserManagement extends BaseController
 {
     protected $userModel;
     protected $permissionModel;
+    protected $customerModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
-        $this->permissionModel = new UserPermissionModel();
+    $this->permissionModel = new UserPermissionModel();
+    $this->customerModel = new CustomerModel();
     }
 
     /**
@@ -382,7 +385,19 @@ class UserManagement extends BaseController
         }
 
         if ($currentUser['role'] === 'admin') {
-            return $this->userModel->getStats();
+            $stats = $this->userModel->getStats();
+            // Integrate customers (separate table)
+            if (method_exists($this->customerModel, 'countAllCustomers')) {
+                $customerCount = $this->customerModel->countAllCustomers();
+                $stats['customers'] = $customerCount;
+                // Recompute total to include customers if not already
+                if (isset($stats['total'])) {
+                    $stats['total'] += $customerCount;
+                } else {
+                    $stats['total'] = ($stats['admins'] ?? 0) + ($stats['providers'] ?? 0) + ($stats['staff'] ?? 0) + $customerCount;
+                }
+            }
+            return $stats;
         } elseif ($currentUser['role'] === 'provider') {
             $staff = $this->userModel->getStaffForProvider($currentUserId);
             return [
