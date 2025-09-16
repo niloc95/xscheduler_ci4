@@ -22,77 +22,27 @@
         </div>
     <?php endif; ?>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <!-- Total Users Card -->
-        <div class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand material-shadow" style="background-color: var(--md-sys-color-primary);">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <p class="opacity-80 text-sm">Total Users</p>
-                    <p class="text-3xl font-bold"><?= number_format($stats['total'] ?? 0) ?></p>
+    <!-- Role Filter Cards (interactive) -->
+    <div class="mb-6">
+        <div id="role-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- Card Template (cloned in JS) -->
+            <template id="role-card-template">
+                <div class="role-card group cursor-pointer p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-0 group-[.active]:opacity-100 transition-opacity duration-200 pointer-events-none" style="background: linear-gradient(135deg,var(--tw-gradient-from,#2563eb),var(--tw-gradient-to,#7c3aed)); mix-blend: multiply;"></div>
+                    <div class="relative z-10 flex items-start justify-between mb-2">
+                        <div>
+                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 group-[.active]:text-indigo-100">Label</p>
+                            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100 group-[.active]:text-white" data-count>0</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-gray-700 group-[.active]:bg-white/20">
+                            <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-xl group-[.active]:text-white" data-icon>group</span>
+                        </div>
+                    </div>
+                    <div class="relative z-10 mt-auto flex items-center text-xs text-gray-500 dark:text-gray-400 group-[.active]:text-indigo-100" data-sub>Subtitle</div>
+                    <div class="absolute inset-0 rounded-xl ring-2 ring-inset ring-transparent group-[.active]:ring-indigo-500/70 pointer-events-none transition-all duration-200"></div>
                 </div>
-                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white">group</span>
-                </div>
-            </div>
-            <div class="flex items-center text-sm">
-                <span class="opacity-80">All system users</span>
-            </div>
+            </template>
         </div>
-
-        <!-- Administrators Card -->
-        <?php if (($stats['admins'] ?? 0) > 0): ?>
-        <div class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand material-shadow" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <p class="opacity-80 text-sm">Administrators</p>
-                    <p class="text-3xl font-bold"><?= number_format($stats['admins'] ?? 0) ?></p>
-                </div>
-                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white">admin_panel_settings</span>
-                </div>
-            </div>
-            <div class="flex items-center text-sm">
-                <span class="opacity-80">Full system access</span>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Service Providers Card -->
-        <?php if (($stats['providers'] ?? 0) > 0): ?>
-        <div class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand material-shadow" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <p class="opacity-80 text-sm">Service Providers</p>
-                    <p class="text-3xl font-bold"><?= number_format($stats['providers'] ?? 0) ?></p>
-                </div>
-                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white">storefront</span>
-                </div>
-            </div>
-            <div class="flex items-center text-sm">
-                <span class="opacity-80">Business owners</span>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Staff Members Card -->
-        <?php if (($stats['staff'] ?? 0) > 0): ?>
-        <div class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand material-shadow" style="background-color: var(--md-sys-color-tertiary);">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <p class="opacity-80 text-sm">Staff Members</p>
-                    <p class="text-3xl font-bold"><?= number_format($stats['staff'] ?? 0) ?></p>
-                </div>
-                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-white">groups</span>
-                </div>
-            </div>
-            <div class="flex items-center text-sm">
-                <span class="opacity-80">Team members</span>
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
 
     <!-- Users Table -->
@@ -112,7 +62,7 @@
         
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400 transition-colors duration-300" id="usersTable">
                 <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600 transition-colors duration-300">
                     <tr>
                         <th class="px-6 py-4 font-semibold">User</th>
@@ -123,7 +73,7 @@
                         <th class="px-6 py-4 font-semibold">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="users-table-body">
                     <?php foreach ($users as $user): ?>
                     <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -289,19 +239,108 @@
 </style>
 
 <script>
-$(document).ready(function() {
-    $('#usersTable').DataTable({
-        "responsive": true,
-        "pageLength": 25,
-        "order": [[5, "desc"]], // Order by created date
-        "language": {
-            "search": "Search users:",
-            "lengthMenu": "Show _MENU_ users per page",
-            "info": "Showing _START_ to _END_ of _TOTAL_ users",
-            "infoEmpty": "No users found",
-            "emptyTable": "No users available"
+// Dynamic role cards & filtering
+document.addEventListener('DOMContentLoaded', () => {
+    const roleMeta = [
+        { key:'all',        label:'Total Users',   icon:'group',                sub:'All users & customers' },
+        { key:'admin',      label:'Admins',        icon:'admin_panel_settings', sub:'Full access' },
+        { key:'provider',   label:'Providers',     icon:'storefront',           sub:'Business owners' },
+        { key:'staff',      label:'Staff',         icon:'groups',               sub:'Staff & reception' },
+        { key:'customer',   label:'Customers',     icon:'person',               sub:'Registered clients' },
+    ];
+    const cardsHost = document.getElementById('role-cards');
+    const tpl = document.getElementById('role-card-template');
+    const tableBody = document.getElementById('users-table-body');
+    let activeRole = 'all';
+
+    function formatDate(str){ try { return new Date(str).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});} catch(e) { return str || ''; } }
+
+    function renderCards(counts) {
+        cardsHost.querySelectorAll('.role-card').forEach(el=>el.remove());
+        roleMeta.forEach(meta => {
+            const node = tpl.content.firstElementChild.cloneNode(true);
+            node.dataset.role = meta.key;
+            node.querySelector('[data-count]').textContent = counts[meta.key==='all'?'total':meta.key] ?? 0;
+            node.querySelector('[data-icon]').textContent = meta.icon;
+            node.querySelector('p').textContent = meta.label;
+            node.querySelector('[data-sub]').textContent = meta.sub;
+            if(meta.key === activeRole) node.classList.add('active');
+            node.addEventListener('click', () => {
+                if(activeRole === meta.key) return; // no-op
+                activeRole = meta.key;
+                cardsHost.querySelectorAll('.role-card').forEach(c=>c.classList.toggle('active', c.dataset.role===activeRole));
+                loadUsers();
+            });
+            cardsHost.appendChild(node);
+        });
+    }
+
+    function userRow(u) {
+        const role = u.role || (u._type === 'customer' ? 'customer' : '');
+        const isActive = (u.is_active ?? true) && role !== 'customer'; // customers assumed active
+        const badgeColors = {
+            admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            customer:'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+        };
+        const displayName = u.name || [u.first_name,u.last_name].filter(Boolean).join(' ') || '—';
+        const email = u.email || '—';
+        return `<tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
+            <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${displayName.substring(0,1).toUpperCase()}</div><div><div class="font-medium">${escapeHtml(displayName)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${u.phone?`<div class='text-gray-400 dark:text-gray-500 text-xs'>${escapeHtml(u.phone)}</div>`:''}</div></div></td>
+            <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role] || badgeColors.customer}">${roleLabel(role)}</span></td>
+            <td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive?'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200':'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">${isActive?'Active':'Inactive'}</span></td>
+            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${u.provider_id?`#${u.provider_id}`:'—'}</td>
+            <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${formatDate(u.created_at)}</td>
+            <td class="px-6 py-4">${role==='customer'?'' : `<div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div>`}</td>
+        </tr>`;
+    }
+
+    function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function roleLabel(r){ return {admin:'Admin',provider:'Provider',staff:'Staff',customer:'Customer'}[r] || r; }
+    function baseUrl(path){ return `${window.location.origin.replace(/\/$/,'')}/${path}`; }
+
+    async function loadCounts() {
+        try {
+            const res = await fetch(baseUrl('api/user-counts'));
+            if(!res.ok) throw new Error('Failed counts');
+            const json = await res.json();
+            renderCards(json.counts || {});
+        } catch (e) {
+            // fallback with PHP-provided stats
+            renderCards({
+                total: <?= (int)($stats['total'] ?? 0) ?>,
+                admins: <?= (int)($stats['admins'] ?? 0) ?>,
+                providers: <?= (int)($stats['providers'] ?? 0) ?>,
+                staff: <?= (int)($stats['staff'] ?? 0) ?>,
+                customers: <?= (int)($stats['customers'] ?? 0) ?>
+            });
         }
-    });
+    }
+
+    async function loadUsers() {
+        const role = activeRole;
+        const url = new URL(baseUrl('api/users'));
+        if (role !== 'all') url.searchParams.set('role', role);
+        try {
+            tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center text-gray-500 dark:text-gray-400'>Loading...</td></tr>`;
+            const res = await fetch(url.toString());
+            if(!res.ok) throw new Error('Failed users');
+            const json = await res.json();
+            const items = json.items || [];
+            if(!items.length){
+                tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center text-gray-500 dark:text-gray-400'>No users found.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = items.map(userRow).join('');
+        } catch(e) {
+            tableBody.innerHTML = `<tr><td colspan='6' class='px-6 py-6 text-center text-red-500'>Error loading users.</td></tr>`;
+        }
+    }
+
+    // Initial
+    loadCounts();
+    loadUsers();
 });
 </script>
 <?= $this->endSection() ?>
