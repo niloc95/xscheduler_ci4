@@ -36,6 +36,8 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('real-data', 'Dashboard::realData', ['filter' => 'auth']);
     $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
     $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
+    $routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
+    $routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
     // $routes->get('analytics', 'Dashboard::analytics', ['filter' => 'auth']); // Moved to dedicated Analytics controller
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
 });
