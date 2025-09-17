@@ -42,10 +42,7 @@ class Settings extends BaseController
             'integrations.api_integrations',
             'integrations.ldap_enabled',
             'integrations.ldap_host',
-            'integrations.ldap_dn',
-            'users.default_role',
-            'users.require_2fa',
-            'users.access_policies'
+            'integrations.ldap_dn'
         ]);
         
         $data = [
@@ -89,7 +86,6 @@ class Settings extends BaseController
             if (is_string($value) && in_array(strtolower($value), ['on','true','1','yes'], true)) {
                 $boolFlags = [
                     'integrations.ldap_enabled',
-                    'users.require_2fa',
                 ];
                 if (in_array($key, $boolFlags, true)) {
                     $value = true;
@@ -141,9 +137,6 @@ class Settings extends BaseController
             'integrations.ldap_enabled' => 'ldap_enabled',
             'integrations.ldap_host'    => 'ldap_host',
             'integrations.ldap_dn'      => 'ldap_dn',
-            'users.default_role'    => 'default_user_role',
-            'users.require_2fa'     => 'users_require_2fa',
-            'users.access_policies' => 'access_policies',
         ];
 
         if (isset($post['fields']) && is_array($post['fields'])) {

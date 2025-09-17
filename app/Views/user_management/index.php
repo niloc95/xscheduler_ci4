@@ -74,8 +74,7 @@
                             <?php $badgeColors = [
                                 'admin' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
                                 'provider' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                                'customer' => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                             ]; ?>
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badgeColors[$user['role']] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' ?>">
                                 <?= get_role_display_name($user['role']) ?>
@@ -138,30 +137,29 @@
         {key:'total',label:'Total Users',icon:'groups'},
         {key:'admins',label:'Admins',icon:'shield_person'},
         {key:'providers',label:'Providers',icon:'badge'},
-        {key:'staff',label:'Staff',icon:'support_agent'},
-        {key:'customers',label:'Customers',icon:'person'}
+        {key:'staff',label:'Staff',icon:'support_agent'}
     ];
-    const roleMap={ total:'all', admins:'admin', providers:'provider', staff:'staff', customers:'customer' };
+    const roleMap={ total:'all', admins:'admin', providers:'provider', staff:'staff' };
     const state={activeRole:'total',initialized:false,lastCounts:null};
     function baseUrl(p){return `${window.location.origin.replace(/\/$/,'')}/${p}`;}
     function showError(msg){const b=document.getElementById('users-error'); if(!b) return; b.textContent=msg; b.classList.remove('hidden');}
     function clearError(){const b=document.getElementById('users-error'); if(!b) return; b.classList.add('hidden'); b.textContent='';}
     function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
-    function roleLabel(r){return {admin:'Admin',provider:'Provider',staff:'Staff',customer:'Customer'}[r]||r;}
+    function roleLabel(r){return {admin:'Admin',provider:'Provider',staff:'Staff'}[r]||r;}
     function fmtDate(s){try{return new Date(s).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});}catch(e){return s||'';}}
     function userRow(u){
-        const role=u.role||(u._type==='customer'?'customer':'');
-        const isActive=(u.is_active??true)&&role!=='customer';
-        const badgeColors={admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',customer:'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'};
-        const name=u.name||[u.first_name,u.last_name].filter(Boolean).join(' ')||'—';
-        const email=u.email||'—';
+    const role=u.role||'';
+    const isActive=(u.is_active??true);
+    const badgeColors={admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'};
+    const name=u.name||'—';
+    const email=u.email||'—';
         return `<tr class=\"bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700\">`
             +`<td class=\"px-6 py-4 font-medium text-gray-900 dark:text-gray-100\"><div class=\"flex items-center\"><div class=\"w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3\">${escapeHtml(name.substring(0,1).toUpperCase())}</div><div><div class=\"font-medium\">${escapeHtml(name)}</div><div class=\"text-gray-500 dark:text-gray-400 text-sm\">${escapeHtml(email)}</div>${u.phone?`<div class='text-gray-400 dark:text-gray-500 text-xs'>${escapeHtml(u.phone)}</div>`:''}</div></div></td>`
             +`<td class=\"px-6 py-4\"><span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role]||badgeColors.customer}\">${roleLabel(role)}</span></td>`
             +`<td class=\"px-6 py-4\"><span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(isActive?'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200':'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200')}\">${isActive?'Active':'Inactive'}</span></td>`
             +`<td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${u.provider_id?`#${u.provider_id}`:'—'}</td>`
             +`<td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${fmtDate(u.created_at)}</td>`
-            +`<td class=\"px-6 py-4\">${role==='customer'?'':`<div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div>`}</td>`
+            +`<td class=\"px-6 py-4\"><div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div></td>`
             +`</tr>`;
     }
     async function fetchCounts(){
@@ -170,14 +168,13 @@
                 total: <?= (int)($stats['total'] ?? 0) ?>,
                 admins: <?= (int)($stats['admins'] ?? 0) ?>,
                 providers: <?= (int)($stats['providers'] ?? 0) ?>,
-                staff: <?= (int)($stats['staff'] ?? 0) ?>,
-                customers: <?= (int)($stats['customers'] ?? 0) ?>
+                staff: <?= (int)($stats['staff'] ?? 0) ?>
             }; showError('Live counts unavailable, showing cached values.'); return state.lastCounts; }
     }
     function updateHeaderTitle(){
         const titleEl=document.getElementById('users-dynamic-title');
         if(!titleEl) return;
-        const labelMap={ total:'Total Users', admins:'Admin Users', providers:'Provider Users', staff:'Staff Users', customers:'Customer Users' };
+        const labelMap={ total:'Total Users', admins:'Admin Users', providers:'Provider Users', staff:'Staff Users' };
         titleEl.textContent = labelMap[state.activeRole] || 'Total Users';
     }
     function renderCards(counts){

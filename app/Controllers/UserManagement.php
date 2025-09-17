@@ -4,19 +4,17 @@ namespace App\Controllers;
 
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
-use App\Models\CustomerModel;
 
 class UserManagement extends BaseController
 {
     protected $userModel;
     protected $permissionModel;
-    protected $customerModel;
+    
 
     public function __construct()
     {
         $this->userModel = new UserModel();
-    $this->permissionModel = new UserPermissionModel();
-    $this->customerModel = new CustomerModel();
+        $this->permissionModel = new UserPermissionModel();
     }
 
     /**
@@ -33,7 +31,7 @@ class UserManagement extends BaseController
 
         // Get users based on current user's role and permissions
         $users = $this->getUsersBasedOnRole($currentUserId);
-        $stats = $this->getUserStatsBasedOnRole($currentUserId);
+    $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
 
         $data = [
             'title' => 'User Management - WebSchedulr',
@@ -358,14 +356,18 @@ class UserManagement extends BaseController
 
         switch ($currentUser['role']) {
             case 'admin':
-                return $this->userModel->findAll();
+                return $this->userModel
+                    ->whereIn('role', ['admin', 'provider', 'staff', 'receptionist'])
+                    ->findAll();
                 
             case 'provider':
                 // Providers can see their staff and themselves
-                return $this->userModel
+                $rows = $this->userModel
                     ->where('provider_id', $currentUserId)
                     ->orWhere('id', $currentUserId)
                     ->findAll();
+                // Filter any non-system roles just in case
+                return array_values(array_filter($rows, fn($u) => in_array($u['role'] ?? '', ['admin','provider','staff','receptionist'], true)));
                     
             case 'staff':
                 // Staff and customers can only see themselves
@@ -376,40 +378,42 @@ class UserManagement extends BaseController
         }
     }
 
-    private function getUserStatsBasedOnRole(int $currentUserId): array
+    private function getUserStatsBasedOnRole(int $currentUserId, array $usersForContext = []): array
     {
         $currentUser = $this->userModel->find($currentUserId);
         if (!$currentUser) {
             return [];
         }
 
+        // Build stats from provided users (or fetch a small set if empty)
         if ($currentUser['role'] === 'admin') {
-            $stats = $this->userModel->getStats();
-            // Integrate customers (separate table)
-            if (method_exists($this->customerModel, 'countAllCustomers')) {
-                $customerCount = $this->customerModel->countAllCustomers();
-                $stats['customers'] = $customerCount;
-                // Recompute total to include customers if not already
-                if (isset($stats['total'])) {
-                    $stats['total'] += $customerCount;
-                } else {
-                    $stats['total'] = ($stats['admins'] ?? 0) + ($stats['providers'] ?? 0) + ($stats['staff'] ?? 0) + $customerCount;
-                }
+            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff','receptionist' ])->findAll();
+            $admins = 0; $providers = 0; $staff = 0;
+            foreach ($rows as $u) {
+                $r = $u['role'] ?? '';
+                if ($r === 'admin') $admins++;
+                elseif ($r === 'provider') $providers++;
+                elseif ($r === 'staff' || $r === 'receptionist') $staff++;
             }
-            return $stats;
+            return [
+                'total' => $admins + $providers + $staff,
+                'admins' => $admins,
+                'providers' => $providers,
+                'staff' => $staff,
+                'recent' => 0,
+            ];
         } elseif ($currentUser['role'] === 'provider') {
             $staff = $this->userModel->getStaffForProvider($currentUserId);
             return [
                 'total' => count($staff) + 1, // +1 for the provider
                 'staff' => count($staff),
                 'providers' => 1,
-                'customers' => 0,
                 'admins' => 0,
                 'recent' => 0
             ];
         }
 
-        return ['total' => 1, 'staff' => 0, 'providers' => 0, 'customers' => 0, 'admins' => 0, 'recent' => 0];
+        return ['total' => 1, 'staff' => 0, 'providers' => 0, 'admins' => 0, 'recent' => 0];
     }
 
     private function getAvailableRolesForUser(int $currentUserId, ?array $targetUser = null): array

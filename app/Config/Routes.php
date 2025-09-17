@@ -57,6 +57,15 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->get('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
 });
 
+// Customer Management Routes (admins, providers, and staff)
+$routes->group('customer-management', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'CustomerManagement::index', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('create', 'CustomerManagement::create', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('edit/(:num)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('update/(:num)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
+});
+
 // Services Routes (auth required for viewing, admin/provider for management)
 $routes->group('services', function($routes) {
     $routes->get('', 'Services::index');

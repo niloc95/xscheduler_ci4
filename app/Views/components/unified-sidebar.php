@@ -59,6 +59,14 @@ $currentRole = current_user_role();
                 <span class="nav-text">Appointments</span>
             </a>
 
+            <!-- Customers - below Appointments; admin/provider/staff -->
+            <?php if (has_role(['admin', 'provider', 'staff'])): ?>
+            <a href="<?= base_url('/customer-management') ?>" class="nav-link <?= (isset($current_page) && $current_page === 'customer-management') ? 'active' : '' ?>">
+                <span class="nav-icon material-symbols-outlined">groups</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <?php endif; ?>
+
             <?php if (has_role(['admin', 'provider'])): ?>
             <div class="nav-divider"></div>
 
