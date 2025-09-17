@@ -6,6 +6,7 @@ use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Models\CustomerModel;
 
 class SchedulingService
 {
@@ -38,20 +39,22 @@ class SchedulingService
         $startDT = strtotime($date . ' ' . $start);
         $endDT   = $startDT + ($duration * 60);
 
-        // Upsert customer
-        $userModel = new UserModel();
-        $user = $userModel->where('email', $payload['email'])->first();
-        if (!$user) {
-            $userId = $userModel->insert([
-                'name' => $payload['name'],
-                'email' => $payload['email'],
-                'phone' => $payload['phone'] ?? null,
-                'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
-                'role' => 'customer',
+        // Upsert customer in xs_customers
+        $custModel = new CustomerModel();
+        $customer = $custModel->where('email', $payload['email'])->first();
+        if (!$customer) {
+            $names = preg_split('/\s+/', trim((string)$payload['name']));
+            $first = $names[0] ?? '';
+            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
+            $customerId = $custModel->insert([
+                'first_name' => $first,
+                'last_name'  => $last,
+                'email'      => $payload['email'],
+                'phone'      => $payload['phone'] ?? null,
                 'created_at' => date('Y-m-d H:i:s'),
-            ]);
+            ], false);
         } else {
-            $userId = $user['id'];
+            $customerId = $customer['id'];
         }
 
         // Check availability
@@ -69,7 +72,9 @@ class SchedulingService
         // Create appointment
         $apptModel = new AppointmentModel();
         $id = $apptModel->insert([
-            'user_id' => $userId,
+            'customer_id' => $customerId,
+            // Maintain NOT NULL user_id by pointing to provider (system user)
+            'user_id' => $providerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
             'start_time' => date('Y-m-d H:i:s', $startDT),

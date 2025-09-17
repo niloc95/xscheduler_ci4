@@ -27,7 +27,7 @@ class UserModel extends Model
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[customer,provider,staff,admin]'
+        'role'  => 'required|in_list[admin,provider,staff]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
@@ -40,7 +40,6 @@ class UserModel extends Model
     {
         return [
             'total' => $this->countAll(),
-            'customers' => $this->where('role', 'customer')->countAllResults(false),
             'providers' => $this->where('role', 'provider')->countAllResults(false),
             'staff' => $this->where('role', 'staff')->countAllResults(false),
             'admins' => $this->where('role', 'admin')->countAllResults(false),
@@ -160,8 +159,8 @@ class UserModel extends Model
     public function createUser(array $userData): int|false
     {
         // Set default values
-        $userData['is_active'] = $userData['is_active'] ?? true;
-        $userData['role'] = $userData['role'] ?? 'customer';
+    $userData['is_active'] = $userData['is_active'] ?? true;
+    $userData['role'] = $userData['role'] ?? 'staff';
         
         // Hash password if provided
         if (isset($userData['password'])) {

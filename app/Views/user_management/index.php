@@ -77,7 +77,7 @@
                                 'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
                                 'customer' => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
                             ]; ?>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badgeColors[$user['role']] ?? $badgeColors['customer'] ?>">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badgeColors[$user['role']] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' ?>">
                                 <?= get_role_display_name($user['role']) ?>
                             </span>
                         </td>

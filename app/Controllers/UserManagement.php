@@ -61,7 +61,7 @@ class UserManagement extends BaseController
         }
 
         // Determine which roles the current user can create
-        $availableRoles = $this->getAvailableRolesForUser($currentUserId);
+    $availableRoles = $this->getAvailableRolesForUser($currentUserId);
         
         if (empty($availableRoles)) {
             return redirect()->to('/user-management')
@@ -105,7 +105,7 @@ class UserManagement extends BaseController
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'role' => 'required|in_list[admin,provider,staff,customer]',
+            'role' => 'required|in_list[admin,provider,staff]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]',
@@ -245,7 +245,7 @@ class UserManagement extends BaseController
 
         // Add role validation if user can change roles
         if ($this->canChangeUserRole($currentUserId, $userId)) {
-            $rules['role'] = 'required|in_list[admin,provider,staff,customer]';
+            $rules['role'] = 'required|in_list[admin,provider,staff]';
         }
 
         if (!$this->validate($rules)) {
@@ -368,7 +368,6 @@ class UserManagement extends BaseController
                     ->findAll();
                     
             case 'staff':
-            case 'customer':
                 // Staff and customers can only see themselves
                 return [$currentUser];
                 
@@ -427,10 +426,7 @@ class UserManagement extends BaseController
             $roles[] = 'staff';
         }
         
-        // Everyone can create customers (if they have user management permissions)
-        if ($this->permissionModel->hasPermission($currentUserId, 'user_management')) {
-            $roles[] = 'customer';
-        }
+        // Customer creation is handled via xs_customers, not users
 
         return $roles;
     }
@@ -444,8 +440,6 @@ class UserManagement extends BaseController
                 return $this->permissionModel->hasPermission($currentUserId, 'create_provider');
             case 'staff':
                 return $this->permissionModel->hasPermission($currentUserId, 'create_staff');
-            case 'customer':
-                return $this->permissionModel->hasPermission($currentUserId, 'user_management');
             default:
                 return false;
         }

@@ -141,11 +141,10 @@
                 <?php $role = $currentRole; $roleBadges = [
                     'admin' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
                     'provider' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                    'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                    'customer' => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                    'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                 ]; ?>
                 <div class="flex items-center justify-between mb-2">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $roleBadges[$role] ?? $roleBadges['customer'] ?>"><?= ucfirst($role) ?></span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $roleBadges[$role] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' ?>"><?= ucfirst($role) ?></span>
                     <span class="text-xs text-gray-500 dark:text-gray-400">User ID: <?= esc($user['id'] ?? '—') ?></span>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">

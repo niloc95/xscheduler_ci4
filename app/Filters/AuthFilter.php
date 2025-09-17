@@ -44,8 +44,8 @@ class AuthFilter implements FilterInterface
                 return redirect()->to('/auth/login')->with('error', 'Invalid session. Please log in again.');
             }
 
-            // Simple role check if arguments are role names
-            $validRoles = ['admin', 'provider', 'staff', 'customer'];
+            // Simple role check if arguments are role names (customers are no longer users)
+            $validRoles = ['admin', 'provider', 'staff'];
             $hasValidRole = false;
 
             foreach ($arguments as $arg) {

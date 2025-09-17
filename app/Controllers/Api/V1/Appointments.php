@@ -46,7 +46,7 @@ class Appointments extends BaseApiController
             $builder = $builder->where('start_time >=', $start . ' 00:00:00')
                                ->where('start_time <=', $end . ' 23:59:59');
         }
-    $rows = $builder->findAll($length, $offset);
+        $rows = $builder->findAll($length, $offset);
         $totalBuilder = $model->builder();
         if ($providerId > 0) {
             $totalBuilder->where('provider_id', $providerId);
@@ -62,26 +62,26 @@ class Appointments extends BaseApiController
             $totalBuilder->where('start_time >=', $start . ' 00:00:00')
                          ->where('start_time <=', $end . ' 23:59:59');
         }
-    $total = $totalBuilder->countAllResults();
-    $items = array_map(function ($r) {
+        $total = $totalBuilder->countAllResults();
+        $items = array_map(function ($r) {
             return [
                 'id' => (int)$r['id'],
                 'providerId' => (int)$r['provider_id'],
                 'serviceId' => (int)$r['service_id'],
-                'customerId' => (int)$r['user_id'],
+                'customerId' => isset($r['customer_id']) ? (int)$r['customer_id'] : null,
                 'title' => 'Service #' . (int)$r['service_id'],
                 'start' => $r['start_time'],
                 'end' => $r['end_time'],
                 'status' => $r['status'] ?? 'booked',
                 'notes' => $r['notes'] ?? null,
             ];
-    }, $rows);
-    return $this->ok($items, [
+        }, $rows);
+        return $this->ok($items, [
         'page' => $page,
         'length' => $length,
         'total' => (int)$total,
         'sort' => $sortField . ':' . $sortDir,
-    ]);
+        ]);
     }
 
     // POST /api/v1/appointments
@@ -126,7 +126,7 @@ class Appointments extends BaseApiController
             'id' => (int)$r['id'],
             'providerId' => (int)$r['provider_id'],
             'serviceId' => (int)$r['service_id'],
-            'customerId' => (int)$r['user_id'],
+            'customerId' => isset($r['customer_id']) ? (int)$r['customer_id'] : null,
             'title' => 'Service #' . (int)$r['service_id'],
             'start' => $r['start_time'],
             'end' => $r['end_time'],

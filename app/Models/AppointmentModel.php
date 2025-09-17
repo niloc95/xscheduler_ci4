@@ -13,7 +13,11 @@ class AppointmentModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'user_id', 'provider_id', 'service_id', 'start_time', 'end_time', 'status', 'notes', 'reminder_sent'
+        // user_id retained for backward compatibility (system user linkage)
+        'user_id',
+        // new canonical linkage to customers
+        'customer_id',
+        'provider_id', 'service_id', 'start_time', 'end_time', 'status', 'notes', 'reminder_sent'
     ];
 
     // Dates
@@ -24,13 +28,15 @@ class AppointmentModel extends Model
 
     // Validation
     protected $validationRules      = [
+        // Require both customer_id (client) and user_id (system user association)
+        'customer_id' => 'required|integer',
         'user_id'     => 'required|integer',
         'provider_id' => 'required|integer',
         'service_id'  => 'required|integer',
         'start_time'  => 'required|valid_date',
         'end_time'    => 'required|valid_date',
-    'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]',
-    'reminder_sent' => 'permit_empty|in_list[0,1]'
+        'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]',
+        'reminder_sent' => 'permit_empty|in_list[0,1]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
@@ -95,7 +101,7 @@ class AppointmentModel extends Model
         $activities = [];
         foreach ($appointments as $appointment) {
             $activities[] = [
-                'customer_name' => 'User #' . $appointment['user_id'],
+                'customer_name' => 'Customer #' . ($appointment['customer_id'] ?? '—'),
                 'service_name' => 'Service #' . $appointment['service_id'],
                 'status' => $appointment['status'],
                 'updated_at' => $appointment['updated_at']
@@ -201,5 +207,22 @@ class AppointmentModel extends Model
         // Simple revenue calculation: average price of $50 per appointment
         // In a real scenario, this should calculate actual revenue from service prices
         return $count * 50;
+    }
+
+    /**
+     * Simple helper to validate and create a booked appointment.
+     * Expects keys: customer_id, provider_id, service_id, start_time, end_time, status, notes?
+     */
+    public function book(array $payload): bool
+    {
+        // Ensure status default
+        if (empty($payload['status'])) {
+            $payload['status'] = 'booked';
+        }
+        // Default user_id to provider_id to satisfy schema and link to system user
+        if (empty($payload['user_id']) && !empty($payload['provider_id'])) {
+            $payload['user_id'] = $payload['provider_id'];
+        }
+        return (bool) $this->insert($payload, false);
     }
 }

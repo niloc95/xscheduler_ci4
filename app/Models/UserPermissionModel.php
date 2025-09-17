@@ -47,12 +47,6 @@ class UserPermissionModel extends Model
             'create_appointments',
             'view_assigned_services',
             'basic_profile_edit'
-        ],
-        'customer' => [
-            'book_appointments',
-            'view_own_appointments',
-            'cancel_own_appointments',
-            'basic_profile_edit'
         ]
     ];
 
@@ -183,7 +177,6 @@ class UserPermissionModel extends Model
                 break;
                 
             case 'staff':
-            case 'customer':
                 // Staff and customers can only see themselves
                 $managedUsers = [$user];
                 break;
