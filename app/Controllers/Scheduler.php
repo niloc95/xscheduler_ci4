@@ -7,6 +7,7 @@ use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Models\CustomerModel;
 
 class Scheduler extends BaseController
 {
@@ -79,20 +80,22 @@ class Scheduler extends BaseController
         $startDT = strtotime($date . ' ' . $start);
         $endDT   = $startDT + ($duration * 60);
 
-        // Create or find customer by email
-        $userModel = new UserModel();
-        $user = $userModel->where('email', $data['email'])->first();
-        if (!$user) {
-            $userId = $userModel->insert([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'] ?? null,
-                'password_hash' => password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT),
-                'role' => 'customer',
+        // Create or find customer by email in xs_customers
+        $customerModel = new CustomerModel();
+        $customer = $customerModel->where('email', $data['email'])->first();
+        if (!$customer) {
+            $names = preg_split('/\s+/', trim((string)$data['name']));
+            $first = $names[0] ?? '';
+            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
+            $customerId = $customerModel->insert([
+                'first_name' => $first,
+                'last_name'  => $last,
+                'email'      => $data['email'],
+                'phone'      => $data['phone'] ?? null,
                 'created_at' => date('Y-m-d H:i:s'),
-            ]);
+            ], false);
         } else {
-            $userId = $user['id'];
+            $customerId = $customer['id'];
         }
 
         // Final availability check to avoid race conditions
@@ -112,7 +115,9 @@ class Scheduler extends BaseController
         // Save appointment
         $apptModel = new AppointmentModel();
         $id = $apptModel->insert([
-            'user_id' => $userId,
+            'customer_id' => $customerId,
+            // Maintain NOT NULL user_id by pointing to provider (system user)
+            'user_id' => $providerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
             'start_time' => date('Y-m-d H:i:s', $startDT),

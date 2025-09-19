@@ -91,15 +91,7 @@ if (!function_exists('is_staff')) {
     }
 }
 
-if (!function_exists('is_customer')) {
-    /**
-     * Check if current user is a customer
-     */
-    function is_customer(): bool
-    {
-        return has_role('customer');
-    }
-}
+// Deprecated: customers are no longer users; do not check is_customer()
 
 if (!function_exists('can_manage_users')) {
     /**
@@ -134,8 +126,6 @@ if (!function_exists('can_create_role')) {
                 return has_permission('create_provider');
             case 'staff':
                 return has_permission('create_staff');
-            case 'customer':
-                return has_permission('user_management');
             default:
                 return false;
         }
@@ -151,8 +141,7 @@ if (!function_exists('get_role_display_name')) {
         $names = [
             'admin' => 'Administrator',
             'provider' => 'Service Provider',
-            'staff' => 'Staff Member',
-            'customer' => 'Customer'
+            'staff' => 'Staff Member'
         ];
 
         return $names[$role] ?? ucfirst($role);
@@ -168,8 +157,7 @@ if (!function_exists('get_role_permissions_description')) {
         $descriptions = [
             'admin' => 'Full system access including settings, user management, and all features.',
             'provider' => 'Can manage own calendar, create staff, manage services and categories.',
-            'staff' => 'Limited to managing own calendar and assigned appointments.',
-            'customer' => 'Can book appointments and view own booking history.'
+            'staff' => 'Limited to managing own calendar and assigned appointments.'
         ];
 
         return $descriptions[$role] ?? 'Unknown role';
@@ -221,8 +209,7 @@ if (!function_exists('role_badge_class')) {
         $classes = [
             'admin' => 'bg-danger',
             'provider' => 'bg-info',
-            'staff' => 'bg-warning',
-            'customer' => 'bg-secondary'
+            'staff' => 'bg-warning'
         ];
 
         return $classes[$role] ?? 'bg-secondary';
@@ -238,8 +225,7 @@ if (!function_exists('get_role_badge_tailwind_class')) {
         $classes = [
             'admin' => 'bg-red-500',
             'provider' => 'bg-blue-500',
-            'staff' => 'bg-green-500',
-            'customer' => 'bg-gray-500'
+            'staff' => 'bg-green-500'
         ];
 
         return $classes[$role] ?? 'bg-gray-400';
@@ -255,8 +241,7 @@ if (!function_exists('role_icon')) {
         $icons = [
             'admin' => 'fas fa-user-shield',
             'provider' => 'fas fa-user-tie',
-            'staff' => 'fas fa-user-friends',
-            'customer' => 'fas fa-user'
+            'staff' => 'fas fa-user-friends'
         ];
 
         return $icons[$role] ?? 'fas fa-user';

@@ -7,6 +7,11 @@ use Exception;
 
 class Setup extends BaseController
 {
+    /**
+     * Holds the last error encountered during .env generation for surfacing to client
+     */
+    protected ?string $envError = null;
+
     public function __construct()
     {
         helper(['form', 'url']);
@@ -29,8 +34,13 @@ class Setup extends BaseController
 
     public function process(): ResponseInterface
     {
+        // Start output buffering to avoid stray output breaking redirects/headers
+        if (function_exists('ob_start')) {
+            @ob_start();
+        }
         // Check if setup is already completed
         if ($this->isSetupCompleted()) {
+            $this->cleanOutputBuffer();
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Setup has already been completed.'
@@ -39,6 +49,7 @@ class Setup extends BaseController
 
         // CSRF protection
         if (!$this->validate(['csrf_test_name' => 'required'])) {
+            $this->cleanOutputBuffer();
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'CSRF token validation failed.',
@@ -68,6 +79,7 @@ class Setup extends BaseController
         }
 
         if (!$this->validate($rules)) {
+            $this->cleanOutputBuffer();
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Validation failed.',
@@ -114,6 +126,7 @@ class Setup extends BaseController
                 // Test MySQL connection before proceeding
                 $connectionTest = $this->testDatabaseConnection($dbConfig);
                 if (!$connectionTest['success']) {
+                    $this->cleanOutputBuffer();
                     return $this->response->setJSON([
                         'success' => false,
                         'message' => $connectionTest['message']
@@ -137,6 +150,7 @@ class Setup extends BaseController
                 // Test SQLite setup
                 $connectionTest = $this->testDatabaseConnection($dbConfig);
                 if (!$connectionTest['success']) {
+                    $this->cleanOutputBuffer();
                     return $this->response->setJSON([
                         'success' => false,
                         'message' => $connectionTest['message']
@@ -145,13 +159,59 @@ class Setup extends BaseController
             }
 
             // Apply runtime DB config so this request (migrations) uses the correct driver
+            log_message('info', 'Setup: Applying runtime DB config: ' . json_encode(array_merge($dbConfig, ['db_password' => '[HIDDEN]'])));
+            $this->debugDatabaseConfig('before-runtime-config');
             $this->applyRuntimeDatabaseConfig($dbConfig);
+            $this->debugDatabaseConfig('after-runtime-config');
 
-            // Generate .env file first - this is critical for the application to work
-            if (!$this->generateEnvFile($dbConfig)) {
+            // Validate DB connection works before proceeding with migrations
+            // Use the same connection test logic as testConnection for consistency
+            try {
+                log_message('info', 'Setup: Testing database connection with provided config');
+                $connectionTest = $this->testDatabaseConnection($dbConfig);
+                
+                if (!$connectionTest['success']) {
+                    throw new \Exception($connectionTest['message']);
+                }
+                
+                log_message('info', 'Setup: Database connection validated successfully via direct test');
+                
+                // Also test CodeIgniter's connection to ensure runtime config worked
+                // Note: initialize() can return false even when connection works, so we test with a query
+                $testConnection = \Config\Database::connect();
+                if (!$testConnection) {
+                    log_message('warning', 'Setup: CodeIgniter DB connection object failed to create');
+                } else {
+                    // Test a simple query to validate the connection works
+                    try {
+                        $result = $testConnection->query('SELECT 1 as test');
+                        if ($result && $result->getRow()) {
+                            log_message('info', 'Setup: CodeIgniter database connection validated successfully');
+                        } else {
+                            log_message('warning', 'Setup: CodeIgniter DB query test failed (no result), but direct test passed - proceeding');
+                        }
+                    } catch (\Throwable $queryError) {
+                        log_message('warning', 'Setup: CodeIgniter DB query test failed: ' . $queryError->getMessage() . ' - but direct test passed, proceeding');
+                    }
+                }
+                
+            } catch (\Throwable $e) {
+                log_message('error', 'Setup: Database connection validation failed: ' . $e->getMessage());
+                $this->debugDatabaseConfig('validation-failed');
+                $this->cleanOutputBuffer();
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Failed to generate environment configuration file.'
+                    'message' => 'Database connection failed: ' . $e->getMessage()
+                ])->setStatusCode(400);
+            }
+
+            // Generate .env file first - this is critical for the application to work
+            log_message('info', 'Setup: Generating .env with DB config: ' . json_encode(array_merge($dbConfig, ['db_password' => '[HIDDEN]'])));
+            if (!$this->generateEnvFile($dbConfig)) {
+                $this->cleanOutputBuffer();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to generate environment configuration file' . (!empty($this->envError) ? (': ' . $this->envError) : '.')
                 ])->setStatusCode(500);
             }
 
@@ -159,6 +219,7 @@ class Setup extends BaseController
             $finalizeResult = $this->finalizeSetup($setupData);
             
             if (!$finalizeResult['success']) {
+                $this->cleanOutputBuffer();
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => $finalizeResult['message']
@@ -172,15 +233,20 @@ class Setup extends BaseController
                       stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
 
             if ($isAjax) {
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Setup completed successfully! Please log in with your admin account.',
-                    'redirect' => '/auth/login'
-                ]);
+                $this->cleanOutputBuffer();
+                return $this->response
+                    ->setStatusCode(200)
+                    ->setHeader('Content-Type', 'application/json')
+                    ->setJSON([
+                        'success' => true,
+                        'message' => 'Setup completed successfully! Please log in with your admin account.',
+                        'redirect' => '/auth/login'
+                    ]);
             }
 
             // Non-AJAX fallback
             session()->setFlashdata('success', 'Setup completed successfully! Please log in with your admin account.');
+            $this->cleanOutputBuffer();
             return redirect()->to('/auth/login');
 
         } catch (\Exception $e) {
@@ -191,6 +257,7 @@ class Setup extends BaseController
                       stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
 
             if ($isAjax) {
+                $this->cleanOutputBuffer();
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Setup failed: ' . $e->getMessage()
@@ -198,6 +265,7 @@ class Setup extends BaseController
             }
 
             session()->setFlashdata('error', 'Setup failed: ' . $e->getMessage());
+            $this->cleanOutputBuffer();
             return redirect()->back();
         }
     }
@@ -218,6 +286,17 @@ class Setup extends BaseController
                 return [
                     'success' => false,
                     'message' => 'Migration failed: ' . $migrationsResult['message']
+                ];
+            }
+
+            // Step 1.5: Verify required tables exist before proceeding
+            $verify = $this->verifyRequiredTables();
+            if (!$verify['success']) {
+                $missingList = implode(', ', $verify['missing']);
+                log_message('error', 'Setup: Required tables missing after migrations: ' . $missingList);
+                return [
+                    'success' => false,
+                    'message' => 'Required tables missing after migrations: ' . $missingList
                 ];
             }
 
@@ -258,6 +337,32 @@ class Setup extends BaseController
                 'message' => 'Setup finalization failed: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Verify required tables exist after migrations; returns missing list if any
+     */
+    protected function verifyRequiredTables(): array
+    {
+        $required = ['users', 'services', 'appointments', 'settings'];
+        $missing = [];
+        try {
+            $db = \Config\Database::connect();
+            foreach ($required as $t) {
+                if (! $db->tableExists($t)) {
+                    $missing[] = $db->prefixTable($t);
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Setup: verifyRequiredTables failed: ' . $e->getMessage());
+            // If we cannot verify, consider as missing core tables
+            $missing = $required;
+        }
+
+        return [
+            'success' => empty($missing),
+            'missing' => $missing,
+        ];
     }
 
     /**
@@ -307,9 +412,10 @@ class Setup extends BaseController
 
         } catch (\Exception $e) {
             log_message('error', 'Migration error: ' . $e->getMessage());
+            log_message('error', 'Migration stack trace: ' . $e->getTraceAsString());
             return [
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Database migration failed: ' . $e->getMessage()
             ];
         }
     }
@@ -405,6 +511,7 @@ class Setup extends BaseController
                 'phone' => null,
                 'password_hash' => password_hash($adminData['password'], PASSWORD_DEFAULT),
                 'role' => 'admin',
+                'is_active' => true,
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
@@ -438,6 +545,12 @@ class Setup extends BaseController
      */
     protected function writeSetupCompletedFlag(array $setupData): array
     {
+        // Do not create flag files in production environments
+        if (ENVIRONMENT === 'production') {
+            log_message('info', 'Setup: Skipping flag file creation in production.');
+            return [ 'success' => true, 'message' => 'Skipped flag write in production' ];
+        }
+
         // Prefer the provided admin email; if missing, derive from userid; else use default
         $adminEmail = null;
         if (!empty($setupData['admin']['email']) && filter_var($setupData['admin']['email'], FILTER_VALIDATE_EMAIL)) {
@@ -456,8 +569,10 @@ class Setup extends BaseController
             'version' => '1.0.0'
         ];
 
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        $flagDir = dirname($flagPath);
+    // Support both legacy and new flag filenames
+    $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+    $flagPathNew    = WRITEPATH . 'setup_complete.flag';
+    $flagDir = WRITEPATH; // both flags live directly in writable/
 
         // Ensure directory exists
         if (!is_dir($flagDir)) {
@@ -479,21 +594,27 @@ class Setup extends BaseController
             }
         }
 
-        // Attempt to write the flag
-        $bytes = @file_put_contents($flagPath, json_encode($flagData, JSON_PRETTY_PRINT));
-        if ($bytes === false) {
-            $msg = 'Failed to write setup flag at path: ' . $flagPath;
+        // Attempt to write BOTH flags for compatibility; the new flag is authoritative
+        $payload = json_encode($flagData, JSON_PRETTY_PRINT);
+        $writeNew = @file_put_contents($flagPathNew, $payload);
+        $writeLegacy = @file_put_contents($flagPathLegacy, $payload);
+
+        if ($writeNew === false) {
+            $msg = 'Failed to write setup flag at path: ' . $flagPathNew;
             log_message('error', 'Setup: ' . $msg);
             return [ 'success' => false, 'message' => $msg ];
         }
 
-        // Best-effort set perms on the flag file
-        if (!@chmod($flagPath, 0644)) {
-            log_message('warning', 'Setup: Unable to set permissions on setup flag: ' . $flagPath);
+        // Best-effort set perms
+        @chmod($flagPathNew, 0644);
+        if ($writeLegacy !== false) {
+            @chmod($flagPathLegacy, 0644);
+        } else {
+            log_message('warning', 'Setup: Could not write legacy setup flag at: ' . $flagPathLegacy . ' (continuing)');
         }
 
-        log_message('info', 'Setup completion flag written: ' . $flagPath);
-        return [ 'success' => true, 'message' => 'Flag written' ];
+        log_message('info', 'Setup completion flags written: new=' . $flagPathNew . '; legacy=' . $flagPathLegacy);
+        return [ 'success' => true, 'message' => 'Flag(s) written' ];
     }
 
     /**
@@ -504,9 +625,11 @@ class Setup extends BaseController
         $envExamplePath = ROOTPATH . '.env.example';
         $envPath = ROOTPATH . '.env';
 
-        // Check if .env.example exists
-        if (!file_exists($envExamplePath)) {
-            log_message('error', 'Setup: .env.example template not found at: ' . $envExamplePath);
+        // Verify we can write the .env file location before proceeding
+        $envDir = dirname($envPath);
+        if (!is_dir($envDir) || !is_writable($envDir)) {
+            $this->envError = 'Directory is not writable: ' . $envDir;
+            log_message('error', 'Setup: .env directory not writable: ' . $envDir);
             return false;
         }
 
@@ -519,12 +642,27 @@ class Setup extends BaseController
         }
 
         try {
-            // Read the template
-            $envTemplate = file_get_contents($envExamplePath);
-            
-            if ($envTemplate === false) {
-                log_message('error', 'Setup: Failed to read .env.example template');
-                return false;
+            // Read the template; if missing, create a minimal default template for production
+            if (file_exists($envExamplePath)) {
+                $envTemplate = file_get_contents($envExamplePath);
+                if ($envTemplate === false) {
+                    $this->envError = 'Failed to read .env.example template';
+                    log_message('error', 'Setup: Failed to read .env.example template');
+                    return false;
+                }
+            } else {
+                log_message('warning', 'Setup: .env.example not found; using minimal fallback template');
+                $envTemplate = "CI_ENVIRONMENT = production\n" .
+                               "app.baseURL = ''\n" .
+                               "app.forceGlobalSecureRequests = true\n" .
+                               "app.CSPEnabled = true\n" .
+                               "database.default.DBDriver = MySQLi\n" .
+                               "database.default.hostname = localhost\n" .
+                               "database.default.database = \n" .
+                               "database.default.username = \n" .
+                               "database.default.password = \n" .
+                               "database.default.port = 3306\n" .
+                               "encryption.key = \n";
             }
 
             // Replace template variables with user inputs
@@ -533,6 +671,7 @@ class Setup extends BaseController
             // Write the new .env file
             $writeResult = file_put_contents($envPath, $envContent);
             if ($writeResult === false) {
+                $this->envError = 'Failed to write .env to path: ' . $envPath;
                 log_message('error', 'Setup: Failed to write .env file to: ' . $envPath);
                 return false;
             }
@@ -542,10 +681,12 @@ class Setup extends BaseController
                 log_message('warning', 'Setup: Failed to set .env file permissions');
             }
 
+            $this->envError = null; // clear previous error on success
             log_message('info', 'Setup: .env file generated successfully at: ' . $envPath);
             return true;
 
         } catch (Exception $e) {
+            $this->envError = 'Exception during .env generation: ' . $e->getMessage();
             log_message('error', 'Setup: Error generating .env file - ' . $e->getMessage());
             return false;
         }
@@ -556,6 +697,8 @@ class Setup extends BaseController
      */
     protected function populateEnvTemplate(string $template, array $data): string
     {
+        log_message('info', 'Setup: Populating .env template with data: ' . json_encode(array_merge($data, ['db_password' => '[HIDDEN]'])));
+        
         // Determine environment mode
         $environment = ENVIRONMENT === 'development' ? 'development' : 'production';
 
@@ -612,8 +755,11 @@ class Setup extends BaseController
         try {
             $dbConfig = config('Database');
             if (!is_object($dbConfig)) {
+                log_message('warning', 'Setup: Database config is not an object');
                 return;
             }
+
+            log_message('info', 'Setup: Updating runtime database configuration');
 
             // Update default group
             if (property_exists($dbConfig, 'default') && is_array($dbConfig->default)) {
@@ -626,9 +772,93 @@ class Setup extends BaseController
                 if (!empty($data['db_port'])) {
                     $dbConfig->default['port'] = (int) $data['db_port'];
                 }
+                
+                log_message('info', 'Setup: Runtime DB config updated with: ' . json_encode([
+                    'DBDriver' => $dbConfig->default['DBDriver'],
+                    'hostname' => $dbConfig->default['hostname'],
+                    'database' => $dbConfig->default['database'],
+                    'username' => $dbConfig->default['username'],
+                    'password' => '[HIDDEN]',
+                    'port' => $dbConfig->default['port'] ?? 'default'
+                ]));
             }
+
+            // Force the framework to drop any previously shared connection and
+            // establish a fresh one using the updated configuration. This prevents
+            // the "first attempt fails, second works" issue due to a stale default
+            // connection created earlier in the request lifecycle.
+            
+            // Clear all cached connections more aggressively
+            try {
+                // Get all connection group names
+                $groups = ['default']; // Add other groups if you have them
+                
+                foreach ($groups as $group) {
+                    try {
+                        // Close existing connection if it exists
+                        $existing = \Config\Database::connect($group, false);
+                        if ($existing && method_exists($existing, 'close')) {
+                            $existing->close();
+                            log_message('info', "Setup: Closed existing {$group} database connection");
+                        }
+                    } catch (\Throwable $e) {
+                        log_message('info', "Setup: No existing {$group} connection to close");
+                    }
+                }
+                
+                // Clear the shared connection cache by resetting the static property
+                // This is a workaround for CodeIgniter's connection caching
+                $reflection = new \ReflectionClass(\Config\Database::class);
+                if ($reflection->hasProperty('instances')) {
+                    $instancesProperty = $reflection->getProperty('instances');
+                    $instancesProperty->setAccessible(true);
+                    $instancesProperty->setValue(null, []);
+                    log_message('info', 'Setup: Cleared Database connection cache');
+                }
+                
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: Could not clear connection cache: ' . $e->getMessage());
+            }
+
         } catch (\Throwable $e) {
-            log_message('warning', 'Could not apply runtime DB config: ' . $e->getMessage());
+            log_message('error', 'Setup: Could not apply runtime DB config: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Debug method to log current database configuration state
+     */
+    protected function debugDatabaseConfig(string $context = ''): void
+    {
+        try {
+            $prefix = $context ? "Setup[$context]: " : 'Setup: ';
+            
+            // Log environment variables
+            $envVars = [
+                'database.default.hostname' => getenv('database.default.hostname'),
+                'database.default.database' => getenv('database.default.database'),
+                'database.default.username' => getenv('database.default.username'),
+                'database.default.password' => getenv('database.default.password') ? '[SET]' : '[NOT SET]',
+                'database.default.DBDriver' => getenv('database.default.DBDriver'),
+            ];
+            log_message('info', $prefix . 'Environment variables: ' . json_encode($envVars));
+            
+            // Log CodeIgniter config
+            $dbConfig = config('Database');
+            if ($dbConfig && property_exists($dbConfig, 'default')) {
+                $configVars = [
+                    'DBDriver' => $dbConfig->default['DBDriver'] ?? 'NOT SET',
+                    'hostname' => $dbConfig->default['hostname'] ?? 'NOT SET',
+                    'database' => $dbConfig->default['database'] ?? 'NOT SET',
+                    'username' => $dbConfig->default['username'] ?? 'NOT SET',
+                    'password' => !empty($dbConfig->default['password']) ? '[SET]' : '[NOT SET]',
+                    'port' => $dbConfig->default['port'] ?? 'NOT SET',
+                ];
+                log_message('info', $prefix . 'CodeIgniter DB config: ' . json_encode($configVars));
+            }
+            
+        } catch (\Throwable $e) {
+            log_message('warning', $prefix . 'Could not debug DB config: ' . $e->getMessage());
         }
     }
 
@@ -730,6 +960,38 @@ class Setup extends BaseController
 
             // Test the connection
             $testResult = $this->testDatabaseConnection($data);
+
+            // If connection is successful, update .env file and reset setup flag
+            if ($testResult['success']) {
+                log_message('info', 'Database connection test successful, updating .env file');
+                
+                // Update .env file with working credentials
+                $envUpdateSuccess = $this->generateEnvFile($data);
+                
+                if ($envUpdateSuccess) {
+                    // Reset setup completion flag to allow re-running setup with new credentials
+                    $this->resetSetupFlags();
+                    
+                    log_message('info', 'Database credentials updated in .env file and setup flags reset');
+                    
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'message' => $testResult['message'] . ' Database credentials have been saved to configuration file.',
+                        'env_updated' => true,
+                        'setup_reset' => true
+                    ]);
+                } else {
+                    log_message('warning', 'Database connection successful but .env update failed: ' . ($this->envError ?? 'Unknown error'));
+                    
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'message' => $testResult['message'] . ' Warning: Could not save credentials to configuration file.',
+                        'env_updated' => false,
+                        'setup_reset' => false,
+                        'warning' => $this->envError ?? 'Failed to update configuration file'
+                    ]);
+                }
+            }
 
             return $this->response->setJSON([
                 'success' => $testResult['success'],
@@ -838,6 +1100,101 @@ class Setup extends BaseController
 
     private function isSetupCompleted(): bool
     {
-        return file_exists(WRITEPATH . 'setup_completed.flag');
+        // In production: rely on .env presence and DB readiness, not flag files
+        if (ENVIRONMENT === 'production') {
+            $envReady = file_exists(ROOTPATH . '.env');
+            if (!$envReady) {
+                log_message('debug', 'Setup not completed: .env file missing');
+                return false;
+            }
+            // Try simple DB readiness check: can we connect and does the users table exist?
+            try {
+                $db = \Config\Database::connect();
+                if (!$db) {
+                    log_message('debug', 'Setup not completed: DB connection failed');
+                    return false;
+                }
+                // Require both users and settings tables to avoid partial setup state
+                $hasUsers = $db->tableExists('users');
+                $hasSettings = $db->tableExists('settings');
+                log_message('debug', 'Setup check: users=' . ($hasUsers ? 'yes' : 'no') . ' settings=' . ($hasSettings ? 'yes' : 'no'));
+                return $hasUsers && $hasSettings;
+            } catch (\Throwable $e) {
+                log_message('debug', 'Setup not completed: DB check failed - ' . $e->getMessage());
+                return false;
+            }
+        }
+
+        // In non-production (development/test), allow flag file check for local setup flows
+        return file_exists(WRITEPATH . 'setup_complete.flag') || file_exists(WRITEPATH . 'setup_completed.flag');
+    }
+
+    /**
+     * Reset setup completion flags to allow re-running setup
+     */
+    private function resetSetupFlags(): bool
+    {
+        $flagsReset = true;
+        
+        // Remove flag files if they exist
+        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        $flagPathNew = WRITEPATH . 'setup_complete.flag';
+        
+        if (file_exists($flagPathNew)) {
+            if (!unlink($flagPathNew)) {
+                log_message('warning', 'Failed to remove setup flag: ' . $flagPathNew);
+                $flagsReset = false;
+            } else {
+                log_message('info', 'Removed setup flag: ' . $flagPathNew);
+            }
+        }
+        
+        if (file_exists($flagPathLegacy)) {
+            if (!unlink($flagPathLegacy)) {
+                log_message('warning', 'Failed to remove legacy setup flag: ' . $flagPathLegacy);
+                $flagsReset = false;
+            } else {
+                log_message('info', 'Removed legacy setup flag: ' . $flagPathLegacy);
+            }
+        }
+        
+        return $flagsReset;
+        
+        if (file_exists($flagPathNew)) {
+            if (!unlink($flagPathNew)) {
+                log_message('warning', 'Failed to remove setup flag: ' . $flagPathNew);
+                $flagsReset = false;
+            } else {
+                log_message('info', 'Removed setup flag: ' . $flagPathNew);
+            }
+        }
+        
+        if (file_exists($flagPathLegacy)) {
+            if (!unlink($flagPathLegacy)) {
+                log_message('warning', 'Failed to remove legacy setup flag: ' . $flagPathLegacy);
+                $flagsReset = false;
+            } else {
+                log_message('info', 'Removed legacy setup flag: ' . $flagPathLegacy);
+            }
+        }
+        
+        return $flagsReset;
+    }
+
+    /**
+     * Clean any active output buffers to avoid stray output blocking redirects/headers
+     */
+    private function cleanOutputBuffer(): void
+    {
+        if (!function_exists('ob_get_level')) {
+            return;
+        }
+        try {
+            while (@ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
     }
 }

@@ -24,8 +24,8 @@ class Dashboard extends BaseController
      */
     private function isSetupCompleted(): bool
     {
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        return file_exists($flagPath);
+        helper('setup');
+        return is_setup_completed();
     }
 
     public function index()

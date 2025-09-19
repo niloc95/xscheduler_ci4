@@ -67,6 +67,8 @@
 <?= $this->section('content') ?>
     <div class="main-content" data-page-title="Dashboard">
 
+    <!-- User summary cards removed (now only shown in User Management module) -->
+
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Card 1 - Total Users -->
@@ -192,7 +194,7 @@
                             <th class="px-6 py-4 font-semibold">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="user-list-table-body">
                         <?php if (isset($recent_activities) && !empty($recent_activities)): ?>
                             <?php foreach ($recent_activities as $activity): ?>
                                 <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
@@ -365,7 +367,7 @@
     </div>
     <!-- Page Scripts -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
             // Search functionality
             const searchInput = document.getElementById('dashboardSearch');
             if (searchInput) {
@@ -393,6 +395,8 @@
                 });
             }
         });
+
+        // (Removed role-based user summary cards and dynamic user list for dashboard. This functionality now lives only in User Management module.)
 
         function initCharts() {
             import('<?= base_url('/build/assets/charts.js') ?>').then(module => {

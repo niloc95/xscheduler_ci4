@@ -36,9 +36,15 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('real-data', 'Dashboard::realData', ['filter' => 'auth']);
     $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
     $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
+    $routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
+    $routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
     // $routes->get('analytics', 'Dashboard::analytics', ['filter' => 'auth']); // Moved to dedicated Analytics controller
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
 });
+
+// Global user/customer lightweight API endpoints (session-auth protected)
+$routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
+$routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
 
 // User Management Routes (admin and provider access with different permissions)
 $routes->group('user-management', ['filter' => 'setup'], function($routes) {
@@ -49,6 +55,15 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->post('update/(:num)', 'UserManagement::update/$1', ['filter' => 'role:admin,provider']);
     $routes->get('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
     $routes->get('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+});
+
+// Customer Management Routes (admins, providers, and staff)
+$routes->group('customer-management', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'CustomerManagement::index', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('create', 'CustomerManagement::create', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('edit/(:num)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('update/(:num)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)

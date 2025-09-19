@@ -25,7 +25,6 @@
         <div class="overflow-x-auto">
             <nav class="flex gap-2 border-b border-gray-200 dark:border-gray-700" role="tablist" aria-label="Settings Sections">
                 <button class="tab-btn active" data-tab="general">General</button>
-                <button class="tab-btn" data-tab="users">Users</button>
                 <button class="tab-btn" data-tab="localization">Localization</button>
                 <button class="tab-btn" data-tab="booking">Booking</button>
                 <button class="tab-btn" data-tab="business">Business hours</button>
@@ -332,45 +331,7 @@
                 </div>
             </section>
 
-            <!-- Users management within Settings -->
-            <section id="panel-users" class="tab-panel hidden">
-                <div class="space-y-6">
-                    <div class="form-field">
-                        <label class="form-label">Invite New User</label>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <input type="text" name="new_user_name" class="form-input" placeholder="Full name" />
-                            <input type="email" name="new_user_email" class="form-input" placeholder="email@example.com" />
-                            <select name="new_user_role" class="form-input">
-                                <option value="admin">Admin</option>
-                                <option value="provider">Provider</option>
-                                <option value="staff">Staff</option>
-                            </select>
-                        </div>
-                        <p class="form-help">Sends an invitation email with a temporary password.</p>
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label">User Defaults</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <select name="default_user_role" class="form-input">
-                                <option value="provider">Provider</option>
-                                <option value="staff">Staff</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                            <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="users_require_2fa" class="checkbox" />
-                                <span>Require 2FA for all users</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label">Access Policies</label>
-                        <textarea name="access_policies" rows="4" class="form-input" placeholder='{"providers":["schedule.read","appointments.manage"],"staff":["schedule.read" ]}'></textarea>
-                        <p class="form-help">JSON map of role to allowed permissions.</p>
-                    </div>
-                </div>
-            </section>
+            
 
             <div class="flex justify-end">
                 <button id="global-save-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">Save All Settings</button>

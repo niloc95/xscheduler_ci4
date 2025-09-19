@@ -9,6 +9,7 @@ class UserManagement extends BaseController
 {
     protected $userModel;
     protected $permissionModel;
+    
 
     public function __construct()
     {
@@ -30,7 +31,7 @@ class UserManagement extends BaseController
 
         // Get users based on current user's role and permissions
         $users = $this->getUsersBasedOnRole($currentUserId);
-        $stats = $this->getUserStatsBasedOnRole($currentUserId);
+    $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
 
         $data = [
             'title' => 'User Management - WebSchedulr',
@@ -58,7 +59,7 @@ class UserManagement extends BaseController
         }
 
         // Determine which roles the current user can create
-        $availableRoles = $this->getAvailableRolesForUser($currentUserId);
+    $availableRoles = $this->getAvailableRolesForUser($currentUserId);
         
         if (empty($availableRoles)) {
             return redirect()->to('/user-management')
@@ -102,7 +103,7 @@ class UserManagement extends BaseController
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'role' => 'required|in_list[admin,provider,staff,customer]',
+            'role' => 'required|in_list[admin,provider,staff]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]',
@@ -242,7 +243,7 @@ class UserManagement extends BaseController
 
         // Add role validation if user can change roles
         if ($this->canChangeUserRole($currentUserId, $userId)) {
-            $rules['role'] = 'required|in_list[admin,provider,staff,customer]';
+            $rules['role'] = 'required|in_list[admin,provider,staff]';
         }
 
         if (!$this->validate($rules)) {
@@ -355,17 +356,20 @@ class UserManagement extends BaseController
 
         switch ($currentUser['role']) {
             case 'admin':
-                return $this->userModel->findAll();
+                return $this->userModel
+                    ->whereIn('role', ['admin', 'provider', 'staff', 'receptionist'])
+                    ->findAll();
                 
             case 'provider':
                 // Providers can see their staff and themselves
-                return $this->userModel
+                $rows = $this->userModel
                     ->where('provider_id', $currentUserId)
                     ->orWhere('id', $currentUserId)
                     ->findAll();
+                // Filter any non-system roles just in case
+                return array_values(array_filter($rows, fn($u) => in_array($u['role'] ?? '', ['admin','provider','staff','receptionist'], true)));
                     
             case 'staff':
-            case 'customer':
                 // Staff and customers can only see themselves
                 return [$currentUser];
                 
@@ -374,28 +378,42 @@ class UserManagement extends BaseController
         }
     }
 
-    private function getUserStatsBasedOnRole(int $currentUserId): array
+    private function getUserStatsBasedOnRole(int $currentUserId, array $usersForContext = []): array
     {
         $currentUser = $this->userModel->find($currentUserId);
         if (!$currentUser) {
             return [];
         }
 
+        // Build stats from provided users (or fetch a small set if empty)
         if ($currentUser['role'] === 'admin') {
-            return $this->userModel->getStats();
+            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff','receptionist' ])->findAll();
+            $admins = 0; $providers = 0; $staff = 0;
+            foreach ($rows as $u) {
+                $r = $u['role'] ?? '';
+                if ($r === 'admin') $admins++;
+                elseif ($r === 'provider') $providers++;
+                elseif ($r === 'staff' || $r === 'receptionist') $staff++;
+            }
+            return [
+                'total' => $admins + $providers + $staff,
+                'admins' => $admins,
+                'providers' => $providers,
+                'staff' => $staff,
+                'recent' => 0,
+            ];
         } elseif ($currentUser['role'] === 'provider') {
             $staff = $this->userModel->getStaffForProvider($currentUserId);
             return [
                 'total' => count($staff) + 1, // +1 for the provider
                 'staff' => count($staff),
                 'providers' => 1,
-                'customers' => 0,
                 'admins' => 0,
                 'recent' => 0
             ];
         }
 
-        return ['total' => 1, 'staff' => 0, 'providers' => 0, 'customers' => 0, 'admins' => 0, 'recent' => 0];
+        return ['total' => 1, 'staff' => 0, 'providers' => 0, 'admins' => 0, 'recent' => 0];
     }
 
     private function getAvailableRolesForUser(int $currentUserId, ?array $targetUser = null): array
@@ -412,10 +430,7 @@ class UserManagement extends BaseController
             $roles[] = 'staff';
         }
         
-        // Everyone can create customers (if they have user management permissions)
-        if ($this->permissionModel->hasPermission($currentUserId, 'user_management')) {
-            $roles[] = 'customer';
-        }
+        // Customer creation is handled via xs_customers, not users
 
         return $roles;
     }
@@ -429,8 +444,6 @@ class UserManagement extends BaseController
                 return $this->permissionModel->hasPermission($currentUserId, 'create_provider');
             case 'staff':
                 return $this->permissionModel->hasPermission($currentUserId, 'create_staff');
-            case 'customer':
-                return $this->permissionModel->hasPermission($currentUserId, 'user_management');
             default:
                 return false;
         }

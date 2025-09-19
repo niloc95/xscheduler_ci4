@@ -97,8 +97,6 @@
                                         - Can Manage Services & Staff
                                     <?php elseif ($roleOption === 'staff'): ?>
                                         - Limited Calendar Access
-                                    <?php elseif ($roleOption === 'customer'): ?>
-                                        - Booking Access Only
                                     <?php endif; ?>
                                 </option>
                             <?php endforeach; ?>
@@ -224,17 +222,15 @@
                         $roleColors = [
                             'admin' => 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200',
                             'provider' => 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200',
-                            'staff' => 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200',
-                            'customer' => 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200'
+                            'staff' => 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
                         ];
                         $roleDescriptions = [
                             'admin' => 'Full system access, can manage all users, settings, and data. Use with caution.',
                             'provider' => 'Business owner who can manage their own services, staff, and customer bookings.',
-                            'staff' => 'Employee who can manage schedules and bookings for their assigned provider.',
-                            'customer' => 'Can book appointments and view their own booking history.'
+                            'staff' => 'Employee who can manage schedules and bookings for their assigned provider.'
                         ];
                         ?>
-                        <div class="p-3 border rounded-lg <?= $roleColors[$roleOption] ?? $roleColors['customer'] ?>">
+                        <div class="p-3 border rounded-lg <?= $roleColors[$roleOption] ?? 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200' ?>">
                             <div class="flex items-center mb-2">
                                 <div class="w-4 h-4 <?= $roleOption === 'admin' ? 'bg-red-500' : ($roleOption === 'provider' ? 'bg-blue-500' : ($roleOption === 'staff' ? 'bg-green-500' : 'bg-gray-500')) ?> rounded mr-2"></div>
                                 <h4 class="font-medium"><?= ucfirst($roleOption) ?></h4>
@@ -317,8 +313,7 @@ document.getElementById('role').addEventListener('change', function() {
         const descriptions = {
             'admin': 'Full system access including settings, user management, and all features.',
             'provider': 'Can manage own calendar, create staff, manage services and categories.',
-            'staff': 'Limited to managing own calendar and assigned appointments.',
-            'customer': 'Can book appointments and view own booking history.'
+            'staff': 'Limited to managing own calendar and assigned appointments.'
         };
         
         rolePermissions.innerHTML = descriptions[role] || '';

@@ -81,6 +81,24 @@ const SPA = (() => {
       setBusy(true);
       const html = await fetchPage(url);
       el.innerHTML = html;
+      // Execute any inline or external scripts in the newly injected SPA content
+      // This allows per-view scripts (e.g., user management role cards) to initialize after SPA navigation.
+      const scripts = Array.from(el.querySelectorAll('script'));
+      scripts.forEach(orig => {
+        // Skip if already processed
+        if (orig.dataset.spaExecuted === 'true') return;
+        const s = document.createElement('script');
+        // Copy attributes (src, type, etc.)
+        for (const attr of orig.attributes) {
+          s.setAttribute(attr.name, attr.value);
+        }
+        // Inline code
+        if (!orig.src) {
+          s.textContent = orig.textContent;
+        }
+        s.dataset.spaExecuted = 'true';
+        orig.replaceWith(s);
+      });
   // Initialize any tabs rendered in the new content
   initTabsInSpaContent();
       if (push) history.pushState({ spa: true }, '', url);

@@ -13,18 +13,18 @@ class UserModel extends BaseModel
         'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires'
     ];
 
-    // Dates
-    // ...existing code...
+    // Dates (handled by BaseModel)
 
     // Validation
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-    'role'  => 'required|in_list[admin,provider,receptionist]'
+        'role'  => 'required|in_list[admin,provider,receptionist]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
     protected $cleanValidationRules = true;
+
 
     /**
      * Get user statistics for dashboard
@@ -33,7 +33,6 @@ class UserModel extends BaseModel
     {
         return [
             'total' => $this->countAll(),
-            'customers' => $this->where('role', 'customer')->countAllResults(false),
             'providers' => $this->where('role', 'provider')->countAllResults(false),
             'staff' => $this->where('role', 'staff')->countAllResults(false),
             'admins' => $this->where('role', 'admin')->countAllResults(false),
@@ -59,19 +58,15 @@ class UserModel extends BaseModel
     {
         $data = [];
         $labels = [];
-        
         for ($i = $months - 1; $i >= 0; $i--) {
             $date = date('Y-m-01', strtotime("-{$i} months"));
             $nextDate = date('Y-m-01', strtotime("-" . ($i - 1) . " months"));
-            
             $count = $this->where('created_at >=', $date)
                           ->where('created_at <', $nextDate)
                           ->countAllResults(false);
-            
             $labels[] = date('M', strtotime($date));
             $data[] = $count;
         }
-        
         return [
             'labels' => $labels,
             'data' => $data
@@ -124,26 +119,21 @@ class UserModel extends BaseModel
     {
         $manager = $this->find($managerId);
         $target = $this->find($targetUserId);
-
         if (!$manager || !$target) {
             return false;
         }
-
         // Admins can manage everyone
         if ($manager['role'] === 'admin') {
             return true;
         }
-
         // Providers can manage their own staff
         if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
             return $target['provider_id'] === $manager['id'];
         }
-
         // Users can manage themselves (limited)
         if ($managerId === $targetUserId) {
             return true;
         }
-
         return false;
     }
 
@@ -154,14 +144,12 @@ class UserModel extends BaseModel
     {
         // Set default values
         $userData['is_active'] = $userData['is_active'] ?? true;
-        $userData['role'] = $userData['role'] ?? 'customer';
-        
+        $userData['role'] = $userData['role'] ?? 'staff';
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
-
         return $this->insert($userData, false);
     }
 
@@ -173,13 +161,11 @@ class UserModel extends BaseModel
         if (!$this->canManageUser($updatedBy, $userId)) {
             return false;
         }
-
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
-
         return $this->update($userId, $userData);
     }
 
@@ -191,7 +177,6 @@ class UserModel extends BaseModel
         if (!$this->canManageUser($deactivatedBy, $userId)) {
             return false;
         }
-
         return $this->update($userId, ['is_active' => false]);
     }
 
@@ -202,21 +187,17 @@ class UserModel extends BaseModel
     {
         $user = $this->find($userId);
         $requester = $this->find($requesterId);
-
         if (!$user || !$requester) {
             return null;
         }
-
         // Check if requester can view this user
         if (!$this->canViewUser($requesterId, $userId)) {
             return null;
         }
-
         // Remove sensitive information based on role
         if ($requester['role'] !== 'admin' && $requesterId !== $userId) {
             unset($user['password_hash'], $user['reset_token'], $user['reset_expires']);
         }
-
         return $user;
     }
 
@@ -227,31 +208,25 @@ class UserModel extends BaseModel
     {
         $viewer = $this->find($viewerId);
         $target = $this->find($targetUserId);
-
         if (!$viewer || !$target) {
             return false;
         }
-
         // Admins can view everyone
         if ($viewer['role'] === 'admin') {
             return true;
         }
-
         // Providers can view their staff
         if ($viewer['role'] === 'provider' && $target['role'] === 'staff') {
             return $target['provider_id'] === $viewer['id'];
         }
-
         // Users can view themselves
         if ($viewerId === $targetUserId) {
             return true;
         }
-
         // Staff can view their provider
         if ($viewer['role'] === 'staff' && $target['role'] === 'provider') {
             return $viewer['provider_id'] === $target['id'];
         }
-
         return false;
     }
 }
