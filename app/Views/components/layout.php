@@ -228,8 +228,231 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
-    <!-- Load calendar module globally so it can handle SPA navigations on scheduler page -->
-    <script type="module" src="<?= base_url('build/assets/calendar-clean.js') ?>"></script>
+    <!-- Scheduler script: load only on schedule-related routes OR lazily when calendar element appears -->
+    <?php 
+        $currentPath = parse_url(current_url(), PHP_URL_PATH) ?: '';
+        $normalized = trim($currentPath, '/');
+        $shouldLoadSchedule = (
+            $normalized === 'schedule' ||
+            str_starts_with($normalized, 'schedule/') ||
+            str_starts_with($normalized, 'scheduler')
+        );
+        if ($shouldLoadSchedule):
+    ?>
+        <script type="module" src="<?= base_url('build/assets/schedule-core.js') ?>"></script>
+    <?php endif; ?>
+    <script>
+        // SPA lazy loader: if navigating to a view that injects a #calendar element and schedule-core not yet loaded
+        (function(){
+            const SCHEDULE_SRC = '<?= base_url('build/assets/schedule-core.js') ?>';
+            function loadSchedule(){
+                if (window.__scheduleLoaded || document.querySelector('script[data-schedule-core]')) return;
+                // Create a module script tag for wider compatibility vs dynamic import (handles mixed CSP)
+                const s = document.createElement('script');
+                s.type='module';
+                s.src = SCHEDULE_SRC + '?v=' + Date.now(); // cache-bust to avoid stale during dev
+                s.setAttribute('data-schedule-core','1');
+                document.head.appendChild(s);
+            }
+            function maybeInit(){
+                if (document.getElementById('calendar')) loadSchedule();
+            }
+            document.addEventListener('DOMContentLoaded', maybeInit);
+            document.addEventListener('spa:navigated', () => {
+                // Defer a tick for injected DOM
+                setTimeout(maybeInit, 0);
+            });
+        })();
+    </script>
+    <?= $this->renderSection('scripts') ?>
+    
+    <!-- Global Modal & Toast Containers -->
+    <style>
+        /* Match login card visual for modal */
+        .xs-modal-card { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10); overflow: hidden; }
+        html.dark .xs-modal-card { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40); }
+        .xs-modal-title-brand { color: var(--md-sys-color-primary); }
+        .xs-btn-primary {
+            color: #fff;
+            background-color: var(--md-sys-color-secondary);
+        }
+        .xs-btn-primary:hover { filter: brightness(0.96); }
+        .xs-btn-primary:focus { outline: none; box-shadow: 0 0 0 2px rgba(249,115,22,.5); }
+    /* Ensure Material Symbols center perfectly within squared icon badges */
+    .xs-icon-center { display: grid; place-items: center; }
+    .xs-icon-center > .material-symbols-outlined { line-height: 1; display: block; }
+    </style>
+    <div id="xs-modal-root" class="fixed inset-0 z-[100] hidden" aria-hidden="true">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-200" data-xs-modal-overlay></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div id="xs-modal"
+                 role="dialog" aria-modal="true" aria-labelledby="xs-modal-title" aria-describedby="xs-modal-desc"
+                 class="w-full max-w-md sm:max-w-lg bg-white dark:bg-gray-800 rounded-2xl xs-modal-card border border-gray-200 dark:border-gray-700 transform transition-all duration-200 scale-95 opacity-0 outline-none"
+                 tabindex="-1">
+                <div class="p-6 sm:p-8">
+                    <div class="flex items-start gap-4">
+                        <div id="xs-modal-icon" class="mt-1 hidden shrink-0"></div>
+                        <div class="min-w-0 text-left">
+                            <h2 id="xs-modal-title" class="text-xl sm:text-2xl font-semibold xs-modal-title-brand text-gray-900 dark:text-gray-100">Notice</h2>
+                            <p id="xs-modal-desc" class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"></p>
+                        </div>
+                    </div>
+                </div>
+                <div id="xs-modal-actions" class="px-6 sm:px-8 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row gap-3 sm:gap-2 sm:justify-end bg-gray-50 dark:bg-gray-800"></div>
+            </div>
+        </div>
+    </div>
+    <div id="xs-toast-root" class="fixed top-4 right-4 z-[101] space-y-2 pointer-events-none"></div>
+    <div id="xs-aria-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    
+    <script>
+    // Minimal, reusable notification system (modal + toast)
+    (function(){
+        const COLORS = {
+            info: { ring: 'ring-blue-500', icon: 'info', bg: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' },
+            success: { ring: 'ring-green-500', icon: 'check_circle', bg: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' },
+            warning: { ring: 'ring-amber-500', icon: 'warning', bg: 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200' },
+            error: { ring: 'ring-red-500', icon: 'error', bg: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' }
+        };
+
+        const modalRoot = document.getElementById('xs-modal-root');
+        const modal = document.getElementById('xs-modal');
+        const modalOverlay = modalRoot?.querySelector('[data-xs-modal-overlay]');
+        const modalTitle = document.getElementById('xs-modal-title');
+        const modalDesc = document.getElementById('xs-modal-desc');
+        const modalActions = document.getElementById('xs-modal-actions');
+        const modalIcon = document.getElementById('xs-modal-icon');
+        const toastRoot = document.getElementById('xs-toast-root');
+        const ariaLive = document.getElementById('xs-aria-live');
+        let lastActiveEl = null;
+
+        function focusTrap(e){
+            if (e.key !== 'Tab') return;
+            const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+
+        function closeModal(){
+            modalRoot.setAttribute('aria-hidden', 'true');
+            modalRoot.classList.add('hidden');
+            modalOverlay && modalOverlay.classList.remove('opacity-100');
+            modal.classList.remove('opacity-100','scale-100');
+            document.removeEventListener('keydown', onKey);
+            modal.removeEventListener('keydown', focusTrap);
+            if (lastActiveEl && typeof lastActiveEl.focus === 'function') {
+                try { lastActiveEl.focus(); } catch(_){}
+            }
+        }
+
+        function onKey(e){
+            if (e.key === 'Escape') closeModal();
+        }
+
+        function buildIcon(type){
+            const color = COLORS[type] || COLORS.info;
+            return `<div class="${color.bg} rounded-xl w-10 h-10 sm:w-12 sm:h-12 xs-icon-center"><span class="material-symbols-outlined leading-none block text-xl sm:text-2xl">${color.icon}</span></div>`;
+        }
+
+        async function showDialog(opts){
+            const { title, message, type = 'info', actions = [], autoClose = false, duration = 3000 } = opts || {};
+            if (!modalRoot || !modal) throw new Error('Modal root not found');
+            lastActiveEl = document.activeElement;
+
+            const color = COLORS[type] || COLORS.info;
+            modal.className = modal.className.replace(/ring-(blue|green|amber|red)-500/g,'').trim();
+            modal.classList.add('focus:ring-2', color.ring);
+            modalTitle.textContent = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Notice');
+            modalDesc.textContent = message || '';
+            modalIcon.classList.remove('hidden');
+            modalIcon.innerHTML = buildIcon(type);
+
+            modalActions.innerHTML = '';
+            let resolver;
+            const done = new Promise((res)=> resolver = res);
+                        function addBtn(text, handler, variant){
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                                btn.className = (variant === 'primary'
+                                    ? 'xs-btn-primary'
+                                    : 'text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400')
+                                    + ' inline-flex items-center justify-center h-10 px-4 rounded-lg font-medium transition w-full sm:w-auto';
+                btn.textContent = text;
+                btn.addEventListener('click', () => {
+                    try { handler && handler(); } catch (e) { console.error(e); }
+                    resolver && resolver({ action: text });
+                    closeModal();
+                });
+                modalActions.appendChild(btn);
+                return btn;
+            }
+            if (actions && actions.length) {
+                actions.forEach((a,i)=> addBtn(a.text || 'OK', a.onClick, i === 0 ? 'primary' : 'secondary'));
+            } else if (!autoClose) {
+                addBtn('OK', null, 'primary');
+            }
+
+            modalRoot.classList.remove('hidden');
+            modalRoot.setAttribute('aria-hidden', 'false');
+            requestAnimationFrame(()=>{
+                modalOverlay && modalOverlay.classList.add('opacity-100');
+                modal.classList.add('opacity-100','scale-100');
+                const firstAction = modalActions.querySelector('button');
+                (firstAction || modal).focus();
+            });
+            document.addEventListener('keydown', onKey);
+            modal.addEventListener('keydown', focusTrap);
+            modalOverlay && modalOverlay.addEventListener('click', closeModal, { once: true });
+
+            if (autoClose) setTimeout(()=>{ resolver && resolver({ action: 'autoClose' }); closeModal(); }, Math.max(1000, duration||3000));
+            try { ariaLive.textContent = (title ? title + '. ' : '') + (message || ''); } catch(_){ }
+            return done;
+        }
+
+        function showToast(opts){
+            const { title, message, type = 'info', duration = 3000 } = opts || {};
+            if (!toastRoot) return;
+            const color = COLORS[type] || COLORS.info;
+            const wrap = document.createElement('div');
+            wrap.className = 'pointer-events-auto flex items-center gap-3 p-3 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-[fadeIn_.2s_ease-out]';
+            const icon = document.createElement('div'); icon.innerHTML = `<div class="${color.bg} rounded-xl w-8 h-8 xs-icon-center"><span class=\"material-symbols-outlined leading-none block text-base\">${color.icon}</span></div>`;
+            const text = document.createElement('div');
+            text.innerHTML = `<div class="text-sm font-medium text-gray-800 dark:text-gray-100">${title || 'Notice'}</div><div class="text-sm text-gray-600 dark:text-gray-300">${message || ''}</div>`;
+            const close = document.createElement('button');
+            close.className = 'ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200';
+            close.innerHTML = '<span class="material-symbols-outlined text-base">close</span>';
+            close.addEventListener('click', ()=> toastRoot.removeChild(wrap));
+            wrap.append(icon, text, close);
+            toastRoot.appendChild(wrap);
+            try { ariaLive.textContent = (title ? title + '. ' : '') + (message || ''); } catch(_){ }
+            setTimeout(()=>{ if (wrap.parentNode === toastRoot) toastRoot.removeChild(wrap); }, Math.max(1000, duration||3000));
+        }
+
+        function showModal(opts){
+            try {
+                if (opts && (opts.autoClose || (!opts.actions || opts.actions.length === 0))) {
+                    // Prefer toast for non-blocking notifications
+                    if (opts.autoClose) { showToast(opts); return Promise.resolve({ action: 'autoClose' }); }
+                }
+                return showDialog(opts);
+            } catch (e) {
+                console.error('Modal failure', e, opts);
+                const container = document.getElementById('spa-content') || document.body;
+                const banner = document.createElement('div');
+                banner.className = 'm-4 p-3 rounded-lg border border-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200';
+                banner.textContent = (opts?.title ? opts.title + ': ' : '') + (opts?.message || 'An event occurred.');
+                container.prepend(banner);
+                return Promise.resolve({ action: 'fallback' });
+            }
+        }
+
+        window.XSNotify = { show: showModal, toast: showToast };
+        window.showModal = showModal; // convenience
+    })();
+    </script>
     <script>
         // Sync header title/subtitle with current view's declared page attributes, if present
     let XS_DEFAULT_SUBTITLE = null;
@@ -344,6 +567,83 @@
             };
             // Use capture to ensure we see the change even if other handlers stop propagation
             document.addEventListener('change', onFileChange, true);
+        })();
+
+        // Global delegated confirm handler: replaces native confirms with modal
+        (function wireGlobalConfirmHandler(){
+            const getConfirmCopy = (el) => {
+                const explicit = el.getAttribute('data-confirm-message');
+                if (explicit) return { title: 'Please confirm', message: explicit, type: 'warning', cta: 'Continue' };
+                const kind = el.getAttribute('data-confirm');
+                if (kind === 'delete') return { title: 'Delete user?', message: 'This will permanently delete the user and cannot be undone.', type: 'error', cta: 'Delete' };
+                if (kind === 'deactivate') return { title: 'Deactivate user?', message: 'Are you sure you want to deactivate this user? They will lose access until reactivated.', type: 'warning', cta: 'Deactivate' };
+                if (kind === 'activate') return { title: 'Activate user?', message: 'Activate this user and restore their access?', type: 'info', cta: 'Activate' };
+                return { title: 'Please confirm', message: 'Are you sure you want to proceed?', type: 'warning', cta: 'Continue' };
+            };
+            document.addEventListener('click', (e) => {
+                const link = e.target && (e.target.closest && e.target.closest('a[data-confirm]'));
+                if (!link) return;
+                const href = link.getAttribute('href');
+                if (!href || href === '#') return; // ignore
+                e.preventDefault();
+                const copy = getConfirmCopy(link);
+                const proceed = () => { window.location.href = href; };
+                if (window.showModal) {
+                    window.showModal({
+                        title: copy.title,
+                        message: copy.message,
+                        type: copy.type,
+                        actions: [
+                            { text: 'Cancel' },
+                            { text: copy.cta, onClick: proceed }
+                        ]
+                    });
+                } else {
+                    // As a last resort, navigate only if user clicks again (no blocking alert)
+                    const banner = document.createElement('div');
+                    banner.className = 'm-4 p-3 rounded-lg border border-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200';
+                    banner.textContent = copy.title + ' ' + copy.message + ' Click again to confirm.';
+                    const container = document.getElementById('spa-content') || document.body;
+                    container.prepend(banner);
+                    // Temporarily mark link as confirmed on next click
+                    link.setAttribute('data-confirm-next-ok', '1');
+                    const one = (evt) => {
+                        const tgt = evt.target.closest && evt.target.closest('a[data-confirm]');
+                        if (tgt === link && link.getAttribute('data-confirm-next-ok') === '1') {
+                            evt.preventDefault();
+                            link.removeAttribute('data-confirm-next-ok');
+                            proceed();
+                            document.removeEventListener('click', one, true);
+                        }
+                    };
+                    document.addEventListener('click', one, true);
+                }
+            }, true);
+        })();
+
+        // Global handler: show provider selection when role=staff on create/edit user forms
+        (function wireRoleDependentFields(){
+            function updateProviderVisibility(root){
+                const container = root || document;
+                const roleEl = container.querySelector('#spa-content #role, #role');
+                const providerWrap = container.querySelector('#spa-content #provider-selection, #provider-selection');
+                const providerInput = container.querySelector('#spa-content #provider_id, #provider_id');
+                if (!roleEl || !providerWrap) return;
+                const val = roleEl.value;
+                const show = val === 'staff';
+                providerWrap.style.display = show ? 'block' : 'none';
+                if (providerInput) {
+                    providerInput.required = !!show;
+                    if (!show) providerInput.value = '';
+                }
+            }
+            document.addEventListener('change', (e) => {
+                if (e.target && e.target.id === 'role') {
+                    updateProviderVisibility(document);
+                }
+            }, true);
+            document.addEventListener('DOMContentLoaded', () => updateProviderVisibility(document));
+            document.addEventListener('spa:navigated', () => updateProviderVisibility(document));
         })();
     </script>
 </body>

@@ -1,7 +1,92 @@
-// Clean FullCalendar Implementation with dynamic imports
+// Clean FullCalendar Implementation (refactored to static imports for reliability)
+import { Calendar } from '@fullcalendar/core';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 // Supports Day, Week, Month views with Tailwind styling and dark mode
+// Added: Robust error + empty state handling, loading indicator, fade-in, CSS imports
+
+// Import FullCalendar core + plugin styles (Vite will bundle these)
+// NOTE: FullCalendar CSS imports removed due to package export map restrictions in this environment.
+// Minimal essential styling will be injected dynamically so build succeeds.
+function injectCalendarBaseStyles() {
+  if (document.getElementById('fc-lite-styles')) return;
+  const css = `
+    .fc { font-family: inherit; font-size: 0.8125rem; }
+    .fc table { border-collapse: collapse; width: 100%; }
+    .fc th { text-align: center; font-weight: 600; padding: 4px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    .fc-daygrid-day { border: 1px solid var(--fc-border, #e5e7eb); background: var(--fc-bg, #fff); }
+    html.dark .fc-daygrid-day { --fc-bg: #1f2937; --fc-border: #374151; }
+    .fc-daygrid-day-top { display: flex; justify-content: flex-end; padding: 2px 4px; font-size: 11px; }
+    .fc-day-today { background: rgba(59,130,246,.15); }
+    html.dark .fc-day-today { background: rgba(96,165,250,.15); }
+    .fc .fc-timegrid-slot { height: 32px; }
+    .fc-timegrid-slot, .fc-timegrid-col { border: 1px solid var(--fc-border, #e5e7eb); }
+    html.dark .fc-timegrid-slot, html.dark .fc-timegrid-col { --fc-border: #374151; }
+    .fc-timegrid-axis { background: var(--fc-axis-bg,#f9fafb); font-size: 10px; color: #6b7280; }
+    html.dark .fc-timegrid-axis { --fc-axis-bg:#111827; color:#9ca3af; }
+    .fc-xs-pill { line-height: 1.1; }
+    .fc .fc-scrollgrid, .fc .fc-scrollgrid-section > td { border: 0; }
+  `;
+  const style = document.createElement('style');
+  style.id = 'fc-lite-styles';
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 
 console.log('🔄 Calendar clean script starting...');
+
+// ===== Deep Diagnostic Mode =====
+const CAL_DEBUG = (() => {
+  try {
+    return /caldebug=1/.test(window.location.search) || localStorage.getItem('xs:cal:debug') === '1';
+  } catch (_) { return false; }
+})();
+
+function dbg(...args) {
+  if (CAL_DEBUG) console.log('[CalDbg]', ...args);
+}
+
+// Allow toggle from console: localStorage.setItem('xs:cal:debug','1'); location.reload();
+
+const diag = { steps: [], errors: [] };
+function recordStep(name, data) {
+  const entry = { ts: Date.now(), name, data };
+  diag.steps.push(entry);
+  dbg('STEP', name, data || '');
+  if (CAL_DEBUG && window.__CAL_DBG_PANEL__) {
+    const line = document.createElement('div');
+    line.className = 'text-xs font-mono py-0.5';
+    line.textContent = `${new Date().toISOString().split('T')[1].slice(0,8)} · ${name}`;
+    window.__CAL_DBG_PANEL__.appendChild(line);
+  }
+}
+function recordError(err, ctx) {
+  const e = { ts: Date.now(), message: err?.message || String(err), stack: err?.stack, ctx };
+  diag.errors.push(e);
+  console.error('[CalDbg] ERROR', ctx, err);
+  if (CAL_DEBUG) {
+    try { window.__CAL_LAST_ERROR__ = e; } catch (_) {}
+  }
+}
+
+function mountDebugPanel() {
+  if (!CAL_DEBUG || window.__CAL_DBG_PANEL__) return;
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;bottom:0;right:0;z-index:9999;max-width:340px;max-height:40vh;overflow:auto;background:#111827cc;color:#f3f4f6;font:11px/1.3 monospace;padding:6px 8px;border:1px solid #374151;border-radius:6px;backdrop-filter:blur(4px);';
+  host.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Calendar Debug</div>';
+  document.body.appendChild(host);
+  window.__CAL_DBG_PANEL__ = host;
+  recordStep('debug-panel-mounted');
+}
+
+if (CAL_DEBUG) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountDebugPanel, { once: true });
+  } else {
+    mountDebugPanel();
+  }
+}
 
 // Application state
 const state = {
@@ -64,6 +149,7 @@ async function fetchJSON(url, opts = {}) {
   return json;
 }
 
+let firstLoadAttempted = false;
 async function loadAppointments() {
   try {
     const view = state.calendar?.view;
@@ -75,17 +161,23 @@ async function loadAppointments() {
       end: end.toISOString().split('T')[0]
     });
 
+    // Request a large page size so we don't miss events in busy ranges
+    params.set('length', '1000');
+
     if (state.filters.providerId) params.set('providerId', state.filters.providerId);
     if (state.filters.serviceId) params.set('serviceId', state.filters.serviceId);
 
     const url = `${apiBase()}/appointments?${params.toString()}`;
+    console.log('[Calendar] Fetching appointments:', url);
     const appointments = await fetchJSON(url);
+    console.log('[Calendar] Appointments loaded:', appointments?.length ?? 0);
 
     return appointments.map(apt => ({
       id: String(apt.id || ''),
       title: apt.title || 'Appointment',
-      start: apt.start,
-      end: apt.end,
+      // Normalize to ISO-8601 (Safari-safe) by inserting 'T' between date and time
+      start: typeof apt.start === 'string' ? apt.start.replace(' ', 'T') : apt.start,
+      end: typeof apt.end === 'string' ? apt.end.replace(' ', 'T') : apt.end,
       extendedProps: {
         status: (apt.status || '').toLowerCase(),
         raw: apt
@@ -93,6 +185,32 @@ async function loadAppointments() {
     }));
   } catch (error) {
     console.error('Failed to load appointments:', error);
+    if (!firstLoadAttempted) {
+      // First load failed -> show stronger feedback (modal if available)
+      try {
+        window.XSNotify?.show({
+          title: 'Appointments Load Failed',
+          message: 'We could not load appointments from the server. The calendar will appear empty until this is resolved.',
+          type: 'error',
+          actions: [{ text: 'Dismiss' }]
+        });
+      } catch(_) {
+        // Inject banner fallback
+        const banner = document.createElement('div');
+        banner.className = 'm-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-sm';
+        banner.textContent = 'Error loading appointments. Please retry or check your connection.';
+        document.getElementById('calendarRoot')?.prepend(banner);
+      }
+    }
+    firstLoadAttempted = true;
+    try {
+      window.XSNotify?.toast({
+        title: 'Calendar',
+        message: 'Could not load appointments. Showing empty calendar.',
+        type: 'warning',
+        duration: 4000
+      });
+    } catch (_) {}
     return [];
   }
 }
@@ -266,8 +384,10 @@ async function initCalendar() {
   const container = $('calendarRoot');
   if (!container) {
     console.error('❌ Calendar container #calendarRoot not found!');
+    recordError(new Error('#calendarRoot missing'), 'initCalendar:container-missing');
     return;
   }
+  recordStep('initCalendar:container-found', { visible: getComputedStyle(container).display, children: container.childElementCount });
 
   console.log('📅 Calendar container found, clearing content...');
   container.innerHTML = '';
@@ -279,12 +399,8 @@ async function initCalendar() {
     console.log('� Loading FullCalendar modules...');
 
     // Use dynamic imports to avoid build issues
-    const [{ Calendar }, dayGridPlugin, timeGridPlugin, interactionPlugin] = await Promise.all([
-      import('@fullcalendar/core'),
-      import('@fullcalendar/daygrid'),
-      import('@fullcalendar/timegrid'),
-      import('@fullcalendar/interaction')
-    ]);
+  // Static import path already performed at top; verify presence
+  recordStep('modules-loaded', { haveCalendar: !!Calendar, dayGrid: !!dayGridPlugin, timeGrid: !!timeGridPlugin, interaction: !!interactionPlugin });
 
     console.log('✅ FullCalendar modules loaded successfully');
     console.log('📦 Calendar:', Calendar);
@@ -294,8 +410,11 @@ async function initCalendar() {
 
     // Create calendar
     console.log('🏗️ Creating calendar instance...');
-    state.calendar = new Calendar(container, {
-      plugins: [dayGridPlugin.default, timeGridPlugin.default, interactionPlugin.default],
+  // Prepare fade-in to avoid flashing
+  container.style.opacity = '0';
+
+    let optionsObject = {
+      plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
       initialView: state.view === 'week' ? 'timeGridWeek' :
                    state.view === 'day' ? 'timeGridDay' : 'dayGridMonth',
       initialDate: state.currentDate,
@@ -322,6 +441,9 @@ async function initCalendar() {
         endTime: state.businessHours.end,
       },
 
+      // Time display format
+      eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
+
       // Month view settings
       fixedWeekCount: false,
       showNonCurrentDates: true,
@@ -331,6 +453,11 @@ async function initCalendar() {
   slotEventOverlap: false,
   forceEventDuration: true,
 
+      // Events set hook will handle empty-state overlay manually (option removed for compatibility)
+      eventsSet() {
+        requestAnimationFrame(() => ensureEmptyStateOverlay(container));
+      },
+
       // Interaction
       selectable: true,
       selectMirror: true,
@@ -338,20 +465,33 @@ async function initCalendar() {
       // Load events
       events: loadAppointments,
 
+      // Loading indicator hook
+      loading(isLoading) {
+        try {
+          container.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+          if (isLoading) {
+            if (!container.__spinner) {
+              const sp = document.createElement('div');
+              sp.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
+              sp.innerHTML = '<div class="animate-spin h-6 w-6 border-2 border-gray-300 dark:border-gray-600 border-t-transparent rounded-full"></div>';
+              container.style.position = container.style.position || 'relative';
+              container.appendChild(sp);
+              container.__spinner = sp;
+            }
+            container.__spinner.style.display = '';
+          } else if (container.__spinner) {
+            container.__spinner.style.display = 'none';
+          }
+        } catch (_) {}
+      },
+
       // Event handlers
-  datesSet: (() => {
-        let t = null;
-        return (info) => {
-          // Debounce to avoid rapid loops on view switches
-          if (t) cancelAnimationFrame(t);
-          t = requestAnimationFrame(() => {
-            console.log('📅 Dates set:', info.view.type, info.start, info.end);
-            state.currentDate = new Date(info.start);
-            updateTitle();
-            updateViewTabs();
-          });
-        };
-      })(),
+      datesSet(info) {
+        console.log('📅 Dates set:', info.view.type, info.start, info.end);
+        state.currentDate = new Date(info.start);
+        updateTitle();
+        updateViewTabs();
+      },
 
       eventClick(info) {
         console.log('📅 Event clicked:', info.event.title);
@@ -364,7 +504,7 @@ async function initCalendar() {
       },
 
       // Custom event rendering
-      eventContent(arg) {
+  eventContent(arg) {
         const raw = arg.event.extendedProps?.raw || {};
         const status = (raw.status || '').toLowerCase();
         const classes = getStatusClasses(status);
@@ -391,15 +531,51 @@ async function initCalendar() {
         wrapper.innerHTML = parts.join('');
         return { domNodes: [wrapper] };
       }
-    });
+    };
+
+    // Diagnostics: list option keys
+    recordStep('calendar-options-prepared', { keys: Object.keys(optionsObject) });
+
+  state.calendar = new Calendar(container, optionsObject);
+    recordStep('calendar-instance-created');
 
     console.log('🎨 Rendering calendar...');
-    state.calendar.render();
+  state.calendar.render();
+  recordStep('calendar-render-called', { view: state.calendar.view?.type });
     console.log('✅ Calendar rendered successfully!');
+    // Smooth fade-in after initial render
+    requestAnimationFrame(() => {
+      container.style.transition = 'opacity .25s ease';
+      container.style.opacity = '1';
+      const fcEl = container.querySelector('.fc');
+      recordStep('post-render-check', { hasFC: !!fcEl, childCount: container.childElementCount, htmlSample: container.innerHTML.slice(0,120) });
+      if (!fcEl) {
+        // Attempt forced manual build (rarely required but diagnostic)
+        try {
+          recordStep('attempt-manual-rerender');
+          state.calendar?.updateSize();
+        } catch (e) {
+          recordError(e, 'manual-rerender');
+        }
+        setTimeout(() => {
+          const again = container.querySelector('.fc');
+          if (!again) {
+            const fallback = document.createElement('div');
+            fallback.className = 'p-6 text-sm text-red-600 dark:text-red-300';
+            fallback.innerHTML = '<div class="font-semibold mb-1">Calendar failed to mount</div><div>Diag log captured (no .fc). Static imports in use. Check bundle duplication or CSS hiding.</div>';
+            container.appendChild(fallback);
+            recordError(new Error('No .fc element after forced update'), 'post-render-retry');
+          } else {
+            recordStep('post-render-retry-success');
+          }
+        }, 30);
+      }
+    });
     console.log('📅 Calendar instance:', state.calendar);
 
   } catch (error) {
     console.error('❌ Failed to initialize calendar:', error);
+    recordError(error, 'initCalendar:exception');
     container.innerHTML = `
       <div class="flex items-center justify-center h-64 text-red-500">
         <div class="text-center">
@@ -408,6 +584,32 @@ async function initCalendar() {
         </div>
       </div>
     `;
+  }
+}
+
+// Create or update a manual empty state overlay when no events visible in current view
+function ensureEmptyStateOverlay(container){
+  try {
+    if (!state.calendar) return;
+    const viewEl = container.querySelector('.fc-view-harness, .fc-view');
+    if (!viewEl) return;
+    const events = container.querySelectorAll('.fc-event');
+    let overlay = container.querySelector('#fc-empty-overlay');
+    if (events.length === 0) {
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'fc-empty-overlay';
+        overlay.className = 'absolute inset-0 flex items-center justify-center pointer-events-none';
+        overlay.innerHTML = '<div class="text-sm text-gray-500 dark:text-gray-400">No appointments available for this period.</div>';
+        container.style.position = container.style.position || 'relative';
+        container.appendChild(overlay);
+      }
+      overlay.style.display = 'flex';
+    } else if (overlay) {
+      overlay.style.display = 'none';
+    }
+  } catch (e) {
+    console.warn('Empty overlay check failed', e);
   }
 }
 
@@ -447,6 +649,8 @@ function changeView(newView) {
       if (token !== state.switchToken) return; // a newer switch superseded this
       try {
         state.view = newView;
+  // persist view preference
+  try { localStorage.setItem('xs:cal:view', state.view); } catch(_) {}
         state.calendar.changeView(fcView);
         // UI update right away to reflect active tab
         updateViewTabs();
@@ -497,6 +701,7 @@ function setupEventListeners() {
   // Navigation
   $('calPrev')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); navigate(-1); });
   $('calNext')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); navigate(1); });
+  $('calToday')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); goToToday(); });
 
   // View switching
   $('viewDay')?.addEventListener('click', (e) => {
@@ -562,9 +767,11 @@ function restoreFilters() {
   try {
     const savedService = localStorage.getItem('xs:cal:serviceId');
     const savedProvider = localStorage.getItem('xs:cal:providerId');
+  const savedView = localStorage.getItem('xs:cal:view');
 
     if (savedService !== null) state.filters.serviceId = savedService;
     if (savedProvider !== null) state.filters.providerId = savedProvider;
+  if (savedView && ['day','week','month'].includes(savedView)) state.view = savedView;
 
     // Apply to UI elements
     const svc = $('filterService');
@@ -585,32 +792,53 @@ async function init() {
     // Prevent multiple initializations
     if (state.initialized) {
       console.log('Calendar already initialized, skipping...');
+  recordStep('init:skip-already-initialized');
       return;
     }
 
     const calendarRoot = $('calendarRoot');
     if (!calendarRoot) {
       console.error('❌ Calendar container #calendarRoot not found in DOM!');
+      recordError(new Error('#calendarRoot missing at init()'), 'init:container-missing');
       return;
     }
+    recordStep('init:container-present');
 
-    console.log('🔄 Initializing calendar...');
+    // Dropdown diagnostics
+    const filterService = $('filterService');
+    const filterProvider = $('filterProvider');
+    const filterServiceMobile = $('filterServiceMobile');
+    const filterProviderMobile = $('filterProviderMobile');
+    recordStep('init:dropdown-presence', {
+      filterService: !!filterService,
+      filterProvider: !!filterProvider,
+      filterServiceMobile: !!filterServiceMobile,
+      filterProviderMobile: !!filterProviderMobile
+    });
+
+  console.log('🔄 Initializing calendar...');
+  injectCalendarBaseStyles();
     state.initialized = true;
 
     // Restore saved state
-    restoreFilters();
+  restoreFilters();
+  recordStep('filters-restored', { filters: { ...state.filters } });
 
     // Setup event listeners
-    setupEventListeners();
+  setupEventListeners();
+  recordStep('event-listeners-wired');
 
   // Load business hours before initializing calendar
   await loadBusinessHours();
+    recordStep('business-hours-loaded', { ...state.businessHours });
 
     // Initialize calendar
-    await initCalendar();
+  await initCalendar();
+  recordStep('initCalendar-finished');
 
   } catch (error) {
     console.error('❌ Calendar initialization failed:', error);
+  recordError(error, 'init:exception');
     const container = $('calendarRoot');
     if (container) {
       container.innerHTML = `
@@ -639,6 +867,7 @@ function handleSPANavigation() {
         state.calendar = null;
       }
       state.initialized = false;
+  state.__eventsWired = false; // allow re-binding listeners for new DOM
       init();
     }, 0);
     return;
@@ -650,6 +879,7 @@ function handleSPANavigation() {
     state.calendar = null;
   }
   state.initialized = false;
+  state.__eventsWired = false;
 }
 
 // Bootstrap - SINGLE INITIALIZATION ONLY
@@ -667,3 +897,47 @@ if (!window.__xsCalendarSpaBound) {
 
 // Export for debugging
 window.calendarState = state;
+// Expose diagnostics
+window.__CAL_DIAG__ = diag;
+
+// Force style baseline if missing (some builds may purge our minimal styles)
+function ensureBaseStructureStyles() {
+  if (document.getElementById('fc-structure-fix')) return;
+  const style = document.createElement('style');
+  style.id = 'fc-structure-fix';
+  style.textContent = `
+    #calendarRoot { position: relative; }
+    #calendarRoot .fc { font-family: inherit; font-size: 12px; }
+    #calendarRoot .fc .fc-daygrid-day { min-height: 100px; }
+    #calendarRoot .fc .fc-scrollgrid { border: 0 !important; }
+  `;
+  document.head.appendChild(style);
+  recordStep('structure-styles-injected');
+}
+ensureBaseStructureStyles();
+
+// ---- Visibility Watchdog (prevents calendar disappearing after view switches) ----
+function startCalendarWatchdog() {
+  const root = document.getElementById('calendarRoot');
+  if (!root || root.__watchdog) return;
+  const observer = new MutationObserver(() => {
+    if (!root._fc) return; // calendar destroyed intentionally
+    const style = getComputedStyle(root);
+    const hidden = style.display === 'none' || style.visibility === 'hidden';
+    if (hidden || root.offsetHeight === 0) {
+      console.warn('[Calendar] Detected hidden/collapsed container – forcing re-render');
+      try {
+        root.style.display = 'block';
+        root.style.visibility = 'visible';
+        root.style.minHeight = '600px';
+        // FullCalendar sometimes needs a rerender when container was 0 height
+        state.calendar?.updateSize();
+      } catch (_) {}
+    }
+  });
+  observer.observe(root, { attributes: true, attributeFilter: ['style', 'class'] });
+  root.__watchdog = observer;
+}
+
+// Defer watchdog start until next tick after initial render
+setTimeout(startCalendarWatchdog, 500);
