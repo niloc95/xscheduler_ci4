@@ -8,6 +8,53 @@ class SeparateCustomersFinalize extends Migration
 {
     public function up()
     {
+        // Check if there are any customer users to migrate
+        // If this is a fresh installation, skip the migration entirely
+        $customerCount = $this->db->table('users')->where('role', 'customer')->countAllResults();
+        
+        if ($customerCount == 0) {
+            // Fresh installation - no customer data to migrate
+            // Just ensure the role enum is correct and add customer_id column if needed
+            
+            // Check if customer_id column exists, add it if not
+            if (!$this->db->fieldExists('customer_id', 'appointments')) {
+                $this->forge->addColumn('appointments', [
+                    'customer_id' => [
+                        'type'       => 'INT',
+                        'constraint' => 11,
+                        'unsigned'   => true,
+                        'null'       => true,
+                        'after'      => 'user_id',
+                        'comment'    => 'Customer ID from xs_customers table',
+                    ]
+                ]);
+            }
+            
+            // Ensure proper role enum (without customer for fresh installs)
+            $this->db->query("ALTER TABLE xs_users MODIFY role ENUM('admin','provider','staff') NOT NULL DEFAULT 'staff'");
+            
+            return; // Skip the rest of the migration
+        }
+
+        // Legacy data migration - only runs if there are customer users
+        
+        // 0) First, add customer_id column to appointments table if it doesn't exist
+        if (!$this->db->fieldExists('customer_id', 'appointments')) {
+            $this->forge->addColumn('appointments', [
+                'customer_id' => [
+                    'type'       => 'INT',
+                    'constraint' => 11,
+                    'unsigned'   => true,
+                    'null'       => true,
+                    'after'      => 'user_id',
+                    'comment'    => 'Customer ID from xs_customers table',
+                ]
+            ]);
+
+            // Add index for customer_id
+            $this->forge->addKey('customer_id');
+        }
+
         // 1) Insert customers from xs_users into xs_customers if not already present (by email or phone)
         $sqlInsertCustomers = <<<SQL
 INSERT INTO xs_customers (first_name, last_name, email, phone, address, notes, created_at, updated_at)
@@ -57,10 +104,15 @@ SQL;
 
     public function down()
     {
-        // Reverse step 5: restore enum to include 'customer' (default back to 'customer')
+        // Reverse step 5: restore enum to include 'customer' (works for both fresh and legacy installs)
         $this->db->query("ALTER TABLE xs_users MODIFY role ENUM('admin','provider','staff','customer') NOT NULL DEFAULT 'customer'");
 
-        // We do not restore deleted xs_users with role customer, or revert appointment user_id changes,
-        // because that would require historical state. Down migration focuses on role enum only.
+        // Remove the customer_id column from appointments table if it exists
+        if ($this->db->fieldExists('customer_id', 'appointments')) {
+            $this->forge->dropColumn('appointments', 'customer_id');
+        }
+
+        // Note: We do not restore deleted xs_users with role customer, or revert appointment user_id changes,
+        // because that would require historical state. Down migration focuses on schema changes only.
     }
 }

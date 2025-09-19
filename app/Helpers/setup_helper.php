@@ -8,19 +8,24 @@ if (!function_exists('is_setup_completed')) {
      */
     function is_setup_completed(): bool
     {
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        
-        if (!file_exists($flagPath)) {
-            return false;
+        // Production: require .env and DB readiness; ignore flags
+        if (ENVIRONMENT === 'production') {
+            if (!file_exists(ROOTPATH . '.env')) {
+                return false;
+            }
+            try {
+                $db = \Config\Database::connect();
+                if (!$db) return false;
+                return $db->tableExists('users');
+            } catch (\Throwable $e) {
+                return false;
+            }
         }
 
-        // Additional check: verify .env file exists
-        $envPath = ROOTPATH . '.env';
-        if (!file_exists($envPath)) {
-            return false;
-        }
-
-        return true;
+        // Non-production: rely on flag files for local/dev convenience
+        $flagPathNew = WRITEPATH . 'setup_complete.flag';
+        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        return file_exists($flagPathNew) || file_exists($flagPathLegacy);
     }
 }
 
