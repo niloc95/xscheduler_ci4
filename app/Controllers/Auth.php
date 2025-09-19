@@ -33,7 +33,7 @@ class Auth extends BaseController
         }
 
         $data = [
-            'title' => 'Login - XScheduler',
+            'title' => 'Login - WebSchedulr',
             'validation' => $this->validator
         ];
 
@@ -92,7 +92,7 @@ class Auth extends BaseController
     public function forgotPassword()
     {
         $data = [
-            'title' => 'Forgot Password - XScheduler',
+            'title' => 'Forgot Password - WebSchedulr',
             'validation' => $this->validator
         ];
 
@@ -166,7 +166,7 @@ class Auth extends BaseController
         }
 
         $data = [
-            'title' => 'Reset Password - XScheduler',
+            'title' => 'Reset Password - WebSchedulr',
             'token' => $token,
             'validation' => $this->validator
         ];
@@ -232,8 +232,8 @@ class Auth extends BaseController
     private function sendResetEmail($email, $name, $resetLink)
     {
         $this->email->setTo($email);
-        $this->email->setFrom('noreply@xscheduler.com', 'XScheduler');
-        $this->email->setSubject('Password Reset Request - XScheduler');
+        $this->email->setFrom('noreply@webschedulr.com', 'WebSchedulr');
+        $this->email->setSubject('Password Reset Request - WebSchedulr');
 
         $message = view('auth/emails/password_reset', [
             'name' => $name,

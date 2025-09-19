@@ -1,0 +1,173 @@
+// ======================================
+// Material Design 3.0 Custom Properties
+// ======================================
+
+:root {
+  /* Primary Colors - Ocean Blue */
+  --md-sys-color-primary: #{$brand-ocean};
+  --md-sys-color-on-primary: #{$white};
+  --md-sys-color-primary-container: #{$brand-ocean-light};
+  --md-sys-color-on-primary-container: #c6e7ff;
+  
+  /* Secondary Colors - Orange */
+  --md-sys-color-secondary: #{$brand-orange};
+  --md-sys-color-on-secondary: #{$white};
+  --md-sys-color-secondary-container: #{$brand-orange-light};
+  --md-sys-color-on-secondary-container: #{$brand-ocean};
+  
+  /* Tertiary Colors - Golden */
+  --md-sys-color-tertiary: #{$brand-golden};
+  --md-sys-color-on-tertiary: #{$brand-ocean};
+  --md-sys-color-tertiary-container: #{$brand-golden-light};
+  --md-sys-color-on-tertiary-container: #{$brand-ocean};
+  
+  /* Error Colors - Crimson */
+  --md-sys-color-error: #{$brand-crimson};
+  --md-sys-color-on-error: #{$white};
+  --md-sys-color-error-container: #ffebee;
+  --md-sys-color-on-error-container: #7f1d1d;
+  
+  /* Background & Surface - Light Theme */
+  --md-sys-color-background: #{$brand-cream};
+  --md-sys-color-on-background: #{$brand-ocean};
+  --md-sys-color-surface: #{$white};
+  --md-sys-color-on-surface: #{$brand-ocean};
+  --md-sys-color-surface-variant: #{$gray-50};
+  --md-sys-color-on-surface-variant: #{$gray-600};
+  
+  /* Outline & Shadow */
+  --md-sys-color-outline: rgba(0, 48, 73, 0.3);
+  --md-sys-color-outline-variant: rgba(0, 48, 73, 0.1);
+  --md-sys-color-shadow: rgba(0, 48, 73, 0.2);
+  --md-sys-color-surface-tint: #{$brand-ocean};
+
+  /* Custom WebSchedulr Theme Variables - Light */
+  --ws-bg-primary: #{$white};
+  --ws-bg-secondary: #{$gray-50};
+  --ws-bg-tertiary: #{$brand-cream};
+  --ws-text-primary: #{$brand-ocean};
+  --ws-text-secondary: #{$gray-600};
+  --ws-text-muted: #{$gray-500};
+  --ws-border: #{$gray-200};
+  --ws-border-light: #{$gray-100};
+  --ws-accent: #{$brand-orange};
+  --ws-accent-hover: #{$brand-orange-dark};
+  --ws-success: #{$success};
+  --ws-error: #{$error};
+  --ws-warning: #{$warning};
+  --ws-info: #{$info};
+  --ws-surface-elevated: #{$white};
+  --ws-shadow: #{rgba($brand-ocean, 0.1)};
+  --ws-shadow-lg: #{rgba($brand-ocean, 0.15)};
+
+  /* Legacy alias variables (xs-*) for existing components */
+  --xs-bg-primary: var(--ws-bg-primary);
+  --xs-bg-secondary: var(--ws-bg-secondary);
+  --xs-bg-tertiary: var(--ws-bg-tertiary);
+  --xs-text-primary: var(--ws-text-primary);
+  --xs-text-secondary: var(--ws-text-secondary);
+  --xs-text-muted: var(--ws-text-muted);
+  --xs-border: var(--ws-border);
+  --xs-border-light: var(--ws-border-light);
+  --xs-accent: var(--ws-accent);
+  --xs-accent-hover: var(--ws-accent-hover);
+  --xs-success: var(--ws-success);
+  --xs-error: var(--ws-error);
+  --xs-warning: var(--ws-warning);
+  --xs-info: var(--ws-info);
+  --xs-surface-elevated: var(--ws-surface-elevated);
+  --xs-shadow: var(--ws-shadow);
+  --xs-shadow-lg: var(--ws-shadow-lg);
+}
+
+/* Dark Theme - Material Design 3.0 Custom Properties */
+html.dark,
+[data-theme="dark"] {
+  /* Primary Colors - Ocean Blue (adjusted for dark) */
+  --md-sys-color-primary: #7FC8E8;
+  --md-sys-color-on-primary: #003447;
+  --md-sys-color-primary-container: #{$brand-ocean-light};
+  --md-sys-color-on-primary-container: #c6e7ff;
+  
+  /* Secondary Colors - Orange (adjusted for dark) */
+  --md-sys-color-secondary: #FFB366;
+  --md-sys-color-on-secondary: #4d2800;
+  --md-sys-color-secondary-container: #663600;
+  --md-sys-color-on-secondary-container: #ffcc80;
+  
+  /* Tertiary Colors - Golden (adjusted for dark) */
+  --md-sys-color-tertiary: #FFD166;
+  --md-sys-color-on-tertiary: #4d3d00;
+  --md-sys-color-tertiary-container: #665000;
+  --md-sys-color-on-tertiary-container: #ffe082;
+  
+  /* Error Colors - Crimson (adjusted for dark) */
+  --md-sys-color-error: #FF6B6B;
+  --md-sys-color-on-error: #4d0000;
+  --md-sys-color-error-container: #661a1a;
+  --md-sys-color-on-error-container: #ffcdd2;
+  
+  /* Background & Surface - Dark Theme */
+  --md-sys-color-background: #{$dark-bg-primary};
+  --md-sys-color-on-background: #{$dark-text-secondary};
+  --md-sys-color-surface: #{$dark-bg-secondary};
+  --md-sys-color-on-surface: #{$dark-text-primary};
+  --md-sys-color-surface-variant: #{$dark-bg-tertiary};
+  --md-sys-color-on-surface-variant: #{$dark-text-muted};
+  
+  /* Outline & Shadow - Dark Theme */
+  --md-sys-color-outline: rgba(160, 174, 192, 0.3);
+  --md-sys-color-outline-variant: rgba(160, 174, 192, 0.1);
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.4);
+  --md-sys-color-surface-tint: #7FC8E8;
+
+  /* Custom WebSchedulr Theme Variables - Dark */
+  --ws-bg-primary: #{$dark-bg-secondary};
+  --ws-bg-secondary: #{$dark-bg-tertiary};
+  --ws-bg-tertiary: #{$gray-600};
+  --ws-text-primary: #{$dark-text-primary};
+  --ws-text-secondary: #{$dark-text-secondary};
+  --ws-text-muted: #{$dark-text-muted};
+  --ws-border: #{$gray-600};
+  --ws-border-light: #{$dark-bg-tertiary};
+  --ws-accent: #FFB366;
+  --ws-accent-hover: #FF9933;
+  --ws-success: #FFD166;
+  --ws-error: #FF6B6B;
+  --ws-warning: #FFB366;
+  --ws-info: #7FC8E8;
+  --ws-surface-elevated: #{$dark-bg-tertiary};
+  --ws-shadow: rgba(0, 0, 0, 0.3);
+  --ws-shadow-lg: rgba(0, 0, 0, 0.5);
+
+  /* Legacy alias variables (xs-*) for dark theme */
+  --xs-bg-primary: var(--ws-bg-primary);
+  --xs-bg-secondary: var(--ws-bg-secondary);
+  --xs-bg-tertiary: var(--ws-bg-tertiary);
+  --xs-text-primary: var(--ws-text-primary);
+  --xs-text-secondary: var(--ws-text-secondary);
+  --xs-text-muted: var(--ws-text-muted);
+  --xs-border: var(--ws-border);
+  --xs-border-light: var(--ws-border-light);
+  --xs-accent: var(--ws-accent);
+  --xs-accent-hover: var(--ws-accent-hover);
+  --xs-success: var(--ws-success);
+  --xs-error: var(--ws-error);
+  --xs-warning: var(--ws-warning);
+  --xs-info: var(--ws-info);
+  --xs-surface-elevated: var(--ws-surface-elevated);
+  --xs-shadow: var(--ws-shadow);
+  --xs-shadow-lg: var(--ws-shadow-lg);
+}
+
+/* Automatic Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --md-sys-color-primary: #7dd3fc;
+    --md-sys-color-on-primary: #{$brand-ocean};
+    --md-sys-color-background: #{$dark-bg-primary};
+    --md-sys-color-on-background: #{$brand-cream};
+    --md-sys-color-surface: #{$dark-bg-secondary};
+    --md-sys-color-on-surface: #{$brand-cream};
+  }
+}

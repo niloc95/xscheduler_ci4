@@ -10,6 +10,18 @@ use App\Models\UserModel;
 
 class Scheduler extends BaseController
 {
+    // New Tailwind-based custom schedule (frontend-only calendar)
+    public function custom()
+    {
+        // Provide Services and Providers for filter dropdowns
+        $serviceModel = new ServiceModel();
+        $services = $serviceModel->orderBy('name', 'ASC')->findAll();
+        $providers = (new UserModel())->getProviders();
+        return view('scheduler/custom', [
+            'services' => $services,
+            'providers' => $providers,
+        ]);
+    }
     // Admin/staff dashboard-facing scheduler view
     public function dashboard()
     {

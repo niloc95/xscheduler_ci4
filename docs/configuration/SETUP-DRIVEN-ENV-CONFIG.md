@@ -2,7 +2,7 @@
 
 ## Overview
 
-The xScheduler setup system now uses a clean, user-driven approach to environment configuration that separates development from production environments.
+The WebSchedulr setup system now uses a clean, user-driven approach to environment configuration that separates development from production environments.
 
 ## Workflow
 

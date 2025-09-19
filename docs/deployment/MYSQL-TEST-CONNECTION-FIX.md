@@ -101,7 +101,7 @@ if (strpos($contentType, 'application/json') !== false) {
 The fix is included in:
 - ✅ **Development Environment**: `/resources/js/setup.js` updated
 - ✅ **Built Assets**: `/public/build/assets/setup.js` rebuilt
-- ✅ **Deployment Package**: `xscheduler-deploy.zip` (2.76 MB) includes all fixes
+- ✅ **Deployment Package**: `webschedulr-deploy.zip` (2.76 MB) includes all fixes
 - ✅ **View Template**: MySQL form fields have proper error containers
 
 ## Quick Test Steps

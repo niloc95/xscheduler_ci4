@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Login - xScheduler' ?></title>
+    <title><?= $title ?? 'Login - WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script (prevents flash) -->
     <script>
@@ -56,14 +56,14 @@
                 <div class="flex justify-center mb-4">
                     <?php $logoUrl = setting_url('general.company_logo'); ?>
                     <?php if ($logoUrl): ?>
-                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700" style="object-fit: contain;" />
+                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2" style="object-fit: contain;" />
                     <?php else: ?>
                         <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
                             <span class="material-symbols-outlined text-white text-3xl">schedule</span>
                         </div>
                     <?php endif; ?>
                 </div>
-                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">xScheduler</h1>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);"></h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Sign in to your account</p>
             </div>
 
@@ -150,9 +150,7 @@
 
                 <!-- Login Button -->
                 <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 hover:opacity-90 focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 dark:focus:ring-offset-gray-800" style="background-color: var(--md-sys-color-secondary);">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-2">login</span>
                     Sign In
                 </button>
             </form>
@@ -165,6 +163,11 @@
                         Contact Administrator
                     </a>
                 </p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-4">
+                    <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
+                        Engineered by WebSchedulr
+                    </a>
+                </p>
             </div>
         </div>
     </div>
@@ -172,85 +175,5 @@
     <!-- Scripts -->
     <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
     <script type="module" src="<?= base_url('/build/assets/dark-mode.js') ?>"></script>
-</body>
-</html>
-
-            <!-- Login Form -->
-            <form action="<?= base_url('auth/attemptLogin') ?>" method="post" class="space-y-6">
-                <?= csrf_field() ?>
-                
-                <!-- Email Field -->
-                <div>
-                    <md-outlined-text-field 
-                        label="Email Address" 
-                        type="email" 
-                        name="email" 
-                        value="<?= old('email') ?>"
-                        required
-                        class="w-full"
-                        <?= isset($validation) && $validation->hasError('email') ? 'error' : '' ?>>
-                        <span slot="leading-icon" class="material-symbols-outlined">email</span>
-                    </md-outlined-text-field>
-                    <?php if (isset($validation) && $validation->hasError('email')): ?>
-                        <div class="mt-1 text-sm text-red-600">
-                            <?= $validation->getError('email') ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Password Field -->
-                <div>
-                    <md-outlined-text-field 
-                        label="Password" 
-                        type="password" 
-                        name="password" 
-                        required
-                        class="w-full"
-                        <?= isset($validation) && $validation->hasError('password') ? 'error' : '' ?>>
-                        <span slot="leading-icon" class="material-symbols-outlined">lock</span>
-                    </md-outlined-text-field>
-                    <?php if (isset($validation) && $validation->hasError('password')): ?>
-                        <div class="mt-1 text-sm text-red-600">
-                            <?= $validation->getError('password') ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Remember Me -->
-                <div class="flex items-center justify-between">
-                    <label class="flex items-center">
-                        <md-checkbox name="remember_me"></md-checkbox>
-                        <span class="ml-2 text-sm text-gray-600">Remember me</span>
-                    </label>
-                    
-                    <a href="<?= base_url('auth/forgot-password') ?>" 
-                       class="text-sm hover:text-blue-700 transition-colors" style="color: #003049;">
-                        Forgot Password?
-                    </a>
-                </div>
-
-                <!-- Login Button -->
-                <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200" style="background-color: #F77F00;">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 0v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                    </svg>
-                    Sign In
-                </button>
-            </form>
-
-            <!-- Footer -->
-            <div class="mt-8 text-center">
-                <p class="text-sm text-gray-600">
-                    Don't have an account? 
-                    <a href="<?= base_url('auth/register') ?>" class="hover:text-blue-700 transition-colors font-medium" style="color: #003049;">
-                        Contact Administrator
-                    </a>
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Material Web Components -->
-    <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
 </body>
 </html>

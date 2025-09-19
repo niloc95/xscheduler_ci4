@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: xscheduler API
+  title: WebSchedulr API
   version: "1.0.0"
   description: Minimal spec for versioned endpoints used by the dashboard and clients.
 servers:

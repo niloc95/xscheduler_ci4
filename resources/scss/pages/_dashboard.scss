@@ -1,0 +1,185 @@
+// ===========================
+// Dashboard Page Styles
+// ===========================
+
+.dashboard-page {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: $spacing-2xl;
+    margin-bottom: $spacing-3xl;
+  }
+  
+  .chart-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: $spacing-3xl;
+    margin-bottom: $spacing-3xl;
+    
+    @include tablet {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+    background-color: var(--xs-bg-primary);
+    border-radius: $border-radius-xl;
+    padding: $spacing-2xl;
+    box-shadow: $shadow-brand;
+  }
+  
+  .recent-activity {
+    .activity-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      
+      .activity-item {
+        display: flex;
+        align-items: center;
+        padding: $spacing-lg;
+        border-bottom: 1px solid var(--xs-border-light);
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        .activity-icon {
+          width: 2rem;
+          height: 2rem;
+          border-radius: $border-radius-full;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: $spacing-md;
+          font-size: $font-size-sm;
+          
+          &.activity-appointment {
+            background-color: rgba($brand-ocean, 0.1);
+            color: $brand-ocean;
+          }
+          
+          &.activity-user {
+            background-color: rgba($brand-orange, 0.1);
+            color: $brand-orange;
+          }
+          
+          &.activity-payment {
+            background-color: rgba($brand-golden, 0.1);
+            color: darken($brand-golden, 20%);
+          }
+        }
+        
+        .activity-content {
+          flex: 1;
+          
+          .activity-title {
+            font-weight: $font-weight-medium;
+            color: var(--xs-text-primary);
+            margin: 0 0 $spacing-xs 0;
+          }
+          
+          .activity-meta {
+            font-size: $font-size-sm;
+            color: var(--xs-text-muted);
+            margin: 0;
+          }
+        }
+        
+        .activity-time {
+          font-size: $font-size-sm;
+          color: var(--xs-text-muted);
+        }
+      }
+    }
+  }
+  
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $spacing-lg;
+    
+    .quick-action-card {
+      @include card-base;
+      padding: $spacing-2xl;
+      text-align: center;
+      cursor: pointer;
+      transition: all $transition-normal;
+      
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: $shadow-brand-lg;
+      }
+      
+      .action-icon {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto $spacing-lg;
+        border-radius: $border-radius-lg;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: $font-size-xl;
+        color: $white;
+        
+        &.action-schedule { background-color: $brand-ocean; }
+        &.action-clients { background-color: $brand-orange; }
+        &.action-services { background-color: $brand-golden; }
+        &.action-reports { background-color: $brand-crimson; }
+      }
+      
+      .action-title {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-medium;
+        color: var(--xs-text-primary);
+        margin: 0;
+      }
+    }
+  }
+}
+
+// Material Design specific styling for dashboard
+.dashboard-page {
+  // Material Design Cards with custom brand colors
+  md-outlined-card {
+    --md-outlined-card-outline-color: var(--xs-border);
+    border-radius: $border-radius-xl;
+    transition: all $transition-normal;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $material-shadow-lg;
+    }
+    
+    // Brand colored cards
+    &.card-primary {
+      background-color: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+    
+    &.card-secondary {
+      background-color: var(--md-sys-color-secondary);
+      color: var(--md-sys-color-on-secondary);
+    }
+    
+    &.card-tertiary {
+      background-color: var(--md-sys-color-tertiary);
+      color: var(--md-sys-color-on-tertiary);
+    }
+    
+    &.card-gradient-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: $white;
+    }
+  }
+  
+  // Material filled buttons
+  md-filled-button {
+    --md-filled-button-container-color: var(--md-sys-color-primary);
+    --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+    border-radius: $border-radius-lg;
+  }
+}

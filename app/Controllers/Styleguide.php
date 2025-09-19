@@ -7,7 +7,7 @@ class Styleguide extends BaseController
     public function index()
     {
         $data = [
-            'title' => 'Style Guide - xScheduler'
+            'title' => 'Style Guide - WebSchedulr'
         ];
     return view('styleguide/index', $data);
     }

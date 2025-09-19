@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('title') ?>
-Dark Mode Test - xScheduler
+Dark Mode Test - WebSchedulr
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>

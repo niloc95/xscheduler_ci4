@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Reset - XScheduler</title>
+    <title>Password Reset - WebSchedulr</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -126,7 +126,7 @@
             <?php else: ?>
                 <span class="icon">🔐</span>
             <?php endif; ?>
-            <h1>XScheduler</h1>
+            <h1>WebSchedulr</h1>
         </div>
 
         <!-- Content -->
@@ -136,7 +136,7 @@
             </div>
 
             <div class="message">
-                We received a request to reset your password for your XScheduler account. 
+                We received a request to reset your password for your WebSchedulr account. 
                 If you made this request, click the button below to set a new password:
             </div>
 
@@ -165,9 +165,9 @@
 
         <!-- Footer -->
         <div class="footer">
-            <p><strong>XScheduler Team</strong></p>
+            <p><strong>WebSchedulr Team</strong></p>
             <p>This is an automated message, please do not reply to this email.</p>
-            <p>&copy; <?= date('Y') ?> XScheduler. All rights reserved.</p>
+            <p>&copy; <?= date('Y') ?> WebSchedulr. All rights reserved.</p>
         </div>
     </div>
 </body>

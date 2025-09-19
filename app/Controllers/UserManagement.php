@@ -33,7 +33,7 @@ class UserManagement extends BaseController
         $stats = $this->getUserStatsBasedOnRole($currentUserId);
 
         $data = [
-            'title' => 'User Management - XScheduler',
+            'title' => 'User Management - WebSchedulr',
             'currentUser' => $currentUser,
             'users' => $users,
             'stats' => $stats,
@@ -75,7 +75,7 @@ class UserManagement extends BaseController
         $stats = $this->getUserStatsBasedOnRole($currentUserId);
 
         $data = [
-            'title' => 'Create User - XScheduler',
+            'title' => 'Create User - WebSchedulr',
             'currentUser' => $currentUser,
             'availableRoles' => $availableRoles,
             'providers' => $providers,
@@ -192,7 +192,7 @@ class UserManagement extends BaseController
         }
 
         $data = [
-            'title' => 'Edit User - XScheduler',
+            'title' => 'Edit User - WebSchedulr',
             'currentUser' => $currentUser,
             'user' => $user,
             'availableRoles' => $availableRoles,

@@ -1,4 +1,4 @@
-name: xScheduler CI/CD Pipeline
+name: WebSchedulr CI/CD Pipeline
 
 on:
   push:
@@ -89,7 +89,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: test_password
-          MYSQL_DATABASE: xscheduler_test
+          MYSQL_DATABASE: webschedulr_test
           MYSQL_USER: test_user
           MYSQL_PASSWORD: test_password
         ports:
@@ -142,7 +142,7 @@ jobs:
               "db_driver": "MySQLi",
               "db_hostname": "127.0.0.1",
               "db_port": "3306",
-              "db_database": "xscheduler_test",
+              "db_database": "webschedulr_test",
               "db_username": "test_user",
               "db_password": "test_password"
             }' \
@@ -187,13 +187,13 @@ jobs:
       - name: Validate deployment package
         run: |
           echo "Validating deployment package..."
-          test -f xscheduler-deploy.zip || { echo "❌ Deployment ZIP not created"; exit 1; }
+          test -f webschedulr-deploy.zip || { echo "❌ Deployment ZIP not created"; exit 1; }
           
           # Check ZIP contents
-          unzip -l xscheduler-deploy.zip | grep -E "(app/|system/|vendor/|public/|writable/)" || { echo "❌ Missing directories in ZIP"; exit 1; }
+          unzip -l webschedulr-deploy.zip | grep -E "(app/|system/|vendor/|public/|writable/)" || { echo "❌ Missing directories in ZIP"; exit 1; }
           
           # Check ZIP size
-          ZIP_SIZE=$(stat -f%z xscheduler-deploy.zip 2>/dev/null || stat -c%s xscheduler-deploy.zip)
+          ZIP_SIZE=$(stat -f%z webschedulr-deploy.zip 2>/dev/null || stat -c%s webschedulr-deploy.zip)
           ZIP_SIZE_MB=$((ZIP_SIZE / 1024 / 1024))
           echo "📦 Deployment package size: ${ZIP_SIZE_MB}MB"
           
@@ -206,15 +206,15 @@ jobs:
           
       - name: Generate deployment info
         run: |
-          echo "# xScheduler Deployment Package" > deployment-info.md
+          echo "# WebSchedulr Deployment Package" > deployment-info.md
           echo "" >> deployment-info.md
           echo "**Built from:** \`${{ github.ref_name }}\`" >> deployment-info.md
           echo "**Commit:** \`${{ github.sha }}\`" >> deployment-info.md
           echo "**Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> deployment-info.md
-          echo "**Package Size:** $(ls -lh xscheduler-deploy.zip | awk '{print $5}')" >> deployment-info.md
+          echo "**Package Size:** $(ls -lh webschedulr-deploy.zip | awk '{print $5}')" >> deployment-info.md
           echo "" >> deployment-info.md
           echo "## Installation" >> deployment-info.md
-          echo "1. Download the \`xscheduler-deploy.zip\` file" >> deployment-info.md
+          echo "1. Download the \`webschedulr-deploy.zip\` file" >> deployment-info.md
           echo "2. Extract to your hosting provider" >> deployment-info.md
           echo "3. Point domain to the \`public/\` folder" >> deployment-info.md
           echo "4. Run the setup wizard at \`/setup\`" >> deployment-info.md
@@ -228,17 +228,17 @@ jobs:
       - name: Upload deployment package
         uses: actions/upload-artifact@v4
         with:
-          name: xscheduler-deployment-${{ github.ref_name }}-${{ github.sha }}
+          name: webschedulr-deployment-${{ github.ref_name }}-${{ github.sha }}
           path: |
-            xscheduler-deploy.zip
+            webschedulr-deploy.zip
             deployment-info.md
           retention-days: 90
           
       - name: Upload deployment directory
         uses: actions/upload-artifact@v4
         with:
-          name: xscheduler-deploy-directory-${{ github.ref_name }}-${{ github.sha }}
-          path: xscheduler-deploy/
+          name: webschedulr-deploy-directory-${{ github.ref_name }}-${{ github.sha }}
+          path: webschedulr-deploy/
           retention-days: 30
 
   # Code Quality & Security Checks

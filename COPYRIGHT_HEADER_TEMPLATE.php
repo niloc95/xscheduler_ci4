@@ -1,15 +1,15 @@
 <?php
 /**
- * XScheduler CI4 - Professional Appointment Scheduling System
+ * WebSchedulr CI4 - Professional Appointment Scheduling System
  * 
  * PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
  * 
- * @package     XScheduler CI4
+ * @package     WebSchedulr CI4
  * @author      niloc95
  * @copyright   Copyright (c) 2025 niloc95. All rights reserved.
  * @license     Commercial License - see LICENSE-PROPRIETARY file
  * @version     1.0.0
- * @link        https://github.com/niloc95/xscheduler_ci4
+ * @link        https://github.com/niloc95/webschedulr_ci4
  * 
  * NOTICE: This software and its source code are proprietary and confidential.
  * Unauthorized copying, distribution, or modification is strictly prohibited.

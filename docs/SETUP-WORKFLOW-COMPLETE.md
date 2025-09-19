@@ -2,13 +2,13 @@
 
 ## Summary
 
-✅ **IMPLEMENTED**: Clean, user-friendly environment configuration workflow for xScheduler without environment switching scripts.
+✅ **IMPLEMENTED**: Clean, user-friendly environment configuration workflow for WebSchedulr without environment switching scripts.
 
 ## Current State
 
 ### Development Workflow
 - **Local Development**: Uses `.env` file optimized for development
-  - SQLite database: `writable/database/xscheduler_dev.db`
+  - SQLite database: `writable/database/webschedulr_dev.db`
   - CSRF protection disabled for easier testing
   - Debug logging enabled (level 9)
   - Setup wizard allows multiple runs

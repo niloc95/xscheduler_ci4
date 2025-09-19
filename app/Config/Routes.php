@@ -147,7 +147,10 @@ $routes->get('dark-mode-test', 'DarkModeTest::index');
 // Scheduler Routes
 // Admin/staff dashboard-facing scheduler (requires setup + auth)
 $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
-    $routes->get('', 'Scheduler::dashboard', ['filter' => 'auth']);
+    // Default Schedule page shows the custom Tailwind calendar
+    $routes->get('', 'Scheduler::custom', ['filter' => 'auth']);
+    // Keep dashboard accessible
+    $routes->get('dashboard', 'Scheduler::dashboard', ['filter' => 'auth']);
 });
 
 // Public/client-facing booking view
@@ -158,6 +161,9 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
+
+    // Unversioned appointments resource (alias to v1 controller)
+    $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
 
     // Versioned API v1
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $this->renderSection('title') ?: 'xScheduler' ?></title>
+    <title><?= $this->renderSection('title') ?: 'WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script (must be before any styling) -->
     <script>
@@ -19,35 +19,102 @@
         })();
     </script>
     
+    <!-- Sidebar positioning fix -->
+    <style>
+        @media (min-width: 1024px) {
+            /* Sidebar offset + gutter (matches SCSS) */
+            .main-content-container {
+                margin-left: calc(16rem + 2rem) !important;
+            }
+        }
+        /* Light mode: slightly darker light gray background */
+        html:not(.dark) body {
+            background-color: #e5e7eb !important; /* Tailwind gray-200 */
+        }
+        html:not(.dark) .main-content-container {
+            background-color: #e5e7eb !important;
+        }
+        
+        .unified-sidebar,
+        #main-sidebar {
+            position: fixed !important;
+            width: 16rem !important;
+            z-index: 50 !important;
+        }
+        
+    @media (max-width: 1023px) {
+            .unified-sidebar,
+            #main-sidebar {
+                transform: translateX(-100%) !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+            }
+            
+            .unified-sidebar.open,
+            #main-sidebar.open {
+                transform: translateX(0) !important;
+            }
+            
+            .main-content-container {
+                margin-left: 0 !important;
+            }
+        }
+        /* Match sidebar hover effect for header dropdown items */
+        .xs-menu-item {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0.75rem; /* 12px to align with sidebar */
+        }
+        .xs-menu-item:hover {
+            background: linear-gradient(135deg, rgba(247, 127, 0, 0.08), rgba(252, 191, 73, 0.06));
+            color: #1f2937; /* gray-800 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(247, 127, 0, 0.12);
+        }
+        html.dark .xs-menu-item:hover {
+            color: #f9fafb; /* gray-50 */
+            background: linear-gradient(135deg, rgba(255, 179, 102, 0.1), rgba(255, 209, 102, 0.08));
+        }
+        .xs-menu-item .material-symbols-outlined {
+            transition: transform .2s ease;
+        }
+        .xs-menu-item:hover .material-symbols-outlined {
+            transform: scale(1.05);
+        }
+    </style>
+    
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
+    
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    
     <script type="module" src="<?= base_url('build/assets/materialWeb.js') ?>"></script>
+    <script>
+        // Global base URL for API and asset helpers
+        window.__BASE_URL__ = '<?= base_url() ?>';
+    </script>
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
-    <div class="flex flex-col min-h-screen">
+    <div class="min-h-screen">
     <?= $this->renderSection('sidebar') ?>
 
-        <div class="flex-1">
+        <div class="ml-0">
             <!-- Unified container to align header and page content -->
-            <div class="p-4 lg:ml-72 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
+            <div class="main-content-container p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 material-shadow rounded-lg p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-30">
+                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm material-shadow p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-40">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                                </svg>
+                                <span class="material-symbols-outlined text-2xl">menu</span>
                             </button>
-                            <?php $logoUrl = setting_url('general.company_logo'); ?>
-                            <?php if ($logoUrl): ?>
-                                <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-10 w-auto mr-3 rounded" style="object-fit: contain;" />
-                            <?php endif; ?>
-                            <div>
-                                <h1 id="headerTitle" class="text-2xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-200">
+                            <div class="min-w-0">
+                                <h1 id="headerTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-800 dark:text-gray-200 transition-colors duration-200 truncate whitespace-nowrap">
                                     <?= $this->renderSection('header_title') ?: (isset($pageTitle) ? esc($pageTitle) : ($this->renderSection('title') ?: 'Dashboard')) ?>
                                 </h1>
-                                <p id="headerSubtitle" class="text-gray-600 dark:text-gray-400 transition-colors duration-200">
+                                <p id="headerSubtitle" class="hidden sm:block text-gray-600 dark:text-gray-400 transition-colors duration-200">
                                     <?php 
                                     $currentUser = session()->get('user');
                                     $currentRole = $currentUser['role'] ?? 'User';
@@ -61,7 +128,7 @@
                             </div>
                         </div>
                         
-                        <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
                             <!-- Dark Mode Toggle -->
                             <?= $this->include('components/dark-mode-toggle') ?>
                             
@@ -72,46 +139,79 @@
                                         placeholder="Search users, appointments..." 
                                         class="w-80 h-12 pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200 text-sm leading-relaxed"
                                         id="dashboardSearch">
-                                    <svg class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
+                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-base">search</span>
                                 </div>
                             </div>
                             
                             <!-- Notifications -->
                             <md-icon-button class="text-gray-600 dark:text-gray-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.73 21a2 2 0 01-3.46 0"></path>
-                                </svg>
+                                <span class="material-symbols-outlined">notifications</span>
                             </md-icon-button>
                             
-                            <!-- User Menu -->
-                            <div class="flex items-center space-x-2">
+                            <!-- User Menu Dropdown -->
+                            <div class="relative" id="userMenuWrapper">
                                 <?php $currentUser = session()->get('user'); ?>
-                                <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white font-medium transition-colors duration-200">
-                                    <?= strtoupper(substr(isset($currentUser) ? ($currentUser['name'] ?? 'U') : 'U', 0, 2)) ?>
-                                </div>
-                                <div class="hidden md:block">
-                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-200"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-200">
-                                        <?php 
-                                        $currentRole = $currentUser['role'] ?? 'user';
-                                        $displayRole = ucfirst($currentRole);
-                                        if ($currentRole === 'admin') $displayRole = 'Administrator';
-                                        elseif ($currentRole === 'provider') $displayRole = 'Service Provider';
-                                        elseif ($currentRole === 'staff') $displayRole = 'Staff Member';
-                                        ?>
-                                        <?= $displayRole ?>
-                                    </p>
+                                <?php 
+                                    $currentRole = $currentUser['role'] ?? 'user';
+                                    $displayRole = ucfirst($currentRole);
+                                    if ($currentRole === 'admin') $displayRole = 'Administrator';
+                                    elseif ($currentRole === 'provider') $displayRole = 'Service Provider';
+                                    elseif ($currentRole === 'staff') $displayRole = 'Staff Member';
+                                ?>
+                                <button id="userMenuButton" type="button" aria-haspopup="menu" aria-expanded="false"
+                                    class="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                                    <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                                        <?= strtoupper(substr(isset($currentUser) ? ($currentUser['name'] ?? 'U') : 'U', 0, 2)) ?>
+                                    </div>
+                                    <div class="hidden md:block text-left">
+                                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight"><?= $displayRole ?></p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-gray-500 dark:text-gray-400 text-base hidden md:inline">expand_more</span>
+                                </button>
+                                <!-- Dropdown Panel -->
+                                <div id="userMenu" role="menu" aria-labelledby="userMenuButton"
+                                     class="hidden absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden z-50">
+                                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?= esc($currentUser['email'] ?? '') ?></p>
+                                    </div>
+                                    <div class="py-1">
+                                        <a href="<?= base_url('profile') ?>" role="menuitem" class="xs-menu-item flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="material-symbols-outlined text-base">person</span>
+                                            Profile
+                                        </a>
+                                        <?php if (($currentRole ?? 'user') === 'admin'): ?>
+                                        <a href="<?= base_url('settings') ?>" role="menuitem" class="xs-menu-item flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="material-symbols-outlined text-base">settings</span>
+                                            Settings
+                                        </a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="border-t border-gray-200 dark:border-gray-700">
+                                        <a href="<?= base_url('auth/logout') ?>" data-no-spa="true" role="menuitem" class="xs-menu-item flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400">
+                                            <span class="material-symbols-outlined text-base">logout</span>
+                                            Logout
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Mobile search row: full-width under title + icons -->
+                    <div class="md:hidden mt-2">
+                        <div class="relative">
+                            <input type="search" 
+                                placeholder="Search users, appointments..." 
+                                class="w-full h-11 pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200 text-sm leading-relaxed"
+                                id="dashboardSearchMobile">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-base">search</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Page Content (SPA swaps only this area) -->
-                <main class="min-h-screen pt-0" style="padding-top: 24px;">
+                <main class="pt-0" style="padding-top: 24px;">
                     <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: calc(var(--xs-header-offset, 0px) + 24px);">
                         <?= $this->renderSection('content') ?>
                     </div>
@@ -127,6 +227,9 @@
     <script src="<?= base_url('build/assets/main.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
+    <!-- Load calendar module globally so it can handle SPA navigations on scheduler page -->
+    <script type="module" src="<?= base_url('build/assets/calendar-clean.js') ?>"></script>
     <script>
         // Sync header title/subtitle with current view's declared page attributes, if present
     let XS_DEFAULT_SUBTITLE = null;
@@ -141,7 +244,7 @@
             const s = el?.getAttribute('data-page-subtitle') || container.querySelector('[data-page-subtitle]')?.getAttribute('data-page-subtitle');
             if (t) {
                 header.textContent = t;
-                try { document.title = t + ' • xScheduler'; } catch (e) {}
+                try { document.title = t + ' • WebSchedulr'; } catch (e) {}
             }
             if (sub) {
                 if (s) {
@@ -186,6 +289,38 @@
             // Wait a tick in case content size affects header (e.g., title change wraps)
             requestAnimationFrame(() => xsetHeaderOffset());
         });
+
+        // User menu toggle and click-away handler
+        (function wireUserMenu(){
+            const btn = document.getElementById('userMenuButton');
+            const menu = document.getElementById('userMenu');
+            if (!btn || !menu) return;
+            const toggle = (open) => {
+                const willOpen = open ?? menu.classList.contains('hidden');
+                if (willOpen) {
+                    menu.classList.remove('hidden');
+                    btn.setAttribute('aria-expanded', 'true');
+                } else {
+                    menu.classList.add('hidden');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+                // Header height might change slightly
+                requestAnimationFrame(() => xsetHeaderOffset());
+            };
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggle();
+            });
+            document.addEventListener('click', (e) => {
+                if (!menu.classList.contains('hidden')) {
+                    const within = e.target.closest('#userMenuWrapper');
+                    if (!within) toggle(false);
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !menu.classList.contains('hidden')) toggle(false);
+            });
+        })();
 
         // Global delegated handler for Settings logo upload so SPA swaps don't drop listeners
         (function wireGlobalSettingsLogoHandler(){

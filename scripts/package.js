@@ -15,7 +15,7 @@ console.log('⚠️  NOTE: app/Views/test/ folder will be excluded from deployme
 console.log('   Test and example views are not needed in production');
 
 // Create deployment package
-const packageDir = path.join(projectRoot, 'xscheduler-deploy');
+const packageDir = path.join(projectRoot, 'webschedulr-deploy');
 if (fs.existsSync(packageDir)) {
     try {
         fs.rmSync(packageDir, { recursive: true, force: true });
@@ -400,7 +400,7 @@ const rootHtaccessContent = `# Deny access to sensitive directories
 fs.writeFileSync(path.join(packageDir, '.htaccess'), rootHtaccessContent);
 
 // Create deployment README
-const readmeContent = `# xScheduler Production Deployment
+const readmeContent = `# WebSchedulr Production Deployment
 
 ## 🚀 Quick Deploy Instructions:
 
@@ -473,7 +473,7 @@ console.log('✅ Created comprehensive deployment documentation');
 const quickDeployContent = `# 🚀 Quick ZIP Deployment Guide
 
 ## Step 1: Upload & Extract
-1. Upload \`xscheduler-deploy.zip\` to your hosting provider
+1. Upload \`webschedulr-deploy.zip\` to your hosting provider
 2. Extract the ZIP file in your hosting account
 3. Point your domain to the \`public/\` folder (IMPORTANT!)
 
@@ -488,7 +488,7 @@ chmod -R 755 writable/
 - You'll be redirected to the setup wizard
 - Create your admin account
 - Choose database (SQLite recommended for easy setup)
-- Start using xScheduler!
+- Start using WebSchedulr!
 
 ## Troubleshooting
 - If you get 500 errors, check writable/ folder permissions
@@ -556,7 +556,7 @@ console.log('📋 Upload the contents to your hosting provider and point domain 
 // Create ZIP file for easy deployment
 console.log('\n📦 Creating ZIP package for deployment...');
 
-const zipName = 'xscheduler-deploy.zip';
+const zipName = 'webschedulr-deploy.zip';
 const zipPath = path.join(projectRoot, zipName);
 
 // Remove existing zip file if it exists
@@ -621,7 +621,7 @@ async function createZipFile() {
         archive.directory(packageDir, false);
 
         // Add a deployment timestamp file
-        archive.append(`Deployment package created: ${new Date().toISOString()}\nVersion: xScheduler CI4\nPackaged by: package.js script\nSource directory: ${packageDir}\nFiles included: ${files.join(', ')}`, { name: 'DEPLOYMENT-INFO.txt' });
+        archive.append(`Deployment package created: ${new Date().toISOString()}\nVersion: WebSchedulr CI4\nPackaged by: package.js script\nSource directory: ${packageDir}\nFiles included: ${files.join(', ')}`, { name: 'DEPLOYMENT-INFO.txt' });
 
         // Finalize the archive (ie we are done appending files but streams have to finish yet)
         archive.finalize();
@@ -633,7 +633,7 @@ try {
     
     console.log('\n🚀 Deployment Options:');
     console.log('   1. Upload ZIP file and extract on server');
-    console.log('   2. Upload individual files from xscheduler-deploy/ folder');
+    console.log('   2. Upload individual files from webschedulr-deploy/ folder');
     console.log('   3. Use ZIP for backup/distribution');
     console.log('\n📋 Quick Upload:');
     console.log(`   - Upload: ${zipName}`);
@@ -642,5 +642,5 @@ try {
     
 } catch (error) {
     console.warn('⚠️  Could not create ZIP file:', error.message);
-    console.log('💡 Alternative: Manually compress the xscheduler-deploy/ folder');
+    console.log('💡 Alternative: Manually compress the webschedulr-deploy/ folder');
 }

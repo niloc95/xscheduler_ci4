@@ -1,0 +1,182 @@
+// ===========================
+// Navigation Components
+// ===========================
+
+// Main Navigation
+.nav-primary {
+  background-color: $brand-ocean;
+  color: $white;
+  padding: 0;
+  
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    padding: $spacing-lg $spacing-2xl;
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $white;
+    text-decoration: none;
+    
+    &:hover {
+      color: $white;
+      text-decoration: none;
+    }
+    
+    img {
+      width: 2rem;
+      height: 2rem;
+      margin-right: $spacing-md;
+      border-radius: $border-radius-sm;
+    }
+  }
+  
+  .nav-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+  
+  .nav-item {
+    margin: 0;
+  }
+  
+  .nav-link {
+    display: flex;
+    align-items: center;
+    padding: $spacing-lg $spacing-2xl;
+    color: rgba($white, 0.8);
+    text-decoration: none;
+    transition: all $transition-normal;
+    position: relative;
+    
+    &:hover {
+      color: $white;
+      background-color: rgba($white, 0.1);
+    }
+    
+    &.active {
+      color: $white;
+      background-color: $brand-orange;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background-color: $brand-golden;
+      }
+    }
+    
+    .nav-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-right: $spacing-md;
+      flex-shrink: 0;
+    }
+  }
+}
+
+// NOTE: Sidebar styles moved to components/_unified-sidebar.scss
+// This ensures a clean separation of concerns and prevents conflicts
+
+// Breadcrumb Navigation
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0 0 $spacing-2xl 0;
+  padding: 0;
+  
+  .breadcrumb-item {
+    display: flex;
+    align-items: center;
+    
+    &:not(:last-child)::after {
+      content: '>';
+      margin: 0 $spacing-md;
+      color: var(--xs-text-muted);
+    }
+    
+    a {
+      color: var(--xs-text-secondary);
+      text-decoration: none;
+      
+      &:hover {
+        color: var(--xs-accent);
+      }
+    }
+    
+    &.active {
+      color: var(--xs-text-primary);
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+// Tabs Navigation
+.tabs {
+  border-bottom: 1px solid var(--xs-border);
+  margin-bottom: $spacing-2xl;
+  
+  .tab-list {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: $spacing-lg;
+  }
+  
+  .tab-item {
+    margin: 0;
+  }
+  
+  .tab-button {
+    display: block;
+    padding: $spacing-md $spacing-lg;
+    border: none;
+    background: none;
+    color: var(--xs-text-secondary);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: all $transition-normal;
+    cursor: pointer;
+    font-size: $font-size-base;
+    
+    &:hover {
+      color: var(--xs-text-primary);
+      border-bottom-color: var(--xs-border);
+    }
+    
+    &.active,
+    &[aria-selected="true"] {
+      color: var(--xs-accent);
+      border-bottom-color: var(--xs-accent);
+    }
+  }
+}
+
+// Mobile Navigation Toggle
+.nav-toggle {
+  display: none;
+  
+  @include mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    background: none;
+    color: var(--xs-text-primary);
+    cursor: pointer;
+  }
+}
+
+// Backdrop for mobile sidebar (moved to unified-sidebar.scss)

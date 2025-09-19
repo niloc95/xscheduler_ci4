@@ -45,8 +45,8 @@ A modern, zero-configuration scheduling application built with CodeIgniter 4 and
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/xscheduler-ci4.git
-   cd xscheduler-ci4
+   git clone https://github.com/yourusername/webschedulr-ci4.git
+   cd webschedulr-ci4
    ```
 
 2. **Install dependencies**
@@ -103,11 +103,11 @@ npm run preview
 
 1. **Build deployment package**
    ```bash
-   npm run build  # This creates the xscheduler-deploy folder
+   npm run build  # This creates the webschedulr-deploy folder
    ```
 
 2. **Upload to hosting provider**
-   - Upload entire contents of `xscheduler-deploy/` folder
+   - Upload entire contents of `webschedulr-deploy/` folder
    - Point domain/subdomain to the `public/` directory
 
 3. **Configure environment**
@@ -212,7 +212,7 @@ yourdomain.com/scheduler/
 ## 📁 Project Structure
 
 ```
-xScheduler_ci4/
+WebSchedulr_ci4/
 ├── app/                          # CodeIgniter 4 application
 │   ├── Controllers/              # Request handlers
 │   │   ├── BaseController.php    # Base with UI helper loading

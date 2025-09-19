@@ -40,6 +40,9 @@ const SPA = (() => {
     const href = a.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return false;
     if (!sameOrigin(href)) return false;
+  // Do not intercept FullCalendar internal navigation links
+  if (a.hasAttribute('data-navlink')) return false;
+  if (a.closest('.fc')) return false;
     // opt-out
     if (a.dataset?.noSpa === 'true' || a.classList.contains('no-spa')) return false;
     return true;
@@ -66,6 +69,15 @@ const SPA = (() => {
     const el = content();
     if (!el) return;
     try {
+      // If navigating to the same path (ignoring hash), do nothing
+      const dest = new URL(url, window.location.href);
+      const cur = new URL(window.location.href);
+      if (dest.pathname === cur.pathname && dest.search === cur.search) {
+        if (push && dest.hash !== cur.hash) {
+          history.pushState({ spa: true }, '', dest.href);
+        }
+        return;
+      }
       setBusy(true);
       const html = await fetchPage(url);
       el.innerHTML = html;
@@ -74,7 +86,8 @@ const SPA = (() => {
       if (push) history.pushState({ spa: true }, '', url);
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
-      focusMain();
+  // Always reset scroll position to top when switching views
+  focusMain(true);
     } catch (e) {
       console.error('SPA navigation failed:', e);
       window.location.href = url; // graceful fallback
@@ -84,6 +97,10 @@ const SPA = (() => {
   };
 
   const clickHandler = (e) => {
+    // Only left-clicks without modifier keys and not already handled
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return; // left click only
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest('a');
     if (!a) return;
     if (!shouldIntercept(a)) return;
@@ -97,26 +114,28 @@ const SPA = (() => {
     }
   };
 
-  const focusMain = () => {
+  const focusMain = (resetScroll = false) => {
     const el = content();
     if (!el) return;
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
-    // Respect sticky header height when scrolling to new content
-  const cs = getComputedStyle(document.querySelector('main'));
-  const headerOffset = parseFloat(cs.getPropertyValue('--xs-header-offset') || '0') || 0;
-  const standard = 24; // match layout padding
-  const y = el.getBoundingClientRect().top + window.scrollY - (headerOffset + standard);
-    window.scrollTo({ top: y, behavior: 'smooth' });
+    if (resetScroll) {
+      // Reset to page top; header is sticky so 0 is appropriate
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
   };
 
   const init = () => {
+    // Disable browser automatic scroll restoration; SPA manages scroll explicitly
+    if ('scrollRestoration' in history) {
+      try { history.scrollRestoration = 'manual'; } catch (_) {}
+    }
     document.addEventListener('click', clickHandler);
     window.addEventListener('popstate', popstateHandler);
     // On load, mark current history entry as SPA-aware
     history.replaceState({ spa: true }, '', window.location.href);
-  // Initialize tabs for server-rendered initial content
-  initTabsInSpaContent();
+    // Initialize tabs for server-rendered initial content
+    initTabsInSpaContent();
   };
 
   return { init, navigate };

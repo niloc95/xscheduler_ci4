@@ -1,9 +1,9 @@
-# GitHub Actions Configuration for xScheduler
+# GitHub Actions Configuration for WebSchedulr
 # This file documents the workflow setup and configuration
 
 ## Workflow Overview
 
-The xScheduler project uses GitHub Actions for comprehensive CI/CD automation:
+The WebSchedulr project uses GitHub Actions for comprehensive CI/CD automation:
 
 ### 1. Main CI/CD Pipeline (`ci-cd.yml`)
 - **Triggers**: Push to main/env-setup-config-build, PRs to main

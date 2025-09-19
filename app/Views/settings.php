@@ -1,7 +1,7 @@
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
-    <?= $this->include('components/role-based-sidebar', ['current_page' => 'settings']) ?>
+    <?= $this->include('components/unified-sidebar', ['current_page' => 'settings']) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>Settings<?= $this->endSection() ?>
@@ -28,7 +28,7 @@
                 <button class="tab-btn" data-tab="users">Users</button>
                 <button class="tab-btn" data-tab="localization">Localization</button>
                 <button class="tab-btn" data-tab="booking">Booking</button>
-                <button class="tab-btn" data-tab="business">Business Logic</button>
+                <button class="tab-btn" data-tab="business">Business hours</button>
                 <button class="tab-btn" data-tab="legal">Legal Contents</button>
                 <button class="tab-btn" data-tab="integrations">Integrations</button>
                 
@@ -220,7 +220,7 @@
                 </div>
             </section>
 
-            <!-- Business Logic -->
+            <!-- Business hours -->
             <section id="panel-business" class="tab-panel hidden">
                 <div class="space-y-6">
                     <div class="form-field">
@@ -383,6 +383,33 @@
         // General tab API integration: load on view and save via PUT to /api/v1/settings
         document.addEventListener('DOMContentLoaded', () => initSettingsApi());
         document.addEventListener('spa:navigated', () => initSettingsApi());
+
+        // Live-update the sidebar brand title when company name changes
+        (function wireSidebarBrandSync(){
+            function setBrandName(name){
+                const el = document.getElementById('sidebarBrandName');
+                if (!el) return;
+                const trimmed = (name || '').trim();
+                el.textContent = trimmed !== '' ? trimmed : 'WebSchedulr';
+            }
+            function bindInput(){
+                const panel = document.getElementById('spa-content')?.querySelector('#panel-general');
+                const input = panel?.querySelector('input[name="company_name"]');
+                if (!input || input.dataset.brandSync === 'true') return;
+                const handler = (e) => setBrandName(e.target.value);
+                input.addEventListener('input', handler);
+                input.addEventListener('change', handler);
+                input.dataset.brandSync = 'true';
+            }
+            // Initial bind + on SPA navigations
+            document.addEventListener('DOMContentLoaded', bindInput);
+            document.addEventListener('spa:navigated', () => {
+                bindInput();
+                // After navigation (e.g., post-save redirect), ensure value is reflected
+                const nameVal = document.getElementById('spa-content')?.querySelector('input[name="company_name"]')?.value;
+                if (typeof nameVal !== 'undefined') setBrandName(nameVal);
+            });
+        })();
 
         function initSettingsApi() {
                 const root = document.getElementById('spa-content');

@@ -125,13 +125,13 @@ class Setup extends BaseController
                     'db_driver' => 'SQLite3',
                     'db_hostname' => '',
                     'db_port' => '',
-                    'db_database' => WRITEPATH . 'database/xscheduler.db',
+                    'db_database' => WRITEPATH . 'database/webschedulr.db',
                     'db_username' => '',
                     'db_password' => ''
                 ];
 
                 $setupData['database']['sqlite'] = [
-                    'path' => WRITEPATH . 'database/xscheduler.db'
+                    'path' => WRITEPATH . 'database/webschedulr.db'
                 ];
                 
                 // Test SQLite setup

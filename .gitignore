@@ -208,7 +208,7 @@ tests/_support/_generated/
 # Deployment
 #-------------------------
 # Deployment package (created by npm run package)
-xscheduler-deploy/
+webschedulr-deploy/
 
 # Deployment scripts output
 deploy.log

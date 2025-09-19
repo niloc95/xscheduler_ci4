@@ -13,11 +13,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
-        style: path.resolve(process.cwd(), 'resources/scss/app.scss'),
+        style: path.resolve(process.cwd(), 'resources/scss/app-consolidated.scss'),
         materialWeb: path.resolve(process.cwd(), 'resources/js/material-web.js'),
         setup: path.resolve(process.cwd(), 'resources/js/setup.js'),
         'dark-mode': path.resolve(process.cwd(), 'resources/js/dark-mode.js'),
-  spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
+        spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
+        'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
+        'calendar-clean': path.resolve(process.cwd(), 'resources/js/calendar-clean.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

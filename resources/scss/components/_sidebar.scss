@@ -1,0 +1,203 @@
+// ===========================
+// Sidebar Component Styles
+// ===========================
+
+/* Sidebar Base Styles - Use higher specificity to override Tailwind */
+.sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 16rem !important; /* w-64 */
+    z-index: 40 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    /* Material-like subtle elevation */
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    /* Light theme default */
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-right: 1px solid rgba(229, 231, 235, 0.7) !important;
+    animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Dark mode background override */
+html.dark .sidebar {
+    background: rgba(15, 20, 25, 0.95) !important;
+    border-right-color: rgba(45, 55, 72, 0.35) !important;
+    /* Adjusted elevation for dark mode */
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Hide on mobile by default */
+@media (max-width: 1023px) {
+    .sidebar {
+        transform: translateX(-100%) !important;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0) !important;
+    }
+}
+
+/* Logo Area */
+.sidebar h2 {
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.025em;
+    color: #f7fafc;
+    margin: 0;
+    padding: 0;
+}
+
+.sidebar .text-xl {
+    color: #1f2937; /* slate-800 for light */
+    font-weight: 600;
+}
+
+html.dark .sidebar .text-xl {
+    color: #f7fafc;
+}
+
+/* Navigation Styles */
+.nav-item {
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 18px !important;
+    margin: 6px 12px !important;
+    border-radius: 14px !important;
+    text-decoration: none !important;
+    color: #334155 !important; /* slate-700 light */
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+}
+
+html.dark .nav-item { 
+    color: #a0aec0; 
+}
+
+.nav-item:hover {
+    background: rgba(247, 127, 0, 0.12);
+    color: #0f172a; /* slate-900 in light */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(247, 127, 0, 0.15);
+}
+
+html.dark .nav-item:hover { 
+    color: #f7fafc; 
+}
+
+.nav-item.active {
+    background: linear-gradient(135deg, #F77F00 0%, #FCBF49 100%);
+    color: #003049;
+    box-shadow: 0 8px 20px rgba(247, 127, 0, 0.35);
+    transform: translateY(-2px);
+}
+
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    width: 4px;
+    height: 24px;
+    background: linear-gradient(135deg, #F77F00 0%, #FCBF49 100%);
+    border-radius: 0 4px 4px 0;
+    transform: translateY(-50%);
+    box-shadow: 2px 0 8px rgba(247, 127, 0, 0.3);
+}
+
+/* Icon Styles */
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 14px;
+    stroke-width: 2;
+    color: inherit;
+    transition: all 0.2s ease;
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon {
+    transform: scale(1.1);
+    stroke-width: 2.5;
+}
+
+.nav-text {
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.nav-divider {
+    height: 1px;
+    background: rgba(203, 213, 224, 0.5);
+    margin: 12px 18px;
+}
+
+html.dark .nav-divider {
+    background: rgba(45, 55, 72, 0.6);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .nav-item {
+        padding: 16px 20px;
+        margin: 4px 12px;
+        border-radius: 12px;
+    }
+    
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 16px;
+    }
+    
+    .nav-text {
+        font-size: 1rem;
+    }
+}
+
+/* Focus States for Accessibility */
+.nav-item:focus {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.nav-item:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Animation for Active State */
+.nav-item {
+    overflow: hidden;
+}
+
+.nav-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.nav-item:hover::after {
+    left: 100%;
+}

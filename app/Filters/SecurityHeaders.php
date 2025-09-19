@@ -1,6 +1,6 @@
 <?php
 /**
- * Enhanced Security Middleware for XScheduler CI4
+ * Enhanced Security Middleware for WebSchedulr CI4
  * 
  * PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
  * Copyright (c) 2025 niloc95. All rights reserved.
@@ -16,8 +16,14 @@ class SecurityHeaders implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
+        // This filter sets response headers, so we don't need to do anything here
+        // Headers will be set in the after() method
+        return null;
+    }
+
+    public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
+    {
         // Add security headers
-        $response = service('response');
         
         // Prevent clickjacking
         $response->setHeader('X-Frame-Options', 'DENY');
@@ -29,7 +35,7 @@ class SecurityHeaders implements FilterInterface
         $response->setHeader('X-XSS-Protection', '1; mode=block');
         
         // Strict Transport Security (HTTPS only)
-        if (is_https()) {
+        if ($request->isSecure()) {
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         
@@ -51,11 +57,6 @@ class SecurityHeaders implements FilterInterface
         $response->setHeader('Permissions-Policy', 
             'geolocation=(), microphone=(), camera=(), payment=()');
         
-        return null;
-    }
-
-    public function after(RequestInterface $request, ResponseInterface $response, $arguments = null)
-    {
         // Remove server information
         $response->removeHeader('Server');
         $response->removeHeader('X-Powered-By');

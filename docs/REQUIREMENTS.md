@@ -1,4 +1,4 @@
-# xScheduler — Requirements Specification
+# WebSchedulr — Requirements Specification
 
 _Last updated: July 2025_
 
@@ -6,7 +6,7 @@ _Last updated: July 2025_
 
 ## Project Overview
 
-xScheduler is a modern online appointment scheduling system for service-based businesses. It features:
+WebSchedulr is a modern online appointment scheduling system for service-based businesses. It features:
 
 - Customer-facing appointment booking
 - Provider calendar and availability management

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Reset Password - XScheduler' ?></title>
+    <title><?= $title ?? 'Reset Password - WebSchedulr' ?></title>
     
     <!-- Dark mode initialization script -->
     <script>
@@ -123,9 +123,7 @@
 
                 <!-- Submit Button -->
                 <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200" style="background-color: #F77F00;">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
+                    <span class="material-symbols-outlined mr-2">check_circle</span>
                     Update Password
                 </button>
             </form>

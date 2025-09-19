@@ -9,11 +9,11 @@
  * @since       v1.0.0
  * ---------------------------------------------------------------------------- */
 
-# xScheduler CI4 - Master Context Document
+# WebSchedulr CI4 - Master Context Document
 
 ## Project Overview
 
-**xScheduler** is a modern scheduling application built with CodeIgniter 4, featuring a Material Design dashboard with Tailwind CSS, designed for deployment to standard hosting providers with zero configuration requirements.
+**WebSchedulr** is a modern scheduling application built with CodeIgniter 4, featuring a Material Design dashboard with Tailwind CSS, designed for deployment to standard hosting providers with zero configuration requirements.
 
 ### Core Architecture
 - **Backend**: CodeIgniter 4 (PHP framework)
@@ -27,7 +27,7 @@
 ## Project Structure
 
 ```
-xScheduler_ci4/
+WebSchedulr_ci4/
 ├── app/                          # CodeIgniter 4 application
 │   ├── Controllers/              # Request handlers
 │   │   ├── BaseController.php    # Base controller with UI helper loading
@@ -76,7 +76,7 @@ xScheduler_ci4/
 ├── system/                    # CodeIgniter 4 framework (copied to deployment)
 ├── vendor/                    # Composer dependencies
 ├── writable/                  # Cache, logs, uploads
-├── xscheduler-deploy/         # Production deployment package
+├── webschedulr-deploy/         # Production deployment package
 ├── vite.config.js            # Vite build configuration (multi-entry)
 ├── tailwind.config.js        # Tailwind CSS with Material Design tokens
 └── package.json              # Node.js dependencies and build scripts
@@ -346,7 +346,7 @@ The application is designed for deployment to any standard hosting provider with
 
 #### Generated Package Structure
 ```
-xscheduler-deploy/
+webschedulr-deploy/
 ├── app/              # Application logic
 ├── system/           # CI4 framework
 ├── public/           # Web root (point domain here)
@@ -675,9 +675,9 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 
 ### January 2025 - Complete Setup View Implementation
 
-**Commit**: `bac09ac` - `feat: Complete xScheduler setup view with icon fixes, production URL handling, and deployment packaging`
+**Commit**: `bac09ac` - `feat: Complete WebSchedulr setup view with icon fixes, production URL handling, and deployment packaging`
 
-This major update completes the xScheduler setup view implementation with several critical fixes and enhancements:
+This major update completes the WebSchedulr setup view implementation with several critical fixes and enhancements:
 
 #### 🔧 Icon System Overhaul
 - **Issue**: Material Design icons not displaying universally across browsers and hosting environments
@@ -715,7 +715,7 @@ This major update completes the xScheduler setup view implementation with severa
   - Enhanced `scripts/package.js` for production-ready packaging
   - Automated asset compilation and optimization
   - Deployment-specific configuration handling
-  - Complete xscheduler-deploy/ package with documentation
+  - Complete webschedulr-deploy/ package with documentation
 - **Benefits**:
   - Zero-configuration deployment to any hosting provider
   - Optimized assets and streamlined file structure
@@ -735,7 +735,7 @@ This major update completes the xScheduler setup view implementation with severa
 
 ### Development Impact
 
-This update represents a significant milestone in the xScheduler project:
+This update represents a significant milestone in the WebSchedulr project:
 
 1. **Production Readiness**: The application is now fully deployable to any hosting provider
 2. **Universal Compatibility**: Icon and URL handling works across all environments
@@ -755,7 +755,7 @@ With the setup view complete and deployment system in place, the project is read
 
 **Phase**: Environment Setup and Production Deployment Enhancement
 
-This comprehensive update establishes a robust, user-friendly environment configuration and deployment workflow for xScheduler, ensuring production-ready deployment packages and seamless setup processes.
+This comprehensive update establishes a robust, user-friendly environment configuration and deployment workflow for WebSchedulr, ensuring production-ready deployment packages and seamless setup processes.
 
 #### 🔧 Environment Configuration Overhaul
 - **Approach**: Setup-driven environment configuration (no env-switch script)
@@ -876,7 +876,7 @@ This environment and deployment enhancement represents a major milestone:
 **Documentation**: Comprehensive and up-to-date
 **Next Phase**: Ready for core application feature development
 
-The xScheduler application now has a robust, production-ready deployment workflow that enables seamless deployment to any hosting provider with zero configuration requirements.
+The WebSchedulr application now has a robust, production-ready deployment workflow that enables seamless deployment to any hosting provider with zero configuration requirements.
 
 ### July 2025 - MySQL Test Connection Fix & Production URL Auto-Detection
 
@@ -1026,7 +1026,7 @@ This MySQL test connection fix represents a critical reliability improvement:
 **Documentation**: Complete with troubleshooting guides
 **Deployment Package**: Production-ready with 2.76 MB ZIP
 
-The xScheduler setup process is now enterprise-ready with bulletproof database configuration and universal hosting compatibility.
+The WebSchedulr setup process is now enterprise-ready with bulletproof database configuration and universal hosting compatibility.
 
 ### July 2025 - GitHub Actions CI/CD Implementation
 
@@ -1184,7 +1184,7 @@ jobs:
 
 **Badge Integration**:
 ```markdown
-![CI/CD Pipeline](https://github.com/niloc95/xscheduler_ci4/workflows/xScheduler%20CI/CD%20Pipeline/badge.svg)
+![CI/CD Pipeline](https://github.com/niloc95/xscheduler_ci4/workflows/WebSchedulr%20CI/CD%20Pipeline/badge.svg)
 ![Security Scan](https://github.com/niloc95/xscheduler_ci4/workflows/Security%20&%20Dependency%20Checks/badge.svg)
 ![Documentation](https://github.com/niloc95/xscheduler_ci4/workflows/Documentation/badge.svg)
 ```
@@ -1237,7 +1237,7 @@ This GitHub Actions implementation represents a major DevOps maturity milestone:
 **Documentation**: Automated maintenance and validation
 **Performance**: Continuous monitoring and optimization
 
-The xScheduler project now has enterprise-grade DevOps automation providing confidence in every release and deployment.
+The WebSchedulr project now has enterprise-grade DevOps automation providing confidence in every release and deployment.
 
 ### July 2025 - Authentication System Styling Standardization & Brand Color Palette Implementation
 
@@ -1291,7 +1291,7 @@ This comprehensive update standardizes the authentication system design language
 #### 🎯 Visual Design Benefits
 
 **Brand Differentiation**:
-- **Unique Identity**: Distinctive color palette sets xScheduler apart from generic blue SaaS applications
+- **Unique Identity**: Distinctive color palette sets WebSchedulr apart from generic blue SaaS applications
 - **Professional Appeal**: Deep Ocean Blue creates trustworthy, healthcare-appropriate impression
 - **Memorable Branding**: Warm, energetic color scheme enhances brand recognition and recall
 
@@ -1337,7 +1337,7 @@ This authentication system standardization represents a significant user experie
 **Professional Appeal**: Healthcare/business appropriate styling established
 **Multi-Tenant Ready**: Scalable design system suitable for SaaS deployment
 
-The xScheduler authentication system now provides a cohesive, professional brand experience that builds user trust and confidence while establishing a distinctive visual identity in the competitive scheduling software market.
+The WebSchedulr authentication system now provides a cohesive, professional brand experience that builds user trust and confidence while establishing a distinctive visual identity in the competitive scheduling software market.
 
 ### July 2025 - Application Flow Control System & Production Deployment Fixes
 
@@ -1520,7 +1520,7 @@ This application flow control implementation represents a major architectural im
 **Security**: Comprehensive protection mechanisms in place
 **Next Phase**: Ready for dashboard interface development and user authentication features
 
-The xScheduler application now has enterprise-grade application flow control and deployment systems, providing a solid foundation for core scheduling functionality development.
+The WebSchedulr application now has enterprise-grade application flow control and deployment systems, providing a solid foundation for core scheduling functionality development.
 
 ### July 2025 - Dark Mode System Implementation & Views Organization
 
@@ -1702,7 +1702,7 @@ This dark mode implementation and views organization represents a major user exp
 **Documentation**: Comprehensive with clear purpose definitions
 **Build Integration**: Dark mode assets properly compiled and included
 
-The xScheduler application now provides a complete, modern dark mode experience with organized, maintainable code structure ready for production deployment.
+The WebSchedulr application now provides a complete, modern dark mode experience with organized, maintainable code structure ready for production deployment.
 
 ### July 2025 - Cookie Configuration Fixes & Production Environment Optimization
 
@@ -1756,7 +1756,7 @@ console.log(`📁 Production deployment excludes: ${excludePatterns.join(', ')}`
 ```
 
 #### 🎨 SQLite Database Path Correction
-- **Setup View Fix**: Corrected hardcoded database filename from `appdb.sqlite` to `xscheduler.db`
+- **Setup View Fix**: Corrected hardcoded database filename from `appdb.sqlite` to `webschedulr.db`
 - **Configuration Alignment**: Ensured setup wizard displays accurate database path information
 - **User Experience**: Clear, consistent messaging about database creation location
 
@@ -1764,7 +1764,7 @@ console.log(`📁 Production deployment excludes: ${excludePatterns.join(', ')}`
 ```php
 // Fixed setup view database display
 <code class="block mt-1 text-xs px-2 py-1 rounded font-mono">
-    ./writable/database/xscheduler.db  <!-- Corrected from appdb.sqlite -->
+    ./writable/database/webschedulr.db  <!-- Corrected from appdb.sqlite -->
 </code>
 ```
 
@@ -1809,7 +1809,7 @@ This environment configuration and organization update represents a significant 
 **Database Setup**: Accurate path display and configuration alignment
 **Build System**: Validated and functional across all reorganization changes
 
-The xScheduler application now provides a robust, well-organized development environment with seamless production deployment capabilities, ensuring consistent functionality across all hosting environments while maintaining clean, maintainable code structure.
+The WebSchedulr application now provides a robust, well-organized development environment with seamless production deployment capabilities, ensuring consistent functionality across all hosting environments while maintaining clean, maintainable code structure.
 
 ### August 2025 - UI Polish: Layout Container Standardization, Card Radius Consistency, and Dark Mode Toggle Consolidation
 

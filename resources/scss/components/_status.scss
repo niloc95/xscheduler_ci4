@@ -1,0 +1,268 @@
+// ===========================
+// Status and Alert Components
+// ===========================
+
+// Status Badges
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $border-radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  
+  &.status-confirmed {
+    @include status-badge(rgba($brand-golden, 0.15), $brand-ocean);
+    border: 1px solid rgba($brand-golden, 0.3);
+  }
+  
+  &.status-pending {
+    @include status-badge(rgba($brand-orange, 0.15), $brand-orange-dark);
+    border: 1px solid rgba($brand-orange, 0.3);
+  }
+  
+  &.status-cancelled {
+    @include status-badge(rgba($brand-crimson, 0.15), $brand-crimson);
+    border: 1px solid rgba($brand-crimson, 0.3);
+  }
+  
+  &.status-completed {
+    @include status-badge(rgba($brand-ocean, 0.15), $brand-ocean);
+    border: 1px solid rgba($brand-ocean, 0.3);
+  }
+  
+  // Size variants
+  &.badge-sm {
+    padding: 2px $spacing-sm;
+    font-size: 0.65rem;
+  }
+  
+  &.badge-lg {
+    padding: $spacing-sm $spacing-lg;
+    font-size: $font-size-sm;
+  }
+}
+
+// Priority Indicators
+.priority-indicator {
+  width: 1rem;
+  height: 1rem;
+  border-radius: $border-radius-full;
+  flex-shrink: 0;
+  
+  &.priority-low {
+    background-color: $brand-golden;
+  }
+  
+  &.priority-medium {
+    background-color: $brand-orange;
+  }
+  
+  &.priority-high {
+    background-color: $brand-crimson;
+  }
+  
+  &.priority-critical {
+    background-color: $brand-crimson;
+    box-shadow: 0 0 8px rgba($brand-crimson, 0.5);
+    animation: pulse 2s infinite;
+  }
+  
+  // Size variants
+  &.indicator-sm {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+  
+  &.indicator-lg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+// Alert System
+.alert {
+  padding: $spacing-lg;
+  border-radius: $border-radius-lg;
+  border-left: 4px solid;
+  margin-bottom: $spacing-2xl;
+  position: relative;
+  
+  .alert-icon {
+    float: left;
+    margin-right: $spacing-md;
+    font-size: $font-size-lg;
+  }
+  
+  .alert-title {
+    font-weight: $font-weight-semibold;
+    margin-bottom: $spacing-sm;
+  }
+  
+  .alert-message {
+    margin: 0;
+    line-height: 1.5;
+  }
+  
+  .alert-close {
+    position: absolute;
+    top: $spacing-md;
+    right: $spacing-md;
+    background: none;
+    border: none;
+    font-size: $font-size-lg;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity $transition-normal;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+  
+  // Alert variants
+  &.alert-success {
+    background-color: rgba($brand-golden, 0.1);
+    border-left-color: $brand-golden;
+    color: $brand-ocean;
+    
+    .alert-icon {
+      color: $brand-golden;
+    }
+  }
+  
+  &.alert-info {
+    background-color: rgba($brand-ocean, 0.1);
+    border-left-color: $brand-ocean;
+    color: $brand-ocean;
+    
+    .alert-icon {
+      color: $brand-ocean;
+    }
+  }
+  
+  &.alert-warning {
+    background-color: rgba($brand-orange, 0.1);
+    border-left-color: $brand-orange;
+    color: darken($brand-orange, 30%);
+    
+    .alert-icon {
+      color: $brand-orange;
+    }
+  }
+  
+  &.alert-error {
+    background-color: rgba($brand-crimson, 0.1);
+    border-left-color: $brand-crimson;
+    color: darken($brand-crimson, 20%);
+    
+    .alert-icon {
+      color: $brand-crimson;
+    }
+  }
+}
+
+// Progress Indicators
+.progress {
+  width: 100%;
+  height: 0.75rem;
+  background-color: var(--xs-bg-secondary);
+  border-radius: $border-radius-full;
+  overflow: hidden;
+  
+  .progress-bar {
+    height: 100%;
+    border-radius: $border-radius-full;
+    transition: width $transition-slow;
+    position: relative;
+    overflow: hidden;
+    
+    &.progress-primary {
+      background-color: $brand-ocean;
+    }
+    
+    &.progress-success {
+      background-color: $brand-golden;
+    }
+    
+    &.progress-warning {
+      background-color: $brand-orange;
+    }
+    
+    &.progress-danger {
+      background-color: $brand-crimson;
+    }
+    
+    // Animated progress bar
+    &.progress-animated::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: 1rem 1rem;
+      animation: progress-bar-stripes 1s linear infinite;
+    }
+  }
+  
+  // Size variants
+  &.progress-sm {
+    height: 0.5rem;
+  }
+  
+  &.progress-lg {
+    height: 1rem;
+  }
+}
+
+// Loading States
+.loading-spinner {
+  @include loading-spinner();
+  margin: 0 auto;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(var(--xs-bg-primary), 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  
+  .spinner {
+    @include loading-spinner(2rem);
+  }
+}
+
+// Animations
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes progress-bar-stripes {
+  0% {
+    background-position-x: 1rem;
+  }
+}

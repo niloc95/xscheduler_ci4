@@ -1,0 +1,251 @@
+/* FullCalendar Custom Styling for Tailwind + Dark Mode */
+
+/* Main container */
+.fc {
+  @apply font-sans bg-transparent w-full h-full;
+}
+
+/* Remove any outer border from FullCalendar scrollgrid across all views */
+.fc-scrollgrid {
+  @apply border-0;
+}
+
+/* Calendar table - no inner bg/border/radius so it docks flush */
+.fc-view-harness {
+  @apply bg-transparent rounded-none;
+}
+
+/* Table header (days of week) */
+.fc-col-header {
+  @apply bg-gray-50 dark:bg-gray-800;
+}
+
+.fc-col-header-cell {
+  @apply text-gray-700 dark:text-gray-300 font-medium text-sm py-3;
+}
+
+.fc-col-header-cell-cushion {
+  @apply p-0;
+}
+
+/* Scrollable content area */
+.fc-scroller {
+  @apply overflow-y-visible;
+}
+
+/* Day grid (month view) */
+.fc-daygrid-day {
+  @apply min-h-[120px];
+}
+
+.fc-daygrid-day-frame {
+  @apply p-2 h-full;
+}
+
+.fc-daygrid-day-top {
+  @apply flex justify-between items-center mb-2;
+}
+
+.fc-daygrid-day-number {
+  @apply text-gray-900 dark:text-gray-100 font-medium text-sm;
+}
+
+/* Current day highlighting */
+.fc-day-today {
+  @apply bg-primary-50 dark:bg-primary-900;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+  @apply text-primary-700 dark:text-primary-400 font-bold;
+}
+
+/* Other month days */
+.fc-day-other .fc-daygrid-day-number {
+  @apply text-gray-400 dark:text-gray-600;
+}
+
+/* Time grid (day/week views) */
+.fc-timegrid {
+  @apply border-0;
+}
+
+.fc-timegrid-slot {
+  @apply border-b border-gray-100 dark:border-gray-800 h-8;
+}
+
+.fc-timegrid-slot-minor {
+  @apply border-b-0;
+}
+
+.fc-timegrid-axis {
+  @apply text-gray-600 dark:text-gray-400 text-xs;
+}
+
+.fc-timegrid-slot-label {
+  @apply text-gray-600 dark:text-gray-400 text-xs;
+}
+
+/* Time grid columns */
+.fc-timegrid-col {
+  @apply border-r border-gray-200 dark:border-gray-700;
+}
+
+.fc-timegrid-col:last-child {
+  @apply border-r-0;
+}
+
+/* All-day area */
+.fc-timegrid-divider {
+  @apply border-b-2 border-gray-200 dark:border-gray-700;
+}
+
+.fc-timegrid-all-day {
+  @apply bg-gray-50 dark:bg-gray-800 p-2;
+}
+
+/* Now indicator */
+.fc-timegrid-now-indicator-line {
+  @apply border-t-2 border-red-500 dark:border-red-400;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  @apply border-l-4 border-l-red-500 dark:border-l-red-400 border-y-4 border-y-transparent;
+}
+
+/* Event styling - custom pills */
+.fc-event {
+  @apply border-0 bg-transparent cursor-pointer;
+}
+
+.fc-event:hover {
+  @apply opacity-90;
+}
+
+.fc-xs-pill {
+  @apply transition-all duration-200 hover:shadow-sm;
+}
+
+/* Day grid events */
+.fc-daygrid-event {
+  @apply mb-1;
+}
+
+.fc-daygrid-event .fc-event-main {
+  @apply p-0;
+}
+
+.fc-daygrid-block-event .fc-event-main {
+  @apply p-0;
+}
+
+/* Time grid events */
+.fc-timegrid-event {
+  @apply rounded-md;
+}
+
+.fc-timegrid-event .fc-event-main {
+  @apply p-0;
+}
+
+/* Hide default event elements */
+.fc-event-title,
+.fc-event-time {
+  @apply hidden;
+}
+
+/* Popover/tooltip */
+.fc-popover {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50;
+}
+
+.fc-popover-header {
+  @apply bg-gray-50 dark:bg-gray-700 p-3 border-b border-gray-200 dark:border-gray-600;
+}
+
+.fc-popover-title {
+  @apply font-medium text-gray-900 dark:text-gray-100;
+}
+
+.fc-popover-close {
+  @apply text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200;
+}
+
+/* Selection styling */
+.fc-highlight {
+  @apply bg-primary-100 dark:bg-primary-900 opacity-50;
+}
+
+/* More events link */
+.fc-daygrid-more-link {
+  @apply text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-200 text-xs font-medium;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .fc-daygrid-day {
+    @apply min-h-[80px];
+  }
+
+  
+  .fc-xs-pill {
+    @apply text-[10px] px-1;
+  }
+}
+
+/* Week view header days */
+.fc-timegrid .fc-col-header-cell {
+  @apply bg-gray-50 dark:bg-gray-800;
+}
+
+/* Week view day numbers */
+.fc-timegrid .fc-daygrid-day-number {
+  @apply text-lg font-bold;
+}
+
+/* Status-specific hover effects */
+.fc-xs-pill:hover {
+  @apply transform scale-105;
+}
+
+/* Loading state */
+.fc .fc-view-harness-active > .fc-view {
+  @apply relative;
+}
+
+.fc-loading {
+  @apply opacity-50;
+}
+
+
+/* ================================
+   Remove all outer/inner borders
+   across Month/Week/Day views
+   ================================ */
+/* Outer grid and table cells */
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard .fc-scrollgrid table,
+.fc-theme-standard .fc-scrollgrid td,
+.fc-theme-standard .fc-scrollgrid th,
+.fc-scrollgrid,
+.fc-scrollgrid table,
+.fc-scrollgrid td,
+.fc-scrollgrid th {
+  border: 0 !important;
+}
+
+/* Week/Day timegrid internals */
+.fc-timegrid,
+.fc-timegrid-col,
+.fc-timegrid-slot,
+.fc-timegrid-slot-minor,
+.fc-timegrid-axis,
+.fc-timegrid-divider {
+  border: 0 !important;
+}
+
+/* Header row (days of week) */
+.fc-col-header,
+.fc-col-header-cell {
+  border: 0 !important;
+}
+

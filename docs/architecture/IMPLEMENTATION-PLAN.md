@@ -1,8 +1,8 @@
-# Multi-Tenant Implementation Plan for xScheduler
+# Multi-Tenant Implementation Plan for WebSchedulr
 
 ## 🎯 **Executive Summary**
 
-**YES, absolutely possible!** Your xScheduler can become a powerful SaaS platform with a single codebase serving multiple clients through subdomains and subfolders. This approach will:
+**YES, absolutely possible!** Your WebSchedulr can become a powerful SaaS platform with a single codebase serving multiple clients through subdomains and subfolders. This approach will:
 
 - **Transform your business model** from one-time sales to recurring revenue
 - **Scale infinitely** without code duplication
@@ -27,7 +27,7 @@ class TenantDetectionFilter implements FilterInterface
         
         if (!$tenantInfo['tenant'] && !$this->isAdminRoute($request)) {
             // Redirect to main site or show tenant selection
-            return redirect()->to('https://xscheduler.com/signup');
+            return redirect()->to('https://webschedulr.com/signup');
         }
         
         // Set tenant context for the entire request
@@ -44,8 +44,8 @@ class TenantDetectionFilter implements FilterInterface
         $host = $request->getServer('HTTP_HOST');
         $path = $request->getUri()->getPath();
         
-        // Method 1: Subdomain detection (client1.xscheduler.com)
-        if (preg_match('/^([^.]+)\.xscheduler\.com$/', $host, $matches)) {
+        // Method 1: Subdomain detection (client1.webschedulr.com)
+        if (preg_match('/^([^.]+)\.webschedulr\.com$/', $host, $matches)) {
             $slug = $matches[1];
             if ($slug !== 'www' && $slug !== 'admin') {
                 return [
@@ -56,7 +56,7 @@ class TenantDetectionFilter implements FilterInterface
             }
         }
         
-        // Method 2: Subfolder detection (xscheduler.com/client1)
+        // Method 2: Subfolder detection (webschedulr.com/client1)
         if (preg_match('/^\/([^\/]+)/', $path, $matches)) {
             $slug = $matches[1];
             // Skip non-tenant paths
@@ -97,15 +97,15 @@ use CodeIgniter\Router\RouteCollection;
  */
 
 // Main website routes (no tenant context)
-$routes->group('', ['hostname' => 'xscheduler.com'], function($routes) {
+$routes->group('', ['hostname' => 'webschedulr.com'], function($routes) {
     $routes->get('/', 'Marketing::index');
     $routes->get('pricing', 'Marketing::pricing');
     $routes->get('signup', 'Marketing::signup');
     $routes->post('create-tenant', 'Marketing::createTenant');
 });
 
-// Admin routes (admin.xscheduler.com)
-$routes->group('', ['hostname' => 'admin.xscheduler.com', 'filter' => 'admin_auth'], function($routes) {
+// Admin routes (admin.webschedulr.com)
+$routes->group('', ['hostname' => 'admin.webschedulr.com', 'filter' => 'admin_auth'], function($routes) {
     $routes->get('/', 'Admin\Dashboard::index');
     $routes->get('tenants', 'Admin\Tenants::index');
     $routes->get('billing', 'Admin\Billing::index');
@@ -178,7 +178,7 @@ class TenantService
     {
         // Database-per-tenant approach
         $config = config('Database');
-        $config->default['database'] = 'xscheduler_' . $tenant->slug;
+        $config->default['database'] = 'webschedulr_' . $tenant->slug;
         
         // Force reconnection with new database
         \Config\Database::connect('default', false);
@@ -204,7 +204,7 @@ class TenantService
     {
         // Create new database for tenant
         $masterDb = \Config\Database::connect('master'); // master connection
-        $masterDb->query("CREATE DATABASE IF NOT EXISTS `xscheduler_{$tenant->slug}`");
+        $masterDb->query("CREATE DATABASE IF NOT EXISTS `webschedulr_{$tenant->slug}`");
         
         // Run migrations on new database
         $this->runTenantMigrations($tenant);
@@ -220,9 +220,9 @@ class TenantService
 #### **Option A: Database Per Tenant (Recommended for Security)**
 
 ```sql
--- Master database: xscheduler_master
-CREATE DATABASE xscheduler_master;
-USE xscheduler_master;
+-- Master database: webschedulr_master
+CREATE DATABASE webschedulr_master;
+USE webschedulr_master;
 
 CREATE TABLE tenants (
     id VARCHAR(36) PRIMARY KEY,
@@ -251,7 +251,7 @@ CREATE TABLE subscriptions (
     FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
 
--- Individual tenant databases: xscheduler_client1, xscheduler_client2, etc.
+-- Individual tenant databases: webschedulr_client1, webschedulr_client2, etc.
 -- Each contains your existing tables:
 -- - appointments
 -- - customers  
@@ -383,7 +383,7 @@ Would you like me to:
 3. **Set up the database migration strategy** for multi-tenancy?
 4. **Build the admin dashboard** for tenant management?
 
-This transformation would position xScheduler as a **modern SaaS platform** competing with tools like Calendly, Acuity, and Bookly, but with your unique features and vertical focus.
+This transformation would position WebSchedulr as a **modern SaaS platform** competing with tools like Calendly, Acuity, and Bookly, but with your unique features and vertical focus.
 
 **The potential is enormous** - you'd be building a scalable business that grows in value over time rather than just selling individual licenses.
 

@@ -1,31 +1,31 @@
-# Multi-Tenant SaaS Architecture for xScheduler
+# Multi-Tenant SaaS Architecture for WebSchedulr
 
 ## Overview
 
-Transform xScheduler from a standalone application into a **multi-tenant hosted solution** with a single codebase serving multiple clients through subdomains and subfolders.
+Transform WebSchedulr from a standalone application into a **multi-tenant hosted solution** with a single codebase serving multiple clients through subdomains and subfolders.
 
 ## 🏗️ **Architecture Options**
 
 ### **Option 1: Subdomain-Based Multi-Tenancy (Recommended)**
 ```
-https://client1.xscheduler.com     → Tenant: client1
-https://client2.xscheduler.com     → Tenant: client2
-https://dentist.xscheduler.com     → Tenant: dentist
-https://salon.xscheduler.com       → Tenant: salon
+https://client1.webschedulr.com     → Tenant: client1
+https://client2.webschedulr.com     → Tenant: client2
+https://dentist.webschedulr.com     → Tenant: dentist
+https://salon.webschedulr.com       → Tenant: salon
 ```
 
 ### **Option 2: Subfolder-Based Multi-Tenancy**
 ```
-https://xscheduler.com/client1     → Tenant: client1
-https://xscheduler.com/client2     → Tenant: client2
-https://xscheduler.com/dentist     → Tenant: dentist
-https://xscheduler.com/salon       → Tenant: salon
+https://webschedulr.com/client1     → Tenant: client1
+https://webschedulr.com/client2     → Tenant: client2
+https://webschedulr.com/dentist     → Tenant: dentist
+https://webschedulr.com/salon       → Tenant: salon
 ```
 
 ### **Option 3: Hybrid Approach (Best of Both)**
 ```
-https://client1.xscheduler.com     → Premium subdomain
-https://xscheduler.com/client2     → Standard subfolder
+https://client1.webschedulr.com     → Premium subdomain
+https://webschedulr.com/client2     → Standard subfolder
 https://custom-domain.com          → Custom domain (white-label)
 ```
 
@@ -59,7 +59,7 @@ class TenantFilter implements FilterInterface
         $uri = $request->getUri()->getPath();
         
         // Subdomain detection
-        if (preg_match('/^([^.]+)\.xscheduler\.com$/', $host, $matches)) {
+        if (preg_match('/^([^.]+)\.webschedulr\.com$/', $host, $matches)) {
             return $this->findTenantBySubdomain($matches[1]);
         }
         
@@ -108,7 +108,7 @@ class TenantService
     public function switchDatabase(Tenant $tenant): void
     {
         $config = config('Database');
-        $config->default['database'] = 'xscheduler_' . $tenant->slug;
+        $config->default['database'] = 'webschedulr_' . $tenant->slug;
         
         // Reconnect with tenant database
         \Config\Database::connect('default', false);
@@ -119,18 +119,18 @@ class TenantService
 #### **C. Hybrid: Shared + Tenant Databases**
 ```php
 // Shared database for tenant management, billing, etc.
-xscheduler_master:
+webschedulr_master:
 - tenants
 - subscriptions
 - billing
 
 // Individual tenant databases
-xscheduler_client1:
+webschedulr_client1:
 - appointments
 - customers
 - services
 
-xscheduler_client2:
+webschedulr_client2:
 - appointments
 - customers
 - services
@@ -285,12 +285,12 @@ services:
 # Handle wildcard subdomains
 server {
     listen 443 ssl;
-    server_name *.xscheduler.com xscheduler.com;
+    server_name *.webschedulr.com webschedulr.com;
     
     ssl_certificate /etc/nginx/ssl/wildcard.crt;
     ssl_certificate_key /etc/nginx/ssl/wildcard.key;
     
-    root /var/www/xscheduler/public;
+    root /var/www/webschedulr/public;
     
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -325,13 +325,13 @@ server {
 ### **Subdomain Plans**
 ```
 Starter Plan: $29/month
-- yourname.xscheduler.com
+- yourname.webschedulr.com
 - 500 appointments/month
 - 2 staff accounts
 - Email support
 
 Professional Plan: $79/month
-- yourname.xscheduler.com + custom domain
+- yourname.webschedulr.com + custom domain
 - 2,000 appointments/month
 - 10 staff accounts
 - Priority support + phone

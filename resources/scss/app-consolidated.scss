@@ -1,0 +1,226 @@
+// ============================================
+// WebSchedulr Design System - Main SCSS File
+// ============================================
+// This file consolidates all CSS into a well-organized,
+// maintainable structure following SCSS 7-1 architecture
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// =============
+// 1. ABSTRACTS
+// =============
+// Variables, mixins, functions - no actual CSS output
+@import 'abstracts/variables';
+@import 'abstracts/mixins';
+@import 'abstracts/custom-properties';
+
+// =============
+// 2. BASE
+// =============
+// Reset, typography, global styles
+@import 'base/reset';
+
+// =============
+// 3. LAYOUT
+// =============
+// Grid system, navigation, page structure
+@import 'layout/grid';
+@import 'layout/navigation';
+
+// =============
+// 4. COMPONENTS
+// =============
+// Reusable UI components
+@import 'components/buttons';
+@import 'components/cards';
+@import 'components/forms';
+@import 'components/status';
+@import 'components/unified-sidebar';
+
+// FullCalendar overrides
+// FullCalendar v6 styles are injected via JS modules; include only our overrides
+@import '../css/fullcalendar-overrides.css';
+
+// =============
+// 5. PAGES
+// =============
+// Page-specific styles
+@import 'pages/dashboard';
+@import 'pages/auth';
+
+// =============
+// 6. UTILITIES
+// =============
+// Helper classes and overrides
+@import 'utilities/icons';
+
+@layer utilities {
+  // Brand Color Utilities
+  .text-brand-ocean { color: $brand-ocean !important; }
+  .text-brand-crimson { color: $brand-crimson !important; }
+  .text-brand-orange { color: $brand-orange !important; }
+  .text-brand-golden { color: $brand-golden !important; }
+  .text-brand-cream { color: $brand-cream !important; }
+  
+  .bg-brand-ocean { background-color: $brand-ocean !important; }
+  .bg-brand-crimson { background-color: $brand-crimson !important; }
+  .bg-brand-orange { background-color: $brand-orange !important; }
+  .bg-brand-golden { background-color: $brand-golden !important; }
+  .bg-brand-cream { background-color: $brand-cream !important; }
+  
+  .border-brand-ocean { border-color: $brand-ocean !important; }
+  .border-brand-orange { border-color: $brand-orange !important; }
+  .border-brand-golden { border-color: $brand-golden !important; }
+  
+  // Shadow Utilities
+  .shadow-brand { box-shadow: $shadow-brand !important; }
+  .shadow-brand-lg { box-shadow: $shadow-brand-lg !important; }
+  .shadow-material { box-shadow: $material-shadow !important; }
+  .shadow-material-lg { box-shadow: $material-shadow-lg !important; }
+  
+  // Animation Utilities
+  .fade-in { @include fade-in; }
+  .slide-up { @include slide-up; }
+  
+  // Text Utilities
+  .text-truncate { @include text-truncate; }
+  .text-truncate-2 { @include text-truncate-multiline(2); }
+  .text-truncate-3 { @include text-truncate-multiline(3); }
+  
+  // Visibility Utilities
+  .visually-hidden { @include visually-hidden; }
+}
+
+// =============
+// 7. LEGACY COMPATIBILITY
+// =============
+// Maintain backwards compatibility with existing inline styles
+// These will be gradually removed as we migrate components
+
+// Dashboard legacy support
+.main-content {
+  min-height: 100vh;
+}
+
+// Material Web Components custom properties (consolidated)
+md-filled-button {
+  --md-filled-button-container-color: var(--md-sys-color-primary);
+  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+}
+
+md-outlined-card {
+  --md-outlined-card-outline-color: var(--xs-border);
+  border-radius: $border-radius-xl;
+}
+
+// Chart containers
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+// Settings tabs (to be migrated to components)
+.tab-btn {
+  @apply px-3 py-2 text-sm rounded-t-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors;
+  
+  &.active {
+    @apply bg-white dark:bg-gray-800 border-x border-t border-gray-200 dark:border-gray-700 -mb-px text-gray-900 dark:text-gray-100;
+  }
+}
+
+// Form elements legacy
+.form-field { /* spacing handled by grids/containers */ }
+.checkbox { @apply rounded text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-400; }
+.req { @apply text-red-600 dark:text-red-400; }
+.file-input { @apply bg-white dark:bg-gray-700; }
+
+// Ensure native controls render appropriate theme chrome
+@layer base {
+  input, select, textarea { color-scheme: light dark; }
+}
+
+// Time slot components (scheduler)
+.time-slot {
+  @apply px-3 py-2 text-sm font-medium rounded-md border text-center cursor-pointer transition-all duration-200;
+  
+  &.time-slot-available {
+    @apply bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-300;
+  }
+  
+  &.time-slot-selected {
+    @apply bg-blue-600 border-blue-600 text-white;
+  }
+  
+  &.time-slot-booked {
+    @apply bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed;
+  }
+  
+  &.time-slot-past {
+    @apply bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed;
+  }
+}
+
+// Data Tables
+.table-brand {
+  @apply w-full border-collapse;
+  
+  th {
+    @apply px-6 py-4 text-left font-semibold;
+    background-color: $brand-cream;
+    color: $brand-ocean;
+    border-bottom: 2px solid $brand-ocean;
+  }
+  
+  td {
+    @apply px-6 py-4 border-b border-neutral-200;
+  }
+  
+  tr:hover {
+    background-color: rgba($brand-cream, 0.3);
+  }
+}
+
+// =============
+// 8. PRINT STYLES
+// =============
+@media print {
+  // Hide non-essential elements
+  .sidebar,
+  .nav-toggle,
+  .btn,
+  .alert {
+    display: none !important;
+  }
+  
+  // Adjust layout for print
+  .main-content {
+    margin-left: 0 !important;
+  }
+  
+  // Ensure good contrast
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
+}
+
+// =============
+// 9. PERFORMANCE OPTIMIZATIONS
+// =============
+// Optimize rendering performance
+* {
+  // Improve text rendering
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Will-change for animated elements
+.card:hover,
+.btn:hover,
+.nav-link:hover {
+  will-change: transform;
+}

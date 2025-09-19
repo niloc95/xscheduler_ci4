@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Build Configuration Script for xScheduler
+ * Build Configuration Script for WebSchedulr
  * 
  * This script handles environment-specific builds and configurations
- * for the xScheduler application.
+ * for the WebSchedulr application.
  */
 
 import fs from 'fs';
@@ -44,7 +44,7 @@ const CONFIG = {
         env: '.env',
         envExample: '.env.example',
         buildOutput: 'public/build',
-        deployOutput: 'xscheduler-deploy'
+        deployOutput: 'webschedulr-deploy'
     }
 };
 
@@ -61,7 +61,7 @@ class BuildManager {
         try {
             this.targetEnv = environment || this.currentEnv;
             
-            console.log(`🚀 Building xScheduler for ${this.targetEnv} environment...`);
+            console.log(`🚀 Building WebSchedulr for ${this.targetEnv} environment...`);
             
             await this.validateEnvironment();
             await this.configureEnvironment();
@@ -301,7 +301,7 @@ switch (command) {
         break;
     default:
         console.log(`
-xScheduler Build Configuration Script
+WebSchedulr Build Configuration Script
 
 Usage:
   node scripts/build-config.js build [environment]    # Build for specific environment
