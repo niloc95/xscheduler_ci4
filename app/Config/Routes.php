@@ -161,13 +161,30 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     // Versioned API v1
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
-        $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
+    $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
     $routes->resource('services', ['controller' => 'Api\\V1\\Services']);
         $routes->get('providers', 'Api\\V1\\Providers::index');
     $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
     // Settings API
     $routes->get('settings', 'Api\\V1\\Settings::index');
     $routes->put('settings', 'Api\\V1\\Settings::update');
+    });
+
+    // Public (unauth or light auth) booking API v1 (customers)
+    $routes->group('public/v1', function($routes) {
+        $routes->post('customers', 'Api\\Public\\V1\\Customers::create');
+        $routes->put('customers/(\d+)', 'Api\\Public\\V1\\Customers::update/$1');
+        $routes->get('services', 'Api\\Public\\V1\\Services::index');
+        $routes->get('providers', 'Api\\Public\\V1\\Providers::index');
+        $routes->post('appointments', 'Api\\Public\\V1\\Appointments::create');
+        $routes->put('appointments/(\d+)', 'Api\\Public\\V1\\Appointments::update/$1');
+        $routes->post('appointments/(\d+)/cancel', 'Api\\Public\\V1\\Appointments::cancel/$1');
+    });
+
+    // Admin/staff API v1 (requires auth + role)
+    $routes->group('admin/v1', ['filter' => 'api_auth'], function($routes) {
+        $routes->resource('users', ['controller' => 'Api\\Admin\\V1\\Users']);
+        $routes->resource('appointments', ['controller' => 'Api\\Admin\\V1\\Appointments']);
     });
 });
 

@@ -2,32 +2,25 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 
-class UserModel extends Model
+class UserModel extends BaseModel
 {
     protected $table            = 'users';
     protected $primaryKey       = 'id';
-    protected $useAutoIncrement = true;
-    protected $returnType       = 'array';
-    protected $useSoftDeletes   = false;
-    protected $protectFields    = true;
     protected $allowedFields    = [
-        'name', 'email', 'phone', 'password_hash', 'role', 'provider_id', 
-        'permissions', 'is_active', 'reset_token', 'reset_expires'
+        'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
+        'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires'
     ];
 
     // Dates
-    protected $useTimestamps = true;
-    protected $dateFormat    = 'datetime';
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
+    // ...existing code...
 
     // Validation
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[customer,provider,staff,admin]'
+    'role'  => 'required|in_list[admin,provider,receptionist]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
