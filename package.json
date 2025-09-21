@@ -12,6 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "package": "node scripts/package.js",
+    "package:archive": "node scripts/package.js --archive-logs",
     "build:dev": "node scripts/build-config.js build development",
     "build:staging": "node scripts/build-config.js build staging",
     "build:prod": "node scripts/build-config.js build production",
@@ -23,8 +24,8 @@
   "dependencies": {
     "@coreui/coreui": "^5.4.0",
     "@coreui/icons": "^3.0.1",
-    "@fullcalendar/core": "^6.1.19",
-    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/core": "^6.1.15",
+    "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/interaction": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.19",
     "@headlessui/tailwindcss": "^0.2.2",
@@ -47,7 +48,6 @@
     "@tailwindcss/typography": "^0.5.10",
     "archiver": "^7.0.1",
     "autoprefixer": "^10.4.21",
-    "cypress": "^15.2.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17"
   }

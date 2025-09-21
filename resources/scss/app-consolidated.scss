@@ -40,7 +40,7 @@
 @import 'components/unified-sidebar';
 
 // FullCalendar overrides
-// FullCalendar v6 styles are injected via JS modules; include only our overrides
+// Include FullCalendar base CSS, then our Tailwind-based overrides
 @import '../css/fullcalendar-overrides.css';
 
 // =============

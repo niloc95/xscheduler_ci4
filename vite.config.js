@@ -20,6 +20,7 @@ export default defineConfig({
         spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
         'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
   'schedule-core': path.resolve(process.cwd(), 'resources/js/schedule-core.js'),
+  'calendar-custom': path.resolve(process.cwd(), 'resources/js/custom-cal.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',
