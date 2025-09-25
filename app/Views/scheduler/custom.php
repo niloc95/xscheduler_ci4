@@ -7,141 +7,209 @@
 <?= $this->section('header_title') ?>Schedule<?= $this->endSection() ?>
 
 <?= $this->section('head') ?>
-    <!-- Load SPA variant calendar module for custom scheduler page -->
-    <script type="module" src="<?= base_url('build/assets/calendar-custom.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/scheduler-dashboard.js') ?>"></script>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Schedule" data-page-subtitle="Modern calendar with filters and quick booking">
-    <div class="max-w-7xl mx-auto">
-        <!-- Filters -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6 shadow-sm">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div
+    id="scheduler-dashboard"
+    class="main-content space-y-6"
+    data-page-title="Scheduler"
+    data-page-subtitle="Manage appointments, availability, and bookings"
+    data-api-base="<?= base_url('api/v1') ?>"
+    data-slots-url="<?= base_url('api/slots') ?>"
+>
+    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Scheduler Dashboard</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Keep track of today’s workload, manage upcoming commitments, and respond quickly to new requests.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button id="scheduler-new" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                <span class="material-symbols-outlined text-base">add</span>
+                New Appointment
+            </button>
+            <button id="scheduler-refresh" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                <span class="material-symbols-outlined text-base">refresh</span>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3" id="scheduler-summary">
+        <button type="button" data-target-view="day" class="group rounded-2xl border border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show today’s appointments">
+            <div class="flex items-start justify-between">
                 <div>
-                    <label for="provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider</label>
-                    <select id="provider" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                    <p class="text-xs uppercase tracking-wide text-white/80">Today’s Appointments</p>
+                    <p class="mt-2 text-3xl font-semibold"><span id="scheduler-count-today">0</span></p>
+                </div>
+                <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_today</span>
+            </div>
+            <p class="mt-4 text-xs text-white/70">Click to jump into Day view and review each booking.</p>
+        </button>
+
+        <button type="button" data-target-view="week" class="group rounded-2xl border border-transparent bg-gradient-to-r from-amber-500 to-orange-500 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this week’s appointments">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-white/80">This Week’s Appointments</p>
+                    <p class="mt-2 text-3xl font-semibold"><span id="scheduler-count-week">0</span></p>
+                </div>
+                <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_view_week</span>
+            </div>
+            <p class="mt-4 text-xs text-white/70">Review the weekly mix of services and provider availability.</p>
+        </button>
+
+        <button type="button" data-target-view="month" class="group rounded-2xl border border-transparent bg-gradient-to-r from-purple-600 to-fuchsia-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this month’s appointments">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-white/80">This Month’s Appointments</p>
+                    <p class="mt-2 text-3xl font-semibold"><span id="scheduler-count-month">0</span></p>
+                </div>
+                <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_month</span>
+            </div>
+            <p class="mt-4 text-xs text-white/70">Zoom out to evaluate broader trends and pacing.</p>
+        </button>
+    </div>
+
+        <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" id="scheduler-filters">
+                <label class="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span class="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-base">supervisor_account</span>
+                        Provider
+                    </span>
+                    <select id="scheduler-filter-provider" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
                         <option value="">All providers</option>
-                        <?php foreach (($providers ?? []) as $p): ?>
-                            <option value="<?= esc($p['id']) ?>"><?= esc($p['name'] ?? ($p['email'] ?? ('Provider #'.$p['id']))) ?></option>
+                        <?php foreach (($providers ?? []) as $provider): ?>
+                            <option value="<?= esc($provider['id']) ?>"><?= esc($provider['name'] ?? ($provider['email'] ?? 'Provider #'.$provider['id'])) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </div>
-                <div>
-                    <label for="service" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service</label>
-                    <select id="service" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                </label>
+
+                <label class="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span class="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-base">medical_services</span>
+                        Service
+                    </span>
+                    <select id="scheduler-filter-service" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
                         <option value="">All services</option>
-                        <?php foreach (($services ?? []) as $s): ?>
-                            <option value="<?= esc($s['id']) ?>"><?= esc($s['name'] ?? ('Service #'.$s['id'])) ?></option>
+                        <?php foreach (($services ?? []) as $service): ?>
+                            <option value="<?= esc($service['id']) ?>"><?= esc($service['name'] ?? 'Service #'.$service['id']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                </label>
+
+                <label class="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span class="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-base">event</span>
+                        Focus Date
+                    </span>
+                    <input id="scheduler-focus-date" type="date" value="<?= esc(date('Y-m-d')) ?>" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+                </label>
+
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button id="scheduler-clear" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
+                    <span class="material-symbols-outlined text-base">backspace</span>
+                    Clear Filters
+                </button>
+                <button id="scheduler-apply" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+        <p id="scheduler-filter-feedback" class="mt-4 hidden text-sm text-gray-500 dark:text-gray-400"></p>
+    </div>
+
+    <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span class="material-symbols-outlined text-base">schedule</span>
+                    <span id="scheduler-active-range">Loading current range…</span>
                 </div>
-                <div>
-                    <label for="date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                    <input id="date" type="date" value="<?= esc(date('Y-m-d')) ?>" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                </div>
-                <div class="flex items-end">
-                    <button id="load" type="button" class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium">
-                        <span class="material-symbols-outlined text-base">refresh</span>
-                        Load Slots
+                <h2 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">Calendar</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <button type="button" id="scheduler-prev" class="rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">
+                        <span class="material-symbols-outlined text-base">chevron_left</span>
                     </button>
+                    <button type="button" id="scheduler-today" class="rounded-xl px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-200 dark:hover:bg-gray-800">Today</button>
+                    <button type="button" id="scheduler-next" class="rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">
+                        <span class="material-symbols-outlined text-base">chevron_right</span>
+                    </button>
+                </div>
+                <div class="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <button type="button" data-view="day" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Day</button>
+                    <button type="button" data-view="week" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Week</button>
+                    <button type="button" data-view="month" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Month</button>
                 </div>
             </div>
         </div>
 
-        <!-- Slots -->
-        <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Available Slots</h2>
-            <div id="slots" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-            <div id="slots-empty" class="hidden text-sm text-gray-500 dark:text-gray-400">Use the filters above and click "Load Slots" to see availability.</div>
+        <div id="scheduler-calendar" class="min-h-[520px] rounded-2xl border border-dashed border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"></div>
+
+        <div id="scheduler-status" class="mt-4 hidden items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span class="material-symbols-outlined text-base">info</span>
+            <span></span>
+        </div>
+    </div>
+
+    <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Slots</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Snapshot of next openings based on the filters above.</p>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <span class="material-symbols-outlined text-base">update</span>
+                <span id="scheduler-slots-caption">Awaiting search…</span>
+            </div>
         </div>
 
-        <!-- Calendar placeholder (optional; wired by global calendar module) -->
-        <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Calendar</h2>
-            <div id="calendarRoot" class="min-h-[480px]"></div>
+        <div id="scheduler-slots" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+        <div id="scheduler-slots-empty" class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300">
+            Choose a provider and service, then pick Apply Filters to load availability.
         </div>
     </div>
 </div>
 
-<script type="module">
-    const el = {
-        provider: document.getElementById('provider'),
-        service: document.getElementById('service'),
-        date: document.getElementById('date'),
-        load: document.getElementById('load'),
-        slots: document.getElementById('slots'),
-        empty: document.getElementById('slots-empty'),
-    };
+<div id="scheduler-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+    <div class="w-full max-w-xl rounded-3xl bg-white shadow-2xl dark:bg-gray-900">
+        <div class="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+            <h3 id="scheduler-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">Appointment</h3>
+            <button type="button" id="scheduler-modal-close" class="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+        </div>
+        <div id="scheduler-modal-body" class="max-h-[70vh] overflow-y-auto p-4"></div>
+        <div id="scheduler-modal-footer" class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 p-4 dark:border-gray-700"></div>
+    </div>
+</div>
 
-    function setEmpty(msg){
-        if (el.empty) {
-            el.empty.textContent = msg || 'No available slots.';
-            el.empty.classList.remove('hidden');
-        }
-    }
+<template id="scheduler-slot-template">
+    <article class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-900">
+        <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100" data-slot-time>--:-- – --:--</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400" data-slot-notes></p>
+        </div>
+        <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700" data-slot-book>
+            <span class="material-symbols-outlined text-sm">event_available</span>
+            Book
+        </button>
+    </article>
+</template>
 
-    function clearEmpty(){
-        if (el.empty) el.empty.classList.add('hidden');
-    }
+<template id="scheduler-summary-template">
+    <div class="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+        <span class="material-symbols-outlined text-base">info</span>
+        <span data-summary-text>Summary</span>
+    </div>
+</template>
 
-    async function fetchSlots(){
-        if (!el.slots) return;
-        el.slots.innerHTML = '';
-        clearEmpty();
-        const params = new URLSearchParams();
-        if (el.provider && el.provider.value) params.set('provider_id', el.provider.value);
-        if (el.service && el.service.value) params.set('service_id', el.service.value);
-        if (el.date && el.date.value) params.set('date', el.date.value);
-
-        if (!params.has('provider_id') || !params.has('service_id')) {
-            setEmpty('Select a provider and a service to view available slots.');
-            return;
-        }
-
-        try {
-            const res = await fetch('<?= base_url('api/slots') ?>?' + params.toString());
-            if (!res.ok) throw new Error('Failed to load slots');
-            const data = await res.json();
-            const slots = Array.isArray(data.slots) ? data.slots : [];
-            if (!slots.length) {
-                setEmpty(`No available slots for ${data.date || el.date?.value || ''}.`);
-                return;
-            }
-            const frag = document.createDocumentFragment();
-            slots.forEach(s => {
-                const card = document.createElement('div');
-                card.className = 'p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between';
-                const time = document.createElement('div');
-                time.className = 'text-sm font-medium text-gray-900 dark:text-gray-100';
-                time.textContent = `${s.start} – ${s.end}`;
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'px-3 py-1.5 rounded-md text-white bg-blue-600 hover:bg-blue-700 text-sm';
-                btn.textContent = 'Book';
-                btn.addEventListener('click', () => {
-                    if (window.XSNotify?.show) {
-                        window.XSNotify.show({ title: 'Booking (demo)', message: `Requested ${s.start} – ${s.end}.`, type: 'info', autoClose: true, duration: 1800 });
-                    } else {
-                        alert(`Requested ${s.start} – ${s.end}`);
-                    }
-                });
-                card.append(time, btn);
-                frag.appendChild(card);
-            });
-            el.slots.appendChild(frag);
-        } catch (e) {
-            setEmpty('Failed to load slots.');
-        }
-    }
-
-    el.load?.addEventListener('click', fetchSlots);
-    // Auto-run if provider and service are preselected
-    if (el.provider?.value && el.service?.value) fetchSlots();
-    // Re-wire after SPA navigations
-    document.addEventListener('spa:navigated', () => {
-        el.load?.removeEventListener?.('click', fetchSlots);
-        document.getElementById('load')?.addEventListener('click', fetchSlots);
-    });
-</script>
 <?= $this->endSection() ?>
 

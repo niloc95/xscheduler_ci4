@@ -40,13 +40,14 @@ class SecurityHeaders implements FilterInterface
         }
         
         // Content Security Policy
-        $csp = "default-src 'self'; " .
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-               "style-src 'self' 'unsafe-inline'; " .
-               "img-src 'self' data: https:; " .
-               "font-src 'self'; " .
-               "connect-src 'self'; " .
-               "frame-ancestors 'none';";
+     // Allow Google Fonts for Material Symbols (styles + font files)
+     $csp = "default-src 'self'; " .
+         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
+         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+         "img-src 'self' data: https:; " .
+         "font-src 'self' https://fonts.gstatic.com data:; " .
+         "connect-src 'self'; " .
+         "frame-ancestors 'none';";
         
         $response->setHeader('Content-Security-Policy', $csp);
         

@@ -93,7 +93,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Active Appointments</p>
-                        <p class="text-3xl font-bold"><?= number_format($stats['active_sessions'] ?? 1789) ?></p>
+                        <p class="text-3xl font-bold"><span id="dash-appointments-week"><?= number_format($stats['active_sessions'] ?? 1789) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">calendar_month</span>
@@ -110,7 +110,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Pending Requests</p>
-                        <p class="text-3xl font-bold"><?= number_format($stats['pending_tasks'] ?? 456) ?></p>
+                        <p class="text-3xl font-bold"><span id="dash-appointments-today"><?= number_format($stats['pending_tasks'] ?? 456) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">schedule</span>
@@ -368,6 +368,32 @@
     <!-- Page Scripts -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+            // Global appointment summary refresher
+            async function refreshAppointmentSummary() {
+                try {
+                    const base = (window.__BASE_URL__ || '') + '/api';
+                    const res = await fetch(base + '/v1/appointments/summary');
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const json = await res.json();
+                    const data = json && typeof json === 'object' && 'data' in json ? json.data : json;
+                    if (data && typeof data === 'object') {
+                        const weekEl = document.getElementById('dash-appointments-week');
+                        const todayEl = document.getElementById('dash-appointments-today');
+                        if (weekEl && typeof data.week === 'number') weekEl.textContent = String(data.week);
+                        if (todayEl && typeof data.today === 'number') todayEl.textContent = String(data.today);
+                    }
+                } catch (e) {
+                    // Silent fail; keep server-rendered values
+                }
+            }
+
+            // Expose a global hook for other modules to trigger updates after changes
+            window.refreshAppointmentSummary = refreshAppointmentSummary;
+            document.addEventListener('appointment:changed', refreshAppointmentSummary);
+
+            // Initial fetch
+            refreshAppointmentSummary();
+
             // Search functionality
             const searchInput = document.getElementById('dashboardSearch');
             if (searchInput) {
@@ -417,13 +443,21 @@
             async function loadSlots() {
                 if (!svc || !prov || !dateEl || !slots) return;
                 slots.innerHTML = '';
+                const serviceId = (svc.value || '').trim();
+                const providerId = (prov.value || '').trim();
+                const dateVal = (dateEl.value || '').trim();
+                if (!serviceId || !providerId || !dateVal) {
+                    slots.innerHTML = '<div class="text-sm text-gray-500 dark:text-gray-400">Select a service, provider, and date.</div>';
+                    return;
+                }
                 const params = new URLSearchParams({
-                    service_id: svc.value,
-                    provider_id: prov.value,
-                    date: dateEl.value
+                    service_id: serviceId,
+                    provider_id: providerId,
+                    date: dateVal
                 });
                 try {
                     const res = await fetch('<?= base_url('api/slots') ?>?' + params.toString());
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
                     const data = await res.json();
                     (data.slots || []).forEach(s => {
                         const div = document.createElement('div');

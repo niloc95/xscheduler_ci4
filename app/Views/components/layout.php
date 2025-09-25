@@ -224,7 +224,7 @@
     </div>
     
     <!-- Scripts -->
-    <script src="<?= base_url('build/assets/main.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/main.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>

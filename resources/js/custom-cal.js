@@ -64,6 +64,71 @@ const state = {
   }
 };
 
+// Derived metrics for summary cards
+function computeSummaryCounts() {
+  const today = new Date();
+  const tStart = new Date(today); tStart.setHours(0,0,0,0);
+  const tEnd = new Date(today); tEnd.setHours(23,59,59,999);
+
+  const wStart = new Date(today); wStart.setDate(wStart.getDate() - wStart.getDay()); wStart.setHours(0,0,0,0);
+  const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate() + 6); wEnd.setHours(23,59,59,999);
+
+  const mStart = new Date(today.getFullYear(), today.getMonth(), 1, 0,0,0,0);
+  const mEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23,59,59,999);
+
+  const inRange = (startStr) => {
+    const d = parseDate(startStr);
+    return isNaN(d) ? null : d;
+  };
+
+  let cToday = 0, cWeek = 0, cMonth = 0;
+  for (const appt of (state.appointments || [])) {
+    const d = inRange(appt.start);
+    if (!d) continue;
+    if (d >= tStart && d <= tEnd) cToday++;
+    if (d >= wStart && d <= wEnd) cWeek++;
+    if (d >= mStart && d <= mEnd) cMonth++;
+  }
+  return { today: cToday, week: cWeek, month: cMonth };
+}
+
+function updateSummaryCards(countsOverride = null) {
+  try {
+    const counts = countsOverride || computeSummaryCounts();
+    const t = document.getElementById('count-today');
+    const w = document.getElementById('count-week');
+    const m = document.getElementById('count-month');
+    if (t) t.textContent = String(counts.today ?? 0);
+    if (w) w.textContent = String(counts.week ?? 0);
+    if (m) m.textContent = String(counts.month ?? 0);
+  } catch (e) { /* noop */ }
+}
+
+// Fetch and compute counts over a combined range so cards are accurate regardless of current view
+async function refreshSummaryCards() {
+  const params = new URLSearchParams();
+  if (state.filters.providerId) params.set('providerId', state.filters.providerId);
+  if (state.filters.serviceId) params.set('serviceId', state.filters.serviceId);
+
+  // Prefer backend-aggregated counts for accuracy and efficiency (global summary endpoint)
+  try {
+    const query = params.toString();
+    const url = query ? `${apiBase()}/appointments/summary?${query}` : `${apiBase()}/appointments/summary`;
+    const counts = await fetchJSON(url);
+    // The API may return wrapped or plain object; fetchJSON already unwraps when possible
+    if (counts && typeof counts === 'object') {
+      updateSummaryCards(counts);
+      return;
+    }
+    // Fallback if unexpected shape
+    updateSummaryCards();
+  } catch (e) {
+    console.warn('[scheduler] summary refresh failed', e);
+    // Fallback to client-side computation if API fails
+    updateSummaryCards();
+  }
+}
+
 // FullCalendar instance (all views)
 let __fc = null;
 let __refreshing = false;
@@ -534,6 +599,8 @@ async function refresh() {
   } catch (e) {
     console.error('Calendar refresh failed:', e);
   } finally {
+    // Always refresh counts, even if appointment load failed
+    refreshSummaryCards();
     __refreshing = false;
     if (__refreshQueued) {
       __refreshQueued = false;
@@ -551,6 +618,21 @@ function setupEventListeners() {
   $('viewDay')?.addEventListener('click', () => changeView('day'));
   $('viewWeek')?.addEventListener('click', () => changeView('week'));
   $('viewMonth')?.addEventListener('click', () => changeView('month'));
+
+  // Summary card click handlers
+  document.getElementById('summary-today')?.addEventListener('click', () => {
+    state.cursor = new Date();
+    changeView('day');
+    if (__fc) __fc.today();
+  });
+  document.getElementById('summary-week')?.addEventListener('click', () => {
+    state.cursor = new Date();
+    changeView('week');
+  });
+  document.getElementById('summary-month')?.addEventListener('click', () => {
+    state.cursor = new Date();
+    changeView('month');
+  });
 
   const viewSelectMobile = $('viewSelectMobile');
   if (viewSelectMobile) {

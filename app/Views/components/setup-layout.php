@@ -20,6 +20,9 @@
     </script>
     
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
+    <!-- Material Design Icons (Outlined + Rounded) -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <script type="module" src="<?= base_url('build/assets/materialWeb.js') ?>"></script>
     <?= $this->renderSection('head') ?>
 </head>

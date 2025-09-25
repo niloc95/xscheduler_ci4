@@ -6,8 +6,9 @@ class Home extends BaseController
 {
     public function index()
     {
-        // Check if setup is completed
-        if (!file_exists(WRITEPATH . 'setup_completed.flag')) {
+        // Check if setup is completed using centralized helper (prod-safe)
+        helper('setup');
+        if (!is_setup_completed()) {
             return redirect()->to('/setup');
         }
 

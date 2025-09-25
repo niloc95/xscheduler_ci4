@@ -10,7 +10,7 @@ require $pathsPath;
 $paths = new Config\Paths();
 
 // Bootstrap CI
-$bootstrap = rtrim($paths->systemDirectory, '\\/ ') . DIRECTORY_SEPARATOR . 'bootstrap.php';
+$bootstrap = rtrim($paths->systemDirectory, '\/ ') . DIRECTORY_SEPARATOR . 'bootstrap.php';
 require $bootstrap;
 
 // Initialize application
@@ -73,3 +73,4 @@ echo "1. Go to http://localhost:8083/auth/login" . PHP_EOL;
 echo "2. Login with admin@test.com / admin123" . PHP_EOL;
 echo "3. Navigate to http://localhost:8083/services" . PHP_EOL;
 echo "4. Click 'Edit Service' and test the functionality" . PHP_EOL;
+?>

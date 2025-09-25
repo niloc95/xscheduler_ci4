@@ -199,5 +199,54 @@ class Database extends Config
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
+
+        // Load database configuration from environment variables
+        // This ensures .env changes are reflected in database connections
+        $this->loadDatabaseFromEnvironment();
+    }
+
+    /**
+     * Load database configuration from environment variables
+     */
+    protected function loadDatabaseFromEnvironment(): void
+    {
+        // Update default connection with environment variables if they exist
+        if (getenv('database.default.hostname') !== false) {
+            $this->default['hostname'] = getenv('database.default.hostname');
+        }
+        if (getenv('database.default.database') !== false) {
+            $this->default['database'] = getenv('database.default.database');
+        }
+        if (getenv('database.default.username') !== false) {
+            $this->default['username'] = getenv('database.default.username');
+        }
+        if (getenv('database.default.password') !== false) {
+            $this->default['password'] = getenv('database.default.password');
+        }
+        if (getenv('database.default.DBDriver') !== false) {
+            $this->default['DBDriver'] = getenv('database.default.DBDriver');
+        }
+        if (getenv('database.default.DBPrefix') !== false) {
+            $this->default['DBPrefix'] = getenv('database.default.DBPrefix');
+        }
+        if (getenv('database.default.port') !== false) {
+            $this->default['port'] = (int) getenv('database.default.port');
+        }
+
+        // Handle boolean values
+        if (getenv('database.default.pConnect') !== false) {
+            $this->default['pConnect'] = filter_var(getenv('database.default.pConnect'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if (getenv('database.default.DBDebug') !== false) {
+            $this->default['DBDebug'] = filter_var(getenv('database.default.DBDebug'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Charset and collation
+        if (getenv('database.default.charset') !== false) {
+            $this->default['charset'] = getenv('database.default.charset');
+        }
+        if (getenv('database.default.DBCollat') !== false) {
+            $this->default['DBCollat'] = getenv('database.default.DBCollat');
+        }
     }
 }

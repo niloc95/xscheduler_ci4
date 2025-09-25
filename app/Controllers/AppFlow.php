@@ -30,33 +30,7 @@ class AppFlow extends BaseController
      */
     private function isSetupCompleted(): bool
     {
-        // Check for setup completion flag file
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        
-        if (!file_exists($flagPath)) {
-            return false;
-        }
-
-        // Additional check: verify .env file exists and has database config
-        $envPath = ROOTPATH . '.env';
-        if (!file_exists($envPath)) {
-            return false;
-        }
-
-        // Optional: Check if critical database tables exist
-        try {
-            $db = \Config\Database::connect();
-            
-            // Check if users table exists (primary indicator of completed setup)
-            if (!$db->tableExists('users')) {
-                return false;
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            // Database connection failed - setup probably not complete
-            log_message('warning', 'Database connection failed during setup check: ' . $e->getMessage());
-            return false;
-        }
+        helper('setup');
+        return is_setup_completed();
     }
 }

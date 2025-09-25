@@ -51,3 +51,4 @@ echo "Session isLoggedIn: " . (isset($_SESSION['isLoggedIn']) ? 'true' : 'false'
 echo "Session user: " . (isset($_SESSION['user']) ? json_encode($_SESSION['user']) : 'not set') . PHP_EOL;
 
 echo PHP_EOL . "Debug complete." . PHP_EOL;
+?>

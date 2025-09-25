@@ -2,7 +2,7 @@
 
 /* Main container */
 .fc {
-  @apply font-sans bg-transparent w-full h-full;
+  @apply font-sans bg-transparent w-full;
 }
 
 /* Remove any outer border from FullCalendar scrollgrid across all views */
@@ -30,7 +30,7 @@
 
 /* Scrollable content area */
 .fc-scroller {
-  @apply overflow-y-visible;
+  @apply overflow-y-auto;
 }
 
 /* Day grid (month view) */

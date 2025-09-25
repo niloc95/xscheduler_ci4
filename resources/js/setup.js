@@ -201,7 +201,11 @@ class SetupWizard {
             }
 
             const result = await response.json();
-            this.showConnectionResult(result.success, result.message);
+            this.showConnectionResult(result.success, result.message, {
+                env_updated: result.env_updated,
+                setup_reset: result.setup_reset,
+                warning: result.warning
+            });
         } catch (error) {
             console.error('Connection test error:', error);
             this.showConnectionResult(false, `Connection test failed: ${error.message}`);
@@ -231,19 +235,41 @@ class SetupWizard {
         }
     }
 
-    showConnectionResult(success, message) {
-        this.connectionResult.className = `mt-2 p-3 rounded-lg text-sm flex items-center ${
+    showConnectionResult(success, message, extraInfo = {}) {
+        this.connectionResult.className = `mt-2 p-3 rounded-lg text-sm flex items-start ${
             success 
                 ? 'bg-green-100 text-green-800 border border-green-200' 
                 : 'bg-red-100 text-red-800 border border-red-200'
         }`;
         
         const iconSvg = success 
-            ? '<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
-            : '<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+            ? '<svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+            : '<svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
         
-        this.connectionResult.innerHTML = `${iconSvg}${message}`;
+        let content = `${iconSvg}<div class="flex-1"><div class="font-medium">${message}</div>`;
+        
+        // Add extra information for successful connections
+        if (success && extraInfo) {
+            if (extraInfo.env_updated) {
+                content += '<div class="text-xs mt-1 text-green-700">✓ Database credentials saved to configuration file</div>';
+            }
+            if (extraInfo.setup_reset) {
+                content += '<div class="text-xs mt-1 text-green-700">✓ Setup flags reset - you can now re-run the setup process</div>';
+            }
+            if (extraInfo.warning) {
+                content += `<div class="text-xs mt-1 text-orange-700">⚠ Warning: ${extraInfo.warning}</div>`;
+            }
+        }
+        
+        content += '</div>';
+        
+        this.connectionResult.innerHTML = content;
         this.connectionResult.classList.remove('hidden');
+        
+        // If credentials were updated successfully, show additional success notification
+        if (success && extraInfo.env_updated) {
+            this.showNotification('success', 'Database credentials have been saved! You can now proceed with setup or run it again if needed.');
+        }
     }
 
     async handleSubmission(e) {
@@ -402,7 +428,9 @@ class SetupWizard {
         // Create a new notification
         const notification = document.createElement('div');
         notification.className = `notification fixed top-4 right-4 z-50 max-w-sm p-4 rounded-lg shadow-lg ${
-            type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'
+            type === 'error' 
+                ? 'bg-red-100 text-red-800 border border-red-200' 
+                : 'bg-green-100 text-green-800 border border-green-200'
         }`;
         
         const iconSvg = type === 'error' 

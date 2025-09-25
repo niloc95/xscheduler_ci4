@@ -9,7 +9,7 @@ if ($pathsPath === false || !is_file($pathsPath)) {
 }
 require $pathsPath;
 $paths = new \Config\Paths();
-$bootstrap = rtrim($paths->systemDirectory, '\\/ ') . DIRECTORY_SEPARATOR . 'bootstrap.php';
+$bootstrap = rtrim($paths->systemDirectory, '\/ ') . DIRECTORY_SEPARATOR . 'bootstrap.php';
 require realpath($bootstrap) ?: $bootstrap;
 
 // Boot the framework
@@ -43,3 +43,4 @@ foreach ($services as $service) {
 }
 
 echo "Done." . PHP_EOL;
+?>

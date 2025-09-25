@@ -69,13 +69,9 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
 // Services Routes (auth required for viewing, admin/provider for management)
 $routes->group('services', function($routes) {
     $routes->get('', 'Services::index');
-    $routes->get('categories', 'Services::categories');
     $routes->get('view/(:num)', 'Services::view/$1');
     $routes->get('create', 'Services::create');
     $routes->post('store', 'Services::store');
-    $routes->post('categories', 'Services::storeCategory');
-    $routes->post('categories/(:num)', 'Services::updateCategory/$1');
-    $routes->post('categories/(:num)/delete', 'Services::deleteCategory/$1');
     $routes->get('edit/(:num)', 'Services::edit/$1');
     $routes->post('update/(:num)', 'Services::update/$1');
     $routes->post('delete/(:num)', 'Services::delete/$1');
@@ -163,9 +159,17 @@ $routes->get('styleguide/scheduler', 'Styleguide::scheduler');
 // Dark Mode Test Route
 $routes->get('dark-mode-test', 'DarkModeTest::index');
 
-// Scheduler Routes (temporarily removed for full rebuild)
-// (New scheduler implementation will reintroduce routes here.)
-$routes->get('schedule', 'Schedule::index');
+// Scheduler Routes
+// Admin/staff dashboard-facing scheduler (requires setup + auth)
+$routes->group('scheduler', ['filter' => 'setup'], function($routes) {
+    // Default Schedule page shows the custom Tailwind calendar
+    $routes->get('', 'Scheduler::custom', ['filter' => 'auth']);
+    // Keep dashboard accessible
+    $routes->get('dashboard', 'Scheduler::dashboard', ['filter' => 'auth']);
+});
+
+// Public/client-facing booking view
+$routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
@@ -173,38 +177,36 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
 
+    // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
+    // Unversioned summary metrics
+    $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
+    // Unversioned counts for convenience (matches v1 controller)
+    $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
+    // Unversioned appointments resource (alias to v1 controller) - restrict ID to numeric
+    $routes->resource('appointments', [
+        'controller' => 'Api\\V1\\Appointments',
+        'placeholder' => '(:num)'
+    ]);
+
     // Versioned API v1
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
-    $routes->resource('appointments', ['controller' => 'Api\\V1\\Appointments']);
-    $routes->resource('services', ['controller' => 'Api\\V1\\Services']);
+        // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
+        $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
+        $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
+        // Versioned appointments resource - restrict ID to numeric
+        $routes->resource('appointments', [
+            'controller' => 'Api\\V1\\Appointments',
+            'placeholder' => '(:num)'
+        ]);
+        $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
     $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
     // Settings API
     $routes->get('settings', 'Api\\V1\\Settings::index');
     $routes->put('settings', 'Api\\V1\\Settings::update');
     });
-
-    // Public (unauth or light auth) booking API v1 (customers)
-    $routes->group('public/v1', function($routes) {
-        $routes->post('customers', 'Api\\Public\\V1\\Customers::create');
-        $routes->put('customers/(\d+)', 'Api\\Public\\V1\\Customers::update/$1');
-        $routes->get('services', 'Api\\Public\\V1\\Services::index');
-        $routes->get('providers', 'Api\\Public\\V1\\Providers::index');
-        $routes->post('appointments', 'Api\\Public\\V1\\Appointments::create');
-        $routes->put('appointments/(\d+)', 'Api\\Public\\V1\\Appointments::update/$1');
-        $routes->post('appointments/(\d+)/cancel', 'Api\\Public\\V1\\Appointments::cancel/$1');
-    });
-
-    // Admin/staff API v1 (requires auth + role)
-    $routes->group('admin/v1', ['filter' => 'api_auth'], function($routes) {
-        $routes->resource('users', ['controller' => 'Api\\Admin\\V1\\Users']);
-        $routes->resource('appointments', ['controller' => 'Api\\Admin\\V1\\Appointments']);
-    });
 });
-
-// Unversioned appointments endpoint (no filters for calendar)
-$routes->get('api/appointments', 'Api\\Appointments::index');
 
 // Settings (require setup + auth + admin role)
 $routes->group('', ['filter' => 'setup'], function($routes) {

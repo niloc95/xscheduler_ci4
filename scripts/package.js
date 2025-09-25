@@ -13,6 +13,69 @@ console.log('⚠️  NOTE: setup_completed.flag will be excluded from deployment
 console.log('   This ensures fresh installations start with the setup wizard');
 console.log('⚠️  NOTE: app/Views/test/ folder will be excluded from deployment package');
 console.log('   Test and example views are not needed in production');
+console.log('⚠️  NOTE: logs/ and debugbar/ folders will be cleaned for production deployment');
+console.log('   Only directory structure will be preserved with .gitkeep files');
+
+// Optional log archiving before cleanup
+const ARCHIVE_LOGS = process.env.ARCHIVE_LOGS === 'true' || process.argv.includes('--archive-logs');
+let logArchivePath = null;
+
+if (ARCHIVE_LOGS) {
+    console.log('📂 Archiving logs before deployment cleanup...');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    logArchivePath = path.join(projectRoot, `logs-archive-${timestamp}`);
+    fs.mkdirSync(logArchivePath, { recursive: true });
+    
+    // Archive current logs
+    const logsDir = path.join(projectRoot, 'writable/logs');
+    const debugbarDir = path.join(projectRoot, 'writable/debugbar');
+    
+    if (fs.existsSync(logsDir)) {
+        const logFiles = fs.readdirSync(logsDir).filter(file => file.endsWith('.log'));
+        if (logFiles.length > 0) {
+            const archiveLogsDir = path.join(logArchivePath, 'logs');
+            fs.mkdirSync(archiveLogsDir, { recursive: true });
+            logFiles.forEach(logFile => {
+                const src = path.join(logsDir, logFile);
+                const dest = path.join(archiveLogsDir, logFile);
+                fs.copyFileSync(src, dest);
+            });
+            console.log(`✅ Archived ${logFiles.length} log files to ${archiveLogsDir}`);
+        }
+    }
+    
+    if (fs.existsSync(debugbarDir)) {
+        const debugFiles = fs.readdirSync(debugbarDir).filter(file => file.endsWith('.json'));
+        if (debugFiles.length > 0) {
+            const archiveDebugDir = path.join(logArchivePath, 'debugbar');
+            fs.mkdirSync(archiveDebugDir, { recursive: true });
+            debugFiles.forEach(debugFile => {
+                const src = path.join(debugbarDir, debugFile);
+                const dest = path.join(archiveDebugDir, debugFile);
+                fs.copyFileSync(src, dest);
+            });
+            console.log(`✅ Archived ${debugFiles.length} debugbar files to ${archiveDebugDir}`);
+        }
+    }
+    
+    // Create archive summary
+    const archiveSummary = `# Log Archive Summary
+Created: ${new Date().toISOString()}
+Source: ${projectRoot}
+Deployment Package: webscheduler-deploy/
+
+## Archived Files:
+- logs/: ${fs.existsSync(path.join(logArchivePath, 'logs')) ? fs.readdirSync(path.join(logArchivePath, 'logs')).length : 0} files
+- debugbar/: ${fs.existsSync(path.join(logArchivePath, 'debugbar')) ? fs.readdirSync(path.join(logArchivePath, 'debugbar')).length : 0} files
+
+## Usage:
+These files were archived before deployment to keep production clean.
+Review for debugging or audit purposes as needed.
+`;
+    
+    fs.writeFileSync(path.join(logArchivePath, 'ARCHIVE-README.md'), archiveSummary);
+    console.log(`📋 Created archive summary: ${logArchivePath}/ARCHIVE-README.md`);
+}
 
 // Create deployment package
 const packageDir = path.join(projectRoot, 'webschedulr-deploy');
@@ -95,15 +158,33 @@ essentialFiles.forEach(({ src, dest }) => {
     if (fs.existsSync(source)) {
         try {
             if (fs.statSync(source).isDirectory()) {
-                // Special handling for writable directory to exclude setup_completed.flag
+                // Special handling for writable directory to clean debug/log files
                 if (src === 'writable') {
-                    // Exclude setup flag and any SQLite DB files under writable/database
+                    // Exclude all debug and log files, setup flags, and SQLite DB files
                     const excludePatterns = [
                         'setup_completed.flag',
-                        /^database\/.*\.db$/i
+                        /^database\/.*\.db$/i,
+                        /^logs\/.*\.log$/i,
+                        /^debugbar\/.*\.json$/i,
+                        'upload-debug.log'
                     ];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
-                    console.log(`✅ Copied ${src} → ${dest} (excluded setup_completed.flag and SQLite .db files)`);
+                    
+                    // Ensure empty directories exist with proper structure
+                    const cleanDirectories = ['logs', 'debugbar', 'cache', 'session', 'uploads'];
+                    cleanDirectories.forEach(dir => {
+                        const dirPath = path.join(destination, dir);
+                        if (!fs.existsSync(dirPath)) {
+                            fs.mkdirSync(dirPath, { recursive: true });
+                        }
+                        // Create .gitkeep file to preserve directory structure
+                        const gitkeepPath = path.join(dirPath, '.gitkeep');
+                        if (!fs.existsSync(gitkeepPath)) {
+                            fs.writeFileSync(gitkeepPath, '# Keep this directory in version control\n');
+                        }
+                    });
+                    
+                    console.log(`✅ Copied ${src} → ${dest} (cleaned: logs, debugbar, flags, SQLite files)`);
                 } else if (src === 'app') {
                     // Exclude test views from production deployment
                     const excludePatterns = ['Views/test'];
@@ -413,7 +494,32 @@ const readmeContent = `# WebSchedulr Production Deployment
 4. **Environment Setup**: The .env file is pre-configured for production
 5. **First Access**: Visit your domain - you'll be redirected to the setup wizard
 
-## 📁 Deployment Scenarios:
+## 🧹 Clean Production Environment:
+
+This deployment package includes:
+- ✅ **Clean logs directory** - Empty and ready for production logging
+- ✅ **Clean debugbar directory** - No development debug files included
+- ✅ **No setup flags** - Ensures fresh setup wizard experience  
+- ✅ **No SQLite dev databases** - Clean database directory
+- ✅ **No test views** - Production-only view files
+
+${logArchivePath ? `## 📂 Archived Development Files:
+
+Development logs and debug files have been archived to:
+\`${path.basename(logArchivePath)}\`
+
+These files are preserved for audit/debugging purposes but excluded from production deployment.
+` : `## � Log Archiving:
+
+To archive development logs before deployment, run:
+\`\`\`
+npm run package -- --archive-logs
+# OR
+ARCHIVE_LOGS=true npm run package
+\`\`\`
+`}
+
+## �📁 Deployment Scenarios:
 
 ### Option A: Subdomain Deployment (Recommended)
 - Upload all files to: \`subdomain_root/\`
@@ -435,7 +541,7 @@ const readmeContent = `# WebSchedulr Production Deployment
 ### 500 Internal Server Error:
 1. Check file permissions: \`chmod -R 755 writable/\`
 2. Check .htaccess compatibility (try renaming .htaccess temporarily)
-3. Check error logs in \`writable/logs/\`
+3. Check error logs in \`writable/logs/\` (will be created after first request)
 4. Ensure PHP 8.1+ is available
 
 ### Database Issues:
@@ -445,6 +551,11 @@ const readmeContent = `# WebSchedulr Production Deployment
 ### Path Issues:
 - Ensure your web server points to the 'public' folder
 - Check that mod_rewrite is enabled for .htaccess
+
+### Logging:
+- Production logs will be created in \`writable/logs/\` after deployment
+- Debug toolbar data will be stored in \`writable/debugbar/\` if enabled
+- All directories have .gitkeep files to maintain structure
 
 ## 📋 File Structure:
 \`\`\`
@@ -456,7 +567,12 @@ your-upload-directory/
 │   └── build/          # Compiled assets
 ├── system/             # CodeIgniter framework
 ├── vendor/             # PHP dependencies
-├── writable/           # Logs, cache, uploads
+├── writable/           # Logs, cache, uploads (clean directories)
+│   ├── logs/           # Clean - ready for production logs
+│   ├── debugbar/       # Clean - ready for debug data
+│   ├── cache/          # Clean - ready for cache files
+│   ├── session/        # Clean - ready for session files
+│   └── uploads/        # Clean - ready for file uploads
 └── .env               # Environment configuration
 \`\`\`
 

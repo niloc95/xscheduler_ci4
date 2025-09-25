@@ -21,6 +21,8 @@ export default defineConfig({
         'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
   'schedule-core': path.resolve(process.cwd(), 'resources/js/schedule-core.js'),
   'calendar-custom': path.resolve(process.cwd(), 'resources/js/custom-cal.js'),
+    'scheduler-dashboard': path.resolve(process.cwd(), 'resources/js/scheduler-dashboard.js'),
+        charts: path.resolve(process.cwd(), 'resources/js/charts.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

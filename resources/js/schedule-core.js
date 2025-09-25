@@ -254,7 +254,7 @@ function saveState(cal){
 function init(){
   const el = document.getElementById('calendar');
   if(!el){
-    console.log('[scheduler] #calendar not found (page without scheduler).');
+    console.debug('[scheduler] #calendar not found (page without scheduler).');
     return;
   }
   console.log('[scheduler] Initializing unified calendar...');

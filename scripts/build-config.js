@@ -255,6 +255,9 @@ class BuildManager {
     async createDeploymentPackage() {
         console.log('📦 Creating deployment package...');
         
+        // Clean up previous deployment artifacts first
+        await this.cleanupDeploymentArtifacts();
+        
         // Don't modify local environment during packaging
         // Just ensure dependencies are installed and build assets
         
@@ -279,6 +282,44 @@ class BuildManager {
         execSync('node scripts/package.js', { stdio: 'inherit' });
         
         console.log('✅ Deployment package created');
+    }
+
+    /**
+     * Clean up previous deployment artifacts
+     */
+    async cleanupDeploymentArtifacts() {
+        console.log('🧹 Cleaning up previous deployment artifacts...');
+        
+        const deployFolder = path.resolve(CONFIG.paths.deployOutput);
+        const deployZip = path.resolve('webschedulr-deploy.zip');
+        
+        // Remove deployment folder if it exists
+        if (fs.existsSync(deployFolder)) {
+            try {
+                fs.rmSync(deployFolder, { recursive: true, force: true });
+                console.log('✅ Removed previous deployment folder: webschedulr-deploy/');
+            } catch (error) {
+                console.warn('⚠️  Could not remove deployment folder, trying alternative method...');
+                try {
+                    execSync(`rm -rf "${deployFolder}"`, { stdio: 'pipe' });
+                    console.log('✅ Removed previous deployment folder via system command');
+                } catch (altError) {
+                    console.warn(`⚠️  Could not remove deployment folder: ${error.message}`);
+                }
+            }
+        }
+        
+        // Remove deployment ZIP file if it exists
+        if (fs.existsSync(deployZip)) {
+            try {
+                fs.unlinkSync(deployZip);
+                console.log('✅ Removed previous deployment ZIP: webschedulr-deploy.zip');
+            } catch (error) {
+                console.warn(`⚠️  Could not remove deployment ZIP: ${error.message}`);
+            }
+        }
+        
+        console.log('✅ Cleanup completed - starting with clean state');
     }
 }
 
@@ -305,7 +346,7 @@ WebSchedulr Build Configuration Script
 
 Usage:
   node scripts/build-config.js build [environment]    # Build for specific environment
-  node scripts/build-config.js deploy                 # Create deployment package
+  node scripts/build-config.js deploy                 # Create deployment package (with cleanup)
   node scripts/build-config.js env                    # Configure environment
 
 Environments:
@@ -317,6 +358,12 @@ Examples:
   node scripts/build-config.js build production
   node scripts/build-config.js deploy
   node scripts/build-config.js env
+
+Deploy Command:
+  - Automatically cleans up previous deployment artifacts
+  - Removes webschedulr-deploy/ folder and webschedulr-deploy.zip
+  - Builds production assets
+  - Creates fresh deployment package and ZIP
         `);
 }
 

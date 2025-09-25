@@ -47,18 +47,27 @@ class SetupFilter implements FilterInterface
      */
     private function isSetupCompleted(): bool
     {
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        
-        if (!file_exists($flagPath)) {
-            return false;
+        // In production, do NOT rely on flag files. Require .env and DB readiness
+        if (ENVIRONMENT === 'production') {
+            if (!file_exists(ROOTPATH . '.env')) {
+                return false;
+            }
+            try {
+                $db = \Config\Database::connect();
+                if (!$db) return false;
+                return $db->tableExists('users');
+            } catch (\Throwable $e) {
+                return false;
+            }
         }
 
-        // Additional check: verify .env file exists
-        $envPath = ROOTPATH . '.env';
-        if (!file_exists($envPath)) {
-            return false;
+        // Non-production: allow legacy/new flag files to indicate completion (plus .env if present)
+        $flagPathNew = WRITEPATH . 'setup_complete.flag';
+        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
+            // If an .env file exists, even better; but not strictly required in local flows
+            return true;
         }
-
-        return true;
+        return false;
     }
 }

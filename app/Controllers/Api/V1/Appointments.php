@@ -169,4 +169,89 @@ class Appointments extends BaseApiController
         if (!$ok) return $this->error(500, 'Delete failed');
         return $this->ok(['ok' => true]);
     }
+
+    // GET /api/v1/appointments/counts?providerId=&serviceId=
+    public function counts()
+    {
+        $rules = [
+            'providerId' => 'permit_empty|is_natural_no_zero',
+            'serviceId'  => 'permit_empty|is_natural_no_zero',
+        ];
+        if (!$this->validate($rules)) {
+            return $this->error(400, 'Invalid parameters', 'validation_error', $this->validator->getErrors());
+        }
+
+        $providerId = (int) ($this->request->getGet('providerId') ?? 0);
+        $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
+
+        // Calculate server-side date ranges (local app timezone)
+        $now = new \DateTimeImmutable('now');
+        $todayStart = $now->setTime(0, 0, 0);
+        $todayEnd   = $now->setTime(23, 59, 59);
+
+        // Week: Sunday (0) to Saturday (6) to match UI
+        $dow = (int) $now->format('w'); // 0 (Sun) - 6 (Sat)
+        $weekStart = $todayStart->modify('-' . $dow . ' days');
+        $weekEnd   = $weekStart->modify('+6 days')->setTime(23, 59, 59);
+
+        // Month: first to last day
+        $monthStart = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $monthEnd   = $now->modify('last day of this month')->setTime(23, 59, 59);
+
+        $counts = [
+            'today' => $this->countInRange($providerId, $serviceId, $todayStart, $todayEnd),
+            'week'  => $this->countInRange($providerId, $serviceId, $weekStart, $weekEnd),
+            'month' => $this->countInRange($providerId, $serviceId, $monthStart, $monthEnd),
+        ];
+
+        return $this->ok($counts);
+    }
+
+    // GET /api/v1/appointments/summary?providerId=&serviceId=
+    // Same as counts(), provided for a clear, global metrics contract
+    public function summary()
+    {
+        $rules = [
+            'providerId' => 'permit_empty|is_natural_no_zero',
+            'serviceId'  => 'permit_empty|is_natural_no_zero',
+        ];
+        if (!$this->validate($rules)) {
+            return $this->error(400, 'Invalid parameters', 'validation_error', $this->validator->getErrors());
+        }
+
+        $providerId = (int) ($this->request->getGet('providerId') ?? 0);
+        $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
+
+        $now = new \DateTimeImmutable('now');
+        $todayStart = $now->setTime(0, 0, 0);
+        $todayEnd   = $now->setTime(23, 59, 59);
+
+        $dow = (int) $now->format('w');
+        $weekStart = $todayStart->modify('-' . $dow . ' days');
+        $weekEnd   = $weekStart->modify('+6 days')->setTime(23, 59, 59);
+
+        $monthStart = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $monthEnd   = $now->modify('last day of this month')->setTime(23, 59, 59);
+
+        $summary = [
+            'today' => $this->countInRange($providerId, $serviceId, $todayStart, $todayEnd),
+            'week'  => $this->countInRange($providerId, $serviceId, $weekStart, $weekEnd),
+            'month' => $this->countInRange($providerId, $serviceId, $monthStart, $monthEnd),
+        ];
+
+        return $this->ok($summary);
+    }
+
+    private function countInRange(int $providerId, int $serviceId, \DateTimeImmutable $start, \DateTimeImmutable $end): int
+    {
+        $m = new AppointmentModel();
+        $b = $m->builder();
+        $b->select('COUNT(*) AS c')
+          ->where('start_time >=', $start->format('Y-m-d H:i:s'))
+          ->where('start_time <=', $end->format('Y-m-d H:i:s'));
+        if ($providerId > 0) $b->where('provider_id', $providerId);
+        if ($serviceId  > 0) $b->where('service_id',  $serviceId);
+        $row = $b->get()->getRowArray();
+        return (int) ($row['c'] ?? 0);
+    }
 }
