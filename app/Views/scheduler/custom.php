@@ -153,9 +153,14 @@
 
         <div id="scheduler-calendar" class="min-h-[520px] rounded-2xl border border-dashed border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"></div>
 
-        <div id="scheduler-status" class="mt-4 hidden items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span class="material-symbols-outlined text-base">info</span>
-            <span></span>
+        <div id="scheduler-status" class="mt-4 hidden">
+            <div id="scheduler-status-alert" class="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                <span class="material-symbols-outlined text-lg text-gray-400 dark:text-gray-500" data-status-icon>info</span>
+                <div class="flex flex-col gap-1">
+                    <span data-status-label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</span>
+                    <span id="scheduler-status-message" class="text-sm font-medium text-gray-700 dark:text-gray-200"></span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -165,9 +170,9 @@
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Slots</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Snapshot of next openings based on the filters above.</p>
             </div>
-            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <span class="material-symbols-outlined text-base">update</span>
-                <span id="scheduler-slots-caption">Awaiting search…</span>
+            <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-gray-600 dark:border-gray-600 dark:bg-gray-900/60 dark:text-gray-300">
+                <span class="material-symbols-outlined text-sm">update</span>
+                <span id="scheduler-slots-caption">Awaiting filters…</span>
             </div>
         </div>
 

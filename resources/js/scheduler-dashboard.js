@@ -22,6 +22,40 @@ const dotForStatus = {
   default: 'bg-blue-500 dark:bg-blue-300',
 };
 
+const STATUS_VARIANT_STYLES = {
+  info: {
+    container: ['border-blue-200', 'bg-blue-50', 'dark:border-blue-600/60', 'dark:bg-blue-900/30'],
+    icon: ['text-blue-500', 'dark:text-blue-300'],
+    label: ['text-blue-700', 'dark:text-blue-200'],
+    message: ['text-blue-800', 'dark:text-blue-100'],
+  },
+  success: {
+    container: ['border-emerald-200', 'bg-emerald-50', 'dark:border-emerald-600/50', 'dark:bg-emerald-900/25'],
+    icon: ['text-emerald-500', 'dark:text-emerald-300'],
+    label: ['text-emerald-700', 'dark:text-emerald-200'],
+    message: ['text-emerald-800', 'dark:text-emerald-100'],
+  },
+  warning: {
+    container: ['border-amber-200', 'bg-amber-50', 'dark:border-amber-500/60', 'dark:bg-amber-900/25'],
+    icon: ['text-amber-500', 'dark:text-amber-300'],
+    label: ['text-amber-700', 'dark:text-amber-200'],
+    message: ['text-amber-800', 'dark:text-amber-100'],
+  },
+  error: {
+    container: ['border-rose-200', 'bg-rose-50', 'dark:border-rose-500/60', 'dark:bg-rose-900/25'],
+    icon: ['text-rose-500', 'dark:text-rose-300'],
+    label: ['text-rose-700', 'dark:text-rose-200'],
+    message: ['text-rose-800', 'dark:text-rose-100'],
+  },
+};
+
+const STATUS_VARIANT_ICONS = {
+  info: 'info',
+  success: 'check_circle',
+  warning: 'warning',
+  error: 'error',
+};
+
 const VIEW_TYPE_MAP = {
   day: 'timeGridDay',
   week: 'timeGridWeek',
@@ -144,6 +178,7 @@ function bootSchedulerDashboard() {
   const state = getInitialState();
   let eventsAbortController = null;
   let eventsFetchToken = 0;
+  let currentStatusVariant = null;
 
   const elements = {
     countToday: document.getElementById('scheduler-count-today'),
@@ -162,8 +197,11 @@ function bootSchedulerDashboard() {
     nextButton: document.getElementById('scheduler-next'),
     viewButtons: Array.from(root.querySelectorAll('.scheduler-view')),
     activeRange: document.getElementById('scheduler-active-range'),
-    status: document.getElementById('scheduler-status'),
-    statusMessage: document.querySelector('#scheduler-status span'),
+  status: document.getElementById('scheduler-status'),
+  statusContainer: document.getElementById('scheduler-status-alert'),
+  statusIcon: root.querySelector('[data-status-icon]'),
+  statusLabel: root.querySelector('[data-status-label]'),
+  statusMessage: document.getElementById('scheduler-status-message'),
     slotsContainer: document.getElementById('scheduler-slots'),
     slotsEmpty: document.getElementById('scheduler-slots-empty'),
     slotsCaption: document.getElementById('scheduler-slots-caption'),
@@ -183,15 +221,52 @@ function bootSchedulerDashboard() {
   }
 
   function setStatus(message, type = 'info') {
-    if (!elements.status || !elements.statusMessage) return;
+    const wrapper = elements.status;
+    const messageEl = elements.statusMessage;
+    const container = elements.statusContainer;
+    if (!wrapper || !messageEl) return;
+
+    const removeVariantClasses = (variant) => {
+      if (!variant || !STATUS_VARIANT_STYLES[variant]) return;
+      const styles = STATUS_VARIANT_STYLES[variant];
+      if (container) container.classList.remove(...styles.container);
+      if (elements.statusIcon) elements.statusIcon.classList.remove(...styles.icon);
+      if (elements.statusLabel) elements.statusLabel.classList.remove(...styles.label);
+      messageEl.classList.remove(...styles.message);
+    };
+
+    const applyVariantClasses = (variant) => {
+      const styles = STATUS_VARIANT_STYLES[variant];
+      if (container) container.classList.add(...styles.container);
+      if (elements.statusIcon) elements.statusIcon.classList.add(...styles.icon);
+      if (elements.statusLabel) elements.statusLabel.classList.add(...styles.label);
+      messageEl.classList.add(...styles.message);
+    };
+
     if (!message) {
-      elements.status.classList.add('hidden');
-      elements.statusMessage.textContent = '';
+      removeVariantClasses(currentStatusVariant);
+      currentStatusVariant = null;
+      messageEl.textContent = '';
+      wrapper.classList.add('hidden');
       return;
     }
-    elements.status.classList.remove('hidden');
-    elements.statusMessage.textContent = message;
-    elements.status.dataset.variant = type;
+
+    const variant = STATUS_VARIANT_STYLES[type] ? type : 'info';
+    wrapper.classList.remove('hidden');
+    messageEl.textContent = message;
+
+    if (elements.statusIcon) {
+      elements.statusIcon.textContent = STATUS_VARIANT_ICONS[variant] || STATUS_VARIANT_ICONS.info;
+    }
+
+    if (variant !== currentStatusVariant) {
+      removeVariantClasses(currentStatusVariant);
+      applyVariantClasses(variant);
+      currentStatusVariant = variant;
+    } else if (currentStatusVariant === null) {
+      applyVariantClasses(variant);
+      currentStatusVariant = variant;
+    }
   }
 
   function updateViewButtons(activeView) {
@@ -268,7 +343,7 @@ function bootSchedulerDashboard() {
         elements.slotsEmpty.classList.remove('hidden');
         elements.slotsEmpty.textContent = 'Choose a provider and service to preview availability.';
       }
-      if (elements.slotsCaption) elements.slotsCaption.textContent = 'Awaiting search…';
+      if (elements.slotsCaption) elements.slotsCaption.textContent = 'Awaiting filters…';
       return;
     }
 
