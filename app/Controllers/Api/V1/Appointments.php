@@ -15,8 +15,6 @@ class Appointments extends BaseApiController
             'providerId' => 'permit_empty|is_natural_no_zero',
             'serviceId' => 'permit_empty|is_natural_no_zero',
             'date' => 'permit_empty|valid_date[Y-m-d]',
-            'start' => 'permit_empty|valid_date[Y-m-d]',
-            'end' => 'permit_empty|valid_date[Y-m-d]',
         ];
         if (!$this->validate($rules)) {
             return $this->error(400, 'Invalid parameters', 'validation_error', $this->validator->getErrors());
@@ -25,11 +23,13 @@ class Appointments extends BaseApiController
         [$page, $length, $offset] = $this->paginationParams();
         [$sortField, $sortDir] = $this->sortParam(['id','start_time','end_time','provider_id','service_id','status'], 'start_time');
 
-    $providerId = (int) ($this->request->getGet('providerId') ?? 0);
-    $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
-        $date = $this->request->getGet('date');
-        $start = $this->request->getGet('start');
-        $end   = $this->request->getGet('end');
+        $providerId = (int) ($this->request->getGet('providerId') ?? 0);
+        $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
+        $dateParam = $this->request->getGet('date');
+        $startParam = $this->request->getGet('start');
+        $endParam   = $this->request->getGet('end');
+
+        [$rangeStart, $rangeEnd] = $this->resolveRange($dateParam, $startParam, $endParam);
         $model = new AppointmentModel();
         $builder = $model->orderBy($sortField, strtoupper($sortDir));
         if ($providerId > 0) {
@@ -38,13 +38,9 @@ class Appointments extends BaseApiController
         if ($serviceId > 0) {
             $builder = $builder->where('service_id', $serviceId);
         }
-        if ($date) {
-            $builder = $builder->where('start_time >=', $date . ' 00:00:00')
-                               ->where('start_time <=', $date . ' 23:59:59');
-        }
-        if ($start && $end) {
-            $builder = $builder->where('start_time >=', $start . ' 00:00:00')
-                               ->where('start_time <=', $end . ' 23:59:59');
+        if ($rangeStart && $rangeEnd) {
+            $builder = $builder->where('start_time >=', $rangeStart->format('Y-m-d H:i:s'))
+                               ->where('start_time <', $rangeEnd->format('Y-m-d H:i:s'));
         }
         $rows = $builder->findAll($length, $offset);
         $totalBuilder = $model->builder();
@@ -54,13 +50,9 @@ class Appointments extends BaseApiController
         if ($serviceId > 0) {
             $totalBuilder->where('service_id', $serviceId);
         }
-        if ($date) {
-            $totalBuilder->where('start_time >=', $date . ' 00:00:00')
-                         ->where('start_time <=', $date . ' 23:59:59');
-        }
-        if ($start && $end) {
-            $totalBuilder->where('start_time >=', $start . ' 00:00:00')
-                         ->where('start_time <=', $end . ' 23:59:59');
+        if ($rangeStart && $rangeEnd) {
+            $totalBuilder->where('start_time >=', $rangeStart->format('Y-m-d H:i:s'))
+                         ->where('start_time <', $rangeEnd->format('Y-m-d H:i:s'));
         }
         $total = $totalBuilder->countAllResults();
         $items = array_map(function ($r) {
@@ -82,6 +74,46 @@ class Appointments extends BaseApiController
         'total' => (int)$total,
         'sort' => $sortField . ':' . $sortDir,
         ]);
+    }
+
+    private function resolveRange(?string $dateParam, ?string $startParam, ?string $endParam): array
+    {
+        $timezone = new \DateTimeZone(date_default_timezone_get());
+
+        if (!empty($dateParam)) {
+            try {
+                $dayStart = (new \DateTimeImmutable($dateParam))->setTimezone($timezone)->setTime(0, 0, 0);
+                $dayEnd = $dayStart->modify('+1 day');
+                return [$dayStart, $dayEnd];
+            } catch (\Exception $e) {
+                return [null, null];
+            }
+        }
+
+        if (!empty($startParam) && !empty($endParam)) {
+            try {
+                $start = (new \DateTimeImmutable($startParam))->setTimezone($timezone);
+                $end = (new \DateTimeImmutable($endParam))->setTimezone($timezone);
+
+                // FullCalendar end is exclusive; ensure ordering and exclusivity
+                if ($end <= $start) {
+                    $end = $start->modify('+1 day');
+                }
+
+                return [$start, $end];
+            } catch (\Exception $e) {
+                // Fallback: attempt to treat as date-only strings
+                try {
+                    $start = (new \DateTimeImmutable($startParam))->setTimezone($timezone)->setTime(0, 0, 0);
+                    $end = (new \DateTimeImmutable($endParam))->setTimezone($timezone)->setTime(0, 0, 0)->modify('+1 day');
+                    return [$start, $end];
+                } catch (\Exception $ignored) {
+                    return [null, null];
+                }
+            }
+        }
+
+        return [null, null];
     }
 
     // POST /api/v1/appointments

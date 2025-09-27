@@ -183,7 +183,15 @@
     </div>
 </div>
 
-<div id="scheduler-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+<div
+    id="scheduler-modal"
+    class="fixed inset-0 z-[320] hidden items-center justify-center bg-black/60 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scheduler-modal-title"
+    aria-hidden="true"
+    tabindex="-1"
+>
     <div class="w-full max-w-xl rounded-3xl bg-white shadow-2xl dark:bg-gray-900">
         <div class="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
             <h3 id="scheduler-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">Appointment</h3>

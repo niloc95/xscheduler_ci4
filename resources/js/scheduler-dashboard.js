@@ -179,6 +179,7 @@ function bootSchedulerDashboard() {
   let eventsAbortController = null;
   let eventsFetchToken = 0;
   let currentStatusVariant = null;
+  let modalReturnFocus = null;
 
   const elements = {
     countToday: document.getElementById('scheduler-count-today'),
@@ -214,6 +215,8 @@ function bootSchedulerDashboard() {
     modalClose: document.getElementById('scheduler-modal-close'),
     calendarRoot: document.getElementById('scheduler-calendar'),
   };
+
+  const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
   if (!elements.calendarRoot) {
     console.warn('[scheduler] Missing calendar root');
@@ -431,13 +434,23 @@ function bootSchedulerDashboard() {
 
   function closeModal() {
     if (!elements.modal) return;
+    elements.modal.classList.remove('flex');
     elements.modal.classList.add('hidden');
+    elements.modal.setAttribute('aria-hidden', 'true');
     elements.modalBody.textContent = '';
     elements.modalFooter.textContent = '';
+    if (document.body) {
+      document.body.classList.remove('overflow-hidden');
+    }
+    if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+      modalReturnFocus.focus({ preventScroll: true });
+    }
+    modalReturnFocus = null;
   }
 
-  function openModal({ title, body, actions = [] }) {
+  function openModal({ title, body, actions = [], focusSelector } = {}) {
     if (!elements.modal) return;
+    modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     elements.modalTitle.textContent = title;
     elements.modalBody.innerHTML = '';
     if (typeof body === 'string') {
@@ -463,7 +476,22 @@ function bootSchedulerDashboard() {
       });
       elements.modalFooter.appendChild(btn);
     });
+    elements.modal.classList.add('flex');
     elements.modal.classList.remove('hidden');
+    elements.modal.setAttribute('aria-hidden', 'false');
+    if (document.body) {
+      document.body.classList.add('overflow-hidden');
+    }
+
+    const focusTarget =
+      (focusSelector ? elements.modal.querySelector(focusSelector) : null) ||
+      elements.modal.querySelector('[data-initial-focus]') ||
+      elements.modal.querySelector(FOCUSABLE_SELECTOR) ||
+      elements.modal;
+
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      focusTarget.focus({ preventScroll: true });
+    }
   }
 
   function broadcastChange() {
@@ -663,6 +691,12 @@ function bootSchedulerDashboard() {
   elements.modalClose?.addEventListener('click', closeModal);
   elements.modal?.addEventListener('click', (event) => {
     if (event.target === elements.modal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !elements.modal?.classList.contains('hidden')) {
       closeModal();
     }
   });
