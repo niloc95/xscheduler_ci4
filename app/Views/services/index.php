@@ -6,28 +6,10 @@
 
 <?= $this->section('content') ?>
 <div class="main-content" data-page-title="Services" data-page-subtitle="Browse and manage available services">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div></div>
-            
-            <div class="mt-4 sm:mt-0 flex space-x-3">
-                <a href="<?= base_url('/services/categories') ?>" 
-                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                    <span class="material-symbols-outlined mr-2">category</span>
-                    Manage Categories
-                </a>
-                <a href="<?= base_url('/services/create') ?>" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                    <span class="material-symbols-outlined mr-2">add</span>
-                    Add Service
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+    <!-- Summary + Actions -->
+    <div class="space-y-4 mb-6">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -95,6 +77,23 @@
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
                     <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($stats['avg_price'], 2) ?></p>
                 </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end">
+            <div class="flex flex-wrap gap-3">
+                <a href="<?= base_url('/services/categories') ?>" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
+                    <span class="material-symbols-outlined mr-2">category</span>
+                    Manage Categories
+                </a>
+                <a href="<?= base_url('/services/create') ?>" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
+                    <span class="material-symbols-outlined mr-2">add</span>
+                    Add Service
+                </a>
             </div>
         </div>
     </div>
@@ -191,8 +190,8 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
-                                    <a href="<?= base_url('/services/edit/' . $service['id']) ?>" 
-                                       class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" 
+                                                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 no-underline hover:no-underline"
                                        title="Edit Service">
                                         <span class="material-symbols-outlined">edit</span>
                                     </a>

@@ -75,6 +75,10 @@ $routes->group('services', function($routes) {
     $routes->get('edit/(:num)', 'Services::edit/$1');
     $routes->post('update/(:num)', 'Services::update/$1');
     $routes->post('delete/(:num)', 'Services::delete/$1');
+    $routes->get('categories', 'Services::categories');
+    $routes->post('categories', 'Services::storeCategory');
+    $routes->post('categories/(:num)', 'Services::updateCategory/$1');
+    $routes->post('categories/(:num)/delete', 'Services::deleteCategory/$1');
 });
 
 // Analytics Routes (admin and provider access)
