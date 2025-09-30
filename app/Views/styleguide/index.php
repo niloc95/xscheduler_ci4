@@ -8,6 +8,80 @@
         
     <!-- Header removed in favor of dynamic page header -->
         
+        <!-- Dashboard Layout -->
+        <div id="dashboard-layout" class="card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand">
+            <div class="card-header px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="card-title text-lg font-semibold text-gray-900 dark:text-gray-100">Dashboard Layout</h3>
+            </div>
+            <div class="card-body p-6 space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                <p>The shared <code>layouts/dashboard</code> template keeps dashboard-style pages consistent. Every dashboard view should follow the same vertical rhythm: stats → actions → filters → main content.</p>
+                <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-xs text-gray-700 dark:text-gray-200 overflow-x-auto">
+<pre class="whitespace-pre"><code>&lt;?= $this-&gt;extend('layouts/dashboard') ?&gt;
+
+&lt;?= $this-&gt;section('page_title') ?&gt;Appointments&lt;?= $this-&gt;endSection() ?&gt;
+&lt;?= $this-&gt;section('page_subtitle') ?&gt;Manage upcoming bookings&lt;?= $this-&gt;endSection() ?&gt;
+
+&lt;?= $this-&gt;section('dashboard_stats_class') ?&gt;grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6&lt;?= $this-&gt;endSection() ?&gt;
+&lt;?= $this-&gt;section('dashboard_stats') ?&gt;
+    &lt;!-- stat cards (no wrapper needed) --&gt;
+&lt;?= $this-&gt;endSection() ?&gt;
+
+&lt;?= $this-&gt;section('dashboard_actions') ?&gt;
+    &lt;a class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg no-underline"&gt;Primary Action&lt;/a&gt;
+&lt;?= $this-&gt;endSection() ?&gt;
+
+&lt;?= $this-&gt;section('dashboard_filters') ?&gt;
+    &lt;!-- optional pills, tabs, selects --&gt;
+&lt;?= $this-&gt;endSection() ?&gt;
+
+&lt;?= $this-&gt;section('dashboard_content_top') ?&gt;
+    &lt;!-- flash messages, cards --&gt;
+&lt;?= $this-&gt;endSection() ?&gt;
+
+&lt;?= $this-&gt;section('dashboard_content') ?&gt;
+    &lt;!-- tables, charts, lists --&gt;
+&lt;?= $this-&gt;endSection() ?&gt;
+</code></pre>
+                </div>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li><strong>Stats</strong>: Populate <code>dashboard_stats</code> with cards using <code>bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6</code>. Override the grid with <code>dashboard_stats_class</code> when needed.</li>
+                    <li><strong>Actions</strong>: Buttons render inside a <code>flex flex-wrap gap-3 justify-end</code> container. Use <code>inline-flex items-center px-4 py-2 rounded-md</code> with brand colors (<code>bg-indigo-600 hover:bg-indigo-700 text-white</code>) or neutrals (<code>bg-white border border-gray-300 dark:border-gray-600</code>).</li>
+                    <li><strong>Filters</strong>: Add form controls in <code>dashboard_filters</code> using the dashed container pattern <code>rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-900/40</code>. Inputs should use <code>rounded-md border border-gray-300 bg-white px-3 py-2 text-sm</code>.</li>
+                    <li><strong>Content</strong>: Wrap main content with <code>bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700</code>. Use <code>dashboard_content_top</code> for flash messages or supporting callouts before the primary card.</li>
+                </ul>
+
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-200">
+                    <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Tailwind quick reference</h4>
+                    <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Cards</dt>
+                            <dd><code>bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6</code></dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Primary buttons</dt>
+                            <dd><code>inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700</code></dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Secondary buttons</dt>
+                            <dd><code>inline-flex items-center px-4 py-2 rounded-md bg-white border border-gray-300 dark:bg-gray-700 dark:border-gray-600 text-gray-700</code></dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Tables</dt>
+                            <dd><code>min-w-full divide-y divide-gray-200 dark:divide-gray-700 [&amp;th]:px-6 [&amp;th]:py-3 [&amp;th]:text-xs [&amp;td]:px-6 [&amp;td]:py-4</code></dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Filters</dt>
+                            <dd><code>rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 flex flex-col gap-3 md:flex-row</code></dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-gray-800 dark:text-gray-100">Badges</dt>
+                            <dd><code>inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold</code> + contextual colors</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
         <!-- Color System -->
         <div id="colors" class="card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand">
             <div class="card-header px-4 py-3 border-b border-gray-200 dark:border-gray-700">

@@ -21,6 +21,23 @@ class Services extends BaseController
     }
 
     /**
+     * Ensure the current user can manage categories.
+     * Returns a redirect response if authentication is missing.
+     */
+    private function ensureCategoryAccess()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login');
+        }
+
+        if (!has_role(['admin', 'provider'])) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
+        }
+
+        return null;
+    }
+
+    /**
      * Display services list
      */
     public function index()
@@ -35,8 +52,10 @@ class Services extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
-        $currentUser = session()->get('user');
-        $currentRole = current_user_role();
+    $currentUser = session()->get('user');
+    $currentRole = current_user_role();
+    $activeTab = $this->request->getGet('tab');
+    $activeTab = in_array($activeTab, ['services', 'categories'], true) ? $activeTab : 'services';
 
         // Fetch real data for dashboard while keeping view unchanged
         $services = $this->serviceModel->findWithRelations(100, 0);
@@ -59,6 +78,7 @@ class Services extends BaseController
                 'name' => $s['name'],
                 'description' => $s['description'] ?? '',
                 'category' => $s['category_name'] ?? 'Uncategorized',
+                'category_id' => isset($s['category_id']) ? (int)$s['category_id'] : null,
                 'duration' => (int)($s['duration_min'] ?? 0),
                 'price' => isset($s['price']) ? (float)$s['price'] : 0,
                 'provider' => $s['provider_names'] ?: '—',
@@ -66,6 +86,29 @@ class Services extends BaseController
                 'bookings_count' => 0,
             ];
         }, $services);
+
+        $filterCategory = $this->request->getGet('category');
+        $filterStatus = $this->request->getGet('status');
+        $filterQuery = trim((string)($this->request->getGet('q') ?? ''));
+
+        $viewServices = array_values(array_filter($viewServices, static function ($service) use ($filterCategory, $filterStatus, $filterQuery) {
+            if ($filterCategory !== null && $filterCategory !== '' && (int)$filterCategory !== (int)($service['category_id'] ?? 0)) {
+                return false;
+            }
+
+            if ($filterStatus !== null && $filterStatus !== '' && strtolower($filterStatus) !== strtolower($service['status'])) {
+                return false;
+            }
+
+            if ($filterQuery !== '') {
+                $haystack = strtolower($service['name'] . ' ' . ($service['description'] ?? '') . ' ' . ($service['provider'] ?? ''));
+                if (strpos($haystack, strtolower($filterQuery)) === false) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
 
         // Ensure category fields used in view exist
         $viewCategories = array_map(function ($c) {
@@ -75,6 +118,7 @@ class Services extends BaseController
                 'description' => $c['description'] ?? '',
                 'services_count' => (int)($c['services_count'] ?? 0),
                 'color' => $c['color'] ?? '#3B82F6',
+                'active' => isset($c['active']) ? (int)$c['active'] : 1,
             ];
         }, $categories);
 
@@ -86,6 +130,12 @@ class Services extends BaseController
             'user_role' => $currentRole,
             'user' => $currentUser,
             'stats' => $mappedStats,
+            'activeTab' => $activeTab,
+            'filters' => [
+                'q' => $filterQuery,
+                'category' => $filterCategory,
+                'status' => $filterStatus,
+            ],
         ];
 
         return view('services/index', $data);
@@ -113,6 +163,10 @@ class Services extends BaseController
             'current_page' => 'services',
             'categories' => $categories,
             'providers' => $providers,
+            // Shared form contract
+            'action_url' => site_url('services/store'),
+            'data' => [],
+            'linkedProviders' => [],
         ];
 
         return view('services/create', $data);
@@ -151,10 +205,14 @@ class Services extends BaseController
         $data = [
             'title' => 'Edit Service',
             'current_page' => 'services',
+            // Keep legacy variable for compatibility (if any)
             'service' => $service,
             'categories' => $categories,
             'providers' => $providers,
             'linkedProviders' => $linkedProviders,
+            // Shared form contract
+            'action_url' => site_url('services/update/' . (int)$serviceId),
+            'data' => $service,
         ];
 
         return view('services/edit', $data);
@@ -165,22 +223,50 @@ class Services extends BaseController
      */
     public function categories()
     {
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
         }
 
-        if (!has_role(['admin', 'provider'])) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
+        return redirect()->to('/services?tab=categories');
+    }
+
+    /**
+     * Render create category form.
+     */
+    public function createCategory()
+    {
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
         }
 
-        $categories = $this->categoryModel->withServiceCounts();
-        $data = [
-            'title' => 'Service Categories',
+        return view('categories/create', [
+            'title' => 'Create Category',
             'current_page' => 'services',
-            'categories' => $categories,
-        ];
+            'action_url' => site_url('services/categories'),
+            'data' => [],
+        ]);
+    }
 
-        return view('services/categories', $data);
+    /**
+     * Render edit category form.
+     */
+    public function editCategory($id)
+    {
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
+        }
+
+        $category = $this->categoryModel->find((int)$id);
+        if (!$category) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Category not found');
+        }
+
+        return view('categories/edit', [
+            'title' => 'Edit Category',
+            'current_page' => 'services',
+            'action_url' => site_url('services/categories/update/' . (int)$id),
+            'data' => $category,
+        ]);
     }
 
     /**
@@ -188,67 +274,151 @@ class Services extends BaseController
      */
     public function storeCategory()
     {
-        if (!session()->get('isLoggedIn')) {
-            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
-        }
-        if (!has_role(['admin', 'provider'])) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Forbidden']);
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
         }
 
         $name = trim((string)$this->request->getPost('name'));
         $description = $this->request->getPost('description');
         $color = $this->request->getPost('color') ?: '#3B82F6';
+        $active = $this->request->getPost('active');
 
         if ($name === '') {
-            return $this->response->setStatusCode(422)->setJSON(['error' => 'Name is required']);
+            $errorMessage = 'Name is required';
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => $errorMessage]);
+            }
+            return redirect()->back()->withInput()->with('error', $errorMessage);
         }
 
-        $id = $this->categoryModel->insert([
+        $categoryData = [
             'name' => $name,
-            'description' => $description,
+            'description' => $description ?: null,
             'color' => $color,
-            'active' => 1,
-        ], true);
+            'active' => $active === null ? 1 : (int)!!$active,
+        ];
+
+        if (!$this->categoryModel->insert($categoryData, true)) {
+            $errors = $this->categoryModel->errors();
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'error' => 'Validation failed',
+                    'details' => $errors,
+                ]);
+            }
+
+            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
+        }
+
+        $id = (int)$this->categoryModel->getInsertID();
+
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['success' => true, 'id' => (int)$id, 'name' => $name]);
         }
-        return redirect()->back()->with('message', 'Category created');
+
+        return redirect()->to('/services?tab=categories')->with('message', 'Category created');
     }
 
     /** Update category */
     public function updateCategory($id)
     {
-        if (!session()->get('isLoggedIn')) {
-            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
         }
-        if (!has_role(['admin', 'provider'])) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Forbidden']);
-        }
-        $data = [
+
+        $payload = [
             'name' => trim((string)$this->request->getPost('name')),
             'color' => $this->request->getPost('color') ?: '#3B82F6',
             'description' => $this->request->getPost('description') ?: null,
             'active' => (int)!!$this->request->getPost('active'),
         ];
-        if ($data['name'] === '') {
-            return $this->response->setStatusCode(422)->setJSON(['error' => 'Name is required']);
+
+        if ($payload['name'] === '') {
+            $errorMessage = 'Name is required';
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON(['error' => $errorMessage]);
+            }
+            return redirect()->back()->withInput()->with('error', $errorMessage);
         }
-        $this->categoryModel->update((int)$id, $data);
-        return $this->response->setJSON(['success' => true]);
+
+        if (!$this->categoryModel->update((int)$id, $payload)) {
+            $errors = $this->categoryModel->errors();
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'error' => 'Validation failed',
+                    'details' => $errors,
+                ]);
+            }
+
+            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
+        }
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
+        return redirect()->to('/services?tab=categories')->with('message', 'Category updated');
     }
 
-    /** Deactivate or delete a category (soft deactivate preferred) */
+    /** Deactivate category */
+    public function deactivateCategory($id)
+    {
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
+        }
+
+        $this->categoryModel->deactivate((int)$id);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
+        return redirect()->to('/services?tab=categories')->with('message', 'Category deactivated');
+    }
+
+    /** Activate category */
+    public function activateCategory($id)
+    {
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
+        }
+
+        $this->categoryModel->activate((int)$id);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
+        return redirect()->to('/services?tab=categories')->with('message', 'Category activated');
+    }
+
+    /** Delete a category (hard delete) */
     public function deleteCategory($id)
     {
-        if (!session()->get('isLoggedIn')) {
-            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        if ($response = $this->ensureCategoryAccess()) {
+            return $response;
         }
-        if (!has_role(['admin', 'provider'])) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Forbidden']);
+
+        // Clear category references for services before deleting.
+        $this->serviceModel->where('category_id', (int)$id)->set('category_id', null)->update();
+
+        if (!$this->categoryModel->delete((int)$id)) {
+            $errors = $this->categoryModel->errors();
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'error' => 'Unable to delete category',
+                    'details' => $errors,
+                ]);
+            }
+
+            return redirect()->back()->with('error', 'Unable to delete category')->with('errors', $errors ?? []);
         }
-        // Prefer deactivate to maintain FK integrity
-        $this->categoryModel->deactivate((int)$id);
-        return $this->response->setJSON(['success' => true]);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
+        return redirect()->to('/services?tab=categories')->with('message', 'Category deleted');
     }
 
     /**

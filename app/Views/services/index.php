@@ -1,211 +1,374 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/dashboard') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('content') ?>
-<div class="main-content" data-page-title="Services" data-page-subtitle="Browse and manage available services">
-    <!-- Summary + Actions -->
-    <div class="space-y-4 mb-6">
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">design_services</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Services</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_services'] ?></p>
+<?= $this->section('page_title') ?>Services<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Browse and manage available services<?= $this->endSection() ?>
+
+<?php $activeTab = $activeTab ?? 'services'; ?>
+
+<?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_stats') ?>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">design_services</span>
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['active_services'] ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">category</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Categories</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['categories'] ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">calendar_month</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bookings</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_bookings'] ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">attach_money</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($stats['avg_price'], 2) ?></p>
-                </div>
-            </div>
-        </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex justify-end">
-            <div class="flex flex-wrap gap-3">
-                <a href="<?= base_url('/services/categories') ?>" 
-                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
-                    <span class="material-symbols-outlined mr-2">category</span>
-                    Manage Categories
-                </a>
-                <a href="<?= base_url('/services/create') ?>" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
-                    <span class="material-symbols-outlined mr-2">add</span>
-                    Add Service
-                </a>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Services</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_services'] ?></p>
             </div>
         </div>
     </div>
 
-    <!-- Service Categories -->
-    <div class="mb-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Service Categories</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <?php foreach ($categories as $category): ?>
-                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="w-3 h-3 rounded-full" style="background-color: <?= $category['color'] ?>"></div>
-                        <span class="text-sm text-gray-500 dark:text-gray-400"><?= $category['services_count'] ?> services</span>
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2"><?= esc($category['name']) ?></h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400"><?= esc($category['description']) ?></p>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
                 </div>
-            <?php endforeach; ?>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['active_services'] ?></p>
+            </div>
         </div>
     </div>
 
-    <!-- Services List -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">All Services</h3>
-                <div class="flex space-x-2">
-                    <select class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-                        <option>All Categories</option>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">category</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Categories</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['categories'] ?></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">calendar_month</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bookings</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_bookings'] ?></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">attach_money</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($stats['avg_price'], 2) ?></p>
+            </div>
+        </div>
+    </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_actions') ?>
+    <a href="<?= base_url('/services?tab=categories') ?>"
+       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
+        <span class="material-symbols-outlined mr-2">category</span>
+        Manage Categories
+    </a>
+    <a href="<?= base_url('/services/create') ?>"
+       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
+        <span class="material-symbols-outlined mr-2">add</span>
+        Add Service
+    </a>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_content_top') ?>
+    <?php if ($message = session()->getFlashdata('message')): ?>
+        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200">
+            <?= esc($message) ?>
+        </div>
+    <?php endif; ?>
+    <?php if ($error = session()->getFlashdata('error')): ?>
+        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
+            <?= esc($error) ?>
+        </div>
+    <?php endif; ?>
+    <?php $validationErrors = session()->getFlashdata('errors') ?? []; ?>
+    <?php if (!empty($validationErrors)): ?>
+        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
+            <ul class="list-disc space-y-1 pl-5">
+                <?php foreach ((array)$validationErrors as $field => $errorText): ?>
+                    <li><?= esc(is_array($errorText) ? implode(', ', $errorText) : $errorText) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_filters') ?>
+    <?php if ($activeTab === 'services'): ?>
+        <form action="<?= current_url() ?>" method="get" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center">
+            <input type="hidden" name="tab" value="services" />
+            <div class="flex-1">
+                <label for="filterQuery" class="sr-only">Search services</label>
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                        <span class="material-symbols-outlined text-base">search</span>
+                    </span>
+                    <input id="filterQuery" name="q" value="<?= esc($filters['q'] ?? '') ?>" placeholder="Search services" class="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
+                </div>
+            </div>
+            <div class="flex flex-1 flex-col gap-3 md:flex-row">
+                <div class="flex-1">
+                    <label for="filterCategory" class="sr-only">Filter by category</label>
+                    <select id="filterCategory" name="category" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                        <option value="">All categories</option>
                         <?php foreach ($categories as $category): ?>
-                            <option value="<?= $category['id'] ?>"><?= esc($category['name']) ?></option>
+                            <option value="<?= $category['id'] ?>" <?= (($filters['category'] ?? '') == $category['id']) ? 'selected' : '' ?>><?= esc($category['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <select class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm">
-                        <option>All Status</option>
-                        <option>Active</option>
-                        <option>Inactive</option>
+                </div>
+                <div class="flex-1">
+                    <label for="filterStatus" class="sr-only">Filter by status</label>
+                    <select id="filterStatus" name="status" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                        <option value="">All statuses</option>
+                        <option value="active" <?= (($filters['status'] ?? '') === 'active') ? 'selected' : '' ?>>Active</option>
+                        <option value="inactive" <?= (($filters['status'] ?? '') === 'inactive') ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
             </div>
+            <div class="flex justify-end md:w-auto">
+                <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
+                    Apply
+                </button>
+            </div>
+        </form>
+    <?php endif; ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_content') ?>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col gap-4 border-b border-gray-200 px-6 pt-4 dark:border-gray-700 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center gap-2">
+                <a href="<?= site_url('services?tab=services') ?>" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium no-underline transition <?= $activeTab === 'services' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+                    <span class="material-symbols-outlined mr-2 text-base">design_services</span>
+                    Services
+                </a>
+                <a href="<?= site_url('services?tab=categories') ?>" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium no-underline transition <?= $activeTab === 'categories' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+                    <span class="material-symbols-outlined mr-2 text-base">category</span>
+                    Categories
+                </a>
+            </div>
+            <?php if ($activeTab === 'services'): ?>
+                <p class="text-sm text-gray-500 dark:text-gray-300">Review offerings, check provider assignments, and keep pricing aligned.</p>
+            <?php else: ?>
+                <p class="text-sm text-gray-500 dark:text-gray-300">Group services, manage availability, and keep your catalog tidy.</p>
+            <?php endif; ?>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Provider</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bookings</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    <?php foreach ($services as $service): ?>
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
-                            <td class="px-6 py-4">
-                                <div>
-                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                        <?= esc($service['name']) ?>
-                                    </div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                                        <?= esc($service['description']) ?>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    <?= esc($service['category']) ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                <?= esc($service['provider']) ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                <?= $service['duration'] ?> min
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                $<?= number_format($service['price'], 2) ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                                <?= $service['bookings_count'] ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                    <?= $service['status'] === 'active' 
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' ?>">
-                                    <?= ucfirst($service['status']) ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end space-x-2">
-                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" 
-                                                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 no-underline hover:no-underline"
-                                       title="Edit Service">
-                                        <span class="material-symbols-outlined">edit</span>
-                                    </a>
-                                    <button class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                            title="Delete Service">
-                                        <span class="material-symbols-outlined">delete</span>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        <div class="p-6">
+            <?php if ($activeTab === 'services'): ?>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900/40">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Service</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Category</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Provider</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Duration</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Price</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bookings</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <?php if (!empty($services)): ?>
+                                <?php foreach ($services as $service): ?>
+                                    <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
+                                        <td class="px-6 py-4 align-top">
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-900 dark:text-white"><?= esc($service['name']) ?></p>
+                                                <?php if (!empty($service['description'])): ?>
+                                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                                                        <?= esc($service['description']) ?>
+                                                    </p>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                                                <?= esc($service['category']) ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                            <?= esc($service['provider']) ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                            <?= $service['duration'] ?> min
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
+                                            $<?= number_format($service['price'], 2) ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                                            <?= $service['bookings_count'] ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <?php if ($service['status'] === 'active'): ?>
+                                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                                    Active
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                                    Inactive
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" class="inline-flex items-center rounded-md border border-transparent bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:hover:bg-indigo-900/50">
+                                                    <span class="material-symbols-outlined mr-1 text-sm">edit</span>
+                                                    Edit
+                                                </a>
+                                                <form action="<?= site_url('services/delete/' . $service['id']) ?>" method="post" onsubmit="return confirm('Delete this service?');">
+                                                    <?= csrf_field() ?>
+                                                    <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/40">
+                                                        <span class="material-symbols-outlined mr-1 text-sm">delete</span>
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="8" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-300">
+                                        No services found. Create a service to get started.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="space-y-6">
+                    <form action="<?= site_url('services/categories') ?>" method="post" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="active" value="1" />
+                        <div class="flex-1">
+                            <label for="quickCategoryName" class="sr-only">Category name</label>
+                            <input id="quickCategoryName" name="name" placeholder="Quick add category" value="<?= esc(old('name', '')) ?>" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" required />
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label for="quickCategoryColor" class="text-sm font-medium text-gray-600 dark:text-gray-300">Color</label>
+                            <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
+                        </div>
+                        <div class="flex justify-end md:justify-start">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
+                                <span class="material-symbols-outlined mr-1 text-base">add</span>
+                                Add Category
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900/40">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Category</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Services</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <?php if (!empty($categories)): ?>
+                                    <?php foreach ($categories as $category): ?>
+                                        <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-start gap-3">
+                                                    <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200" style="background-color: <?= esc($category['color'] ?? '#3B82F6') ?>"></span>
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100"><?= esc($category['name']) ?></p>
+                                                        <?php if (!empty($category['description'])): ?>
+                                                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2"><?= esc($category['description']) ?></p>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                                <?= (int)($category['services_count'] ?? 0) ?>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <?php if (!empty($category['active'])): ?>
+                                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">Active</span>
+                                                <?php else: ?>
+                                                    <span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                                    <a href="<?= site_url('services/categories/edit/' . (int)$category['id']) ?>" class="inline-flex items-center rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:hover:bg-indigo-900/50">
+                                                        <span class="material-symbols-outlined mr-1 text-sm">edit</span>
+                                                        Edit
+                                                    </a>
+
+                                                    <?php if (!empty($category['active'])): ?>
+                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
+                                                            <?= csrf_field() ?>
+                                                            <button type="submit" class="inline-flex items-center rounded-md bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50">
+                                                                <span class="material-symbols-outlined mr-1 text-sm">pause</span>
+                                                                Deactivate
+                                                            </button>
+                                                        </form>
+                                                    <?php else: ?>
+                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Activate this category?');">
+                                                            <?= csrf_field() ?>
+                                                            <button type="submit" class="inline-flex items-center rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50">
+                                                                <span class="material-symbols-outlined mr-1 text-sm">play_arrow</span>
+                                                                Activate
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+
+                                                    <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
+                                                        <?= csrf_field() ?>
+                                                        <button type="submit" class="inline-flex items-center rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50">
+                                                            <span class="material-symbols-outlined mr-1 text-sm">delete</span>
+                                                            Delete
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-300">
+                                            No categories yet. Use the quick add form or New Category button to create one.
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
-</div>
 <?= $this->endSection() ?>

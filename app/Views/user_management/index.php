@@ -1,14 +1,13 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/dashboard') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'user-management']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('header_title') ?>User Management<?= $this->endSection() ?>
+<?= $this->section('page_title') ?>User Management<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Manage system users and their permissions<?= $this->endSection() ?>
 
-<?= $this->section('content') ?>
-<div class="main-content" data-page-title="User Management" data-page-subtitle="Manage system users and their permissions">
-
+<?= $this->section('dashboard_content_top') ?>
     <!-- Flash Messages -->
     <?php if (session()->getFlashdata('success')): ?>
         <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
@@ -26,7 +25,9 @@
     <div class="mb-6">
         <div id="role-user-cards" class="grid grid-cols-2 md:grid-cols-5 gap-4" aria-live="polite"></div>
     </div>
+<?= $this->endSection() ?>
 
+<?= $this->section('dashboard_content') ?>
     <!-- Users Table (main container starts here) -->
     <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <div class="mb-6">
@@ -129,8 +130,9 @@
         </div>
         <div id="users-error" class="hidden mt-4 text-sm text-red-600 dark:text-red-400"></div>
     </div>
-</div>
+<?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
 <script>
 (function(){
     const ROLE_DEFS=[
@@ -190,3 +192,5 @@
     window.initUserManagementDashboard=init; document.addEventListener('DOMContentLoaded',()=>init()); document.addEventListener('spa:navigated',()=>init());
 })();
 // (Removed previous row-selection based dynamic header script; header now tracks active role card only.)
+</script>
+<?= $this->endSection() ?>

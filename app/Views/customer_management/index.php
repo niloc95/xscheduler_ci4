@@ -1,14 +1,13 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/dashboard') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'customer-management']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('header_title') ?>Customer Management<?= $this->endSection() ?>
+<?= $this->section('page_title') ?>Customer Management<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Manage customers and their contact details<?= $this->endSection() ?>
 
-<?= $this->section('content') ?>
-<div class="main-content" data-page-title="Customer Management" data-page-subtitle="Manage customers and their contact details">
-
+<?= $this->section('dashboard_content_top') ?>
     <?php if (session()->getFlashdata('success')): ?>
         <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
             <?= esc(session()->getFlashdata('success')) ?>
@@ -20,7 +19,9 @@
             <?= esc(session()->getFlashdata('error')) ?>
         </div>
     <?php endif; ?>
+<?= $this->endSection() ?>
 
+<?= $this->section('dashboard_content') ?>
     <div class="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
@@ -81,5 +82,4 @@
             </table>
         </div>
     </div>
-</div>
 <?= $this->endSection() ?>

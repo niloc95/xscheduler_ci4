@@ -76,8 +76,12 @@ $routes->group('services', function($routes) {
     $routes->post('update/(:num)', 'Services::update/$1');
     $routes->post('delete/(:num)', 'Services::delete/$1');
     $routes->get('categories', 'Services::categories');
+    $routes->get('categories/create', 'Services::createCategory');
     $routes->post('categories', 'Services::storeCategory');
-    $routes->post('categories/(:num)', 'Services::updateCategory/$1');
+    $routes->get('categories/edit/(:num)', 'Services::editCategory/$1');
+    $routes->post('categories/update/(:num)', 'Services::updateCategory/$1');
+    $routes->post('categories/(:num)/activate', 'Services::activateCategory/$1');
+    $routes->post('categories/(:num)/deactivate', 'Services::deactivateCategory/$1');
     $routes->post('categories/(:num)/delete', 'Services::deleteCategory/$1');
 });
 

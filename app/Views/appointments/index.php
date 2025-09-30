@@ -1,104 +1,96 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/dashboard') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'appointments']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('content') ?>
-<div class="main-content" data-page-title="<?= esc($title) ?>" data-page-subtitle="<?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?>">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div></div>
-            
-            <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
-            <div class="mt-4 sm:mt-0">
-                <a href="<?= base_url('/appointments/create') ?>" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                    <span class="material-symbols-outlined mr-2">add</span>
-                    <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
-                </a>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
+<?= $this->section('page_title') ?><?= esc($title) ?><?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
 
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total'] ?></p>
+<?= $this->section('dashboard_actions') ?>
+    <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+    <a href="<?= base_url('/appointments/create') ?>"
+       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+        <span class="material-symbols-outlined mr-2">add</span>
+        <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
+    </a>
+    <?php endif; ?>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_stats') ?>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['completed'] ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">schedule</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['pending'] ?></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">today</span>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today</p>
-                    <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['today'] ?></p>
-                </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total'] ?></p>
             </div>
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="mb-6">
-        <div class="flex flex-wrap gap-2">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">All</button>
-            <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Today</button>
-            <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">This Week</button>
-            <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Pending</button>
-            <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Completed</button>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['completed'] ?></p>
+            </div>
         </div>
     </div>
 
-    <!-- Appointments List -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">schedule</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['pending'] ?></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">today</span>
+                </div>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today</p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['today'] ?></p>
+            </div>
+        </div>
+    </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_filters') ?>
+    <div class="flex flex-wrap gap-2">
+        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">All</button>
+        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Today</button>
+        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">This Week</button>
+        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Pending</button>
+        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Completed</button>
+    </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_content') ?>
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Appointments</h3>
         </div>
-        
+
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
             <?php if (!empty($appointments)): ?>
                 <?php foreach ($appointments as $appointment): ?>
@@ -110,7 +102,7 @@
                                         <span class="material-symbols-outlined text-gray-600 dark:text-gray-400 text-2xl">person</span>
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <h4 class="text-lg font-medium text-gray-900 dark:text-white">
                                         <?= esc($appointment['customer_name']) ?>
@@ -124,7 +116,7 @@
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-center space-x-3">
                                 <span class="px-3 py-1 text-xs font-medium rounded-full
                                     <?php if ($appointment['status'] === 'confirmed'): ?>
@@ -138,14 +130,14 @@
                                     <?php endif; ?>">
                                     <?= ucfirst($appointment['status']) ?>
                                 </span>
-                                
+
                                 <div class="flex items-center space-x-1">
-                                    <a href="<?= base_url('/appointments/view/' . $appointment['id']) ?>" 
+                                    <a href="<?= base_url('/appointments/view/' . $appointment['id']) ?>"
                                        class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
                                        title="View Details">
                                         <span class="material-symbols-outlined">visibility</span>
                                     </a>
-                                    
+
                                     <?php if (has_role(['admin', 'provider', 'staff'])): ?>
                                     <button class="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200"
                                             title="Edit Appointment">
@@ -155,7 +147,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <?php if (!empty($appointment['notes'])): ?>
                         <div class="mt-3 pl-16">
                             <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -173,7 +165,7 @@
                         <?= $user_role === 'customer' ? 'You don\'t have any appointments yet.' : 'No appointments match your current filters.' ?>
                     </p>
                     <?php if ($user_role === 'customer'): ?>
-                    <a href="<?= base_url('/appointments/create') ?>" 
+                    <a href="<?= base_url('/appointments/create') ?>"
                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
                         <span class="material-symbols-outlined mr-2">add</span>
                         Book Your First Appointment
@@ -183,5 +175,4 @@
             <?php endif; ?>
         </div>
     </div>
-</div>
 <?= $this->endSection() ?>

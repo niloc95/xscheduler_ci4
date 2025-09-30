@@ -1,135 +1,126 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/dashboard') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'analytics']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('content') ?>
-<div class="main-content" data-page-title="Analytics" data-page-subtitle="Monitor your business performance and insights">
-    <!-- Page Header -->
-    <div class="mb-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div></div>
-            
-            <div class="mt-4 sm:mt-0">
-                <select id="timeframe" class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                    <option value="7d" <?= $timeframe === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
-                    <option value="30d" <?= $timeframe === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
-                    <option value="3m" <?= $timeframe === '3m' ? 'selected' : '' ?>>Last 3 Months</option>
-                    <option value="1y" <?= $timeframe === '1y' ? 'selected' : '' ?>>Last Year</option>
-                </select>
+<?= $this->section('page_title') ?>Analytics<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Monitor your business performance and insights<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_actions') ?>
+    <select id="timeframe" class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+        <option value="7d" <?= $timeframe === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
+        <option value="30d" <?= $timeframe === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
+        <option value="3m" <?= $timeframe === '3m' ? 'selected' : '' ?>>Last 3 Months</option>
+        <option value="1y" <?= $timeframe === '1y' ? 'selected' : '' ?>>Last Year</option>
+    </select>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_stats') ?>
+    <!-- Primary Metrics -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['total_revenue'], 2) ?></p>
+                <div class="flex items-center mt-2">
+                    <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
+                    <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['revenue_change'] ?>%</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
+                </div>
+            </div>
+            <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">attach_money</span>
             </div>
         </div>
     </div>
 
-    <!-- Key Metrics -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Revenue Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['total_revenue'], 2) ?></p>
-                    <div class="flex items-center mt-2">
-                        <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
-                        <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['revenue_change'] ?>%</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
-                    </div>
-                </div>
-                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">attach_money</span>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Appointments</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white"><?= number_format($overview['total_appointments']) ?></p>
+                <div class="flex items-center mt-2">
+                    <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
+                    <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['appointments_change'] ?>%</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
                 </div>
             </div>
-        </div>
-
-        <!-- Appointments Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Appointments</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white"><?= number_format($overview['total_appointments']) ?></p>
-                    <div class="flex items-center mt-2">
-                        <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
-                        <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['appointments_change'] ?>%</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
-                    </div>
-                </div>
-                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
-                </div>
+            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
             </div>
         </div>
+    </div>
 
-        <!-- New Customers Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">New Customers</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white"><?= number_format($overview['new_customers']) ?></p>
-                    <div class="flex items-center mt-2">
-                        <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
-                        <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['customers_change'] ?>%</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
-                    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">New Customers</p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white"><?= number_format($overview['new_customers']) ?></p>
+                <div class="flex items-center mt-2">
+                    <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
+                    <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['customers_change'] ?>%</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">from last month</span>
                 </div>
-                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">group</span>
-                </div>
+            </div>
+            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">group</span>
             </div>
         </div>
     </div>
 
     <!-- Secondary Metrics -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Booking Value</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['avg_booking_value'], 2) ?></p>
-                    <div class="flex items-center mt-1">
-                        <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['booking_value_change'] ?>%</span>
-                    </div>
-                </div>
-                <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-xl">attach_money</span>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Booking Value</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['avg_booking_value'], 2) ?></p>
+                <div class="flex items-center mt-1">
+                    <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['booking_value_change'] ?>%</span>
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Customer Retention</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white"><?= $overview['customer_retention'] ?>%</p>
-                    <div class="flex items-center mt-1">
-                        <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['retention_change'] ?>%</span>
-                    </div>
-                </div>
-                <div class="w-10 h-10 bg-pink-100 dark:bg-pink-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-pink-600 dark:text-pink-400 text-xl">favorite</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Staff Utilization</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white"><?= $overview['staff_utilization'] ?>%</p>
-                    <div class="flex items-center mt-1">
-                        <span class="text-sm font-medium text-red-600 dark:text-red-400"><?= $overview['utilization_change'] ?>%</span>
-                    </div>
-                </div>
-                <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-rounded text-indigo-600 dark:text-indigo-400 text-xl">groups</span>
-                </div>
+            <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-xl">attach_money</span>
             </div>
         </div>
     </div>
 
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Customer Retention</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white"><?= $overview['customer_retention'] ?>%</p>
+                <div class="flex items-center mt-1">
+                    <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['retention_change'] ?>%</span>
+                </div>
+            </div>
+            <div class="w-10 h-10 bg-pink-100 dark:bg-pink-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-pink-600 dark:text-pink-400 text-xl">favorite</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Staff Utilization</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white"><?= $overview['staff_utilization'] ?>%</p>
+                <div class="flex items-center mt-1">
+                    <span class="text-sm font-medium text-red-600 dark:text-red-400"><?= $overview['utilization_change'] ?>%</span>
+                </div>
+            </div>
+            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-rounded text-indigo-600 dark:text-indigo-400 text-xl">groups</span>
+            </div>
+        </div>
+    </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('dashboard_content') ?>
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Revenue Chart -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Revenue Trend</h3>
@@ -147,7 +138,6 @@
             </div>
         </div>
 
-        <!-- Appointments by Status -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Appointments by Status</h3>
             <div class="space-y-4">
@@ -200,8 +190,9 @@
             </div>
         </div>
     </div>
-</div>
+<?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
 <script>
 // Timeframe change handler
 document.getElementById('timeframe').addEventListener('change', function() {
