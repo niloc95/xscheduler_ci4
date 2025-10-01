@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AlterCategoriesAddActive extends Migration
+class AlterCategoriesAddActive extends MigrationBase
 {
     public function up()
     {

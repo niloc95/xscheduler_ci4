@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateBusinessHoursTable extends Migration
+class CreateBusinessHoursTable extends MigrationBase
 {
     public function up()
     {

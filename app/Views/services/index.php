@@ -12,7 +12,7 @@
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6<?= $this->endSection() ?>
 
 <?= $this->section('dashboard_stats') ?>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="card card-spacious p-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="card card-spacious p-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -40,7 +40,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="card card-spacious p-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -54,7 +54,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="card card-spacious p-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="card card-spacious p-6">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -84,14 +84,12 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_actions') ?>
-    <a href="<?= base_url('/services?tab=categories') ?>"
-       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
-        <span class="material-symbols-outlined mr-2">category</span>
+    <a href="<?= base_url('/services?tab=categories') ?>" class="btn btn-secondary">
+        <span class="material-symbols-outlined text-base">category</span>
         Manage Categories
     </a>
-    <a href="<?= base_url('/services/create') ?>"
-       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 no-underline hover:no-underline">
-        <span class="material-symbols-outlined mr-2">add</span>
+    <a href="<?= base_url('/services/create') ?>" class="btn btn-primary">
+        <span class="material-symbols-outlined text-base">add</span>
         Add Service
     </a>
 <?= $this->endSection() ?>
@@ -152,7 +150,7 @@
                 </div>
             </div>
             <div class="flex justify-end md:w-auto">
-                <button type="submit" class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
+                <button type="submit" class="btn btn-primary">
                     Apply
                 </button>
             </div>
@@ -161,15 +159,15 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_content') ?>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <div class="flex flex-col gap-4 border-b border-gray-200 px-6 pt-4 dark:border-gray-700 md:flex-row md:items-center md:justify-between">
+    <div class="card card-spacious">
+        <div class="card-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex items-center gap-2">
-                <a href="<?= site_url('services?tab=services') ?>" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium no-underline transition <?= $activeTab === 'services' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
-                    <span class="material-symbols-outlined mr-2 text-base">design_services</span>
+                <a href="<?= site_url('services?tab=services') ?>" class="btn <?= $activeTab === 'services' ? 'btn-primary shadow-sm' : 'btn-ghost text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+                    <span class="material-symbols-outlined text-base">design_services</span>
                     Services
                 </a>
-                <a href="<?= site_url('services?tab=categories') ?>" class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium no-underline transition <?= $activeTab === 'categories' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
-                    <span class="material-symbols-outlined mr-2 text-base">category</span>
+                <a href="<?= site_url('services?tab=categories') ?>" class="btn <?= $activeTab === 'categories' ? 'btn-primary shadow-sm' : 'btn-ghost text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+                    <span class="material-symbols-outlined text-base">category</span>
                     Categories
                 </a>
             </div>
@@ -180,7 +178,7 @@
             <?php endif; ?>
         </div>
 
-        <div class="p-6">
+    <div class="card-body space-y-6">
             <?php if ($activeTab === 'services'): ?>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -240,14 +238,14 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right">
                                             <div class="flex items-center justify-end gap-2">
-                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" class="inline-flex items-center rounded-md border border-transparent bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:hover:bg-indigo-900/50">
-                                                    <span class="material-symbols-outlined mr-1 text-sm">edit</span>
+                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" class="btn btn-secondary btn-sm">
+                                                    <span class="material-symbols-outlined text-sm">edit</span>
                                                     Edit
                                                 </a>
                                                 <form action="<?= site_url('services/delete/' . $service['id']) ?>" method="post" onsubmit="return confirm('Delete this service?');">
                                                     <?= csrf_field() ?>
-                                                    <button type="submit" class="inline-flex items-center rounded-md border border-transparent bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/40">
-                                                        <span class="material-symbols-outlined mr-1 text-sm">delete</span>
+                                                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                                                        <span class="material-symbols-outlined text-sm">delete</span>
                                                         Delete
                                                     </button>
                                                 </form>
@@ -279,8 +277,8 @@
                             <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
                         </div>
                         <div class="flex justify-end md:justify-start">
-                            <button type="submit" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
-                                <span class="material-symbols-outlined mr-1 text-base">add</span>
+                            <button type="submit" class="btn btn-primary">
+                                <span class="material-symbols-outlined text-base">add</span>
                                 Add Category
                             </button>
                         </div>
@@ -323,24 +321,24 @@
                                             </td>
                                             <td class="px-6 py-4">
                                                 <div class="flex flex-wrap items-center justify-end gap-2">
-                                                    <a href="<?= site_url('services/categories/edit/' . (int)$category['id']) ?>" class="inline-flex items-center rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-200 dark:hover:bg-indigo-900/50">
-                                                        <span class="material-symbols-outlined mr-1 text-sm">edit</span>
+                                                    <a href="<?= site_url('services/categories/edit/' . (int)$category['id']) ?>" class="btn btn-secondary btn-sm">
+                                                        <span class="material-symbols-outlined text-sm">edit</span>
                                                         Edit
                                                     </a>
 
                                                     <?php if (!empty($category['active'])): ?>
                                                         <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
                                                             <?= csrf_field() ?>
-                                                            <button type="submit" class="inline-flex items-center rounded-md bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:hover:bg-amber-900/50">
-                                                                <span class="material-symbols-outlined mr-1 text-sm">pause</span>
+                                                            <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">
+                                                                <span class="material-symbols-outlined text-sm">pause</span>
                                                                 Deactivate
                                                             </button>
                                                         </form>
                                                     <?php else: ?>
                                                         <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Activate this category?');">
                                                             <?= csrf_field() ?>
-                                                            <button type="submit" class="inline-flex items-center rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50">
-                                                                <span class="material-symbols-outlined mr-1 text-sm">play_arrow</span>
+                                                            <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
+                                                                <span class="material-symbols-outlined text-sm">play_arrow</span>
                                                                 Activate
                                                             </button>
                                                         </form>
@@ -348,8 +346,8 @@
 
                                                     <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
                                                         <?= csrf_field() ?>
-                                                        <button type="submit" class="inline-flex items-center rounded-md bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50">
-                                                            <span class="material-symbols-outlined mr-1 text-sm">delete</span>
+                                                        <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                                            <span class="material-symbols-outlined text-sm">delete</span>
                                                             Delete
                                                         </button>
                                                     </form>

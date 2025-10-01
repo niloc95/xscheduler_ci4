@@ -104,7 +104,7 @@
             <!-- Unified container to align header and page content -->
             <div class="main-content-container p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
                 <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div id="stickyHeader" data-sticky-header class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm material-shadow p-4 transition-colors duration-200 sticky top-0 lg:top-4 z-40">
+                <div id="stickyHeader" data-sticky-header class="card card-interactive p-4 sticky top-0 lg:top-4 z-40">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">

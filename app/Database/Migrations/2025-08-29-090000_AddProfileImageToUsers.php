@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddProfileImageToUsers extends Migration
+class AddProfileImageToUsers extends MigrationBase
 {
     public function up()
     {

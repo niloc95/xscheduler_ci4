@@ -4,6 +4,8 @@ namespace App\Commands;
 
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
+use CodeIgniter\Database\BaseConnection;
+use Config\Database as DatabaseConfig;
 
 class SetupDebug extends BaseCommand
 {
@@ -49,6 +51,7 @@ class SetupDebug extends BaseCommand
         // Test 2: Check CodeIgniter database config
         CLI::write('2. CodeIgniter Database Config:', 'cyan');
         try {
+            /** @var DatabaseConfig $dbConfig */
             $dbConfig = config('Database');
             if ($dbConfig && property_exists($dbConfig, 'default')) {
                 CLI::write("   DBDriver: " . ($dbConfig->default['DBDriver'] ?? '[NOT SET]'));
@@ -68,6 +71,7 @@ class SetupDebug extends BaseCommand
         // Test 3: Test CodeIgniter connection
         CLI::write('3. CodeIgniter Database Connection Test:', 'cyan');
         try {
+            /** @var BaseConnection $db */
             $db = \Config\Database::connect();
             if (!$db) {
                 CLI::write("   ❌ Failed to create database connection", 'red');
@@ -81,11 +85,8 @@ class SetupDebug extends BaseCommand
                         CLI::write("   ❌ Failed to initialize database connection", 'red');
                         
                         // Try to get more error details
-                        if (method_exists($db, 'getLastError')) {
-                            CLI::write("   Last error: " . $db->getLastError());
-                        }
-                        if (method_exists($db, 'getError')) {
-                            $error = $db->getError();
+                        $error = $db->error();
+                        if (!empty($error['message'])) {
                             CLI::write("   Error details: " . json_encode($error));
                         }
                     } else {
@@ -115,6 +116,7 @@ class SetupDebug extends BaseCommand
         // Test 4.5: Test direct MySQLi connection
         CLI::write('4.5. Direct MySQLi Connection Test:', 'cyan');
         try {
+            /** @var DatabaseConfig $dbConfig */
             $dbConfig = config('Database');
             if ($dbConfig && property_exists($dbConfig, 'default')) {
                 $config = $dbConfig->default;
@@ -157,6 +159,7 @@ class SetupDebug extends BaseCommand
         // Test 4: Test direct PDO connection (if MySQL/MySQLi)
         CLI::write('4. Direct PDO Connection Test:', 'cyan');
         try {
+            /** @var DatabaseConfig $dbConfig */
             $dbConfig = config('Database');
             if ($dbConfig && property_exists($dbConfig, 'default')) {
                 $config = $dbConfig->default;

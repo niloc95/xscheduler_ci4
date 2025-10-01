@@ -78,20 +78,18 @@
             <div class="card-body p-4 space-y-4 text-gray-700 dark:text-gray-300">
                 <div>
                     <h4 class="text-lg font-medium mb-3">Button Types</h4>
-                    <div class="flex gap-4 mb-4">
-                        <?= ui_button('Primary Button', null, 'primary') ?>
+                    <div class="flex flex-wrap gap-4 mb-4">
+                        <?= ui_button('Primary Button') ?>
                         <?= ui_button('Secondary Button', null, 'secondary') ?>
-                    </div>
-                    <div class="flex gap-4 mb-4">
-                        <button class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">Primary</button>
-                        <button class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200">Secondary</button>
-                        <button class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Ghost</button>
-                        <button class="px-4 py-2 rounded-full text-white" style="background-color: var(--md-sys-color-secondary)">Pill</button>
+                        <?= ui_button('Ghost Button', null, 'ghost') ?>
+                        <?= ui_button('Pill Button', null, 'pill') ?>
                     </div>
                     <div class="bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-md overflow-x-auto text-gray-800 dark:text-gray-200">
                         <code class="text-sm">
-                            &lt;?= ui_button('Primary Button', null, 'primary') ?&gt;<br>
-                            &lt;?= ui_button('Secondary Button', null, 'secondary') ?&gt;
+                            &lt;?= ui_button('Primary Button') ?&gt;<br>
+                            &lt;?= ui_button('Secondary Button', null, 'secondary') ?&gt;<br>
+                            &lt;?= ui_button('Ghost Button', null, 'ghost') ?&gt;<br>
+                            &lt;?= ui_button('Pill Button', null, 'pill') ?&gt;
                         </code>
                     </div>
                 </div>

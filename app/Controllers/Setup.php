@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\HTTP\ResponseInterface;
+use Config\Database as DatabaseConfig;
 use Exception;
 
 class Setup extends BaseController
@@ -753,6 +754,7 @@ class Setup extends BaseController
     protected function applyRuntimeDatabaseConfig(array $data): void
     {
         try {
+            /** @var DatabaseConfig $dbConfig */
             $dbConfig = config('Database');
             if (!is_object($dbConfig)) {
                 log_message('warning', 'Setup: Database config is not an object');
@@ -844,6 +846,7 @@ class Setup extends BaseController
             log_message('info', $prefix . 'Environment variables: ' . json_encode($envVars));
             
             // Log CodeIgniter config
+            /** @var DatabaseConfig $dbConfig */
             $dbConfig = config('Database');
             if ($dbConfig && property_exists($dbConfig, 'default')) {
                 $configVars = [

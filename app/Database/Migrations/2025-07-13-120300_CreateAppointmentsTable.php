@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateAppointmentsTable extends Migration
+class CreateAppointmentsTable extends MigrationBase
 {
     public function up()
     {

@@ -1,9 +1,9 @@
 <?php
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateCustomersTable extends Migration
+class CreateCustomersTable extends MigrationBase
 {
     public function up()
     {

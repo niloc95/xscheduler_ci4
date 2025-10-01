@@ -1,9 +1,9 @@
 <?php
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class UpdateUsersAndAppointmentsSplit extends Migration
+class UpdateUsersAndAppointmentsSplit extends MigrationBase
 {
     public function up()
     {

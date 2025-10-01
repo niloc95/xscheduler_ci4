@@ -19,17 +19,24 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-            <form id="createServiceForm" action="/services/store" method="post" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <form id="createServiceForm" action="/services/store" method="post" class="card card-spacious">
                 <?= csrf_field() ?>
-                <?= $this->include('services/_form', ['categories' => $categories, 'providers' => $providers]) ?>
+                <div class="card-header flex-col items-start gap-2">
+                    <h2 class="card-title text-xl">Service Details</h2>
+                    <p class="card-subtitle">Fill out core information and assign providers.</p>
+                </div>
 
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button type="button" id="openCategoryModal" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg">
-                        <span class="material-symbols-outlined mr-2">add</span>
+                <div class="card-body space-y-6">
+                    <?= $this->include('services/_form', ['categories' => $categories, 'providers' => $providers]) ?>
+                </div>
+
+                <div class="card-footer flex flex-wrap justify-end gap-3">
+                    <button type="button" id="openCategoryModal" class="btn btn-secondary">
+                        <span class="material-symbols-outlined">add</span>
                         New Category
                     </button>
-                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                        <span class="material-symbols-outlined mr-2">save</span>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="material-symbols-outlined">save</span>
                         Save Service
                     </button>
                 </div>
@@ -37,13 +44,17 @@
         </div>
 
         <div class="lg:col-span-1">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Tips</h3>
+            <div class="card card-spacious">
+                <div class="card-header">
+                    <h3 class="card-title">Tips</h3>
+                </div>
+                <div class="card-body">
                 <ul class="list-disc text-sm text-gray-600 dark:text-gray-300 ml-5 space-y-1">
                     <li>Providers list only shows users with role = provider.</li>
                     <li>Use "New Category" to add missing categories inline.</li>
                     <li>On save, you'll see a confirmation modal; errors show in it too.</li>
                 </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -69,8 +80,8 @@
                 </div>
             </div>
             <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" class="btn-secondary" id="cancelCategoryModal">Cancel</button>
-                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Create</button>
+                <button type="button" class="btn btn-ghost" id="cancelCategoryModal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create</button>
             </div>
         </form>
     </div>
@@ -83,7 +94,7 @@
         <h3 id="resultTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2"></h3>
         <p id="resultMessage" class="text-sm text-gray-700 dark:text-gray-300"></p>
         <div class="mt-6 flex justify-end">
-            <button type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg" id="closeResultModal">Close</button>
+            <button type="button" class="btn btn-primary" id="closeResultModal">Close</button>
         </div>
     </div>
 </div>

@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddResetTokenToUsers extends Migration
+class AddResetTokenToUsers extends MigrationBase
 {
     public function up()
     {

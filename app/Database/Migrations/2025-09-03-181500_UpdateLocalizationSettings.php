@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class UpdateLocalizationSettings extends Migration
+class UpdateLocalizationSettings extends MigrationBase
 {
     public function up()
     {

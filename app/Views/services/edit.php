@@ -18,26 +18,36 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-      <form id="editServiceForm" action="/services/update/<?= (int)$service['id'] ?>" method="post" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <form id="editServiceForm" action="/services/update/<?= (int)$service['id'] ?>" method="post" class="card card-spacious">
         <?= csrf_field() ?>
                 <input type="hidden" name="service_id" value="<?= (int)$service['id'] ?>">
+                <div class="card-header flex-col items-start gap-2">
+          <h2 class="card-title text-xl">Service Details</h2>
+          <p class="card-subtitle">Update pricing, providers, and visibility.</p>
+        </div>
+        <div class="card-body space-y-6">
                 <?= $this->include('services/_form', ['service' => $service, 'categories' => $categories, 'providers' => $providers, 'linkedProviders' => $linkedProviders ?? []]) ?>
+        </div>
 
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                        <span class="material-symbols-outlined mr-2">save</span>
+        <div class="card-footer flex justify-end">
+          <button type="submit" class="btn btn-primary">
+            <span class="material-symbols-outlined">save</span>
                         Save Changes
                     </button>
                 </div>
             </form>
         </div>
         <div class="lg:col-span-1">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Tips</h3>
+            <div class="card card-spacious">
+                <div class="card-header">
+          <h3 class="card-title">Tips</h3>
+        </div>
+        <div class="card-body">
                 <ul class="list-disc text-sm text-gray-600 dark:text-gray-300 ml-5 space-y-1">
                     <li>Change category or add a new one inline.</li>
                     <li>Manage providers by selecting multiple entries.</li>
                 </ul>
+        </div>
             </div>
         </div>
     </div>
@@ -59,8 +69,8 @@
         </div>
       </div>
       <div class="mt-6 flex justify-end space-x-3">
-        <button type="button" class="btn-secondary" id="cancelCategoryModal">Cancel</button>
-        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Create</button>
+        <button type="button" class="btn btn-ghost" id="cancelCategoryModal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
       </div>
     </form>
   </div>
@@ -72,7 +82,7 @@
     <h3 id="resultTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2"></h3>
     <p id="resultMessage" class="text-sm text-gray-700 dark:text-gray-300"></p>
     <div class="mt-6 flex justify-end">
-      <button type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg" id="closeResultModal">Close</button>
+      <button type="button" class="btn btn-primary" id="closeResultModal">Close</button>
     </div>
   </div>
 </div>

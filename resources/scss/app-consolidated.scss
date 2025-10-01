@@ -140,6 +140,29 @@ md-outlined-card {
 // Ensure native controls render appropriate theme chrome
 @layer base {
   input, select, textarea { color-scheme: light dark; }
+
+  button,
+  button:hover,
+  [type='button'],
+  [type='button']:hover,
+  [type='submit'],
+  [type='submit']:hover,
+  [type='reset'],
+  [type='reset']:hover,
+  .btn,
+  .btn:hover,
+  a.btn,
+  a.btn:hover,
+  a.button,
+  a.button:hover,
+  a.inline-flex,
+  a.inline-flex:hover,
+  a.flex,
+  a.flex:hover,
+  [role='button'],
+  [role='button']:hover {
+    text-decoration: none !important;
+  }
 }
 
 // Time slot components (scheduler)

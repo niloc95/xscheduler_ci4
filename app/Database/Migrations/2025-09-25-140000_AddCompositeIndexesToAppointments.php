@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddCompositeIndexesToAppointments extends Migration
+class AddCompositeIndexesToAppointments extends MigrationBase
 {
     public function up()
     {

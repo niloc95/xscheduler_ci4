@@ -4,10 +4,13 @@ namespace App\Controllers\Api\V1;
 
 use App\Controllers\BaseController;
 use App\Models\SettingModel;
+use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Settings extends BaseController
 {
+    use ResponseTrait;
+
     protected $model;
 
     public function __construct()

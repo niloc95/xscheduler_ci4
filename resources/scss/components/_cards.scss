@@ -2,166 +2,112 @@
 // Card Components
 // ===========================
 
+@use '../abstracts/variables' as vars;
+
 .card {
-  @include card-base;
-  
-  // Card Variants
-  &.card-elevated {
-    box-shadow: $shadow-lg;
-    
-    &:hover {
-      box-shadow: $shadow-xl;
-    }
-  }
-  
-  &.card-flat {
-    box-shadow: none;
-    border: 1px solid var(--xs-border);
-    
-    &:hover {
-      box-shadow: $shadow-md;
-    }
-  }
-  
-  // Semantic Variants
-  &.card-primary {
-    border-left: 4px solid $brand-ocean;
-  }
-  
-  &.card-success {
-    border-left: 4px solid $brand-golden;
-  }
-  
-  &.card-warning {
-    border-left: 4px solid $brand-orange;
-  }
-  
-  &.card-danger {
-    border-left: 4px solid $brand-crimson;
-  }
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: vars.$shadow-brand;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.dark .card {
+  background-color: #1f2937;
+  border-color: #374151;
 }
 
 .card-header {
-  padding: $spacing-2xl $spacing-2xl $spacing-lg;
-  border-bottom: 1px solid var(--xs-border-light);
-  background-color: var(--xs-bg-secondary);
-  border-radius: $border-radius-xl $border-radius-xl 0 0;
-  
-  .card-title {
-    margin: 0;
-    font-size: $font-size-xl;
-    font-weight: $font-weight-semibold;
-    color: var(--xs-text-primary);
-  }
-  
-  .card-subtitle {
-    margin: $spacing-sm 0 0;
-    font-size: $font-size-sm;
-    color: var(--xs-text-muted);
-  }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .card-header {
+  border-color: #374151;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dark .card-title {
+  color: #f3f4f6;
+}
+
+.card-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.dark .card-subtitle {
+  color: #9ca3af;
 }
 
 .card-body {
-  padding: $spacing-2xl;
-  
-  // Compact variant
-  .card.card-compact & {
-    padding: $spacing-lg;
-  }
-  
-  // Spacious variant
-  .card.card-spacious & {
-    padding: $spacing-3xl;
-  }
+  padding: 1rem;
+  color: #374151;
+}
+
+.dark .card-body {
+  color: #d1d5db;
+}
+
+.card-body-muted {
+  color: #6b7280;
+}
+
+.dark .card-body-muted {
+  color: #9ca3af;
 }
 
 .card-footer {
-  padding: $spacing-lg $spacing-2xl $spacing-2xl;
-  border-top: 1px solid var(--xs-border-light);
-  background-color: var(--xs-bg-secondary);
-  border-radius: 0 0 $border-radius-xl $border-radius-xl;
-  
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: $spacing-md;
-  
-  &.card-footer-split {
-    justify-content: space-between;
-  }
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background-color: rgba(249, 250, 251, 0.85);
 }
 
-// Special Card Types
-.stat-card {
-  @include card-base;
-  padding: $spacing-2xl;
-  text-align: center;
-  
-  .stat-icon {
-    width: 3rem;
-    height: 3rem;
-    margin: 0 auto $spacing-lg;
-    border-radius: $border-radius-lg;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: $font-size-xl;
-    color: $white;
-    
-    &.stat-icon-appointments { background-color: $brand-ocean; }
-    &.stat-icon-revenue { background-color: $brand-golden; }
-    &.stat-icon-customers { background-color: $brand-orange; }
-    &.stat-icon-growth { background-color: $brand-crimson; }
-  }
-  
-  .stat-value {
-    font-size: $font-size-3xl;
-    font-weight: $font-weight-bold;
-    color: var(--xs-text-primary);
-    margin: 0 0 $spacing-sm;
-  }
-  
-  .stat-label {
-    font-size: $font-size-sm;
-    color: var(--xs-text-muted);
-    margin: 0;
-  }
-  
-  .stat-change {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    margin-top: $spacing-sm;
-    
-    &.positive { color: var(--xs-success); }
-    &.negative { color: var(--xs-error); }
-    &.neutral { color: var(--xs-text-muted); }
-  }
+.dark .card-footer {
+  border-color: #374151;
+  background-color: rgba(17, 24, 39, 0.6);
 }
 
-.appointment-card {
-  @include card-base;
-  padding: $spacing-2xl;
-  
-  // Status indicators
-  &.status-confirmed { border-left: 4px solid $brand-golden; }
-  &.status-pending { border-left: 4px solid $brand-orange; }
-  &.status-cancelled { border-left: 4px solid $brand-crimson; }
-  &.status-completed { border-left: 4px solid $brand-ocean; }
-  
-  .appointment-time {
-    font-size: $font-size-lg;
-    font-weight: $font-weight-semibold;
-    color: var(--xs-text-primary);
-    margin-bottom: $spacing-sm;
-  }
-  
-  .appointment-client {
-    font-size: $font-size-base;
-    color: var(--xs-text-secondary);
-    margin-bottom: $spacing-xs;
-  }
-  
-  .appointment-service {
-    font-size: $font-size-sm;
-    color: var(--xs-text-muted);
-  }
+.card-footer.card-footer-split {
+  justify-content: space-between;
+}
+
+.card.card-compact .card-body {
+  padding: 0.75rem;
+}
+
+.card.card-spacious .card-body {
+  padding: 1.5rem;
+}
+
+.card.card-interactive {
+  transition: box-shadow 0.2s ease;
+}
+
+.card.card-interactive:hover {
+  box-shadow: vars.$shadow-brand-lg;
+}
+
+.card.card-muted {
+  background-color: #f9fafb;
+}
+
+.dark .card.card-muted {
+  background-color: rgba(17, 24, 39, 0.7);
 }

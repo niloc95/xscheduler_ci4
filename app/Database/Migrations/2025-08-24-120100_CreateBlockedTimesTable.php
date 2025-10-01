@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateBlockedTimesTableDuplicate extends Migration
+class CreateBlockedTimesTableDuplicate extends MigrationBase
 {
     public function up()
     {

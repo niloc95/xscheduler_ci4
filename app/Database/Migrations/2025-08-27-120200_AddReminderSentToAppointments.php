@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddReminderSentToAppointments extends Migration
+class AddReminderSentToAppointments extends MigrationBase
 {
     public function up()
     {

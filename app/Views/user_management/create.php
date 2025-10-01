@@ -19,15 +19,16 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- User Form -->
         <div class="lg:col-span-2">
-            <div class="p-4 md:p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand material-shadow">
-                <div class="mb-6">
-                    <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Information</h2>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Enter the details for the new user account</p>
+            <div class="card card-spacious">
+                <div class="card-header flex-col items-start gap-2">
+                    <h2 class="card-title text-xl">User Information</h2>
+                    <p class="card-subtitle">Enter the details for the new user account</p>
                 </div>
 
-                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form space-y-6">
+                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form">
                 <?= csrf_field() ?>
 
+                <div class="card-body space-y-6">
                 <!-- Basic Information -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="form-group">
@@ -193,14 +194,16 @@
                 </div>
 
                 <!-- Form Actions -->
-                <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                </div>
+
+                <div class="card-footer flex flex-col gap-3 sm:flex-row sm:justify-end">
                     <a href="<?= base_url('user-management') ?>" 
-                       class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 text-sm font-medium">
+                       class="btn btn-secondary">
                         <span class="material-symbols-outlined mr-2">close</span>
                         Cancel
                     </a>
                     <button type="submit" 
-                            class="inline-flex items-center justify-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium">
+                            class="btn btn-primary">
                         <span class="material-symbols-outlined mr-2">save</span>
                         Create User
                     </button>
@@ -213,10 +216,12 @@
         <!-- Help Panel -->
         <div class="lg:col-span-1 space-y-6">
             <!-- Role Guide -->
-            <div class="p-4 md:p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand material-shadow">
-                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 transition-colors duration-300">User Roles Guide</h3>
+            <div class="card card-spacious">
+                <div class="card-header">
+                    <h3 class="card-title">User Roles Guide</h3>
+                </div>
                 
-                <div class="space-y-4">
+                <div class="card-body space-y-4">
                     <?php foreach ($availableRoles as $roleOption): ?>
                         <?php
                         $roleColors = [
@@ -242,7 +247,7 @@
                     <?php endforeach; ?>
                 </div>
 
-                <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="rounded-lg bg-gray-50 p-4 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                     <h4 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Password Requirements</h4>
                     <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                         <li>• Minimum 8 characters</li>
@@ -253,10 +258,12 @@
             </div>
 
             <!-- Quick Stats -->
-            <div class="p-4 md:p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand material-shadow">
-                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 transition-colors duration-300">Current System Stats</h3>
+            <div class="card card-spacious">
+                <div class="card-header">
+                    <h3 class="card-title">Current System Stats</h3>
+                </div>
                 
-                <div class="space-y-3">
+                <div class="card-body space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-gray-600 dark:text-gray-400">Total Users</span>
                         <span class="font-medium text-gray-800 dark:text-gray-200"><?= number_format($stats['total'] ?? 0) ?></span>

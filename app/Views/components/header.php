@@ -1,1 +1,0 @@
-<!-- Deprecated: header moved into layout top bar; kept intentionally empty to avoid duplicates. -->

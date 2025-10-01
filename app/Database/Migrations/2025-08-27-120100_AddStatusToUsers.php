@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddStatusToUsers extends Migration
+class AddStatusToUsers extends MigrationBase
 {
     public function up()
     {

@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddContactFieldsToSettings extends Migration
+class AddContactFieldsToSettings extends MigrationBase
 {
     public function up()
     {

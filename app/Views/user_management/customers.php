@@ -14,22 +14,26 @@
         </div>
     <?php endif; ?>
 
-    <div class="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-brand material-shadow">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div class="card card-spacious">
+        <div class="card-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">Customers</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400">Search and manage customers linked to your role</p>
+                <h2 class="card-title text-xl">Customers</h2>
+                <p class="card-subtitle">Search and manage customers linked to your role</p>
             </div>
             <div class="flex gap-2 w-full sm:w-auto">
-                <input type="search" id="customerSearch" placeholder="Search customers..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" />
-                <button id="customerRefresh" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1"><span class="material-symbols-outlined text-sm">refresh</span><span class="hidden sm:inline text-sm">Reload</span></button>
+                <input type="search" id="customerSearch" placeholder="Search customers..." class="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
+                <button id="customerRefresh" class="btn btn-secondary">
+                    <span class="material-symbols-outlined text-sm">refresh</span>
+                    <span class="hidden sm:inline text-sm">Reload</span>
+                </button>
             </div>
         </div>
 
-        <div id="customers-error" class="hidden mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-sm"></div>
+        <div class="card-body space-y-4">
+            <div id="customers-error" class="hidden rounded-md border border-red-300/60 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-600/40 dark:bg-red-900/20 dark:text-red-200"></div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" aria-live="polite">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" aria-live="polite">
                 <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600">
                     <tr>
                         <th class="px-6 py-4 font-semibold">Customer</th>
@@ -68,6 +72,7 @@
                     <?php endif; ?>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

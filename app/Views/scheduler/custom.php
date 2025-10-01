@@ -25,11 +25,11 @@
             <p class="text-sm text-gray-500 dark:text-gray-400">Keep track of today’s workload, manage upcoming commitments, and respond quickly to new requests.</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button id="scheduler-new" type="button" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+            <button id="scheduler-new" type="button" class="btn btn-primary">
                 <span class="material-symbols-outlined text-base">add</span>
                 New Appointment
             </button>
-            <button id="scheduler-refresh" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+            <button id="scheduler-refresh" type="button" class="btn btn-secondary">
                 <span class="material-symbols-outlined text-base">refresh</span>
                 Refresh
             </button>
@@ -37,7 +37,7 @@
     </div>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3" id="scheduler-summary">
-        <button type="button" data-target-view="day" class="group rounded-2xl border border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show today’s appointments">
+        <div role="button" tabindex="0" data-target-view="day" class="card card-interactive group rounded-2xl border border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show today’s appointments">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs uppercase tracking-wide text-white/80">Today’s Appointments</p>
@@ -46,9 +46,9 @@
                 <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_today</span>
             </div>
             <p class="mt-4 text-xs text-white/70">Click to jump into Day view and review each booking.</p>
-        </button>
+        </div>
 
-        <button type="button" data-target-view="week" class="group rounded-2xl border border-transparent bg-gradient-to-r from-amber-500 to-orange-500 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this week’s appointments">
+        <div role="button" tabindex="0" data-target-view="week" class="card card-interactive group rounded-2xl border border-transparent bg-gradient-to-r from-amber-500 to-orange-500 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this week’s appointments">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs uppercase tracking-wide text-white/80">This Week’s Appointments</p>
@@ -57,9 +57,9 @@
                 <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_view_week</span>
             </div>
             <p class="mt-4 text-xs text-white/70">Review the weekly mix of services and provider availability.</p>
-        </button>
+        </div>
 
-        <button type="button" data-target-view="month" class="group rounded-2xl border border-transparent bg-gradient-to-r from-purple-600 to-fuchsia-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this month’s appointments">
+        <div role="button" tabindex="0" data-target-view="month" class="card card-interactive group rounded-2xl border border-transparent bg-gradient-to-r from-purple-600 to-fuchsia-600 p-5 text-left text-white shadow-lg transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Show this month’s appointments">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs uppercase tracking-wide text-white/80">This Month’s Appointments</p>
@@ -68,12 +68,13 @@
                 <span class="material-symbols-outlined text-3xl text-white/70 transition group-hover:scale-105">calendar_month</span>
             </div>
             <p class="mt-4 text-xs text-white/70">Zoom out to evaluate broader trends and pacing.</p>
-        </button>
+        </div>
     </div>
 
-        <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" id="scheduler-filters">
+    	<div class="card card-spacious">
+    	<div class="card-body space-y-4">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" id="scheduler-filters">
                 <label class="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
                     <span class="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         <span class="material-symbols-outlined text-base">supervisor_account</span>
@@ -111,21 +112,22 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <button id="scheduler-clear" type="button" class="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
+                <button id="scheduler-clear" type="button" class="btn btn-secondary">
                     <span class="material-symbols-outlined text-base">backspace</span>
                     Clear Filters
                 </button>
-                <button id="scheduler-apply" type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                <button id="scheduler-apply" type="button" class="btn btn-primary">
                     <span class="material-symbols-outlined text-base">filter_alt</span>
                     Apply Filters
                 </button>
             </div>
         </div>
-        <p id="scheduler-filter-feedback" class="mt-4 hidden text-sm text-gray-500 dark:text-gray-400"></p>
+        <p id="scheduler-filter-feedback" class="hidden text-sm text-gray-500 dark:text-gray-400"></p>
+        </div>
     </div>
 
-    <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+	<div class="card card-spacious">
+        <div class="card-header flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <span class="material-symbols-outlined text-base">schedule</span>
@@ -134,27 +136,28 @@
                 <h2 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">Calendar</h2>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <button type="button" id="scheduler-prev" class="rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">
+                <div class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <button type="button" id="scheduler-prev" class="btn btn-ghost btn-sm px-3 py-2">
                         <span class="material-symbols-outlined text-base">chevron_left</span>
                     </button>
-                    <button type="button" id="scheduler-today" class="rounded-xl px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-200 dark:hover:bg-gray-800">Today</button>
-                    <button type="button" id="scheduler-next" class="rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">
+                    <button type="button" id="scheduler-today" class="btn btn-secondary btn-sm px-3 py-2">Today</button>
+                    <button type="button" id="scheduler-next" class="btn btn-ghost btn-sm px-3 py-2">
                         <span class="material-symbols-outlined text-base">chevron_right</span>
                     </button>
                 </div>
-                <div class="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <button type="button" data-view="day" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Day</button>
-                    <button type="button" data-view="week" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Week</button>
-                    <button type="button" data-view="month" class="scheduler-view rounded-xl px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 focus:outline-none focus-visible:ring-2 dark:text-gray-300 dark:hover:bg-gray-800">Month</button>
+                <div class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                    <button type="button" data-view="day" class="scheduler-view btn btn-ghost btn-sm px-4 py-2">Day</button>
+                    <button type="button" data-view="week" class="scheduler-view btn btn-ghost btn-sm px-4 py-2">Week</button>
+                    <button type="button" data-view="month" class="scheduler-view btn btn-ghost btn-sm px-4 py-2">Month</button>
                 </div>
             </div>
         </div>
 
+        <div class="card-body space-y-4">
         <div id="scheduler-calendar" class="min-h-[520px] rounded-2xl border border-dashed border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"></div>
 
-        <div id="scheduler-status" class="mt-4 hidden">
-            <div id="scheduler-status-alert" class="flex items-start gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+        <div id="scheduler-status" class="hidden">
+            <div id="scheduler-status-alert" class="card card-compact card-muted flex items-start gap-3 border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
                 <span class="material-symbols-outlined text-lg text-gray-400 dark:text-gray-500" data-status-icon>info</span>
                 <div class="flex flex-col gap-1">
                     <span data-status-label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</span>
@@ -162,10 +165,11 @@
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
-    <div class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div class="card card-spacious">
+        <div class="card-header flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Quick Slots</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Snapshot of next openings based on the filters above.</p>
@@ -176,9 +180,11 @@
             </div>
         </div>
 
-        <div id="scheduler-slots" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
-        <div id="scheduler-slots-empty" class="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300">
+        <div class="card-body space-y-4">
+        <div id="scheduler-slots" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"></div>
+        <div id="scheduler-slots-empty" class="card card-compact card-muted border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300">
             Choose a provider and service, then pick Apply Filters to load availability.
+        </div>
         </div>
     </div>
 </div>
@@ -205,12 +211,12 @@
 </div>
 
 <template id="scheduler-slot-template">
-    <article class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-blue-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-900">
+    <article class="card card-compact card-interactive flex items-center justify-between border border-gray-200 bg-white p-4 transition hover:border-blue-400 dark:border-gray-700 dark:bg-gray-900">
         <div>
             <p class="text-sm font-semibold text-gray-900 dark:text-gray-100" data-slot-time>--:-- – --:--</p>
             <p class="text-xs text-gray-500 dark:text-gray-400" data-slot-notes></p>
         </div>
-        <button type="button" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700" data-slot-book>
+        <button type="button" class="btn btn-primary btn-sm" data-slot-book>
             <span class="material-symbols-outlined text-sm">event_available</span>
             Book
         </button>

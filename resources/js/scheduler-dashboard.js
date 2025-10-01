@@ -813,6 +813,13 @@ function bootSchedulerDashboard() {
       }
       refreshCounts();
     });
+
+    btn.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        btn.click();
+      }
+    });
   });
 
   elements.viewButtons.forEach((btn) => {

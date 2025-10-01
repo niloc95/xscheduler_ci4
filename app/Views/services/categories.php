@@ -47,8 +47,8 @@
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Categories</h3>
           <p class="text-sm text-gray-600 dark:text-gray-300">Manage the collections your services belong to and control their availability.</p>
         </div>
-        <a href="<?= site_url('services/categories/create') ?>" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
-          <span class="material-symbols-outlined mr-1 text-base">add</span>
+        <a href="<?= site_url('services/categories/create') ?>" class="btn btn-primary">
+          <span class="material-symbols-outlined text-base">add</span>
           New Category
         </a>
       </div>
@@ -65,7 +65,7 @@
           <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
         </div>
         <div class="flex justify-end md:justify-start">
-          <button type="submit" class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
+          <button type="submit" class="btn btn-primary">
             Add Quick Category
           </button>
         </div>
@@ -107,24 +107,24 @@
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex flex-wrap items-center justify-end gap-2">
-                  <a href="<?= site_url('services/categories/edit/' . (int)$c['id']) ?>" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-                    <span class="material-symbols-outlined mr-1 text-sm">edit</span>
+                  <a href="<?= site_url('services/categories/edit/' . (int)$c['id']) ?>" class="btn btn-secondary btn-sm">
+                    <span class="material-symbols-outlined text-sm">edit</span>
                     Edit
                   </a>
 
                   <?php if (!empty($c['active'])): ?>
                     <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/deactivate') ?>" method="post" class="inline-flex">
                       <?= csrf_field() ?>
-                      <button type="submit" class="inline-flex items-center rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-white hover:bg-amber-600" onclick="return confirm('Deactivate this category? Services will remain but marked inactive.');">
-                        <span class="material-symbols-outlined mr-1 text-sm">pause</span>
+                      <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200" onclick="return confirm('Deactivate this category? Services will remain but marked inactive.');">
+                        <span class="material-symbols-outlined text-sm">pause</span>
                         Deactivate
                       </button>
                     </form>
                   <?php else: ?>
                     <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/activate') ?>" method="post" class="inline-flex">
                       <?= csrf_field() ?>
-                      <button type="submit" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700" onclick="return confirm('Activate this category?');">
-                        <span class="material-symbols-outlined mr-1 text-sm">play_arrow</span>
+                      <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200" onclick="return confirm('Activate this category?');">
+                        <span class="material-symbols-outlined text-sm">play_arrow</span>
                         Activate
                       </button>
                     </form>
@@ -132,8 +132,8 @@
 
                   <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/delete') ?>" method="post" class="inline-flex">
                     <?= csrf_field() ?>
-                    <button type="submit" class="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700" onclick="return confirm('Delete this category? Any linked services will become uncategorized.');">
-                      <span class="material-symbols-outlined mr-1 text-sm">delete</span>
+                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" onclick="return confirm('Delete this category? Any linked services will become uncategorized.');">
+                      <span class="material-symbols-outlined text-sm">delete</span>
                       Delete
                     </button>
                   </form>

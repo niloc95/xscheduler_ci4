@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class SeparateCustomersFinalize extends Migration
+class SeparateCustomersFinalize extends MigrationBase
 {
     public function up()
     {

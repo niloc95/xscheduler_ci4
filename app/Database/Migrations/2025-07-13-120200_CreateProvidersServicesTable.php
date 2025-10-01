@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateProvidersServicesTable extends Migration
+class CreateProvidersServicesTable extends MigrationBase
 {
     public function up()
     {
