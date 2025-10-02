@@ -178,6 +178,9 @@ function bootSchedulerDashboard() {
   const state = getInitialState();
   let eventsAbortController = null;
   let eventsFetchToken = 0;
+  // Abort/race control for quick slots
+  let slotsAbortController = null;
+  let slotsFetchToken = 0;
   let currentStatusVariant = null;
   let modalReturnFocus = null;
 
@@ -341,6 +344,11 @@ function bootSchedulerDashboard() {
     const serviceId = state.filters.serviceId;
 
     if (!providerId || !serviceId) {
+      // Abort any inflight slots request since preconditions are not met
+      if (slotsAbortController) {
+        slotsAbortController.abort();
+        slotsAbortController = null;
+      }
       elements.slotsContainer.innerHTML = '';
       if (elements.slotsEmpty) {
         elements.slotsEmpty.classList.remove('hidden');
@@ -355,12 +363,25 @@ function bootSchedulerDashboard() {
     elements.slotsContainer.innerHTML = '';
     state.isLoadingSlots = true;
 
+    // Abort previous request and create a new controller/token
+    if (slotsAbortController) {
+      slotsAbortController.abort();
+    }
+    const controller = new AbortController();
+    slotsAbortController = controller;
+    const requestId = ++slotsFetchToken;
+
     try {
       const response = await service.getSlots({
         providerId,
         serviceId,
         date: elements.focusDateInput?.value,
-      });
+      }, { signal: controller.signal });
+
+      // If a newer request started, ignore this result
+      if (requestId !== slotsFetchToken) {
+        return;
+      }
       const slots = Array.isArray(response?.slots) ? response.slots : [];
       if (!slots.length) {
         if (elements.slotsCaption) {
@@ -397,6 +418,13 @@ function bootSchedulerDashboard() {
       });
       elements.slotsContainer.appendChild(frag);
     } catch (error) {
+      if (controller.signal.aborted || error?.name === 'AbortError') {
+        // Clear loading caption on abort of older request
+        if (requestId === slotsFetchToken) {
+          if (elements.slotsCaption) elements.slotsCaption.textContent = '';
+        }
+        return;
+      }
       console.warn('[scheduler] Failed loading slots', error);
       if (elements.slotsCaption) elements.slotsCaption.textContent = 'Unable to load slot data.';
       if (elements.slotsEmpty) {
@@ -404,6 +432,10 @@ function bootSchedulerDashboard() {
         elements.slotsEmpty.textContent = 'Something went wrong fetching availability. Try refreshing.';
       }
     } finally {
+      // Only clear controller if it belongs to latest request
+      if (requestId === slotsFetchToken && slotsAbortController === controller) {
+        slotsAbortController = null;
+      }
       state.isLoadingSlots = false;
     }
   }
@@ -725,7 +757,7 @@ function bootSchedulerDashboard() {
       eventsAbortController = controller;
       const requestId = ++eventsFetchToken;
 
-      setStatus('Loading appointments…');
+  setStatus('Loading appointments…');
 
       try {
         const items = await service.getAppointments({
@@ -739,9 +771,16 @@ function bootSchedulerDashboard() {
 
         const events = Array.isArray(items) ? items.map(mapAppointmentToEvent) : [];
         success(events);
+        // Briefly show status, then clear to avoid stale state sticking around
         setStatus(`Showing ${events.length} appointment${events.length === 1 ? '' : 's'}.`);
+        setTimeout(() => {
+          // Only clear if no new load started
+          if (!eventsAbortController) setStatus('');
+        }, 800);
       } catch (error) {
         if (controller.signal.aborted || error.name === 'AbortError') {
+          // Clear any lingering loading state if this request was aborted
+          setStatus('');
           return;
         }
         if (requestId !== eventsFetchToken) {
@@ -784,6 +823,10 @@ function bootSchedulerDashboard() {
       } else {
         setFocusDate(info.view.currentStart);
       }
+      // Keep counts, slots, and events in sync when navigating between dates/views
+      refreshCounts();
+      refreshSlots();
+      state.calendar?.refetchEvents();
     },
     eventClick(info) {
       info.jsEvent.preventDefault();
@@ -811,7 +854,10 @@ function bootSchedulerDashboard() {
       } else {
         calendar.gotoDate(new Date());
       }
+      // Keep everything in sync
       refreshCounts();
+      refreshSlots();
+      calendar.refetchEvents();
     });
   });
 
@@ -827,14 +873,24 @@ function bootSchedulerDashboard() {
 
   elements.todayButton?.addEventListener('click', () => {
     calendar.today();
+    // datesSet will trigger, but also refresh immediately to avoid UI lag
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.prevButton?.addEventListener('click', () => {
     calendar.prev();
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.nextButton?.addEventListener('click', () => {
     calendar.next();
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.applyButton?.addEventListener('click', () => {
@@ -848,6 +904,17 @@ function bootSchedulerDashboard() {
   elements.clearButton?.addEventListener('click', () => {
     setFocusDate(new Date());
     clearFilters();
+  });
+
+  // Live filter changes (without requiring Apply) should also refresh
+  elements.providerSelect?.addEventListener('change', () => applyFilters({ refresh: true }));
+  elements.serviceSelect?.addEventListener('change', () => applyFilters({ refresh: true }));
+  elements.focusDateInput?.addEventListener('change', (e) => {
+    const value = e.target?.value;
+    if (value) {
+      calendar.gotoDate(value);
+    }
+    // datesSet handler will ensure refetch & counts/slots refresh
   });
 
   elements.refreshButton?.addEventListener('click', () => {

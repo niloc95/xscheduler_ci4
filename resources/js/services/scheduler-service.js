@@ -140,7 +140,7 @@ export function createSchedulerService({ baseUrl, slotsUrl }) {
     });
   }
 
-  async function getSlots(filters = {}) {
+  async function getSlots(filters = {}, options = {}) {
     if (!normalizedSlots) {
       throw new Error('[scheduler-service] slotsUrl is required for slot queries');
     }
@@ -150,7 +150,9 @@ export function createSchedulerService({ baseUrl, slotsUrl }) {
       date: filters.date,
     });
     const url = query ? `${normalizedSlots}?${query}` : normalizedSlots;
-    return executeJSON(url, { headers: DEFAULT_HEADERS });
+    const requestOptions = { headers: DEFAULT_HEADERS };
+    if (options.signal) requestOptions.signal = options.signal;
+    return executeJSON(url, requestOptions);
   }
 
   return {
