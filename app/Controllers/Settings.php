@@ -24,6 +24,43 @@ class Settings extends BaseController
             'localization.language',
             'localization.timezone',
             'localization.currency',
+            'booking.first_names_display',
+            'booking.first_names_required',
+            'booking.surname_display',
+            'booking.surname_required',
+            'booking.email_display',
+            'booking.email_required',
+            'booking.phone_display',
+            'booking.phone_required',
+            'booking.address_display',
+            'booking.address_required',
+            'booking.notes_display',
+            'booking.notes_required',
+            'booking.custom_field_1_enabled',
+            'booking.custom_field_1_title',
+            'booking.custom_field_1_type',
+            'booking.custom_field_1_required',
+            'booking.custom_field_2_enabled',
+            'booking.custom_field_2_title',
+            'booking.custom_field_2_type',
+            'booking.custom_field_2_required',
+            'booking.custom_field_3_enabled',
+            'booking.custom_field_3_title',
+            'booking.custom_field_3_type',
+            'booking.custom_field_3_required',
+            'booking.custom_field_4_enabled',
+            'booking.custom_field_4_title',
+            'booking.custom_field_4_type',
+            'booking.custom_field_4_required',
+            'booking.custom_field_5_enabled',
+            'booking.custom_field_5_title',
+            'booking.custom_field_5_type',
+            'booking.custom_field_5_required',
+            'booking.custom_field_6_enabled',
+            'booking.custom_field_6_title',
+            'booking.custom_field_6_type',
+            'booking.custom_field_6_required',
+            'booking.fields',
             'booking.custom_fields',
             'booking.statuses',
             'business.work_start',
@@ -118,6 +155,42 @@ class Settings extends BaseController
             'localization.language'    => 'language',
             'localization.timezone'    => 'timezone',
             'localization.currency'    => 'currency',
+            'booking.first_names_display' => 'booking_first_names_display',
+            'booking.first_names_required' => 'booking_first_names_required',
+            'booking.surname_display' => 'booking_surname_display',
+            'booking.surname_required' => 'booking_surname_required',
+            'booking.email_display' => 'booking_email_display',
+            'booking.email_required' => 'booking_email_required',
+            'booking.phone_display' => 'booking_phone_display',
+            'booking.phone_required' => 'booking_phone_required',
+            'booking.address_display' => 'booking_address_display',
+            'booking.address_required' => 'booking_address_required',
+            'booking.notes_display' => 'booking_notes_display',
+            'booking.notes_required' => 'booking_notes_required',
+            'booking.custom_field_1_enabled' => 'booking_custom_field_1_enabled',
+            'booking.custom_field_1_title' => 'booking_custom_field_1_title',
+            'booking.custom_field_1_type' => 'booking_custom_field_1_type',
+            'booking.custom_field_1_required' => 'booking_custom_field_1_required',
+            'booking.custom_field_2_enabled' => 'booking_custom_field_2_enabled',
+            'booking.custom_field_2_title' => 'booking_custom_field_2_title',
+            'booking.custom_field_2_type' => 'booking_custom_field_2_type',
+            'booking.custom_field_2_required' => 'booking_custom_field_2_required',
+            'booking.custom_field_3_enabled' => 'booking_custom_field_3_enabled',
+            'booking.custom_field_3_title' => 'booking_custom_field_3_title',
+            'booking.custom_field_3_type' => 'booking_custom_field_3_type',
+            'booking.custom_field_3_required' => 'booking_custom_field_3_required',
+            'booking.custom_field_4_enabled' => 'booking_custom_field_4_enabled',
+            'booking.custom_field_4_title' => 'booking_custom_field_4_title',
+            'booking.custom_field_4_type' => 'booking_custom_field_4_type',
+            'booking.custom_field_4_required' => 'booking_custom_field_4_required',
+            'booking.custom_field_5_enabled' => 'booking_custom_field_5_enabled',
+            'booking.custom_field_5_title' => 'booking_custom_field_5_title',
+            'booking.custom_field_5_type' => 'booking_custom_field_5_type',
+            'booking.custom_field_5_required' => 'booking_custom_field_5_required',
+            'booking.custom_field_6_enabled' => 'booking_custom_field_6_enabled',
+            'booking.custom_field_6_title' => 'booking_custom_field_6_title',
+            'booking.custom_field_6_type' => 'booking_custom_field_6_type',
+            'booking.custom_field_6_required' => 'booking_custom_field_6_required',
             'booking.custom_fields' => 'custom_fields',
             'booking.statuses'      => 'statuses',
             'business.work_start'     => 'work_start',
@@ -143,8 +216,58 @@ class Settings extends BaseController
             $upsert('booking.fields', $post['fields']);
         }
 
-        // Process regular settings fields
+        // Handle booking checkbox fields specially (checkboxes only send values when checked)
+        $checkboxFields = [
+            'booking.first_names_display' => 'booking_first_names_display',
+            'booking.first_names_required' => 'booking_first_names_required',
+            'booking.surname_display' => 'booking_surname_display',
+            'booking.surname_required' => 'booking_surname_required',
+            'booking.email_display' => 'booking_email_display',
+            'booking.email_required' => 'booking_email_required',
+            'booking.phone_display' => 'booking_phone_display',
+            'booking.phone_required' => 'booking_phone_required',
+            'booking.address_display' => 'booking_address_display',
+            'booking.address_required' => 'booking_address_required',
+            'booking.notes_display' => 'booking_notes_display',
+            'booking.notes_required' => 'booking_notes_required',
+        ];
+        
+        // Add custom field checkboxes
+        for ($i = 1; $i <= 6; $i++) {
+            $checkboxFields["booking.custom_field_{$i}_enabled"] = "booking_custom_field_{$i}_enabled";
+            $checkboxFields["booking.custom_field_{$i}_required"] = "booking_custom_field_{$i}_required";
+        }
+        
+        foreach ($checkboxFields as $settingKey => $postKey) {
+            // For checkboxes, set to '1' if present, '0' if not
+            $upsert($settingKey, isset($post[$postKey]) && $post[$postKey] === '1' ? '1' : '0');
+        }
+
+        // Special handling for blocked_periods: always store as JSON array of objects
+        if (isset($post['blocked_periods'])) {
+            $raw = $post['blocked_periods'];
+            $parsed = [];
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    // Accept only array of objects with start/end
+                    foreach ($decoded as $item) {
+                        if (is_array($item) && isset($item['start'], $item['end'])) {
+                            $parsed[] = [
+                                'start' => $item['start'],
+                                'end' => $item['end'],
+                                'notes' => $item['notes'] ?? ''
+                            ];
+                        }
+                    }
+                }
+            }
+            $upsert('business.blocked_periods', $parsed);
+        }
+
+        // Process regular settings fields (except blocked_periods, which is handled above)
         foreach ($map as $settingKey => $postKey) {
+            if ($settingKey === 'business.blocked_periods') continue;
             if (array_key_exists($postKey, $post)) {
                 $upsert($settingKey, $post[$postKey]);
             }

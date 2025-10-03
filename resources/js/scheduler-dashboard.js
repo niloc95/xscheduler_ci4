@@ -2,8 +2,42 @@ import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import esLocale from '@fullcalendar/core/locales/es';
+import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 import '../css/fullcalendar-overrides.css';
 import createSchedulerService from './services/scheduler-service';
+
+// Color palette for services and providers (extend as needed)
+const COLOR_PALETTE = [
+  'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-200 dark:border-cyan-700',
+  'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-900/40 dark:text-fuchsia-200 dark:border-fuchsia-700',
+  'bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-900/40 dark:text-lime-200 dark:border-lime-700',
+  'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:border-indigo-700',
+  'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200 dark:border-orange-700',
+  'bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/40 dark:text-pink-200 dark:border-pink-700',
+  'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/40 dark:text-teal-200 dark:border-teal-700',
+  'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/40 dark:text-violet-200 dark:border-violet-700',
+];
+
+function colorClassForService(serviceId) {
+  if (!serviceId) return '';
+  const idx = parseInt(serviceId, 10) % COLOR_PALETTE.length;
+  return COLOR_PALETTE[idx];
+}
+
+function colorClassForProvider(providerId) {
+  if (!providerId) return '';
+  const idx = parseInt(providerId, 10) % COLOR_PALETTE.length;
+  return COLOR_PALETTE[(idx + 3) % COLOR_PALETTE.length]; // offset for variety
+}
+
+// Returns color class: status > service > provider
+function eventColorClass({ status, serviceId, providerId }) {
+  if (status && STATUS_CLASSNAME[status]) return STATUS_CLASSNAME[status];
+  if (serviceId) return colorClassForService(serviceId);
+  if (providerId) return colorClassForProvider(providerId);
+  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200 border-blue-200 dark:border-blue-700';
+}
 
 const STATUS_CLASSNAME = {
   confirmed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200 border-emerald-200 dark:border-emerald-700',
@@ -77,13 +111,44 @@ function parseISO(value) {
 
 function normalizeEventDateTime(value) {
   if (!value) return null;
-  if (value instanceof Date) {
-    return value.toISOString();
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    return trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+
+    // Convert MySQL datetime format (YYYY-MM-DD HH:MM:SS) to ISO-8601 (YYYY-MM-DDTHH:MM:SS)
+    const candidate = trimmed.includes(' ') && !trimmed.includes('T')
+      ? trimmed.replace(' ', 'T')
+      : trimmed;
+
+    const parsed = new Date(candidate);
+    
+    // Enhanced debugging for datetime parsing
+    if (Number.isNaN(parsed.getTime())) {
+      console.error('[scheduler] Failed to parse datetime:', {
+        original: value,
+        trimmed,
+        candidate,
+        parsed
+      });
+      return null;
+    }
+    
+    // Verify the parsed date is what we expect
+    console.log('[scheduler] Parsed datetime:', {
+      original: value,
+      iso: candidate,
+      parsed: parsed.toISOString(),
+      localTime: parsed.toLocaleTimeString()
+    });
+    
+    return parsed;
+  }
+  if (typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
   return null;
 }
@@ -135,11 +200,23 @@ function toDateOnly(value) {
 function mapAppointmentToEvent(item) {
   const normalizedStart = normalizeEventDateTime(item.start);
   const normalizedEnd = normalizeEventDateTime(item.end);
+  
+  // Debug logging to identify the issue
+  if (!normalizedStart || !normalizedEnd) {
+    console.warn('[scheduler] Invalid datetime for appointment:', {
+      id: item.id,
+      raw_start: item.start,
+      raw_end: item.end,
+      normalized_start: normalizedStart,
+      normalized_end: normalizedEnd
+    });
+  }
+  
   return {
     id: String(item.id ?? ''),
     title: item.title || 'Appointment',
-    start: normalizedStart ?? item.start ?? null,
-    end: normalizedEnd ?? item.end ?? null,
+    start: normalizedStart ?? normalizeEventDateTime(item.start ?? item.start_time ?? null),
+    end: normalizedEnd ?? normalizeEventDateTime(item.end ?? item.end_time ?? null),
     extendedProps: {
       status: (item.status || '').toLowerCase(),
       raw: item,
@@ -155,14 +232,11 @@ function ready(callback) {
   callback();
 }
 
-function bootSchedulerDashboard() {
+
+async function bootSchedulerDashboard() {
   const root = document.getElementById('scheduler-dashboard');
   if (!root) return;
-
-  // Avoid double-boot in SPA transitions
-  if (root.dataset.booted === '1') {
-    return;
-  }
+  if (root.dataset.booted === '1') return;
   root.dataset.booted = '1';
 
   const apiBase = root.dataset.apiBase || '';
@@ -178,6 +252,8 @@ function bootSchedulerDashboard() {
   const state = getInitialState();
   let eventsAbortController = null;
   let eventsFetchToken = 0;
+  let slotsAbortController = null;
+  let slotsFetchToken = 0;
   let currentStatusVariant = null;
   let modalReturnFocus = null;
 
@@ -198,11 +274,11 @@ function bootSchedulerDashboard() {
     nextButton: document.getElementById('scheduler-next'),
     viewButtons: Array.from(root.querySelectorAll('.scheduler-view')),
     activeRange: document.getElementById('scheduler-active-range'),
-  status: document.getElementById('scheduler-status'),
-  statusContainer: document.getElementById('scheduler-status-alert'),
-  statusIcon: root.querySelector('[data-status-icon]'),
-  statusLabel: root.querySelector('[data-status-label]'),
-  statusMessage: document.getElementById('scheduler-status-message'),
+    status: document.getElementById('scheduler-status'),
+    statusContainer: document.getElementById('scheduler-status-alert'),
+    statusIcon: root.querySelector('[data-status-icon]'),
+    statusLabel: root.querySelector('[data-status-label]'),
+    statusMessage: document.getElementById('scheduler-status-message'),
     slotsContainer: document.getElementById('scheduler-slots'),
     slotsEmpty: document.getElementById('scheduler-slots-empty'),
     slotsCaption: document.getElementById('scheduler-slots-caption'),
@@ -217,10 +293,48 @@ function bootSchedulerDashboard() {
   };
 
   const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
   if (!elements.calendarRoot) {
     console.warn('[scheduler] Missing calendar root');
     return;
+  }
+
+  // --- Fetch business settings (working hours, breaks, blocks) ---
+  let businessSettings = {};
+  try {
+    businessSettings = await service.getBusinessSettings();
+  } catch (error) {
+    console.warn('[scheduler] Failed to fetch business settings, using defaults', error);
+    businessSettings = {};
+  }
+  
+  // Parse times for FullCalendar
+  const slotMinTime = businessSettings.work_start || '08:00:00';
+  const slotMaxTime = businessSettings.work_end || '17:00:00';
+  // Parse breaks and block periods
+  let breakEvents = [];
+  if (businessSettings.break_start && businessSettings.break_end) {
+    breakEvents.push({
+      startTime: businessSettings.break_start,
+      endTime: businessSettings.break_end,
+      daysOfWeek: [1,2,3,4,5,6,0], // all days
+      display: 'background',
+      overlap: false,
+      className: 'bg-yellow-200/60',
+      groupId: 'break',
+      title: 'Break',
+    });
+  }
+  let blockEvents = [];
+  if (Array.isArray(businessSettings.blocked_periods)) {
+    blockEvents = businessSettings.blocked_periods.map(b => ({
+      start: b.start,
+      end: b.end,
+      display: 'background',
+      overlap: false,
+      className: 'bg-rose-200/60',
+      groupId: 'block',
+      title: b.notes || 'Blocked',
+    }));
   }
 
   function setStatus(message, type = 'info') {
@@ -341,6 +455,11 @@ function bootSchedulerDashboard() {
     const serviceId = state.filters.serviceId;
 
     if (!providerId || !serviceId) {
+      // Abort any inflight slots request since preconditions are not met
+      if (slotsAbortController) {
+        slotsAbortController.abort();
+        slotsAbortController = null;
+      }
       elements.slotsContainer.innerHTML = '';
       if (elements.slotsEmpty) {
         elements.slotsEmpty.classList.remove('hidden');
@@ -355,12 +474,25 @@ function bootSchedulerDashboard() {
     elements.slotsContainer.innerHTML = '';
     state.isLoadingSlots = true;
 
+    // Abort previous request and create a new controller/token
+    if (slotsAbortController) {
+      slotsAbortController.abort();
+    }
+    const controller = new AbortController();
+    slotsAbortController = controller;
+    const requestId = ++slotsFetchToken;
+
     try {
       const response = await service.getSlots({
         providerId,
         serviceId,
         date: elements.focusDateInput?.value,
-      });
+      }, { signal: controller.signal });
+
+      // If a newer request started, ignore this result
+      if (requestId !== slotsFetchToken) {
+        return;
+      }
       const slots = Array.isArray(response?.slots) ? response.slots : [];
       if (!slots.length) {
         if (elements.slotsCaption) {
@@ -397,6 +529,13 @@ function bootSchedulerDashboard() {
       });
       elements.slotsContainer.appendChild(frag);
     } catch (error) {
+      if (controller.signal.aborted || error?.name === 'AbortError') {
+        // Clear loading caption on abort of older request
+        if (requestId === slotsFetchToken) {
+          if (elements.slotsCaption) elements.slotsCaption.textContent = '';
+        }
+        return;
+      }
       console.warn('[scheduler] Failed loading slots', error);
       if (elements.slotsCaption) elements.slotsCaption.textContent = 'Unable to load slot data.';
       if (elements.slotsEmpty) {
@@ -404,6 +543,10 @@ function bootSchedulerDashboard() {
         elements.slotsEmpty.textContent = 'Something went wrong fetching availability. Try refreshing.';
       }
     } finally {
+      // Only clear controller if it belongs to latest request
+      if (requestId === slotsFetchToken && slotsAbortController === controller) {
+        slotsAbortController = null;
+      }
       state.isLoadingSlots = false;
     }
   }
@@ -703,73 +846,296 @@ function bootSchedulerDashboard() {
 
   setFocusDate(new Date());
 
+  // Fetch localization settings before initializing calendar
+  let localizationSettings = {
+    time_format: '24h',
+    first_day: 'Monday',
+    language: 'English',
+    timezone: 'local'
+  };
+  
+  try {
+    const settings = await service.getBusinessSettings();
+    localizationSettings = {
+      time_format: settings.time_format || '24h',
+      first_day: settings.first_day || 'Monday',
+      language: settings.language || 'English',
+      timezone: settings.timezone || 'local'
+    };
+    console.log('[scheduler] Localization settings loaded:', localizationSettings);
+  } catch (error) {
+    console.warn('[scheduler] Failed to load localization settings, using defaults:', error);
+  }
+
+  // Map first day of week to FullCalendar value (0 = Sunday, 1 = Monday)
+  const firstDay = localizationSettings.first_day === 'Sunday' ? 0 : 1;
+  
+  // Map time format to FullCalendar settings
+  const hour12 = localizationSettings.time_format === '12h';
+  const hourFormat = hour12 ? 'numeric' : '2-digit';
+  const meridiem = hour12 ? 'short' : false;
+
+  // Map language label to FullCalendar locale code
+  const languageKey = (localizationSettings.language || '').toString().trim().toLowerCase();
+  const localeMap = {
+    'english': 'en',
+    'portuguese-br': 'pt-br',
+    'spanish': 'es',
+  };
+  const fcLocale = localeMap[languageKey] || 'en';
+  const timezone = (localizationSettings.timezone && localizationSettings.timezone !== 'Automatic')
+    ? localizationSettings.timezone
+    : 'local';
+
   const calendar = new Calendar(elements.calendarRoot, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
     headerToolbar: false,
     selectable: true,
     height: 'auto',
-  expandRows: false,
+    expandRows: false,
+    locales: [esLocale, ptBrLocale],
+    // Localization settings
+    firstDay: firstDay,
+    timeZone: timezone,
+    locale: fcLocale,
+    
+    // Time slot configuration
+    slotMinTime,
+    slotMaxTime,
+    slotDuration: '00:30:00', // 30-minute slots
+    slotLabelInterval: '01:00:00', // Show hour labels
+    snapDuration: '00:15:00', // Snap to 15-minute increments
+    slotLabelFormat: {
+      hour: hourFormat,
+      minute: '2-digit',
+      omitZeroMinute: false,
+      meridiem: meridiem,
+      hour12: hour12
+    },
+    
+    // Event display configuration
+    eventMinHeight: 100, // Minimum event height in pixels for better readability
+    eventShortHeight: 50, // Height threshold for compact display
+    slotEventOverlap: false, // Prevent overlapping - display side-by-side
+    eventMaxStack: 3, // Maximum number of events to stack before showing "+more"
+    eventTimeFormat: {
+      hour: hourFormat,
+      minute: '2-digit',
+      meridiem: meridiem,
+      hour12: hour12
+    },
+    
     views: {
       dayGridMonth: {
         expandRows: true,
         dayMaxEventRows: 6,
       },
+      timeGridWeek: {
+        slotLabelInterval: '01:00:00',
+        slotDuration: '00:30:00',
+        eventMinHeight: 100,
+        dayHeaderFormat: { weekday: 'short', month: 'numeric', day: 'numeric' },
+        slotEventOverlap: false, // Side-by-side for week view
+      },
+      timeGridDay: {
+        slotLabelInterval: '01:00:00',
+        slotDuration: '00:30:00',
+        eventMinHeight: 100,
+        slotEventOverlap: false, // Side-by-side for day view
+      },
     },
-    eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
-    events: async (info, success, failure) => {
-      if (eventsAbortController) {
-        eventsAbortController.abort();
+    eventSources: [
+      // Appointments
+      async (info, success, failure) => {
+        if (eventsAbortController) eventsAbortController.abort();
+        const controller = new AbortController();
+        eventsAbortController = controller;
+        const requestId = ++eventsFetchToken;
+        setStatus('Loading appointments…');
+        try {
+          const items = await service.getAppointments({
+            start: toDateOnly(info.startStr),
+            end: toDateOnly(info.endStr),
+          }, state.filters, { signal: controller.signal });
+          if (requestId !== eventsFetchToken) return;
+          
+          // Debug: Log first appointment to inspect data
+          if (Array.isArray(items) && items.length > 0) {
+            console.log('[scheduler] Sample appointment data:', {
+              raw: items[0],
+              startStr: info.startStr,
+              endStr: info.endStr
+            });
+          }
+          
+          const events = Array.isArray(items) ? items.map(mapAppointmentToEvent) : [];
+          
+          // Debug: Log first mapped event
+          if (events.length > 0) {
+            console.log('[scheduler] Sample mapped event:', events[0]);
+          }
+          
+          success(events);
+          setStatus(`Showing ${events.length} appointment${events.length === 1 ? '' : 's'}.`);
+          setTimeout(() => { if (!eventsAbortController) setStatus(''); }, 800);
+        } catch (error) {
+          if (controller.signal.aborted || error.name === 'AbortError') { setStatus(''); return; }
+          if (requestId !== eventsFetchToken) return;
+          console.error('[scheduler] Failed loading appointments', error);
+          setStatus('Unable to load appointments.', 'error');
+          failure(error);
+        } finally {
+          if (requestId === eventsFetchToken && eventsAbortController === controller) {
+            eventsAbortController = null;
+          }
+        }
+      },
+      // Breaks as background events
+      ...breakEvents.map(b => ({
+        ...b,
+        rendering: 'background',
+        editable: false,
+        allDay: false,
+      })),
+      // Block periods as background events
+      ...blockEvents.map(b => ({
+        ...b,
+        rendering: 'background',
+        editable: false,
+        allDay: false,
+      })),
+    ],
+    eventDidMount(arg) {
+      const start = arg.event.start;
+      const end = arg.event.end;
+      console.log('[scheduler] Event mounted:', {
+        id: arg.event.id,
+        title: arg.event.title,
+        startISO: start ? start.toISOString() : null,
+        endISO: end ? end.toISOString() : null,
+        timeText: arg.timeText,
+        position: arg.el?.style?.top ?? null
+      });
+    },
+    selectAllow: function(selectInfo) {
+      // Prevent selection in breaks or block periods
+      const start = selectInfo.start;
+      const end = selectInfo.end;
+      // Check breaks
+      for (const b of breakEvents) {
+        if (start && end && b.startTime && b.endTime) {
+          const s = new Date(start);
+          const e = new Date(end);
+          const [bh, bm] = b.startTime.split(':');
+          const [eh, em] = b.endTime.split(':');
+          const breakStart = new Date(s); breakStart.setHours(bh, bm, 0, 0);
+          const breakEnd = new Date(s); breakEnd.setHours(eh, em, 0, 0);
+          if ((s < breakEnd && e > breakStart)) return false;
+        }
       }
-      const controller = new AbortController();
-      eventsAbortController = controller;
-      const requestId = ++eventsFetchToken;
-
-      setStatus('Loading appointments…');
-
-      try {
-        const items = await service.getAppointments({
-          start: toDateOnly(info.startStr),
-          end: toDateOnly(info.endStr),
-        }, state.filters, { signal: controller.signal });
-
-        if (requestId !== eventsFetchToken) {
-          return;
-        }
-
-        const events = Array.isArray(items) ? items.map(mapAppointmentToEvent) : [];
-        success(events);
-        setStatus(`Showing ${events.length} appointment${events.length === 1 ? '' : 's'}.`);
-      } catch (error) {
-        if (controller.signal.aborted || error.name === 'AbortError') {
-          return;
-        }
-        if (requestId !== eventsFetchToken) {
-          return;
-        }
-        console.error('[scheduler] Failed loading appointments', error);
-        setStatus('Unable to load appointments.', 'error');
-        failure(error);
-      } finally {
-        if (requestId === eventsFetchToken && eventsAbortController === controller) {
-          eventsAbortController = null;
+      // Check block periods
+      for (const b of blockEvents) {
+        if (start && end && b.start && b.end) {
+          const s = new Date(start);
+          const e = new Date(end);
+          const blockStart = new Date(b.start);
+          const blockEnd = new Date(b.end);
+          if ((s < blockEnd && e > blockStart)) return false;
         }
       }
+      return true;
     },
     eventClassNames(arg) {
-      const status = (arg.event.extendedProps?.status || '').toLowerCase();
-      return [`inline-flex w-full items-center gap-2 rounded-xl border px-2 py-1 text-xs font-medium ${classForStatus(status)}`];
+      const { status, raw } = arg.event.extendedProps || {};
+      const serviceId = raw?.serviceId;
+      const providerId = raw?.providerId;
+      return [
+        `fc-xs-pill ${eventColorClass({ status, serviceId, providerId })}`
+      ];
     },
     eventContent(arg) {
-      const status = (arg.event.extendedProps?.status || '').toLowerCase();
+      const { status, raw } = arg.event.extendedProps || {};
       const dot = dotClass(status);
-      const start = arg.timeText ? `<span class="text-[10px] opacity-80">${arg.timeText}</span>` : '';
+      
+      // Build the event content with improved spacing and hierarchy
       const wrapper = document.createElement('div');
-      wrapper.className = 'flex w-full items-center gap-2';
-      wrapper.innerHTML = `
-        <span class="h-2 w-2 rounded-full ${dot}"></span>
-        <span class="flex-1 truncate">${arg.event.title}</span>
-        ${start}`;
+      wrapper.className = 'fc-event-details flex flex-col w-full';
+      
+      // Header row: status dot, title, and time
+      const headerRow = document.createElement('div');
+      headerRow.className = 'flex items-start justify-between gap-2 mb-2';
+      
+      const leftSide = document.createElement('div');
+      leftSide.className = 'flex items-center gap-2 flex-1 min-w-0';
+      
+      const statusDot = document.createElement('span');
+      statusDot.className = `fc-event-status-dot ${dot}`;
+      leftSide.appendChild(statusDot);
+      
+      const titleEl = document.createElement('span');
+      titleEl.className = 'font-bold truncate flex-1 text-sm';
+      titleEl.textContent = arg.event.title || 'Appointment';
+      leftSide.appendChild(titleEl);
+      
+      headerRow.appendChild(leftSide);
+      
+      if (arg.timeText) {
+        const timeEl = document.createElement('span');
+        timeEl.className = 'fc-event-time-text flex-shrink-0';
+        timeEl.textContent = arg.timeText;
+        headerRow.appendChild(timeEl);
+      }
+      
+      wrapper.appendChild(headerRow);
+      
+      // Client name (prominent)
+      if (raw?.name) {
+        const clientEl = document.createElement('div');
+        clientEl.className = 'fc-event-client';
+        clientEl.textContent = raw.name;
+        wrapper.appendChild(clientEl);
+      }
+      
+      // Service name
+      if (raw?.serviceName) {
+        const serviceEl = document.createElement('div');
+        serviceEl.className = 'fc-event-service';
+        serviceEl.textContent = raw.serviceName;
+        wrapper.appendChild(serviceEl);
+      }
+      
+      // Provider name
+      if (raw?.providerName) {
+        const providerEl = document.createElement('div');
+        providerEl.className = 'fc-event-provider';
+        providerEl.textContent = `with ${raw.providerName}`;
+        wrapper.appendChild(providerEl);
+      }
+      
+      // Status badge (if present)
+      if (status) {
+        const statusBadge = document.createElement('div');
+        statusBadge.className = 'fc-event-status-badge mt-2';
+        statusBadge.innerHTML = `
+          <span class="inline-block h-1.5 w-1.5 rounded-full ${dot}"></span>
+          <span>${status}</span>
+        `;
+        wrapper.appendChild(statusBadge);
+      }
+      
+      // Comprehensive tooltip for hover
+      const tooltipParts = [
+        arg.event.title,
+        raw?.name ? `Client: ${raw.name}` : null,
+        raw?.serviceName ? `Service: ${raw.serviceName}` : null,
+        raw?.providerName ? `Provider: ${raw.providerName}` : null,
+        status ? `Status: ${status}` : null,
+        arg.timeText ? `Time: ${arg.timeText}` : null,
+      ].filter(Boolean);
+      
+      wrapper.title = tooltipParts.join('\n');
+      
       return { domNodes: [wrapper] };
     },
     datesSet(info) {
@@ -784,6 +1150,10 @@ function bootSchedulerDashboard() {
       } else {
         setFocusDate(info.view.currentStart);
       }
+      // Keep counts, slots, and events in sync when navigating between dates/views
+      refreshCounts();
+      refreshSlots();
+      state.calendar?.refetchEvents();
     },
     eventClick(info) {
       info.jsEvent.preventDefault();
@@ -811,7 +1181,10 @@ function bootSchedulerDashboard() {
       } else {
         calendar.gotoDate(new Date());
       }
+      // Keep everything in sync
       refreshCounts();
+      refreshSlots();
+      calendar.refetchEvents();
     });
 
     btn.addEventListener('keydown', (event) => {
@@ -834,14 +1207,24 @@ function bootSchedulerDashboard() {
 
   elements.todayButton?.addEventListener('click', () => {
     calendar.today();
+    // datesSet will trigger, but also refresh immediately to avoid UI lag
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.prevButton?.addEventListener('click', () => {
     calendar.prev();
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.nextButton?.addEventListener('click', () => {
     calendar.next();
+    refreshCounts();
+    refreshSlots();
+    calendar.refetchEvents();
   });
 
   elements.applyButton?.addEventListener('click', () => {
@@ -855,6 +1238,17 @@ function bootSchedulerDashboard() {
   elements.clearButton?.addEventListener('click', () => {
     setFocusDate(new Date());
     clearFilters();
+  });
+
+  // Live filter changes (without requiring Apply) should also refresh
+  elements.providerSelect?.addEventListener('change', () => applyFilters({ refresh: true }));
+  elements.serviceSelect?.addEventListener('change', () => applyFilters({ refresh: true }));
+  elements.focusDateInput?.addEventListener('change', (e) => {
+    const value = e.target?.value;
+    if (value) {
+      calendar.gotoDate(value);
+    }
+    // datesSet handler will ensure refetch & counts/slots refresh
   });
 
   elements.refreshButton?.addEventListener('click', () => {

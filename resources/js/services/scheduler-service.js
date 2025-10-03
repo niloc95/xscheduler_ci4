@@ -140,7 +140,7 @@ export function createSchedulerService({ baseUrl, slotsUrl }) {
     });
   }
 
-  async function getSlots(filters = {}) {
+  async function getSlots(filters = {}, options = {}) {
     if (!normalizedSlots) {
       throw new Error('[scheduler-service] slotsUrl is required for slot queries');
     }
@@ -150,7 +150,28 @@ export function createSchedulerService({ baseUrl, slotsUrl }) {
       date: filters.date,
     });
     const url = query ? `${normalizedSlots}?${query}` : normalizedSlots;
-    return executeJSON(url, { headers: DEFAULT_HEADERS });
+    const requestOptions = { headers: DEFAULT_HEADERS };
+    if (options.signal) requestOptions.signal = options.signal;
+    return executeJSON(url, requestOptions);
+  }
+
+  // Fetch business hours, breaks, and block periods from settings API
+  async function getBusinessSettings() {
+    const url = withBase('/api/v1/settings');
+    const data = await executeJSON(url, { headers: DEFAULT_HEADERS });
+    // Return relevant keys including localization settings
+    return {
+      work_start: data['business.work_start'],
+      work_end: data['business.work_end'],
+      break_start: data['business.break_start'],
+      break_end: data['business.break_end'],
+      blocked_periods: data['business.blocked_periods'],
+      // Localization settings
+      time_format: data['localization.time_format'] || '24h',
+      first_day: data['localization.first_day'] || 'Monday',
+      language: data['localization.language'] || 'English',
+      timezone: data['localization.timezone'] || 'UTC',
+    };
   }
 
   return {
@@ -162,6 +183,7 @@ export function createSchedulerService({ baseUrl, slotsUrl }) {
     cancelAppointment,
     getSlots,
     getSummary,
+    getBusinessSettings,
   };
 }
 
