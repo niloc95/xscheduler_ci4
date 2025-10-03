@@ -228,8 +228,7 @@
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
     <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
-    <!-- Load scheduler calendar module (matches vite input: schedule-core) -->
-    <script type="module" src="<?= base_url('build/assets/schedule-core.js') ?>"></script>
+    <?php // Legacy scheduler script removed; scheduler dashboard now owns calendar bootstrapping ?>
     
     <!-- Global Modal & Toast Containers -->
     <style>
@@ -515,20 +514,24 @@
             const onFileChange = (e) => {
                 const input = e.target;
                 if (!input || input.id !== 'company_logo') return;
-                const form = input.closest('form');
-                if (!form) return;
-                // Preview
                 try {
                     const img = document.querySelector('#spa-content #company_logo_preview_img');
                     const file = input.files && input.files[0];
-                    if (img && file && file.type && file.type.startsWith('image/')) {
+                    if (!img) return;
+                    if (file && file.type && file.type.startsWith('image/')) {
                         const reader = new FileReader();
                         reader.onload = (ev) => { img.src = ev.target?.result || ''; img.classList.remove('hidden'); };
                         reader.readAsDataURL(file);
+                    } else {
+                        const original = img.dataset?.src || '';
+                        if (original) {
+                            img.src = original;
+                            img.classList.remove('hidden');
+                        } else {
+                            img.classList.add('hidden');
+                        }
                     }
                 } catch (_) {}
-                // Auto-submit
-                try { form.requestSubmit(); } catch (_) { form.submit(); }
             };
             // Use capture to ensure we see the change even if other handlers stop propagation
             document.addEventListener('change', onFileChange, true);

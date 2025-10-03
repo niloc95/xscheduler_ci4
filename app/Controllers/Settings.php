@@ -243,8 +243,31 @@ class Settings extends BaseController
             $upsert($settingKey, isset($post[$postKey]) && $post[$postKey] === '1' ? '1' : '0');
         }
 
-        // Process regular settings fields
+        // Special handling for blocked_periods: always store as JSON array of objects
+        if (isset($post['blocked_periods'])) {
+            $raw = $post['blocked_periods'];
+            $parsed = [];
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    // Accept only array of objects with start/end
+                    foreach ($decoded as $item) {
+                        if (is_array($item) && isset($item['start'], $item['end'])) {
+                            $parsed[] = [
+                                'start' => $item['start'],
+                                'end' => $item['end'],
+                                'notes' => $item['notes'] ?? ''
+                            ];
+                        }
+                    }
+                }
+            }
+            $upsert('business.blocked_periods', $parsed);
+        }
+
+        // Process regular settings fields (except blocked_periods, which is handled above)
         foreach ($map as $settingKey => $postKey) {
+            if ($settingKey === 'business.blocked_periods') continue;
             if (array_key_exists($postKey, $post)) {
                 $upsert($settingKey, $post[$postKey]);
             }

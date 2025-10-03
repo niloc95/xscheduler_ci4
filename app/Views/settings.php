@@ -37,53 +37,54 @@
     <!-- Tab Panels -->
     <div id="settings-content">
     
-    <form id="settingsForm" method="POST" action="<?= base_url('settings') ?>" enctype="multipart/form-data" class="mt-4 space-y-6">
+    <!-- General Settings Form -->
+    <form id="general-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" enctype="multipart/form-data" class="mt-4 space-y-6" data-tab-form="general">
         <?= csrf_field() ?>
-        <input type="hidden" name="form_source" value="main_settings_form">
+        <input type="hidden" name="form_source" value="general_settings">
             <!-- General Settings -->
             <section id="panel-general" class="tab-panel">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-base font-medium text-gray-900 dark:text-gray-100">General</h3>
                     <div class="flex items-center gap-2" id="general-actions">
-                        <button type="button" id="general-edit-btn" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Edit</button>
-                        <button type="button" id="general-cancel-btn" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hidden">Cancel</button>
+                        <button type="button" id="general-edit-btn" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">Edit</button>
+                        <button type="button" id="general-cancel-btn" class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition hidden">Cancel</button>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-field">
                         <label class="form-label">Company Name <span class="req">*</span></label>
-                        <input name="company_name" required class="form-input" placeholder="Acme Inc." value="<?= esc($settings['general.company_name'] ?? '') ?>" />
+                        <input name="company_name" required class="form-input" placeholder="Acme Inc." value="<?= esc($settings['general.company_name'] ?? '') ?>" disabled />
                         <p class="form-help">Displayed throughout the system</p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Company Email <span class="req">*</span></label>
-                        <input type="email" name="company_email" required class="form-input" placeholder="info@acme.com" value="<?= esc($settings['general.company_email'] ?? '') ?>" />
+                        <input type="email" name="company_email" required class="form-input" placeholder="info@acme.com" value="<?= esc($settings['general.company_email'] ?? '') ?>" disabled />
                         <p class="form-help">Used as sender/reply address for system emails</p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Telephone Number</label>
-                        <input type="tel" name="telephone_number" class="form-input" placeholder="(555) 123-4567" value="<?= esc($settings['general.telephone_number'] ?? '') ?>" />
+                        <input type="tel" name="telephone_number" class="form-input" placeholder="(555) 123-4567" value="<?= esc($settings['general.telephone_number'] ?? '') ?>" disabled />
                         <p class="form-help">Main business phone number</p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Mobile Number</label>
-                        <input type="tel" name="mobile_number" class="form-input" placeholder="(555) 987-6543" value="<?= esc($settings['general.mobile_number'] ?? '') ?>" />
+                        <input type="tel" name="mobile_number" class="form-input" placeholder="(555) 987-6543" value="<?= esc($settings['general.mobile_number'] ?? '') ?>" disabled />
                         <p class="form-help">Mobile contact number</p>
                     </div>
                     <div class="form-field md:col-span-2">
                         <label class="form-label">Company Link <span class="req">*</span></label>
-                        <input type="url" name="company_link" required class="form-input" placeholder="https://acme.com" value="<?= esc($settings['general.company_link'] ?? '') ?>" />
+                        <input type="url" name="company_link" required class="form-input" placeholder="https://acme.com" value="<?= esc($settings['general.company_link'] ?? '') ?>" disabled />
                     </div>
                     <div class="form-field md:col-span-2">
                         <label class="form-label">Business Address</label>
-                        <textarea name="business_address" rows="3" class="form-input" placeholder="123 Business St., Suite 100&#10;City, State 12345&#10;Country"><?= esc($settings['general.business_address'] ?? '') ?></textarea>
+                        <textarea name="business_address" rows="3" class="form-input" placeholder="123 Business St., Suite 100&#10;City, State 12345&#10;Country" disabled><?= esc($settings['general.business_address'] ?? '') ?></textarea>
                         <p class="form-help">Complete business address</p>
                     </div>
                                         <div class="form-field">
                         <label class="form-label">Company Logo</label>
                         <div class="md:flex md:items-center md:gap-4">
                             <div class="md:flex-1">
-                                <input id="company_logo" type="file" name="company_logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="form-input file-input" />
+                                <input id="company_logo" type="file" name="company_logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="form-input file-input" disabled />
                             </div>
                             <div id="company_logo_preview_container" class="mt-2 md:mt-0">
                                 <?php $logoPreview = setting_url('general.company_logo'); if ($logoPreview): ?>
@@ -97,9 +98,20 @@
                     
                     
                 </div>
+                
+                <!-- Save Button for General Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-general-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white opacity-60 cursor-not-allowed" style="background-color: var(--md-sys-color-primary)" disabled>
+                        Save General Settings
+                    </button>
+                </div>
             </section>
+        </form>
 
-            <!-- Localization -->
+            <!-- Localization Form -->
+            <form id="localization-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="localization">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="localization_settings">
             <section id="panel-localization" class="tab-panel hidden">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="form-field">
@@ -195,9 +207,20 @@
                         </select>
                     </div>
                 </div>
+                
+                <!-- Save Button for Localization Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-localization-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        Save Localization Settings
+                    </button>
+                </div>
             </section>
+            </form>
 
-            <!-- Booking Settings -->
+            <!-- Booking Settings Form -->
+            <form id="booking-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="booking">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="booking_settings">
             <section id="panel-booking" class="tab-panel hidden">
                 <div class="space-y-6">
                     <!-- Standard Booking Fields -->
@@ -345,9 +368,20 @@
 
 
                 </div>
+                
+                <!-- Save Button for Booking Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-booking-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        Save Booking Settings
+                    </button>
+                </div>
             </section>
+            </form>
 
-            <!-- Business hours -->
+            <!-- Business hours Form -->
+            <form id="business-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="business">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="business_settings">
             <section id="panel-business" class="tab-panel hidden">
                 <div class="space-y-6">
                     <div class="form-field">
@@ -366,24 +400,49 @@
                     </div>
                     <div class="form-field">
                         <label class="form-label">Blocked Periods</label>
-                        <textarea name="blocked_periods" rows="3" class="form-input" placeholder='["2025-12-25","2025-12-31"]'><?= esc(is_array($settings['business.blocked_periods'] ?? '') ? json_encode($settings['business.blocked_periods']) : ($settings['business.blocked_periods'] ?? '')) ?></textarea>
-                        <p class="form-help">Holidays, closures, etc. (JSON array of dates)</p>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-start">
+                                <p class="text-sm text-gray-600 dark:text-gray-300">
+                                    Configure periods when bookings are not allowed (e.g., holidays, maintenance closures).
+                                </p>
+                                <button type="button" id="add-block-period-btn" class="btn btn-primary btn-sm flex items-center gap-2 whitespace-nowrap">
+                                    <span class="material-symbols-outlined text-base">add</span>
+                                    Add Period
+                                </button>
+                            </div>
+                            
+                            <!-- Block Periods List -->
+                            <div class="card card-flat">
+                                <div class="card-body p-0">
+                                    <div id="block-periods-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                        <!-- Block periods will be rendered here by JS -->
+                                    </div>
+                                    <div id="block-periods-empty" class="text-center py-8 text-gray-500 dark:text-gray-400 hidden">
+                                        <span class="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
+                                        <p class="text-sm">No blocked periods configured</p>
+                                        <p class="text-xs text-gray-400">Click "Add Period" to get started</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Hidden input to store block periods as JSON -->
+                        <input type="hidden" name="blocked_periods" id="blocked_periods_json" value="<?= esc(is_array($settings['business.blocked_periods'] ?? '') ? json_encode($settings['business.blocked_periods']) : ($settings['business.blocked_periods'] ?? '[]')) ?>">
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label class="form-label">Rescheduling Rules</label>
                             <select name="reschedule" class="form-input">
-                                <option>Up to 24h before</option>
-                                <option>Up to 12h before</option>
-                                <option>Not allowed</option>
+                                <option value="24h" <?= ($settings['business.reschedule'] ?? '24h') === '24h' ? 'selected' : '' ?>>Up to 24h before</option>
+                                <option value="12h" <?= ($settings['business.reschedule'] ?? '') === '12h' ? 'selected' : '' ?>>Up to 12h before</option>
+                                <option value="none" <?= ($settings['business.reschedule'] ?? '') === 'none' ? 'selected' : '' ?>>Not allowed</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Cancellation Rules</label>
                             <select name="cancel" class="form-input">
-                                <option>Up to 24h before</option>
-                                <option>Up to 12h before</option>
-                                <option>Not allowed</option>
+                                <option value="24h" <?= ($settings['business.cancel'] ?? '24h') === '24h' ? 'selected' : '' ?>>Up to 24h before</option>
+                                <option value="12h" <?= ($settings['business.cancel'] ?? '') === '12h' ? 'selected' : '' ?>>Up to 12h before</option>
+                                <option value="none" <?= ($settings['business.cancel'] ?? '') === 'none' ? 'selected' : '' ?>>Not allowed</option>
                             </select>
                         </div>
                     </div>
@@ -391,87 +450,519 @@
                         <div class="form-field">
                             <label class="form-label">Future Booking Limit</label>
                             <select name="future_limit" class="form-input">
-                                <option>30 days</option>
-                                <option>60 days</option>
-                                <option>90 days</option>
+                                <option value="30" <?= ($settings['business.future_limit'] ?? '30') === '30' ? 'selected' : '' ?>>30 days</option>
+                                <option value="60" <?= ($settings['business.future_limit'] ?? '') === '60' ? 'selected' : '' ?>>60 days</option>
+                                <option value="90" <?= ($settings['business.future_limit'] ?? '') === '90' ? 'selected' : '' ?>>90 days</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Appointment Status Options</label>
-                            <input name="statuses" class="form-input" placeholder="booked,confirmed,completed,cancelled">
+                            <input name="statuses" class="form-input" placeholder="booked,confirmed,completed,cancelled" value="<?= esc($settings['booking.statuses'] ?? 'booked,confirmed,completed,cancelled') ?>">
                         </div>
                     </div>
                 </div>
+                
+                <!-- Save Button for Business Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-business-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        Save Business Settings
+                    </button>
+                </div>
             </section>
+            </form>
 
-            <!-- Legal Contents -->
+            <!-- Legal Contents Form -->
+            <form id="legal-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="legal">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="legal_settings">
             <section id="panel-legal" class="tab-panel hidden">
                 <div class="space-y-4">
                     <div class="form-field">
                         <label class="form-label">Cookie Notice</label>
-                        <textarea name="cookie_notice" rows="3" class="form-input"></textarea>
+                        <textarea name="cookie_notice" rows="3" class="form-input" placeholder="Enter your cookie notice text here..."><?= esc($settings['legal.cookie_notice'] ?? '') ?></textarea>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Terms & Conditions</label>
-                        <textarea name="terms" rows="6" class="form-input"></textarea>
+                        <textarea name="terms" rows="6" class="form-input" placeholder="Enter your terms and conditions here..."><?= esc($settings['legal.terms'] ?? '') ?></textarea>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Privacy Policy</label>
-                        <textarea name="privacy" rows="6" class="form-input"></textarea>
+                        <textarea name="privacy" rows="6" class="form-input" placeholder="Enter your privacy policy here..."><?= esc($settings['legal.privacy'] ?? '') ?></textarea>
                     </div>
                 </div>
+                
+                <!-- Save Button for Legal Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-legal-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        Save Legal Settings
+                    </button>
+                </div>
             </section>
+            </form>
 
-            <!-- Integrations -->
+            <!-- Integrations Form -->
+            <form id="integrations-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="integrations">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="integrations_settings">
             <section id="panel-integrations" class="tab-panel hidden">
                 <div class="space-y-6">
                     <div class="form-field">
                         <label class="form-label">Webhooks</label>
-                        <input name="webhook_url" type="url" class="form-input" placeholder="https://example.com/webhook" />
+                        <input name="webhook_url" type="url" class="form-input" placeholder="https://example.com/webhook" value="<?= esc($settings['integrations.webhook_url'] ?? '') ?>" />
                         <p class="form-help">External notifications endpoint</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label class="form-label">Analytics</label>
                             <select name="analytics" class="form-input">
-                                <option>None</option>
-                                <option>Google Analytics</option>
-                                <option>Matomo</option>
+                                <option value="none" <?= ($settings['integrations.analytics'] ?? 'none') === 'none' ? 'selected' : '' ?>>None</option>
+                                <option value="google" <?= ($settings['integrations.analytics'] ?? '') === 'google' ? 'selected' : '' ?>>Google Analytics</option>
+                                <option value="matomo" <?= ($settings['integrations.analytics'] ?? '') === 'matomo' ? 'selected' : '' ?>>Matomo</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label class="form-label">API Integrations</label>
-                            <input name="api_integrations" class="form-input" placeholder="comma,separated,keys" />
+                            <input name="api_integrations" class="form-input" placeholder="comma,separated,keys" value="<?= esc($settings['integrations.api_integrations'] ?? '') ?>" />
                         </div>
                     </div>
                     <div class="form-field">
                         <label class="form-label">LDAP Authentication</label>
                         <div class="space-y-2">
                             <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="ldap_enabled" class="checkbox"> Enable LDAP
+                                <input type="checkbox" name="ldap_enabled" class="checkbox" value="1" <?= ($settings['integrations.ldap_enabled'] ?? '0') === '1' ? 'checked' : '' ?>> Enable LDAP
                             </label>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                <input name="ldap_host" class="form-input" placeholder="ldap://host" />
-                                <input name="ldap_dn" class="form-input" placeholder="cn=admin,dc=example,dc=com" />
+                                <input name="ldap_host" class="form-input" placeholder="ldap://host" value="<?= esc($settings['integrations.ldap_host'] ?? '') ?>" />
+                                <input name="ldap_dn" class="form-input" placeholder="cn=admin,dc=example,dc=com" value="<?= esc($settings['integrations.ldap_dn'] ?? '') ?>" />
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Save Button for Integrations Settings -->
+                <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button id="save-integrations-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        Save Integrations Settings
+                    </button>
+                </div>
             </section>
+            </form>
 
-            
+        </div>
 
-            <div class="flex justify-end">
-                <button id="global-save-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">Save All Settings</button>
+        <!-- Block Period Modal (Outside all forms) -->
+        <div id="block-period-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="card card-elevated max-w-md w-full mx-4">
+                <div class="card-header">
+                    <h3 class="card-title" id="block-period-modal-title">Add Block Period</h3>
+                </div>
+                <form id="block-period-form">
+                    <div class="card-body space-y-4">
+                        <div class="form-field">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" id="block-period-start" class="form-input" required>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">End Date</label>
+                            <input type="date" id="block-period-end" class="form-input" required>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Reason/Notes <span class="text-xs text-gray-400 font-normal">(optional)</span></label>
+                            <input type="text" id="block-period-notes" class="form-input" maxlength="100" placeholder="e.g., Christmas Holiday, Office Maintenance">
+                        </div>
+                        <div id="block-period-error" class="text-red-500 text-sm hidden bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800"></div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" id="block-period-cancel" class="btn btn-outline">Cancel</button>
+                        <button type="submit" id="block-period-save-btn" class="btn btn-primary">Save Period</button>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+        
+        <script>
+        // --- Blocked Periods Structured UI ---
+        (function initBlockedPeriodsUI() {
+            // Guard against re-initialization
+            if (document.getElementById('block-periods-list')?.dataset.initialized === 'true') {
+                return;
+            }
+            
+            const container = document.getElementById('block-periods-list');
+            if (!container) return;
+            
+            container.dataset.initialized = 'true';
+
+            // Parse initial value
+            let blockPeriods = [];
+            try {
+                blockPeriods = JSON.parse(document.getElementById('blocked_periods_json')?.value || '[]');
+                if (!Array.isArray(blockPeriods)) blockPeriods = [];
+            } catch { blockPeriods = []; }
+
+            let editingIndex = null;
+
+            function renderBlockPeriods() {
+                const container = document.getElementById('block-periods-list');
+                const emptyState = document.getElementById('block-periods-empty');
+                
+                if (!container || !emptyState) return;
+                
+                container.innerHTML = '';
+                
+                if (!blockPeriods.length) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                
+                emptyState.classList.add('hidden');
+                
+                blockPeriods.forEach((period, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors';
+                    
+                    const startDate = period.start ? new Date(period.start).toLocaleDateString() : '';
+                    const endDate = period.end ? new Date(period.end).toLocaleDateString() : '';
+                    const isMultiDay = period.start !== period.end;
+                    
+                    item.innerHTML = `
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="material-symbols-outlined text-orange-500">event_busy</span>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">
+                                    ${startDate}${isMultiDay ? ' - ' + endDate : ''}
+                                </span>
+                            </div>
+                            ${period.notes ? `<p class="text-sm text-gray-600 dark:text-gray-400 ml-6">${period.notes.replace(/</g, '&lt;')}</p>` : ''}
+                        </div>
+                        <div class="flex gap-1 ml-4">
+                            <button type="button" class="btn btn-ghost btn-sm p-2" data-edit="${idx}" title="Edit period">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-sm p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" data-delete="${idx}" title="Delete period">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>
+                    `;
+                    
+                    container.appendChild(item);
+                });
+            }
+
+            function openModal(mode, index = null) {
+                const modal = document.getElementById('block-period-modal');
+                const title = document.getElementById('block-period-modal-title');
+                const form = document.getElementById('block-period-form');
+                const start = document.getElementById('block-period-start');
+                const end = document.getElementById('block-period-end');
+                const notes = document.getElementById('block-period-notes');
+                const error = document.getElementById('block-period-error');
+                error.classList.add('hidden');
+                error.textContent = '';
+                if (mode === 'edit' && index !== null) {
+                    title.textContent = 'Edit Block Period';
+                    const period = blockPeriods[index];
+                    start.value = period.start || '';
+                    end.value = period.end || '';
+                    notes.value = period.notes || '';
+                    editingIndex = index;
+                } else {
+                    title.textContent = 'Add Block Period';
+                    start.value = '';
+                    end.value = '';
+                    notes.value = '';
+                    editingIndex = null;
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function closeModal() {
+                const modal = document.getElementById('block-period-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function saveBlockPeriods() {
+                const jsonInput = document.getElementById('blocked_periods_json');
+                if (!jsonInput) return;
+                jsonInput.value = JSON.stringify(blockPeriods);
+                renderBlockPeriods();
+            }
+
+            // Add button
+            const addBtn = document.getElementById('add-block-period-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => openModal('add'));
+            }
+
+            // Cancel button
+            const cancelBtn = document.getElementById('block-period-cancel');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeModal();
+                });
+            }
+
+            // Form submit
+            const form = document.getElementById('block-period-form');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent event bubbling to parent forms
+                    
+                    const start = document.getElementById('block-period-start').value;
+                    const end = document.getElementById('block-period-end').value;
+                    const notes = document.getElementById('block-period-notes').value;
+                    const error = document.getElementById('block-period-error');
+                    const submitBtn = document.getElementById('block-period-save-btn');
+                    
+                    error.classList.add('hidden');
+                    error.textContent = '';
+                    
+                    // Validation
+                    if (!start || !end) {
+                        error.textContent = 'Start and end dates are required.';
+                        error.classList.remove('hidden');
+                        return;
+                    }
+                    if (end < start) {
+                        error.textContent = 'End date cannot be before start date.';
+                        error.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    // Update local array
+                    const period = { start, end, notes };
+                    if (editingIndex !== null) {
+                        blockPeriods[editingIndex] = period;
+                    } else {
+                        blockPeriods.push(period);
+                    }
+                    
+                    // Show saving state
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Saving…</span>';
+                    submitBtn.disabled = true;
+                    
+                    console.log('🔄 Saving block period to database:', period);
+                    console.log('📋 Full block periods array:', blockPeriods);
+                    
+                    try {
+                        // Get CSRF token
+                        const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+                        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        
+                        // Save to database via API
+                        const response = await fetch("<?= base_url('api/v1/settings') ?>", {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                ...(token ? { [header]: token } : {})
+                            },
+                            body: JSON.stringify({
+                                'business.blocked_periods': JSON.stringify(blockPeriods)
+                            })
+                        });
+                        
+                        console.log('📡 Block period API Response status:', response.status);
+                        
+                        if (!response.ok) {
+                            throw new Error(`Save failed (HTTP ${response.status})`);
+                        }
+                        
+                        const result = await response.json();
+                        console.log('📦 Block period API Response data:', result);
+                        
+                        if (!result?.ok) {
+                            throw new Error(result?.message || 'Unable to save block period.');
+                        }
+                        
+                        // Update hidden input and UI
+                        saveBlockPeriods();
+                        
+                        // Close modal
+                        closeModal();
+                        
+                        // Reset button
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
+                        
+                        console.log('✅ Block period saved successfully!');
+                        
+                        // Show success toast
+                        window.XSNotify?.toast?.({
+                            type: 'success',
+                            title: '✓ Block Period Saved',
+                            message: editingIndex !== null ? 'Block period updated successfully.' : 'Block period added successfully.',
+                            autoClose: true,
+                            duration: 4000
+                        });
+                        
+                        if (!window.XSNotify?.toast) {
+                            alert('✓ Block period saved successfully!');
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ Block period save failed:', error);
+                        
+                        // Revert local changes on error
+                        if (editingIndex !== null) {
+                            // Restore previous value (reload from hidden input)
+                            try {
+                                blockPeriods = JSON.parse(document.getElementById('blocked_periods_json')?.value || '[]');
+                            } catch { }
+                        } else {
+                            // Remove the newly added period
+                            blockPeriods.pop();
+                        }
+                        
+                        // Reset button
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
+                        
+                        // Show error in modal
+                        error.textContent = error?.message || 'Failed to save block period. Please try again.';
+                        error.classList.remove('hidden');
+                        
+                        // Show error toast
+                        window.XSNotify?.toast?.({
+                            type: 'error',
+                            title: '✗ Save Failed',
+                            message: error?.message || 'Failed to save block period. Please try again.',
+                            autoClose: false
+                        });
+                        
+                        if (!window.XSNotify?.toast) {
+                            alert('✗ Failed to save block period: ' + (error?.message || 'Unknown error'));
+                        }
+                    }
+                });
+            }
+
+            // Edit/Delete actions
+            const periodsList = document.getElementById('block-periods-list');
+            if (periodsList) {
+                periodsList.addEventListener('click', async function(e) {
+                    if (e.target.closest('[data-edit]')) {
+                        const idx = parseInt(e.target.closest('[data-edit]').getAttribute('data-edit'));
+                        openModal('edit', idx);
+                    } else if (e.target.closest('[data-delete]')) {
+                        const idx = parseInt(e.target.closest('[data-delete]').getAttribute('data-delete'));
+                        
+                        if (!confirm('Are you sure you want to delete this blocked period?')) {
+                            return;
+                        }
+                        
+                        console.log('🗑️ Deleting block period at index:', idx);
+                        
+                        // Remove from array
+                        const deletedPeriod = blockPeriods[idx];
+                        blockPeriods.splice(idx, 1);
+                        
+                        console.log('📋 Remaining block periods:', blockPeriods);
+                        
+                        try {
+                            // Get CSRF token
+                            const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+                            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                            
+                            // Save to database via API
+                            const response = await fetch("<?= base_url('api/v1/settings') ?>", {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    ...(token ? { [header]: token } : {})
+                                },
+                                body: JSON.stringify({
+                                    'business.blocked_periods': JSON.stringify(blockPeriods)
+                                })
+                            });
+                            
+                            console.log('📡 Delete block period API Response status:', response.status);
+                            
+                            if (!response.ok) {
+                                throw new Error(`Delete failed (HTTP ${response.status})`);
+                            }
+                            
+                            const result = await response.json();
+                            console.log('📦 Delete block period API Response data:', result);
+                            
+                            if (!result?.ok) {
+                                throw new Error(result?.message || 'Unable to delete block period.');
+                            }
+                            
+                            // Update hidden input and UI
+                            saveBlockPeriods();
+                            
+                            console.log('✅ Block period deleted successfully!');
+                            
+                            // Show success toast
+                            window.XSNotify?.toast?.({
+                                type: 'success',
+                                title: '✓ Block Period Deleted',
+                                message: 'Block period deleted successfully.',
+                                autoClose: true,
+                                duration: 4000
+                            });
+                            
+                            if (!window.XSNotify?.toast) {
+                                alert('✓ Block period deleted successfully!');
+                            }
+                            
+                        } catch (error) {
+                            console.error('❌ Block period delete failed:', error);
+                            
+                            // Revert deletion on error
+                            blockPeriods.splice(idx, 0, deletedPeriod);
+                            saveBlockPeriods();
+                            
+                            // Show error toast
+                            window.XSNotify?.toast?.({
+                                type: 'error',
+                                title: '✗ Delete Failed',
+                                message: error?.message || 'Failed to delete block period. Please try again.',
+                                autoClose: false
+                            });
+                            
+                            if (!window.XSNotify?.toast) {
+                                alert('✗ Failed to delete block period: ' + (error?.message || 'Unknown error'));
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Modal close on background click
+            const modal = document.getElementById('block-period-modal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) closeModal();
+                });
+            }
+
+            // Initial render
+            renderBlockPeriods();
+        })();
+        </script>
     </div>
 </div>
 
         <script>
         // General tab API integration: load on view and save via PUT to /api/v1/settings
-        document.addEventListener('DOMContentLoaded', () => initSettingsApi());
-        document.addEventListener('spa:navigated', () => initSettingsApi());
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Settings: DOMContentLoaded fired, calling initSettingsApi');
+            initSettingsApi();
+        });
+        document.addEventListener('spa:navigated', () => {
+            console.log('Settings: spa:navigated fired, calling initSettingsApi');
+            initSettingsApi();
+        });
 
         // Live-update the sidebar brand title when company name changes
         (function wireSidebarBrandSync(){
@@ -501,146 +992,512 @@
         })();
 
         function initSettingsApi() {
-                const root = document.getElementById('spa-content');
-                if (!root) return;
-                const generalPanel = root.querySelector('#panel-general');
-                const form = root.querySelector('#settingsForm');
-                if (!generalPanel || !form || form.dataset.apiWired === 'true') return;
+            const root = document.getElementById('spa-content');
+            console.log('Settings: initSettingsApi called, root found:', !!root);
+            if (!root) return;
 
-                // Initialize custom field toggles
-                initCustomFieldToggles();
+            // Initialize General Settings Form
+            initGeneralSettingsForm();
+            
+            // Initialize other tab forms
+            initTabForm('localization');
+            initTabForm('booking');
+            initTabForm('business');
+            initTabForm('legal');
+            initTabForm('integrations');
+            
+            initCustomFieldToggles();
+        }
 
-                const btnEdit = generalPanel.querySelector('#general-edit-btn');
-                const btnCancel = generalPanel.querySelector('#general-cancel-btn');
-                const globalSaveBtn = form.querySelector('#global-save-btn');
-                const inputs = Array.from(generalPanel.querySelectorAll('input, select, textarea'));
-                let editing = false;
-                // Store initial values for cancel functionality
-                let initialValues = {
-                    company_name: (generalPanel.querySelector('[name="company_name"]')?.value || ''),
-                    company_email: (generalPanel.querySelector('[name="company_email"]')?.value || ''),
-                    company_link: (generalPanel.querySelector('[name="company_link"]')?.value || ''),
-                    telephone_number: (generalPanel.querySelector('[name="telephone_number"]')?.value || ''),
-                    mobile_number: (generalPanel.querySelector('[name="mobile_number"]')?.value || ''),
-                    business_address: (generalPanel.querySelector('[name="business_address"]')?.value || '')
-                };
-                
-                // Live preview refs for logo
-                const logoInput = generalPanel.querySelector('#company_logo');
-                const logoImg = generalPanel.querySelector('#company_logo_preview_img');
-                const originalLogoSrc = logoImg ? logoImg.getAttribute('data-src') || logoImg.src || '' : '';
+        function initGeneralSettingsForm() {
+            const form = document.getElementById('general-settings-form');
+            console.log('General Form found:', !!form, 'apiWired:', form?.dataset.apiWired);
+            if (!form || form.dataset.apiWired === 'true') return;
 
-                function applyValues(values) {
-                    const { company_name, company_email, company_link, telephone_number, mobile_number, business_address } = values;
-                    const nameEl = generalPanel.querySelector('[name="company_name"]');
-                    const emailEl = generalPanel.querySelector('[name="company_email"]');
-                    const linkEl = generalPanel.querySelector('[name="company_link"]');
-                    const telephoneEl = generalPanel.querySelector('[name="telephone_number"]');
-                    const mobileEl = generalPanel.querySelector('[name="mobile_number"]');
-                    const addressEl = generalPanel.querySelector('[name="business_address"]');
-                    if (nameEl) nameEl.value = company_name ?? '';
-                    if (emailEl) emailEl.value = company_email ?? '';
-                    if (linkEl) linkEl.value = company_link ?? '';
-                    if (telephoneEl) telephoneEl.value = telephone_number ?? '';
-                    if (mobileEl) mobileEl.value = mobile_number ?? '';
-                    if (addressEl) addressEl.value = business_address ?? '';
-                }
+            const generalPanel = form.querySelector('#panel-general');
+            const saveBtn = document.getElementById('save-general-btn');
+            const btnEdit = document.getElementById('general-edit-btn');
+            const btnCancel = document.getElementById('general-cancel-btn');
+            const logoInput = document.getElementById('company_logo');
+            const logoImg = document.getElementById('company_logo_preview_img');
+            const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
 
-                function collectValues() {
-                    return {
-                        company_name: (generalPanel.querySelector('[name="company_name"]').value || ''),
-                        company_email: (generalPanel.querySelector('[name="company_email"]').value || ''),
-                        company_link: (generalPanel.querySelector('[name="company_link"]').value || ''),
-                        telephone_number: (generalPanel.querySelector('[name="telephone_number"]').value || ''),
-                        mobile_number: (generalPanel.querySelector('[name="mobile_number"]').value || ''),
-                        business_address: (generalPanel.querySelector('[name="business_address"]').value || ''),
-                    };
-                }
+            console.log('General Settings: Found elements:', {
+                generalPanel: !!generalPanel,
+                saveBtn: !!saveBtn,
+                btnEdit: !!btnEdit,
+                btnCancel: !!btnCancel,
+                logoInput: !!logoInput,
+                logoImg: !!logoImg
+            });
 
-                function setLockedState(locked) {
-                    editing = !locked;
-                    inputs.forEach(el => { el.disabled = locked; });
-                    // Logo file input should also follow the locked state
-                    const logoInputEl = document.getElementById('company_logo');
-                    if (logoInputEl) logoInputEl.disabled = locked;
-                    // Button toggles
-                    if (locked) {
-                        btnEdit?.classList.remove('hidden');
-                        btnCancel?.classList.add('hidden');
-                    } else {
-                        btnEdit?.classList.add('hidden');
-                        btnCancel?.classList.remove('hidden');
-                    }
-                    // Keep global bottom save visible so form can always be submitted
-                    if (globalSaveBtn) globalSaveBtn.classList.remove('hidden');
-                }
+            if (!generalPanel || !saveBtn || !btnEdit) {
+                console.warn('General Settings: Required elements not found');
+                return;
+            }
 
-                // Start locked by default - values are already populated from server
-                setLockedState(true);
+            const lockableFields = Array.from(generalPanel.querySelectorAll('input:not([type="hidden"]), textarea, select'))
+                .filter(el => el.id !== 'company_logo');
 
-                // Edit -> unlock
-                btnEdit?.addEventListener('click', () => {
-                    console.log('Edit button clicked, setting editing to true');
-                    setLockedState(false);
+            const fieldMap = {
+                company_name: 'general.company_name',
+                company_email: 'general.company_email',
+                company_link: 'general.company_link',
+                telephone_number: 'general.telephone_number',
+                mobile_number: 'general.mobile_number',
+                business_address: 'general.business_address'
+            };
+
+            const apiEndpoint = "<?= base_url('api/v1/settings') ?>";
+            const logoEndpoint = "<?= base_url('api/v1/settings/logo') ?>";
+
+            let editing = false;
+            let hasChanges = false;
+            let initialValues = collectCurrentValues();
+            let initialLogoSrc = logoImg ? (logoImg.dataset.src || logoImg.src || '') : '';
+
+            function collectCurrentValues() {
+                const values = {};
+                Object.keys(fieldMap).forEach(name => {
+                    const el = form.elements[name];
+                    if (!el || el.type === 'file') return;
+                    values[name] = el.value ?? '';
                 });
+                return values;
+            }
 
-                // Cancel -> revert and lock
-                btnCancel?.addEventListener('click', () => {
+            function applyValues(values) {
+                Object.entries(values).forEach(([name, value]) => {
+                    const el = form.elements[name];
+                    if (!el || el.type === 'file') return;
+                    el.value = value ?? '';
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            }
+
+            function checkForChanges() {
+                if (!editing) return false;
+                
+                const currentValues = collectCurrentValues();
+                const hasFieldChanges = Object.keys(fieldMap).some(name => {
+                    return currentValues[name] !== initialValues[name];
+                });
+                
+                const currentLogoSrc = logoImg ? (logoImg.src || '') : '';
+                const hasLogoChange = logoInput?.files?.length > 0 || currentLogoSrc !== initialLogoSrc;
+                
+                return hasFieldChanges || hasLogoChange;
+            }
+
+            function updateSaveButtonState() {
+                hasChanges = checkForChanges();
+                if (saveBtn) {
+                    saveBtn.disabled = !editing;
+                    saveBtn.classList.toggle('opacity-60', !editing);
+                    saveBtn.classList.toggle('cursor-not-allowed', !editing);
+                }
+            }
+
+            function setLockedState(locked) {
+                lockableFields.forEach(el => {
+                    el.disabled = locked;
+                    el.classList.toggle('cursor-not-allowed', locked);
+                    el.classList.toggle('bg-gray-100', locked);
+                    el.classList.toggle('dark:bg-gray-800/70', locked);
+                    el.setAttribute('aria-readonly', locked ? 'true' : 'false');
+                });
+                if (logoInput) {
+                    logoInput.disabled = locked;
+                    logoInput.classList.toggle('cursor-not-allowed', locked);
+                    logoInput.classList.toggle('bg-gray-100', locked);
+                    logoInput.classList.toggle('dark:bg-gray-800/70', locked);
+                }
+                if (btnEdit) btnEdit.classList.toggle('hidden', !locked);
+                if (btnCancel) btnCancel.classList.toggle('hidden', locked);
+                
+                updateSaveButtonState();
+            }
+
+            function getCsrf() {
+                const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content')
+                    || window.appConfig?.csrfHeaderName
+                    || 'X-CSRF-TOKEN';
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    || window.appConfig?.csrfToken
+                    || csrfInput?.value
+                    || '';
+                return { header, token };
+            }
+
+            function updateCsrfFromResponse(response) {
+                if (!response) return;
+                const newToken = response.headers.get('X-CSRF-TOKEN') || response.headers.get('x-csrf-token');
+                if (newToken && csrfInput) {
+                    csrfInput.value = newToken;
+                }
+            }
+
+            function setSavingState(isSaving) {
+                if (!saveBtn) return;
+                if (isSaving) {
+                    if (!saveBtn.dataset.originalLabel) {
+                        saveBtn.dataset.originalLabel = saveBtn.innerHTML;
+                    }
+                    saveBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Saving…</span>';
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                } else {
+                    if (saveBtn.dataset.originalLabel) {
+                        saveBtn.innerHTML = saveBtn.dataset.originalLabel;
+                        delete saveBtn.dataset.originalLabel;
+                    }
+                    updateSaveButtonState();
+                }
+            }
+
+            function previewLogo(file) {
+                if (!logoImg || !file || !file.type?.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    logoImg.src = event.target?.result || '';
+                    logoImg.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            setLockedState(true);
+
+            // Track changes on all lockable fields
+            lockableFields.forEach(field => {
+                field.addEventListener('input', updateSaveButtonState);
+                field.addEventListener('change', updateSaveButtonState);
+            });
+
+            if (btnEdit) {
+                console.log('General Settings: Attaching Edit button listener');
+                btnEdit.addEventListener('click', () => {
+                    console.log('📝 General Edit clicked');
+                    editing = true;
+                    setLockedState(false);
+                    saveBtn?.focus();
+                });
+            }
+
+            if (btnCancel) {
+                btnCancel.addEventListener('click', () => {
+                    console.log('↩️ General Cancel clicked');
+                    editing = false;
+                    hasChanges = false;
                     applyValues(initialValues);
-                    // Reset logo preview to original on cancel
-                    if (logoImg && originalLogoSrc) {
-                        logoImg.src = originalLogoSrc;
+                    if (logoImg && initialLogoSrc) {
+                        logoImg.src = initialLogoSrc;
+                        logoImg.dataset.src = initialLogoSrc;
                         logoImg.classList.remove('hidden');
                     }
-                    // Clear file input
-                    const logoInputEl = document.getElementById('company_logo');
-                    if (logoInputEl) logoInputEl.value = '';
+                    if (logoImg && !initialLogoSrc) {
+                        logoImg.classList.add('hidden');
+                    }
+                    if (logoInput) {
+                        logoInput.value = '';
+                    }
                     setLockedState(true);
                 });
+            }
 
-                // Save handler: allow normal POST submit; disable buttons to avoid double submits
-                form.addEventListener('submit', (e) => {
-                    console.log('Form submit event triggered, editing state:', editing);
-                    // If we're in editing mode, allow normal form submission to /settings POST
-                    if (editing) {
-                        console.log('Submitting settings form normally');
-                        // Don't prevent default - let it submit normally
-                        btnCancel?.setAttribute('disabled', 'disabled');
-                        // Update initial values after successful submit (will be done on page reload)
-                        return; // Allow normal form submission
-                    } else {
-                        // If not in edit mode, prevent submission
-                        e.preventDefault();
-                        console.log('Form submission prevented - not in edit mode');
+            if (logoInput) {
+                logoInput.addEventListener('change', (event) => {
+                    const file = event.target?.files?.[0];
+                    if (file) {
+                        previewLogo(file);
+                    } else if (logoImg && initialLogoSrc) {
+                        logoImg.src = initialLogoSrc;
                     }
+                    updateSaveButtonState();
+                });
+            }
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                
+                console.log('General form submitted - editing:', editing);
+
+                if (!editing) {
+                    window.XSNotify?.toast?.({
+                        type: 'info',
+                        title: 'Locked',
+                        message: 'Click Edit before saving your changes.',
+                        autoClose: true
+                    });
+                    return;
+                }
+
+                if (!form.reportValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                const { header, token } = getCsrf();
+                const payload = {};
+                Object.entries(fieldMap).forEach(([name, key]) => {
+                    const el = form.elements[name];
+                    if (!el || el.type === 'file') return;
+                    payload[key] = el.value ?? '';
                 });
 
-                // LOGO PREVIEW HANDLER (no auto-submit)
-                // Handle file selection for logo preview only
-                document.addEventListener('change', function(event) {
-                    const target = event.target;
-                    if (target && target.id === 'company_logo') {
-                        console.log('Logo file selected');
-                        const file = target.files && target.files[0];
-                        if (!file) return;
-                        
-                        // Preview the image immediately
-                        const img = document.getElementById('company_logo_preview_img');
-                        if (img && file.type.startsWith('image/')) {
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                img.src = e.target.result;
-                                img.classList.remove('hidden');
-                                console.log('Logo preview updated');
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                        
-                        // NO AUTO-SUBMIT - user must click Save All Settings
-                    }
-                }, false);
+                console.log('Saving general settings:', payload);
 
-                form.dataset.apiWired = 'true';
+                const previousEditingState = editing;
+                setSavingState(true);
+                setLockedState(true);
+
+                try {
+                    const response = await fetch(apiEndpoint, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(token ? { [header]: token } : {})
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    updateCsrfFromResponse(response);
+
+                    console.log('API Response status:', response.status);
+
+                    if (!response.ok) {
+                        throw new Error(`Save failed (HTTP ${response.status})`);
+                    }
+
+                    const result = await response.json();
+                    console.log('API Response data:', result);
+                    
+                    if (!result?.ok) {
+                        throw new Error(result?.message || 'Unable to save settings.');
+                    }
+
+                    let uploadedLogoUrl = null;
+                    if (logoInput?.files?.length) {
+                        const fileData = new FormData();
+                        fileData.append('company_logo', logoInput.files[0]);
+                        if (csrfInput?.name && csrfInput.value) {
+                            fileData.append(csrfInput.name, csrfInput.value);
+                        }
+
+                        const uploadToken = csrfInput?.value || token;
+
+                        const logoResponse = await fetch(logoEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                ...(uploadToken ? { [header]: uploadToken } : {})
+                            },
+                            body: fileData
+                        });
+
+                        updateCsrfFromResponse(logoResponse);
+
+                        if (!logoResponse.ok) {
+                            throw new Error(`Logo upload failed (HTTP ${logoResponse.status})`);
+                        }
+
+                        const logoResult = await logoResponse.json();
+                        if (!logoResult?.ok) {
+                            throw new Error(logoResult?.message || 'Logo upload failed.');
+                        }
+                        uploadedLogoUrl = logoResult.url || null;
+                    }
+
+                    initialValues = collectCurrentValues();
+                    editing = false;
+                    hasChanges = false;
+                    setSavingState(false);
+                    setLockedState(true);
+
+                    if (uploadedLogoUrl && logoImg) {
+                        logoImg.src = uploadedLogoUrl;
+                        logoImg.dataset.src = uploadedLogoUrl;
+                        logoImg.classList.remove('hidden');
+                    }
+                    if (logoInput) {
+                        logoInput.value = '';
+                    }
+                    if (logoImg && !uploadedLogoUrl) {
+                        initialLogoSrc = logoImg.dataset.src || logoImg.src || initialLogoSrc;
+                    } else if (uploadedLogoUrl) {
+                        initialLogoSrc = uploadedLogoUrl;
+                    }
+
+                    console.log('✅ General settings saved successfully!');
+                    
+                    window.XSNotify?.toast?.({
+                        type: 'success',
+                        title: '✓ Settings Updated',
+                        message: 'Your general settings were saved successfully.',
+                        autoClose: true,
+                        duration: 4000
+                    });
+                    
+                    if (!window.XSNotify?.toast) {
+                        alert('✓ General settings updated successfully!');
+                    }
+                } catch (error) {
+                    console.error('❌ General settings save failed:', error);
+                    editing = previousEditingState;
+                    setSavingState(false);
+                    setLockedState(!editing);
+                    
+                    window.XSNotify?.toast?.({
+                        type: 'error',
+                        title: '✗ Save Failed',
+                        message: error?.message || 'Failed to save general settings. Please try again.',
+                        autoClose: false
+                    });
+                    
+                    if (!window.XSNotify?.toast) {
+                        alert('✗ Failed to save: ' + (error?.message || 'Unknown error'));
+                    }
+                }
+            });
+
+            form.dataset.apiWired = 'true';
+        }
+
+        // Generic tab form initialization for non-General tabs
+        function initTabForm(tabName) {
+            const form = document.getElementById(`${tabName}-settings-form`);
+            if (!form || form.dataset.apiWired === 'true') return;
+
+            const saveBtn = document.getElementById(`save-${tabName}-btn`);
+            const panel = document.getElementById(`panel-${tabName}`);
+            
+            if (!saveBtn || !panel) {
+                console.warn(`${tabName} Settings: Required elements not found`);
+                return;
+            }
+
+            console.log(`${tabName} Settings: Initializing form`);
+
+            // Track changes
+            const formInputs = Array.from(panel.querySelectorAll('input, textarea, select'));
+            let hasChanges = false;
+
+            function updateSaveButtonState() {
+                if (saveBtn) {
+                    saveBtn.disabled = !hasChanges;
+                    saveBtn.classList.toggle('opacity-60', !hasChanges);
+                    saveBtn.classList.toggle('cursor-not-allowed', !hasChanges);
+                }
+            }
+
+            formInputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    hasChanges = true;
+                    updateSaveButtonState();
+                });
+                input.addEventListener('change', () => {
+                    hasChanges = true;
+                    updateSaveButtonState();
+                });
+            });
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                console.log(`${tabName} form submitted`);
+
+                if (!form.reportValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                // Get CSRF token
+                const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
+                const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || csrfInput?.value || '';
+
+                // Collect form data
+                const formData = new FormData(form);
+                const payload = {};
+                
+                for (const [key, value] of formData.entries()) {
+                    if (key.includes('csrf')) continue;
+                    if (key === 'form_source') continue;
+                    payload[`${tabName}.${key}`] = value;
+                }
+
+                console.log(`Saving ${tabName} settings:`, payload);
+
+                // Show saving state
+                const originalLabel = saveBtn.innerHTML;
+                saveBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Saving…</span>';
+                saveBtn.disabled = true;
+
+                try {
+                    const response = await fetch("<?= base_url('api/v1/settings') ?>", {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            ...(token ? { [header]: token } : {})
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    console.log(`${tabName} API Response status:`, response.status);
+
+                    if (!response.ok) {
+                        throw new Error(`Save failed (HTTP ${response.status})`);
+                    }
+
+                    const result = await response.json();
+                    console.log(`${tabName} API Response data:`, result);
+
+                    if (!result?.ok) {
+                        throw new Error(result?.message || 'Unable to save settings.');
+                    }
+
+                    // Reset change tracking
+                    hasChanges = false;
+                    saveBtn.innerHTML = originalLabel;
+                    updateSaveButtonState();
+
+                    console.log(`✅ ${tabName} settings saved successfully!`);
+
+                    window.XSNotify?.toast?.({
+                        type: 'success',
+                        title: '✓ Settings Updated',
+                        message: `Your ${tabName} settings were saved successfully.`,
+                        autoClose: true,
+                        duration: 4000
+                    });
+
+                    if (!window.XSNotify?.toast) {
+                        alert(`✓ ${tabName} settings updated successfully!`);
+                    }
+                } catch (error) {
+                    console.error(`❌ ${tabName} settings save failed:`, error);
+                    
+                    saveBtn.innerHTML = originalLabel;
+                    hasChanges = true;
+                    updateSaveButtonState();
+
+                    window.XSNotify?.toast?.({
+                        type: 'error',
+                        title: '✗ Save Failed',
+                        message: error?.message || `Failed to save ${tabName} settings. Please try again.`,
+                        autoClose: false
+                    });
+
+                    if (!window.XSNotify?.toast) {
+                        alert(`✗ Failed to save: ` + (error?.message || 'Unknown error'));
+                    }
+                }
+            });
+
+            form.dataset.apiWired = 'true';
         }
 
         function initCustomFieldToggles() {

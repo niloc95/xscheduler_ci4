@@ -11,24 +11,17 @@ use App\Models\CustomerModel;
 
 class Scheduler extends BaseController
 {
-    // New Tailwind-based custom schedule (frontend-only calendar)
-    public function custom()
+    // Admin/staff scheduler dashboard (default view)
+    public function index()
     {
         // Provide Services and Providers for filter dropdowns
         $serviceModel = new ServiceModel();
         $services = $serviceModel->orderBy('name', 'ASC')->findAll();
         $providers = (new UserModel())->getProviders();
-        return view('scheduler/custom', [
+        return view('scheduler/index', [
             'services' => $services,
             'providers' => $providers,
         ]);
-    }
-    // Admin/staff dashboard-facing scheduler view
-    public function dashboard()
-    {
-    $serviceModel = new ServiceModel();
-    $services = $serviceModel->orderBy('name', 'ASC')->findAll();
-    return view('scheduler/dashboard', ['services' => $services]);
     }
 
     // Public/client-facing scheduler view

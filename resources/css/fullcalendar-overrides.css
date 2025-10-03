@@ -33,13 +33,13 @@
   @apply overflow-y-auto;
 }
 
-/* Day grid (month view) */
+/* Day grid (month view) - More spacious */
 .fc-daygrid-day {
-  @apply min-h-[120px];
+  @apply min-h-[140px];
 }
 
 .fc-daygrid-day-frame {
-  @apply p-2 h-full;
+  @apply p-3 h-full;
 }
 
 .fc-daygrid-day-top {
@@ -64,34 +64,69 @@
   @apply text-gray-400 dark:text-gray-600;
 }
 
-/* Time grid (day/week views) */
+/* Time grid (day/week views) - Enhanced spacing */
 .fc-timegrid {
   @apply border-0;
 }
 
+/* Time slots - Increased height for better readability */
 .fc-timegrid-slot {
-  @apply border-b border-gray-100 dark:border-gray-800 h-8;
+  @apply border-b border-gray-100 dark:border-gray-800;
+  height: 60px !important; /* Increased from 32px (h-8) to 60px */
+  min-height: 60px;
 }
 
 .fc-timegrid-slot-minor {
   @apply border-b-0;
+  height: 30px !important; /* Half slots also increased */
 }
 
+/* Time labels - Improved positioning */
 .fc-timegrid-axis {
   @apply text-gray-600 dark:text-gray-400 text-xs;
+  padding: 8px 4px !important;
 }
 
 .fc-timegrid-slot-label {
   @apply text-gray-600 dark:text-gray-400 text-xs;
+  padding: 8px !important;
+  vertical-align: top !important;
 }
 
 /* Time grid columns */
 .fc-timegrid-col {
   @apply border-r border-gray-200 dark:border-gray-700;
+  position: relative !important;
 }
 
 .fc-timegrid-col:last-child {
   @apply border-r-0;
+}
+
+/* Force proper positioning for overlapping events */
+.fc-timegrid-col-events {
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Critical: Ensure events use proper positioning context */
+.fc-timegrid-event-harness {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  /* FullCalendar will override left/width for overlapping events */
+}
+
+/* Force side-by-side layout for overlapping events */
+.fc-timegrid-col-events .fc-timegrid-event-harness {
+  box-sizing: border-box !important;
+}
+
+/* Ensure no z-index stacking */
+.fc-timegrid-event-harness,
+.fc-timegrid-event {
+  z-index: auto !important;
 }
 
 /* All-day area */
@@ -121,13 +156,180 @@
   @apply opacity-90;
 }
 
+
+/* Custom event pill for all views - Enhanced spacing and readability */
 .fc-xs-pill {
-  @apply transition-all duration-200 hover:shadow-sm;
+  @apply transition-all duration-200 hover:shadow-md flex flex-col w-full gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm;
+  @apply bg-white dark:bg-gray-900; /* fallback for color classes */
+  line-height: 1.5;
+  min-height: 60px;
 }
 
-/* Day grid events */
+/* Hover effect for better interactivity */
+.fc-xs-pill:hover {
+  @apply shadow-lg transform scale-[1.02];
+  transition: all 0.2s ease-in-out;
+}
+
+/* Ensure pill style applies in timeGrid (week/day) views - Enhanced for better readability */
+.fc-timegrid-event {
+  @apply rounded-xl;
+  margin: 2px 2px !important; /* Reduced horizontal margin to prevent width issues */
+  overflow: visible !important; /* Allow content to breathe */
+  box-sizing: border-box !important;
+  position: relative !important;
+  border: 0 !important;
+  background: transparent !important;
+  transform: none !important;
+}
+
+.fc-timegrid-event .fc-event-main {
+  @apply p-0 bg-transparent border-0 shadow-none;
+  overflow: visible !important;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box !important;
+}
+
+.fc-timegrid-event .fc-xs-pill {
+  @apply flex flex-col w-full gap-2 rounded-xl border-2 px-3 py-3 text-sm shadow-md;
+  line-height: 1.5;
+  min-height: 100px !important; /* Increased from 80px */
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  /* Ensure pill takes full width of its container */
+  width: calc(100% - 4px) !important; /* Account for margins */
+  margin: 0 auto;
+}
+
+/* Ensure event content doesn't overflow */
+.fc-timegrid-event-harness {
+  margin: 0 !important;
+}
+
+.fc-timegrid-event-harness-inset {
+  inset: 2px 4px !important; /* Add padding around events */
+}
+
+/* ===================================
+   Side-by-Side Overlap Handling - CRITICAL FIXES
+   =================================== */
+
+/* Ensure FullCalendar's event positioning is respected */
+.fc-timegrid-event-harness {
+  /* FullCalendar automatically positions these with left/width styles */
+  box-sizing: border-box !important;
+  position: absolute !important;
+  /* DO NOT override left/right/width - let FullCalendar control these */
+}
+
+/* Remove any conflicting positioning from event harness wrapper */
+.fc-timegrid-event-harness-inset {
+  /* FullCalendar uses inset for positioning - let it control this */
+  box-sizing: border-box !important;
+  /* Remove our previous custom inset */
+  inset: auto !important;
+}
+
+/* Ensure events don't have conflicting positioning */
+.fc-timegrid-event {
+  position: relative !important;
+  box-sizing: border-box !important;
+  border: 0 !important; /* Remove default border, we use pill borders */
+  background: transparent !important;
+  /* Remove any transforms or positioning that could interfere */
+  transform: none !important;
+}
+
+/* Force horizontal layout for side-by-side events */
+.fc-timegrid-col-events {
+  position: relative !important;
+  display: block !important; /* Ensure proper layout context */
+}
+
+/* Critical: Remove any z-index stacking */
+.fc-timegrid-event-harness,
+.fc-timegrid-event,
+.fc-timegrid-event .fc-event-main,
+.fc-timegrid-event .fc-xs-pill {
+  z-index: 1 !important; /* All events same z-index = no stacking */
+}
+
+/* When events are positioned side-by-side (FullCalendar adds left/width styles) */
+.fc-timegrid-event-harness[style*="left"] {
+  /* This selector targets events that FullCalendar positioned with left property */
+  padding-right: 4px !important; /* Add spacing between side-by-side events */
+}
+
+/* When events are side-by-side, add clear visual separation */
+.fc-timegrid-event-harness + .fc-timegrid-event-harness {
+  /* This ensures gap between adjacent event harnesses */
+  margin-left: 0 !important; /* Let FullCalendar handle positioning */
+}
+
+/* Ensure proper width calculation */
+.fc-timegrid-event-harness {
+  /* FullCalendar sets inline width - ensure it's respected */
+  min-width: 0 !important; /* Allow shrinking */
+  max-width: 100% !important; /* Prevent overflow */
+}
+
+/* Event pills in overlapping scenarios */
+.fc-timegrid-event .fc-xs-pill {
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px solid currentColor; /* Ensure border is always visible */
+  position: relative;
+}
+
+/* Add subtle right border for visual separation when side-by-side */
+.fc-timegrid-event-harness:not(:last-child) .fc-xs-pill::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+/* Dark mode separator */
+.dark .fc-timegrid-event-harness:not(:last-child) .fc-xs-pill::after {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Compressed view for 3+ overlapping events */
+.fc-timegrid-event-harness[style*="width"][style*="33.33%"] .fc-xs-pill,
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-xs-pill {
+  padding: 8px 6px !important; /* Reduce padding for narrow columns */
+  gap: 4px !important;
+  min-height: 90px !important;
+}
+
+/* Extra compressed for 4+ events */
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-xs-pill {
+  font-size: 0.75rem !important; /* 12px */
+  padding: 6px 4px !important;
+  min-height: 80px !important;
+}
+
+/* Hide less important details when compressed */
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-event-provider {
+  display: none; /* Hide provider when too narrow */
+}
+
+.fc-timegrid-event-harness[style*="width"][style*="33.33%"] .fc-event-status-badge {
+  display: none; /* Hide status badge when space is limited */
+}
+
+/* Day grid events - Better spacing */
 .fc-daygrid-event {
-  @apply mb-1;
+  @apply mb-2;
+  margin-left: 2px;
+  margin-right: 2px;
 }
 
 .fc-daygrid-event .fc-event-main {
@@ -138,13 +340,29 @@
   @apply p-0;
 }
 
-/* Time grid events */
+/* Time grid event positioning - Improved */
 .fc-timegrid-event {
-  @apply rounded-md;
+  border-radius: 12px !important;
 }
 
 .fc-timegrid-event .fc-event-main {
   @apply p-0;
+  padding: 0 !important;
+}
+
+/* Prevent text overflow in time grid events */
+.fc-timegrid-event .fc-event-details {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 100%;
+}
+
+.fc-timegrid-event .fc-event-client,
+.fc-timegrid-event .fc-event-service,
+.fc-timegrid-event .fc-event-provider {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Hide default event elements */
@@ -183,12 +401,44 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .fc-daygrid-day {
-    @apply min-h-[80px];
+    @apply min-h-[100px];
   }
 
-  
   .fc-xs-pill {
-    @apply text-[10px] px-1;
+    @apply text-xs px-2 py-2 gap-1;
+    min-height: 50px;
+  }
+  
+  .fc-event-client {
+    @apply text-sm;
+  }
+  
+  .fc-event-service {
+    @apply text-xs;
+  }
+  
+  /* Smaller time slots on mobile */
+  .fc-timegrid-slot {
+    height: 48px !important;
+  }
+  
+  .fc-timegrid-slot-minor {
+    height: 24px !important;
+  }
+  
+  /* Smaller event pills on mobile time grid */
+  .fc-timegrid-event .fc-xs-pill {
+    min-height: 80px !important;
+    padding: 8px 8px !important;
+    gap: 4px;
+  }
+  
+  .fc-timegrid-event .fc-event-client {
+    font-size: 0.8125rem; /* 13px */
+  }
+  
+  .fc-timegrid-event .fc-event-service {
+    font-size: 0.75rem; /* 12px */
   }
 }
 
@@ -202,9 +452,99 @@
   @apply text-lg font-bold;
 }
 
-/* Status-specific hover effects */
-.fc-xs-pill:hover {
-  @apply transform scale-105;
+/* Status badge styling */
+.fc-event-status-badge {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide;
+}
+
+/* Status dot styling */
+.fc-event-status-dot {
+  @apply inline-block h-2.5 w-2.5 rounded-full flex-shrink-0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* Event time text */
+.fc-event-time-text {
+  @apply text-xs font-semibold opacity-90;
+  letter-spacing: 0.025em;
+}
+
+/* Event details container */
+.fc-event-details {
+  @apply space-y-1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Time grid specific adjustments for event content */
+.fc-timegrid-event .fc-event-details {
+  padding: 0;
+  gap: 4px;
+}
+
+/* Header row in time grid - more compact */
+.fc-timegrid-event .fc-event-details > div:first-child {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* Client name styling */
+.fc-event-client {
+  @apply font-bold text-base leading-snug;
+  letter-spacing: -0.01em;
+}
+
+/* Time grid client name - slightly smaller but still prominent */
+.fc-timegrid-event .fc-event-client {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25;
+}
+
+/* Compressed client name for overlapping events */
+.fc-timegrid-event-harness[style*="width"][style*="50%"] .fc-event-client,
+.fc-timegrid-event-harness[style*="width"][style*="33.33%"] .fc-event-client {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.2;
+}
+
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-event-client {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.2;
+}
+
+/* Service name styling */
+.fc-event-service {
+  @apply text-sm font-semibold opacity-90;
+}
+
+/* Time grid service name */
+.fc-timegrid-event .fc-event-service {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.3;
+}
+
+/* Compressed service name for overlapping events */
+.fc-timegrid-event-harness[style*="width"][style*="50%"] .fc-event-service,
+.fc-timegrid-event-harness[style*="width"][style*="33.33%"] .fc-event-service {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.25;
+}
+
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-event-service {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1.2;
+}
+
+/* Provider name styling */
+.fc-event-provider {
+  @apply text-xs font-medium opacity-75;
+}
+
+/* Time display in compressed views */
+.fc-timegrid-event-harness[style*="width"][style*="33.33%"] .fc-event-time-text,
+.fc-timegrid-event-harness[style*="width"][style*="25%"] .fc-event-time-text {
+  font-size: 0.625rem; /* 10px */
 }
 
 /* Loading state */
