@@ -11,6 +11,22 @@ use App\Models\CustomerModel;
 
 class Scheduler extends BaseController
 {
+    /**
+     * ⚠️ DEPRECATED: Legacy Scheduler Controller (FullCalendar-based)
+     * 
+     * This controller is being phased out in favor of the new Appointments controller.
+     * Status: Active but will be replaced
+     * Timeline: Maintained until new Appointment View reaches feature parity
+     * 
+     * DO NOT add new features to this controller.
+     * Only bug fixes and security updates will be applied.
+     * 
+     * See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+     * Replacement: app/Controllers/Appointments.php (In Development)
+     * 
+     * Last Updated: October 5, 2025
+     */
+
     // Admin/staff scheduler dashboard (default view)
     public function index()
     {
@@ -18,7 +34,7 @@ class Scheduler extends BaseController
         $serviceModel = new ServiceModel();
         $services = $serviceModel->orderBy('name', 'ASC')->findAll();
         $providers = (new UserModel())->getProviders();
-        return view('scheduler/index', [
+        return view('scheduler-legacy/index', [
             'services' => $services,
             'providers' => $providers,
         ]);

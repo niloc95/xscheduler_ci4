@@ -1,11 +1,27 @@
+/**
+ * ⚠️ DEPRECATED: Legacy Scheduler Module (FullCalendar-based)
+ * 
+ * This module is being phased out in favor of the new Appointment View.
+ * Status: Active but will be replaced
+ * Timeline: Maintained until new Appointment View reaches feature parity
+ * 
+ * DO NOT add new features to this file.
+ * Only bug fixes and security updates will be applied.
+ * 
+ * See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+ * Replacement: resources/js/modules/appointments/appointments-dashboard.js (In Development)
+ * 
+ * Last Updated: October 5, 2025
+ */
+
 import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
-import '../css/fullcalendar-overrides.css';
-import createSchedulerService from './services/scheduler-service';
+import '../../../css/fullcalendar-overrides.css';
+import createSchedulerService from '../../services/scheduler-legacy/scheduler-service';
 
 // Color palette for services and providers (extend as needed)
 const COLOR_PALETTE = [

@@ -1,3 +1,18 @@
+<!--
+    ⚠️ DEPRECATED: Legacy Scheduler View (FullCalendar-based)
+    
+    This view template is being phased out in favor of the new Appointments interface.
+    Status: Active but will be replaced
+    Timeline: Maintained until new Appointment View reaches feature parity
+    
+    DO NOT add new features to this template.
+    Only bug fixes and security updates will be applied.
+    
+    See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+    Replacement: app/Views/appointments/index.php (In Development)
+    
+    Last Updated: October 5, 2025
+-->
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>

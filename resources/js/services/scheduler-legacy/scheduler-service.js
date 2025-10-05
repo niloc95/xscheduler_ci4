@@ -1,3 +1,19 @@
+/**
+ * ⚠️ DEPRECATED: Legacy Scheduler Service (FullCalendar-based)
+ * 
+ * This service module is being phased out in favor of the new Appointment API service.
+ * Status: Active but will be replaced
+ * Timeline: Maintained until new Appointment View reaches feature parity
+ * 
+ * DO NOT add new features to this file.
+ * Only bug fixes and security updates will be applied.
+ * 
+ * See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+ * Replacement: resources/js/services/appointments-service.js (In Development)
+ * 
+ * Last Updated: October 5, 2025
+ */
+
 const DEFAULT_HEADERS = {
   'Accept': 'application/json',
 };
