@@ -81,7 +81,7 @@
                     <span class="material-symbols-outlined text-xl">chevron_left</span>
                 </button>
                 <h3 id="appointments-inline-calendar-title"
-                    class="min-w-[12rem] text-center text-base font-semibold text-gray-900 dark:text-gray-100">
+                    class="min-w-[12rem] mt-4 text-center text-base font-semibold text-gray-900 dark:text-gray-100">
                     <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
                 </h3>
                 <button type="button" data-calendar-action="next"
