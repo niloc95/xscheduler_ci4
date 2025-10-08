@@ -37,7 +37,7 @@
     "@material/list": "^14.0.0",
     "@material/textfield": "^14.0.0",
     "@material/top-app-bar": "^14.0.0",
-    "@material/web": "^2.3.0",
+    "@material/web": "^2.4.1-nightly.5099541.0",
     "chart.js": "^4.5.0",
     "material-icons": "^1.13.14",
     "sass": "^1.89.2",

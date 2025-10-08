@@ -115,6 +115,136 @@ md-outlined-card {
   border-radius: $border-radius-xl;
 }
 
+/* ===================================
+   FullCalendar v6 - Tailwind Integration
+   =================================== */
+
+#appointments-inline-calendar {
+  width: 100%;
+  
+  .fc {
+    width: 100%;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Calendar header - matches dashboard theme */
+  .fc .fc-col-header-cell {
+    background-color: #f9fafb;
+    border-color: #e5e7eb;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #4b5563;
+  }
+
+  /* Day cells */
+  .fc .fc-daygrid-day {
+    background-color: #ffffff;
+    border-color: #e5e7eb;
+  }
+
+  .fc .fc-daygrid-day:hover {
+    background-color: #f9fafb;
+  }
+
+  /* Day numbers - styled as Tailwind badges */
+  .fc-daygrid-day-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: 9999px;
+    transition: all 0.2s ease;
+    color: #374151;
+  }
+
+  .fc-daygrid-day:hover .fc-daygrid-day-number {
+    background-color: rgba(37, 99, 235, 0.12);
+    color: #1d4ed8;
+  }
+
+  /* Today highlight - blue-600 */
+  .fc-daygrid-day.fc-day-today {
+    background-color: rgba(37, 99, 235, 0.05);
+  }
+
+  .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background-color: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  /* Other month days */
+  .fc .fc-day-other .fc-daygrid-day-number {
+    color: #9ca3af;
+  }
+
+  /* Event styling */
+  .fc-event {
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: none;
+  }
+}
+
+/* ===================================
+   Dark Mode - FullCalendar
+   =================================== */
+
+html.dark #appointments-inline-calendar {
+  .fc {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .fc .fc-col-header-cell {
+    background-color: #111827;
+    border-color: #374151;
+    color: #d1d5db;
+  }
+
+  .fc .fc-daygrid-day {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+
+  .fc .fc-daygrid-day:hover {
+    background-color: #374151;
+  }
+
+  .fc-daygrid-day-number {
+    color: #e5e7eb;
+  }
+
+  .fc-daygrid-day:hover .fc-daygrid-day-number {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: #93c5fd;
+  }
+
+  .fc-daygrid-day.fc-day-today {
+    background-color: rgba(37, 99, 235, 0.15);
+  }
+
+  .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background-color: #1d4ed8;
+    color: #f9fafb;
+  }
+
+  .fc .fc-day-other .fc-daygrid-day-number {
+    color: #6b7280;
+  }
+}
+
 // Chart containers
 .chart-container {
   position: relative;

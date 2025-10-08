@@ -45,14 +45,6 @@ $currentRole = current_user_role();
                 <span class="nav-text">Dashboard</span>
             </a>
 
-            <!-- Schedule/Calendar - Available to admin, provider, staff -->
-            <?php if (has_role(['admin', 'provider', 'staff'])): ?>
-            <a href="<?= base_url('/scheduler') ?>" class="nav-link <?= (isset($current_page) && $current_page === 'schedule') ? 'active' : '' ?>">
-                <span class="nav-icon material-symbols-outlined">calendar_month</span>
-                <span class="nav-text">Schedule</span>
-            </a>
-            <?php endif; ?>
-
             <!-- Appointments - Available to all users -->
             <a href="<?= base_url('/appointments') ?>" class="nav-link <?= (isset($current_page) && $current_page === 'appointments') ? 'active' : '' ?>">
                 <span class="nav-icon material-symbols-outlined">event</span>

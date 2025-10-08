@@ -6,47 +6,33 @@ use App\Controllers\BaseController;
 use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
-use App\Models\UserModel;
 use App\Models\CustomerModel;
 
 class Scheduler extends BaseController
 {
     /**
-     * ⚠️ DEPRECATED: Legacy Scheduler Controller (FullCalendar-based)
-     * 
-     * This controller is being phased out in favor of the new Appointments controller.
-     * Status: Active but will be replaced
-     * Timeline: Maintained until new Appointment View reaches feature parity
-     * 
-     * DO NOT add new features to this controller.
-     * Only bug fixes and security updates will be applied.
-     * 
+     * ⚠️ ARCHIVED: Legacy Scheduler Controller (FullCalendar-based)
+     *
+     * Admin/staff and public scheduler routes now redirect permanently to the
+     * Appointments module. The API endpoints remain temporarily available for
+     * backwards compatibility with legacy integrations.
+     *
      * See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
-     * Replacement: app/Controllers/Appointments.php (In Development)
-     * 
-     * Last Updated: October 5, 2025
+     * Replacement: app/Controllers/Appointments.php
+     *
+     * Last Updated: October 7, 2025
      */
 
-    // Admin/staff scheduler dashboard (default view)
+    // Legacy scheduler dashboard route (permanently redirects to Appointments)
     public function index()
     {
-        // Provide Services and Providers for filter dropdowns
-        $serviceModel = new ServiceModel();
-        $services = $serviceModel->orderBy('name', 'ASC')->findAll();
-        $providers = (new UserModel())->getProviders();
-        return view('scheduler-legacy/index', [
-            'services' => $services,
-            'providers' => $providers,
-        ]);
+        return redirect()->to('/appointments', 'auto', 308);
     }
 
-    // Public/client-facing scheduler view
+    // Legacy public booking route (redirects to Appointments)
     public function client()
     {
-        // Load services for dropdown
-        $serviceModel = new ServiceModel();
-        $services = $serviceModel->orderBy('name', 'ASC')->findAll();
-        return view('scheduler/client', ['services' => $services]);
+        return redirect()->to('/appointments', 'auto', 308);
     }
 
     // API: GET /api/slots?provider_id=1&service_id=2&date=2025-08-24

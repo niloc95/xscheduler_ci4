@@ -1,12 +1,14 @@
 # Legacy Scheduler Architecture (FullCalendar-based)
 
-> ⚠️ **DEPRECATED**: This module is being phased out in favor of the new Appointment View.  
-> **Status**: Active but will be replaced  
-> **Timeline**: Maintained until new Appointment View reaches feature parity  
+> ⚠️ **ARCHIVED**: This module was retired in favor of the new Appointments experience.  
+> **Status**: Archived (routes now redirect to `/appointments`)  
+> **Timeline**: Maintained in production until October 7, 2025; retained here for historical reference  
 
 ## Overview
 
-The current Scheduler module provides a FullCalendar-based interface for managing appointments, availability, and bookings. It serves admin, provider, and staff roles.
+Originally, the Scheduler module provided a FullCalendar-based interface for managing appointments, availability, and bookings across admin, provider, and staff roles. As of October 7, 2025 the UI has been removed from the application and `/scheduler` now permanently redirects to the modern Appointments module.
+
+**Module Namespace**: `scheduler-legacy` – the entire legacy implementation (controller, view, JS module, and services) was relocated here in October 2025 to keep deprecated code isolated from the new Appointments experience.
 
 **Route**: `/scheduler`  
 **Navigation Label**: "Schedule"  
@@ -30,7 +32,7 @@ The current Scheduler module provides a FullCalendar-based interface for managin
 └────────────────┬────────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────────┐
-│ VIEW: app/Views/scheduler/index.php             │
+│ VIEW: app/Views/scheduler-legacy/index.php      │ (Stub returns empty response)
 │                                                  │
 │ Includes:                                        │
 │ • Unified sidebar (navigation)                  │
@@ -42,14 +44,16 @@ The current Scheduler module provides a FullCalendar-based interface for managin
 └────────────────┬────────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────────┐
-│ FRONTEND: resources/js/scheduler-dashboard.js   │
+│ FRONTEND: resources/js/modules/scheduler-legacy/│
+│            scheduler-dashboard.js               │ (no longer bundled)
 │                                                  │
 │ Dependencies:                                    │
 │ • @fullcalendar/core                            │
 │ • @fullcalendar/daygrid (Month view)            │
 │ • @fullcalendar/timegrid (Day/Week views)       │
 │ • @fullcalendar/interaction (drag/click)        │
-│ • services/scheduler-service.js (API wrapper)   │
+│ • services/scheduler-legacy/scheduler-service.js│
+│   (API wrapper)                                 │
 │                                                  │
 │ Features:                                        │
 │ • Calendar initialization with FullCalendar     │
@@ -62,7 +66,8 @@ The current Scheduler module provides a FullCalendar-based interface for managin
 └────────────────┬────────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────────┐
-│ SERVICE LAYER: services/scheduler-service.js    │
+│ SERVICE LAYER: services/scheduler-legacy/       │
+│                scheduler-service.js             │
 │                                                  │
 │ API Methods:                                     │
 │ • listAppointments(params)                      │
@@ -112,21 +117,21 @@ The current Scheduler module provides a FullCalendar-based interface for managin
   - Handles dashboard, public booking, slots API, book API
 
 ### Views
-- **`app/Views/scheduler/index.php`** (235 lines)
-  - Main scheduler dashboard view
-  - Contains filter UI, calendar container, modals, templates
+- **`app/Views/scheduler-legacy/index.php`** (Stub since Oct 7, 2025)
+  - Previously rendered the legacy scheduler dashboard UI
+  - Replaced with a no-op stub when `/scheduler` was redirected to `/appointments`
 
 ### JavaScript
-- **`resources/js/scheduler-dashboard.js`** (1,275 lines)
-  - FullCalendar initialization and configuration
+- **`resources/js/modules/scheduler-legacy/scheduler-dashboard.js`** (~1,280 lines, retained for historical reference)
+  - FullCalendar initialization and configuration (legacy)
   - Event rendering and color coding
   - Filter logic and application
   - Modal management for CRUD operations
   - Summary card updates
   - Quick slots rendering
 
-- **`resources/js/services/scheduler-service.js`** (168 lines)
-  - API wrapper for scheduler operations
+- **`resources/js/services/scheduler-legacy/scheduler-service.js`** (168 lines, retained for historical reference)
+  - API wrapper for scheduler operations (legacy)
   - HTTP request abstraction
   - Error handling and response normalization
 
@@ -137,24 +142,24 @@ The current Scheduler module provides a FullCalendar-based interface for managin
   - Responsive design overrides
   - Event pill styling
 
-- **Build Output: `public/build/assets/scheduler-dashboard.css`** (15.39 KB)
-  - Compiled styles including overrides
+- **Build Output: `public/build/assets/scheduler-dashboard.css`** (retired Oct 7, 2025)
+  - Formerly compiled styles including fullcalendar overrides
 
-- **Build Output: `public/build/assets/scheduler-dashboard.js`** (291.90 KB, 84.20 KB gzipped)
-  - Compiled JavaScript with all dependencies
+- **Build Output: `public/build/assets/scheduler-dashboard.js`** (retired Oct 7, 2025)
+  - Formerly compiled JavaScript bundle for the legacy scheduler
+  - `vite.config.js` no longer declares the `scheduler-dashboard` entry
 
 ## Routes
 
 From `app/Config/Routes.php`:
 
 ```php
-// Scheduler Routes (lines 170-178)
-$routes->group('scheduler', ['filter' => 'setup'], function($routes) {
-    // Default scheduler page
-    $routes->get('', 'Scheduler::index', ['filter' => 'auth']);
+// Scheduler Routes (legacy paths now redirect to Appointments)
+$routes->group('scheduler', ['filter' => 'setup'], static function($routes) {
+  $routes->get('', 'Scheduler::index', ['filter' => 'auth']); // 308 redirect to /appointments
 });
 
-// Public booking interface
+// Public booking interface (legacy redirect)
 $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 
 // Scheduler API routes (lines 180-184)
@@ -351,14 +356,14 @@ $routes->group('api', function($routes) {
 - `docs/calendar-ui-quickref.md` - UI quick reference
 
 ### Related Files
-- `app/Controllers/Scheduler.php` - Controller
-- `app/Views/scheduler/index.php` - View
-- `resources/js/scheduler-dashboard.js` - Frontend logic
-- `resources/js/services/scheduler-service.js` - API service
-- `vite.config.js` - Build configuration
+- `app/Controllers/Scheduler.php` - Controller (routes now redirect to Appointments)
+- `app/Views/scheduler-legacy/index.php` - View stub (outputs nothing since Oct 7, 2025)
+- `resources/js/modules/scheduler-legacy/scheduler-dashboard.js` - Frontend logic (archived)
+- `resources/js/services/scheduler-legacy/scheduler-service.js` - API service (archived)
+- `vite.config.js` - Build configuration (legacy entry removed Oct 7, 2025)
 
 ---
 
-**Last Updated**: October 5, 2025  
+**Last Updated**: October 7, 2025  
 **Status**: Active (Deprecated)  
 **Replacement**: New Appointment View (In Development)

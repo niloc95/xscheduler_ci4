@@ -1,90 +1,100 @@
+<?php
+/**
+ * Appointments Dashboard View
+ *
+ * This file renders the main appointments dashboard for all user roles (admin, provider, staff, customer).
+ * It provides:
+ *   - Sidebar navigation
+ *   - Page title and subtitle
+ *   - Action buttons (e.g., create/book appointment)
+ *   - Stats summary cards
+ *   - Filter controls
+ *   - Appointment list with status, actions, and notes
+ *
+ * Sections are injected into the main dashboard layout.
+ */
+?>
 <?= $this->extend('layouts/dashboard') ?>
 
+<?php // Override stats grid to two responsive columns ?>
+<?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 gap-6<?= $this->endSection() ?>
+
+<?php // Sidebar navigation: highlights the Appointments section ?>
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'appointments']) ?>
 <?= $this->endSection() ?>
 
+<?php // Page title and subtitle: dynamic based on user role ?>
 <?= $this->section('page_title') ?><?= esc($title) ?><?= $this->endSection() ?>
 <?= $this->section('page_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
 
-<?= $this->section('dashboard_actions') ?>
-    <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
-    <a href="<?= base_url('/appointments/create') ?>"
-       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-        <span class="material-symbols-outlined mr-2">add</span>
-        <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
-    </a>
-    <?php endif; ?>
-<?= $this->endSection() ?>
+<?php // Action button handled with filters; no standalone actions block ?>
+<?= $this->section('dashboard_actions') ?><?= $this->endSection() ?>
 
-<?= $this->section('dashboard_stats') ?>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total'] ?></p>
-            </div>
-        </div>
-    </div>
+<?php // Stats summary cards: condensed to Upcoming and Completed ?>
+<?= $this->section('dashboard_stats') ?><?= $this->endSection() ?>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['completed'] ?></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">schedule</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['pending'] ?></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">today</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['today'] ?></p>
-            </div>
-        </div>
-    </div>
-<?= $this->endSection() ?>
-
+<?php // Filter controls and primary action with date picker alignment ?>
 <?= $this->section('dashboard_filters') ?>
-    <div class="flex flex-wrap gap-2">
-        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium">All</button>
-        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Today</button>
-        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">This Week</button>
-        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Pending</button>
-        <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600">Completed</button>
+    <?php $upcomingCount = ($stats['pending'] ?? 0) + ($stats['today'] ?? 0); ?>
+    <?php $completedCount = $stats['completed'] ?? 0; ?>
+
+    <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming Appointments</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $upcomingCount ?></p>
+            </div>
+            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed Appointments</p>
+                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $completedCount ?></p>
+            </div>
+        </div>
+
+        <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+                <button class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white shadow-sm">All</button>
+                <button type="button" data-calendar-action="today" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Today</button>
+                <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">This Week</button>
+                <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Pending</button>
+                <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Completed</button>
+            </div>
+
+                <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+                <a href="<?= base_url('/appointments/create') ?>"
+                    class="btn btn-primary inline-flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto lg:self-end">
+                <span class="material-symbols-outlined text-base">add</span>
+                <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
+            </a>
+            <?php endif; ?>
+        </div>
     </div>
+
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-3" data-calendar-toolbar>
+        <div class="flex items-center gap-2">
+            <button type="button" data-calendar-action="prev"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <h3 id="appointments-inline-calendar-title"
+                class="min-w-[10rem] pt-4 text-center text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
+            </h3>
+            <button type="button" data-calendar-action="next"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+    <div
+        id="appointments-inline-calendar"
+        class="w-full mb-6"
+        data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
+    ></div>
 <?= $this->endSection() ?>
 
+<?php // Main content: appointment list with status, actions, and notes ?>
 <?= $this->section('dashboard_content') ?>
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
