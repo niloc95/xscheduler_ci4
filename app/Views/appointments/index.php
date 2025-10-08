@@ -53,9 +53,11 @@
 
         <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
             <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-                <button class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white shadow-sm">All</button>
+                <button type="button" data-calendar-action="all" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">All</button>
                 <button type="button" data-calendar-action="today" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Today</button>
-                <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">This Week</button>
+                <button type="button" data-calendar-action="week" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">This Week</button>
+                <button type="button" data-calendar-action="day" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Day</button>
+                <button type="button" data-calendar-action="month" class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors">Month</button>
                 <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Pending</button>
                 <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Completed</button>
             </div>

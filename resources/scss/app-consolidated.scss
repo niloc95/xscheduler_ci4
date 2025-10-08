@@ -195,6 +195,44 @@ md-outlined-card {
     font-weight: 500;
     border: none;
   }
+
+  /* TimeGrid (Week/Day) View Styling */
+  .fc-timegrid-slot {
+    height: 3rem;
+    border-color: #e5e7eb;
+  }
+
+  .fc-timegrid-slot-label {
+    border-color: #e5e7eb;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .fc-timegrid-col {
+    border-color: #e5e7eb;
+  }
+
+  .fc-timegrid-now-indicator-line {
+    border-color: #2563eb;
+    border-width: 2px;
+  }
+
+  .fc-timegrid-now-indicator-arrow {
+    border-color: #2563eb;
+  }
+
+  /* Time axis */
+  .fc-timegrid-axis {
+    border-color: #e5e7eb;
+  }
+
+  /* All-day section */
+  .fc-timegrid-divider {
+    border-color: #e5e7eb;
+    padding: 0.5rem 0;
+  }
 }
 
 /* ===================================
@@ -242,6 +280,36 @@ html.dark #appointments-inline-calendar {
 
   .fc .fc-day-other .fc-daygrid-day-number {
     color: #6b7280;
+  }
+
+  /* TimeGrid Dark Mode */
+  .fc-timegrid-slot {
+    border-color: #374151;
+  }
+
+  .fc-timegrid-slot-label {
+    border-color: #374151;
+    color: #9ca3af;
+  }
+
+  .fc-timegrid-col {
+    border-color: #374151;
+  }
+
+  .fc-timegrid-now-indicator-line {
+    border-color: #3b82f6;
+  }
+
+  .fc-timegrid-now-indicator-arrow {
+    border-color: #3b82f6;
+  }
+
+  .fc-timegrid-axis {
+    border-color: #374151;
+  }
+
+  .fc-timegrid-divider {
+    border-color: #374151;
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
 
 // Import charts functionality
 import Charts from './charts.js';
@@ -21,13 +22,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const initialDate = initialDateAttr ? new Date(initialDateAttr) : undefined;
 
         const calendar = new Calendar(calendarEl, {
-            plugins: [dayGridPlugin],
+            plugins: [dayGridPlugin, timeGridPlugin],
             initialView: 'dayGridMonth',
             height: 'auto',
             nowIndicator: true,
             selectable: false,
             dayMaxEvents: true,
             headerToolbar: false,
+            views: {
+                dayGridMonth: { buttonText: 'Month' },
+                timeGridWeek: { buttonText: 'Week' },
+                timeGridDay: { buttonText: 'Day' }
+            },
             initialDate: initialDate instanceof Date && !Number.isNaN(initialDate.valueOf()) ? initialDate : undefined,
             dayCellDidMount: (arg) => {
                 const dayNumberEl = arg.el.querySelector('.fc-daygrid-day-number');
@@ -51,10 +57,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        calendar.on('datesSet', updateCalendarTitle);
+        const setActiveButton = (viewType) => {
+            // Map view types to button actions
+            const viewToActionMap = {
+                'dayGridMonth': 'month',
+                'timeGridWeek': 'week',
+                'timeGridDay': 'day'
+            };
+            
+            const actionName = viewToActionMap[viewType] || 'month';
+            
+            document.querySelectorAll('[data-calendar-action]').forEach(btn => {
+                const action = btn.getAttribute('data-calendar-action');
+                if (['day', 'week', 'month', 'all'].includes(action)) {
+                    btn.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                    btn.classList.add('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
+                }
+            });
+            
+            const activeBtn = document.querySelector(`[data-calendar-action="${actionName}"]`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-100', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+            }
+        };
+
+        calendar.on('datesSet', () => {
+            updateCalendarTitle();
+            setActiveButton(calendar.view.type);
+        });
 
         calendar.render();
         updateCalendarTitle();
+        setActiveButton(calendar.view.type);
 
         const handleCalendarAction = (event) => {
             const actionTarget = event.target.closest('[data-calendar-action]');
@@ -67,15 +102,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (action === 'prev') {
-                event.preventDefault();
-                calendar.prev();
-            } else if (action === 'next') {
-                event.preventDefault();
-                calendar.next();
-            } else if (action === 'today') {
-                event.preventDefault();
-                calendar.today();
+            event.preventDefault();
+
+            switch (action) {
+                case 'prev':
+                    calendar.prev();
+                    break;
+                case 'next':
+                    calendar.next();
+                    break;
+                case 'today':
+                    calendar.today();
+                    break;
+                case 'day':
+                    calendar.changeView('timeGridDay');
+                    calendar.today();
+                    break;
+                case 'week':
+                    calendar.changeView('timeGridWeek');
+                    break;
+                case 'month':
+                    calendar.changeView('dayGridMonth');
+                    break;
+                case 'all':
+                    calendar.changeView('dayGridMonth');
+                    break;
             }
         };
 
