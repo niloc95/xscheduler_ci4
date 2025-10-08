@@ -53,10 +53,10 @@
 
         <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
             <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
-                <button type="button" data-calendar-action="all" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">All</button>
+                <!-- <button type="button" data-calendar-action="all" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">All</button> -->
                 <button type="button" data-calendar-action="today" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Today</button>
-                <button type="button" data-calendar-action="week" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">This Week</button>
                 <button type="button" data-calendar-action="day" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Day</button>
+                <button type="button" data-calendar-action="week" class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Week</button>
                 <button type="button" data-calendar-action="month" class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors">Month</button>
                 <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Pending</button>
                 <button class="px-4 py-2 rounded-lg font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Completed</button>
@@ -72,28 +72,32 @@
         </div>
     </div>
 
-    <div class="mt-6 flex flex-wrap items-center justify-center gap-3" data-calendar-toolbar>
-        <div class="flex items-center gap-2">
-            <button type="button" data-calendar-action="prev"
-                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <h3 id="appointments-inline-calendar-title"
-                class="min-w-[10rem] pt-4 text-center text-lg font-semibold text-gray-900 dark:text-gray-100">
-                <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
-            </h3>
-            <button type="button" data-calendar-action="next"
-                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                <span class="material-symbols-outlined">chevron_right</span>
-            </button>
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <!-- Calendar Toolbar Header -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center" data-calendar-toolbar>
+            <div class="flex items-center gap-2">
+                <button type="button" data-calendar-action="prev"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                    <span class="material-symbols-outlined text-xl">chevron_left</span>
+                </button>
+                <h3 id="appointments-inline-calendar-title"
+                    class="min-w-[12rem] text-center text-base font-semibold text-gray-900 dark:text-gray-100">
+                    <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
+                </h3>
+                <button type="button" data-calendar-action="next"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                    <span class="material-symbols-outlined text-xl">chevron_right</span>
+                </button>
+            </div>
         </div>
-    </div>
 
-    <div
-        id="appointments-inline-calendar"
-        class="w-full mb-6"
-        data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
-    ></div>
+        <!-- Calendar Container -->
+        <div
+            id="appointments-inline-calendar"
+            class="w-full"
+            data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
+        ></div>
+    </div>
 <?= $this->endSection() ?>
 
 <?php // Main content: appointment list with status, actions, and notes ?>

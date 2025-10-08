@@ -126,20 +126,36 @@ md-outlined-card {
     width: 100%;
     background-color: #ffffff;
     border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem; /* rounded-xl to match cards */
+    padding: 0; /* Remove padding to let header touch edges */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm to match cards */
+    overflow: hidden; /* Ensure rounded corners work properly */
   }
 
-  /* Calendar header - matches dashboard theme */
+  /* Calendar header - matches dashboard card headers */
+  .fc .fc-col-header {
+    background-color: transparent;
+  }
+
   .fc .fc-col-header-cell {
-    background-color: #f9fafb;
+    background-color: #ffffff; /* Match card bg */
     border-color: #e5e7eb;
-    padding: 0.75rem 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb; /* Add bottom border like card headers */
+    padding: 0.75rem 0.5rem; /* px-6 py-4 equivalent for header */
+    font-size: 0.75rem; /* text-xs for day names */
+    font-weight: 600; /* font-semibold */
     text-transform: uppercase;
-    color: #4b5563;
+    color: #6b7280; /* text-gray-500 */
+    letter-spacing: 0.05em; /* tracking-wider */
+  }
+
+  /* Calendar body padding */
+  .fc .fc-scrollgrid {
+    border-top-width: 0;
+  }
+
+  .fc .fc-daygrid-body {
+    background-color: #ffffff;
   }
 
   /* Day cells */
@@ -241,14 +257,19 @@ md-outlined-card {
 
 html.dark #appointments-inline-calendar {
   .fc {
-    background-color: #1f2937;
-    border-color: #374151;
+    background-color: #1f2937; /* dark:bg-gray-800 to match cards */
+    border-color: #374151; /* dark:border-gray-700 to match cards */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
   }
 
   .fc .fc-col-header-cell {
-    background-color: #111827;
-    border-color: #374151;
-    color: #d1d5db;
+    background-color: #1f2937; /* Match dark card bg */
+    border-color: #374151; /* dark:border-gray-700 */
+    color: #9ca3af; /* text-gray-400 for dark mode */
+  }
+
+  .fc .fc-daygrid-body {
+    background-color: #1f2937;
   }
 
   .fc .fc-daygrid-day {
