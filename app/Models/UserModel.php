@@ -19,7 +19,7 @@ class UserModel extends BaseModel
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[admin,provider,receptionist]'
+        'role'  => 'required|in_list[admin,provider,staff,receptionist,customer]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;

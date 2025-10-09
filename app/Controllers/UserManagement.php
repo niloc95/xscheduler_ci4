@@ -256,6 +256,9 @@ class UserManagement extends BaseController
             'phone' => $this->request->getPost('phone'),
         ];
 
+        // Handle is_active checkbox (checkboxes don't send value when unchecked)
+        $updateData['is_active'] = $this->request->getPost('is_active') ? true : false;
+
         // Add password if provided
         if ($this->request->getPost('password')) {
             $updateData['password'] = $this->request->getPost('password');
@@ -264,8 +267,9 @@ class UserManagement extends BaseController
         // Add role if user can change it
         if ($this->canChangeUserRole($currentUserId, $userId)) {
             $newRole = $this->request->getPost('role');
-            if ($newRole !== $user['role']) {
-                if (!$this->canCreateRole($currentUserId, $newRole)) {
+            if ($newRole) {
+                // Check permission for new role if it's different
+                if ($newRole !== $user['role'] && !$this->canCreateRole($currentUserId, $newRole)) {
                     return redirect()->back()
                                    ->with('error', 'You do not have permission to assign this role.');
                 }
@@ -274,11 +278,19 @@ class UserManagement extends BaseController
         }
 
         // Handle provider assignment for staff
-        if (($user['role'] === 'staff' || ($updateData['role'] ?? '') === 'staff') && $this->request->getPost('provider_id')) {
+        $finalRole = $updateData['role'] ?? $user['role'];
+        if ($finalRole === 'staff') {
             $providerId = $this->request->getPost('provider_id');
-            if ($this->canAssignToProvider($currentUserId, $providerId)) {
+            if ($providerId && $this->canAssignToProvider($currentUserId, $providerId)) {
                 $updateData['provider_id'] = $providerId;
+            } elseif (!$providerId && !$user['provider_id']) {
+                // Staff requires a provider
+                return redirect()->back()
+                               ->with('error', 'Staff members must be assigned to a provider.');
             }
+        } else {
+            // Clear provider_id if not staff
+            $updateData['provider_id'] = null;
         }
 
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
