@@ -1,4 +1,15 @@
 
+<?php
+/**
+ * User Management - Edit Customer View
+ *
+ * Form for updating existing customer user records.
+ * Note: This appears to be customer-specific editing within user management.
+ * 
+ * Access: Admin role
+ * Related: index.php (list users), create.php (new users)
+ */
+?>
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>

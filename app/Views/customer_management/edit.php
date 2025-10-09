@@ -1,3 +1,14 @@
+<?php
+/**
+ * Customer Management - Edit Customer View
+ *
+ * Form for updating existing customer records in the database.
+ * Part of the admin-focused customer CRUD operations.
+ * 
+ * Access: Admin role only
+ * Related: index.php (list), create.php (new)
+ */
+?>
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>

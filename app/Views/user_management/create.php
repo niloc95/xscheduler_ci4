@@ -1,3 +1,14 @@
+<?php
+/**
+ * User Management - Create User View
+ *
+ * Form for creating new system users (Admin, Provider, Staff, Customer roles).
+ * Handles role assignment, password setup, and provider association for staff.
+ * 
+ * Access: Admin role only
+ * Related: index.php (list users), edit.php (update users)
+ */
+?>
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>

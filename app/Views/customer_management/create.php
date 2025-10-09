@@ -1,3 +1,14 @@
+<?php
+/**
+ * Customer Management - Create Customer View
+ *
+ * Form for creating new customer records in the database.
+ * Part of the admin-focused customer CRUD operations.
+ * 
+ * Access: Admin role only
+ * Related: index.php (list), edit.php (update)
+ */
+?>
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
