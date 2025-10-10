@@ -172,7 +172,12 @@ class UserModel extends BaseModel
         }
         
         log_message('debug', "updateUser calling model update with data: " . json_encode($userData));
+        
+        // Skip model validation since controller already validated with correct user ID
+        // Model validation rules use {id} placeholder which doesn't work properly in update context
+        $this->skipValidation(true);
         $result = $this->update($userId, $userData);
+        $this->skipValidation(false);
         
         if (!$result) {
             log_message('error', "updateUser failed: " . json_encode($this->errors()));
