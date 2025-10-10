@@ -314,35 +314,52 @@ async function bootSchedulerDashboard() {
     return;
   }
 
-  // --- Fetch business settings (working hours, breaks, blocks) ---
-  let businessSettings = {};
-  try {
-    businessSettings = await service.getBusinessSettings();
-  } catch (error) {
-    console.warn('[scheduler] Failed to fetch business settings, using defaults', error);
-    businessSettings = {};
-  }
-  
-  // Parse times for FullCalendar
-  const slotMinTime = businessSettings.work_start || '08:00:00';
-  const slotMaxTime = businessSettings.work_end || '17:00:00';
-  // Parse breaks and block periods
+  // --- Fetch business and localization settings (working hours, breaks, localization) ---
+  const defaultBusinessSettings = {
+    work_start: '08:00:00',
+    work_end: '17:00:00',
+    break_start: null,
+    break_end: null,
+    blocked_periods: [],
+  };
+
+  const defaultLocalizationSettings = {
+    time_format: '24h',
+    first_day: 'Monday',
+    language: 'English',
+    timezone: 'local',
+  };
+
+  let businessSettings = { ...defaultBusinessSettings };
+  let localizationSettings = { ...defaultLocalizationSettings };
   let breakEvents = [];
-  if (businessSettings.break_start && businessSettings.break_end) {
-    breakEvents.push({
-      startTime: businessSettings.break_start,
-      endTime: businessSettings.break_end,
-      daysOfWeek: [1,2,3,4,5,6,0], // all days
+  let blockEvents = [];
+  let localizationDerived = null;
+
+  const filterUndefined = (obj = {}) => Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  );
+
+  function buildBreakEventsFromSettings(settings) {
+    if (!settings.break_start || !settings.break_end) return [];
+    return [{
+      startTime: settings.break_start,
+      endTime: settings.break_end,
+      daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
       display: 'background',
       overlap: false,
       className: 'bg-yellow-200/60',
       groupId: 'break',
       title: 'Break',
-    });
+      rendering: 'background',
+      editable: false,
+      allDay: false,
+    }];
   }
-  let blockEvents = [];
-  if (Array.isArray(businessSettings.blocked_periods)) {
-    blockEvents = businessSettings.blocked_periods.map(b => ({
+
+  function buildBlockEventsFromSettings(settings) {
+    if (!Array.isArray(settings.blocked_periods)) return [];
+    return settings.blocked_periods.map((b) => ({
       start: b.start,
       end: b.end,
       display: 'background',
@@ -350,8 +367,74 @@ async function bootSchedulerDashboard() {
       className: 'bg-rose-200/60',
       groupId: 'block',
       title: b.notes || 'Blocked',
+      rendering: 'background',
+      editable: false,
+      allDay: false,
     }));
   }
+
+  function deriveLocalizationOptions(settings) {
+    const languageKey = (settings.language || '').toString().trim().toLowerCase();
+    const localeMap = {
+      english: 'en',
+      'portuguese-br': 'pt-br',
+      spanish: 'es',
+    };
+    const fcLocale = localeMap[languageKey] || 'en';
+    const hour12 = settings.time_format === '12h';
+    return {
+      firstDay: settings.first_day === 'Sunday' ? 0 : 1,
+      hour12,
+      hourFormat: hour12 ? 'numeric' : '2-digit',
+      meridiem: hour12 ? 'short' : false,
+      fcLocale,
+      timezone: (settings.timezone && settings.timezone !== 'Automatic') ? settings.timezone : 'local',
+    };
+  }
+
+  function syncBusinessSettings(nextSettings = {}) {
+    businessSettings = {
+      ...businessSettings,
+      ...filterUndefined(nextSettings),
+    };
+    breakEvents = buildBreakEventsFromSettings(businessSettings);
+    blockEvents = buildBlockEventsFromSettings(businessSettings);
+  }
+
+  function syncLocalizationSettings(nextSettings = {}) {
+    localizationSettings = {
+      ...localizationSettings,
+      ...filterUndefined(nextSettings),
+    };
+    localizationDerived = deriveLocalizationOptions(localizationSettings);
+  }
+
+  syncBusinessSettings();
+  syncLocalizationSettings();
+
+  try {
+    const fetchedSettings = await service.getBusinessSettings();
+    if (fetchedSettings && typeof fetchedSettings === 'object') {
+      syncBusinessSettings({
+        work_start: fetchedSettings.work_start,
+        work_end: fetchedSettings.work_end,
+        break_start: fetchedSettings.break_start,
+        break_end: fetchedSettings.break_end,
+        blocked_periods: fetchedSettings.blocked_periods,
+      });
+      syncLocalizationSettings({
+        time_format: fetchedSettings.time_format,
+        first_day: fetchedSettings.first_day,
+        language: fetchedSettings.language,
+        timezone: fetchedSettings.timezone,
+      });
+    }
+  } catch (error) {
+    console.warn('[scheduler] Failed to fetch business settings, using defaults', error);
+  }
+
+  const slotMinTime = businessSettings.work_start || defaultBusinessSettings.work_start;
+  const slotMaxTime = businessSettings.work_end || defaultBusinessSettings.work_end;
 
   function setStatus(message, type = 'info') {
     const wrapper = elements.status;
@@ -400,6 +483,59 @@ async function bootSchedulerDashboard() {
       applyVariantClasses(variant);
       currentStatusVariant = variant;
     }
+  }
+
+  function refreshBackgroundEventSources() {
+    if (!state.calendar) return;
+
+    const existingBreakSource = state.calendar.getEventSourceById('scheduler-breaks');
+    if (existingBreakSource) existingBreakSource.remove();
+    if (breakEvents.length) {
+      state.calendar.addEventSource({
+        id: 'scheduler-breaks',
+        events: breakEvents.map((event) => ({ ...event })),
+      });
+    }
+
+    const existingBlockSource = state.calendar.getEventSourceById('scheduler-blocks');
+    if (existingBlockSource) existingBlockSource.remove();
+    if (blockEvents.length) {
+      state.calendar.addEventSource({
+        id: 'scheduler-blocks',
+        events: blockEvents.map((event) => ({ ...event })),
+      });
+    }
+  }
+
+  function applyBusinessSettingsUpdate(nextSettings = {}) {
+    syncBusinessSettings(nextSettings);
+    if (!state.calendar) return;
+
+    state.calendar.setOption('slotMinTime', businessSettings.work_start || defaultBusinessSettings.work_start);
+    state.calendar.setOption('slotMaxTime', businessSettings.work_end || defaultBusinessSettings.work_end);
+    refreshBackgroundEventSources();
+  }
+
+  function applyLocalizationSettingsUpdate(nextSettings = {}) {
+    syncLocalizationSettings(nextSettings);
+    if (!state.calendar) return;
+
+    state.calendar.setOption('firstDay', localizationDerived.firstDay);
+    state.calendar.setOption('locale', localizationDerived.fcLocale);
+    state.calendar.setOption('timeZone', localizationDerived.timezone);
+    state.calendar.setOption('slotLabelFormat', {
+      hour: localizationDerived.hourFormat,
+      minute: '2-digit',
+      omitZeroMinute: false,
+      meridiem: localizationDerived.meridiem,
+      hour12: localizationDerived.hour12,
+    });
+    state.calendar.setOption('eventTimeFormat', {
+      hour: localizationDerived.hourFormat,
+      minute: '2-digit',
+      meridiem: localizationDerived.meridiem,
+      hour12: localizationDerived.hour12,
+    });
   }
 
   function updateViewButtons(activeView) {
@@ -862,46 +998,16 @@ async function bootSchedulerDashboard() {
 
   setFocusDate(new Date());
 
-  // Fetch localization settings before initializing calendar
-  let localizationSettings = {
-    time_format: '24h',
-    first_day: 'Monday',
-    language: 'English',
-    timezone: 'local'
-  };
-  
-  try {
-    const settings = await service.getBusinessSettings();
-    localizationSettings = {
-      time_format: settings.time_format || '24h',
-      first_day: settings.first_day || 'Monday',
-      language: settings.language || 'English',
-      timezone: settings.timezone || 'local'
-    };
-    console.log('[scheduler] Localization settings loaded:', localizationSettings);
-  } catch (error) {
-    console.warn('[scheduler] Failed to load localization settings, using defaults:', error);
-  }
+  console.log('[scheduler] Localization settings loaded:', localizationSettings);
 
-  // Map first day of week to FullCalendar value (0 = Sunday, 1 = Monday)
-  const firstDay = localizationSettings.first_day === 'Sunday' ? 0 : 1;
-  
-  // Map time format to FullCalendar settings
-  const hour12 = localizationSettings.time_format === '12h';
-  const hourFormat = hour12 ? 'numeric' : '2-digit';
-  const meridiem = hour12 ? 'short' : false;
-
-  // Map language label to FullCalendar locale code
-  const languageKey = (localizationSettings.language || '').toString().trim().toLowerCase();
-  const localeMap = {
-    'english': 'en',
-    'portuguese-br': 'pt-br',
-    'spanish': 'es',
-  };
-  const fcLocale = localeMap[languageKey] || 'en';
-  const timezone = (localizationSettings.timezone && localizationSettings.timezone !== 'Automatic')
-    ? localizationSettings.timezone
-    : 'local';
+  const {
+    firstDay,
+    hour12,
+    hourFormat,
+    meridiem,
+    fcLocale,
+    timezone,
+  } = localizationDerived;
 
   const calendar = new Calendar(elements.calendarRoot, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -1007,20 +1113,6 @@ async function bootSchedulerDashboard() {
           }
         }
       },
-      // Breaks as background events
-      ...breakEvents.map(b => ({
-        ...b,
-        rendering: 'background',
-        editable: false,
-        allDay: false,
-      })),
-      // Block periods as background events
-      ...blockEvents.map(b => ({
-        ...b,
-        rendering: 'background',
-        editable: false,
-        allDay: false,
-      })),
     ],
     eventDidMount(arg) {
       const start = arg.event.start;
@@ -1184,6 +1276,7 @@ async function bootSchedulerDashboard() {
 
   calendar.render();
   state.calendar = calendar;
+  refreshBackgroundEventSources();
   updateViewButtons(state.view);
 
   elements.summaryButtons.forEach((btn) => {
@@ -1279,6 +1372,85 @@ async function bootSchedulerDashboard() {
   refreshCounts();
   refreshSlots();
   calendar.refetchEvents();
+  
+  // Listen for settings changes and refresh calendar configuration
+  const queuedSettingsKeys = new Set();
+  let settingsRefreshPromise = Promise.resolve();
+
+  async function processSettingsUpdates(changedKeys = []) {
+    const hasSpecificKeys = Array.isArray(changedKeys) && changedKeys.length > 0;
+    const businessChanged = !hasSpecificKeys || changedKeys.some((key) => (
+      key.startsWith('business.work_') ||
+      key.startsWith('business.break_') ||
+      key.startsWith('business.blocked_periods')
+    ));
+    const localizationChanged = !hasSpecificKeys || changedKeys.some((key) => key.startsWith('localization.'));
+
+    if (!businessChanged && !localizationChanged) {
+      return;
+    }
+
+    console.log('[scheduler] Settings changed, refreshing configuration:', changedKeys);
+
+    try {
+      const updatedSettings = await service.getBusinessSettings();
+      if (!updatedSettings || typeof updatedSettings !== 'object') {
+        return;
+      }
+
+      if (businessChanged) {
+        applyBusinessSettingsUpdate({
+          work_start: updatedSettings.work_start,
+          work_end: updatedSettings.work_end,
+          break_start: updatedSettings.break_start,
+          break_end: updatedSettings.break_end,
+          blocked_periods: updatedSettings.blocked_periods,
+        });
+      }
+
+      if (localizationChanged) {
+        applyLocalizationSettingsUpdate({
+          time_format: updatedSettings.time_format,
+          first_day: updatedSettings.first_day,
+          language: updatedSettings.language,
+          timezone: updatedSettings.timezone,
+        });
+      }
+
+      refreshCounts();
+      refreshSlots();
+      state.calendar?.refetchEvents();
+    } catch (error) {
+      console.warn('[scheduler] Failed to refresh settings after change', error);
+      setStatus('Unable to apply the latest settings changes.', 'warning');
+    }
+  }
+
+  const settingsChangeHandler = (event) => {
+    const detail = Array.isArray(event?.detail) ? event.detail : [];
+    if (detail.length) {
+      detail.forEach((key) => queuedSettingsKeys.add(key));
+    } else {
+      queuedSettingsKeys.add('*');
+    }
+
+    settingsRefreshPromise = settingsRefreshPromise
+      .then(async () => {
+        const keysToProcess = queuedSettingsKeys.has('*')
+          ? []
+          : Array.from(queuedSettingsKeys);
+        queuedSettingsKeys.clear();
+        await processSettingsUpdates(keysToProcess);
+      })
+      .catch((error) => {
+        console.warn('[scheduler] Failed processing settings change queue', error);
+      });
+  };
+  
+  // Remove old listener if exists
+  document.removeEventListener('settingsSaved', settingsChangeHandler);
+  // Add new listener
+  document.addEventListener('settingsSaved', settingsChangeHandler);
 }
 
 ready(() => {

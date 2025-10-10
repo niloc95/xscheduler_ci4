@@ -158,15 +158,29 @@ class UserModel extends BaseModel
      */
     public function updateUser(int $userId, array $userData, int $updatedBy): bool
     {
+        log_message('debug', "updateUser called: userId={$userId}, updatedBy={$updatedBy}, userData=" . json_encode($userData));
+        
         if (!$this->canManageUser($updatedBy, $userId)) {
+            log_message('error', "updateUser permission denied: updatedBy={$updatedBy} cannot manage userId={$userId}");
             return false;
         }
+        
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
-        return $this->update($userId, $userData);
+        
+        log_message('debug', "updateUser calling model update with data: " . json_encode($userData));
+        $result = $this->update($userId, $userData);
+        
+        if (!$result) {
+            log_message('error', "updateUser failed: " . json_encode($this->errors()));
+        } else {
+            log_message('debug', "updateUser successful for userId={$userId}");
+        }
+        
+        return $result;
     }
 
     /**

@@ -1466,6 +1466,12 @@
 
                     console.log(`✅ ${tabName} settings saved successfully!`);
 
+                    // Dispatch custom event for settings save (useful for time format updates)
+                    const changedKeys = Object.keys(payload);
+                    document.dispatchEvent(new CustomEvent('settingsSaved', {
+                        detail: changedKeys
+                    }));
+
                     window.XSNotify?.toast?.({
                         type: 'success',
                         title: '✓ Settings Updated',
@@ -1533,5 +1539,27 @@
         // Initialize on page load and SPA navigation
         document.addEventListener('DOMContentLoaded', initCustomFieldToggles);
         document.addEventListener('spa:navigated', initCustomFieldToggles);
+        </script>
+
+        <!-- Time Format Handler Script -->
+        <script type="module">
+            import timeFormatHandler from '<?= base_url('build/assets/time-format-handler.js') ?>';
+            
+            // Initialize on settings page load
+            async function initTimeFormatting() {
+                await timeFormatHandler.init();
+                timeFormatHandler.addFormattedDisplays();
+                console.log('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
+            }
+            
+            // Run on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initTimeFormatting);
+            } else {
+                initTimeFormatting();
+            }
+            
+            // Re-run on SPA navigation
+            document.addEventListener('spa:navigated', initTimeFormatting);
         </script>
 <?= $this->endSection() ?>

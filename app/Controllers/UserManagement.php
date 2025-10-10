@@ -247,6 +247,7 @@ class UserManagement extends BaseController
         }
 
         if (!$this->validate($rules)) {
+            log_message('debug', 'User update validation failed: ' . json_encode($this->validator->getErrors()));
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -257,7 +258,10 @@ class UserManagement extends BaseController
         ];
 
         // Handle is_active checkbox (checkboxes don't send value when unchecked)
-        $updateData['is_active'] = $this->request->getPost('is_active') ? true : false;
+        // Convert to integer for MySQL BOOLEAN/TINYINT compatibility
+        $updateData['is_active'] = $this->request->getPost('is_active') ? 1 : 0;
+
+        log_message('debug', "UserManagement::update - Initial updateData: " . json_encode($updateData));
 
         // Add password if provided
         if ($this->request->getPost('password')) {
@@ -283,15 +287,21 @@ class UserManagement extends BaseController
             $providerId = $this->request->getPost('provider_id');
             if ($providerId && $this->canAssignToProvider($currentUserId, $providerId)) {
                 $updateData['provider_id'] = $providerId;
-            } elseif (!$providerId && !$user['provider_id']) {
-                // Staff requires a provider
+            } elseif (!$providerId && !($user['provider_id'] ?? null)) {
+                // Staff requires a provider - only error if they don't already have one
                 return redirect()->back()
                                ->with('error', 'Staff members must be assigned to a provider.');
             }
+            // else: provider_id not in POST but user already has one - keep existing value
         } else {
-            // Clear provider_id if not staff
-            $updateData['provider_id'] = null;
+            // Clear provider_id if not staff (only if role is changing away from staff)
+            if ($user['role'] === 'staff') {
+                $updateData['provider_id'] = null;
+            }
         }
+
+        log_message('debug', "UserManagement::update - Final updateData before save: " . json_encode($updateData));
+        log_message('debug', "UserManagement::update - Calling updateUser with userId={$userId}, currentUserId={$currentUserId}");
 
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
             // Update session if user updated themselves

@@ -17,9 +17,10 @@ export default defineConfig({
         materialWeb: path.resolve(process.cwd(), 'resources/js/material-web.js'),
         setup: path.resolve(process.cwd(), 'resources/js/setup.js'),
         'dark-mode': path.resolve(process.cwd(), 'resources/js/dark-mode.js'),
-    spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
-  'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
+        spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
+        'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
         charts: path.resolve(process.cwd(), 'resources/js/charts.js'),
+        'time-format-handler': path.resolve(process.cwd(), 'resources/js/time-format-handler.js'),
       },
       output: {
         entryFileNames: 'assets/[name].js',
