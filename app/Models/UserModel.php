@@ -165,10 +165,15 @@ class UserModel extends BaseModel
             return false;
         }
         
+        // Get current user data for comparison
+        $currentUser = $this->find($userId);
+        log_message('debug', "updateUser - Current user data: " . json_encode($currentUser));
+        
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
+            log_message('debug', "updateUser - Password was changed");
         }
         
         log_message('debug', "updateUser calling model update with data: " . json_encode($userData));
@@ -179,10 +184,26 @@ class UserModel extends BaseModel
         $result = $this->update($userId, $userData);
         $this->skipValidation(false);
         
+        log_message('debug', "updateUser - update() returned: " . ($result ? 'true' : 'false'));
+        
+        // Verify the update actually happened
+        $updatedUser = $this->find($userId);
+        log_message('debug', "updateUser - User after update: " . json_encode($updatedUser));
+        
         if (!$result) {
             log_message('error', "updateUser failed: " . json_encode($this->errors()));
         } else {
-            log_message('debug', "updateUser successful for userId={$userId}");
+            // Check if data actually changed
+            $changed = false;
+            foreach ($userData as $key => $value) {
+                if (isset($updatedUser[$key]) && $updatedUser[$key] != $value) {
+                    $changed = true;
+                    log_message('warning', "updateUser - Field {$key} did not update! Expected: {$value}, Got: {$updatedUser[$key]}");
+                }
+            }
+            if (!$changed) {
+                log_message('debug', "updateUser successful for userId={$userId}");
+            }
         }
         
         return $result;
