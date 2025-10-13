@@ -213,6 +213,7 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         log_message('debug', "UserManagement::update called - userId={$userId}, currentUserId={$currentUserId}");
+        log_message('debug', "UserManagement::update - POST data: " . json_encode($this->request->getPost()));
 
         if (!$currentUserId || !$currentUser) {
             log_message('error', "UserManagement::update - No session found, redirecting to login");
