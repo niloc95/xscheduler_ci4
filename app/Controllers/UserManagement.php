@@ -212,21 +212,30 @@ class UserManagement extends BaseController
         $currentUserId = session()->get('user_id');
         $currentUser = session()->get('user');
 
+        log_message('debug', "UserManagement::update called - userId={$userId}, currentUserId={$currentUserId}");
+
         if (!$currentUserId || !$currentUser) {
+            log_message('error', "UserManagement::update - No session found, redirecting to login");
             return redirect()->to('/auth/login');
         }
 
         $user = $this->userModel->find($userId);
         if (!$user) {
+            log_message('error', "UserManagement::update - User not found: userId={$userId}");
             return redirect()->to('/user-management')
                            ->with('error', 'User not found.');
         }
 
+        log_message('debug', "UserManagement::update - Found user: " . json_encode(['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']]));
+
         // Check permission to edit this user
         if (!$this->userModel->canManageUser($currentUserId, $userId)) {
+            log_message('error', "UserManagement::update - Permission denied: currentUserId={$currentUserId} cannot manage userId={$userId}");
             return redirect()->to('/user-management')
                            ->with('error', 'You do not have permission to edit this user.');
         }
+
+        log_message('debug', "UserManagement::update - Permission check passed");
 
         // Validation rules
         $rules = [
