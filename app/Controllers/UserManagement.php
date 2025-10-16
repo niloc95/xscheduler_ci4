@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\ProviderScheduleModel;
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
 
@@ -10,11 +11,14 @@ class UserManagement extends BaseController
     protected $userModel;
     protected $permissionModel;
     
+    protected $providerScheduleModel;
+    protected array $scheduleDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->permissionModel = new UserPermissionModel();
+        $this->providerScheduleModel = new ProviderScheduleModel();
     }
 
     /**
@@ -81,7 +85,10 @@ class UserManagement extends BaseController
             'availableRoles' => $availableRoles,
             'providers' => $providers,
             'stats' => $stats,
-            'validation' => $this->validator
+            'validation' => $this->validator,
+            'providerSchedule' => $this->prepareScheduleForView(old('schedule') ?? []),
+            'scheduleDays' => $this->scheduleDays,
+            'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
         ];
 
         return view('user_management/create', $data);
@@ -148,9 +155,24 @@ class UserManagement extends BaseController
             $userData['provider_id'] = $providerId;
         }
 
+        $scheduleInput = $this->request->getPost('schedule') ?? [];
+        $scheduleClean = [];
+        if ($role === 'provider') {
+            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            if (!empty($scheduleErrors)) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Please fix the highlighted schedule issues.')
+                    ->with('schedule_errors', $scheduleErrors);
+            }
+        }
+
         $userId = $this->userModel->createUser($userData);
 
         if ($userId) {
+            if ($role === 'provider' && !empty($scheduleClean)) {
+                $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+            }
+            
             return redirect()->to('/user-management')
                            ->with('success', 'User created successfully.');
         } else {
@@ -192,13 +214,19 @@ class UserManagement extends BaseController
             $providers = $this->userModel->getProviders();
         }
 
+        $existingSchedule = $this->providerScheduleModel->getByProvider($user['id']);
+        $rawSchedule = old('schedule') ?: $existingSchedule;
+
         $data = [
             'title' => 'Edit User - WebSchedulr',
             'currentUser' => $currentUser,
             'user' => $user,
             'availableRoles' => $availableRoles,
             'providers' => $providers,
-            'validation' => $this->validator
+            'validation' => $this->validator,
+            'providerSchedule' => $this->prepareScheduleForView($rawSchedule),
+            'scheduleDays' => $this->scheduleDays,
+            'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
         ];
 
         return view('user_management/edit', $data);
@@ -310,6 +338,17 @@ class UserManagement extends BaseController
             }
         }
 
+        $scheduleInput = $this->request->getPost('schedule') ?? [];
+        $scheduleClean = [];
+        if ($finalRole === 'provider') {
+            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            if (!empty($scheduleErrors)) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Please fix the highlighted schedule issues.')
+                    ->with('schedule_errors', $scheduleErrors);
+            }
+        }
+
         log_message('debug', "UserManagement::update - Final updateData before save: " . json_encode($updateData));
         log_message('debug', "UserManagement::update - Calling updateUser with userId={$userId}, currentUserId={$currentUserId}");
 
@@ -343,6 +382,11 @@ class UserManagement extends BaseController
                 ]);
             }
 
+            if ($finalRole === 'provider') {
+                $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+            } else {
+                $this->providerScheduleModel->deleteByProvider($userId);
+            }
             return redirect()->to('/user-management')
                            ->with('success', 'User updated successfully.');
         } else {
@@ -563,5 +607,166 @@ class UserManagement extends BaseController
         
         // Only admins can change user roles
         return $currentUser['role'] === 'admin';
+    }
+
+    private function validateProviderScheduleInput(array $input): array
+    {
+        $clean = [];
+        $errors = [];
+
+        foreach ($this->scheduleDays as $day) {
+            if (!isset($input[$day])) {
+                continue;
+            }
+
+            $row = $input[$day];
+            $isActive = $this->toBool($row['is_active'] ?? null);
+
+            if (!$isActive) {
+                continue;
+            }
+
+            $start = $this->normaliseTimeString($row['start_time'] ?? null);
+            $end   = $this->normaliseTimeString($row['end_time'] ?? null);
+            $breakStart = $this->normaliseTimeString($row['break_start'] ?? null);
+            $breakEnd   = $this->normaliseTimeString($row['break_end'] ?? null);
+
+            if (!$start || !$end) {
+                $errors[$day] = 'Start and end times are required.';
+                continue;
+            }
+
+            if (strtotime($start) >= strtotime($end)) {
+                $errors[$day] = 'Start time must be earlier than end time.';
+                continue;
+            }
+
+            if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
+                $errors[$day] = 'Provide both break start and end times.';
+                continue;
+            }
+
+            if ($breakStart && $breakEnd) {
+                if (strtotime($breakStart) >= strtotime($breakEnd)) {
+                    $errors[$day] = 'Break start must be earlier than break end.';
+                    continue;
+                }
+
+                if (strtotime($breakStart) < strtotime($start) || strtotime($breakEnd) > strtotime($end)) {
+                    $errors[$day] = 'Break must fall within working hours.';
+                    continue;
+                }
+            }
+
+            $clean[$day] = [
+                'is_active'   => 1,
+                'start_time'  => $start,
+                'end_time'    => $end,
+                'break_start' => $breakStart,
+                'break_end'   => $breakEnd,
+            ];
+        }
+
+        return [$clean, $errors];
+    }
+
+    private function prepareScheduleForView($source): array
+    {
+        $prepared = [];
+        foreach ($this->scheduleDays as $day) {
+            $prepared[$day] = [
+                'is_active'   => false,
+                'start_time'  => '',
+                'end_time'    => '',
+                'break_start' => '',
+                'break_end'   => '',
+            ];
+        }
+
+        if (!is_array($source)) {
+            return $prepared;
+        }
+
+        foreach ($this->scheduleDays as $day) {
+            if (!isset($source[$day])) {
+                continue;
+            }
+
+            $row = $source[$day];
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $isActive = $this->toBool($row['is_active'] ?? null);
+            $prepared[$day]['is_active'] = $isActive;
+            $prepared[$day]['start_time'] = $this->formatTimeForView($row['start_time'] ?? null);
+            $prepared[$day]['end_time'] = $this->formatTimeForView($row['end_time'] ?? null);
+            $prepared[$day]['break_start'] = $this->formatTimeForView($row['break_start'] ?? null);
+            $prepared[$day]['break_end'] = $this->formatTimeForView($row['break_end'] ?? null);
+        }
+
+        return $prepared;
+    }
+
+    private function normaliseTimeString(?string $time): ?string
+    {
+        if (!$time) {
+            return null;
+        }
+
+        $time = trim($time);
+        if ($time === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
+            return $time . ':00';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
+            return $time;
+        }
+
+        return null;
+    }
+
+    private function formatTimeForView($time): string
+    {
+        if (!$time) {
+            return '';
+        }
+
+        $time = trim((string) $time);
+        if ($time === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
+            return $time;
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
+            return substr($time, 0, 5);
+        }
+
+        return '';
+    }
+
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return false;
     }
 }

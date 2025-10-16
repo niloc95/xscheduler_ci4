@@ -144,6 +144,8 @@
 							<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Staff members must be assigned to a service provider</p>
 						</div>
 
+						<?= $this->include('user_management/components/provider_schedule') ?>
+
 						<!-- Status -->
 						<div class="form-group">
 							<label class="flex items-center space-x-3 cursor-pointer">

@@ -106,17 +106,22 @@ $routes->group('notifications', function($routes) {
 });
 
 // Profile Routes (auth required)
-$routes->group('profile', function($routes) {
+$routes->group('profile', ['filter' => 'auth'], function($routes) {
     $routes->get('', 'Profile::index');
-    $routes->get('edit', 'Profile::edit');
-    $routes->post('update', 'Profile::update');
-    $routes->get('password', 'Profile::password');
-    $routes->post('update-password', 'Profile::updatePassword');
+    $routes->post('update-profile', 'Profile::updateProfile');
+    $routes->post('change-password', 'Profile::changePassword');
     $routes->post('upload-picture', 'Profile::uploadPicture');
     $routes->get('privacy', 'Profile::privacy');
     $routes->post('update-privacy', 'Profile::updatePrivacy');
     $routes->get('account', 'Profile::account');
     $routes->post('update-account', 'Profile::updateAccount');
+});
+
+// Provider schedules (auth required, controller handles authorization)
+$routes->group('providers', ['filter' => 'setup'], function($routes) {
+    $routes->get('(:num)/schedule', 'ProviderSchedule::index/$1', ['filter' => 'auth']);
+    $routes->post('(:num)/schedule', 'ProviderSchedule::save/$1', ['filter' => 'auth']);
+    $routes->delete('(:num)/schedule', 'ProviderSchedule::delete/$1', ['filter' => 'auth']);
 });
 
 // Appointments Routes (auth required)

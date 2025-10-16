@@ -140,6 +140,8 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Staff members must be assigned to a service provider</p>
                 </div>
 
+                <?= $this->include('user_management/components/provider_schedule') ?>
+
                 <!-- Role Description -->
                 <div id="role-description" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" style="display: none;">
                     <h4 class="font-medium text-blue-800 dark:text-blue-200 mb-2">Role Permissions</h4>

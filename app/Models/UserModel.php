@@ -10,7 +10,8 @@ class UserModel extends BaseModel
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
-        'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires'
+        'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
+        'profile_image'
     ];
 
     // Dates (handled by BaseModel)
