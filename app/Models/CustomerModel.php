@@ -8,7 +8,7 @@ class CustomerModel extends BaseModel
 	protected $table = 'customers';
 	protected $primaryKey = 'id';
 	protected $allowedFields = [
-		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'created_at', 'updated_at'
+		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'created_at', 'updated_at'
 	];
 
 	// Validation rules
@@ -20,6 +20,7 @@ class CustomerModel extends BaseModel
 		'phone'      => 'permit_empty|max_length[20]',
 		'address'    => 'permit_empty|max_length[255]',
 		'notes'      => 'permit_empty|max_length[1000]',
+		'custom_fields' => 'permit_empty',
 	];
 	protected $validationMessages = [];
 	protected $skipValidation = false;

@@ -53,8 +53,9 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->post('store', 'UserManagement::store', ['filter' => 'role:admin,provider']);
     $routes->get('edit/(:num)', 'UserManagement::edit/$1', ['filter' => 'role:admin,provider']);
     $routes->post('update/(:num)', 'UserManagement::update/$1', ['filter' => 'role:admin,provider']);
-    $routes->get('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
-    $routes->get('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('delete/(:num)', 'UserManagement::delete/$1', ['filter' => 'role:admin']);
 });
 
 // Customer Management Routes (admins, providers, and staff)

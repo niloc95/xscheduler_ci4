@@ -118,6 +118,14 @@
                                             </button>
                                         </form>
                                     <?php endif; ?>
+                                    <?php if ($currentUser['role'] === 'admin'): ?>
+                                        <form method="post" action="<?= base_url('user-management/delete/' . ($user['id'] ?? 0)) ?>" onsubmit="return confirm('⚠️ PERMANENTLY DELETE this user?\n\nThis action cannot be undone!\n\nUser: <?= esc($user['name']) ?>');" class="inline">
+                                            <?= csrf_field() ?>
+                                            <button type="submit" class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Delete User">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </td>

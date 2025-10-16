@@ -1417,15 +1417,40 @@
                 const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || csrfInput?.value || '';
 
-                // Collect form data
-                const formData = new FormData(form);
+                // Collect form data, ensuring unchecked checkboxes are recorded as "0"
                 const payload = {};
-                
-                for (const [key, value] of formData.entries()) {
-                    if (key.includes('csrf')) continue;
-                    if (key === 'form_source') continue;
-                    payload[`${tabName}.${key}`] = value;
-                }
+
+                formInputs.forEach(input => {
+                    const name = input.name;
+                    if (!name || name.includes('csrf') || name === 'form_source') {
+                        return;
+                    }
+
+                    let value;
+                    if (input.type === 'checkbox') {
+                        value = input.checked ? '1' : '0';
+                    } else if (input.type === 'radio') {
+                        if (!input.checked) {
+                            return; // only capture selected radio values
+                        }
+                        value = input.value;
+                    } else if (input.type === 'file') {
+                        return; // file uploads handled separately if needed
+                    } else {
+                        value = input.value ?? '';
+                    }
+
+                    let key = name;
+
+                    // Convert snake_case names prefixed with the tab into dot notation (e.g., booking_address_display -> booking.address_display)
+                    if (name.startsWith(`${tabName}_`)) {
+                        key = `${tabName}.${name.substring(tabName.length + 1)}`;
+                    } else if (!name.startsWith(`${tabName}.`)) {
+                        key = `${tabName}.${name}`;
+                    }
+
+                    payload[key] = value;
+                });
 
                 console.log(`Saving ${tabName} settings:`, payload);
 

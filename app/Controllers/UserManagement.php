@@ -314,6 +314,25 @@ class UserManagement extends BaseController
         log_message('debug', "UserManagement::update - Calling updateUser with userId={$userId}, currentUserId={$currentUserId}");
 
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
+            log_message('debug', "UserManagement::update - updateUser returned TRUE");
+            
+            // VERIFICATION: Read back from database to confirm persistence
+            $verifyUser = $this->userModel->find($userId);
+            log_message('debug', "UserManagement::update - Verification read: " . json_encode([
+                'id' => $verifyUser['id'],
+                'name' => $verifyUser['name'],
+                'email' => $verifyUser['email'],
+                'updated_at' => $verifyUser['updated_at']
+            ]));
+            
+            // Check if the update actually persisted
+            $expectedName = $updateData['name'];
+            if ($verifyUser['name'] !== $expectedName) {
+                log_message('error', "UserManagement::update - UPDATE DID NOT PERSIST! Expected: {$expectedName}, Got: {$verifyUser['name']}");
+                return redirect()->back()
+                               ->with('error', 'Update failed to persist. Expected: ' . $expectedName . ', but database shows: ' . $verifyUser['name']);
+            }
+            
             // Update session if user updated themselves
             if ($currentUserId === $userId) {
                 $updatedUser = $this->userModel->find($userId);
@@ -374,6 +393,46 @@ class UserManagement extends BaseController
         } else {
             return redirect()->to('/user-management')
                            ->with('error', 'Failed to activate user.');
+        }
+    }
+
+    /**
+     * Delete user (hard delete, admin only)
+     */
+    public function delete(int $userId)
+    {
+        $currentUserId = session()->get('user_id');
+        $currentUser = session()->get('user');
+
+        if (!$currentUserId || !$currentUser) {
+            return redirect()->to('/auth/login');
+        }
+
+        // Only admins can delete users
+        if ($currentUser['role'] !== 'admin') {
+            return redirect()->to('/user-management')
+                           ->with('error', 'Only administrators can delete users.');
+        }
+
+        // Cannot delete yourself
+        if ($currentUserId === $userId) {
+            return redirect()->to('/user-management')
+                           ->with('error', 'You cannot delete your own account.');
+        }
+
+        $targetUser = $this->userModel->find($userId);
+        if (!$targetUser) {
+            return redirect()->to('/user-management')
+                           ->with('error', 'User not found.');
+        }
+
+        // Perform the delete
+        if ($this->userModel->delete($userId)) {
+            return redirect()->to('/user-management')
+                           ->with('success', 'User "' . esc($targetUser['name']) . '" deleted successfully.');
+        } else {
+            return redirect()->to('/user-management')
+                           ->with('error', 'Failed to delete user. Please try again.');
         }
     }
 

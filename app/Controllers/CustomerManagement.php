@@ -3,14 +3,17 @@
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
+use App\Services\BookingSettingsService;
 
 class CustomerManagement extends BaseController
 {
     protected CustomerModel $customers;
+    protected BookingSettingsService $bookingSettings;
 
     public function __construct()
     {
         $this->customers = new CustomerModel();
+        $this->bookingSettings = new BookingSettingsService();
     }
 
     /**
@@ -49,9 +52,15 @@ class CustomerManagement extends BaseController
         if (!session()->get('user_id')) {
             return redirect()->to('/auth/login');
         }
+        
+        $fieldConfig = $this->bookingSettings->getFieldConfiguration();
+        $customFields = $this->bookingSettings->getCustomFieldConfiguration();
+        
         $data = [
             'title' => 'Create Customer - WebSchedulr',
             'validation' => $this->validator,
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
         ];
         return view('customer_management/create', $data);
     }
@@ -65,32 +74,49 @@ class CustomerManagement extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        $rules = [
-            'first_name' => 'permit_empty|max_length[100]',
-            'last_name'  => 'permit_empty|max_length[100]',
-            'name'       => 'permit_empty|max_length[200]', // optional combined name field
-            'email'      => 'required|valid_email|is_unique[customers.email]',
-            'phone'      => 'permit_empty|max_length[20]',
-            'address'    => 'permit_empty|max_length[255]',
-            'notes'      => 'permit_empty|max_length[1000]',
-        ];
+        // Use dynamic validation rules from booking settings
+        $rules = $this->bookingSettings->getValidationRules();
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
-        $payload = [
-            'first_name' => trim((string) $this->request->getPost('first_name')),
-            'last_name'  => trim((string) $this->request->getPost('last_name')),
-            'email'      => trim((string) $this->request->getPost('email')),
-            'phone'      => trim((string) $this->request->getPost('phone')),
-            'address'    => trim((string) $this->request->getPost('address')),
-            'notes'      => trim((string) $this->request->getPost('notes')),
-        ];
+        $payload = [];
+        $fieldConfig = $this->bookingSettings->getFieldConfiguration();
+        $customFields = $this->bookingSettings->getCustomFieldConfiguration();
+        
+        // Only include fields that are displayed in settings
+        foreach ($fieldConfig as $fieldName => $config) {
+            if ($config['display']) {
+                $payload[$fieldName] = trim((string) $this->request->getPost($fieldName));
+            }
+        }
 
-        // Support combined name field fallback
+        $customFieldPayload = [];
+        if (!empty($customFields)) {
+            foreach ($customFields as $fieldName => $config) {
+                $raw = $this->request->getPost($fieldName);
+                if ($config['type'] === 'checkbox') {
+                    $value = $raw ? '1' : '0';
+                } else {
+                    $value = trim((string) ($raw ?? ''));
+                }
+
+                if ($value === '' && !$config['required']) {
+                    continue;
+                }
+
+                $customFieldPayload[$fieldName] = $value;
+            }
+
+            if (!empty($customFieldPayload)) {
+                $payload['custom_fields'] = json_encode($customFieldPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+
+        // Support combined name field fallback (if first_name/last_name are not displayed)
         $name = trim((string) $this->request->getPost('name'));
-        if ($name && !$payload['first_name'] && !$payload['last_name']) {
+        if ($name && !isset($payload['first_name']) && !isset($payload['last_name'])) {
             $parts = preg_split('/\s+/', $name, 2);
             $payload['first_name'] = $parts[0] ?? '';
             $payload['last_name']  = $parts[1] ?? '';
@@ -115,10 +141,24 @@ class CustomerManagement extends BaseController
         if (!$customer) {
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
+        
+        $fieldConfig = $this->bookingSettings->getFieldConfiguration();
+        $customFields = $this->bookingSettings->getCustomFieldConfiguration();
+        $customFieldValues = [];
+        if (!empty($customer['custom_fields'])) {
+            $decoded = json_decode((string) $customer['custom_fields'], true);
+            if (is_array($decoded)) {
+                $customFieldValues = $decoded;
+            }
+        }
+        
         $data = [
             'title' => 'Edit Customer - WebSchedulr',
             'customer' => $customer,
             'validation' => $this->validator,
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'customFieldValues' => $customFieldValues,
         ];
         return view('customer_management/edit', $data);
     }
@@ -136,34 +176,61 @@ class CustomerManagement extends BaseController
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
 
-        $rules = [
-            'first_name' => 'permit_empty|max_length[100]',
-            'last_name'  => 'permit_empty|max_length[100]',
-            'name'       => 'permit_empty|max_length[200]',
-            'email'      => "required|valid_email|is_unique[customers.email,id,{$id}]",
-            'phone'      => 'permit_empty|max_length[20]',
-            'address'    => 'permit_empty|max_length[255]',
-            'notes'      => 'permit_empty|max_length[1000]',
-        ];
+        // Use dynamic validation rules from booking settings
+        $rules = $this->bookingSettings->getValidationRulesForUpdate($id);
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
-        $payload = [
-            'first_name' => trim((string) $this->request->getPost('first_name')),
-            'last_name'  => trim((string) $this->request->getPost('last_name')),
-            'email'      => trim((string) $this->request->getPost('email')),
-            'phone'      => trim((string) $this->request->getPost('phone')),
-            'address'    => trim((string) $this->request->getPost('address')),
-            'notes'      => trim((string) $this->request->getPost('notes')),
-        ];
+        $payload = [];
+        $fieldConfig = $this->bookingSettings->getFieldConfiguration();
+        $customFields = $this->bookingSettings->getCustomFieldConfiguration();
+        
+        // Only include fields that are displayed in settings
+        foreach ($fieldConfig as $fieldName => $config) {
+            if ($config['display']) {
+                $payload[$fieldName] = trim((string) $this->request->getPost($fieldName));
+            }
+        }
 
         $name = trim((string) $this->request->getPost('name'));
-        if ($name && !$payload['first_name'] && !$payload['last_name']) {
+        if ($name && !isset($payload['first_name']) && !isset($payload['last_name'])) {
             $parts = preg_split('/\s+/', $name, 2);
             $payload['first_name'] = $parts[0] ?? '';
             $payload['last_name']  = $parts[1] ?? '';
+        }
+
+        if (!empty($customFields)) {
+            $existing = [];
+            if (!empty($customer['custom_fields'])) {
+                $decoded = json_decode((string) $customer['custom_fields'], true);
+                if (is_array($decoded)) {
+                    $existing = $decoded;
+                }
+            }
+
+            foreach ($customFields as $fieldName => $config) {
+                $raw = $this->request->getPost($fieldName);
+                if ($config['type'] === 'checkbox') {
+                    $value = $raw ? '1' : '0';
+                } else {
+                    $value = trim((string) ($raw ?? ''));
+                }
+
+                if ($value === '' && !$config['required']) {
+                    unset($existing[$fieldName]);
+                    continue;
+                }
+
+                $existing[$fieldName] = $value;
+            }
+
+            if (!empty($existing)) {
+                $payload['custom_fields'] = json_encode($existing, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } elseif (!empty($customer['custom_fields'])) {
+                $payload['custom_fields'] = null;
+            }
         }
 
         if ($this->customers->update($id, $payload)) {
