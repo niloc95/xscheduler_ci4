@@ -20,6 +20,7 @@ class UserManagement extends BaseController
 
     public function __construct()
     {
+        helper('user');
         $this->userModel = new UserModel();
         $this->permissionModel = new UserPermissionModel();
         $this->providerScheduleModel = new ProviderScheduleModel();
