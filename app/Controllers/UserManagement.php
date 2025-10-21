@@ -92,8 +92,6 @@ class UserManagement extends BaseController
                 ->findAll();
         }
 
-        $availableProviders = $providers;
-
         // Get stats for the help panel
         $stats = $this->getUserStatsBasedOnRole($currentUserId);
 
@@ -104,7 +102,6 @@ class UserManagement extends BaseController
             'providers' => $providers,
             'availableStaff' => $availableStaff,
             'assignedStaff' => [],
-            'availableProviders' => $availableProviders,
             'assignedProviders' => [],
             'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
             'stats' => $stats,
@@ -135,7 +132,7 @@ class UserManagement extends BaseController
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'role' => 'required|in_list[admin,provider,staff]',
+            'role' => 'required|in_list[admin,provider,staff,receptionist]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]',
@@ -291,31 +288,21 @@ class UserManagement extends BaseController
         $currentUserId = session()->get('user_id');
         $currentUser = session()->get('user');
 
-        log_message('debug', "UserManagement::update called - userId={$userId}, currentUserId={$currentUserId}");
-        log_message('debug', "UserManagement::update - POST data: " . json_encode($this->request->getPost()));
-
         if (!$currentUserId || !$currentUser) {
-            log_message('error', "UserManagement::update - No session found, redirecting to login");
             return redirect()->to('/auth/login');
         }
 
         $user = $this->userModel->find($userId);
         if (!$user) {
-            log_message('error', "UserManagement::update - User not found: userId={$userId}");
             return redirect()->to('/user-management')
                            ->with('error', 'User not found.');
         }
 
-        log_message('debug', "UserManagement::update - Found user: " . json_encode(['id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']]));
-
         // Check permission to edit this user
         if (!$this->userModel->canManageUser($currentUserId, $userId)) {
-            log_message('error', "UserManagement::update - Permission denied: currentUserId={$currentUserId} cannot manage userId={$userId}");
             return redirect()->to('/user-management')
                            ->with('error', 'You do not have permission to edit this user.');
         }
-
-        log_message('debug', "UserManagement::update - Permission check passed");
 
         // Validation rules
         $rules = [
@@ -332,11 +319,10 @@ class UserManagement extends BaseController
 
         // Add role validation if user can change roles
         if ($this->canChangeUserRole($currentUserId, $userId)) {
-            $rules['role'] = 'required|in_list[admin,provider,staff]';
+            $rules['role'] = 'required|in_list[admin,provider,staff,receptionist]';
         }
 
         if (!$this->validate($rules)) {
-            log_message('debug', 'User update validation failed: ' . json_encode($this->validator->getErrors()));
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -349,8 +335,6 @@ class UserManagement extends BaseController
         // Handle is_active checkbox (checkboxes don't send value when unchecked)
         // Convert to integer for MySQL BOOLEAN/TINYINT compatibility
         $updateData['is_active'] = $this->request->getPost('is_active') ? 1 : 0;
-
-        log_message('debug', "UserManagement::update - Initial updateData: " . json_encode($updateData));
 
         // Add password if provided
         if ($this->request->getPost('password')) {
@@ -384,29 +368,7 @@ class UserManagement extends BaseController
             }
         }
 
-        log_message('debug', "UserManagement::update - Final updateData before save: " . json_encode($updateData));
-        log_message('debug', "UserManagement::update - Calling updateUser with userId={$userId}, currentUserId={$currentUserId}");
-
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
-            log_message('debug', "UserManagement::update - updateUser returned TRUE");
-            
-            // VERIFICATION: Read back from database to confirm persistence
-            $verifyUser = $this->userModel->find($userId);
-            log_message('debug', "UserManagement::update - Verification read: " . json_encode([
-                'id' => $verifyUser['id'],
-                'name' => $verifyUser['name'],
-                'email' => $verifyUser['email'],
-                'updated_at' => $verifyUser['updated_at']
-            ]));
-            
-            // Check if the update actually persisted
-            $expectedName = $updateData['name'];
-            if ($verifyUser['name'] !== $expectedName) {
-                log_message('error', "UserManagement::update - UPDATE DID NOT PERSIST! Expected: {$expectedName}, Got: {$verifyUser['name']}");
-                return redirect()->back()
-                               ->with('error', 'Update failed to persist. Expected: ' . $expectedName . ', but database shows: ' . $verifyUser['name']);
-            }
-            
             // Update session if user updated themselves
             if ($currentUserId === $userId) {
                 $updatedUser = $this->userModel->find($userId);

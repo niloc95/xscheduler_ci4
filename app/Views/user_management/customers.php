@@ -21,11 +21,7 @@
 
 <?= $this->section('content') ?>
 <div class="main-content" data-page-title="Customer Interaction" data-page-subtitle="Manage and assist customers with bookings">
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
+    <?= $this->include('components/flash_messages') ?>
 
     <div class="card card-spacious">
         <div class="card-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

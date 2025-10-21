@@ -19,19 +19,9 @@ $removeUrl = base_url('provider-staff/remove');
 
 <?php if ($missingProviderId): ?>
     <div class="mb-5 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
-        Provider identifier missing for staff assignments. Save the provider first, then manage staff access.
+        Staff assignments locked - Save this provider first, then return to assign staff members
     </div>
 <?php endif; ?>
-
-<!-- DEBUG INFO (Remove in production) -->
-<div class="mb-4 p-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono">
-    <div><strong>Debug:</strong></div>
-    <div>providerId: <?= $providerId ?></div>
-    <div>missingProviderId: <?= $missingProviderId ? 'true' : 'false' ?></div>
-    <div>canManageAssignments: <?= ($canManageAssignments ?? false) ? 'true' : 'false' ?></div>
-    <div>availableStaff count: <?= count($availableStaff) ?></div>
-    <div>assignedStaff count: <?= count($assignedStaff) ?></div>
-</div>
 
 <div class="border-t border-gray-200 dark:border-gray-700 pt-6" data-provider-staff-manager data-provider-id="<?= esc($providerId) ?>" data-assign-url="<?= esc($assignUrl) ?>" data-remove-url="<?= esc($removeUrl) ?>" data-list-url="<?= esc($listUrl) ?>" data-csrf-name="<?= esc($csrfName) ?>" data-csrf-value="<?= esc($csrfValue) ?>">
     <div class="flex items-center justify-between mb-4">
@@ -133,16 +123,7 @@ $removeUrl = base_url('provider-staff/remove');
     const staffSelect = container.querySelector('[data-staff-select]');
     const assignedWrapper = container.querySelector('[data-assigned-wrapper]');
 
-    // Debug logging
-    console.log('Provider Staff Manager initialized:', {
-        providerId: providerId,
-        hasAssignBtn: !!assignBtn,
-        hasStaffSelect: !!staffSelect,
-        hasAssignedWrapper: !!assignedWrapper
-    });
-
     if (!providerId) {
-        console.warn('Provider ID is missing or zero, disabling assignment features');
         if (assignBtn) {
             assignBtn.disabled = true;
             assignBtn.setAttribute('aria-disabled', 'true');
@@ -153,33 +134,19 @@ $removeUrl = base_url('provider-staff/remove');
     // Enable/disable assign button based on dropdown selection
     const updateAssignButtonState = () => {
         if (!assignBtn) {
-            console.warn('Assign button not found');
             return;
         }
 
         const hasSelection = Boolean(staffSelect && staffSelect.value && Number(staffSelect.value) > 0);
         assignBtn.disabled = !hasSelection;
         assignBtn.setAttribute('aria-disabled', assignBtn.disabled ? 'true' : 'false');
-        
-        console.log('Button state updated:', {
-            staffSelectValue: staffSelect ? staffSelect.value : 'no-select',
-            hasSelection: hasSelection,
-            buttonDisabled: assignBtn.disabled
-        });
     };
 
     if (assignBtn && staffSelect) {
-        console.log('Setting up event listeners for provider staff assignment');
         staffSelect.addEventListener('change', function() {
-            console.log('Staff selection changed to:', staffSelect.value);
             updateAssignButtonState();
         });
         updateAssignButtonState(); // Initial state
-    } else {
-        console.error('Missing required elements:', {
-            assignBtn: !!assignBtn,
-            staffSelect: !!staffSelect
-        });
     }
 
     function toast(opts) {

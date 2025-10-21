@@ -22,17 +22,7 @@
 <div class="main-content" data-page-title="Edit User" data-page-subtitle="Update user account information">
 
 	<!-- Flash Messages -->
-	<?php if (session()->getFlashdata('error')): ?>
-		<div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-			<?= esc(session()->getFlashdata('error')) ?>
-		</div>
-	<?php endif; ?>
-
-	<?php if (session()->getFlashdata('success')): ?>
-		<div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-			<?= esc(session()->getFlashdata('success')) ?>
-		</div>
-	<?php endif; ?>
+	<?= $this->include('components/flash_messages') ?>
 
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<!-- User Form -->

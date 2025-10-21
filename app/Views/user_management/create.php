@@ -21,11 +21,7 @@
 <div class="main-content" data-page-title="Create User" data-page-subtitle="Add a new user to the system">
 
     <!-- Flash Messages -->
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
+    <?= $this->include('components/flash_messages') ?>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- User Form -->
@@ -135,8 +131,8 @@
                 <div id="staffAssignmentsSection" class="<?= in_array(old('role'), ['staff', 'receptionist'], true) ? '' : 'hidden' ?>">
                     <?= $this->include('user_management/components/staff_providers', [
                         'assignedProviders' => $assignedProviders ?? [],
-                        'availableProviders' => $availableProviders ?? [],
-                        'canManageAssignments' => $canManageAssignments ?? false,
+                        'availableProviders' => $providers ?? [],
+                        'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
                         'staffId' => null,
                     ]) ?>
                 </div>

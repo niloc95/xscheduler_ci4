@@ -9,17 +9,7 @@
 
 <?= $this->section('dashboard_content_top') ?>
     <!-- Flash Messages -->
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-            <?= esc(session()->getFlashdata('success')) ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
+    <?= $this->include('components/flash_messages') ?>
 
     <!-- Role Filter Cards (replicated dashboard layout) -->
     <div class="mb-6">
@@ -72,17 +62,12 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <?php $badgeColors = [
-                                'admin' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-                                'provider' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                'staff' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            ]; ?>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $badgeColors[$user['role']] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' ?>">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= get_role_badge_classes($user['role']) ?>">
                                 <?= get_role_display_name($user['role']) ?>
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= ($user['is_active'] ?? true) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' ?>">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= get_status_badge_classes($user['is_active'] ?? true) ?>">
                                 <?= ($user['is_active'] ?? true) ? 'Active' : 'Inactive' ?>
                             </span>
                         </td>
@@ -214,6 +199,5 @@
     async function init(force=false){ const host=document.getElementById('role-user-cards'); if(!host)return; const stale=!host.querySelector('.role-card'); if(!force && state.initialized && !stale) return; const counts=state.lastCounts||await fetchCounts(); renderCards(counts||{}); updateHeaderTitle(); await loadUsers(); state.initialized=true; }
     window.initUserManagementDashboard=init; document.addEventListener('DOMContentLoaded',()=>init()); document.addEventListener('spa:navigated',()=>init());
 })();
-// (Removed previous row-selection based dynamic header script; header now tracks active role card only.)
 </script>
 <?= $this->endSection() ?>
