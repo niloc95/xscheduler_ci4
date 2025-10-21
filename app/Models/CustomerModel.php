@@ -5,7 +5,7 @@ use App\Models\BaseModel;
 
 class CustomerModel extends BaseModel
 {
-	protected $table = 'customers';
+	protected $table = 'xs_customers';
 	protected $primaryKey = 'id';
 	protected $allowedFields = [
 		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'created_at', 'updated_at'

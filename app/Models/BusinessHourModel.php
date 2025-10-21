@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class BusinessHourModel extends Model
 {
-    protected $table            = 'business_hours';
+    protected $table            = 'xs_business_hours';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';

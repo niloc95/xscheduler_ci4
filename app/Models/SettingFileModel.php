@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class SettingFileModel extends Model
 {
-    protected $table = 'settings_files';
+    protected $table = 'xs_settings_files';
     protected $primaryKey = 'id';
     protected $allowedFields = ['setting_key','filename','mime','data','updated_by','created_at','updated_at'];
     protected $useTimestamps = true;

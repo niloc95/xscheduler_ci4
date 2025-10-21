@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use CodeIgniter\Model;
+use App\Models\ProviderStaffModel;
 
 class UserPermissionModel extends Model
 {
-    protected $table            = 'users';
+    protected $table            = 'xs_users';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
@@ -104,10 +105,8 @@ class UserPermissionModel extends Model
      */
     public function getStaffForProvider(int $providerId): array
     {
-        return $this->where('role', 'staff')
-                    ->where('provider_id', $providerId)
-                    ->where('is_active', true)
-                    ->findAll();
+        $assignments = new ProviderStaffModel();
+        return $assignments->getStaffByProvider($providerId);
     }
 
     /**
@@ -138,8 +137,9 @@ class UserPermissionModel extends Model
         }
 
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
-            return $target['provider_id'] === $manager['id'];
+        if ($manager['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
         }
 
         // Users can manage themselves (limited)
@@ -170,10 +170,9 @@ class UserPermissionModel extends Model
                 
             case 'provider':
                 // Providers can see their staff and themselves
-                $managedUsers = $this->where('provider_id', $userId)
-                                    ->orWhere('id', $userId)
-                                    ->where('is_active', true)
-                                    ->findAll();
+                $assignments = new ProviderStaffModel();
+                $staff = $assignments->getStaffByProvider($userId);
+                $managedUsers = array_merge([$user], $staff);
                 break;
                 
             case 'staff':

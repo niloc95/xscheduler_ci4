@@ -123,28 +123,25 @@
 							</div>
 						</div>
 
-						<!-- Provider Selection (for Staff) -->
-						<div id="provider-selection" class="form-group" style="display: <?= ($user['role'] ?? '') === 'staff' ? 'block' : 'none' ?>;">
-							<label for="provider_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-								Service Provider <span class="text-red-500">*</span>
-							</label>
-							<select id="provider_id" 
-									name="provider_id"
-									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('provider_id') ? 'border-red-500 dark:border-red-400' : '' ?>">
-								<option value="">Select Provider</option>
-								<?php if (isset($providers) && is_array($providers)): foreach ($providers as $provider): ?>
-									<option value="<?= esc($provider['id']) ?>" <?= (old('provider_id', $user['provider_id'] ?? '') == $provider['id']) ? 'selected' : '' ?>>
-										<?= esc($provider['name']) ?>
-									</option>
-								<?php endforeach; endif; ?>
-							</select>
-							<?php if ($validation && $validation->hasError('provider_id')): ?>
-								<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('provider_id') ?></p>
-							<?php endif; ?>
-							<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Staff members must be assigned to a service provider</p>
-						</div>
-
+					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
 						<?= $this->include('user_management/components/provider_schedule') ?>
+					</div>
+
+						<?php if (($user['role'] ?? '') === 'provider'): ?>
+							<?= $this->include('user_management/components/provider_staff', [
+								'assignedStaff' => $assignedStaff ?? [],
+								'availableStaff' => $availableStaff ?? [],
+								'canManageAssignments' => $canManageAssignments ?? false,
+								'providerId' => $user['id'] ?? $userId ?? null,
+							]) ?>
+						<?php elseif (in_array($user['role'] ?? '', ['staff', 'receptionist'], true)): ?>
+							<?= $this->include('user_management/components/staff_providers', [
+								'assignedProviders' => $assignedProviders ?? [],
+								'availableProviders' => $availableProviders ?? [],
+								'canManageAssignments' => $canManageAssignments ?? false,
+								'staffId' => $user['id'] ?? $staffId ?? null,
+							]) ?>
+						<?php endif; ?>
 
 						<!-- Status -->
 						<div class="form-group">
@@ -296,10 +293,10 @@
 						<strong class="text-blue-700 dark:text-blue-300">Provider:</strong>
 						<p class="text-gray-600 dark:text-gray-400">Manage own services and staff</p>
 					</div>
-					<div class="text-sm">
-						<strong class="text-green-700 dark:text-green-300">Staff:</strong>
-						<p class="text-gray-600 dark:text-gray-400">Limited to assigned provider</p>
-					</div>
+						<div class="text-sm">
+							<strong class="text-green-700 dark:text-green-300">Staff:</strong>
+							<p class="text-gray-600 dark:text-gray-400">Limited to providers they assist</p>
+						</div>
 					<div class="text-sm">
 						<strong class="text-gray-700 dark:text-gray-300">Customer:</strong>
 						<p class="text-gray-600 dark:text-gray-400">Book and manage own appointments</p>
@@ -311,19 +308,17 @@
 </div>
 
 <script>
-// Show/hide provider selection based on role
-document.getElementById('role').addEventListener('change', function() {
-	const role = this.value;
-	const providerSelection = document.getElementById('provider-selection');
-	
-	if (role === 'staff') {
-		providerSelection.style.display = 'block';
-		document.getElementById('provider_id').required = true;
-	} else {
-		providerSelection.style.display = 'none';
-		document.getElementById('provider_id').required = false;
-		document.getElementById('provider_id').value = '';
+document.addEventListener('DOMContentLoaded', function() {
+	const roleSelect = document.getElementById('role');
+	const scheduleSection = document.getElementById('providerScheduleSection');
+	if (!roleSelect || !scheduleSection) return;
+
+	function toggleSchedule() {
+		scheduleSection.classList.toggle('hidden', roleSelect.value !== 'provider');
 	}
+
+	roleSelect.addEventListener('change', toggleSchedule);
+	toggleSchedule();
 });
 
 // Toggle password visibility
@@ -339,14 +334,5 @@ function togglePassword(fieldId) {
 		icon.textContent = 'visibility';
 	}
 }
-
-// Initialize form on page load
-document.addEventListener('DOMContentLoaded', function() {
-	// Trigger role change event to show/hide provider selection
-	const roleSelect = document.getElementById('role');
-	if (roleSelect && roleSelect.value) {
-		roleSelect.dispatchEvent(new Event('change'));
-	}
-});
 </script>
 <?= $this->endSection() ?>

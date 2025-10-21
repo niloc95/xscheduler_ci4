@@ -49,7 +49,7 @@
                         <th class="px-6 py-4 font-semibold">User</th>
                         <th class="px-6 py-4 font-semibold">Role</th>
                         <th class="px-6 py-4 font-semibold">Status</th>
-                        <th class="px-6 py-4 font-semibold">Provider</th>
+                        <th class="px-6 py-4 font-semibold">Assignments</th>
                         <th class="px-6 py-4 font-semibold">Created</th>
                         <th class="px-6 py-4 font-semibold">Actions</th>
                     </tr>
@@ -87,11 +87,19 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
-                            <?php if (!empty($user['provider_id'])): ?>
-                                <?php $provider = array_values(array_filter($users, fn($u)=> ($u['id'] ?? null) == $user['provider_id'])); ?>
-                                <?= !empty($provider[0]['name']) ? esc($provider[0]['name']) : 'Unknown' ?>
+                            <?php if (!empty($user['assignments'])): ?>
+                                <div class="flex flex-wrap gap-1">
+                                    <?php 
+                                    $names = explode(', ', $user['assignments']);
+                                    foreach ($names as $name): 
+                                    ?>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                            <?= esc($name) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
                             <?php else: ?>
-                                —
+                                <span class="text-gray-400 dark:text-gray-500 italic text-sm">None</span>
                             <?php endif; ?>
                         </td>
                         <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
@@ -163,11 +171,18 @@
     const badgeColors={admin:'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',provider:'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',staff:'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'};
     const name=u.name||'—';
     const email=u.email||'—';
+    let assignmentsHtml = '';
+    if (u.assignments) {
+        const names = u.assignments.split(', ');
+        assignmentsHtml = '<div class="flex flex-wrap gap-1">' + names.map(n => `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">${escapeHtml(n)}</span>`).join('') + '</div>';
+    } else {
+        assignmentsHtml = '<span class="text-gray-400 dark:text-gray-500 italic text-sm">None</span>';
+    }
         return `<tr class=\"bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700\">`
             +`<td class=\"px-6 py-4 font-medium text-gray-900 dark:text-gray-100\"><div class=\"flex items-center\"><div class=\"w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3\">${escapeHtml(name.substring(0,1).toUpperCase())}</div><div><div class=\"font-medium\">${escapeHtml(name)}</div><div class=\"text-gray-500 dark:text-gray-400 text-sm\">${escapeHtml(email)}</div>${u.phone?`<div class='text-gray-400 dark:text-gray-500 text-xs'>${escapeHtml(u.phone)}</div>`:''}</div></div></td>`
             +`<td class=\"px-6 py-4\"><span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role]||badgeColors.customer}\">${roleLabel(role)}</span></td>`
             +`<td class=\"px-6 py-4\"><span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(isActive?'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200':'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200')}\">${isActive?'Active':'Inactive'}</span></td>`
-            +`<td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${u.provider_id?`#${u.provider_id}`:'—'}</td>`
+            +`<td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${assignmentsHtml}</td>`
             +`<td class=\"px-6 py-4 text-gray-500 dark:text-gray-400\">${fmtDate(u.created_at)}</td>`
             +`<td class=\"px-6 py-4\"><div class='flex items-center space-x-2'><a href='${baseUrl('user-management/edit/'+u.id)}' class='p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'><span class='material-symbols-outlined'>edit</span></a></div></td>`
             +`</tr>`;

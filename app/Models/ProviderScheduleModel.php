@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use CodeIgniter\Database\BaseResult;
 use CodeIgniter\Model;
+use App\Services\LocalizationSettingsService;
 
 class ProviderScheduleModel extends Model
 {
-    protected $table            = 'provider_schedules';
+    protected $table            = 'xs_provider_schedules';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
@@ -31,13 +31,15 @@ class ProviderScheduleModel extends Model
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
+    private ?LocalizationSettingsService $localization = null;
+
     protected $validationRules = [
         'provider_id' => 'required|integer',
         'day_of_week' => 'required|in_list[monday,tuesday,wednesday,thursday,friday,saturday,sunday]',
-        'start_time'  => 'required|valid_date[H:i]',
-        'end_time'    => 'required|valid_date[H:i]',
-        'break_start' => 'permit_empty|valid_date[H:i]',
-        'break_end'   => 'permit_empty|valid_date[H:i]',
+    'start_time'  => 'required|valid_date[H:i:s]',
+    'end_time'    => 'required|valid_date[H:i:s]',
+    'break_start' => 'permit_empty|valid_date[H:i:s]',
+    'break_end'   => 'permit_empty|valid_date[H:i:s]',
         'is_active'   => 'in_list[0,1]',
     ];
 
@@ -119,20 +121,15 @@ class ProviderScheduleModel extends Model
 
     private function normaliseTime(?string $time): ?string
     {
-        if (!$time) {
-            return null;
+        return $this->getLocalization()->normaliseTimeInput($time);
+    }
+
+    private function getLocalization(): LocalizationSettingsService
+    {
+        if ($this->localization === null) {
+            $this->localization = new LocalizationSettingsService();
         }
 
-        $time = trim($time);
-        if ($time === '') {
-            return null;
-        }
-
-        // Append seconds if omitted
-        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
-            return $time . ':00';
-        }
-
-        return $time;
+        return $this->localization;
     }
 }

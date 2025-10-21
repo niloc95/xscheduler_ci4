@@ -3,8 +3,10 @@
 namespace App\Controllers;
 
 use App\Models\ProviderScheduleModel;
+use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
+use App\Services\LocalizationSettingsService;
 
 class UserManagement extends BaseController
 {
@@ -12,6 +14,8 @@ class UserManagement extends BaseController
     protected $permissionModel;
     
     protected $providerScheduleModel;
+    protected ProviderStaffModel $providerStaffModel;
+    protected LocalizationSettingsService $localization;
     protected array $scheduleDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
     public function __construct()
@@ -19,6 +23,8 @@ class UserManagement extends BaseController
         $this->userModel = new UserModel();
         $this->permissionModel = new UserPermissionModel();
         $this->providerScheduleModel = new ProviderScheduleModel();
+        $this->providerStaffModel = new ProviderStaffModel();
+        $this->localization = new LocalizationSettingsService();
     }
 
     /**
@@ -35,7 +41,7 @@ class UserManagement extends BaseController
 
         // Get users based on current user's role and permissions
         $users = $this->getUsersBasedOnRole($currentUserId);
-    $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
+        $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
 
         $data = [
             'title' => 'User Management - WebSchedulr',
@@ -72,9 +78,21 @@ class UserManagement extends BaseController
 
         // Get providers for staff assignment
         $providers = [];
-        if (in_array('staff', $availableRoles)) {
+        if (in_array('staff', $availableRoles, true)) {
             $providers = $this->userModel->getProviders();
         }
+
+        // Get available staff for provider assignment
+        $availableStaff = [];
+        if (in_array('provider', $availableRoles, true)) {
+            $staffModel = new UserModel();
+            $availableStaff = $staffModel->whereIn('role', ['staff', 'receptionist'])
+                ->where('is_active', true)
+                ->orderBy('name', 'ASC')
+                ->findAll();
+        }
+
+        $availableProviders = $providers;
 
         // Get stats for the help panel
         $stats = $this->getUserStatsBasedOnRole($currentUserId);
@@ -84,11 +102,18 @@ class UserManagement extends BaseController
             'currentUser' => $currentUser,
             'availableRoles' => $availableRoles,
             'providers' => $providers,
+            'availableStaff' => $availableStaff,
+            'assignedStaff' => [],
+            'availableProviders' => $availableProviders,
+            'assignedProviders' => [],
+            'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
             'stats' => $stats,
             'validation' => $this->validator,
             'providerSchedule' => $this->prepareScheduleForView(old('schedule') ?? []),
             'scheduleDays' => $this->scheduleDays,
             'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
+            'localizationContext' => $this->localization->getContext(),
+            'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
         return view('user_management/create', $data);
@@ -116,11 +141,6 @@ class UserManagement extends BaseController
             'phone' => 'permit_empty|max_length[20]',
         ];
 
-        // Add provider validation for staff
-        if ($this->request->getPost('role') === 'staff') {
-            $rules['provider_id'] = 'required|numeric';
-        }
-
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
@@ -142,19 +162,6 @@ class UserManagement extends BaseController
             'is_active' => true,
         ];
 
-        // Set provider_id for staff
-        if ($role === 'staff') {
-            $providerId = $this->request->getPost('provider_id');
-            
-            // Validate that the provider exists and current user can assign to it
-            if (!$this->canAssignToProvider($currentUserId, $providerId)) {
-                return redirect()->back()
-                               ->with('error', 'Invalid provider selection.');
-            }
-            
-            $userData['provider_id'] = $providerId;
-        }
-
         $scheduleInput = $this->request->getPost('schedule') ?? [];
         $scheduleClean = [];
         if ($role === 'provider') {
@@ -172,9 +179,9 @@ class UserManagement extends BaseController
             if ($role === 'provider' && !empty($scheduleClean)) {
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
             }
-            
-            return redirect()->to('/user-management')
-                           ->with('success', 'User created successfully.');
+
+            return redirect()->to('/user-management/edit/' . $userId)
+                           ->with('success', 'User created successfully. You can now manage assignments and schedules.');
         } else {
             return redirect()->back()
                            ->with('error', 'Failed to create user. Please try again.');
@@ -217,16 +224,60 @@ class UserManagement extends BaseController
         $existingSchedule = $this->providerScheduleModel->getByProvider($user['id']);
         $rawSchedule = old('schedule') ?: $existingSchedule;
 
+        $assignedStaff = [];
+        $availableStaff = [];
+        $assignedProviders = [];
+        $availableProviders = [];
+        $canManageAssignments = ($currentUser['role'] ?? '') === 'admin';
+
+        if (($user['role'] ?? '') === 'provider'
+            && ($currentUser['role'] ?? '') === 'provider'
+            && (int) $currentUserId === (int) $userId) {
+            $canManageAssignments = true;
+        }
+
+        if (($user['role'] ?? '') === 'provider') {
+            $assignedStaff = $this->providerStaffModel->getStaffByProvider($user['id']);
+
+            if ($canManageAssignments) {
+                $availableStaff = $this->userModel
+                    ->whereIn('role', ['staff', 'receptionist'])
+                    ->where('is_active', true)
+                    ->orderBy('name', 'ASC')
+                    ->findAll();
+            }
+        } elseif (in_array($user['role'] ?? '', ['staff', 'receptionist'], true)) {
+            $assignedProviders = $this->providerStaffModel->getProvidersForStaff($user['id']);
+
+            if ($canManageAssignments) {
+                $availableProviders = $this->userModel
+                    ->where('role', 'provider')
+                    ->where('is_active', true)
+                    ->orderBy('name', 'ASC')
+                    ->findAll();
+            }
+        }
+
         $data = [
             'title' => 'Edit User - WebSchedulr',
             'currentUser' => $currentUser,
             'user' => $user,
+            'userId' => $userId,
+            'providerId' => $userId, // For provider_staff component
+            'staffId' => $userId, // For staff_providers component
             'availableRoles' => $availableRoles,
             'providers' => $providers,
             'validation' => $this->validator,
             'providerSchedule' => $this->prepareScheduleForView($rawSchedule),
             'scheduleDays' => $this->scheduleDays,
             'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
+            'assignedStaff' => $assignedStaff,
+            'availableStaff' => $availableStaff,
+            'assignedProviders' => $assignedProviders,
+            'availableProviders' => $availableProviders,
+            'canManageAssignments' => $canManageAssignments,
+            'localizationContext' => $this->localization->getContext(),
+            'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
         return view('user_management/edit', $data);
@@ -319,24 +370,8 @@ class UserManagement extends BaseController
             }
         }
 
-        // Handle provider assignment for staff
+        // Provider assignments now handled via staff_providers component and pivot table
         $finalRole = $updateData['role'] ?? $user['role'];
-        if ($finalRole === 'staff') {
-            $providerId = $this->request->getPost('provider_id');
-            if ($providerId && $this->canAssignToProvider($currentUserId, $providerId)) {
-                $updateData['provider_id'] = $providerId;
-            } elseif (!$providerId && !($user['provider_id'] ?? null)) {
-                // Staff requires a provider - only error if they don't already have one
-                return redirect()->back()
-                               ->with('error', 'Staff members must be assigned to a provider.');
-            }
-            // else: provider_id not in POST but user already has one - keep existing value
-        } else {
-            // Clear provider_id if not staff (only if role is changing away from staff)
-            if ($user['role'] === 'staff') {
-                $updateData['provider_id'] = null;
-            }
-        }
 
         $scheduleInput = $this->request->getPost('schedule') ?? [];
         $scheduleClean = [];
@@ -489,28 +524,96 @@ class UserManagement extends BaseController
             return [];
         }
 
+        $users = [];
         switch ($currentUser['role']) {
             case 'admin':
-                return $this->userModel
+                $users = $this->userModel
                     ->whereIn('role', ['admin', 'provider', 'staff', 'receptionist'])
                     ->findAll();
+                break;
                 
             case 'provider':
-                // Providers can see their staff and themselves
-                $rows = $this->userModel
-                    ->where('provider_id', $currentUserId)
-                    ->orWhere('id', $currentUserId)
-                    ->findAll();
-                // Filter any non-system roles just in case
-                return array_values(array_filter($rows, fn($u) => in_array($u['role'] ?? '', ['admin','provider','staff','receptionist'], true)));
+                $staff = $this->providerStaffModel->getStaffByProvider($currentUserId);
+                $users = array_merge([$currentUser], $staff);
+                break;
                     
             case 'staff':
                 // Staff and customers can only see themselves
-                return [$currentUser];
+                $users = [$currentUser];
+                break;
                 
             default:
                 return [];
         }
+
+        // Enrich users with assignment information
+        return $this->enrichUsersWithAssignments($users);
+    }
+
+    /**
+     * Enrich user array with assignment relationships
+     */
+    private function enrichUsersWithAssignments(array $users): array
+    {
+        if (empty($users)) {
+            return $users;
+        }
+
+        // Group users by role for batch queries
+        $providerIds = [];
+        $staffIds = [];
+        
+        foreach ($users as $user) {
+            if ($user['role'] === 'provider') {
+                $providerIds[] = $user['id'];
+            } elseif ($user['role'] === 'staff' || $user['role'] === 'receptionist') {
+                $staffIds[] = $user['id'];
+            }
+        }
+
+        // Fetch assignments for providers
+        $providerAssignments = [];
+        if (!empty($providerIds)) {
+            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                ->select('psa.provider_id, GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ", ") AS staff_names')
+                ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'left')
+                ->whereIn('psa.provider_id', $providerIds)
+                ->groupBy('psa.provider_id');
+            
+            $results = $builder->get()->getResultArray();
+            foreach ($results as $row) {
+                $providerAssignments[$row['provider_id']] = $row['staff_names'];
+            }
+        }
+
+        // Fetch assignments for staff
+        $staffAssignments = [];
+        if (!empty($staffIds)) {
+            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                ->select('psa.staff_id, GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ", ") AS provider_names')
+                ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'left')
+                ->whereIn('psa.staff_id', $staffIds)
+                ->groupBy('psa.staff_id');
+            
+            $results = $builder->get()->getResultArray();
+            foreach ($results as $row) {
+                $staffAssignments[$row['staff_id']] = $row['provider_names'];
+            }
+        }
+
+        // Add assignment info to each user
+        foreach ($users as &$user) {
+            if ($user['role'] === 'provider') {
+                $user['assignments'] = $providerAssignments[$user['id']] ?? null;
+            } elseif ($user['role'] === 'staff' || $user['role'] === 'receptionist') {
+                $user['assignments'] = $staffAssignments[$user['id']] ?? null;
+            } else {
+                $user['assignments'] = null;
+            }
+        }
+        unset($user);
+
+        return $users;
     }
 
     private function getUserStatsBasedOnRole(int $currentUserId, array $usersForContext = []): array
@@ -626,13 +729,18 @@ class UserManagement extends BaseController
                 continue;
             }
 
-            $start = $this->normaliseTimeString($row['start_time'] ?? null);
-            $end   = $this->normaliseTimeString($row['end_time'] ?? null);
-            $breakStart = $this->normaliseTimeString($row['break_start'] ?? null);
-            $breakEnd   = $this->normaliseTimeString($row['break_end'] ?? null);
+            $rawStart = $row['start_time'] ?? null;
+            $rawEnd = $row['end_time'] ?? null;
+            $rawBreakStart = $row['break_start'] ?? null;
+            $rawBreakEnd = $row['break_end'] ?? null;
+
+            $start = $this->normaliseTimeString($rawStart);
+            $end   = $this->normaliseTimeString($rawEnd);
+            $breakStart = $this->normaliseTimeString($rawBreakStart);
+            $breakEnd   = $this->normaliseTimeString($rawBreakEnd);
 
             if (!$start || !$end) {
-                $errors[$day] = 'Start and end times are required.';
+                $errors[$day] = 'Start and end times are required. ' . $this->localization->describeExpectedFormat();
                 continue;
             }
 
@@ -641,8 +749,21 @@ class UserManagement extends BaseController
                 continue;
             }
 
+            $hasBreakStartInput = is_string($rawBreakStart) && trim($rawBreakStart) !== '';
+            $hasBreakEndInput = is_string($rawBreakEnd) && trim($rawBreakEnd) !== '';
+
+            if ($hasBreakStartInput && !$breakStart) {
+                $errors[$day] = 'Break start must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if ($hasBreakEndInput && !$breakEnd) {
+                $errors[$day] = 'Break end must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
             if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
-                $errors[$day] = 'Provide both break start and end times.';
+                $errors[$day] = 'Provide both break start and end times. ' . $this->localization->describeExpectedFormat();
                 continue;
             }
 
@@ -699,10 +820,10 @@ class UserManagement extends BaseController
 
             $isActive = $this->toBool($row['is_active'] ?? null);
             $prepared[$day]['is_active'] = $isActive;
-            $prepared[$day]['start_time'] = $this->formatTimeForView($row['start_time'] ?? null);
-            $prepared[$day]['end_time'] = $this->formatTimeForView($row['end_time'] ?? null);
-            $prepared[$day]['break_start'] = $this->formatTimeForView($row['break_start'] ?? null);
-            $prepared[$day]['break_end'] = $this->formatTimeForView($row['break_end'] ?? null);
+            $prepared[$day]['start_time'] = $this->localization->formatTimeForDisplay($row['start_time'] ?? null);
+            $prepared[$day]['end_time'] = $this->localization->formatTimeForDisplay($row['end_time'] ?? null);
+            $prepared[$day]['break_start'] = $this->localization->formatTimeForDisplay($row['break_start'] ?? null);
+            $prepared[$day]['break_end'] = $this->localization->formatTimeForDisplay($row['break_end'] ?? null);
         }
 
         return $prepared;
@@ -710,46 +831,7 @@ class UserManagement extends BaseController
 
     private function normaliseTimeString(?string $time): ?string
     {
-        if (!$time) {
-            return null;
-        }
-
-        $time = trim($time);
-        if ($time === '') {
-            return null;
-        }
-
-        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
-            return $time . ':00';
-        }
-
-        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
-            return $time;
-        }
-
-        return null;
-    }
-
-    private function formatTimeForView($time): string
-    {
-        if (!$time) {
-            return '';
-        }
-
-        $time = trim((string) $time);
-        if ($time === '') {
-            return '';
-        }
-
-        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
-            return $time;
-        }
-
-        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
-            return substr($time, 0, 5);
-        }
-
-        return '';
+        return $this->localization->normaliseTimeInput($time);
     }
 
     private function toBool($value): bool

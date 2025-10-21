@@ -124,6 +124,20 @@ $routes->group('providers', ['filter' => 'setup'], function($routes) {
     $routes->delete('(:num)/schedule', 'ProviderSchedule::delete/$1', ['filter' => 'auth']);
 });
 
+// Provider staff assignments
+$routes->group('provider-staff', ['filter' => 'setup'], function($routes) {
+    $routes->get('provider/(:num)', 'ProviderStaff::list/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('assign', 'ProviderStaff::assign', ['filter' => 'role:admin,provider']);
+    $routes->post('remove', 'ProviderStaff::remove', ['filter' => 'role:admin,provider']);
+});
+
+// Staff provider assignments (reverse direction)
+$routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
+    $routes->get('staff/(:num)', 'StaffProviders::list/$1', ['filter' => 'role:admin,staff']);
+    $routes->post('assign', 'StaffProviders::assign', ['filter' => 'role:admin']);
+    $routes->post('remove', 'StaffProviders::remove', ['filter' => 'role:admin']);
+});
+
 // Appointments Routes (auth required)
 $routes->group('appointments', function($routes) {
     $routes->get('', 'Appointments::index');

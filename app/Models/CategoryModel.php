@@ -6,7 +6,7 @@ use App\Models\BaseModel;
 
 class CategoryModel extends BaseModel
 {
-    protected $table            = 'categories';
+    protected $table            = 'xs_categories';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'description', 'color', 'active'

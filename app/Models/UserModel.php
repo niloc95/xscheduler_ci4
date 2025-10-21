@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use App\Models\BaseModel;
+use App\Models\ProviderStaffModel;
 
 class UserModel extends BaseModel
 {
-    protected $table            = 'users';
+    protected $table            = 'xs_users';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
-        'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
+        'provider_id', // DEPRECATED: Use xs_provider_staff_assignments pivot table instead
+        'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
         'profile_image'
     ];
 
@@ -97,10 +99,14 @@ class UserModel extends BaseModel
      */
     public function getStaffForProvider(int $providerId): array
     {
-        return $this->where('role', 'staff')
-                    ->where('provider_id', $providerId)
-                    ->where('is_active', true)
-                    ->findAll();
+        $assignments = new ProviderStaffModel();
+        return $assignments->getStaffByProvider($providerId);
+    }
+
+    public function getProvidersForStaff(int $staffId): array
+    {
+        $assignments = new ProviderStaffModel();
+        return $assignments->getProvidersForStaff($staffId);
     }
 
     /**
@@ -128,8 +134,9 @@ class UserModel extends BaseModel
             return true;
         }
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
-            return $target['provider_id'] === $manager['id'];
+        if ($manager['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
         }
         // Users can manage themselves (limited)
         if ($managerId === $targetUserId) {
@@ -257,16 +264,18 @@ class UserModel extends BaseModel
             return true;
         }
         // Providers can view their staff
-        if ($viewer['role'] === 'provider' && $target['role'] === 'staff') {
-            return $target['provider_id'] === $viewer['id'];
+        if ($viewer['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($targetUserId, $viewer['id']);
         }
         // Users can view themselves
         if ($viewerId === $targetUserId) {
             return true;
         }
         // Staff can view their provider
-        if ($viewer['role'] === 'staff' && $target['role'] === 'provider') {
-            return $viewer['provider_id'] === $target['id'];
+        if (in_array($viewer['role'], ['staff', 'receptionist'], true) && $target['role'] === 'provider') {
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($viewerId, $targetUserId);
         }
         return false;
     }

@@ -119,28 +119,27 @@
                     </div>
                 </div>
 
-                <!-- Provider Selection (for Staff) -->
-                <div id="provider-selection" class="form-group" style="display: none;">
-                    <label for="provider_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                        Service Provider <span class="text-red-500">*</span>
-                    </label>
-                    <select id="provider_id" 
-                            name="provider_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('provider_id') ? 'border-red-500 dark:border-red-400' : '' ?>">
-                        <option value="">Select Provider</option>
-                        <?php foreach ($providers as $provider): ?>
-                            <option value="<?= $provider['id'] ?>" <?= old('provider_id') == $provider['id'] ? 'selected' : '' ?>>
-                                <?= esc($provider['name']) ?> (<?= ucfirst($provider['role']) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php if ($validation && $validation->hasError('provider_id')): ?>
-                        <p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('provider_id') ?></p>
-                    <?php endif; ?>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Staff members must be assigned to a service provider</p>
+                <div id="providerScheduleSection" class="<?= old('role') === 'provider' ? '' : 'hidden' ?>">
+                    <?= $this->include('user_management/components/provider_schedule') ?>
                 </div>
 
-                <?= $this->include('user_management/components/provider_schedule') ?>
+                <div id="providerAssignmentsSection" class="<?= old('role') === 'provider' ? '' : 'hidden' ?>">
+                        <?php if (old('role') === 'provider'): ?>
+                            <div class="rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/30 p-4 text-sm text-yellow-800 dark:text-yellow-100">
+                                <div class="font-medium mb-1">Staff assignments locked</div>
+                                <p>Save this provider first, then return to assign staff members and manage access.</p>
+                            </div>
+                        <?php endif; ?>
+                </div>
+
+                <div id="staffAssignmentsSection" class="<?= in_array(old('role'), ['staff', 'receptionist'], true) ? '' : 'hidden' ?>">
+                    <?= $this->include('user_management/components/staff_providers', [
+                        'assignedProviders' => $assignedProviders ?? [],
+                        'availableProviders' => $availableProviders ?? [],
+                        'canManageAssignments' => $canManageAssignments ?? false,
+                        'staffId' => null,
+                    ]) ?>
+                </div>
 
                 <!-- Role Description -->
                 <div id="role-description" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" style="display: none;">
@@ -312,36 +311,51 @@
 </div>
 
 <script>
-// Show/hide provider selection based on role
-document.getElementById('role').addEventListener('change', function() {
-    const role = this.value;
-    const providerSelection = document.getElementById('provider-selection');
-    const roleDescription = document.getElementById('role-description');
-    const rolePermissions = document.getElementById('role-permissions');
-    
-    if (role === 'staff') {
-        providerSelection.style.display = 'block';
-        document.getElementById('provider_id').required = true;
-    } else {
-        providerSelection.style.display = 'none';
-        document.getElementById('provider_id').required = false;
-        document.getElementById('provider_id').value = '';
-    }
-    
-    // Show role description
+const roleSelect = document.getElementById('role');
+const roleDescription = document.getElementById('role-description');
+const rolePermissions = document.getElementById('role-permissions');
+const providerScheduleSection = document.getElementById('providerScheduleSection');
+const providerAssignmentsSection = document.getElementById('providerAssignmentsSection');
+const staffAssignmentsSection = document.getElementById('staffAssignmentsSection');
+
+function toggleRoleDetails() {
+    if (!roleSelect) return;
+    const role = roleSelect.value;
+
     if (role) {
         const descriptions = {
             'admin': 'Full system access including settings, user management, and all features.',
             'provider': 'Can manage own calendar, create staff, manage services and categories.',
-            'staff': 'Limited to managing own calendar and assigned appointments.'
+            'staff': 'Limited to managing own calendar and assigned appointments. Provider assignments managed after creation.'
         };
-        
-        rolePermissions.innerHTML = descriptions[role] || '';
-        roleDescription.style.display = 'block';
-    } else {
+
+        if (rolePermissions) {
+            rolePermissions.innerHTML = descriptions[role] || '';
+        }
+        if (roleDescription) {
+            roleDescription.style.display = 'block';
+        }
+    } else if (roleDescription) {
         roleDescription.style.display = 'none';
     }
-});
+
+    if (providerScheduleSection) {
+        providerScheduleSection.classList.toggle('hidden', role !== 'provider');
+    }
+
+    if (providerAssignmentsSection) {
+        providerAssignmentsSection.classList.toggle('hidden', role !== 'provider');
+    }
+
+    if (staffAssignmentsSection) {
+        const isStaff = role === 'staff' || role === 'receptionist';
+        staffAssignmentsSection.classList.toggle('hidden', !isStaff);
+    }
+}
+
+if (roleSelect) {
+    roleSelect.addEventListener('change', toggleRoleDetails);
+}
 
 // Toggle password visibility
 function togglePassword(fieldId) {
@@ -359,9 +373,8 @@ function togglePassword(fieldId) {
 
 // Initialize form
 document.addEventListener('DOMContentLoaded', function() {
-    // Trigger role change event if there's an old value
-    if (document.getElementById('role').value) {
-        document.getElementById('role').dispatchEvent(new Event('change'));
+    if (roleSelect) {
+        toggleRoleDetails();
     }
 });
 </script>

@@ -4,17 +4,20 @@ namespace App\Controllers;
 
 use App\Models\ProviderScheduleModel;
 use App\Models\UserModel;
+use App\Services\LocalizationSettingsService;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class ProviderSchedule extends BaseController
 {
     protected ProviderScheduleModel $scheduleModel;
     protected UserModel $userModel;
+    protected LocalizationSettingsService $localization;
 
     public function __construct()
     {
         $this->scheduleModel = new ProviderScheduleModel();
         $this->userModel     = new UserModel();
+        $this->localization  = new LocalizationSettingsService();
     }
 
     public function index(int $providerId)
@@ -28,6 +31,7 @@ class ProviderSchedule extends BaseController
         return $this->response->setJSON([
             'provider_id' => $providerId,
             'schedule'    => $schedule,
+            'localization' => $this->localization->getContext(),
         ]);
     }
 
@@ -64,6 +68,7 @@ class ProviderSchedule extends BaseController
             'status'   => 'success',
             'message'  => 'Schedule updated.',
             'schedule' => $this->scheduleModel->getByProvider($providerId),
+            'localization' => $this->localization->getContext(),
         ]);
     }
 
@@ -128,13 +133,18 @@ class ProviderSchedule extends BaseController
                 continue;
             }
 
-            $start = $this->normaliseTime($row['start_time'] ?? null);
-            $end   = $this->normaliseTime($row['end_time'] ?? null);
-            $breakStart = $this->normaliseTime($row['break_start'] ?? null);
-            $breakEnd   = $this->normaliseTime($row['break_end'] ?? null);
+            $rawStart = $row['start_time'] ?? null;
+            $rawEnd = $row['end_time'] ?? null;
+            $rawBreakStart = $row['break_start'] ?? null;
+            $rawBreakEnd = $row['break_end'] ?? null;
+
+            $start = $this->localization->normaliseTimeInput($rawStart);
+            $end   = $this->localization->normaliseTimeInput($rawEnd);
+            $breakStart = $this->localization->normaliseTimeInput($rawBreakStart);
+            $breakEnd   = $this->localization->normaliseTimeInput($rawBreakEnd);
 
             if (!$start || !$end) {
-                $errors[$day] = 'Start and end time are required.';
+                $errors[$day] = 'Start and end time are required. ' . $this->localization->describeExpectedFormat();
                 continue;
             }
 
@@ -143,8 +153,21 @@ class ProviderSchedule extends BaseController
                 continue;
             }
 
+            $hasBreakStartInput = is_string($rawBreakStart) && trim($rawBreakStart) !== '';
+            $hasBreakEndInput = is_string($rawBreakEnd) && trim($rawBreakEnd) !== '';
+
+            if ($hasBreakStartInput && !$breakStart) {
+                $errors[$day] = 'Break start must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if ($hasBreakEndInput && !$breakEnd) {
+                $errors[$day] = 'Break end must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
             if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
-                $errors[$day] = 'Both break start and break end are required when using breaks.';
+                $errors[$day] = 'Both break start and break end are required when using breaks. ' . $this->localization->describeExpectedFormat();
                 continue;
             }
 
@@ -170,24 +193,6 @@ class ProviderSchedule extends BaseController
         }
 
         return [$clean, $errors];
-    }
-
-    protected function normaliseTime(?string $time): ?string
-    {
-        if (!$time) {
-            return null;
-        }
-
-        $time = trim($time);
-        if ($time === '') {
-            return null;
-        }
-
-        if (preg_match('/^\d{2}:\d{2}$/', $time)) {
-            return $time . ':00';
-        }
-
-        return preg_match('/^\d{2}:\d{2}:\d{2}$/', $time) ? $time : null;
     }
 
     protected function failValidationErrors(array $errors)
