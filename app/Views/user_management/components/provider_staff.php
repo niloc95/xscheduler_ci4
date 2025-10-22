@@ -40,7 +40,7 @@ $removeUrl = base_url('provider-staff/remove');
                 <div class="flex-1">
                     <label for="provider-staff-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Staff Member</label>
                     <select id="provider-staff-select" data-staff-select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                        <option value="">Choose staff or receptionist</option>
+                        <option value="">Choose staff member</option>
                         <?php foreach ($availableStaff as $staff): ?>
                             <?php $isAssigned = in_array($staff['id'], $assignedIds, true); ?>
                             <option value="<?= (int) $staff['id'] ?>" <?= $isAssigned ? 'disabled' : '' ?>>

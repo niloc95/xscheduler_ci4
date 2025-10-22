@@ -22,7 +22,7 @@ class UserModel extends BaseModel
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[admin,provider,staff,receptionist,customer]'
+        'role'  => 'required|in_list[admin,provider,staff,customer]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
@@ -134,7 +134,7 @@ class UserModel extends BaseModel
             return true;
         }
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
         }
@@ -268,7 +268,7 @@ class UserModel extends BaseModel
             return true;
         }
         // Providers can view their staff
-        if ($viewer['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+        if ($viewer['role'] === 'provider' && $target['role'] === 'staff') {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($targetUserId, $viewer['id']);
         }
@@ -277,7 +277,7 @@ class UserModel extends BaseModel
             return true;
         }
         // Staff can view their provider
-        if (in_array($viewer['role'], ['staff', 'receptionist'], true) && $target['role'] === 'provider') {
+        if ($viewer['role'] === 'staff' && $target['role'] === 'provider') {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($viewerId, $targetUserId);
         }

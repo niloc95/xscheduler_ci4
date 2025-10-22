@@ -90,7 +90,7 @@ class UserManagement extends BaseController
         $availableStaff = [];
         if (in_array('provider', $availableRoles, true)) {
             $staffModel = new UserModel();
-            $availableStaff = $staffModel->whereIn('role', ['staff', 'receptionist'])
+            $availableStaff = $staffModel->where('role', 'staff')
                 ->where('is_active', true)
                 ->orderBy('name', 'ASC')
                 ->findAll();
@@ -139,7 +139,7 @@ class UserManagement extends BaseController
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'role' => 'required|in_list[admin,provider,staff,receptionist]',
+            'role' => 'required|in_list[admin,provider,staff]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]',
@@ -199,7 +199,7 @@ class UserManagement extends BaseController
             );
             
             // Auto-assignment only when provider creates staff (NOT when admin creates staff)
-            if ($currentUser['role'] === 'provider' && in_array($role, ['staff', 'receptionist'], true)) {
+            if ($currentUser['role'] === 'provider' && $role === 'staff') {
                 log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
                 $this->providerStaffModel->insert([
                     'provider_id' => $currentUserId,
@@ -288,12 +288,12 @@ class UserManagement extends BaseController
 
             if ($canManageAssignments) {
                 $availableStaff = $this->userModel
-                    ->whereIn('role', ['staff', 'receptionist'])
+                    ->where('role', 'staff')
                     ->where('is_active', true)
                     ->orderBy('name', 'ASC')
                     ->findAll();
             }
-        } elseif (in_array($user['role'] ?? '', ['staff', 'receptionist'], true)) {
+        } elseif ($user['role'] === 'staff') {
             $assignedProviders = $this->providerStaffModel->getProvidersForStaff($user['id']);
 
             if ($canManageAssignments) {
@@ -369,7 +369,7 @@ class UserManagement extends BaseController
 
         // Add role validation if user can change roles
         if ($this->canChangeUserRole($currentUserId, $userId)) {
-            $rules['role'] = 'required|in_list[admin,provider,staff,receptionist]';
+            $rules['role'] = 'required|in_list[admin,provider,staff]';
         }
 
         if (!$this->validate($rules)) {
@@ -578,7 +578,7 @@ class UserManagement extends BaseController
         switch ($currentUser['role']) {
             case 'admin':
                 $users = $this->userModel
-                    ->whereIn('role', ['admin', 'provider', 'staff', 'receptionist'])
+                    ->whereIn('role', ['admin', 'provider', 'staff'])
                     ->findAll();
                 break;
                 
@@ -616,7 +616,7 @@ class UserManagement extends BaseController
         foreach ($users as $user) {
             if ($user['role'] === 'provider') {
                 $providerIds[] = $user['id'];
-            } elseif ($user['role'] === 'staff' || $user['role'] === 'receptionist') {
+            } elseif ($user['role'] === 'staff') {
                 $staffIds[] = $user['id'];
             }
         }
@@ -655,7 +655,7 @@ class UserManagement extends BaseController
         foreach ($users as &$user) {
             if ($user['role'] === 'provider') {
                 $user['assignments'] = $providerAssignments[$user['id']] ?? null;
-            } elseif ($user['role'] === 'staff' || $user['role'] === 'receptionist') {
+            } elseif ($user['role'] === 'staff') {
                 $user['assignments'] = $staffAssignments[$user['id']] ?? null;
             } else {
                 $user['assignments'] = null;
@@ -675,13 +675,13 @@ class UserManagement extends BaseController
 
         // Build stats from provided users (or fetch a small set if empty)
         if ($currentUser['role'] === 'admin') {
-            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff','receptionist' ])->findAll();
+            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff' ])->findAll();
             $admins = 0; $providers = 0; $staff = 0;
             foreach ($rows as $u) {
                 $r = $u['role'] ?? '';
                 if ($r === 'admin') $admins++;
                 elseif ($r === 'provider') $providers++;
-                elseif ($r === 'staff' || $r === 'receptionist') $staff++;
+                elseif ($r === 'staff') $staff++;
             }
             return [
                 'total' => $admins + $providers + $staff,
@@ -716,7 +716,6 @@ class UserManagement extends BaseController
         }
         if ($this->permissionModel->hasPermission($currentUserId, 'create_staff')) {
             $roles[] = 'staff';
-            $roles[] = 'receptionist'; // Providers and admins can create receptionists
         }
         
         // Customer creation is handled via xs_customers, not users

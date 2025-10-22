@@ -80,8 +80,8 @@ class ProviderStaff extends BaseController
         }
 
         $staff = $this->userModel->find($staffId);
-        if (!$staff || !in_array($staff['role'], ['staff', 'receptionist'], true)) {
-            return $this->failValidationErrors('Only staff or receptionists can be assigned.');
+        if (!$staff || $staff['role'] !== 'staff') {
+            return $this->failValidationErrors('Only staff can be assigned.');
         }
 
         $role = $currentUser['role'] ?? '';

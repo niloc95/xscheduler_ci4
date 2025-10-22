@@ -138,12 +138,13 @@ $routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
     $routes->post('remove', 'StaffProviders::remove', ['filter' => 'role:admin']);
 });
 
-// Receptionist provider assignments
-$routes->group('receptionist-providers', ['filter' => 'auth'], function($routes) {
-    $routes->get('receptionist/(:num)', 'ReceptionistProviders::list/$1', ['filter' => 'role:admin,receptionist']);
-    $routes->post('assign', 'ReceptionistProviders::assign', ['filter' => 'role:admin']);
-    $routes->post('remove', 'ReceptionistProviders::remove', ['filter' => 'role:admin']);
-});
+// Receptionist provider assignments (DEPRECATED - receptionist role removed)
+// Kept for v1.1 historical reference; table and controller remain but unused
+// $routes->group('receptionist-providers', ['filter' => 'auth'], function($routes) {
+//     $routes->get('receptionist/(:num)', 'ReceptionistProviders::list/$1', ['filter' => 'role:admin']);
+//     $routes->post('assign', 'ReceptionistProviders::assign', ['filter' => 'role:admin']);
+//     $routes->post('remove', 'ReceptionistProviders::remove', ['filter' => 'role:admin']);
+// });
 
 // Appointments Routes (auth required)
 $routes->group('appointments', function($routes) {

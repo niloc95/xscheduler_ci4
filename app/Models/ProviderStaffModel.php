@@ -27,7 +27,7 @@ class ProviderStaffModel extends BaseModel
             ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'inner')
             ->where('psa.provider_id', $providerId)
             ->where('staff.is_active', true) // Only active users
-            ->whereIn('staff.role', ['staff', 'receptionist']);
+            ->where('staff.role', 'staff');
         
         if ($status !== null) {
             $builder->where('psa.status', $status);

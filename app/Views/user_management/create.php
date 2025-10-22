@@ -128,7 +128,7 @@
                         <?php endif; ?>
                 </div>
 
-                <div id="staffAssignmentsSection" class="<?= in_array(old('role'), ['staff', 'receptionist'], true) ? '' : 'hidden' ?>">
+                <div id="staffAssignmentsSection" class="<?= old('role') === 'staff' ? '' : 'hidden' ?>">
                     <?= $this->include('user_management/components/staff_providers', [
                         'assignedProviders' => $assignedProviders ?? [],
                         'availableProviders' => $providers ?? [],
@@ -344,7 +344,7 @@ function toggleRoleDetails() {
     }
 
     if (staffAssignmentsSection) {
-        const isStaff = role === 'staff' || role === 'receptionist';
+        const isStaff = role === 'staff';
         staffAssignmentsSection.classList.toggle('hidden', !isStaff);
     }
 }

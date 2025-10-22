@@ -122,9 +122,9 @@
 								'assignedStaff' => $assignedStaff ?? [],
 								'availableStaff' => $availableStaff ?? [],
 								'canManageAssignments' => $canManageAssignments ?? false,
-								'providerId' => $user['id'] ?? $userId ?? null,
+								'providerId' => $user['id'] ?? null,
 							]) ?>
-						<?php elseif (in_array($user['role'] ?? '', ['staff', 'receptionist'], true)): ?>
+						<?php elseif ($user['role'] === 'staff'): ?>
 							<?= $this->include('user_management/components/staff_providers', [
 								'assignedProviders' => $assignedProviders ?? [],
 								'availableProviders' => $availableProviders ?? [],

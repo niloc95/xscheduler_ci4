@@ -137,9 +137,9 @@ class UserPermissionModel extends Model
         }
 
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && in_array($target['role'], ['staff', 'receptionist'], true)) {
+        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
             $assignments = new ProviderStaffModel();
-            return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
+            return $assignments->isStaffAssignedToProvider($targetUserId, $managerId);
         }
 
         // Users can manage themselves (limited)

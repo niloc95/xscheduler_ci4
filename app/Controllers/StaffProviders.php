@@ -69,9 +69,9 @@ class StaffProviders extends BaseController
             return $this->failValidationErrors('Staff and provider are required.');
         }
 
-        $staff = $this->userModel->find($staffId);
-        if (!$staff || !in_array($staff['role'], ['staff', 'receptionist'], true)) {
-            return $this->failValidationErrors('Only staff or receptionists can be assigned.');
+                $staff = $this->userModel->find($staffId);
+        if (!$staff || $staff['role'] !== 'staff') {
+            return $this->failUnauthorized('Invalid staff user');
         }
 
         $provider = $this->userModel->find($providerId);
