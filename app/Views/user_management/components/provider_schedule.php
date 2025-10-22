@@ -22,6 +22,11 @@ $formatDescription = $localizationContext['format_description'] ?? (
 );
 $firstDay = $scheduleDays[0] ?? 'monday';
 ?>
+<?php
+// Determine initial visibility based on current role selection
+$currentRole = old('role', $user['role'] ?? '');
+$initialDisplay = ($currentRole === 'provider') ? 'block' : 'none';
+?>
 <div id="provider-schedule-section"
      class="mt-8"
      data-provider-schedule-section
@@ -31,7 +36,7 @@ $firstDay = $scheduleDays[0] ?? 'monday';
      data-timezone="<?= esc($timezone) ?>"
      data-time-pattern="<?= esc($timePattern) ?>"
     data-format-description="<?= esc($formatDescription) ?>"
-     style="display: none;">
+     style="display: <?= $initialDisplay ?>;">
     <div class="card card-spacious">
         <div class="card-header flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex flex-col gap-1">

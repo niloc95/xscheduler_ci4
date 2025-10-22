@@ -76,13 +76,13 @@ class CreateAuditLogsTable extends Migration
         $this->forge->addKey('action');
         $this->forge->addKey('created_at');
         
-        $this->forge->addForeignKey('user_id', 'xs_users', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
         
-        $this->forge->createTable('xs_audit_logs');
+        $this->forge->createTable('audit_logs');
     }
 
     public function down()
     {
-        $this->forge->dropTable('xs_audit_logs');
+        $this->forge->dropTable('audit_logs');
     }
 }

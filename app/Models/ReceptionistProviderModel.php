@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class ReceptionistProviderModel extends Model
 {
-    protected $table            = 'xs_receptionist_providers';
+    protected $table            = 'receptionist_providers';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';

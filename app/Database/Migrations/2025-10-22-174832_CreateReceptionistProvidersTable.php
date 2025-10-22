@@ -58,15 +58,15 @@ class CreateReceptionistProvidersTable extends Migration
         $this->forge->addUniqueKey(['receptionist_id', 'provider_id'], 'unique_receptionist_provider');
         
         // Foreign keys
-        $this->forge->addForeignKey('receptionist_id', 'xs_users', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('provider_id', 'xs_users', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('assigned_by', 'xs_users', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('receptionist_id', 'users', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('provider_id', 'users', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('assigned_by', 'users', 'id', 'CASCADE', 'CASCADE');
         
-        $this->forge->createTable('xs_receptionist_providers');
+        $this->forge->createTable('receptionist_providers');
     }
 
     public function down()
     {
-        $this->forge->dropTable('xs_receptionist_providers');
+        $this->forge->dropTable('receptionist_providers');
     }
 }
