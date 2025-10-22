@@ -174,6 +174,16 @@ class UserManagement extends BaseController
         $userId = $this->userModel->createUser($userData);
 
         if ($userId) {
+            // If provider creates staff, auto-assign the staff to themselves
+            if ($currentUser['role'] === 'provider' && in_array($role, ['staff', 'receptionist'], true)) {
+                $this->providerStaffModel->insert([
+                    'provider_id' => $currentUserId,
+                    'staff_id' => $userId,
+                    'assigned_by' => $currentUserId,
+                    'assigned_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+            
             if ($role === 'provider' && !empty($scheduleClean)) {
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
             }
@@ -181,6 +191,7 @@ class UserManagement extends BaseController
             return redirect()->to('/user-management/edit/' . $userId)
                            ->with('success', 'User created successfully. You can now manage assignments and schedules.');
         } else {
+            log_message('error', '[UserManagement::store] Failed to create user');
             return redirect()->back()
                            ->with('error', 'Failed to create user. Please try again.');
         }
@@ -199,13 +210,16 @@ class UserManagement extends BaseController
         }
 
         $user = $this->userModel->find($userId);
+        
         if (!$user) {
             return redirect()->to('/user-management')
                            ->with('error', 'User not found.');
         }
 
         // Check permission to edit this user
-        if (!$this->userModel->canManageUser($currentUserId, $userId)) {
+        $canManage = $this->userModel->canManageUser($currentUserId, $userId);
+        
+        if (!$canManage) {
             return redirect()->to('/user-management')
                            ->with('error', 'You do not have permission to edit this user.');
         }
@@ -629,6 +643,7 @@ class UserManagement extends BaseController
         }
         if ($this->permissionModel->hasPermission($currentUserId, 'create_staff')) {
             $roles[] = 'staff';
+            $roles[] = 'receptionist'; // Providers and admins can create receptionists
         }
         
         // Customer creation is handled via xs_customers, not users

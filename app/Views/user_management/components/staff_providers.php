@@ -22,11 +22,11 @@ $removeUrl = base_url('staff-providers/remove');
 ?>
 
 <?php if ($missingStaffId): ?>
-    <div class="mb-5 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
-        Staff identifier missing for provider assignments. Save the staff member first, then manage provider access.
+    <div class="mb-5 rounded-lg border border-blue-300 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/30 p-4 text-sm text-blue-800 dark:text-blue-100">
+        <div class="font-medium mb-1">Provider assignments will be available after saving</div>
+        <p>Save this staff member first, then you can assign them to providers.</p>
     </div>
-<?php endif; ?>
-
+<?php else: ?>
 <div class="border-t border-gray-200 dark:border-gray-700 pt-6" data-staff-providers-manager data-staff-id="<?= esc($staffId) ?>" data-assign-url="<?= esc($assignUrl) ?>" data-remove-url="<?= esc($removeUrl) ?>" data-list-url="<?= esc($listUrl) ?>" data-csrf-name="<?= esc($csrfName) ?>" data-csrf-value="<?= esc($csrfValue) ?>">
     <div class="flex items-center justify-between mb-4">
         <div>
@@ -384,3 +384,4 @@ $removeUrl = base_url('staff-providers/remove');
     });
 })();
 </script>
+<?php endif; // End of !$missingStaffId check ?>
