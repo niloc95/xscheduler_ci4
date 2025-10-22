@@ -36,7 +36,8 @@ class Appointments extends BaseController
         $activeProviders = $this->userModel
             ->where('role', 'provider')
             ->where('is_active', true)
-            ->whereNotNull('color')
+            ->where('color IS NOT NULL')
+            ->where('color !=', '')
             ->orderBy('first_name', 'ASC')
             ->findAll();
         
