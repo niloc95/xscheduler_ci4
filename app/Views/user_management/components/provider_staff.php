@@ -298,14 +298,15 @@ $removeUrl = base_url('provider-staff/remove');
             try {
                 assignBtn.disabled = true;
                 const response = await fetch(assignUrl, {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'same-origin',
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfValue,
                     },
-                    });
+                });
                 updateCsrfFromResponse(response);
                 const payload = await response.json();
                 if (!response.ok) {
@@ -353,6 +354,7 @@ $removeUrl = base_url('provider-staff/remove');
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfValue,
                 },
             });
             updateCsrfFromResponse(response);

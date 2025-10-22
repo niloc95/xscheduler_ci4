@@ -294,6 +294,7 @@ $removeUrl = base_url('staff-providers/remove');
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfValue,
                     },
                 })
                 .then(function(response) {
@@ -353,6 +354,7 @@ $removeUrl = base_url('staff-providers/remove');
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfValue,
                 },
             })
             .then(function(response) {

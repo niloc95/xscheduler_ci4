@@ -26,6 +26,7 @@ class ProviderStaffModel extends BaseModel
             ->select('staff.id, staff.name, staff.email, staff.phone, staff.role, staff.is_active, psa.assigned_at, psa.status, psa.assigned_by')
             ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'inner')
             ->where('psa.provider_id', $providerId)
+            ->where('staff.deleted_at IS NULL') // Exclude soft-deleted users
             ->whereIn('staff.role', ['staff', 'receptionist']);
         
         if ($status !== null) {
@@ -50,6 +51,7 @@ class ProviderStaffModel extends BaseModel
             ->select('provider.id, provider.name, provider.email, provider.role, psa.assigned_at, psa.status, psa.assigned_by')
             ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'inner')
             ->where('psa.staff_id', $staffId)
+            ->where('provider.deleted_at IS NULL') // Exclude soft-deleted providers
             ->where('provider.role', 'provider');
         
         if ($status !== null) {

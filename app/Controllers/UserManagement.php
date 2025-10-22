@@ -6,12 +6,14 @@ use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
+use App\Models\AuditLogModel;
 use App\Services\LocalizationSettingsService;
 
 class UserManagement extends BaseController
 {
     protected $userModel;
     protected $permissionModel;
+    protected $auditModel;
     
     protected $providerScheduleModel;
     protected ProviderStaffModel $providerStaffModel;
@@ -23,6 +25,7 @@ class UserManagement extends BaseController
         helper('user');
         $this->userModel = new UserModel();
         $this->permissionModel = new UserPermissionModel();
+        $this->auditModel = new AuditLogModel();
         $this->providerScheduleModel = new ProviderScheduleModel();
         $this->providerStaffModel = new ProviderStaffModel();
         $this->localization = new LocalizationSettingsService();
@@ -185,7 +188,17 @@ class UserManagement extends BaseController
         if ($userId) {
             log_message('info', 'User created with ID: ' . $userId);
             
-            // If provider creates staff, auto-assign the staff to themselves
+            // Audit log for user creation
+            $this->auditModel->log(
+                'user_created',
+                $currentUserId,
+                'user',
+                $userId,
+                null,
+                ['role' => $role, 'email' => $userData['email']]
+            );
+            
+            // Auto-assignment only when provider creates staff (NOT when admin creates staff)
             if ($currentUser['role'] === 'provider' && in_array($role, ['staff', 'receptionist'], true)) {
                 log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
                 $this->providerStaffModel->insert([
@@ -194,6 +207,16 @@ class UserManagement extends BaseController
                     'assigned_by' => $currentUserId,
                     'assigned_at' => date('Y-m-d H:i:s')
                 ]);
+                
+                // Audit log for auto-assignment
+                $this->auditModel->log(
+                    'staff_assigned',
+                    $currentUserId,
+                    'assignment',
+                    $userId,
+                    null,
+                    ['provider_id' => $currentUserId, 'staff_id' => $userId]
+                );
             }
             
             if ($role === 'provider' && !empty($scheduleClean)) {
@@ -368,8 +391,8 @@ class UserManagement extends BaseController
             $updateData['password'] = $this->request->getPost('password');
         }
 
-        // Add role if user can change it
-        if ($this->canChangeUserRole($currentUserId, $userId)) {
+        // Add role if user can change it - SECURITY: Prevent role escalation by non-admins
+        if ($currentUser['role'] === 'admin' && $this->canChangeUserRole($currentUserId, $userId)) {
             $newRole = $this->request->getPost('role');
             if ($newRole) {
                 // Check permission for new role if it's different
@@ -379,6 +402,9 @@ class UserManagement extends BaseController
                 }
                 $updateData['role'] = $newRole;
             }
+        } elseif ($currentUser['role'] !== 'admin' && $this->request->getPost('role')) {
+            // Non-admin attempted to change role - log and ignore
+            log_message('warning', "[UserManagement::update] Non-admin user {$currentUserId} attempted to change role for user {$userId}");
         }
 
         // Provider assignments now handled via staff_providers component and pivot table
@@ -396,6 +422,41 @@ class UserManagement extends BaseController
         }
 
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
+            // Audit logging for critical changes
+            $changedFields = array_keys($updateData);
+            
+            // Log role change specifically
+            if (isset($updateData['role']) && $updateData['role'] !== $user['role']) {
+                $this->auditModel->log(
+                    'role_changed',
+                    $currentUserId,
+                    'user',
+                    $userId,
+                    ['role' => $user['role']],
+                    ['role' => $updateData['role']]
+                );
+            }
+            
+            // Log password reset
+            if (isset($updateData['password'])) {
+                $this->auditModel->log(
+                    'password_reset',
+                    $currentUserId,
+                    'user',
+                    $userId
+                );
+            }
+            
+            // Log general user update
+            $this->auditModel->log(
+                'user_updated',
+                $currentUserId,
+                'user',
+                $userId,
+                null,
+                ['fields' => $changedFields]
+            );
+            
             // Update session if user updated themselves
             if ($currentUserId === $userId) {
                 $updatedUser = $this->userModel->find($userId);
