@@ -38,7 +38,7 @@ class Appointments extends BaseController
             ->where('is_active', true)
             ->where('color IS NOT NULL')
             ->where('color !=', '')
-            ->orderBy('first_name', 'ASC')
+            ->orderBy('name', 'ASC')
             ->findAll();
         
         $data = [

@@ -84,7 +84,7 @@
                         <span class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" 
                               style="background-color: <?= esc($provider['color'] ?? '#3B82F6') ?>;"></span>
                         <span class="text-sm text-gray-700 dark:text-gray-300">
-                            <?= esc($provider['first_name'] . ' ' . $provider['last_name']) ?>
+                            <?= esc($provider['name']) ?>
                         </span>
                     </div>
                 <?php endforeach; ?>
