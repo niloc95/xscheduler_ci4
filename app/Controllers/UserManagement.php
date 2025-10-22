@@ -122,10 +122,13 @@ class UserManagement extends BaseController
      */
     public function store()
     {
+        log_message('info', '========== STORE METHOD CALLED ==========');
+        
         $currentUserId = session()->get('user_id');
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
+            log_message('warning', 'No session in store - redirecting to login');
             return redirect()->to('/auth/login');
         }
 
@@ -140,13 +143,17 @@ class UserManagement extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            log_message('warning', 'Validation failed: ' . json_encode($this->validator->getErrors()));
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
         $role = $this->request->getPost('role');
         
+        log_message('info', 'Creating user with role: ' . $role . ' by user: ' . $currentUserId . ' (role: ' . $currentUser['role'] . ')');
+        
         // Check if current user can create this role
         if (!$this->canCreateRole($currentUserId, $role)) {
+            log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $role);
             return redirect()->back()
                            ->with('error', 'You do not have permission to create users with this role.');
         }
@@ -173,9 +180,14 @@ class UserManagement extends BaseController
 
         $userId = $this->userModel->createUser($userData);
 
+        log_message('info', 'User creation returned: ' . var_export($userId, true) . ' (type: ' . gettype($userId) . ')');
+
         if ($userId) {
+            log_message('info', 'User created with ID: ' . $userId);
+            
             // If provider creates staff, auto-assign the staff to themselves
             if ($currentUser['role'] === 'provider' && in_array($role, ['staff', 'receptionist'], true)) {
+                log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
                 $this->providerStaffModel->insert([
                     'provider_id' => $currentUserId,
                     'staff_id' => $userId,

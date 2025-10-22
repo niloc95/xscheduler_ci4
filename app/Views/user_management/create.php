@@ -32,7 +32,7 @@
                     <p class="card-subtitle">Enter the details for the new user account</p>
                 </div>
 
-                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form">
+                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form" id="createUserForm">
                 <?= csrf_field() ?>
 
                 <div class="card-body space-y-6">
@@ -371,6 +371,33 @@ function togglePassword(fieldId) {
 document.addEventListener('DOMContentLoaded', function() {
     if (roleSelect) {
         toggleRoleDetails();
+    }
+    
+    // Debug form submission
+    const form = document.getElementById('createUserForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submit event triggered!');
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            
+            // Check required fields
+            const requiredFields = form.querySelectorAll('[required]');
+            let allValid = true;
+            requiredFields.forEach(function(field) {
+                if (!field.value) {
+                    console.log('Missing required field:', field.name || field.id);
+                    allValid = false;
+                }
+            });
+            
+            if (!allValid) {
+                console.log('Form validation failed - missing required fields');
+                return; // Let browser handle validation
+            }
+            
+            console.log('All validations passed, form should submit now');
+        });
     }
 });
 </script>

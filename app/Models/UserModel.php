@@ -146,7 +146,7 @@ class UserModel extends BaseModel
     }
 
     /**
-     * Create a new user with role validation
+     * Create a new user with hashed password
      */
     public function createUser(array $userData): int|false
     {
@@ -158,7 +158,11 @@ class UserModel extends BaseModel
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
-        return $this->insert($userData, false);
+        
+        // Insert and return the new user ID
+        $result = $this->insert($userData, true); // true = return insert ID
+        
+        return $result !== false ? (int) $this->getInsertID() : false;
     }
 
     /**
