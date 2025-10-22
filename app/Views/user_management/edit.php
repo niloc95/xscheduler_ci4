@@ -113,6 +113,46 @@
 							</div>
 						</div>
 
+						<!-- Provider Color Picker (Admin Only) -->
+						<?php 
+						$currentRole = old('role', $user['role'] ?? '');
+						$isProvider = ($currentRole === 'provider');
+						$canEditColor = ($currentUser['role'] ?? '') === 'admin';
+						?>
+						<?php if ($isProvider && $canEditColor): ?>
+						<div class="form-group provider-color-field" style="display: <?= $isProvider ? 'block' : 'none' ?>;">
+							<label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
+								Calendar Color
+							</label>
+							<div class="flex items-center gap-3">
+								<input type="color" 
+									   id="color" 
+									   name="color" 
+									   value="<?= esc(old('color', $user['color'] ?? '#3B82F6')) ?>"
+									   class="h-10 w-20 rounded cursor-pointer border border-gray-300 dark:border-gray-600 transition-colors duration-300"
+									   title="Choose provider color for calendar display">
+								<span class="text-sm text-gray-600 dark:text-gray-400">
+									This color will be used to display <?= esc($user['first_name'] ?? 'this provider') ?>'s appointments on the calendar.
+								</span>
+							</div>
+						</div>
+						<?php elseif ($isProvider): ?>
+						<div class="form-group provider-color-field" style="display: <?= $isProvider ? 'block' : 'none' ?>;">
+							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
+								Calendar Color
+							</label>
+							<div class="flex items-center gap-3">
+								<div class="h-10 w-20 rounded border border-gray-300 dark:border-gray-600" 
+									 style="background-color: <?= esc($user['color'] ?? '#3B82F6') ?>;"
+									 title="Provider calendar color"></div>
+								<span class="text-sm text-gray-600 dark:text-gray-400">
+									Calendar color (only admins can change this)
+								</span>
+							</div>
+						</div>
+						<?php endif; ?>
+
+
 					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
 						<?= $this->include('user_management/components/provider_schedule') ?>
 					</div>
@@ -301,14 +341,19 @@
 document.addEventListener('DOMContentLoaded', function() {
 	const roleSelect = document.getElementById('role');
 	const scheduleSection = document.getElementById('providerScheduleSection');
+	const colorFields = document.querySelectorAll('.provider-color-field');
 	if (!roleSelect || !scheduleSection) return;
 
-	function toggleSchedule() {
-		scheduleSection.classList.toggle('hidden', roleSelect.value !== 'provider');
+	function toggleProviderFields() {
+		const isProvider = roleSelect.value === 'provider';
+		scheduleSection.classList.toggle('hidden', !isProvider);
+		colorFields.forEach(field => {
+			field.style.display = isProvider ? 'block' : 'none';
+		});
 	}
 
-	roleSelect.addEventListener('change', toggleSchedule);
-	toggleSchedule();
+	roleSelect.addEventListener('change', toggleProviderFields);
+	toggleProviderFields();
 });
 
 // Toggle password visibility

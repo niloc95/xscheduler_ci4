@@ -13,7 +13,7 @@ class UserModel extends BaseModel
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
         'provider_id', // DEPRECATED: Use xs_provider_staff_assignments pivot table instead
         'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
-        'profile_image'
+        'profile_image', 'color'
     ];
 
     // Dates (handled by BaseModel)
@@ -282,5 +282,58 @@ class UserModel extends BaseModel
             return $assignments->isStaffAssignedToProvider($viewerId, $targetUserId);
         }
         return false;
+    }
+
+    /**
+     * Get an available provider color
+     * Tries to avoid duplicates by selecting least-used color from palette
+     * 
+     * @return string Hex color code
+     */
+    public function getAvailableProviderColor(): string
+    {
+        // Predefined color palette - vibrant, distinguishable colors
+        $colorPalette = [
+            '#3B82F6', // Blue
+            '#10B981', // Green
+            '#F59E0B', // Amber
+            '#EF4444', // Red
+            '#8B5CF6', // Purple
+            '#EC4899', // Pink
+            '#06B6D4', // Cyan
+            '#F97316', // Orange
+            '#84CC16', // Lime
+            '#6366F1', // Indigo
+            '#14B8A6', // Teal
+            '#F43F5E', // Rose
+        ];
+
+        // Get color usage count for active providers
+        $colorUsage = [];
+        $providers = $this->where('role', 'provider')
+                          ->where('is_active', true)
+                          ->select('color')
+                          ->findAll();
+
+        // Count occurrences of each color
+        foreach ($providers as $provider) {
+            if ($provider['color']) {
+                $colorUsage[$provider['color']] = ($colorUsage[$provider['color']] ?? 0) + 1;
+            }
+        }
+
+        // Find least-used color from palette
+        $leastUsedColor = null;
+        $minCount = PHP_INT_MAX;
+        
+        foreach ($colorPalette as $color) {
+            $count = $colorUsage[$color] ?? 0;
+            if ($count < $minCount) {
+                $minCount = $count;
+                $leastUsedColor = $color;
+            }
+        }
+
+        return $leastUsedColor ?? $colorPalette[0];
     }
 }

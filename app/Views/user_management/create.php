@@ -113,6 +113,24 @@
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('role') ?></p>
                         <?php endif; ?>
                     </div>
+
+                    <!-- Provider Color Picker (Optional) -->
+                    <div class="form-group provider-color-field" style="display: none;">
+                        <label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
+                            Calendar Color <span class="text-gray-500 text-xs">(Optional)</span>
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" 
+                                   id="color" 
+                                   name="color" 
+                                   value="<?= old('color', '#3B82F6') ?>"
+                                   class="h-10 w-20 rounded cursor-pointer border border-gray-300 dark:border-gray-600 transition-colors duration-300"
+                                   title="Choose provider color for calendar display">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                Leave default or choose a custom color. A unique color will be auto-assigned if not specified.
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="providerScheduleSection" class="<?= old('role') === 'provider' ? '' : 'hidden' ?>">
@@ -347,6 +365,12 @@ function toggleRoleDetails() {
         const isStaff = role === 'staff';
         staffAssignmentsSection.classList.toggle('hidden', !isStaff);
     }
+
+    // Toggle provider color field
+    const colorFields = document.querySelectorAll('.provider-color-field');
+    colorFields.forEach(field => {
+        field.style.display = (role === 'provider') ? 'block' : 'none';
+    });
 }
 
 if (roleSelect) {

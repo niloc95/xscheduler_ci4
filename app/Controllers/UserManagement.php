@@ -173,6 +173,10 @@ class UserManagement extends BaseController
         $scheduleInput = $this->request->getPost('schedule') ?? [];
         $scheduleClean = [];
         if ($role === 'provider') {
+            // Auto-assign color for provider
+            $userData['color'] = $this->request->getPost('color') ?: $this->userModel->getAvailableProviderColor();
+            log_message('info', 'Assigned color ' . $userData['color'] . ' to new provider');
+            
             [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
             if (!empty($scheduleErrors)) {
                 return redirect()->back()->withInput()
@@ -413,6 +417,11 @@ class UserManagement extends BaseController
         $scheduleInput = $this->request->getPost('schedule') ?? [];
         $scheduleClean = [];
         if ($finalRole === 'provider') {
+            // Handle provider color update (admin only)
+            if ($currentUser['role'] === 'admin' && $this->request->getPost('color')) {
+                $updateData['color'] = $this->request->getPost('color');
+            }
+            
             [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
             if (!empty($scheduleErrors)) {
                 return redirect()->back()->withInput()
