@@ -21,11 +21,13 @@ class Appointments extends BaseController
             $model = new AppointmentModel();
             $builder = $model->builder();
             
-            // Select appointments with related data
+            // Select appointments with related data including provider color
             $builder->select('appointments.*, 
                              CONCAT(c.first_name, " ", c.last_name) as customer_name,
                              s.name as service_name,
-                             CONCAT(p.first_name, " ", p.last_name) as provider_name')
+                             s.duration_min as service_duration,
+                             CONCAT(p.first_name, " ", p.last_name) as provider_name,
+                             p.color as provider_color')
                     ->join('customers c', 'c.id = appointments.customer_id', 'left')
                     ->join('services s', 's.id = appointments.service_id', 'left')
                     ->join('users p', 'p.id = appointments.provider_id', 'left')
@@ -48,7 +50,7 @@ class Appointments extends BaseController
             
             $appointments = $builder->get()->getResultArray();
             
-            // Transform data for FullCalendar
+            // Transform data for FullCalendar with provider colors
             $events = array_map(function($appointment) {
                 return [
                     'id' => $appointment['id'],
@@ -61,6 +63,9 @@ class Appointments extends BaseController
                     'name' => $appointment['customer_name'] ?? null,
                     'serviceName' => $appointment['service_name'] ?? null,
                     'providerName' => $appointment['provider_name'] ?? null,
+                    'provider_color' => $appointment['provider_color'] ?? '#3B82F6', // Default blue
+                    'serviceDuration' => $appointment['service_duration'] ?? null,
+                    'notes' => $appointment['notes'] ?? null,
                 ];
             }, $appointments);
             

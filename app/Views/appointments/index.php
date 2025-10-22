@@ -74,14 +74,33 @@
 
     <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <!-- Calendar Toolbar Header -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center" data-calendar-toolbar>
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between" data-calendar-toolbar>
+            <!-- Provider Legend -->
+            <?php if (!empty($activeProviders) && count($activeProviders) > 0): ?>
+            <div class="flex items-center gap-4 flex-wrap">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Providers:</span>
+                <?php foreach ($activeProviders as $provider): ?>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" 
+                              style="background-color: <?= esc($provider['color'] ?? '#3B82F6') ?>;"></span>
+                        <span class="text-sm text-gray-700 dark:text-gray-300">
+                            <?= esc($provider['first_name'] . ' ' . $provider['last_name']) ?>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div></div> <!-- Empty div for flex spacing when no providers -->
+            <?php endif; ?>
+            
+            <!-- Navigation Controls -->
             <div class="flex items-center gap-2">
                 <button type="button" data-calendar-action="prev"
                     class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
                     <span class="material-symbols-outlined text-xl">chevron_left</span>
                 </button>
                 <h3 id="appointments-inline-calendar-title"
-                    class="min-w-[12rem] mt-4 text-center text-base font-semibold text-gray-900 dark:text-gray-100">
+                    class="min-w-[12rem] text-center text-base font-semibold text-gray-900 dark:text-gray-100">
                     <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
                 </h3>
                 <button type="button" data-calendar-action="next"

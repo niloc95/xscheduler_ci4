@@ -32,13 +32,22 @@ class Appointments extends BaseController
         // Mock appointment data - in real implementation, this would come from AppointmentModel
         $appointments = $this->getMockAppointments($currentRole, $currentUserId);
         
+        // Get active providers with colors for legend
+        $activeProviders = $this->userModel
+            ->where('role', 'provider')
+            ->where('is_active', true)
+            ->whereNotNull('color')
+            ->orderBy('first_name', 'ASC')
+            ->findAll();
+        
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
             'current_page' => 'appointments',
             'appointments' => $appointments,
             'user_role' => $currentRole,
             'user' => $currentUser,
-            'stats' => $this->getAppointmentStats($currentRole, $currentUserId)
+            'stats' => $this->getAppointmentStats($currentRole, $currentUserId),
+            'activeProviders' => $activeProviders
         ];
 
         return view('appointments/index', $data);
