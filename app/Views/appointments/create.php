@@ -4,6 +4,12 @@
  *
  * This form allows users to book/create new appointments.
  * Available to: customers (booking for themselves), staff, providers, and admins.
+ * 
+ * Features:
+ * - Dynamic customer fields based on BookingSettingsService configuration
+ * - Custom fields support (up to 6 configurable fields)
+ * - Settings-driven show/hide and required/optional behavior
+ * - Localization support for time format display
  */
 ?>
 <?= $this->extend('layouts/dashboard') ?>
@@ -47,45 +53,112 @@
                     <h4 class="text-md font-medium text-gray-900 dark:text-white">Customer Information</h4>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- First Name - Dynamic -->
+                        <?php if ($fieldConfig['first_name']['display']): ?>
                         <div>
                             <label for="customer_first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                First Name <span class="text-red-500">*</span>
+                                First Name <?= $fieldConfig['first_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
                             </label>
                             <input type="text" 
                                    id="customer_first_name" 
                                    name="customer_first_name" 
-                                   required 
+                                   <?= $fieldConfig['first_name']['required'] ? 'required' : '' ?>
                                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         </div>
+                        <?php endif; ?>
+
+                        <!-- Last Name - Dynamic -->
+                        <?php if ($fieldConfig['last_name']['display']): ?>
                         <div>
                             <label for="customer_last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Last Name <span class="text-red-500">*</span>
+                                Last Name <?= $fieldConfig['last_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
                             </label>
                             <input type="text" 
                                    id="customer_last_name" 
                                    name="customer_last_name" 
-                                   required 
+                                   <?= $fieldConfig['last_name']['required'] ? 'required' : '' ?>
                                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         </div>
+                        <?php endif; ?>
+
+                        <!-- Email - Dynamic -->
+                        <?php if ($fieldConfig['email']['display']): ?>
                         <div>
                             <label for="customer_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Email <span class="text-red-500">*</span>
+                                Email <?= $fieldConfig['email']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
                             </label>
                             <input type="email" 
                                    id="customer_email" 
                                    name="customer_email" 
-                                   required 
+                                   <?= $fieldConfig['email']['required'] ? 'required' : '' ?>
                                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         </div>
+                        <?php endif; ?>
+
+                        <!-- Phone - Dynamic -->
+                        <?php if ($fieldConfig['phone']['display']): ?>
                         <div>
                             <label for="customer_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Phone
+                                Phone <?= $fieldConfig['phone']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
                             </label>
                             <input type="tel" 
                                    id="customer_phone" 
                                    name="customer_phone" 
+                                   <?= $fieldConfig['phone']['required'] ? 'required' : '' ?>
                                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         </div>
+                        <?php endif; ?>
+
+                        <!-- Address - Dynamic -->
+                        <?php if ($fieldConfig['address']['display']): ?>
+                        <div class="md:col-span-2">
+                            <label for="customer_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Address <?= $fieldConfig['address']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
+                            </label>
+                            <input type="text" 
+                                   id="customer_address" 
+                                   name="customer_address" 
+                                   <?= $fieldConfig['address']['required'] ? 'required' : '' ?>
+                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Custom Fields - Dynamic -->
+                        <?php foreach ($customFields as $fieldKey => $fieldMeta): ?>
+                        <div class="<?= $fieldMeta['type'] === 'textarea' ? 'md:col-span-2' : '' ?>">
+                            <label for="<?= esc($fieldKey) ?>" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <?= esc($fieldMeta['title']) ?> <?= $fieldMeta['required'] ? '<span class="text-red-500">*</span>' : '' ?>
+                            </label>
+                            
+                            <?php if ($fieldMeta['type'] === 'textarea'): ?>
+                                <textarea id="<?= esc($fieldKey) ?>" 
+                                          name="<?= esc($fieldKey) ?>" 
+                                          rows="3"
+                                          <?= $fieldMeta['required'] ? 'required' : '' ?>
+                                          class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                            
+                            <?php elseif ($fieldMeta['type'] === 'checkbox'): ?>
+                                <div class="flex items-center">
+                                    <input type="checkbox" 
+                                           id="<?= esc($fieldKey) ?>" 
+                                           name="<?= esc($fieldKey) ?>" 
+                                           value="1"
+                                           <?= $fieldMeta['required'] ? 'required' : '' ?>
+                                           class="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500" />
+                                    <label for="<?= esc($fieldKey) ?>" class="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                                        Check if applicable
+                                    </label>
+                                </div>
+                            
+                            <?php else: ?>
+                                <input type="<?= $fieldMeta['type'] === 'select' ? 'text' : 'text' ?>" 
+                                       id="<?= esc($fieldKey) ?>" 
+                                       name="<?= esc($fieldKey) ?>" 
+                                       <?= $fieldMeta['required'] ? 'required' : '' ?>
+                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
                 <hr class="border-gray-200 dark:border-gray-700" />
@@ -152,17 +225,20 @@
                     </div>
                 </div>
 
-                <!-- Notes -->
+                <!-- Notes - Dynamic -->
+                <?php if ($fieldConfig['notes']['display']): ?>
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Notes (Optional)
+                        Notes <?= $fieldConfig['notes']['required'] ? '<span class="text-red-500">*</span>' : '(Optional)' ?>
                     </label>
                     <textarea id="notes" 
                               name="notes" 
                               rows="4" 
+                              <?= $fieldConfig['notes']['required'] ? 'required' : '' ?>
                               placeholder="Any special requests or information..."
                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                 </div>
+                <?php endif; ?>
 
                 <!-- Appointment Summary (dynamically updated) -->
                 <div id="appointment-summary" class="hidden rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">

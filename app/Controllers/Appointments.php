@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Services\BookingSettingsService;
+use App\Services\LocalizationSettingsService;
 use CodeIgniter\Controller;
 
 class Appointments extends BaseController
@@ -95,12 +97,24 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
+        // Initialize services
+        $bookingService = new BookingSettingsService();
+        $localizationService = new LocalizationSettingsService();
+
+        // Get field configuration from settings
+        $fieldConfig = $bookingService->getFieldConfiguration();
+        $customFields = $bookingService->getCustomFieldConfiguration();
+        $localizationContext = $localizationService->getContext();
+
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
             'services' => $this->getMockServices(),
             'providers' => $this->getMockProviders(),
-            'user_role' => current_user_role()
+            'user_role' => current_user_role(),
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'localization' => $localizationContext,
         ];
 
         return view('appointments/create', $data);
