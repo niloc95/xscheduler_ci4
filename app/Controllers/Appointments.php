@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Models\ServiceModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use CodeIgniter\Controller;
@@ -10,10 +11,12 @@ use CodeIgniter\Controller;
 class Appointments extends BaseController
 {
     protected $userModel;
+    protected $serviceModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->serviceModel = new ServiceModel();
         helper('permissions');
     }
 
@@ -106,11 +109,34 @@ class Appointments extends BaseController
         $customFields = $bookingService->getCustomFieldConfiguration();
         $localizationContext = $localizationService->getContext();
 
+        // Fetch real providers and services from database
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        // Format providers for dropdown
+        $providersFormatted = array_map(function($provider) {
+            return [
+                'id' => $provider['id'],
+                'name' => $provider['first_name'] . ' ' . $provider['last_name'],
+                'speciality' => $provider['speciality'] ?? 'General'
+            ];
+        }, $providers);
+
+        // Format services for dropdown
+        $servicesFormatted = array_map(function($service) {
+            return [
+                'id' => $service['id'],
+                'name' => $service['name'],
+                'duration' => $service['duration'],
+                'price' => $service['price']
+            ];
+        }, $services);
+
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
-            'services' => $this->getMockServices(),
-            'providers' => $this->getMockProviders(),
+            'services' => $servicesFormatted,
+            'providers' => $providersFormatted,
             'user_role' => current_user_role(),
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,

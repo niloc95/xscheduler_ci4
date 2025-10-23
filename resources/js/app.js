@@ -3,6 +3,9 @@
 // Import appointment calendar functionality
 import { initAppointmentsCalendar, setupViewButtons, refreshCalendar, showAppointmentModal } from './modules/appointments/appointments-calendar.js';
 
+// Import appointment booking form functionality
+import { initAppointmentForm } from './modules/appointments/appointments-form.js';
+
 // Import charts functionality
 import Charts from './charts.js';
 
@@ -145,6 +148,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     initializeCalendar();
+    
+    // Initialize appointment booking form if present
+    initAppointmentForm();
 });
 
 // Listen for settings changes and refresh calendar (same page)
