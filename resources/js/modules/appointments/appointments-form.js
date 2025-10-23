@@ -215,6 +215,9 @@ async function checkAvailability(formState, feedbackElement) {
     showAvailabilityChecking(feedbackElement);
 
     try {
+        // Combine date and time into ISO format start_time
+        const startTime = `${formState.date} ${formState.time}:00`;
+        
         const response = await fetch('/api/appointments/check-availability', {
             method: 'POST',
             headers: {
@@ -223,11 +226,9 @@ async function checkAvailability(formState, feedbackElement) {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
-                provider_id: formState.provider_id,
-                service_id: formState.service_id,
-                appointment_date: formState.date,
-                appointment_time: formState.time,
-                duration: formState.duration
+                provider_id: parseInt(formState.provider_id),
+                service_id: parseInt(formState.service_id),
+                start_time: startTime
             })
         });
 
@@ -242,7 +243,18 @@ async function checkAvailability(formState, feedbackElement) {
         if (formState.isAvailable) {
             showAvailabilitySuccess(feedbackElement, 'Time slot available');
         } else {
-            showAvailabilityError(feedbackElement, data.message || 'Time slot not available');
+            // Build detailed error message
+            let message = 'Time slot not available';
+            
+            if (data.businessHoursViolation) {
+                message = data.businessHoursViolation;
+            } else if (data.conflicts && data.conflicts.length > 0) {
+                message = `Conflicts with ${data.conflicts.length} existing appointment(s)`;
+            } else if (data.blockedTimeConflicts > 0) {
+                message = 'Time slot is blocked';
+            }
+            
+            showAvailabilityError(feedbackElement, message);
         }
 
     } catch (error) {
