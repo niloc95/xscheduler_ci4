@@ -127,7 +127,7 @@ class Appointments extends BaseController
             return [
                 'id' => $service['id'],
                 'name' => $service['name'],
-                'duration' => $service['duration'],
+                'duration' => $service['duration_min'], // Map duration_min to duration for consistency
                 'price' => $service['price']
             ];
         }, $services);
