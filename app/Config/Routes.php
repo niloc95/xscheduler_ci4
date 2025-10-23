@@ -212,11 +212,18 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->post('book', 'Scheduler::book');
 
     // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
+    // Unversioned appointments custom routes  
+    $routes->get('appointments', 'Api\\Appointments::index');
+    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
+    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    
     // Unversioned summary metrics
     $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
     // Unversioned counts for convenience (matches v1 controller)
     $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
+    
     // Unversioned appointments resource (alias to v1 controller) - restrict ID to numeric
+    // Note: Specific routes above take precedence over resource routes
     $routes->resource('appointments', [
         'controller' => 'Api\\V1\\Appointments',
         'placeholder' => '(:num)'

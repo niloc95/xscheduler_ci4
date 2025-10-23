@@ -1,7 +1,7 @@
 // (CoreUI components are no longer used for the sidebar. Keep charts init only.)
 
 // Import appointment calendar functionality
-import { initAppointmentsCalendar, setupViewButtons, refreshCalendar } from './modules/appointments/appointments-calendar.js';
+import { initAppointmentsCalendar, setupViewButtons, refreshCalendar, showAppointmentModal } from './modules/appointments/appointments-calendar.js';
 
 // Import charts functionality
 import Charts from './charts.js';
@@ -118,11 +118,11 @@ async function initializeCalendar(forceRefresh = false) {
         userRole: userRole,
         onEventClick: (event, info) => {
             console.log('[app] Appointment clicked:', event.id);
-            // TODO: Show appointment details modal
+            showAppointmentModal(event.id, userRole, calendarInstance);
         },
         onDateSelect: (info) => {
             console.log('[app] Date selected:', info.startStr, 'to', info.endStr);
-            // TODO: Show create appointment modal
+            // TODO: Show create appointment modal with pre-filled date/time
         },
         onEventDrop: (info) => {
             console.log('[app] Appointment rescheduled:', info.event.id);

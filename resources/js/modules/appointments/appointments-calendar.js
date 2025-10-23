@@ -404,3 +404,205 @@ export function destroyCalendar(calendar) {
   calendar.destroy();
   console.log('[appointments-calendar] Calendar destroyed');
 }
+
+/**
+ * Show appointment details modal
+ * @param {number} appointmentId - Appointment ID
+ * @param {string} userRole - Current user role
+ * @param {Calendar} calendar - Calendar instance for refresh after actions
+ */
+export async function showAppointmentModal(appointmentId, userRole = 'customer', calendar = null) {
+  const modal = document.getElementById('appointment-details-modal');
+  const loading = document.getElementById('modal-loading');
+  const content = document.getElementById('modal-data');
+  
+  if (!modal) {
+    console.error('[appointments-calendar] Modal element not found');
+    return;
+  }
+  
+  // Show modal and loading state
+  modal.classList.remove('hidden');
+  loading.classList.remove('hidden');
+  content.classList.add('hidden');
+  
+  try {
+    // Fetch appointment details
+    const response = await fetch(`/api/appointments/${appointmentId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch appointment: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const appointment = data.data || data;
+    
+    // Populate modal with appointment data
+    populateAppointmentModal(appointment, userRole);
+    
+    // Setup action buttons
+    setupModalActions(appointment, userRole, calendar);
+    
+    // Hide loading, show content
+    loading.classList.add('hidden');
+    content.classList.remove('hidden');
+    
+  } catch (error) {
+    console.error('[appointments-calendar] Error loading appointment:', error);
+    alert('Failed to load appointment details. Please try again.');
+    closeAppointmentModal();
+  }
+}
+
+/**
+ * Populate modal with appointment data
+ * @param {Object} appointment - Appointment data
+ * @param {string} userRole - Current user role
+ */
+function populateAppointmentModal(appointment, userRole) {
+  // Customer info
+  document.getElementById('modal-customer-name').textContent = appointment.customer_name || 'N/A';
+  document.getElementById('modal-customer-email').textContent = appointment.customer_email || 'N/A';
+  document.getElementById('modal-customer-phone').textContent = appointment.customer_phone || 'N/A';
+  
+  // Status badge
+  const statusEl = document.getElementById('modal-status');
+  statusEl.textContent = (appointment.status || 'booked').charAt(0).toUpperCase() + (appointment.status || 'booked').slice(1);
+  statusEl.className = 'px-3 py-1 text-xs font-medium rounded-full';
+  
+  // Status colors
+  const statusColors = {
+    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    booked: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+  };
+  statusEl.className += ' ' + (statusColors[appointment.status] || statusColors.booked);
+  
+  // Appointment details
+  document.getElementById('modal-service').textContent = appointment.service_name || 'N/A';
+  document.getElementById('modal-provider').textContent = appointment.provider_name || 'N/A';
+  
+  // Date & Time
+  const datetime = new Date(appointment.start_time || appointment.start);
+  document.getElementById('modal-datetime').textContent = datetime.toLocaleString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+  
+  document.getElementById('modal-duration').textContent = appointment.duration ? `${appointment.duration} minutes` : 'N/A';
+  document.getElementById('modal-price').textContent = appointment.price ? `$${parseFloat(appointment.price).toFixed(2)}` : 'N/A';
+  document.getElementById('modal-location').textContent = appointment.location || 'Main Office';
+  
+  // Notes
+  const notesSection = document.getElementById('modal-notes-section');
+  const notesEl = document.getElementById('modal-notes');
+  if (appointment.notes) {
+    notesEl.textContent = appointment.notes;
+    notesSection.classList.remove('hidden');
+  } else {
+    notesSection.classList.add('hidden');
+  }
+}
+
+/**
+ * Setup modal action buttons based on user role and appointment status
+ * @param {Object} appointment - Appointment data
+ * @param {string} userRole - Current user role
+ * @param {Calendar} calendar - Calendar instance
+ */
+function setupModalActions(appointment, userRole, calendar) {
+  const editBtn = document.getElementById('btn-edit-appointment');
+  const completeBtn = document.getElementById('btn-complete-appointment');
+  const cancelBtn = document.getElementById('btn-cancel-appointment');
+  
+  // Hide all buttons initially
+  editBtn.classList.add('hidden');
+  completeBtn.classList.add('hidden');
+  cancelBtn.classList.add('hidden');
+  
+  // Show buttons based on role and status
+  const canEdit = ['admin', 'provider', 'staff'].includes(userRole);
+  const isActive = !['completed', 'cancelled'].includes(appointment.status);
+  
+  if (canEdit && isActive) {
+    editBtn.classList.remove('hidden');
+    editBtn.onclick = () => {
+      window.location.href = `/appointments/edit/${appointment.id}`;
+    };
+  }
+  
+  if (canEdit && appointment.status !== 'completed') {
+    completeBtn.classList.remove('hidden');
+    completeBtn.onclick = async () => {
+      if (confirm('Mark this appointment as completed?')) {
+        await updateAppointmentStatus(appointment.id, 'completed', calendar);
+      }
+    };
+  }
+  
+  if (canEdit && appointment.status !== 'cancelled') {
+    cancelBtn.classList.remove('hidden');
+    cancelBtn.onclick = async () => {
+      if (confirm('Cancel this appointment?')) {
+        await updateAppointmentStatus(appointment.id, 'cancelled', calendar);
+      }
+    };
+  }
+}
+
+/**
+ * Update appointment status
+ * @param {number} appointmentId - Appointment ID
+ * @param {string} status - New status
+ * @param {Calendar} calendar - Calendar instance
+ */
+async function updateAppointmentStatus(appointmentId, status, calendar) {
+  try {
+    const response = await fetch(`/api/appointments/${appointmentId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ status })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update status: ${response.statusText}`);
+    }
+    
+    // Close modal
+    closeAppointmentModal();
+    
+    // Refresh calendar
+    if (calendar) {
+      refreshCalendar(calendar);
+    }
+    
+    // Show success message
+    alert(`Appointment ${status} successfully!`);
+    
+  } catch (error) {
+    console.error('[appointments-calendar] Error updating status:', error);
+    alert('Failed to update appointment status. Please try again.');
+  }
+}
+
+/**
+ * Close appointment details modal
+ */
+export function closeAppointmentModal() {
+  const modal = document.getElementById('appointment-details-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+// Make closeAppointmentModal globally available for onclick handlers
+window.closeAppointmentModal = closeAppointmentModal;
