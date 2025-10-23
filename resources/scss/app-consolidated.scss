@@ -121,9 +121,11 @@ md-outlined-card {
 
 #appointments-inline-calendar {
   width: 100%;
+  min-height: 600px;
   
   .fc {
     width: 100%;
+    height: 100%;
     background-color: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 0.75rem; /* rounded-xl to match cards */

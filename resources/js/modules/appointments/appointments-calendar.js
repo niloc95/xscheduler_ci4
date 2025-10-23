@@ -150,6 +150,10 @@ export async function initAppointmentsCalendar(containerEl, options = {}) {
     eventMinHeight: 60,
     eventDisplay: 'block',
     
+    // Height configuration - ensure calendar fills container
+    contentHeight: 'auto',
+    height: 'auto',
+    
     // Event sources - fetch from API
     eventSources: [
       {
