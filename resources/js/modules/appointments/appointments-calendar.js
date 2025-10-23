@@ -173,7 +173,10 @@ export async function initAppointmentsCalendar(containerEl, options = {}) {
         },
         success(response) {
           // Extract events from response
-          return response.data || response;
+          console.log('[appointments-calendar] Received events:', response);
+          const events = response.data || response;
+          console.log('[appointments-calendar] Parsed events:', events.length, 'events');
+          return events;
         },
         failure(error) {
           console.error('[appointments-calendar] Failed to load appointments:', error);

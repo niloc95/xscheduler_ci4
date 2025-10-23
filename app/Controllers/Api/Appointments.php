@@ -36,8 +36,13 @@ class Appointments extends BaseController
             
             // Apply date range filter
             if ($start && $end) {
-                $builder->where('xs_appointments.start_time >=', $start . ' 00:00:00')
-                        ->where('xs_appointments.start_time <=', $end . ' 23:59:59');
+                // FullCalendar sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
+                // Extract just the date part for comparison
+                $startDate = substr($start, 0, 10); // Get YYYY-MM-DD
+                $endDate = substr($end, 0, 10);     // Get YYYY-MM-DD
+                
+                $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00')
+                        ->where('xs_appointments.start_time <=', $endDate . ' 23:59:59');
             }
             
             // Apply optional filters
