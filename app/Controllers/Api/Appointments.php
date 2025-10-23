@@ -22,30 +22,31 @@ class Appointments extends BaseController
             $builder = $model->builder();
             
             // Select appointments with related data including provider color
-            $builder->select('appointments.*, 
-                             CONCAT(c.first_name, " ", c.last_name) as customer_name,
+            $builder->select('xs_appointments.*, 
+                             CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
                              s.name as service_name,
                              s.duration_min as service_duration,
-                             CONCAT(p.first_name, " ", p.last_name) as provider_name,
-                             p.color as provider_color')
-                    ->join('customers c', 'c.id = appointments.customer_id', 'left')
-                    ->join('services s', 's.id = appointments.service_id', 'left')
-                    ->join('users p', 'p.id = appointments.provider_id', 'left')
-                    ->orderBy('appointments.start_time', 'ASC');
+                             s.price as service_price,
+                             u.name as provider_name,
+                             u.color as provider_color')
+                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
+                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
+                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
+                    ->orderBy('xs_appointments.start_time', 'ASC');
             
             // Apply date range filter
             if ($start && $end) {
-                $builder->where('appointments.start_time >=', $start . ' 00:00:00')
-                        ->where('appointments.start_time <=', $end . ' 23:59:59');
+                $builder->where('xs_appointments.start_time >=', $start . ' 00:00:00')
+                        ->where('xs_appointments.start_time <=', $end . ' 23:59:59');
             }
             
             // Apply optional filters
             if ($providerId) {
-                $builder->where('appointments.provider_id', (int)$providerId);
+                $builder->where('xs_appointments.provider_id', (int)$providerId);
             }
             
             if ($serviceId) {
-                $builder->where('appointments.service_id', (int)$serviceId);
+                $builder->where('xs_appointments.service_id', (int)$serviceId);
             }
             
             $appointments = $builder->get()->getResultArray();
@@ -59,12 +60,14 @@ class Appointments extends BaseController
                     'end' => $appointment['end_time'],
                     'providerId' => $appointment['provider_id'],
                     'serviceId' => $appointment['service_id'],
+                    'customerId' => $appointment['customer_id'],
                     'status' => $appointment['status'],
                     'name' => $appointment['customer_name'] ?? null,
                     'serviceName' => $appointment['service_name'] ?? null,
                     'providerName' => $appointment['provider_name'] ?? null,
                     'provider_color' => $appointment['provider_color'] ?? '#3B82F6', // Default blue
                     'serviceDuration' => $appointment['service_duration'] ?? null,
+                    'price' => $appointment['service_price'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
                 ];
             }, $appointments);

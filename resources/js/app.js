@@ -107,8 +107,8 @@ async function initializeCalendar(forceRefresh = false) {
     // Get user role from session/page data
     const userRole = document.body.dataset.userRole || 'customer';
 
-    // Initialize appointments calendar with settings
-    calendarInstance = initAppointmentsCalendar(calendarEl, {
+    // Initialize appointments calendar with settings (async)
+    calendarInstance = await initAppointmentsCalendar(calendarEl, {
         settings: {
             'business.work_start': calendarSettings.workStart,
             'business.work_end': calendarSettings.workEnd,
@@ -133,9 +133,10 @@ async function initializeCalendar(forceRefresh = false) {
         }
     });
 
-    // Setup view buttons
+    // Setup view buttons after calendar is initialized
     if (calendarInstance) {
         setupViewButtons(calendarInstance);
+        console.log('[calendar] View buttons setup complete');
     }
 
     console.log('[calendar] Appointments calendar initialized successfully');
