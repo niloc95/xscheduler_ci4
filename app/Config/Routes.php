@@ -230,7 +230,13 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         'placeholder' => '(:num)'
     ]);
 
-    // Versioned API v1
+    // Public API endpoints (no auth required)
+    $routes->group('v1', function($routes) {
+        // Calendar configuration - public for frontend
+        $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
+    });
+
+    // Versioned API v1 (authenticated)
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
         // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
@@ -245,11 +251,10 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->get('providers', 'Api\\V1\\Providers::index');
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
-    // Settings API
-    $routes->get('settings', 'Api\\V1\\Settings::index');
-    $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
-    $routes->put('settings', 'Api\\V1\\Settings::update');
-    $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
+        // Settings API (authenticated)
+        $routes->get('settings', 'Api\\V1\\Settings::index');
+        $routes->put('settings', 'Api\\V1\\Settings::update');
+        $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
     });
 });
 

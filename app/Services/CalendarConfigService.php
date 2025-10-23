@@ -175,12 +175,20 @@ class CalendarConfigService
     /**
      * Get business hours configuration for FullCalendar
      * Fetches from business_hours table and formats for FullCalendar
+     * 
+     * For now, aggregates all provider business hours.
+     * In the future, this can be filtered by provider_id for provider-specific views.
      */
     public function getBusinessHoursForCalendar(): array
     {
         $db = \Config\Database::connect();
+        
+        // Get all business hours grouped by weekday
+        // weekday: 0=Sunday, 1=Monday, ..., 6=Saturday (matches FullCalendar)
         $businessHours = $db->table('business_hours')
-            ->where('is_working_day', 1)
+            ->select('weekday, MIN(start_time) as start_time, MAX(end_time) as end_time')
+            ->groupBy('weekday')
+            ->orderBy('weekday', 'ASC')
             ->get()
             ->getResultArray();
 
@@ -197,26 +205,12 @@ class CalendarConfigService
 
         // Convert database format to FullCalendar format
         $result = [];
-        $dayMap = [
-            'sunday' => 0,
-            'monday' => 1,
-            'tuesday' => 2,
-            'wednesday' => 3,
-            'thursday' => 4,
-            'friday' => 5,
-            'saturday' => 6,
-        ];
-
         foreach ($businessHours as $hours) {
-            $dayOfWeek = $dayMap[strtolower($hours['day_of_week'])] ?? null;
-            
-            if ($dayOfWeek !== null) {
-                $result[] = [
-                    'daysOfWeek' => [$dayOfWeek],
-                    'startTime' => substr($hours['start_time'], 0, 5), // HH:MM
-                    'endTime' => substr($hours['end_time'], 0, 5),     // HH:MM
-                ];
-            }
+            $result[] = [
+                'daysOfWeek' => [(int) $hours['weekday']],
+                'startTime' => substr($hours['start_time'], 0, 5), // HH:MM
+                'endTime' => substr($hours['end_time'], 0, 5),     // HH:MM
+            ];
         }
 
         return $result;
