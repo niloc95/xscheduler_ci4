@@ -247,6 +247,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
     // Settings API
     $routes->get('settings', 'Api\\V1\\Settings::index');
+    $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
     $routes->put('settings', 'Api\\V1\\Settings::update');
     $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
     });

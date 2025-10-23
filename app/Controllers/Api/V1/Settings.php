@@ -5,6 +5,7 @@ namespace App\Controllers\Api\V1;
 use App\Controllers\BaseController;
 use App\Models\SettingFileModel;
 use App\Models\SettingModel;
+use App\Services\CalendarConfigService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -37,6 +38,22 @@ class Settings extends BaseController
             }
         }
         return $this->response->setJSON(['ok' => true, 'data' => $data]);
+    }
+
+    /**
+     * GET /api/v1/settings/calendar-config
+     * Returns FullCalendar-specific configuration including time format,
+     * business hours, timezone, etc.
+     */
+    public function calendarConfig()
+    {
+        $calendarService = new CalendarConfigService();
+        $config = $calendarService->getJavaScriptConfig();
+        
+        return $this->response->setJSON([
+            'ok' => true,
+            'data' => $config
+        ]);
     }
 
     /**

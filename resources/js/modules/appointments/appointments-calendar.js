@@ -25,21 +25,21 @@ import interactionPlugin from '@fullcalendar/interaction';
  * Initialize the appointments calendar
  * @param {HTMLElement} containerEl - The calendar container element
  * @param {Object} options - Configuration options
- * @param {Object} options.settings - Business settings (work hours, time format, etc.)
+ * @param {Object} options.settings - Business settings (work hours, time format, etc.) [DEPRECATED - fetched from API]
  * @param {Object} options.filters - Initial filter values
  * @param {Function} options.onEventClick - Callback when event is clicked
  * @param {Function} options.onDateSelect - Callback when date range is selected
  * @param {Function} options.onEventDrop - Callback when event is dragged
- * @returns {Calendar} The initialized calendar instance
+ * @returns {Promise<Calendar>} The initialized calendar instance
  */
-export function initAppointmentsCalendar(containerEl, options = {}) {
+export async function initAppointmentsCalendar(containerEl, options = {}) {
   if (!containerEl) {
     console.error('[appointments-calendar] Container element not found');
     return null;
   }
 
   const {
-    settings = {},
+    settings = {}, // Deprecated: kept for backward compatibility
     filters = {},
     onEventClick = null,
     onDateSelect = null,
@@ -47,74 +47,102 @@ export function initAppointmentsCalendar(containerEl, options = {}) {
     userRole = 'customer'
   } = options;
 
-  // Parse business settings
-  const workStart = settings['business.work_start'] || '08:00';
-  const workEnd = settings['business.work_end'] || '18:00';
-  const timeFormat = settings['localization.time_format'] || '24';
-  const firstDayOfWeek = parseInt(settings['localization.first_day_of_week'] || '0');
-  const timezone = settings['localization.timezone'] || 'local';
+  // Fetch calendar configuration from API
+  let calendarConfig;
+  try {
+    const response = await fetch('/api/v1/settings/calendar-config');
+    const data = await response.json();
+    calendarConfig = data.data || {};
+    console.log('[appointments-calendar] Loaded calendar config from API:', calendarConfig);
+  } catch (error) {
+    console.error('[appointments-calendar] Failed to load calendar config, using defaults:', error);
+    // Fallback to legacy settings or hardcoded defaults
+    calendarConfig = {
+      initialView: 'timeGridWeek',
+      firstDay: parseInt(settings['localization.first_day_of_week'] || '0'),
+      slotMinTime: settings['business.work_start'] || '08:00',
+      slotMaxTime: settings['business.work_end'] || '18:00',
+      slotDuration: '00:30:00',
+      slotLabelFormat: {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: (settings['localization.time_format'] || '24') === '12'
+      },
+      eventTimeFormat: {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: (settings['localization.time_format'] || '24') === '12'
+      },
+      timeZone: settings['localization.timezone'] || 'local',
+      weekends: true,
+      businessHours: []
+    };
+  }
 
   // Check if user can edit appointments
   const canEdit = ['admin', 'provider'].includes(userRole);
 
-  // Initialize calendar
+  // Initialize calendar with API-driven configuration
   const calendar = new Calendar(containerEl, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     
-    // Initial view
-    initialView: 'timeGridWeek',
+    // Initial view from settings
+    initialView: calendarConfig.initialView || 'timeGridWeek',
     initialDate: containerEl.dataset.initialDate || new Date(),
     
     // Header toolbar (hidden - we use custom buttons)
     headerToolbar: false,
     
-    // View configuration
+    // View configuration with dynamic settings
     views: {
       timeGridDay: {
         titleFormat: { year: 'numeric', month: 'long', day: 'numeric' },
-        slotDuration: '00:30:00',
+        slotDuration: calendarConfig.slotDuration || '00:30:00',
         slotLabelInterval: '01:00:00',
-        slotMinTime: workStart,
-        slotMaxTime: workEnd,
-        slotEventOverlap: false, // Side-by-side for same time slots
+        slotMinTime: calendarConfig.slotMinTime || '08:00',
+        slotMaxTime: calendarConfig.slotMaxTime || '18:00',
+        slotEventOverlap: false,
       },
       timeGridWeek: {
         titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
-        slotDuration: '00:30:00',
+        slotDuration: calendarConfig.slotDuration || '00:30:00',
         slotLabelInterval: '01:00:00',
-        slotMinTime: workStart,
-        slotMaxTime: workEnd,
+        slotMinTime: calendarConfig.slotMinTime || '08:00',
+        slotMaxTime: calendarConfig.slotMaxTime || '18:00',
         slotEventOverlap: false,
         dayHeaderFormat: { weekday: 'short', day: 'numeric' },
+        weekends: calendarConfig.weekends !== false,
       },
       dayGridMonth: {
         titleFormat: { year: 'numeric', month: 'long' },
-        dayMaxEvents: 3, // Show "+N more" link
+        dayMaxEvents: 3,
       }
     },
     
-    // Localization
-    firstDay: firstDayOfWeek,
-    locale: settings['localization.language'] || 'en',
-    timeZone: timezone,
+    // Localization from API
+    firstDay: calendarConfig.firstDay || 0,
+    locale: calendarConfig.locale || 'en',
+    timeZone: calendarConfig.timeZone || 'local',
+    weekends: calendarConfig.weekends !== false,
     
-    // Time formatting
-    eventTimeFormat: {
+    // Time formatting from API
+    eventTimeFormat: calendarConfig.eventTimeFormat || {
       hour: '2-digit',
       minute: '2-digit',
-      meridiem: timeFormat === '12' ? 'short' : false,
-      hour12: timeFormat === '12'
+      hour12: false
     },
-    slotLabelFormat: {
+    slotLabelFormat: calendarConfig.slotLabelFormat || {
       hour: '2-digit',
       minute: '2-digit',
-      meridiem: timeFormat === '12' ? 'short' : false,
-      hour12: timeFormat === '12'
+      hour12: false
     },
+    
+    // Business hours from API
+    businessHours: calendarConfig.businessHours || [],
     
     // Interaction
-    editable: canEdit, // Enable drag-and-drop for admin/provider
-    selectable: canEdit, // Enable date selection for creating appointments
+    editable: canEdit,
+    selectable: canEdit,
     selectMirror: true,
     dayMaxEvents: true,
     
