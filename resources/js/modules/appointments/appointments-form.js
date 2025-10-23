@@ -35,18 +35,12 @@ export async function initAppointmentForm() {
         time: null,
         duration: null,
         isChecking: false,
-        isAvailable: null,
-        allServices: [] // Store all services for filtering
+        isAvailable: null
     };
 
-    // Store all services on page load
-    formState.allServices = Array.from(serviceSelect.options).slice(1).map(option => ({
-        value: option.value,
-        text: option.text,
-        duration: parseInt(option.dataset.duration) || 0,
-        price: parseFloat(option.dataset.price) || 0,
-        html: option.innerHTML
-    }));
+    // Initialize service dropdown as disabled (provider must be selected first)
+    serviceSelect.disabled = true;
+    serviceSelect.classList.add('bg-gray-100', 'dark:bg-gray-800', 'cursor-not-allowed');
 
     // Create availability feedback element
     const availabilityFeedback = createAvailabilityFeedback();
@@ -56,14 +50,16 @@ export async function initAppointmentForm() {
     const endTimeDisplay = createEndTimeDisplay();
     timeInput.parentNode.appendChild(endTimeDisplay);
 
-    // Event: Provider selection changes → Filter services
+    // Event: Provider selection changes → Load their services
     providerSelect.addEventListener('change', async function() {
         const providerId = this.value;
         formState.provider_id = providerId;
 
         if (!providerId) {
-            // Reset to all services
-            resetServiceSelect(serviceSelect, formState.allServices);
+            // Disable service dropdown
+            serviceSelect.disabled = true;
+            serviceSelect.innerHTML = '<option value="">Select a provider first...</option>';
+            serviceSelect.classList.add('bg-gray-100', 'dark:bg-gray-800', 'cursor-not-allowed');
             clearAvailabilityCheck();
             return;
         }
@@ -128,7 +124,8 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
     try {
         // Show loading state
         serviceSelect.disabled = true;
-        serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+        serviceSelect.classList.add('bg-gray-100', 'dark:bg-gray-800');
+        serviceSelect.innerHTML = '<option value="">🔄 Loading services...</option>';
 
         const response = await fetch(`/api/v1/providers/${providerId}/services`, {
             method: 'GET',
@@ -144,10 +141,11 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
 
         const data = await response.json();
         
-        if (data.ok && data.data) {
+        // API returns { data: [...], meta: {...} }
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
             const services = data.data;
             
-            // Update service select with filtered services
+            // Update service select with fetched services
             serviceSelect.innerHTML = '<option value="">Select a service...</option>';
             
             services.forEach(service => {
@@ -159,46 +157,26 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
                 serviceSelect.appendChild(option);
             });
 
-            // Update stored services for this provider
-            formState.allServices = services.map(s => ({
-                value: s.id,
-                text: `${s.name} - ${s.duration} min - $${parseFloat(s.price).toFixed(2)}`,
-                duration: s.duration,
-                price: s.price
-            }));
+            // Enable the dropdown
+            serviceSelect.disabled = false;
+            serviceSelect.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'cursor-not-allowed');
 
         } else {
-            // No services found
-            serviceSelect.innerHTML = '<option value="">No services available</option>';
+            // No services found for this provider
+            serviceSelect.innerHTML = '<option value="">No services available for this provider</option>';
+            serviceSelect.disabled = true; // Keep disabled if no services
         }
 
     } catch (error) {
         console.error('Error loading provider services:', error);
-        serviceSelect.innerHTML = '<option value="">Error loading services</option>';
+        serviceSelect.innerHTML = '<option value="">⚠️ Error loading services. Please try again.</option>';
+        serviceSelect.disabled = true;
         
-        // Show user-friendly error
+        // Show error for 3 seconds, then reset
         setTimeout(() => {
-            resetServiceSelect(serviceSelect, formState.allServices);
-        }, 2000);
-    } finally {
-        serviceSelect.disabled = false;
+            serviceSelect.innerHTML = '<option value="">Select a provider first...</option>';
+        }, 3000);
     }
-}
-
-/**
- * Reset service select to show all services
- */
-function resetServiceSelect(serviceSelect, allServices) {
-    serviceSelect.innerHTML = '<option value="">Select a service...</option>';
-    
-    allServices.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.value;
-        option.innerHTML = service.html || service.text;
-        option.dataset.duration = service.duration;
-        option.dataset.price = service.price;
-        serviceSelect.appendChild(option);
-    });
 }
 
 /**

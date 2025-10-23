@@ -56,10 +56,10 @@ class Providers extends BaseApiController
 
         // Query services linked to this provider via xs_providers_services
         $db = \Config\Database::connect();
-        $builder = $db->table('services s')
+        $builder = $db->table('xs_services s')
             ->select('s.id, s.name, s.description, s.duration_min, s.price, s.category_id, s.active, c.name as category_name')
-            ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
-            ->join('categories c', 'c.id = s.category_id', 'left')
+            ->join('xs_providers_services ps', 'ps.service_id = s.id', 'inner')
+            ->join('xs_categories c', 'c.id = s.category_id', 'left')
             ->where('ps.provider_id', $id)
             ->where('s.active', 1)
             ->orderBy('c.name', 'ASC')

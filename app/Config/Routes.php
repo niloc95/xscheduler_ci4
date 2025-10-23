@@ -234,6 +234,8 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->group('v1', function($routes) {
         // Calendar configuration - public for frontend
         $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
+        // Provider services - public for booking form
+        $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
     });
 
     // Versioned API v1 (authenticated)
@@ -249,7 +251,6 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         ]);
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
-        $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
         // Settings API (authenticated)
         $routes->get('settings', 'Api\\V1\\Settings::index');

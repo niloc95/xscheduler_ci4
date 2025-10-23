@@ -164,25 +164,7 @@
                 <hr class="border-gray-200 dark:border-gray-700" />
                 <?php endif; ?>
 
-                <!-- Service Selection -->
-                <div>
-                    <label for="service_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Service <span class="text-red-500">*</span>
-                    </label>
-                    <select id="service_id" 
-                            name="service_id" 
-                            required 
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select a service...</option>
-                        <?php foreach ($services as $service): ?>
-                            <option value="<?= $service['id'] ?>" data-duration="<?= $service['duration'] ?>" data-price="<?= $service['price'] ?>">
-                                <?= esc($service['name']) ?> - <?= $service['duration'] ?> min - $<?= number_format($service['price'], 2) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <!-- Provider Selection -->
+                <!-- Provider Selection (Step 1) -->
                 <div>
                     <label for="provider_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Provider <span class="text-red-500">*</span>
@@ -191,13 +173,30 @@
                             name="provider_id" 
                             required 
                             class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select a provider...</option>
+                        <option value="">Select a provider first...</option>
                         <?php foreach ($providers as $provider): ?>
                             <option value="<?= $provider['id'] ?>">
                                 <?= esc($provider['name']) ?> - <?= esc($provider['speciality']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <!-- Service Selection (Step 2 - Dynamically populated based on provider) -->
+                <div>
+                    <label for="service_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Service <span class="text-red-500">*</span>
+                    </label>
+                    <select id="service_id" 
+                            name="service_id" 
+                            required 
+                            disabled
+                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Select a provider first...</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Select a provider above to see available services
+                    </p>
                 </div>
 
                 <!-- Date & Time Selection -->
