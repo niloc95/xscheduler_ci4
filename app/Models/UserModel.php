@@ -114,7 +114,7 @@ class UserModel extends BaseModel
      */
     public function getProviders(): array
     {
-        return $this->whereIn('role', ['admin', 'provider'])
+        return $this->where('role', 'provider')
                     ->where('is_active', true)
                     ->findAll();
     }
