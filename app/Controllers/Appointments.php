@@ -117,8 +117,8 @@ class Appointments extends BaseController
         $providersFormatted = array_map(function($provider) {
             return [
                 'id' => $provider['id'],
-                'name' => $provider['first_name'] . ' ' . $provider['last_name'],
-                'speciality' => $provider['speciality'] ?? 'General'
+                'name' => $provider['name'],
+                'speciality' => 'Provider' // TODO: Add speciality field to users table
             ];
         }, $providers);
 
