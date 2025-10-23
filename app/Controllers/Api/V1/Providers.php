@@ -36,6 +36,59 @@ class Providers extends BaseApiController
         ]);
     }
 
+    /**
+     * GET /api/v1/providers/{id}/services
+     * Fetch services offered by a specific provider
+     */
+    public function services($id = null)
+    {
+        if (!$id) {
+            return $this->error(400, 'Provider ID is required');
+        }
+
+        $id = (int) $id;
+        $userModel = new UserModel();
+        $provider = $userModel->find($id);
+
+        if (!$provider || ($provider['role'] ?? null) !== 'provider') {
+            return $this->error(404, 'Provider not found');
+        }
+
+        // Query services linked to this provider via xs_providers_services
+        $db = \Config\Database::connect();
+        $builder = $db->table('services s')
+            ->select('s.id, s.name, s.description, s.duration_min, s.price, s.category_id, s.active, c.name as category_name')
+            ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
+            ->join('categories c', 'c.id = s.category_id', 'left')
+            ->where('ps.provider_id', $id)
+            ->where('s.active', 1)
+            ->orderBy('c.name', 'ASC')
+            ->orderBy('s.name', 'ASC');
+
+        $services = $builder->get()->getResultArray();
+
+        // Format response
+        $items = array_map(function ($s) {
+            return [
+                'id' => (int) $s['id'],
+                'name' => $s['name'],
+                'description' => $s['description'] ?? null,
+                'duration' => (int) $s['duration_min'],
+                'durationMin' => (int) $s['duration_min'], // alias
+                'price' => $s['price'] ? (float) $s['price'] : null,
+                'categoryId' => $s['category_id'] ? (int) $s['category_id'] : null,
+                'categoryName' => $s['category_name'] ?? null,
+                'active' => (bool) $s['active'],
+            ];
+        }, $services);
+
+        return $this->ok($items, [
+            'providerId' => $id,
+            'providerName' => $provider['name'] ?? ($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? ''),
+            'total' => count($items),
+        ]);
+    }
+
     // POST /api/v1/providers/{id}/profile-image
     public function uploadProfileImage($id)
     {

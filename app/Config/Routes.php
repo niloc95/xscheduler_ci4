@@ -216,6 +216,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('appointments', 'Api\\Appointments::index');
     $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability');
     
     // Unversioned summary metrics
     $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
@@ -242,7 +243,8 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         ]);
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
-    $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
+        $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
+        $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
     // Settings API
     $routes->get('settings', 'Api\\V1\\Settings::index');
     $routes->put('settings', 'Api\\V1\\Settings::update');

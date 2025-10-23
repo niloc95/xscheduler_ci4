@@ -178,6 +178,182 @@ class Appointments extends BaseController
     }
     
     /**
+     * Check appointment availability
+     * POST /api/appointments/check-availability
+     */
+    public function checkAvailability()
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        try {
+            // Get POST data
+            $json = $this->request->getJSON(true);
+            $providerId = $json['provider_id'] ?? null;
+            $serviceId = $json['service_id'] ?? null;
+            $startTime = $json['start_time'] ?? null;
+            $appointmentId = $json['appointment_id'] ?? null; // For edits, exclude this ID
+            
+            // Validate required fields
+            if (!$providerId || !$serviceId || !$startTime) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => [
+                        'message' => 'Missing required fields',
+                        'required' => ['provider_id', 'service_id', 'start_time']
+                    ]
+                ]);
+            }
+            
+            // Get service details for duration
+            $db = \Config\Database::connect();
+            $service = $db->table('services')
+                ->select('duration_min, name')
+                ->where('id', (int)$serviceId)
+                ->where('active', 1)
+                ->get()
+                ->getRowArray();
+            
+            if (!$service) {
+                return $response->setStatusCode(404)->setJSON([
+                    'error' => [
+                        'message' => 'Service not found or inactive'
+                    ]
+                ]);
+            }
+            
+            // Calculate end time
+            $startDateTime = new \DateTime($startTime);
+            $endDateTime = clone $startDateTime;
+            $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
+            $endTime = $endDateTime->format('Y-m-d H:i:s');
+            
+            // Check for overlapping appointments
+            $model = new AppointmentModel();
+            $builder = $model->builder();
+            $builder->where('provider_id', (int)$providerId)
+                    ->where('status !=', 'cancelled')
+                    ->groupStart()
+                        // New appointment starts during existing appointment
+                        ->groupStart()
+                            ->where('start_time <=', $startTime)
+                            ->where('end_time >', $startTime)
+                        ->groupEnd()
+                        // New appointment ends during existing appointment
+                        ->orGroupStart()
+                            ->where('start_time <', $endTime)
+                            ->where('end_time >=', $endTime)
+                        ->groupEnd()
+                        // New appointment completely contains existing appointment
+                        ->orGroupStart()
+                            ->where('start_time >=', $startTime)
+                            ->where('end_time <=', $endTime)
+                        ->groupEnd()
+                    ->groupEnd();
+            
+            // If editing, exclude current appointment
+            if ($appointmentId) {
+                $builder->where('id !=', (int)$appointmentId);
+            }
+            
+            $conflicts = $builder->get()->getResultArray();
+            
+            // Check business hours
+            $dayOfWeek = strtolower($startDateTime->format('l'));
+            $businessHours = $db->table('business_hours')
+                ->where('day_of_week', $dayOfWeek)
+                ->where('is_working_day', 1)
+                ->get()
+                ->getRowArray();
+            
+            $businessHoursViolation = null;
+            if (!$businessHours) {
+                $businessHoursViolation = 'Business is closed on ' . ucfirst($dayOfWeek);
+            } else {
+                $requestedTime = $startDateTime->format('H:i:s');
+                if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {
+                    $businessHoursViolation = 'Requested time is outside business hours (' . 
+                        date('g:i A', strtotime($businessHours['start_time'])) . ' - ' . 
+                        date('g:i A', strtotime($businessHours['end_time'])) . ')';
+                }
+                
+                // Check if end time exceeds business hours
+                $requestedEndTime = $endDateTime->format('H:i:s');
+                if ($requestedEndTime > $businessHours['end_time']) {
+                    $businessHoursViolation = 'Appointment would extend past business hours';
+                }
+            }
+            
+            // Check blocked times
+            $blockedTimes = $db->table('blocked_times')
+                ->where('provider_id', (int)$providerId)
+                ->groupStart()
+                    ->where('start_time <=', $startTime)
+                    ->where('end_time >', $startTime)
+                ->groupEnd()
+                ->orGroupStart()
+                    ->where('start_time <', $endTime)
+                    ->where('end_time >=', $endTime)
+                ->groupEnd()
+                ->orGroupStart()
+                    ->where('start_time >=', $startTime)
+                    ->where('end_time <=', $endTime)
+                ->groupEnd()
+                ->get()
+                ->getResultArray();
+            
+            // Determine availability
+            $available = (count($conflicts) === 0 && !$businessHoursViolation && count($blockedTimes) === 0);
+            
+            // Build response
+            $result = [
+                'available' => $available,
+                'requestedSlot' => [
+                    'provider_id' => (int)$providerId,
+                    'service_id' => (int)$serviceId,
+                    'service_name' => $service['name'],
+                    'duration_min' => (int)$service['duration_min'],
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                ],
+                'conflicts' => [],
+                'businessHoursViolation' => $businessHoursViolation,
+                'blockedTimeConflicts' => count($blockedTimes),
+            ];
+            
+            // Add conflict details
+            if (count($conflicts) > 0) {
+                foreach ($conflicts as $conflict) {
+                    $result['conflicts'][] = [
+                        'id' => $conflict['id'],
+                        'start_time' => $conflict['start_time'],
+                        'end_time' => $conflict['end_time'],
+                        'status' => $conflict['status'],
+                    ];
+                }
+            }
+            
+            // Suggest next available slot if not available
+            if (!$available) {
+                // Find next available time slot (simplified - just suggest 30 min later)
+                $nextSlot = clone $startDateTime;
+                $nextSlot->modify('+30 minutes');
+                $result['suggestedNextSlot'] = $nextSlot->format('Y-m-d H:i:s');
+            }
+            
+            return $response->setJSON([
+                'data' => $result
+            ]);
+            
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to check availability',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+    
+    /**
      * Update appointment status
      * PATCH /api/appointments/:id/status
      */

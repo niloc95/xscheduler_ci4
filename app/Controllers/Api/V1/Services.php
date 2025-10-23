@@ -20,11 +20,28 @@ class Services extends BaseApiController
         [$page, $length, $offset] = $this->paginationParams();
         [$sortField, $sortDir] = $this->sortParam(['id','name','duration_min','price','active'], 'name');
 
-        // data
-    $rows = $this->model->orderBy($sortField, strtoupper($sortDir))->findAll($length, $offset);
-
-        // total
-    $total = $this->model->builder()->countAllResults();
+        // Get optional provider filter
+        $providerId = $this->request->getGet('providerId') ?? $this->request->getGet('provider_id');
+        
+        // If filtering by provider, use JOIN query
+        if ($providerId) {
+            $db = \Config\Database::connect();
+            $builder = $db->table('services s')
+                ->select('s.*')
+                ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
+                ->where('ps.provider_id', (int) $providerId)
+                ->orderBy('s.' . $sortField, strtoupper($sortDir));
+            
+            $rows = $builder->get()->getResultArray();
+            $total = $db->table('services s')
+                ->join('providers_services ps', 'ps.service_id = s.id', 'inner')
+                ->where('ps.provider_id', (int) $providerId)
+                ->countAllResults();
+        } else {
+            // Standard query without provider filter
+            $rows = $this->model->orderBy($sortField, strtoupper($sortDir))->findAll($length, $offset);
+            $total = $this->model->builder()->countAllResults();
+        }
 
         // Shape to a stable API-friendly structure
         $items = array_map(function ($s) {
@@ -42,6 +59,7 @@ class Services extends BaseApiController
             'length' => $length,
             'total' => (int)$total,
             'sort' => $sortField . ':' . $sortDir,
+            'providerId' => $providerId ? (int) $providerId : null,
         ]);
     }
 
