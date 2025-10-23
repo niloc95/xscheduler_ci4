@@ -1,77 +1,151 @@
-# Phase 2 Migration Complete: Legacy Scheduler Isolation
+# Phase 2: Service Layer Integration - COMPLETE ✅# Phase 2 Migration Complete: Legacy Scheduler Isolation
 
-**Date:** October 5, 2025  
-**Status:** ✅ Complete  
-**Next Phase:** Phase 3 - Create New Appointment View Skeleton
+
+
+**Date Completed**: October 23, 2025  **Date:** October 5, 2025  
+
+**Branch**: `calendar`  **Status:** ✅ Complete  
+
+**Commits**: d5a6f0a, a85729a, 4d3de6a**Next Phase:** Phase 3 - Create New Appointment View Skeleton
+
+
+
+## Summary---
+
+
+
+Phase 2 successfully integrated service layer classes with calendar and booking forms, completing the migration from hardcoded values to database-driven dynamic configuration.## Overview
+
+
+
+## Completed WorkPhase 2 of the scheduler migration has been completed successfully. All legacy FullCalendar-based scheduler code has been isolated into clearly marked "legacy" directories with comprehensive deprecation warnings. The system remains fully functional while being prepared for replacement.
+
+
+
+### Part 1: CalendarConfigService (Commit: d5a6f0a)## What Was Done
+
+- Created `app/Services/CalendarConfigService.php` (313 lines)
+
+- Added GET `/api/v1/settings/calendar-config` endpoint### 1. Documentation Created
+
+- Refactored `appointments-calendar.js` to async fetch config- **File:** `docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md`
+
+- Calendar now fully database-driven- **Size:** 500+ lines
+
+- **Content:** Comprehensive documentation of the current scheduler system including:
+
+### Part 2: BookingSettingsService (Commit: a85729a)  - Complete architecture flow diagram
+
+- Integrated BookingSettingsService into Appointments controller  - Full file inventory with sizes and purposes
+
+- Modified `app/Views/appointments/create.php` for dynamic rendering  - API endpoints and data flows
+
+- Customer fields conditionally display based on settings  - Dependencies and performance metrics
+
+- Support for 6 custom fields (text, textarea, checkbox)  - Migration timeline and phases
+
+  - Known limitations and improvement opportunities
+
+### Part 3: Build & Test (Commit: 4d3de6a)
+
+- Fixed calendar-config route (public access)### 2. Files Reorganized
+
+- Corrected business hours query (uses `weekday` column)
+
+- API verified returning proper JSON configuration#### JavaScript Files Moved to Legacy Subdirectories:
+
+- Created comprehensive manual test plan```
+
+BEFORE:
+
+## API Exampleresources/js/scheduler-dashboard.js (1275 lines)
+
+resources/js/services/scheduler-service.js (191 lines)
+
+**Endpoint**: `GET /api/v1/settings/calendar-config`
+
+AFTER:
+
+**Response**:resources/js/modules/scheduler-legacy/scheduler-dashboard.js
+
+```jsonresources/js/services/scheduler-legacy/scheduler-service.js
+
+{```
+
+    "ok": true,
+
+    "data": {#### View Templates Moved:
+
+        "initialView": "timeGridWeek",```
+
+        "firstDay": 1,BEFORE:
+
+        "slotDuration": "00:30:00",app/Views/scheduler/index.php (235 lines)
+
+        "slotMinTime": "08:00",
+
+        "slotMaxTime": "18:00",AFTER:
+
+        "slotLabelFormat": {"hour": "2-digit", "minute": "2-digit", "hour12": false},app/Views/scheduler-legacy/index.php
+
+        "eventTimeFormat": {"hour": "2-digit", "minute": "2-digit", "hour12": false},```
+
+        "businessHours": [
+
+            {"daysOfWeek": [1,2,3,4,5], "startTime": "09:00", "endTime": "17:00"}### 3. Deprecation Headers Added
+
+        ],
+
+        "timeZone": "Africa/Johannesburg",All legacy files now include comprehensive deprecation warnings:
+
+        "locale": "en"
+
+    }**JavaScript Files:**
+
+}- `scheduler-dashboard.js`: 14-line header explaining deprecation status
+
+```- `scheduler-service.js`: 14-line header explaining deprecation status
+
+
+
+## Testing Status**View Templates:**
+
+- `scheduler-legacy/index.php`: 14-line HTML comment explaining deprecation
+
+- ✅ API endpoint accessible and returns valid JSON
+
+- ✅ Build successful (Vite compiled 239 modules)**Controller:**
+
+- ✅ No PHP/JavaScript errors in modified files- `Scheduler.php`: 16-line docblock explaining deprecation status
+
+- ⏳ Manual browser testing required (see PHASE_2_MANUAL_TEST_PLAN.md)
+
+Each header includes:
+
+## Next Phase- ⚠️ Warning symbol for visibility
+
+- Clear deprecation notice
+
+**Phase 3: Frontend Wiring** (3-4 hours)- Current status (Active but will be replaced)
+
+- AJAX cascading dropdowns (provider → services)- Timeline information
+
+- Real-time availability checking- Policy: "DO NOT add new features" - only bug fixes
+
+- Auto-calculate appointment end time- Link to architecture documentation
+
+- Form validation and user feedback- Reference to replacement location
+
+- Last updated date
 
 ---
 
-## Overview
-
-Phase 2 of the scheduler migration has been completed successfully. All legacy FullCalendar-based scheduler code has been isolated into clearly marked "legacy" directories with comprehensive deprecation warnings. The system remains fully functional while being prepared for replacement.
-
-## What Was Done
-
-### 1. Documentation Created
-- **File:** `docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md`
-- **Size:** 500+ lines
-- **Content:** Comprehensive documentation of the current scheduler system including:
-  - Complete architecture flow diagram
-  - Full file inventory with sizes and purposes
-  - API endpoints and data flows
-  - Dependencies and performance metrics
-  - Migration timeline and phases
-  - Known limitations and improvement opportunities
-
-### 2. Files Reorganized
-
-#### JavaScript Files Moved to Legacy Subdirectories:
-```
-BEFORE:
-resources/js/scheduler-dashboard.js (1275 lines)
-resources/js/services/scheduler-service.js (191 lines)
-
-AFTER:
-resources/js/modules/scheduler-legacy/scheduler-dashboard.js
-resources/js/services/scheduler-legacy/scheduler-service.js
-```
-
-#### View Templates Moved:
-```
-BEFORE:
-app/Views/scheduler/index.php (235 lines)
-
-AFTER:
-app/Views/scheduler-legacy/index.php
-```
-
-### 3. Deprecation Headers Added
-
-All legacy files now include comprehensive deprecation warnings:
-
-**JavaScript Files:**
-- `scheduler-dashboard.js`: 14-line header explaining deprecation status
-- `scheduler-service.js`: 14-line header explaining deprecation status
-
-**View Templates:**
-- `scheduler-legacy/index.php`: 14-line HTML comment explaining deprecation
-
-**Controller:**
-- `Scheduler.php`: 16-line docblock explaining deprecation status
-
-Each header includes:
-- ⚠️ Warning symbol for visibility
-- Clear deprecation notice
-- Current status (Active but will be replaced)
-- Timeline information
-- Policy: "DO NOT add new features" - only bug fixes
-- Link to architecture documentation
-- Reference to replacement location
-- Last updated date
-
 ### 4. Build Configuration Updated
 
-**File:** `vite.config.js`
+**Status**: ✅ READY FOR PHASE 3  
+
+See `PHASE_2_MANUAL_TEST_PLAN.md` for testing details.**File:** `vite.config.js`
+
 
 ```javascript
 // ⚠️ DEPRECATED: Legacy Scheduler (FullCalendar-based)
