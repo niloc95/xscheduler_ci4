@@ -152,7 +152,52 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize appointment booking form if present
     initAppointmentForm();
+    
+    // Setup view button event listeners for smooth transitions
+    setupCalendarViewButtons();
+    
+    // Setup filter button handlers
+    setupFilterButtons();
 });
+
+/**
+ * Setup calendar view button interactions with smooth transitions
+ */
+function setupCalendarViewButtons() {
+    const viewButtons = document.querySelectorAll('[data-calendar-action]');
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Add visual feedback
+            viewButtons.forEach(b => b.classList.remove('ring-2', 'ring-blue-400'));
+            this.classList.add('ring-2', 'ring-blue-400');
+            setTimeout(() => this.classList.remove('ring-2', 'ring-blue-400'), 300);
+            console.log('[calendar] View changed to:', this.dataset.calendarAction);
+        });
+    });
+}
+
+/**
+ * Setup calendar filter button handlers
+ */
+function setupFilterButtons() {
+    // Status filter buttons
+    const statusButtons = document.querySelectorAll('[title*="appointments"]');
+    statusButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const status = this.textContent.toLowerCase();
+            console.log('[calendar] Filter by status:', status);
+            
+            // Add active state
+            statusButtons.forEach(b => b.classList.remove('bg-blue-600', 'text-white'));
+            this.classList.add('bg-blue-600', 'text-white');
+            
+            // TODO: Implement actual filtering when calendar instance is available
+            if (calendarInstance) {
+                refreshCalendar(calendarInstance);
+            }
+        });
+    });
+}
 
 // Listen for settings changes and refresh calendar (same page)
 document.addEventListener('settingsSaved', async function(event) {

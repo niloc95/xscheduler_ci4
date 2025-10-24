@@ -223,33 +223,43 @@ export async function initAppointmentsCalendar(containerEl, options = {}) {
       info.el.title = tooltip;
     },
     
-    // Event content - custom rendering for better UX
+    // Event content - custom rendering for better UX with Material Design
     eventContent(arg) {
       const { event, timeText } = arg;
       const { status, serviceName, providerName } = event.extendedProps;
       
-      // Create custom HTML structure
+      // Create custom HTML structure with Material Design spacing
       const wrapper = document.createElement('div');
       wrapper.className = 'fc-event-main-frame';
       
-      // Time
-      const timeEl = document.createElement('div');
-      timeEl.className = 'fc-event-time text-xs font-semibold opacity-90';
-      timeEl.textContent = timeText;
-      wrapper.appendChild(timeEl);
+      // Time (only show in timeGrid views)
+      if (arg.view.type !== 'dayGridMonth') {
+        const timeEl = document.createElement('div');
+        timeEl.className = 'fc-event-time text-xs font-bold opacity-95 leading-tight';
+        timeEl.textContent = timeText;
+        wrapper.appendChild(timeEl);
+      }
       
-      // Title (customer name)
+      // Title (customer name) - emphasized
       const titleEl = document.createElement('div');
-      titleEl.className = 'fc-event-title font-medium truncate';
+      titleEl.className = 'fc-event-title font-semibold text-xs truncate leading-tight';
       titleEl.textContent = event.title;
       wrapper.appendChild(titleEl);
       
-      // Service name (if available)
+      // Service name with icon-like styling
       if (serviceName && arg.view.type !== 'dayGridMonth') {
         const serviceEl = document.createElement('div');
-        serviceEl.className = 'fc-event-service text-xs opacity-75 truncate';
-        serviceEl.textContent = serviceName;
+        serviceEl.className = 'fc-event-service text-xs opacity-85 truncate leading-tight';
+        serviceEl.textContent = `📋 ${serviceName}`;
         wrapper.appendChild(serviceEl);
+      }
+      
+      // Provider name - if available and not in month view
+      if (providerName && arg.view.type !== 'dayGridMonth') {
+        const providerEl = document.createElement('div');
+        providerEl.className = 'fc-event-provider text-xs opacity-75 truncate leading-tight';
+        providerEl.textContent = `👤 ${providerName}`;
+        wrapper.appendChild(providerEl);
       }
       
       return { domNodes: [wrapper] };

@@ -71,14 +71,42 @@
 
 /* Time slots - Increased height for better readability */
 .fc-timegrid-slot {
-  @apply border-b border-gray-100 dark:border-gray-800;
+  @apply border-b border-slate-200 dark:border-slate-700;
   height: 60px !important; /* Increased from 32px (h-8) to 60px */
   min-height: 60px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 29px,
+    rgba(148, 163, 184, 0.1) 29px,
+    rgba(148, 163, 184, 0.1) 30px
+  );
 }
 
 .fc-timegrid-slot-minor {
   @apply border-b-0;
   height: 30px !important; /* Half slots also increased */
+}
+
+/* Alternate slot backgrounds for better readability */
+.fc-timegrid-slot:nth-child(4n) {
+  background: rgba(226, 232, 240, 0.5) repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 29px,
+    rgba(148, 163, 184, 0.1) 29px,
+    rgba(148, 163, 184, 0.1) 30px
+  );
+}
+
+html.dark .fc-timegrid-slot:nth-child(4n) {
+  background: rgba(30, 41, 59, 0.5) repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 29px,
+    rgba(71, 85, 105, 0.1) 29px,
+    rgba(71, 85, 105, 0.1) 30px
+  );
 }
 
 /* Time labels - Improved positioning */
@@ -95,7 +123,7 @@
 
 /* Time grid columns */
 .fc-timegrid-col {
-  @apply border-r border-gray-200 dark:border-gray-700;
+  @apply border-r border-slate-200 dark:border-slate-700;
   position: relative !important;
 }
 
@@ -141,19 +169,48 @@
 /* Now indicator */
 .fc-timegrid-now-indicator-line {
   @apply border-t-2 border-red-500 dark:border-red-400;
+  z-index: 10 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 .fc-timegrid-now-indicator-arrow {
   @apply border-l-4 border-l-red-500 dark:border-l-red-400 border-y-4 border-y-transparent;
+  z-index: 10 !important;
 }
 
-/* Event styling - custom pills */
+/* ===================================
+   Material Design 3 Event Styling
+   =================================== */
+
+/* Event base styling with Material elevation */
 .fc-event {
   @apply border-0 bg-transparent cursor-pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fc-event:hover {
-  @apply opacity-90;
+  @apply opacity-100;
+}
+
+/* Material Design event pill - enhanced styling */
+.fc-xs-pill {
+  @apply transition-all duration-200 flex flex-col w-full gap-1.5 rounded-lg border-0 px-3 py-2.5 text-xs shadow-md;
+  @apply bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100;
+  line-height: 1.4;
+  min-height: 55px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  overflow: hidden;
+}
+
+.fc-xs-pill:hover {
+  @apply shadow-lg transform -translate-y-0.5;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Material Design elevation on focus */
+.fc-xs-pill:focus-within {
+  @apply ring-2 ring-offset-1 ring-blue-400 dark:ring-blue-300;
 }
 
 
