@@ -2,19 +2,33 @@
 
 namespace App\Controllers;
 
+use App\Models\ProviderScheduleModel;
+use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
 use App\Models\UserPermissionModel;
+use App\Models\AuditLogModel;
+use App\Services\LocalizationSettingsService;
 
 class UserManagement extends BaseController
 {
     protected $userModel;
     protected $permissionModel;
+    protected $auditModel;
     
+    protected $providerScheduleModel;
+    protected ProviderStaffModel $providerStaffModel;
+    protected LocalizationSettingsService $localization;
+    protected array $scheduleDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
     public function __construct()
     {
+        helper('user');
         $this->userModel = new UserModel();
         $this->permissionModel = new UserPermissionModel();
+        $this->auditModel = new AuditLogModel();
+        $this->providerScheduleModel = new ProviderScheduleModel();
+        $this->providerStaffModel = new ProviderStaffModel();
+        $this->localization = new LocalizationSettingsService();
     }
 
     /**
@@ -31,7 +45,7 @@ class UserManagement extends BaseController
 
         // Get users based on current user's role and permissions
         $users = $this->getUsersBasedOnRole($currentUserId);
-    $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
+        $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
 
         $data = [
             'title' => 'User Management - WebSchedulr',
@@ -68,8 +82,18 @@ class UserManagement extends BaseController
 
         // Get providers for staff assignment
         $providers = [];
-        if (in_array('staff', $availableRoles)) {
+        if (in_array('staff', $availableRoles, true)) {
             $providers = $this->userModel->getProviders();
+        }
+
+        // Get available staff for provider assignment
+        $availableStaff = [];
+        if (in_array('provider', $availableRoles, true)) {
+            $staffModel = new UserModel();
+            $availableStaff = $staffModel->where('role', 'staff')
+                ->where('is_active', true)
+                ->orderBy('name', 'ASC')
+                ->findAll();
         }
 
         // Get stats for the help panel
@@ -80,8 +104,17 @@ class UserManagement extends BaseController
             'currentUser' => $currentUser,
             'availableRoles' => $availableRoles,
             'providers' => $providers,
+            'availableStaff' => $availableStaff,
+            'assignedStaff' => [],
+            'assignedProviders' => [],
+            'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
             'stats' => $stats,
-            'validation' => $this->validator
+            'validation' => $this->validator,
+            'providerSchedule' => $this->prepareScheduleForView(old('schedule') ?? []),
+            'scheduleDays' => $this->scheduleDays,
+            'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
+            'localizationContext' => $this->localization->getContext(),
+            'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
         return view('user_management/create', $data);
@@ -92,10 +125,13 @@ class UserManagement extends BaseController
      */
     public function store()
     {
+        log_message('info', '========== STORE METHOD CALLED ==========');
+        
         $currentUserId = session()->get('user_id');
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
+            log_message('warning', 'No session in store - redirecting to login');
             return redirect()->to('/auth/login');
         }
 
@@ -109,19 +145,18 @@ class UserManagement extends BaseController
             'phone' => 'permit_empty|max_length[20]',
         ];
 
-        // Add provider validation for staff
-        if ($this->request->getPost('role') === 'staff') {
-            $rules['provider_id'] = 'required|numeric';
-        }
-
         if (!$this->validate($rules)) {
+            log_message('warning', 'Validation failed: ' . json_encode($this->validator->getErrors()));
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
         $role = $this->request->getPost('role');
         
+        log_message('info', 'Creating user with role: ' . $role . ' by user: ' . $currentUserId . ' (role: ' . $currentUser['role'] . ')');
+        
         // Check if current user can create this role
         if (!$this->canCreateRole($currentUserId, $role)) {
+            log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $role);
             return redirect()->back()
                            ->with('error', 'You do not have permission to create users with this role.');
         }
@@ -135,25 +170,67 @@ class UserManagement extends BaseController
             'is_active' => true,
         ];
 
-        // Set provider_id for staff
-        if ($role === 'staff') {
-            $providerId = $this->request->getPost('provider_id');
+        $scheduleInput = $this->request->getPost('schedule') ?? [];
+        $scheduleClean = [];
+        if ($role === 'provider') {
+            // Auto-assign color for provider
+            $userData['color'] = $this->request->getPost('color') ?: $this->userModel->getAvailableProviderColor();
+            log_message('info', 'Assigned color ' . $userData['color'] . ' to new provider');
             
-            // Validate that the provider exists and current user can assign to it
-            if (!$this->canAssignToProvider($currentUserId, $providerId)) {
-                return redirect()->back()
-                               ->with('error', 'Invalid provider selection.');
+            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            if (!empty($scheduleErrors)) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Please fix the highlighted schedule issues.')
+                    ->with('schedule_errors', $scheduleErrors);
             }
-            
-            $userData['provider_id'] = $providerId;
         }
 
         $userId = $this->userModel->createUser($userData);
 
+        log_message('info', 'User creation returned: ' . var_export($userId, true) . ' (type: ' . gettype($userId) . ')');
+
         if ($userId) {
-            return redirect()->to('/user-management')
-                           ->with('success', 'User created successfully.');
+            log_message('info', 'User created with ID: ' . $userId);
+            
+            // Audit log for user creation
+            $this->auditModel->log(
+                'user_created',
+                $currentUserId,
+                'user',
+                $userId,
+                null,
+                ['role' => $role, 'email' => $userData['email']]
+            );
+            
+            // Auto-assignment only when provider creates staff (NOT when admin creates staff)
+            if ($currentUser['role'] === 'provider' && $role === 'staff') {
+                log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
+                $this->providerStaffModel->insert([
+                    'provider_id' => $currentUserId,
+                    'staff_id' => $userId,
+                    'assigned_by' => $currentUserId,
+                    'assigned_at' => date('Y-m-d H:i:s')
+                ]);
+                
+                // Audit log for auto-assignment
+                $this->auditModel->log(
+                    'staff_assigned',
+                    $currentUserId,
+                    'assignment',
+                    $userId,
+                    null,
+                    ['provider_id' => $currentUserId, 'staff_id' => $userId]
+                );
+            }
+            
+            if ($role === 'provider' && !empty($scheduleClean)) {
+                $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+            }
+
+            return redirect()->to('/user-management/edit/' . $userId)
+                           ->with('success', 'User created successfully. You can now manage assignments and schedules.');
         } else {
+            log_message('error', '[UserManagement::store] Failed to create user');
             return redirect()->back()
                            ->with('error', 'Failed to create user. Please try again.');
         }
@@ -172,13 +249,16 @@ class UserManagement extends BaseController
         }
 
         $user = $this->userModel->find($userId);
+        
         if (!$user) {
             return redirect()->to('/user-management')
                            ->with('error', 'User not found.');
         }
 
         // Check permission to edit this user
-        if (!$this->userModel->canManageUser($currentUserId, $userId)) {
+        $canManage = $this->userModel->canManageUser($currentUserId, $userId);
+        
+        if (!$canManage) {
             return redirect()->to('/user-management')
                            ->with('error', 'You do not have permission to edit this user.');
         }
@@ -192,13 +272,63 @@ class UserManagement extends BaseController
             $providers = $this->userModel->getProviders();
         }
 
+        $existingSchedule = $this->providerScheduleModel->getByProvider($user['id']);
+        $rawSchedule = old('schedule') ?: $existingSchedule;
+
+        $assignedStaff = [];
+        $availableStaff = [];
+        $assignedProviders = [];
+        $availableProviders = [];
+        $canManageAssignments = ($currentUser['role'] ?? '') === 'admin';
+
+        if (($user['role'] ?? '') === 'provider'
+            && ($currentUser['role'] ?? '') === 'provider'
+            && (int) $currentUserId === (int) $userId) {
+            $canManageAssignments = true;
+        }
+
+        if (($user['role'] ?? '') === 'provider') {
+            $assignedStaff = $this->providerStaffModel->getStaffByProvider($user['id']);
+
+            if ($canManageAssignments) {
+                $availableStaff = $this->userModel
+                    ->where('role', 'staff')
+                    ->where('is_active', true)
+                    ->orderBy('name', 'ASC')
+                    ->findAll();
+            }
+        } elseif ($user['role'] === 'staff') {
+            $assignedProviders = $this->providerStaffModel->getProvidersForStaff($user['id']);
+
+            if ($canManageAssignments) {
+                $availableProviders = $this->userModel
+                    ->where('role', 'provider')
+                    ->where('is_active', true)
+                    ->orderBy('name', 'ASC')
+                    ->findAll();
+            }
+        }
+
         $data = [
             'title' => 'Edit User - WebSchedulr',
             'currentUser' => $currentUser,
             'user' => $user,
+            'userId' => $userId,
+            'providerId' => $userId, // For provider_staff component
+            'staffId' => $userId, // For staff_providers component
             'availableRoles' => $availableRoles,
             'providers' => $providers,
-            'validation' => $this->validator
+            'validation' => $this->validator,
+            'providerSchedule' => $this->prepareScheduleForView($rawSchedule),
+            'scheduleDays' => $this->scheduleDays,
+            'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
+            'assignedStaff' => $assignedStaff,
+            'availableStaff' => $availableStaff,
+            'assignedProviders' => $assignedProviders,
+            'availableProviders' => $availableProviders,
+            'canManageAssignments' => $canManageAssignments,
+            'localizationContext' => $this->localization->getContext(),
+            'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
         return view('user_management/edit', $data);
@@ -256,32 +386,86 @@ class UserManagement extends BaseController
             'phone' => $this->request->getPost('phone'),
         ];
 
+        // Handle is_active checkbox (checkboxes don't send value when unchecked)
+        // Convert to integer for MySQL BOOLEAN/TINYINT compatibility
+        $updateData['is_active'] = $this->request->getPost('is_active') ? 1 : 0;
+
         // Add password if provided
         if ($this->request->getPost('password')) {
             $updateData['password'] = $this->request->getPost('password');
         }
 
-        // Add role if user can change it
-        if ($this->canChangeUserRole($currentUserId, $userId)) {
+        // Add role if user can change it - SECURITY: Prevent role escalation by non-admins
+        if ($currentUser['role'] === 'admin' && $this->canChangeUserRole($currentUserId, $userId)) {
             $newRole = $this->request->getPost('role');
-            if ($newRole !== $user['role']) {
-                if (!$this->canCreateRole($currentUserId, $newRole)) {
+            if ($newRole) {
+                // Check permission for new role if it's different
+                if ($newRole !== $user['role'] && !$this->canCreateRole($currentUserId, $newRole)) {
                     return redirect()->back()
                                    ->with('error', 'You do not have permission to assign this role.');
                 }
                 $updateData['role'] = $newRole;
             }
+        } elseif ($currentUser['role'] !== 'admin' && $this->request->getPost('role')) {
+            // Non-admin attempted to change role - log and ignore
+            log_message('warning', "[UserManagement::update] Non-admin user {$currentUserId} attempted to change role for user {$userId}");
         }
 
-        // Handle provider assignment for staff
-        if (($user['role'] === 'staff' || ($updateData['role'] ?? '') === 'staff') && $this->request->getPost('provider_id')) {
-            $providerId = $this->request->getPost('provider_id');
-            if ($this->canAssignToProvider($currentUserId, $providerId)) {
-                $updateData['provider_id'] = $providerId;
+        // Provider assignments now handled via staff_providers component and pivot table
+        $finalRole = $updateData['role'] ?? $user['role'];
+
+        $scheduleInput = $this->request->getPost('schedule') ?? [];
+        $scheduleClean = [];
+        if ($finalRole === 'provider') {
+            // Handle provider color update (admin only)
+            if ($currentUser['role'] === 'admin' && $this->request->getPost('color')) {
+                $updateData['color'] = $this->request->getPost('color');
+            }
+            
+            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            if (!empty($scheduleErrors)) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Please fix the highlighted schedule issues.')
+                    ->with('schedule_errors', $scheduleErrors);
             }
         }
 
         if ($this->userModel->updateUser($userId, $updateData, $currentUserId)) {
+            // Audit logging for critical changes
+            $changedFields = array_keys($updateData);
+            
+            // Log role change specifically
+            if (isset($updateData['role']) && $updateData['role'] !== $user['role']) {
+                $this->auditModel->log(
+                    'role_changed',
+                    $currentUserId,
+                    'user',
+                    $userId,
+                    ['role' => $user['role']],
+                    ['role' => $updateData['role']]
+                );
+            }
+            
+            // Log password reset
+            if (isset($updateData['password'])) {
+                $this->auditModel->log(
+                    'password_reset',
+                    $currentUserId,
+                    'user',
+                    $userId
+                );
+            }
+            
+            // Log general user update
+            $this->auditModel->log(
+                'user_updated',
+                $currentUserId,
+                'user',
+                $userId,
+                null,
+                ['fields' => $changedFields]
+            );
+            
             // Update session if user updated themselves
             if ($currentUserId === $userId) {
                 $updatedUser = $this->userModel->find($userId);
@@ -292,6 +476,11 @@ class UserManagement extends BaseController
                 ]);
             }
 
+            if ($finalRole === 'provider') {
+                $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+            } else {
+                $this->providerScheduleModel->deleteByProvider($userId);
+            }
             return redirect()->to('/user-management')
                            ->with('success', 'User updated successfully.');
         } else {
@@ -345,6 +534,46 @@ class UserManagement extends BaseController
         }
     }
 
+    /**
+     * Delete user (hard delete, admin only)
+     */
+    public function delete(int $userId)
+    {
+        $currentUserId = session()->get('user_id');
+        $currentUser = session()->get('user');
+
+        if (!$currentUserId || !$currentUser) {
+            return redirect()->to('/auth/login');
+        }
+
+        // Only admins can delete users
+        if ($currentUser['role'] !== 'admin') {
+            return redirect()->to('/user-management')
+                           ->with('error', 'Only administrators can delete users.');
+        }
+
+        // Cannot delete yourself
+        if ($currentUserId === $userId) {
+            return redirect()->to('/user-management')
+                           ->with('error', 'You cannot delete your own account.');
+        }
+
+        $targetUser = $this->userModel->find($userId);
+        if (!$targetUser) {
+            return redirect()->to('/user-management')
+                           ->with('error', 'User not found.');
+        }
+
+        // Perform the delete
+        if ($this->userModel->delete($userId)) {
+            return redirect()->to('/user-management')
+                           ->with('success', 'User "' . esc($targetUser['name']) . '" deleted successfully.');
+        } else {
+            return redirect()->to('/user-management')
+                           ->with('error', 'Failed to delete user. Please try again.');
+        }
+    }
+
     // Helper methods
 
     private function getUsersBasedOnRole(int $currentUserId): array
@@ -354,28 +583,96 @@ class UserManagement extends BaseController
             return [];
         }
 
+        $users = [];
         switch ($currentUser['role']) {
             case 'admin':
-                return $this->userModel
-                    ->whereIn('role', ['admin', 'provider', 'staff', 'receptionist'])
+                $users = $this->userModel
+                    ->whereIn('role', ['admin', 'provider', 'staff'])
                     ->findAll();
+                break;
                 
             case 'provider':
-                // Providers can see their staff and themselves
-                $rows = $this->userModel
-                    ->where('provider_id', $currentUserId)
-                    ->orWhere('id', $currentUserId)
-                    ->findAll();
-                // Filter any non-system roles just in case
-                return array_values(array_filter($rows, fn($u) => in_array($u['role'] ?? '', ['admin','provider','staff','receptionist'], true)));
+                $staff = $this->providerStaffModel->getStaffByProvider($currentUserId);
+                $users = array_merge([$currentUser], $staff);
+                break;
                     
             case 'staff':
                 // Staff and customers can only see themselves
-                return [$currentUser];
+                $users = [$currentUser];
+                break;
                 
             default:
                 return [];
         }
+
+        // Enrich users with assignment information
+        return $this->enrichUsersWithAssignments($users);
+    }
+
+    /**
+     * Enrich user array with assignment relationships
+     */
+    private function enrichUsersWithAssignments(array $users): array
+    {
+        if (empty($users)) {
+            return $users;
+        }
+
+        // Group users by role for batch queries
+        $providerIds = [];
+        $staffIds = [];
+        
+        foreach ($users as $user) {
+            if ($user['role'] === 'provider') {
+                $providerIds[] = $user['id'];
+            } elseif ($user['role'] === 'staff') {
+                $staffIds[] = $user['id'];
+            }
+        }
+
+        // Fetch assignments for providers
+        $providerAssignments = [];
+        if (!empty($providerIds)) {
+            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                ->select('psa.provider_id, GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ", ") AS staff_names')
+                ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'left')
+                ->whereIn('psa.provider_id', $providerIds)
+                ->groupBy('psa.provider_id');
+            
+            $results = $builder->get()->getResultArray();
+            foreach ($results as $row) {
+                $providerAssignments[$row['provider_id']] = $row['staff_names'];
+            }
+        }
+
+        // Fetch assignments for staff
+        $staffAssignments = [];
+        if (!empty($staffIds)) {
+            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                ->select('psa.staff_id, GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ", ") AS provider_names')
+                ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'left')
+                ->whereIn('psa.staff_id', $staffIds)
+                ->groupBy('psa.staff_id');
+            
+            $results = $builder->get()->getResultArray();
+            foreach ($results as $row) {
+                $staffAssignments[$row['staff_id']] = $row['provider_names'];
+            }
+        }
+
+        // Add assignment info to each user
+        foreach ($users as &$user) {
+            if ($user['role'] === 'provider') {
+                $user['assignments'] = $providerAssignments[$user['id']] ?? null;
+            } elseif ($user['role'] === 'staff') {
+                $user['assignments'] = $staffAssignments[$user['id']] ?? null;
+            } else {
+                $user['assignments'] = null;
+            }
+        }
+        unset($user);
+
+        return $users;
     }
 
     private function getUserStatsBasedOnRole(int $currentUserId, array $usersForContext = []): array
@@ -387,13 +684,13 @@ class UserManagement extends BaseController
 
         // Build stats from provided users (or fetch a small set if empty)
         if ($currentUser['role'] === 'admin') {
-            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff','receptionist' ])->findAll();
+            $rows = $usersForContext ?: $this->userModel->whereIn('role',[ 'admin','provider','staff' ])->findAll();
             $admins = 0; $providers = 0; $staff = 0;
             foreach ($rows as $u) {
                 $r = $u['role'] ?? '';
                 if ($r === 'admin') $admins++;
                 elseif ($r === 'provider') $providers++;
-                elseif ($r === 'staff' || $r === 'receptionist') $staff++;
+                elseif ($r === 'staff') $staff++;
             }
             return [
                 'total' => $admins + $providers + $staff,
@@ -472,5 +769,145 @@ class UserManagement extends BaseController
         
         // Only admins can change user roles
         return $currentUser['role'] === 'admin';
+    }
+
+    private function validateProviderScheduleInput(array $input): array
+    {
+        $clean = [];
+        $errors = [];
+
+        foreach ($this->scheduleDays as $day) {
+            if (!isset($input[$day])) {
+                continue;
+            }
+
+            $row = $input[$day];
+            $isActive = $this->toBool($row['is_active'] ?? null);
+
+            if (!$isActive) {
+                continue;
+            }
+
+            $rawStart = $row['start_time'] ?? null;
+            $rawEnd = $row['end_time'] ?? null;
+            $rawBreakStart = $row['break_start'] ?? null;
+            $rawBreakEnd = $row['break_end'] ?? null;
+
+            $start = $this->normaliseTimeString($rawStart);
+            $end   = $this->normaliseTimeString($rawEnd);
+            $breakStart = $this->normaliseTimeString($rawBreakStart);
+            $breakEnd   = $this->normaliseTimeString($rawBreakEnd);
+
+            if (!$start || !$end) {
+                $errors[$day] = 'Start and end times are required. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if (strtotime($start) >= strtotime($end)) {
+                $errors[$day] = 'Start time must be earlier than end time.';
+                continue;
+            }
+
+            $hasBreakStartInput = is_string($rawBreakStart) && trim($rawBreakStart) !== '';
+            $hasBreakEndInput = is_string($rawBreakEnd) && trim($rawBreakEnd) !== '';
+
+            if ($hasBreakStartInput && !$breakStart) {
+                $errors[$day] = 'Break start must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if ($hasBreakEndInput && !$breakEnd) {
+                $errors[$day] = 'Break end must use the expected time format. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
+                $errors[$day] = 'Provide both break start and end times. ' . $this->localization->describeExpectedFormat();
+                continue;
+            }
+
+            if ($breakStart && $breakEnd) {
+                if (strtotime($breakStart) >= strtotime($breakEnd)) {
+                    $errors[$day] = 'Break start must be earlier than break end.';
+                    continue;
+                }
+
+                if (strtotime($breakStart) < strtotime($start) || strtotime($breakEnd) > strtotime($end)) {
+                    $errors[$day] = 'Break must fall within working hours.';
+                    continue;
+                }
+            }
+
+            $clean[$day] = [
+                'is_active'   => 1,
+                'start_time'  => $start,
+                'end_time'    => $end,
+                'break_start' => $breakStart,
+                'break_end'   => $breakEnd,
+            ];
+        }
+
+        return [$clean, $errors];
+    }
+
+    private function prepareScheduleForView($source): array
+    {
+        $prepared = [];
+        foreach ($this->scheduleDays as $day) {
+            $prepared[$day] = [
+                'is_active'   => false,
+                'start_time'  => '',
+                'end_time'    => '',
+                'break_start' => '',
+                'break_end'   => '',
+            ];
+        }
+
+        if (!is_array($source)) {
+            return $prepared;
+        }
+
+        foreach ($this->scheduleDays as $day) {
+            if (!isset($source[$day])) {
+                continue;
+            }
+
+            $row = $source[$day];
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $isActive = $this->toBool($row['is_active'] ?? null);
+            $prepared[$day]['is_active'] = $isActive;
+            $prepared[$day]['start_time'] = $this->localization->formatTimeForDisplay($row['start_time'] ?? null);
+            $prepared[$day]['end_time'] = $this->localization->formatTimeForDisplay($row['end_time'] ?? null);
+            $prepared[$day]['break_start'] = $this->localization->formatTimeForDisplay($row['break_start'] ?? null);
+            $prepared[$day]['break_end'] = $this->localization->formatTimeForDisplay($row['break_end'] ?? null);
+        }
+
+        return $prepared;
+    }
+
+    private function normaliseTimeString(?string $time): ?string
+    {
+        return $this->localization->normaliseTimeInput($time);
+    }
+
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return false;
     }
 }

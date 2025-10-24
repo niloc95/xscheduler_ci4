@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class BlockedTimeModel extends Model
 {
-    protected $table            = 'blocked_times';
+    protected $table            = 'xs_blocked_times';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';

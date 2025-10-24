@@ -6,7 +6,7 @@ use App\Models\BaseModel;
 
 class SettingModel extends BaseModel
 {
-    protected $table = 'settings';
+    protected $table = 'xs_settings';
     protected $primaryKey = 'id';
 
     protected $allowedFields = [

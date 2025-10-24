@@ -1,3 +1,10 @@
+
+/**
+ * Setup View
+ *
+ * Initial setup wizard for xScheduler. Guides new users through system configuration, admin account creation, and environment checks.
+ * Uses a minimal layout and includes setup-specific scripts and styles.
+ */
 <?= $this->extend('components/setup-layout') ?>
 
 <?= $this->section('title') ?>xScheduler - Initial Setup<?= $this->endSection() ?>

@@ -541,6 +541,8 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 - [x] Zero-configuration deployment packaging
 - [x] Responsive design patterns
 - [x] Accessibility considerations
+- [x] Authentication flow with integrated profile management
+- [x] Automated database backup tooling and runbook
 
 ### 🔄 In Progress
 - [ ] Scheduler-specific components implementation
@@ -550,7 +552,6 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 
 ### 📋 Planned Features
 - [ ] Database schema for scheduling
-- [ ] User authentication system
 - [ ] Email notifications
 - [ ] Calendar integrations
 - [ ] Multi-timezone support
@@ -631,6 +632,14 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 - XSS protection in helpers
 - ARIA attributes for accessibility
 
+## Data Protection & Backups
+
+- **Backup Utility**: `scripts/db_backup.php` generates timestamped gzipped MySQL dumps using environment-sourced credentials with safety checks for target directories.
+- **Documentation**: `docs/DB_BACKUP_PLAN.md` outlines full backup workflow, weekly incremental strategy, and retention guidance for shared hosting environments.
+- **Runtime Integration**: Script supports CLI execution (`php scripts/db_backup.php --connection=default`) and cron scheduling; logs output path for audit trails.
+- **Storage Strategy**: Dumps persisted under `builds/backups/` with date-based naming; ensure directory has write access (`755`) prior to scheduling.
+- **Validation**: Initial dry runs verified mysql client availability, credential parsing, and generated archives stored at `builds/backups/YYYYMMDD_full.sql.gz`.
+
 ## Maintenance Guidelines
 
 ### Code Standards
@@ -667,8 +676,8 @@ Dashboard (Returning) → Authentication Check → Dashboard SPA
 
 ---
 
-**Last Updated**: August 2025
-**Version**: 1.2.0
+**Last Updated**: October 2025
+**Version**: 1.3.0
 **Maintainer**: Development Team
 
 ## Recent Development Updates
@@ -1844,3 +1853,25 @@ This update standardizes container widths, rounds, and theme behavior for a cohe
 - Theme: Rely on `html.dark` class; do not place per-component toggles
 
 These changes deliver a consistent shell and improve perceived polish, matching the dashboard’s visual language across all layout regions.
+
+### October 2025 - Data Protection & Profile Experience Enhancements
+
+**Phase**: Operational resilience and user account management overhaul
+
+#### 🗄️ Database Backup Automation
+- Delivered `scripts/db_backup.php`, a CLI-driven mysqldump wrapper that reads connection settings from `.env`, detects missing binaries, and emits timestamped gzip archives to `builds/backups/`.
+- Added `docs/DB_BACKUP_PLAN.md` with full + incremental retention strategy, cron examples, credential handling guidance, and restore validation checklist.
+- Hardened script with directory bootstrap, permission checks, and informative console output for CI logs and manual operators.
+- Completed full backup dry-run on production-like data set; artifact `20251016_100425_full.sql.gz` verified for size consistency and mysql import readiness.
+
+#### 👤 Profile Management Consolidation
+- Refactored `app/Controllers/Profile.php` to load unified account data, handle inline profile updates, password changes, and avatar uploads within a single authenticated endpoint group.
+- Expanded `app/Models/UserModel.php` allowed fields to cover `profile_image`, ensuring persistence aligns with CodeIgniter mass-assignment safeguards.
+- Modernized view `app/Views/profile/index.php` with embedded tabs for profile/password forms, flash messaging, avatar previews, and CSRF-aware upload controls.
+- Mirrored logo uploader resilience: validated MIME types, normalized filenames, resized images, stored under `public/assets/profile/`, and refreshed session cache post-upload.
+- Updated `app/Config/Routes.php` to register POST routes for `/profile/update-profile` and `/profile/change-password`, each guarded by `auth` + `setup` filters for consistent security posture.
+
+#### ✅ Outcomes & Follow-Up
+- Profile page now matches dashboard design language and allows users to edit personal data, change passwords, and update avatars without leaving `/profile`.
+- Backup process documented and automatable, providing recoverability baseline ahead of scheduler feature rollout.
+- Next focus items: confirm asset directory write permissions across deployments and extend manual/automated tests to cover avatar upload edge cases (SVG, oversized files).

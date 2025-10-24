@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     root.style.setProperty('--md-sys-color-on-surface', 'rgb(17, 24, 39)'); // Tailwind gray-900
     
     // Add any other Material Web initialization code here
+
 });
 
 // Export for use in other modules if needed

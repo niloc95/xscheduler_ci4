@@ -6,31 +6,33 @@ use App\Controllers\BaseController;
 use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
-use App\Models\UserModel;
 use App\Models\CustomerModel;
 
 class Scheduler extends BaseController
 {
-    // Admin/staff scheduler dashboard (default view)
+    /**
+     * ⚠️ ARCHIVED: Legacy Scheduler Controller (FullCalendar-based)
+     *
+     * Admin/staff and public scheduler routes now redirect permanently to the
+     * Appointments module. The API endpoints remain temporarily available for
+     * backwards compatibility with legacy integrations.
+     *
+     * See: docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+     * Replacement: app/Controllers/Appointments.php
+     *
+     * Last Updated: October 7, 2025
+     */
+
+    // Legacy scheduler dashboard route (permanently redirects to Appointments)
     public function index()
     {
-        // Provide Services and Providers for filter dropdowns
-        $serviceModel = new ServiceModel();
-        $services = $serviceModel->orderBy('name', 'ASC')->findAll();
-        $providers = (new UserModel())->getProviders();
-        return view('scheduler/index', [
-            'services' => $services,
-            'providers' => $providers,
-        ]);
+        return redirect()->to('/appointments', 'auto', 308);
     }
 
-    // Public/client-facing scheduler view
+    // Legacy public booking route (redirects to Appointments)
     public function client()
     {
-        // Load services for dropdown
-        $serviceModel = new ServiceModel();
-        $services = $serviceModel->orderBy('name', 'ASC')->findAll();
-        return view('scheduler/client', ['services' => $services]);
+        return redirect()->to('/appointments', 'auto', 308);
     }
 
     // API: GET /api/slots?provider_id=1&service_id=2&date=2025-08-24

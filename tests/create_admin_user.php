@@ -19,8 +19,12 @@ $app->initialize();
 
 $db = Config\Database::connect();
 
+$usersTable    = $db->prefixTable('users');
+$servicesTable = $db->prefixTable('services');
+$now           = date('Y-m-d H:i:s');
+
 // Check if admin user exists
-$adminUser = $db->table('users')->where('email', 'admin@test.com')->get()->getRowArray();
+$adminUser = $db->table($usersTable)->where('email', 'admin@test.com')->get()->getRowArray();
 
 if ($adminUser) {
     echo "Admin user already exists: admin@test.com" . PHP_EOL;
@@ -28,16 +32,16 @@ if ($adminUser) {
 } else {
     // Create admin user
     $adminData = [
-        'name' => 'Admin User',
-        'email' => 'admin@test.com',
-        'password' => password_hash('admin123', PASSWORD_DEFAULT),
-        'role' => 'admin',
-        'is_active' => 1,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
+        'name'        => 'Admin User',
+        'email'       => 'admin@test.com',
+        'password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
+        'role'        => 'admin',
+        'is_active'   => 1,
+        'created_at'  => $now,
+        'updated_at'  => $now
     ];
     
-    $result = $db->table('users')->insert($adminData);
+    $result = $db->table($usersTable)->insert($adminData);
     
     if ($result) {
         echo "✅ Admin user created successfully!" . PHP_EOL;
@@ -50,19 +54,19 @@ if ($adminUser) {
 }
 
 // Also create a test service if none exist
-$services = $db->table('services')->countAllResults();
+$services = $db->table($servicesTable)->countAllResults();
 if ($services === 0) {
     $testService = [
-        'name' => 'Test Service',
+        'name'        => 'Test Service',
         'description' => 'This is a test service for editing',
         'duration_min' => 60,
-        'price' => 100.00,
-        'active' => 1,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
+        'price'       => 100.00,
+        'active'      => 1,
+        'created_at'  => $now,
+        'updated_at'  => $now
     ];
     
-    $result = $db->table('services')->insert($testService);
+    $result = $db->table($servicesTable)->insert($testService);
     if ($result) {
         echo "✅ Test service created!" . PHP_EOL;
     }

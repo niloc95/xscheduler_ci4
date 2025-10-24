@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use App\Models\BaseModel;
+use App\Models\ProviderStaffModel;
 
 class UserModel extends BaseModel
 {
-    protected $table            = 'users';
+    protected $table            = 'xs_users';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
-        'provider_id', 'status', 'last_login', 'is_active', 'reset_token', 'reset_expires'
+        'provider_id', // DEPRECATED: Use xs_provider_staff_assignments pivot table instead
+        'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
+        'profile_image', 'color'
     ];
 
     // Dates (handled by BaseModel)
@@ -19,7 +22,7 @@ class UserModel extends BaseModel
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'role'  => 'required|in_list[admin,provider,receptionist]'
+        'role'  => 'required|in_list[admin,provider,staff,customer]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
@@ -96,10 +99,14 @@ class UserModel extends BaseModel
      */
     public function getStaffForProvider(int $providerId): array
     {
-        return $this->where('role', 'staff')
-                    ->where('provider_id', $providerId)
-                    ->where('is_active', true)
-                    ->findAll();
+        $assignments = new ProviderStaffModel();
+        return $assignments->getStaffByProvider($providerId);
+    }
+
+    public function getProvidersForStaff(int $staffId): array
+    {
+        $assignments = new ProviderStaffModel();
+        return $assignments->getProvidersForStaff($staffId);
     }
 
     /**
@@ -107,7 +114,7 @@ class UserModel extends BaseModel
      */
     public function getProviders(): array
     {
-        return $this->whereIn('role', ['admin', 'provider'])
+        return $this->where('role', 'provider')
                     ->where('is_active', true)
                     ->findAll();
     }
@@ -128,7 +135,8 @@ class UserModel extends BaseModel
         }
         // Providers can manage their own staff
         if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
-            return $target['provider_id'] === $manager['id'];
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
         }
         // Users can manage themselves (limited)
         if ($managerId === $targetUserId) {
@@ -138,7 +146,7 @@ class UserModel extends BaseModel
     }
 
     /**
-     * Create a new user with role validation
+     * Create a new user with hashed password
      */
     public function createUser(array $userData): int|false
     {
@@ -150,7 +158,11 @@ class UserModel extends BaseModel
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
-        return $this->insert($userData, false);
+        
+        // Insert and return the new user ID
+        $result = $this->insert($userData, true); // true = return insert ID
+        
+        return $result !== false ? (int) $this->getInsertID() : false;
     }
 
     /**
@@ -158,15 +170,55 @@ class UserModel extends BaseModel
      */
     public function updateUser(int $userId, array $userData, int $updatedBy): bool
     {
+        log_message('debug', "updateUser called: userId={$userId}, updatedBy={$updatedBy}, userData=" . json_encode($userData));
+        
         if (!$this->canManageUser($updatedBy, $userId)) {
+            log_message('error', "updateUser permission denied: updatedBy={$updatedBy} cannot manage userId={$userId}");
             return false;
         }
+        
+        // Get current user data for comparison
+        $currentUser = $this->find($userId);
+        log_message('debug', "updateUser - Current user data: " . json_encode($currentUser));
+        
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
+            log_message('debug', "updateUser - Password was changed");
         }
-        return $this->update($userId, $userData);
+        
+        log_message('debug', "updateUser calling model update with data: " . json_encode($userData));
+        
+        // Skip model validation since controller already validated with correct user ID
+        // Model validation rules use {id} placeholder which doesn't work properly in update context
+        $this->skipValidation(true);
+        $result = $this->update($userId, $userData);
+        $this->skipValidation(false);
+        
+        log_message('debug', "updateUser - update() returned: " . ($result ? 'true' : 'false'));
+        
+        // Verify the update actually happened
+        $updatedUser = $this->find($userId);
+        log_message('debug', "updateUser - User after update: " . json_encode($updatedUser));
+        
+        if (!$result) {
+            log_message('error', "updateUser failed: " . json_encode($this->errors()));
+        } else {
+            // Check if data actually changed
+            $changed = false;
+            foreach ($userData as $key => $value) {
+                if (isset($updatedUser[$key]) && $updatedUser[$key] != $value) {
+                    $changed = true;
+                    log_message('warning', "updateUser - Field {$key} did not update! Expected: {$value}, Got: {$updatedUser[$key]}");
+                }
+            }
+            if (!$changed) {
+                log_message('debug', "updateUser successful for userId={$userId}");
+            }
+        }
+        
+        return $result;
     }
 
     /**
@@ -217,7 +269,8 @@ class UserModel extends BaseModel
         }
         // Providers can view their staff
         if ($viewer['role'] === 'provider' && $target['role'] === 'staff') {
-            return $target['provider_id'] === $viewer['id'];
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($targetUserId, $viewer['id']);
         }
         // Users can view themselves
         if ($viewerId === $targetUserId) {
@@ -225,8 +278,62 @@ class UserModel extends BaseModel
         }
         // Staff can view their provider
         if ($viewer['role'] === 'staff' && $target['role'] === 'provider') {
-            return $viewer['provider_id'] === $target['id'];
+            $assignments = new ProviderStaffModel();
+            return $assignments->isStaffAssignedToProvider($viewerId, $targetUserId);
         }
         return false;
+    }
+
+    /**
+     * Get an available provider color
+     * Tries to avoid duplicates by selecting least-used color from palette
+     * 
+     * @return string Hex color code
+     */
+    public function getAvailableProviderColor(): string
+    {
+        // Predefined color palette - vibrant, distinguishable colors
+        $colorPalette = [
+            '#3B82F6', // Blue
+            '#10B981', // Green
+            '#F59E0B', // Amber
+            '#EF4444', // Red
+            '#8B5CF6', // Purple
+            '#EC4899', // Pink
+            '#06B6D4', // Cyan
+            '#F97316', // Orange
+            '#84CC16', // Lime
+            '#6366F1', // Indigo
+            '#14B8A6', // Teal
+            '#F43F5E', // Rose
+        ];
+
+        // Get color usage count for active providers
+        $colorUsage = [];
+        $providers = $this->where('role', 'provider')
+                          ->where('is_active', true)
+                          ->select('color')
+                          ->findAll();
+
+        // Count occurrences of each color
+        foreach ($providers as $provider) {
+            if ($provider['color']) {
+                $colorUsage[$provider['color']] = ($colorUsage[$provider['color']] ?? 0) + 1;
+            }
+        }
+
+        // Find least-used color from palette
+        $leastUsedColor = null;
+        $minCount = PHP_INT_MAX;
+        
+        foreach ($colorPalette as $color) {
+            $count = $colorUsage[$color] ?? 0;
+            if ($count < $minCount) {
+                $minCount = $count;
+                $leastUsedColor = $color;
+            }
+        }
+
+        return $leastUsedColor ?? $colorPalette[0];
     }
 }

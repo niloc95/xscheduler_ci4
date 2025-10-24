@@ -1,3 +1,16 @@
+<?php
+/**
+ * User Management - Customer Interaction View
+ *
+ * Allows providers and staff to search and interact with customers for booking assistance.
+ * This is NOT for managing customer records (see customer_management module for that).
+ * 
+ * Purpose: View customer appointments, reschedule, cancel, and assist with bookings
+ * Access: Provider and Staff roles only (scoped to their assigned customers)
+ * 
+ * Related: app/Views/customer_management/ handles CRUD operations for customer records
+ */
+?>
 <?= $this->extend('components/layout') ?>
 
 <?= $this->section('sidebar') ?>
@@ -8,11 +21,7 @@
 
 <?= $this->section('content') ?>
 <div class="main-content" data-page-title="Customer Interaction" data-page-subtitle="Manage and assist customers with bookings">
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
+    <?= $this->include('components/flash_messages') ?>
 
     <div class="card card-spacious">
         <div class="card-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

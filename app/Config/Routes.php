@@ -53,8 +53,9 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->post('store', 'UserManagement::store', ['filter' => 'role:admin,provider']);
     $routes->get('edit/(:num)', 'UserManagement::edit/$1', ['filter' => 'role:admin,provider']);
     $routes->post('update/(:num)', 'UserManagement::update/$1', ['filter' => 'role:admin,provider']);
-    $routes->get('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
-    $routes->get('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('delete/(:num)', 'UserManagement::delete/$1', ['filter' => 'role:admin']);
 });
 
 // Customer Management Routes (admins, providers, and staff)
@@ -105,18 +106,45 @@ $routes->group('notifications', function($routes) {
 });
 
 // Profile Routes (auth required)
-$routes->group('profile', function($routes) {
+$routes->group('profile', ['filter' => 'auth'], function($routes) {
     $routes->get('', 'Profile::index');
-    $routes->get('edit', 'Profile::edit');
-    $routes->post('update', 'Profile::update');
-    $routes->get('password', 'Profile::password');
-    $routes->post('update-password', 'Profile::updatePassword');
+    $routes->post('update-profile', 'Profile::updateProfile');
+    $routes->post('change-password', 'Profile::changePassword');
     $routes->post('upload-picture', 'Profile::uploadPicture');
     $routes->get('privacy', 'Profile::privacy');
     $routes->post('update-privacy', 'Profile::updatePrivacy');
     $routes->get('account', 'Profile::account');
     $routes->post('update-account', 'Profile::updateAccount');
 });
+
+// Provider schedules (auth required, controller handles authorization)
+$routes->group('providers', ['filter' => 'setup'], function($routes) {
+    $routes->get('(:num)/schedule', 'ProviderSchedule::index/$1', ['filter' => 'auth']);
+    $routes->post('(:num)/schedule', 'ProviderSchedule::save/$1', ['filter' => 'auth']);
+    $routes->delete('(:num)/schedule', 'ProviderSchedule::delete/$1', ['filter' => 'auth']);
+});
+
+// Provider staff assignments
+$routes->group('provider-staff', ['filter' => 'setup'], function($routes) {
+    $routes->get('provider/(:num)', 'ProviderStaff::list/$1', ['filter' => 'role:admin,provider']);
+    $routes->post('assign', 'ProviderStaff::assign', ['filter' => 'role:admin,provider']);
+    $routes->post('remove', 'ProviderStaff::remove', ['filter' => 'role:admin,provider']);
+});
+
+// Staff provider assignments (reverse direction)
+$routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
+    $routes->get('staff/(:num)', 'StaffProviders::list/$1', ['filter' => 'role:admin,staff']);
+    $routes->post('assign', 'StaffProviders::assign', ['filter' => 'role:admin']);
+    $routes->post('remove', 'StaffProviders::remove', ['filter' => 'role:admin']);
+});
+
+// Receptionist provider assignments (DEPRECATED - receptionist role removed)
+// Kept for v1.1 historical reference; table and controller remain but unused
+// $routes->group('receptionist-providers', ['filter' => 'auth'], function($routes) {
+//     $routes->get('receptionist/(:num)', 'ReceptionistProviders::list/$1', ['filter' => 'role:admin']);
+//     $routes->post('assign', 'ReceptionistProviders::assign', ['filter' => 'role:admin']);
+//     $routes->post('remove', 'ReceptionistProviders::remove', ['filter' => 'role:admin']);
+// });
 
 // Appointments Routes (auth required)
 $routes->group('appointments', function($routes) {
@@ -184,17 +212,33 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->post('book', 'Scheduler::book');
 
     // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
+    // Unversioned appointments custom routes  
+    $routes->get('appointments', 'Api\\Appointments::index');
+    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
+    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability');
+    
     // Unversioned summary metrics
     $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
     // Unversioned counts for convenience (matches v1 controller)
     $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
+    
     // Unversioned appointments resource (alias to v1 controller) - restrict ID to numeric
+    // Note: Specific routes above take precedence over resource routes
     $routes->resource('appointments', [
         'controller' => 'Api\\V1\\Appointments',
         'placeholder' => '(:num)'
     ]);
 
-    // Versioned API v1
+    // Public API endpoints (no auth required)
+    $routes->group('v1', function($routes) {
+        // Calendar configuration - public for frontend
+        $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
+        // Provider services - public for booking form
+        $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
+    });
+
+    // Versioned API v1 (authenticated)
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
         // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
@@ -207,11 +251,11 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         ]);
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
-    $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
-    // Settings API
-    $routes->get('settings', 'Api\\V1\\Settings::index');
-    $routes->put('settings', 'Api\\V1\\Settings::update');
-    $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
+        $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
+        // Settings API (authenticated)
+        $routes->get('settings', 'Api\\V1\\Settings::index');
+        $routes->put('settings', 'Api\\V1\\Settings::update');
+        $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
     });
 });
 

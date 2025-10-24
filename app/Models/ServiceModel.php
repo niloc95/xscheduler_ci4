@@ -6,7 +6,7 @@ use App\Models\BaseModel;
 
 class ServiceModel extends BaseModel
 {
-    protected $table            = 'services';
+    protected $table            = 'xs_services';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
     'name', 'description', 'duration_min', 'price', 'category_id', 'active'

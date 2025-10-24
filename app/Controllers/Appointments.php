@@ -3,15 +3,26 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Models\ServiceModel;
+use App\Models\AppointmentModel;
+use App\Models\CustomerModel;
+use App\Services\BookingSettingsService;
+use App\Services\LocalizationSettingsService;
 use CodeIgniter\Controller;
 
 class Appointments extends BaseController
 {
     protected $userModel;
+    protected $serviceModel;
+    protected $appointmentModel;
+    protected $customerModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->serviceModel = new ServiceModel();
+        $this->appointmentModel = new AppointmentModel();
+        $this->customerModel = new CustomerModel();
         helper('permissions');
     }
 
@@ -32,13 +43,23 @@ class Appointments extends BaseController
         // Mock appointment data - in real implementation, this would come from AppointmentModel
         $appointments = $this->getMockAppointments($currentRole, $currentUserId);
         
+        // Get active providers with colors for legend
+        $activeProviders = $this->userModel
+            ->where('role', 'provider')
+            ->where('is_active', true)
+            ->where('color IS NOT NULL')
+            ->where('color !=', '')
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
             'current_page' => 'appointments',
             'appointments' => $appointments,
             'user_role' => $currentRole,
             'user' => $currentUser,
-            'stats' => $this->getAppointmentStats($currentRole, $currentUserId)
+            'stats' => $this->getAppointmentStats($currentRole, $currentUserId),
+            'activeProviders' => $activeProviders
         ];
 
         return view('appointments/index', $data);
@@ -85,15 +106,166 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
+        // Initialize services
+        $bookingService = new BookingSettingsService();
+        $localizationService = new LocalizationSettingsService();
+
+        // Get field configuration from settings
+        $fieldConfig = $bookingService->getFieldConfiguration();
+        $customFields = $bookingService->getCustomFieldConfiguration();
+        $localizationContext = $localizationService->getContext();
+
+        // Fetch real providers and services from database
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        // Format providers for dropdown
+        $providersFormatted = array_map(function($provider) {
+            return [
+                'id' => $provider['id'],
+                'name' => $provider['name'],
+                'speciality' => 'Provider' // TODO: Add speciality field to users table
+            ];
+        }, $providers);
+
+        // Format services for dropdown
+        $servicesFormatted = array_map(function($service) {
+            return [
+                'id' => $service['id'],
+                'name' => $service['name'],
+                'duration' => $service['duration_min'], // Map duration_min to duration for consistency
+                'price' => $service['price']
+            ];
+        }, $services);
+
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
-            'services' => $this->getMockServices(),
-            'providers' => $this->getMockProviders(),
-            'user_role' => current_user_role()
+            'services' => $servicesFormatted,
+            'providers' => $providersFormatted,
+            'user_role' => current_user_role(),
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'localization' => $localizationContext,
         ];
 
         return view('appointments/create', $data);
+    }
+
+    /**
+     * Store new appointment
+     */
+    public function store()
+    {
+        // Check authentication and permissions
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in to book an appointment');
+        }
+
+        if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
+            return redirect()->back()->with('error', 'Access denied');
+        }
+
+        $validation = \Config\Services::validation();
+        
+        // Validation rules
+        $rules = [
+            'provider_id' => 'required|is_natural_no_zero',
+            'service_id' => 'required|is_natural_no_zero',
+            'appointment_date' => 'required|valid_date',
+            'appointment_time' => 'required',
+            'customer_first_name' => 'required|min_length[2]|max_length[120]',
+            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_email' => 'required|valid_email|max_length[255]',
+            'customer_phone' => 'required|min_length[10]|max_length[32]',
+            'customer_address' => 'permit_empty|max_length[255]',
+            'notes' => 'permit_empty|max_length[1000]'
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('errors', $validation->getErrors());
+        }
+
+        // Get form data
+        $providerId = $this->request->getPost('provider_id');
+        $serviceId = $this->request->getPost('service_id');
+        $appointmentDate = $this->request->getPost('appointment_date');
+        $appointmentTime = $this->request->getPost('appointment_time');
+        
+        // Get service to calculate end time
+        $service = $this->serviceModel->find($serviceId);
+        if (!$service) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Invalid service selected');
+        }
+
+        // Calculate start and end times
+        $startTime = $appointmentDate . ' ' . $appointmentTime . ':00';
+        $endTime = date('Y-m-d H:i:s', strtotime($startTime) + ($service['duration_min'] * 60));
+
+        // Check if customer exists or create new one
+        $customerEmail = $this->request->getPost('customer_email');
+        $customer = $this->customerModel->where('email', $customerEmail)->first();
+
+        if (!$customer) {
+            // Create new customer
+            $customerData = [
+                'first_name' => $this->request->getPost('customer_first_name'),
+                'last_name' => $this->request->getPost('customer_last_name'),
+                'email' => $customerEmail,
+                'phone' => $this->request->getPost('customer_phone'),
+                'address' => $this->request->getPost('customer_address'),
+                'notes' => $this->request->getPost('notes')
+            ];
+
+            // Handle custom fields if provided
+            $customFieldsData = [];
+            for ($i = 1; $i <= 6; $i++) {
+                $fieldValue = $this->request->getPost("custom_field_{$i}");
+                if ($fieldValue !== null && $fieldValue !== '') {
+                    $customFieldsData["field_{$i}"] = $fieldValue;
+                }
+            }
+            if (!empty($customFieldsData)) {
+                $customerData['custom_fields'] = json_encode($customFieldsData);
+            }
+
+            $customerId = $this->customerModel->insert($customerData);
+            
+            if (!$customerId) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Failed to create customer record');
+            }
+        } else {
+            $customerId = $customer['id'];
+        }
+
+        // Create appointment
+        $appointmentData = [
+            'customer_id' => $customerId,
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'status' => 'booked',
+            'notes' => $this->request->getPost('notes') ?? ''
+        ];
+
+        $appointmentId = $this->appointmentModel->insert($appointmentData);
+
+        if (!$appointmentId) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create appointment. Please try again.');
+        }
+
+        // Success - redirect to appointments list or view
+        return redirect()->to('/appointments')
+            ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
     }
 
     /**

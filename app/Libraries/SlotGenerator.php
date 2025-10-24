@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\BusinessHourModel;
+use App\Models\ProviderScheduleModel;
 use App\Models\BlockedTimeModel;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
@@ -13,6 +14,7 @@ class SlotGenerator
     protected BlockedTimeModel $blockedTimes;
     protected AppointmentModel $appointments;
     protected ServiceModel $services;
+    protected ProviderScheduleModel $providerSchedules;
 
     public function __construct()
     {
@@ -20,6 +22,7 @@ class SlotGenerator
         $this->blockedTimes  = new BlockedTimeModel();
         $this->appointments  = new AppointmentModel();
         $this->services      = new ServiceModel();
+        $this->providerSchedules = new ProviderScheduleModel();
     }
 
     /**
@@ -32,21 +35,63 @@ class SlotGenerator
         if (!$service) return [];
         $duration = (int)($service['duration_min'] ?? 30);
 
-        $weekday = (int) date('w', strtotime($date)); // 0=Sun
-        $bh = $this->businessHours
-            ->where('provider_id', $providerId)
-            ->where('weekday', $weekday)
-            ->first();
-        if (!$bh) return [];
+        $dayName = strtolower(date('l', strtotime($date))); // monday ... sunday
+        $providerSchedule = $this->providerSchedules->getActiveDay($providerId, $dayName);
 
         $breaks = [];
-        if (!empty($bh['breaks_json'])) {
-            $decoded = json_decode($bh['breaks_json'], true);
-            if (is_array($decoded)) $breaks = $decoded;
-        }
+        if ($providerSchedule) {
+            $dayStart = strtotime($date . ' ' . $providerSchedule['start_time']);
+            $dayEnd   = strtotime($date . ' ' . $providerSchedule['end_time']);
 
-        $dayStart = strtotime($date . ' ' . $bh['start_time']);
-        $dayEnd   = strtotime($date . ' ' . $bh['end_time']);
+            if (!empty($providerSchedule['break_start']) && !empty($providerSchedule['break_end'])) {
+                $breaks[] = [
+                    'start' => substr($providerSchedule['break_start'], 0, 5),
+                    'end'   => substr($providerSchedule['break_end'], 0, 5),
+                ];
+            }
+        } else {
+            $weekday = (int) date('w', strtotime($date)); // 0=Sun
+            $bh = $this->businessHours
+                ->where([
+                    'provider_id' => $providerId,
+                    'weekday'     => $weekday,
+                ])
+                ->first();
+
+            if (!$bh) {
+                $this->businessHours->resetQuery();
+                $bh = $this->businessHours
+                    ->where([
+                        'provider_id' => null,
+                        'weekday'     => $weekday,
+                    ])
+                    ->first();
+            }
+
+            if (!$bh) {
+                $this->businessHours->resetQuery();
+                $bh = $this->businessHours
+                    ->where([
+                        'provider_id' => 0,
+                        'weekday'     => $weekday,
+                    ])
+                    ->first();
+            }
+
+            if (!$bh) {
+                return [];
+            }
+
+            $this->businessHours->resetQuery();
+
+            if (!empty($bh['breaks_json'])) {
+                $decoded = json_decode($bh['breaks_json'], true);
+                if (is_array($decoded)) $breaks = $decoded;
+            }
+
+            $dayStart = strtotime($date . ' ' . $bh['start_time']);
+            $dayEnd   = strtotime($date . ' ' . $bh['end_time']);
+        }
 
         // Gather busy intervals (appointments + blocks)
         $busy = [];

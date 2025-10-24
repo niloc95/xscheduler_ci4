@@ -22,7 +22,7 @@ class Users extends BaseController
             $counts = [];
             $counts['admins']    = (int)$this->users->where('role','admin')->countAllResults();
             $counts['providers'] = (int)$this->users->where('role','provider')->countAllResults();
-            $counts['staff']     = (int)$this->users->whereIn('role',['staff','receptionist'])->countAllResults();
+            $counts['staff']     = (int)$this->users->where('role','staff')->countAllResults();
             // Customers are managed separately; exclude from totals
             $counts['total'] = $counts['admins'] + $counts['providers'] + $counts['staff'];
             return $this->response->setJSON(['status'=>'ok','counts'=>$counts]);
@@ -40,10 +40,9 @@ class Users extends BaseController
         $users = [];
         try {
             if ($role === 'staff') {
-                // Include both staff and receptionist roles under unified 'staff' filter
-                $users = $this->users->groupStart()->where('role','staff')->orWhere('role','receptionist')->groupEnd()
+                $users = $this->users->where('role','staff')
                     ->like('name',$q ?? '', 'both')->limit($limit)->find();
-            } elseif (in_array((string)$role, ['admin','provider','receptionist'], true)) {
+            } elseif (in_array((string)$role, ['admin','provider'], true)) {
                 $users = $this->users->where('role',$role)->like('name',$q ?? '', 'both')->limit($limit)->find();
             } else { // all
                 $users = $this->users->like('name',$q ?? '', 'both')->limit($limit)->find();

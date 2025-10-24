@@ -6,7 +6,7 @@ use App\Models\BaseModel;
 
 class AppointmentModel extends BaseModel
 {
-    protected $table            = 'appointments';
+    protected $table            = 'xs_appointments';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';

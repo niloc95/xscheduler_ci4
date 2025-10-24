@@ -4,7 +4,7 @@ module.exports = {
   content: [
     "./app/Views/**/*.php",
     "./resources/**/*.{js,ts,jsx,tsx,vue}",
-    "./public/**/*.html",
+  "./public/**/*.html",
   ],
   theme: {
     extend: {
