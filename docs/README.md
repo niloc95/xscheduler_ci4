@@ -9,10 +9,10 @@ This is your central navigation point for all project documentation, organized b
 ## 🚀 Quick Start
 
 **New to the project?** Start here:
-1. [Setup Guide](./development/setup-guide.md) - Installation & configuration
-2. [Architecture Overview](./development/architecture-overview.md) - System design
-3. [API Reference](./development/api-reference.md) - Backend endpoints
-4. [Calendar Implementation](./development/calendar-implementation.md) - Key feature
+1. [Setup Guide](./development/setup-workflow.md) - Installation & configuration
+2. [Architecture Overview](./architecture/mastercontext.md) - System design
+3. [Calendar Implementation](./development/calendar-implementation.md) - Backend endpoints
+4. [Provider System](./development/provider-system-guide.md) - Key feature
 
 ---
 
@@ -24,20 +24,20 @@ Development guides, system architecture, implementation details, and setup instr
 
 - **[Calendar Implementation Guide](./development/calendar-implementation.md)** - Complete calendar system with FullCalendar v6, real-time appointments, business hours sync, and Material Design 3 UI
 - **[Provider & Staff System Guide](./development/provider-system-guide.md)** - Provider setup, staff assignments, color coding for calendar display, and service bindings
-- **[Project Phases Documentation](./development/project-phases.md)** - Development milestones, completion status, and phase deliverables
-- **[Setup & Installation Guide](./development/setup-guide.md)** - Project setup, database migrations, environment configuration
-- **[Features Implementation Guide](./development/features-guide.md)** - Dynamic customer fields, schedule views, feature documentation
-- **[System Architecture Overview](./development/architecture-overview.md)** - Technical architecture, system design, component relationships
-- **[API Endpoints Reference](./development/api-reference.md)** - Complete REST API documentation with examples
+- **[Project Phases Documentation](./development/phase-1-api.md)** - Development milestones, completion status, and phase deliverables
+- **[Setup & Installation Guide](./development/setup-workflow.md)** - Project setup, database migrations, environment configuration
+- **[Features Implementation Guide](./development/dynamic-customer-fields.md)** - Dynamic customer fields, schedule views, feature documentation
+- **[System Architecture Overview](./architecture/mastercontext.md)** - Technical architecture, system design, component relationships
+- **[Calendar UI/UX Guide](./ui-ux/calendar-ui-overview.md)** - Complete REST API documentation with examples
 
 ### 🎨 Design & UI/UX
 
 UI/UX design, styling guides, Material Design 3 implementation, and visual components.
 
 - **[Calendar UI/UX Overview](./ui-ux/calendar-ui-overview.md)** - Modern calendar interface with responsive layouts, time slot visibility, event rendering
-- **[Calendar UI Quick Reference](./ui-ux/calendar-ui-quickref.md)** - Quick lookup guide for UI components, color palette, and styling classes
-- **[Design System & Components](./ui-ux/design-system.md)** - Material Design 3 implementation, component library, design patterns
-- **[Color Palette Reference](./ui-ux/color-palette.md)** - Slate and blue color schemes for light/dark modes
+- **[Color Palette Reference](./design/COLOR-PALETTE-ANALYSIS.md)** - Slate and blue color schemes for light/dark modes
+- **[Material Icons Usage](./design/MATERIAL_ICONS_USAGE.md)** - Icon system and implementation guide
+- **[Dark Mode Implementation](./dark-mode/DARK_MODE_IMPLEMENTATION.md)** - Dark mode design and features
 
 ### �️ Database & Data
 
@@ -77,7 +77,7 @@ Technical references, debugging, troubleshooting, and CLI commands.
 - **[SPA Settings Fix Documentation](./technical/SPA_SETTINGS_FIX.md)** - Single-page application configuration, settings management in SPA context
 - **[Icon Display Fix Guide](./technical/ICON-DISPLAY-FIX.md)** - Material icons troubleshooting, icon font integration, display issues
 - **[CLI Commands Reference](./technical/command.md)** - PHP Spark commands, database management, utility scripts
-- **[Troubleshooting Guide](./technical/PRODUCTION-URL-FIX.md)** - Common issues, diagnostics, solutions
+- **[CSS Cleanup & Consolidation](./technical/CSS_CLEANUP_SUMMARY.md)** - Common issues, diagnostics, solutions
 
 ### 🏗️ Architecture & System Design
 
@@ -87,7 +87,8 @@ System architecture, design patterns, multi-tenant structure, and role-based sys
 - **[Role-Based Access Control](./architecture/ROLE_BASED_SYSTEM.md)** - User roles, permissions, access matrix
 - **[Multi-Tenant SaaS Architecture](./architecture/MULTI-TENANT-SAAS-ARCHITECTURE.md)** - Tenant isolation, multi-tenant data model
 - **[Material Dashboard Implementation](./architecture/MATERIAL_DASHBOARD_GUIDE.md)** - Dashboard design and features
-- **[Implementation Plan](./architecture/IMPLEMENTATION-PLAN.md)** - Development roadmap and milestones
+- **[Legacy Scheduler Architecture](./architecture/LEGACY_SCHEDULER_ARCHITECTURE.md)** - Historical architecture reference
+- **[User-Customer Split Design](./architecture/USER_CUSTOMER_SPLIT.md)** - User and customer data model design
 
 ### 🗃️ Archive & Historical Documentation
 
@@ -120,7 +121,8 @@ For information about documentation organization and consolidation history, see 
 - **UI/UX Design** → [Calendar UI Overview](./ui-ux/calendar-ui-overview.md)
 - **Deployment** → [Production Setup Guide](./deployment/PRODUCTION_FIX_GUIDE.md)
 - **Security** → [Security Implementation Guide](./security/SECURITY_IMPLEMENTATION_GUIDE.md)
-- **Database** → [Database Schema Overview](./database/database-schema.md)
+- **Database** → [Master Context Document](./architecture/mastercontext.md)
+- **Setup** → [Setup & Installation Guide](./development/setup-workflow.md)
 
 ### By Role
 - **Developers** → Development + Architecture sections
