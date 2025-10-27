@@ -126,7 +126,7 @@ import{C as wt}from"./charts.js";function ge(){if(typeof Intl<"u"&&Intl.DateTime
                         </div>
                     `}).join("")}
             </div>
-        `}renderAppointmentBlock(e,t,s){var f,p;const r=t.find(m=>m.id===e.providerId),i=(r==null?void 0:r.color)||"#3B82F6",a=this.getContrastColor(i),o=e.customerName||"Unknown",l=e.serviceName||e.title||"Appointment",c=((p=(f=this.scheduler)==null?void 0:f.settingsManager)==null?void 0:p.getTimeFormat())==="24h"?"HH:mm":"h:mm a",d=e.startDateTime.toFormat(c);return`
+        `}renderAppointmentBlock(e,t,s){var f,p;const r=t.find(m=>m.id===e.providerId),i=(r==null?void 0:r.color)||"#3B82F6",a=this.getContrastColor(i),o=e.name||e.title||"Unknown",l=e.serviceName||"Appointment",c=((p=(f=this.scheduler)==null?void 0:f.settingsManager)==null?void 0:p.getTimeFormat())==="24h"?"HH:mm":"h:mm a",d=e.startDateTime.toFormat(c);return`
             <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-shadow text-xs z-10"
                  style="background-color: ${i}; color: ${a};"
                  data-appointment-id="${e.id}"
@@ -189,7 +189,7 @@ import{C as wt}from"./charts.js";function ge(){if(typeof Intl<"u"&&Intl.DateTime
                     ${i.length>0?i.map(a=>this.renderInlineAppointment(a,s)).join(""):'<div class="text-sm text-gray-400 dark:text-gray-500 italic">Available</div>'}
                 </div>
             </div>
-        `}renderInlineAppointment(e,t){var d,f;const s=t.find(p=>p.id===e.providerId),r=(s==null?void 0:s.color)||"#3B82F6",i=this.getContrastColor(r),a=((f=(d=this.scheduler)==null?void 0:d.settingsManager)==null?void 0:f.getTimeFormat())==="24h"?"HH:mm":"h:mm a",o=`${e.startDateTime.toFormat(a)} - ${e.endDateTime.toFormat(a)}`,l=e.customerName||"Unknown",c=e.serviceName||e.title||"Appointment";return`
+        `}renderInlineAppointment(e,t){var d,f;const s=t.find(p=>p.id===e.providerId),r=(s==null?void 0:s.color)||"#3B82F6",i=this.getContrastColor(r),a=((f=(d=this.scheduler)==null?void 0:d.settingsManager)==null?void 0:f.getTimeFormat())==="24h"?"HH:mm":"h:mm a",o=`${e.startDateTime.toFormat(a)} - ${e.endDateTime.toFormat(a)}`,l=e.name||e.title||"Unknown",c=e.serviceName||"Appointment";return`
             <div class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                  style="background-color: ${r}; color: ${i};"
                  data-appointment-id="${e.id}">
@@ -203,7 +203,7 @@ import{C as wt}from"./charts.js";function ge(){if(typeof Intl<"u"&&Intl.DateTime
                     <span class="material-symbols-outlined text-lg flex-shrink-0">arrow_forward</span>
                 </div>
             </div>
-        `}renderAppointmentCard(e,t,s){var p,m;const r=t.find(y=>y.id===e.providerId),i=(r==null?void 0:r.color)||"#3B82F6",a=((m=(p=this.scheduler)==null?void 0:p.settingsManager)==null?void 0:m.getTimeFormat())==="24h"?"HH:mm":"h:mm a",o=`${e.startDateTime.toFormat(a)} - ${e.endDateTime.toFormat(a)}`,l=e.customerName||"Unknown",c=e.serviceName||e.title||"Appointment",d={confirmed:"bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",pending:"bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",completed:"bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",cancelled:"bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"},f=d[e.status]||d.pending;return`
+        `}renderAppointmentCard(e,t,s){var p,m;const r=t.find(y=>y.id===e.providerId),i=(r==null?void 0:r.color)||"#3B82F6",a=((m=(p=this.scheduler)==null?void 0:p.settingsManager)==null?void 0:m.getTimeFormat())==="24h"?"HH:mm":"h:mm a",o=`${e.startDateTime.toFormat(a)} - ${e.endDateTime.toFormat(a)}`,l=e.name||e.title||"Unknown",c=e.serviceName||"Appointment",d={confirmed:"bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",pending:"bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",completed:"bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",cancelled:"bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"},f=d[e.status]||d.pending;return`
             <div class="appointment-card p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
                  style="border-left: 4px solid ${i};"
                  data-appointment-id="${e.id}">

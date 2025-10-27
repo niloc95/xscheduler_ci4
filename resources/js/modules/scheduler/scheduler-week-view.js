@@ -125,8 +125,8 @@ export class WeekView {
         const color = provider?.color || '#3B82F6';
         const textColor = this.getContrastColor(color);
         
-        const customerName = appointment.customerName || 'Unknown';
-        const serviceName = appointment.serviceName || appointment.title || 'Appointment';
+        const customerName = appointment.name || appointment.title || 'Unknown';
+        const serviceName = appointment.serviceName || 'Appointment';
         
         // Format time based on settings
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';

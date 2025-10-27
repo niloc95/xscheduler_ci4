@@ -124,8 +124,8 @@ export class DayView {
         // Format time based on settings
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const time = `${appointment.startDateTime.toFormat(timeFormat)} - ${appointment.endDateTime.toFormat(timeFormat)}`;
-        const customerName = appointment.customerName || 'Unknown';
-        const serviceName = appointment.serviceName || appointment.title || 'Appointment';
+        const customerName = appointment.name || appointment.title || 'Unknown';
+        const serviceName = appointment.serviceName || 'Appointment';
 
         return `
             <div class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
@@ -151,8 +151,8 @@ export class DayView {
         // Format time based on settings
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const time = `${appointment.startDateTime.toFormat(timeFormat)} - ${appointment.endDateTime.toFormat(timeFormat)}`;
-        const customerName = appointment.customerName || 'Unknown';
-        const serviceName = appointment.serviceName || appointment.title || 'Appointment';
+        const customerName = appointment.name || appointment.title || 'Unknown';
+        const serviceName = appointment.serviceName || 'Appointment';
         const statusColors = {
             confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
             pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
