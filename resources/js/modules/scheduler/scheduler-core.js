@@ -326,8 +326,37 @@ export class SchedulerCore {
         if (this.options.onAppointmentClick) {
             this.options.onAppointmentClick(appointment);
         } else {
-            console.log('Appointment clicked:', appointment);
+            // TODO: Replace with proper appointment details modal
+            this.showAppointmentDetails(appointment);
         }
+    }
+    
+    /**
+     * Show appointment details (placeholder for proper modal)
+     */
+    showAppointmentDetails(appointment) {
+        const startTime = DateTime.fromISO(appointment.start).toFormat('h:mm a');
+        const endTime = DateTime.fromISO(appointment.end).toFormat('h:mm a');
+        const date = DateTime.fromISO(appointment.start).toFormat('MMMM d, yyyy');
+        
+        const details = `
+Appointment Details:
+━━━━━━━━━━━━━━━━
+${appointment.title || appointment.name || 'Appointment'}
+${date}
+${startTime} - ${endTime}
+
+Customer: ${appointment.name || 'N/A'}
+${appointment.email ? 'Email: ' + appointment.email : ''}
+${appointment.phone ? 'Phone: ' + appointment.phone : ''}
+${appointment.notes ? '\nNotes: ' + appointment.notes : ''}
+
+Status: ${appointment.status}
+        `.trim();
+        
+        // Temporary: Use browser alert. Replace with proper modal component.
+        alert(details);
+        console.log('Appointment details:', appointment);
     }
 
     renderError(message) {

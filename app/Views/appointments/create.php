@@ -293,6 +293,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeInput = document.getElementById('appointment_time');
     const summaryDiv = document.getElementById('appointment-summary');
 
+    // Dynamic service filtering based on provider selection
+    providerSelect.addEventListener('change', async function() {
+        const providerId = this.value;
+        
+        // Reset service dropdown
+        serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+        serviceSelect.disabled = true;
+        
+        if (!providerId) {
+            serviceSelect.innerHTML = '<option value="">Select a provider first...</option>';
+            updateSummary();
+            return;
+        }
+        
+        try {
+            // Fetch services for the selected provider
+            const response = await fetch(`/api/v1/providers/${providerId}/services`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to load services');
+            }
+            
+            const result = await response.json();
+            const services = result.data || [];
+            
+            // Populate services dropdown
+            if (services.length === 0) {
+                serviceSelect.innerHTML = '<option value="">No services available for this provider</option>';
+            } else {
+                serviceSelect.innerHTML = '<option value="">Select a service...</option>';
+                services.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service.id;
+                    option.textContent = `${service.name} - $${parseFloat(service.price).toFixed(2)}`;
+                    option.dataset.duration = service.durationMin || service.duration_min;
+                    option.dataset.price = service.price;
+                    serviceSelect.appendChild(option);
+                });
+                serviceSelect.disabled = false;
+            }
+        } catch (error) {
+            console.error('Error loading services:', error);
+            serviceSelect.innerHTML = '<option value="">Error loading services. Please try again.</option>';
+        }
+        
+        updateSummary();
+    });
+
     function updateSummary() {
         const service = serviceSelect.options[serviceSelect.selectedIndex];
         const provider = providerSelect.options[providerSelect.selectedIndex];
@@ -328,7 +376,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Attach event listeners
     serviceSelect.addEventListener('change', updateSummary);
-    providerSelect.addEventListener('change', updateSummary);
     dateInput.addEventListener('change', updateSummary);
     timeInput.addEventListener('change', updateSummary);
 });

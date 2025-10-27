@@ -257,7 +257,7 @@ export class DayView {
                     const time = el.dataset.time;
                     const date = data.currentDate.toISODate();
                     console.log('Time slot clicked:', date, time);
-                    // TODO: Open create appointment modal with pre-filled date and time
+                    this.scheduler.openCreateModal({ date, time });
                 }
             });
         });

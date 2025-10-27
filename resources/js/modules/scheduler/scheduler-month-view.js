@@ -224,7 +224,7 @@ export class MonthView {
                 if (e.target === el || e.target.closest('.flex')) {
                     const date = el.dataset.date;
                     console.log('Day clicked:', date);
-                    // TODO: Open create appointment modal with pre-filled date
+                    this.scheduler.openCreateModal({ date });
                 }
             });
         });

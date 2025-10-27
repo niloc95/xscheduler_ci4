@@ -546,7 +546,20 @@ export class AppointmentModal {
         
         // Gather form data
         const formData = new FormData(this.form);
-        const data = Object.fromEntries(formData.entries());
+        const rawData = Object.fromEntries(formData.entries());
+        
+        // Transform data to match API expectations (camelCase)
+        const data = {
+            name: rawData.customer_name || '',
+            email: rawData.customer_email || '',
+            phone: rawData.customer_phone || '',
+            providerId: parseInt(rawData.provider_id) || null,
+            serviceId: parseInt(rawData.service_id) || null,
+            date: rawData.appointment_date || '',
+            start: rawData.appointment_time || '',
+            notes: rawData.notes || '',
+            location: rawData.location || ''
+        };
         
         // Show loading state
         const submitBtn = this.modal.querySelector('button[type="submit"]');
@@ -555,17 +568,21 @@ export class AppointmentModal {
         submitBtn.innerHTML = '<span class="loading-spinner"></span> Creating...';
         
         try {
-            // Send to API
+            // Send to API with timezone header
+            const timezone = await this.settings.getTimezone();
             const response = await fetch('/api/appointments', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Client-Timezone': timezone
                 },
                 body: JSON.stringify(data)
             });
             
             if (!response.ok) {
-                throw new Error('Failed to create appointment');
+                const errorData = await response.json();
+                const errorMessage = errorData?.error?.message || 'Failed to create appointment';
+                throw new Error(errorMessage);
             }
             
             const result = await response.json();
@@ -579,7 +596,7 @@ export class AppointmentModal {
             
         } catch (error) {
             console.error('Error creating appointment:', error);
-            this.showToast('Failed to create appointment. Please try again.', 'error');
+            this.showToast(error.message || 'Failed to create appointment. Please try again.', 'error');
             
             // Restore button
             submitBtn.disabled = false;

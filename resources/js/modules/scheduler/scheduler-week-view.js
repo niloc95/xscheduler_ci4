@@ -231,7 +231,7 @@ export class WeekView {
                     const date = el.dataset.date;
                     const time = el.dataset.time;
                     console.log('Time slot clicked:', date, time);
-                    // TODO: Open create appointment modal with pre-filled date and time
+                    this.scheduler.openCreateModal({ date, time });
                 }
             });
         });
