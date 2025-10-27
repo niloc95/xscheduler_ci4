@@ -1,0 +1,687 @@
+/**
+ * Custom Scheduler Styles
+ * Material Design 3 inspired animations and transitions
+ */
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Animation utility classes */
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.animate-slide-out {
+    animation: slideOut 0.3s ease-in;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+}
+
+/* ============================================
+   Scheduler Components
+   ============================================ */
+
+/* Month View */
+.scheduler-month-view {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.scheduler-month-view .scheduler-appointment {
+    transition: all 0.2s ease;
+}
+
+.scheduler-month-view .scheduler-appointment:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.scheduler-day-cell {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.scheduler-day-cell:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.scheduler-day-cell.today {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.scheduler-day-cell.other-month {
+    opacity: 0.5;
+}
+
+.scheduler-day-cell.past {
+    opacity: 0.7;
+}
+
+.scheduler-day-cell.non-working-day {
+    background-color: rgba(156, 163, 175, 0.1);
+}
+
+/* Week View */
+.scheduler-week-view {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.scheduler-week-view .appointment-block {
+    transition: all 0.2s ease;
+    border-left: 3px solid currentColor;
+}
+
+.scheduler-week-view .appointment-block:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Day View */
+.scheduler-day-view {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.scheduler-day-view .time-slot {
+    transition: all 0.2s ease;
+}
+
+.scheduler-day-view .inline-appointment {
+    transition: all 0.2s ease;
+}
+
+.scheduler-day-view .inline-appointment:hover {
+    transform: scale(1.02);
+}
+
+.scheduler-day-view .appointment-card {
+    transition: all 0.2s ease;
+}
+
+.scheduler-day-view .appointment-card:hover {
+    transform: translateY(-2px);
+}
+
+/* ============================================
+   Drag & Drop Feedback
+   ============================================ */
+
+/* Draggable elements */
+[draggable="true"] {
+    cursor: move !important;
+    user-select: none;
+}
+
+/* Element being dragged */
+.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+/* Drop zone hover state */
+.drag-over {
+    background-color: rgba(59, 130, 246, 0.1);
+    border: 2px dashed #3B82F6 !important;
+}
+
+/* Valid drop zone */
+.drop-valid {
+    background-color: rgba(34, 197, 94, 0.1);
+    border: 2px solid #22C55E !important;
+}
+
+/* Invalid drop zone */
+.drop-invalid {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 2px solid #EF4444 !important;
+    cursor: not-allowed !important;
+}
+
+/* Drag ghost image customization */
+.drag-ghost {
+    position: absolute;
+    top: -9999px;
+    opacity: 0.8;
+    transform: rotate(2deg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================
+   Loading States
+   ============================================ */
+
+.scheduler-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.scheduler-loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* ============================================
+   Provider Legend
+   ============================================ */
+
+.provider-legend-item {
+    transition: all 0.2s ease;
+}
+
+.provider-legend-item:hover {
+    transform: scale(1.05);
+}
+
+.provider-legend-item.active {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* ============================================
+   Appointment Status Badges
+   ============================================ */
+
+.status-badge {
+    transition: all 0.2s ease;
+}
+
+.status-badge:hover {
+    transform: scale(1.05);
+}
+
+/* ============================================
+   Toolbar & Navigation
+   ============================================ */
+
+[data-calendar-action] {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+[data-calendar-action]::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+[data-calendar-action]:active::before {
+    width: 200%;
+    height: 200%;
+}
+
+/* ============================================
+   Modal Animations
+   ============================================ */
+
+#appointment-details-modal {
+    transition: opacity 0.3s ease;
+}
+
+#appointment-details-modal:not(.hidden) {
+    animation: fadeIn 0.3s ease-out;
+}
+
+#appointment-details-modal .modal-panel {
+    animation: scaleIn 0.3s ease-out;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+@media (max-width: 768px) {
+    .scheduler-week-view,
+    .scheduler-day-view {
+        font-size: 0.875rem;
+    }
+
+    .appointment-block,
+    .inline-appointment {
+        padding: 0.5rem;
+    }
+
+    .provider-legend-item {
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================
+   Dark Mode Enhancements
+   ============================================ */
+
+.dark .scheduler-month-view .scheduler-appointment:hover,
+.dark .scheduler-week-view .appointment-block:hover,
+.dark .scheduler-day-view .inline-appointment:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.dark .scheduler-day-cell:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.dark .scheduler-day-cell.today {
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+.dark .scheduler-day-cell.non-working-day {
+    background-color: rgba(75, 85, 99, 0.2);
+}
+
+.dark .drag-over {
+    background-color: rgba(59, 130, 246, 0.2);
+}
+
+.dark .drop-valid {
+    background-color: rgba(34, 197, 94, 0.2);
+}
+
+.dark .drop-invalid {
+    background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+
+/* ==========================================================================
+   Appointment Modal
+   ========================================================================== */
+
+.scheduler-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.scheduler-modal.hidden {
+    display: none;
+}
+
+.scheduler-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+.scheduler-modal-open .scheduler-modal-backdrop {
+    opacity: 1;
+}
+
+.scheduler-modal-panel {
+    position: relative;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 42rem;
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scheduler-modal-open .scheduler-modal-panel {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+.dark .scheduler-modal-panel {
+    background-color: #1f2937;
+    border-color: #374151;
+}
+
+.scheduler-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .scheduler-modal-header {
+    border-bottom-color: #374151;
+}
+
+.scheduler-modal-body {
+    padding: 1.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.scheduler-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.dark .scheduler-modal-footer {
+    border-top-color: #374151;
+}
+
+/* Form Fields */
+.form-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.dark .form-label {
+    color: #d1d5db;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: #111827;
+    background-color: white;
+    transition: all 150ms ease-in-out;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark .form-input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+.dark .form-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.form-help-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.dark .form-help-text {
+    color: #9ca3af;
+}
+
+/* Time Slot Picker */
+.time-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.dark .time-slot-grid {
+    background-color: #1f2937;
+}
+
+.time-slot {
+    padding: 0.625rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    background-color: white;
+    cursor: pointer;
+    transition: all 150ms ease-in-out;
+}
+
+.time-slot:hover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.time-slot.selected {
+    border-color: #3b82f6;
+    background-color: #3b82f6;
+    color: white;
+}
+
+.dark .time-slot {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+}
+
+.dark .time-slot:hover {
+    border-color: #60a5fa;
+    background-color: #1e3a8a;
+}
+
+.dark .time-slot.selected {
+    border-color: #60a5fa;
+    background-color: #2563eb;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 600ms linear infinite;
+}
+
+.dark .loading-spinner {
+    border-color: #4b5563;
+    border-top-color: #60a5fa;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 150ms ease-in-out;
+    cursor: pointer;
+    border: none;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: #2563eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+    background-color: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #f9fafb;
+}
+
+.dark .btn-secondary {
+    background-color: #374151;
+    color: #d1d5db;
+    border-color: #4b5563;
+}
+
+.dark .btn-secondary:hover:not(:disabled) {
+    background-color: #4b5563;
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+[draggable="true"]:focus,
+.appointment-block:focus,
+.time-slot:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+    .scheduler-week-view,
+    .scheduler-day-view,
+    .scheduler-month-view {
+        animation: none;
+    }
+
+    [data-calendar-action],
+    .provider-legend-item {
+        display: none;
+    }
+
+    .appointment-block,
+    .inline-appointment,
+    .appointment-card {
+        break-inside: avoid;
+    }
+}

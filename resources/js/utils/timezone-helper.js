@@ -283,7 +283,7 @@ export function createTimezoneDebugger() {
  */
 export function initTimezoneDebug() {
   window.DEBUG_TIMEZONE = createTimezoneDebugger();
-  console.log('[timezone-helper] Debug tools available as window.DEBUG_TIMEZONE');
+  // Debug logs removed for production
 }
 
 // Auto-initialize debug on module load (if in development)

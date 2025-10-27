@@ -4,9 +4,16 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Models\AppointmentModel;
+use App\Services\LocalizationSettingsService;
+use App\Services\TimezoneService;
+use App\Services\SchedulingService;
 
 class Appointments extends BaseController
 {
+    /**
+     * List appointments with pagination, filtering, and date range support
+     * GET /api/appointments?start=&end=&providerId=&serviceId=&page=&length=&sort=
+     */
     public function index()
     {
         $response = $this->response->setHeader('Content-Type', 'application/json');
@@ -17,6 +24,20 @@ class Appointments extends BaseController
             $end = $this->request->getGet('end');
             $providerId = $this->request->getGet('providerId');
             $serviceId = $this->request->getGet('serviceId');
+            
+            // Pagination parameters
+            $page = max(1, (int)($this->request->getGet('page') ?? 1));
+            $length = min(100, max(1, (int)($this->request->getGet('length') ?? 50)));
+            $offset = ($page - 1) * $length;
+            
+            // Sort parameters (default: start_time ASC)
+            $sortParam = $this->request->getGet('sort') ?? 'start_time:asc';
+            [$sortField, $sortDir] = array_pad(explode(':', $sortParam), 2, 'asc');
+            $validSortFields = ['id', 'start_time', 'end_time', 'provider_id', 'service_id', 'status'];
+            if (!in_array($sortField, $validSortFields)) {
+                $sortField = 'start_time';
+            }
+            $sortDir = strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC';
             
             $model = new AppointmentModel();
             $builder = $model->builder();
@@ -32,12 +53,12 @@ class Appointments extends BaseController
                     ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
                     ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
                     ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
-                    ->orderBy('xs_appointments.start_time', 'ASC');
+                    ->orderBy('xs_appointments.' . $sortField, $sortDir);
             
             // Apply date range filter
-            if ($start && $end) {
-                // FullCalendar sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
-                // Extract just the date part for comparison
+            if ($start || $end) {
+                // Custom scheduler sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
+                // Parse into DateTimeImmutable for consistent handling
                 $startDate = substr($start, 0, 10); // Get YYYY-MM-DD
                 $endDate = substr($end, 0, 10);     // Get YYYY-MM-DD
                 
@@ -54,15 +75,40 @@ class Appointments extends BaseController
                 $builder->where('xs_appointments.service_id', (int)$serviceId);
             }
             
-            $appointments = $builder->get()->getResultArray();
+            // Get total count for pagination
+            $countBuilder = clone $builder;
+            $totalCount = $countBuilder->countAllResults(false);
             
-            // Transform data for FullCalendar with provider colors
+            // Apply pagination
+            $appointments = $builder->limit($length, $offset)->get()->getResultArray();
+            
+            log_message('info', '[API/Appointments::index] ========== APPOINTMENTS API RESPONSE ==========');
+            log_message('info', '[API/Appointments::index] Query filters:', [
+                'start' => $start,
+                'end' => $end,
+                'providerId' => $providerId,
+                'serviceId' => $serviceId
+            ]);
+            log_message('info', '[API/Appointments::index] Found ' . count($appointments) . ' appointments');
+            
+            // Transform data for custom scheduler with provider colors
             $events = array_map(function($appointment) {
+                $startIso = $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null);
+                $endIso = $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null);
+
+                log_message('debug', '[API/Appointments::index] Appointment #' . $appointment['id'] . ':', [
+                    'customer' => $appointment['customer_name'],
+                    'utc_start' => $startIso,
+                    'utc_end' => $endIso,
+                    'provider' => $appointment['provider_name'],
+                    'service' => $appointment['service_name']
+                ]);
+
                 return [
                     'id' => $appointment['id'],
                     'title' => $appointment['customer_name'] ?? 'Appointment #' . $appointment['id'],
-                    'start' => $appointment['start_time'],
-                    'end' => $appointment['end_time'],
+                    'start' => $startIso,
+                    'end' => $endIso,
                     'providerId' => $appointment['provider_id'],
                     'serviceId' => $appointment['service_id'],
                     'customerId' => $appointment['customer_id'],
@@ -74,8 +120,14 @@ class Appointments extends BaseController
                     'serviceDuration' => $appointment['service_duration'] ?? null,
                     'price' => $appointment['service_price'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
+                    'start_time' => $startIso,
+                    'end_time' => $endIso,
                 ];
             }, $appointments);
+            
+            log_message('info', '[API/Appointments::index] Returning ' . count($events) . ' events in UTC format');
+            log_message('info', '[API/Appointments::index] Note: Frontend custom scheduler will handle timezone conversion');
+            log_message('info', '[API/Appointments::index] ==================================================');
             
             return $response->setJSON([
                 'data' => $events,
@@ -121,19 +173,19 @@ class Appointments extends BaseController
             $builder = $model->builder();
             
             // Select appointment with all related data
-            $builder->select('appointments.*, 
-                             CONCAT(c.first_name, " ", c.last_name) as customer_name,
+            $builder->select('xs_appointments.*, 
+                             CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
                              c.email as customer_email,
-                             c.phone_number as customer_phone,
+                             c.phone as customer_phone,
                              s.name as service_name,
                              s.duration_min as duration,
                              s.price as price,
-                             CONCAT(p.first_name, " ", p.last_name) as provider_name,
-                             p.color as provider_color')
-                    ->join('customers c', 'c.id = appointments.customer_id', 'left')
-                    ->join('services s', 's.id = appointments.service_id', 'left')
-                    ->join('users p', 'p.id = appointments.provider_id', 'left')
-                    ->where('appointments.id', (int)$id);
+                             u.name as provider_name,
+                             u.color as provider_color')
+                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
+                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
+                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
+                    ->where('xs_appointments.id', (int)$id);
             
             $appointment = $builder->get()->getRowArray();
             
@@ -157,10 +209,10 @@ class Appointments extends BaseController
                 'provider_color' => $appointment['provider_color'] ?? '#3B82F6',
                 'service_id' => $appointment['service_id'],
                 'service_name' => $appointment['service_name'] ?? 'N/A',
-                'start_time' => $appointment['start_time'],
-                'end_time' => $appointment['end_time'],
-                'start' => $appointment['start_time'], // FullCalendar compatibility
-                'end' => $appointment['end_time'],     // FullCalendar compatibility
+                'start_time' => $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
+                'end_time' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
+                'start' => $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
+                'end' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
                 'duration' => $appointment['duration'],
                 'price' => $appointment['price'],
                 'status' => $appointment['status'],
@@ -199,6 +251,7 @@ class Appointments extends BaseController
             $providerId = $json['provider_id'] ?? null;
             $serviceId = $json['service_id'] ?? null;
             $startTime = $json['start_time'] ?? null;
+            $timezone = $this->request->getHeaderLine('X-Client-Timezone') ?: ($json['timezone'] ?? null);
             $appointmentId = $json['appointment_id'] ?? null; // For edits, exclude this ID
             
             // Validate required fields
@@ -211,6 +264,10 @@ class Appointments extends BaseController
                 ]);
             }
             
+            if (!$timezone || !TimezoneService::isValidTimezone($timezone)) {
+                $timezone = (new LocalizationSettingsService())->getTimezone();
+            }
+
             // Get service details for duration
             $db = \Config\Database::connect();
             $service = $db->table('services')
@@ -229,10 +286,18 @@ class Appointments extends BaseController
             }
             
             // Calculate end time
-            $startDateTime = new \DateTime($startTime);
+            try {
+                $startDateTime = new \DateTime($startTime, new \DateTimeZone($timezone));
+            } catch (\Exception $e) {
+                log_message('error', 'Timezone conversion failed in availability check: ' . $e->getMessage());
+                $timezone = 'UTC';
+                $startDateTime = new \DateTime($startTime, new \DateTimeZone($timezone));
+            }
             $endDateTime = clone $startDateTime;
             $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
-            $endTime = $endDateTime->format('Y-m-d H:i:s');
+
+            $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone);
+            $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone);
             
             // Check for overlapping appointments
             $model = new AppointmentModel();
@@ -242,18 +307,18 @@ class Appointments extends BaseController
                     ->groupStart()
                         // New appointment starts during existing appointment
                         ->groupStart()
-                            ->where('start_time <=', $startTime)
-                            ->where('end_time >', $startTime)
+                            ->where('start_time <=', $startTimeUtc)
+                            ->where('end_time >', $startTimeUtc)
                         ->groupEnd()
                         // New appointment ends during existing appointment
                         ->orGroupStart()
-                            ->where('start_time <', $endTime)
-                            ->where('end_time >=', $endTime)
+                            ->where('start_time <', $endTimeUtc)
+                            ->where('end_time >=', $endTimeUtc)
                         ->groupEnd()
                         // New appointment completely contains existing appointment
                         ->orGroupStart()
-                            ->where('start_time >=', $startTime)
-                            ->where('end_time <=', $endTime)
+                            ->where('start_time >=', $startTimeUtc)
+                            ->where('end_time <=', $endTimeUtc)
                         ->groupEnd()
                     ->groupEnd();
             
@@ -294,16 +359,16 @@ class Appointments extends BaseController
             $blockedTimes = $db->table('blocked_times')
                 ->where('provider_id', (int)$providerId)
                 ->groupStart()
-                    ->where('start_time <=', $startTime)
-                    ->where('end_time >', $startTime)
+                    ->where('start_time <=', $startTimeUtc)
+                    ->where('end_time >', $startTimeUtc)
                 ->groupEnd()
                 ->orGroupStart()
-                    ->where('start_time <', $endTime)
-                    ->where('end_time >=', $endTime)
+                    ->where('start_time <', $endTimeUtc)
+                    ->where('end_time >=', $endTimeUtc)
                 ->groupEnd()
                 ->orGroupStart()
-                    ->where('start_time >=', $startTime)
-                    ->where('end_time <=', $endTime)
+                    ->where('start_time >=', $startTimeUtc)
+                    ->where('end_time <=', $endTimeUtc)
                 ->groupEnd()
                 ->get()
                 ->getResultArray();
@@ -319,8 +384,11 @@ class Appointments extends BaseController
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
+                    'start_time_local' => $startDateTime->format('Y-m-d H:i:s'),
+                    'end_time_local' => $endDateTime->format('Y-m-d H:i:s'),
+                    'start_time_utc' => $startTimeUtc,
+                    'end_time_utc' => $endTimeUtc,
+                    'timezone' => $timezone,
                 ],
                 'conflicts' => [],
                 'businessHoursViolation' => $businessHoursViolation,
@@ -332,8 +400,8 @@ class Appointments extends BaseController
                 foreach ($conflicts as $conflict) {
                     $result['conflicts'][] = [
                         'id' => $conflict['id'],
-                        'start_time' => $conflict['start_time'],
-                        'end_time' => $conflict['end_time'],
+                        'start_time' => $this->formatUtc($conflict['start_time'] ?? null) ?? ($conflict['start_time'] ?? null),
+                        'end_time' => $this->formatUtc($conflict['end_time'] ?? null) ?? ($conflict['end_time'] ?? null),
                         'status' => $conflict['status'],
                     ];
                 }
@@ -344,7 +412,10 @@ class Appointments extends BaseController
                 // Find next available time slot (simplified - just suggest 30 min later)
                 $nextSlot = clone $startDateTime;
                 $nextSlot->modify('+30 minutes');
-                $result['suggestedNextSlot'] = $nextSlot->format('Y-m-d H:i:s');
+                $result['suggestedNextSlot'] = [
+                    'local' => $nextSlot->format('Y-m-d H:i:s'),
+                    'utc' => TimezoneService::toUTC($nextSlot->format('Y-m-d H:i:s'), $timezone)
+                ];
             }
             
             return $response->setJSON([
@@ -445,5 +516,286 @@ class Appointments extends BaseController
                 ]
             ]);
         }
+    }
+
+    private function formatUtc(?string $datetime): ?string
+    {
+        if (!$datetime) {
+            return null;
+        }
+
+        try {
+            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            return $dt->format('Y-m-d\TH:i:s\Z');
+        } catch (\Exception $e) {
+            return $datetime;
+        }
+    }
+
+    /**
+     * Create new appointment via API
+     * POST /api/appointments
+     * Body: { name, email, phone?, providerId, serviceId, date, start, notes? }
+     */
+    public function create()
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        try {
+            $payload = $this->request->getJSON(true) ?? $this->request->getPost();
+            
+            $rules = [
+                'name' => 'required|min_length[2]',
+                'email' => 'required|valid_email',
+                'providerId' => 'required|is_natural_no_zero',
+                'serviceId' => 'required|is_natural_no_zero',
+                'date' => 'required|valid_date[Y-m-d]',
+                'start' => 'required|regex_match[/^\d{2}:\d{2}$/]',
+                'phone' => 'permit_empty|string',
+                'notes' => 'permit_empty|string',
+            ];
+            
+            if (!$this->validate($rules)) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => [
+                        'message' => 'Invalid request body',
+                        'type' => 'validation_error',
+                        'details' => $this->validator->getErrors()
+                    ]
+                ]);
+            }
+            
+            $svc = new SchedulingService();
+            
+            try {
+                $res = $svc->createAppointment($payload);
+                
+                return $response->setStatusCode(201)->setJSON([
+                    'data' => $res,
+                    'message' => 'Appointment created successfully'
+                ]);
+            } catch (\InvalidArgumentException $e) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => [
+                        'message' => $e->getMessage()
+                    ]
+                ]);
+            } catch (\RuntimeException $e) {
+                $status = $e->getMessage() === 'Service not found' ? 404 : 409;
+                return $response->setStatusCode($status)->setJSON([
+                    'error' => [
+                        'message' => $e->getMessage()
+                    ]
+                ]);
+            }
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to create appointment',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Update appointment via API
+     * PATCH /api/appointments/:id
+     * Body: { start?, end?, status? }
+     */
+    public function update($id = null)
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        if (!$id) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => ['message' => 'Invalid appointment ID']
+            ]);
+        }
+        
+        try {
+            $payload = $this->request->getJSON(true) ?? $this->request->getRawInput();
+            
+            if (!$payload) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => ['message' => 'No request body']
+                ]);
+            }
+
+            $update = [];
+            if (!empty($payload['start'])) $update['start_time'] = $payload['start'];
+            if (!empty($payload['end'])) $update['end_time'] = $payload['end'];
+            if (!empty($payload['status'])) $update['status'] = $payload['status'];
+            
+            if (empty($update)) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => ['message' => 'No updatable fields provided']
+                ]);
+            }
+
+            $model = new AppointmentModel();
+            if (!$model->find($id)) {
+                return $response->setStatusCode(404)->setJSON([
+                    'error' => ['message' => 'Appointment not found']
+                ]);
+            }
+            
+            $ok = $model->update($id, $update);
+            
+            if (!$ok) {
+                return $response->setStatusCode(500)->setJSON([
+                    'error' => ['message' => 'Update failed']
+                ]);
+            }
+            
+            return $response->setJSON([
+                'data' => ['ok' => true],
+                'message' => 'Appointment updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to update appointment',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Delete (cancel) appointment via API
+     * DELETE /api/appointments/:id
+     */
+    public function delete($id = null)
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        if (!$id) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => ['message' => 'Invalid appointment ID']
+            ]);
+        }
+        
+        try {
+            $model = new AppointmentModel();
+            
+            if (!$model->find($id)) {
+                return $response->setStatusCode(404)->setJSON([
+                    'error' => ['message' => 'Appointment not found']
+                ]);
+            }
+            
+            // Soft cancel instead of hard delete
+            $ok = $model->update($id, ['status' => 'cancelled']);
+            
+            if (!$ok) {
+                return $response->setStatusCode(500)->setJSON([
+                    'error' => ['message' => 'Delete failed']
+                ]);
+            }
+            
+            return $response->setJSON([
+                'data' => ['ok' => true],
+                'message' => 'Appointment cancelled successfully'
+            ]);
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to delete appointment',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Get appointment counts by time period
+     * GET /api/appointments/counts?providerId=&serviceId=
+     */
+    public function counts()
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        try {
+            $rules = [
+                'providerId' => 'permit_empty|is_natural_no_zero',
+                'serviceId'  => 'permit_empty|is_natural_no_zero',
+            ];
+            
+            if (!$this->validate($rules)) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => [
+                        'message' => 'Invalid parameters',
+                        'type' => 'validation_error',
+                        'details' => $this->validator->getErrors()
+                    ]
+                ]);
+            }
+
+            $providerId = (int) ($this->request->getGet('providerId') ?? 0);
+            $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
+
+            // Calculate server-side date ranges (local app timezone)
+            $now = new \DateTimeImmutable('now');
+            $todayStart = $now->setTime(0, 0, 0);
+            $todayEnd   = $now->setTime(23, 59, 59);
+
+            // Week: Sunday (0) to Saturday (6) to match UI
+            $dow = (int) $now->format('w'); // 0 (Sun) - 6 (Sat)
+            $weekStart = $todayStart->modify('-' . $dow . ' days');
+            $weekEnd   = $weekStart->modify('+6 days')->setTime(23, 59, 59);
+
+            // Month: first to last day
+            $monthStart = $now->modify('first day of this month')->setTime(0, 0, 0);
+            $monthEnd   = $now->modify('last day of this month')->setTime(23, 59, 59);
+
+            $counts = [
+                'today' => $this->countInRange($providerId, $serviceId, $todayStart, $todayEnd),
+                'week'  => $this->countInRange($providerId, $serviceId, $weekStart, $weekEnd),
+                'month' => $this->countInRange($providerId, $serviceId, $monthStart, $monthEnd),
+            ];
+
+            return $response->setJSON([
+                'data' => $counts
+            ]);
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to get appointment counts',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Get appointment summary (alias for counts)
+     * GET /api/appointments/summary?providerId=&serviceId=
+     */
+    public function summary()
+    {
+        return $this->counts();
+    }
+
+    /**
+     * Helper: Count appointments in a date range
+     */
+    private function countInRange(int $providerId, int $serviceId, \DateTimeImmutable $start, \DateTimeImmutable $end): int
+    {
+        $model = new AppointmentModel();
+        $builder = $model->builder();
+        $builder->select('COUNT(*) AS c')
+                ->where('start_time >=', $start->format('Y-m-d H:i:s'))
+                ->where('start_time <=', $end->format('Y-m-d H:i:s'));
+                
+        if ($providerId > 0) {
+            $builder->where('provider_id', $providerId);
+        }
+        if ($serviceId > 0) {
+            $builder->where('service_id', $serviceId);
+        }
+        
+        $row = $builder->get()->getRowArray();
+        return (int) ($row['c'] ?? 0);
     }
 }

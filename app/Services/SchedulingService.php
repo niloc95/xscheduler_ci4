@@ -36,8 +36,20 @@ class SchedulingService
         }
         $duration = (int)($service['duration_min'] ?? 30);
 
-        $startDT = strtotime($date . ' ' . $start);
-        $endDT   = $startDT + ($duration * 60);
+        $timezone = $payload['timezone'] ?? null;
+        if (!$timezone || !TimezoneService::isValidTimezone($timezone)) {
+            $timezone = (new LocalizationSettingsService())->getTimezone();
+        }
+
+        try {
+            $startDateTime = new \DateTime($date . ' ' . $start, new \DateTimeZone($timezone));
+        } catch (\Exception $e) {
+            $startDateTime = new \DateTime($date . ' ' . $start, new \DateTimeZone('UTC'));
+            $timezone = 'UTC';
+        }
+
+        $endDateTime = clone $startDateTime;
+        $endDateTime->modify('+' . $duration . ' minutes');
 
         // Upsert customer in xs_customers
         $custModel = new CustomerModel();
@@ -61,7 +73,7 @@ class SchedulingService
         $available = $this->getAvailabilities($providerId, $serviceId, $date);
         $isAvailable = false;
         foreach ($available as $s) {
-            if ($s['start'] === date('H:i', $startDT) && $s['end'] === date('H:i', $endDT)) {
+            if ($s['start'] === $startDateTime->format('H:i') && $s['end'] === $endDateTime->format('H:i')) {
                 $isAvailable = true; break;
             }
         }
@@ -77,8 +89,10 @@ class SchedulingService
             'user_id' => $providerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => date('Y-m-d H:i:s', $startDT),
-            'end_time' => date('Y-m-d H:i:s', $endDT),
+            'appointment_date' => $startDateTime->format('Y-m-d'),
+            'appointment_time' => $startDateTime->format('H:i:s'),
+            'start_time' => TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone),
+            'end_time' => TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone),
             'status' => 'booked',
             'notes' => $payload['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),

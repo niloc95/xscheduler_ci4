@@ -75,43 +75,33 @@
     </div>
 
     <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <!-- Calendar Toolbar Header -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between" data-calendar-toolbar>
-            <!-- Provider Legend -->
-            <?php if (!empty($activeProviders) && count($activeProviders) > 0): ?>
-            <div class="flex items-center gap-4 flex-wrap">
-                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Providers:</span>
-                <?php foreach ($activeProviders as $provider): ?>
-                    <div class="flex items-center gap-2">
-                        <span class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" 
-                              style="background-color: <?= esc($provider['color'] ?? '#3B82F6') ?>;"></span>
-                        <span class="text-sm text-gray-700 dark:text-gray-300">
-                            <?= esc($provider['name']) ?>
-                        </span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <?php else: ?>
-            <div></div> <!-- Empty div for flex spacing when no providers -->
-            <?php endif; ?>
-            
+        <!-- Calendar Toolbar -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
             <!-- Navigation Controls -->
             <div class="flex items-center gap-2">
-                <button type="button" data-calendar-action="prev"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-                    <span class="material-symbols-outlined text-xl">chevron_left</span>
+                <button type="button" data-calendar-action="prev" 
+                        class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Previous">
+                    <span class="material-symbols-outlined">chevron_left</span>
                 </button>
-                <h3 id="appointments-inline-calendar-title"
-                    class="min-w-[12rem] text-center text-base font-semibold text-gray-900 dark:text-gray-100">
-                    <?= esc(date('F Y', strtotime($selectedDate ?? date('Y-m-01')))) ?>
-                </h3>
-                <button type="button" data-calendar-action="next"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
-                    <span class="material-symbols-outlined text-xl">chevron_right</span>
+                <button type="button" data-calendar-action="next" 
+                        class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="Next">
+                    <span class="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
-        </div>
 
+            <!-- Current Date Display -->
+            <div id="scheduler-date-display" class="text-lg font-semibold text-gray-900 dark:text-white">
+                <?= date('F Y') ?>
+            </div>
+
+            <!-- Provider Legend (will be populated by JavaScript) -->
+            <div id="provider-legend" class="flex items-center gap-2 flex-wrap">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+        
         <!-- Calendar Container -->
         <div
             id="appointments-inline-calendar"
@@ -213,108 +203,6 @@
         </div>
     </div>
 
-    <!-- Appointment Details Modal -->
-    <div id="appointment-details-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeAppointmentModal()"></div>
-        
-        <!-- Modal Panel -->
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full border border-gray-200 dark:border-gray-700">
-                <!-- Modal Header -->
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="modal-title">
-                        Appointment Details
-                    </h3>
-                    <button type="button" onclick="closeAppointmentModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <span class="material-symbols-outlined text-2xl">close</span>
-                    </button>
-                </div>
-
-                <!-- Modal Body -->
-                <div class="px-6 py-4 space-y-4" id="appointment-modal-content">
-                    <!-- Loading State -->
-                    <div id="modal-loading" class="flex items-center justify-center py-12">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-
-                    <!-- Content (populated by JS) -->
-                    <div id="modal-data" class="hidden space-y-4">
-                        <!-- Customer Info -->
-                        <div class="flex items-start space-x-4">
-                            <div class="flex-shrink-0">
-                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-white text-3xl">person</span>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <h4 class="text-lg font-semibold text-gray-900 dark:text-white" id="modal-customer-name"></h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400" id="modal-customer-email"></p>
-                                <p class="text-sm text-gray-600 dark:text-gray-400" id="modal-customer-phone"></p>
-                            </div>
-                            <div>
-                                <span id="modal-status" class="px-3 py-1 text-xs font-medium rounded-full"></span>
-                            </div>
-                        </div>
-
-                        <!-- Appointment Info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Service</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-service"></p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Provider</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-provider"></p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date & Time</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-datetime"></p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Duration</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-duration"></p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Price</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-price"></p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Location</label>
-                                <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white" id="modal-location"></p>
-                            </div>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="pt-4 border-t border-gray-200 dark:border-gray-700" id="modal-notes-section">
-                            <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Notes</label>
-                            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300" id="modal-notes"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between" id="modal-footer">
-                    <div class="flex items-center gap-2">
-                        <!-- Action buttons (populated by JS based on role) -->
-                        <button type="button" id="btn-edit-appointment" class="hidden px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                            <span class="material-symbols-outlined text-base align-middle mr-1">edit</span>
-                            Edit
-                        </button>
-                        <button type="button" id="btn-complete-appointment" class="hidden px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
-                            <span class="material-symbols-outlined text-base align-middle mr-1">check_circle</span>
-                            Complete
-                        </button>
-                        <button type="button" id="btn-cancel-appointment" class="hidden px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                            <span class="material-symbols-outlined text-base align-middle mr-1">cancel</span>
-                            Cancel
-                        </button>
-                    </div>
-                    <button type="button" onclick="closeAppointmentModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Include Appointment Details Modal -->
+    <?= $this->include('appointments/modal') ?>
 <?= $this->endSection() ?>

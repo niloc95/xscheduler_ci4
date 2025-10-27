@@ -134,11 +134,15 @@ class TimezoneService
         
         // Check if client timezone was detected and stored
         if ($session && $session->has('client_timezone')) {
-            return $session->get('client_timezone');
+            $tz = (string) $session->get('client_timezone');
+            log_message('debug', "[TimezoneService] Using session timezone: {$tz}");
+            return $tz;
         }
         
         // Fallback to app timezone
-        return config('App')->appTimezone ?? 'UTC';
+        $fallback = config('App')->appTimezone ?? 'UTC';
+        log_message('debug', "[TimezoneService] Using fallback timezone: {$fallback}");
+        return $fallback;
     }
     
     /**

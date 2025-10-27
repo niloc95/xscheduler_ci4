@@ -1,258 +1,355 @@
 // (CoreUI components are no longer used for the sidebar. Keep charts init only.)
 
-// Import appointment calendar functionality
-import { initAppointmentsCalendar, setupViewButtons, refreshCalendar, showAppointmentModal } from './modules/appointments/appointments-calendar.js';
-
 // Import appointment booking form functionality
 import { initAppointmentForm } from './modules/appointments/appointments-form.js';
 
 // Import charts functionality
 import Charts from './charts.js';
 
-// Store calendar instance globally to allow re-initialization
-let calendarInstance = null;
-let calendarSettings = {
-    timeFormat: '24h',
-    workStart: '08:00:00',
-    workEnd: '17:00:00',
-    firstDay: 1,
-    locale: 'en',
-    timezone: 'local',
-    lastFetchTime: 0
-};
+import { attachTimezoneHeaders } from './utils/timezone-helper.js';
 
-const LOCALE_MAP = {
-    english: 'en',
-    'portuguese-br': 'pt-br',
-    portuguese: 'pt-br',
-    spanish: 'es',
-};
+// Import custom scheduler components
+import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
+import { MonthView } from './modules/scheduler/scheduler-month-view.js';
+import { WeekView } from './modules/scheduler/scheduler-week-view.js';
+import { DayView } from './modules/scheduler/scheduler-day-view.js';
+import { DragDropManager } from './modules/scheduler/scheduler-drag-drop.js';
+import { SettingsManager } from './modules/scheduler/settings-manager.js';
 
-function normalizeTimeValue(value, fallback = '00:00:00') {
-    if (!value) return fallback;
-    const trimmed = value.toString().trim();
-    if (!trimmed) return fallback;
-    if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) return trimmed;
-    if (/^\d{2}:\d{2}$/.test(trimmed)) return `${trimmed}:00`;
-    return fallback;
-}
+// Import scheduler styles
+import '../css/scheduler.css';
 
-// Fetch calendar settings from API
-async function fetchCalendarSettings(forceRefresh = false) {
-    // Cache settings for 1 second to avoid excessive API calls
-    const now = Date.now();
-    if (!forceRefresh && calendarSettings.lastFetchTime && (now - calendarSettings.lastFetchTime) < 1000) {
-        console.log('[calendar] Using cached settings');
-        return calendarSettings;
+/**
+ * Navigate to create appointment page with pre-filled slot data
+ * @param {Object} slotInfo - Selected slot information from calendar
+ */
+function navigateToCreateAppointment(slotInfo) {
+    const { start, end, resource } = slotInfo;
+    
+    // Format date and time from the selected slot
+    const startDate = new Date(start);
+    const appointmentDate = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const appointmentTime = startDate.toTimeString().slice(0, 5); // HH:MM
+    
+    // Build URL with query parameters
+    const params = new URLSearchParams({
+        date: appointmentDate,
+        time: appointmentTime
+    });
+    
+    // Add provider ID if available (from resource or event)
+    if (resource) {
+        params.append('provider_id', resource.id);
     }
     
-    try {
-        const response = await fetch('/api/v1/settings');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch settings: ${response.status}`);
+    // Navigate to create page
+    const url = `/appointments/create?${params.toString()}`;
+    console.log('[app] Navigating to create appointment:', url);
+    window.location.href = url;
+}
+
+/**
+ * Pre-fill appointment form with URL parameters
+ */
+function prefillAppointmentForm() {
+    // Only run on create appointment page
+    const form = document.querySelector('form[action*="/appointments/store"]');
+    if (!form) return;
+    
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const date = urlParams.get('date');
+    const time = urlParams.get('time');
+    const providerId = urlParams.get('provider_id');
+    
+    // Pre-fill date field
+    if (date) {
+        const dateInput = document.getElementById('appointment_date');
+        if (dateInput) {
+            dateInput.value = date;
+            console.log('[app] Pre-filled appointment date:', date);
+            
+            // Trigger change event to update form state
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        const payload = await response.json();
-        const settings = payload?.data || {};
-        
-        const newSettings = {
-            timeFormat: settings['localization.time_format'] || '24h',
-            workStart: normalizeTimeValue(settings['business.work_start'], '08:00:00'),
-            workEnd: normalizeTimeValue(settings['business.work_end'], '17:00:00'),
-            firstDay: (settings['localization.first_day'] || 'Monday') === 'Sunday' ? 0 : 1,
-            locale: LOCALE_MAP[(settings['localization.language'] || 'english').toString().trim().toLowerCase()] || 'en',
-            timezone: (settings['localization.timezone'] && settings['localization.timezone'] !== 'Automatic')
-                ? settings['localization.timezone']
-                : 'local',
-            lastFetchTime: now
-        };
-        
-        // Check if settings actually changed
-        const hasChanged = 
-            calendarSettings.timeFormat !== newSettings.timeFormat ||
-            calendarSettings.workStart !== newSettings.workStart ||
-            calendarSettings.workEnd !== newSettings.workEnd ||
-            calendarSettings.firstDay !== newSettings.firstDay ||
-            calendarSettings.locale !== newSettings.locale ||
-            calendarSettings.timezone !== newSettings.timezone;
-        
-        calendarSettings = newSettings;
-        
-        console.log('[calendar] Settings loaded:', calendarSettings, hasChanged ? '(CHANGED)' : '(no change)');
-        return calendarSettings;
-    } catch (error) {
-        console.warn('[calendar] Failed to fetch settings, using defaults:', error);
-        return calendarSettings;
+    }
+    
+    // Pre-fill time field
+    if (time) {
+        const timeInput = document.getElementById('appointment_time');
+        if (timeInput) {
+            timeInput.value = time;
+            console.log('[app] Pre-filled appointment time:', time);
+            
+            // Trigger change event to update form state
+            timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+    
+    // Pre-select provider if specified
+    if (providerId) {
+        const providerSelect = document.getElementById('provider_id');
+        if (providerSelect) {
+            providerSelect.value = providerId;
+            console.log('[app] Pre-selected provider:', providerId);
+            
+            // Trigger change event to load services
+            providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     }
 }
 
-// Calendar initialization function
-async function initializeCalendar(forceRefresh = false) {
-    const calendarEl = document.getElementById('appointments-inline-calendar');
+// ⚠️ DEPRECATED: Calendar initialization removed
+// Custom scheduler placeholder will be implemented
 
-    // Skip if element doesn't exist
-    if (!calendarEl) {
-        return;
-    }
-
-    // Fetch latest settings before initializing
-    await fetchCalendarSettings(forceRefresh);
-
-    // Destroy existing instance if it exists
-    if (calendarInstance) {
-        console.log('[calendar] Destroying existing calendar instance');
-        calendarInstance.destroy();
-        calendarInstance = null;
-    }
-
-    // Get user role from session/page data
-    const userRole = document.body.dataset.userRole || 'customer';
-
-    // Initialize appointments calendar with settings (async)
-    calendarInstance = await initAppointmentsCalendar(calendarEl, {
-        settings: {
-            'business.work_start': calendarSettings.workStart,
-            'business.work_end': calendarSettings.workEnd,
-            'localization.time_format': calendarSettings.timeFormat === '12h' ? '12' : '24',
-            'localization.first_day_of_week': calendarSettings.firstDay.toString(),
-            'localization.language': calendarSettings.locale,
-            'localization.timezone': calendarSettings.timezone
-        },
-        filters: {},
-        userRole: userRole,
-        onEventClick: (event, info) => {
-            console.log('[app] Appointment clicked:', event.id);
-            showAppointmentModal(event.id, userRole, calendarInstance);
-        },
-        onDateSelect: (info) => {
-            console.log('[app] Date selected:', info.startStr, 'to', info.endStr);
-            // TODO: Show create appointment modal with pre-filled date/time
-        },
-        onEventDrop: (info) => {
-            console.log('[app] Appointment rescheduled:', info.event.id);
-            // TODO: Update appointment via API
-        }
-    });
-
-    // Setup view buttons after calendar is initialized
-    if (calendarInstance) {
-        setupViewButtons(calendarInstance);
-        console.log('[calendar] View buttons setup complete');
-    }
-
-    console.log('[calendar] Appointments calendar initialized successfully');
-}
-
-// Initialize charts and dashboard widgets when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * Initialize all components (charts, scheduler, forms)
+ * Called on initial page load and after SPA navigation
+ */
+function initializeComponents() {
+    // Initialize charts and dashboard widgets
     if (typeof Charts !== 'undefined') {
         Charts.initAllCharts();
     }
 
-    initializeCalendar();
+    // Initialize custom scheduler
+    initScheduler();
     
     // Initialize appointment booking form if present
     initAppointmentForm();
     
-    // Setup view button event listeners for smooth transitions
-    setupCalendarViewButtons();
-    
-    // Setup filter button handlers
-    setupFilterButtons();
+    // Pre-fill appointment form if URL parameters exist
+    prefillAppointmentForm();
+}
+
+// Initialize on DOM ready (initial page load)
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initial page load - initializing components');
+    initializeComponents();
+});
+
+// Re-initialize after SPA navigation
+document.addEventListener('spa:navigated', function(e) {
+    console.log('🔄 SPA navigated to:', e.detail.url);
+    console.log('🔄 Re-initializing components...');
+    initializeComponents();
 });
 
 /**
- * Setup calendar view button interactions with smooth transitions
+ * Initialize custom scheduler
  */
-function setupCalendarViewButtons() {
-    const viewButtons = document.querySelectorAll('[data-calendar-action]');
-    viewButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Add visual feedback
-            viewButtons.forEach(b => b.classList.remove('ring-2', 'ring-blue-400'));
-            this.classList.add('ring-2', 'ring-blue-400');
-            setTimeout(() => this.classList.remove('ring-2', 'ring-blue-400'), 300);
-            console.log('[calendar] View changed to:', this.dataset.calendarAction);
-        });
-    });
-}
-
-/**
- * Setup calendar filter button handlers
- */
-function setupFilterButtons() {
-    // Status filter buttons
-    const statusButtons = document.querySelectorAll('[title*="appointments"]');
-    statusButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const status = this.textContent.toLowerCase();
-            console.log('[calendar] Filter by status:', status);
-            
-            // Add active state
-            statusButtons.forEach(b => b.classList.remove('bg-blue-600', 'text-white'));
-            this.classList.add('bg-blue-600', 'text-white');
-            
-            // TODO: Implement actual filtering when calendar instance is available
-            if (calendarInstance) {
-                refreshCalendar(calendarInstance);
-            }
-        });
-    });
-}
-
-// Listen for settings changes and refresh calendar (same page)
-document.addEventListener('settingsSaved', async function(event) {
-    console.log('[calendar] Settings changed, refreshing calendar:', event.detail);
+async function initScheduler() {
+    const schedulerContainer = document.getElementById('appointments-inline-calendar');
     
-    // Check if localization or business hours were updated
-    const changedKeys = event.detail || [];
-    const shouldRefresh = changedKeys.some(key => 
-        key.startsWith('localization.time_format') || 
-        key.startsWith('business.work_start') || 
-        key.startsWith('business.work_end')
-    );
-    
-    if (shouldRefresh && calendarInstance) {
-        console.log('[calendar] Detected relevant settings change, reinitializing...');
-        await initializeCalendar(true); // Force refresh
+    if (!schedulerContainer) {
+        return;
     }
-});
 
-// Listen for SPA navigation to appointments page (settings changed in different page)
-document.addEventListener('spa:navigated', async function(event) {
-    console.log('[calendar] SPA navigation detected, checking if calendar needs refresh');
-    
-    const calendarEl = document.getElementById('appointments-inline-calendar');
-    if (calendarEl) {
-        // We're on the appointments page, reinitialize to get latest settings
-        console.log('[calendar] On appointments page, reinitializing with latest settings...');
-        await initializeCalendar(true); // Force refresh to pick up any settings changes
-    }
-});
-
-// Re-initialize calendar when visibility changes or page becomes visible
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-        // Small delay to ensure DOM is ready
-        setTimeout(() => {
-            const calendarEl = document.getElementById('appointments-inline-calendar');
-            if (calendarEl && !calendarInstance) {
-                initializeCalendar();
-            }
-        }, 100);
-    }
-});
-
-// Re-initialize calendar when window gains focus
-window.addEventListener('focus', function() {
-    setTimeout(() => {
-        const calendarEl = document.getElementById('appointments-inline-calendar');
-        if (calendarEl && !calendarInstance) {
-            initializeCalendar();
+    try {
+        // Destroy existing scheduler instance if it exists
+        if (window.scheduler && typeof window.scheduler.destroy === 'function') {
+            console.log('🧹 Cleaning up existing scheduler instance');
+            window.scheduler.destroy();
+            window.scheduler = null;
         }
-    }, 100);
-});
+        
+        // Get initial date from data attribute
+        const initialDate = schedulerContainer.dataset.initialDate || new Date().toISOString().split('T')[0];
+        
+        // Create scheduler instance
+        const scheduler = new SchedulerCore('appointments-inline-calendar', {
+            initialView: 'month',
+            initialDate: initialDate,
+            timezone: window.appTimezone || 'America/New_York',
+            apiBaseUrl: '/api/appointments',
+            onAppointmentClick: handleAppointmentClick
+        });
 
-// Expose initialization function globally for SPA compatibility
-window.reinitializeCalendar = initializeCalendar;
+        // Initialize the scheduler (loads data and renders)
+        await scheduler.init();
+
+        // Wire up toolbar navigation buttons
+        setupSchedulerToolbar(scheduler);
+
+        // Store scheduler instance globally for debugging
+        window.scheduler = scheduler;
+
+        console.log('✅ Custom scheduler initialized');
+    } catch (error) {
+        console.error('❌ Failed to initialize scheduler:', error);
+        // Show fallback placeholder
+        schedulerContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-12">
+                <span class="material-symbols-outlined text-red-500 text-6xl mb-4">error</span>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    Scheduler Error
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400 text-center max-w-md">
+                    Failed to load scheduler. Please refresh the page.
+                </p>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Setup toolbar button event handlers
+ */
+function setupSchedulerToolbar(scheduler) {
+    // View buttons
+    document.querySelectorAll('[data-calendar-action="day"], [data-calendar-action="week"], [data-calendar-action="month"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const view = btn.dataset.calendarAction;
+            try {
+                await scheduler.changeView(view);
+                
+                // Update active state
+                document.querySelectorAll('[data-calendar-action]').forEach(b => {
+                    if (b.dataset.calendarAction === view) {
+                        b.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                        b.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+                    } else if (['day', 'week', 'month'].includes(b.dataset.calendarAction)) {
+                        b.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                        b.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+                    }
+                });
+
+                updateDateDisplay(scheduler);
+            } catch (error) {
+                console.error('Failed to change view:', error);
+            }
+        });
+    });
+
+    // Today button
+    const todayBtn = document.querySelector('[data-calendar-action="today"]');
+    if (todayBtn) {
+        todayBtn.addEventListener('click', async () => {
+            try {
+                await scheduler.navigateToToday();
+                updateDateDisplay(scheduler);
+            } catch (error) {
+                console.error('Failed to navigate to today:', error);
+            }
+        });
+    }
+
+    // Previous button
+    const prevBtn = document.querySelector('[data-calendar-action="prev"]');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', async () => {
+            try {
+                await scheduler.navigatePrev();
+                updateDateDisplay(scheduler);
+            } catch (error) {
+                console.error('Failed to navigate to previous:', error);
+            }
+        });
+    }
+
+    // Next button
+    const nextBtn = document.querySelector('[data-calendar-action="next"]');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', async () => {
+            try {
+                await scheduler.navigateNext();
+                updateDateDisplay(scheduler);
+            } catch (error) {
+                console.error('Failed to navigate to next:', error);
+            }
+        });
+    }
+
+    // Render provider legend
+    renderProviderLegend(scheduler);
+    
+    // Initial date display update
+    updateDateDisplay(scheduler);
+    
+    // Click-to-create: Open modal when clicking empty day cells
+    document.addEventListener('click', (e) => {
+        const dayCell = e.target.closest('[data-click-create="day"]');
+        if (dayCell && !e.target.closest('.scheduler-appointment')) {
+            const date = dayCell.dataset.date;
+            scheduler.openCreateModal({ date });
+        }
+    });
+}
+
+/**
+ * Update the date display in the toolbar
+ */
+function updateDateDisplay(scheduler) {
+    const displayEl = document.getElementById('scheduler-date-display');
+    if (!displayEl) return;
+
+    const { currentDate, currentView } = scheduler;
+    let displayText = '';
+
+    switch (currentView) {
+        case 'day':
+            displayText = currentDate.toFormat('EEEE, MMMM d, yyyy');
+            break;
+        case 'week':
+            const weekStart = currentDate.startOf('week');
+            const weekEnd = currentDate.endOf('week');
+            displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
+            break;
+        case 'month':
+        default:
+            displayText = currentDate.toFormat('MMMM yyyy');
+            break;
+    }
+
+    displayEl.textContent = displayText;
+}
+
+/**
+ * Render provider legend with color indicators
+ */
+function renderProviderLegend(scheduler) {
+    const legendEl = document.getElementById('provider-legend');
+    if (!legendEl || !scheduler.providers || scheduler.providers.length === 0) return;
+
+    legendEl.innerHTML = scheduler.providers.map(provider => {
+        const color = provider.color || '#3B82F6';
+        const isVisible = scheduler.visibleProviders.has(provider.id);
+        
+        return `
+            <button type="button" 
+                    class="provider-legend-item flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
+                        isVisible 
+                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
+                            : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 opacity-50'
+                    } hover:bg-gray-200 dark:hover:bg-gray-600"
+                    data-provider-id="${provider.id}"
+                    title="Toggle ${provider.name}">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${color};"></span>
+                <span class="truncate max-w-[120px]">${provider.name}</span>
+            </button>
+        `;
+    }).join('');
+
+    // Add click handlers for toggling providers
+    legendEl.querySelectorAll('.provider-legend-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const providerId = parseInt(btn.dataset.providerId);
+            scheduler.toggleProvider(providerId);
+            renderProviderLegend(scheduler); // Re-render to update styles
+        });
+    });
+}
+
+/**
+ * Handle appointment click - open details modal
+ */
+function handleAppointmentClick(appointment) {
+    console.log('Appointment clicked:', appointment);
+    // TODO: Open appointment details modal
+    // For now, navigate to view page
+    if (appointment.id) {
+        window.location.href = `/appointments/view/${appointment.id}`;
+    }
+}
 
 console.log('Charts initialized');

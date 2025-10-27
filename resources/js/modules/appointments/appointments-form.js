@@ -1,3 +1,5 @@
+import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '/resources/js/utils/timezone-helper.js';
+
 /**
  * Appointments Booking Form Module
  * 
@@ -21,6 +23,7 @@ export async function initAppointmentForm() {
     const serviceSelect = document.getElementById('service_id');
     const dateInput = document.getElementById('appointment_date');
     const timeInput = document.getElementById('appointment_time');
+    syncClientTimezoneFields(form);
 
     if (!providerSelect || !serviceSelect || !dateInput || !timeInput) {
         console.warn('Appointment form elements not found');
@@ -102,18 +105,100 @@ export async function initAppointmentForm() {
     });
 
     // Event: Form submission validation
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault(); // Prevent default form submission
+        
         if (formState.isAvailable === false) {
-            e.preventDefault();
             alert('This time slot is not available. Please choose a different time.');
             return false;
         }
 
         if (formState.isChecking) {
-            e.preventDefault();
             alert('Please wait while we check availability...');
             return false;
         }
+        
+        // AJAX form submission
+        console.log('[appointments-form] ========== FORM SUBMISSION START ==========');
+        console.log('[appointments-form] Form data being submitted:', {
+            provider_id: formState.provider_id,
+            service_id: formState.service_id,
+            date: formState.date,
+            time: formState.time,
+            duration: formState.duration,
+            timezone: getBrowserTimezone(),
+            offset: getTimezoneOffset()
+        });
+        
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.textContent;
+        
+        try {
+            // Disable submit button and show loading state
+            submitButton.disabled = true;
+            submitButton.textContent = '⏳ Creating appointment...';
+            
+            // Submit form via AJAX
+            const formData = new FormData(form);
+            
+            console.log('[appointments-form] Sending POST request to:', form.action);
+            
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    ...attachTimezoneHeaders(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            
+            console.log('[appointments-form] Server response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[appointments-form] Server error response:', errorText);
+                throw new Error(`Server returned ${response.status}`);
+            }
+            
+            // Check if response is JSON (API) or HTML (redirect)
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                console.log('[appointments-form] JSON response:', result);
+                
+                if (result.success || result.data) {
+                    console.log('[appointments-form] ✅ Appointment created successfully!');
+                    console.log('[appointments-form] Appointment ID:', result.data?.id || result.id);
+                    
+                    // Show success message
+                    alert('✅ Appointment booked successfully!');
+                    
+                    // Redirect to appointments page so calendar can refresh
+                    console.log('[appointments-form] Redirecting to /appointments...');
+                    window.location.href = '/appointments';
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+            } else {
+                // HTML response (redirect) - follow it
+                console.log('[appointments-form] ✅ Appointment created (redirect response)');
+                console.log('[appointments-form] Redirecting to /appointments...');
+                window.location.href = '/appointments';
+            }
+            
+        } catch (error) {
+            console.error('[appointments-form] ❌ Form submission error:', error);
+            alert('❌ Failed to create appointment: ' + error.message);
+            
+            // Re-enable submit button
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+        }
+        
+        console.log('[appointments-form] ========================================');
+        
+        return false;
     });
 }
 
@@ -130,6 +215,7 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
         const response = await fetch(`/api/v1/providers/${providerId}/services`, {
             method: 'GET',
             headers: {
+                ...attachTimezoneHeaders(),
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -199,6 +285,7 @@ async function checkAvailability(formState, feedbackElement) {
         const response = await fetch('/api/appointments/check-availability', {
             method: 'POST',
             headers: {
+                ...attachTimezoneHeaders(),
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
@@ -206,7 +293,9 @@ async function checkAvailability(formState, feedbackElement) {
             body: JSON.stringify({
                 provider_id: parseInt(formState.provider_id),
                 service_id: parseInt(formState.service_id),
-                start_time: startTime
+                start_time: startTime,
+                timezone: getBrowserTimezone(),
+                offset: getTimezoneOffset()
             })
         });
 
@@ -292,6 +381,30 @@ function clearAvailabilityCheck(feedbackElement) {
         feedbackElement.textContent = '';
         feedbackElement.className = 'mt-2 text-sm hidden';
     }
+}
+
+function syncClientTimezoneFields(form) {
+    const timezoneField = form?.querySelector('#client_timezone');
+    const offsetField = form?.querySelector('#client_offset');
+
+    if (timezoneField) {
+        timezoneField.value = getBrowserTimezone();
+    }
+
+    if (offsetField) {
+        offsetField.value = getTimezoneOffset();
+    }
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            const form = document.querySelector('form[action*="/appointments/store"]');
+            if (form) {
+                syncClientTimezoneFields(form);
+            }
+        }
+    });
 }
 
 /**

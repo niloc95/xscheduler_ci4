@@ -8,6 +8,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
+use App\Services\TimezoneService;
 use CodeIgniter\Controller;
 
 class Appointments extends BaseController
@@ -202,9 +203,48 @@ class Appointments extends BaseController
                 ->with('error', 'Invalid service selected');
         }
 
-        // Calculate start and end times
-        $startTime = $appointmentDate . ' ' . $appointmentTime . ':00';
-        $endTime = date('Y-m-d H:i:s', strtotime($startTime) + ($service['duration_min'] * 60));
+        // Determine client timezone context
+        $clientTimezone = $this->resolveClientTimezone();
+
+        // Construct local start DateTime in client timezone
+        $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
+        
+        log_message('info', '[Appointments::store] ========== APPOINTMENT CREATION ==========');
+        log_message('info', '[Appointments::store] Input from form:', [
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'date' => $appointmentDate,
+            'time' => $appointmentTime,
+            'duration' => $service['duration_min'] . ' minutes'
+        ]);
+        log_message('info', '[Appointments::store] Client timezone: ' . $clientTimezone);
+        log_message('info', '[Appointments::store] Local datetime: ' . $startTimeLocal);
+        
+        try {
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+        } catch (\Exception $e) {
+            log_message('error', '[Appointments::store] Failed to create DateTime with timezone ' . $clientTimezone . ': ' . $e->getMessage());
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $clientTimezone = 'UTC';
+        }
+
+        // Calculate local end time based on service duration
+        $endDateTime = clone $startDateTime;
+        $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
+
+        // Convert to UTC for storage
+        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        
+        log_message('info', '[Appointments::store] Timezone conversion:', [
+            'local_start' => $startDateTime->format('Y-m-d H:i:s'),
+            'local_end' => $endDateTime->format('Y-m-d H:i:s'),
+            'utc_start' => $startTimeUtc,
+            'utc_end' => $endTimeUtc,
+            'timezone' => $clientTimezone
+        ]);
+        log_message('info', '[Appointments::store] Will store in database as UTC');
+        log_message('info', '[Appointments::store] =============================================');
 
         // Check if customer exists or create new one
         $customerEmail = $this->request->getPost('customer_email');
@@ -249,8 +289,10 @@ class Appointments extends BaseController
             'customer_id' => $customerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
+            'appointment_date' => $startDateTime->format('Y-m-d'),
+            'appointment_time' => $startDateTime->format('H:i:s'),
+            'start_time' => $startTimeUtc,
+            'end_time' => $endTimeUtc,
             'status' => 'booked',
             'notes' => $this->request->getPost('notes') ?? ''
         ];
@@ -266,6 +308,36 @@ class Appointments extends BaseController
         // Success - redirect to appointments list or view
         return redirect()->to('/appointments')
             ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
+    }
+
+    private function resolveClientTimezone(): string
+    {
+        $session = session();
+
+        $headerTimezone = trim((string) $this->request->getHeaderLine('X-Client-Timezone'));
+        $headerOffset = trim((string) $this->request->getHeaderLine('X-Client-Offset'));
+
+        $postTimezone = (string) $this->request->getPost('client_timezone');
+        $postOffset = (string) $this->request->getPost('client_offset');
+
+        $timezoneCandidate = $headerTimezone ?: $postTimezone;
+
+        if ($timezoneCandidate && TimezoneService::isValidTimezone($timezoneCandidate)) {
+            if ($session) {
+                $session->set('client_timezone', $timezoneCandidate);
+            }
+        } elseif ($session && $session->has('client_timezone')) {
+            $timezoneCandidate = (string) $session->get('client_timezone');
+        } else {
+            $timezoneCandidate = (new LocalizationSettingsService())->getTimezone();
+        }
+
+        $offsetCandidate = $headerOffset !== '' ? $headerOffset : $postOffset;
+        if ($offsetCandidate !== '' && is_numeric($offsetCandidate) && $session) {
+            $session->set('client_timezone_offset', (int) $offsetCandidate);
+        }
+
+        return $timezoneCandidate;
     }
 
     /**

@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\SettingModel;
 
 /**
- * CalendarConfigService centralizes FullCalendar-specific configuration
+ * CalendarConfigService centralizes calendar/scheduler configuration
  * including time format, timezone, business hours, and display preferences.
- * It bridges application settings with FullCalendar's expected format.
+ * Provides configuration for custom scheduler component.
+ * 
+ * Note: Previously used for FullCalendar, now adapted for custom scheduler.
  */
 class CalendarConfigService
 {
@@ -24,8 +26,10 @@ class CalendarConfigService
     }
 
     /**
-     * Get complete FullCalendar configuration as array
+     * Get complete scheduler configuration as array
      * Ready to be JSON-encoded and passed to JavaScript
+     * 
+     * Note: Adapted from FullCalendar config, will be customized for new scheduler
      */
     public function getCalendarConfig(): array
     {
@@ -124,16 +128,20 @@ class CalendarConfigService
 
     /**
      * Get earliest time to display on calendar
+     * Reads from business.work_start setting
      */
     public function getSlotMinTime(): string
     {
-        $value = $this->getSetting('calendar.slot_min_time');
+        // Try business.work_start first (from Business Hours settings)
+        $value = $this->getSetting('business.work_start');
         
-        if ($value) {
-            $normalized = $this->localization->normaliseTimeInput($value);
-            if ($normalized) {
-                return substr($normalized, 0, 5); // HH:MM format
-            }
+        if (!$value) {
+            $value = $this->getSetting('calendar.slot_min_time');
+        }
+        
+        if ($value && strlen($value) >= 5) {
+            // Already in HH:MM or HH:MM:SS format, just return first 5 chars
+            return substr($value, 0, 5);
         }
 
         return '08:00'; // Default 8 AM
@@ -141,16 +149,20 @@ class CalendarConfigService
 
     /**
      * Get latest time to display on calendar
+     * Reads from business.work_end setting
      */
     public function getSlotMaxTime(): string
     {
-        $value = $this->getSetting('calendar.slot_max_time');
+        // Try business.work_end first (from Business Hours settings)
+        $value = $this->getSetting('business.work_end');
         
-        if ($value) {
-            $normalized = $this->localization->normaliseTimeInput($value);
-            if ($normalized) {
-                return substr($normalized, 0, 5); // HH:MM format
-            }
+        if (!$value) {
+            $value = $this->getSetting('calendar.slot_max_time');
+        }
+        
+        if ($value && strlen($value) >= 5) {
+            // Already in HH:MM or HH:MM:SS format, just return first 5 chars
+            return substr($value, 0, 5);
         }
 
         return '18:00'; // Default 6 PM
@@ -173,8 +185,8 @@ class CalendarConfigService
     }
 
     /**
-     * Get business hours configuration for FullCalendar
-     * Fetches from business_hours table and formats for FullCalendar
+     * Get business hours configuration for scheduler
+     * Fetches from business_hours table and formats for scheduler component
      * 
      * For now, aggregates all provider business hours.
      * In the future, this can be filtered by provider_id for provider-specific views.
@@ -234,6 +246,28 @@ class CalendarConfigService
     }
 
     /**
+     * Get blocked periods from settings
+     * Returns array of date ranges where appointments cannot be scheduled
+     */
+    public function getBlockedPeriods(): array
+    {
+        $value = $this->getSetting('business.blocked_periods');
+        
+        if (!$value) {
+            return [];
+        }
+
+        // Handle both JSON string and already decoded array
+        $periods = is_string($value) ? json_decode($value, true) : $value;
+        
+        if (!is_array($periods)) {
+            return [];
+        }
+
+        return $periods;
+    }
+
+    /**
      * Get calendar height setting
      */
     public function getCalendarHeight(): string
@@ -242,8 +276,10 @@ class CalendarConfigService
     }
 
     /**
-     * Get all calendar-related settings for JavaScript
-     * This is the main method to use when initializing the calendar
+     * Get all calendar/scheduler-related settings for JavaScript
+     * This is the main method to use when initializing the scheduler
+     * 
+     * Note: Configuration keys may need adjustment for custom scheduler component
      */
     public function getJavaScriptConfig(): array
     {
@@ -258,6 +294,7 @@ class CalendarConfigService
             'weekends' => $this->shouldShowWeekends(),
             'height' => $this->getCalendarHeight(),
             'businessHours' => $this->getBusinessHoursForCalendar(),
+            'blockedPeriods' => $this->getBlockedPeriods(),
             'timeZone' => $this->getTimezone(),
             'locale' => $this->getLocale(),
             'headerToolbar' => [
@@ -292,6 +329,9 @@ class CalendarConfigService
                 'localization.timezone',
                 'localization.first_day',
                 'localization.locale',
+                'business.work_start',
+                'business.work_end',
+                'business.blocked_periods',
                 'calendar.slot_duration',
                 'calendar.slot_min_time',
                 'calendar.slot_max_time',

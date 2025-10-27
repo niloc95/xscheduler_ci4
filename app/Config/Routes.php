@@ -13,8 +13,6 @@ $routes->get('setup', 'Setup::index');
 $routes->post('setup/process', 'Setup::process');
 $routes->post('setup/test-connection', 'Setup::testConnection');
 
-$routes->get('tw', 'Tw::tw');
-
 // Authentication Routes (require setup to be completed)
 $routes->group('auth', function($routes) {
     $routes->get('login', 'Auth::login', ['filter' => 'setup']);
@@ -27,24 +25,10 @@ $routes->group('auth', function($routes) {
 });
 
 // Dashboard Routes (require both setup and authentication)
-// Method 1: Using nested groups (setup filter on group, auth filter on individual routes)
 $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Dashboard::index', ['filter' => 'auth']);
-    $routes->get('simple', 'Dashboard::simple', ['filter' => 'auth']);
-    $routes->get('test', 'Dashboard::test', ['filter' => 'auth']);
-    $routes->get('test-db', 'Dashboard::test_db', ['filter' => 'auth']);
-    $routes->get('real-data', 'Dashboard::realData', ['filter' => 'auth']);
-    $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
-    $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
-    $routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
-    $routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
-    // $routes->get('analytics', 'Dashboard::analytics', ['filter' => 'auth']); // Moved to dedicated Analytics controller
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
 });
-
-// Global user/customer lightweight API endpoints (session-auth protected)
-$routes->get('api/user-counts', 'Api\\Users::counts', ['filter' => 'auth']);
-$routes->get('api/users', 'Api\\Users::index', ['filter' => 'auth']);
 
 // User Management Routes (admin and provider access with different permissions)
 $routes->group('user-management', ['filter' => 'setup'], function($routes) {
@@ -138,14 +122,6 @@ $routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
     $routes->post('remove', 'StaffProviders::remove', ['filter' => 'role:admin']);
 });
 
-// Receptionist provider assignments (DEPRECATED - receptionist role removed)
-// Kept for v1.1 historical reference; table and controller remain but unused
-// $routes->group('receptionist-providers', ['filter' => 'auth'], function($routes) {
-//     $routes->get('receptionist/(:num)', 'ReceptionistProviders::list/$1', ['filter' => 'role:admin']);
-//     $routes->post('assign', 'ReceptionistProviders::assign', ['filter' => 'role:admin']);
-//     $routes->post('remove', 'ReceptionistProviders::remove', ['filter' => 'role:admin']);
-// });
-
 // Appointments Routes (auth required)
 $routes->group('appointments', function($routes) {
     $routes->get('', 'Appointments::index');
@@ -176,25 +152,6 @@ $routes->group('help', function($routes) {
     $routes->get('community', 'Help::community');
 });
 
-// Alternative Method 2: Using combined filter (uncomment to use instead)
-// $routes->get('dashboard', 'Dashboard::index', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/simple', 'Dashboard::simple', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/test', 'Dashboard::test', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/test-db', 'Dashboard::test_db', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/real-data', 'Dashboard::realData', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/api', 'Dashboard::api', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/charts', 'Dashboard::charts', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/analytics', 'Dashboard::analytics', ['filter' => 'setup_auth']);
-// $routes->get('dashboard/status', 'Dashboard::status', ['filter' => 'setup_auth']);
-
-// Style Guide Routes
-$routes->get('styleguide', 'Styleguide::index');
-$routes->get('styleguide/components', 'Styleguide::components');
-$routes->get('styleguide/scheduler', 'Styleguide::scheduler');
-
-// Dark Mode Test Route
-$routes->get('dark-mode-test', 'DarkModeTest::index');
-
 // Scheduler Routes
 // Admin/staff dashboard-facing scheduler (requires setup + auth)
 $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
@@ -211,44 +168,36 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
 
-    // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
-    // Unversioned appointments custom routes  
-    $routes->get('appointments', 'Api\\Appointments::index');
-    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
-    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    // Consolidated Appointments API (unversioned, future-proof)
+    // Specific endpoints BEFORE resource to avoid shadowing
+    $routes->post('appointments', 'Api\\Appointments::create');
+    $routes->get('appointments/summary', 'Api\\Appointments::summary');
+    $routes->get('appointments/counts', 'Api\\Appointments::counts');
     $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability');
-    
-    // Unversioned summary metrics
-    $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
-    // Unversioned counts for convenience (matches v1 controller)
-    $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
-    
-    // Unversioned appointments resource (alias to v1 controller) - restrict ID to numeric
-    // Note: Specific routes above take precedence over resource routes
-    $routes->resource('appointments', [
-        'controller' => 'Api\\V1\\Appointments',
-        'placeholder' => '(:num)'
-    ]);
+    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
+    $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1');
+    $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
+    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    $routes->get('appointments', 'Api\\Appointments::index');
 
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {
-        // Calendar configuration - public for frontend
+        // Settings endpoints - public for frontend initialization
         $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
+        $routes->get('settings/calendarConfig', 'Api\\V1\\Settings::calendarConfig'); // Alternative naming
+        $routes->get('settings/localization', 'Api\\V1\\Settings::localization');
+        $routes->get('settings/booking', 'Api\\V1\\Settings::booking');
+        $routes->get('settings/business-hours', 'Api\\V1\\Settings::businessHours');
         // Provider services - public for booking form
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
     });
+    
+    // Public providers endpoint (no auth required for calendar)
+    $routes->get('providers', 'Api\\V1\\Providers::index');
 
-    // Versioned API v1 (authenticated)
+    // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
-        // Declare specific endpoints BEFORE resource to avoid shadowing by appointments/{id}
-        $routes->get('appointments/summary', 'Api\\V1\\Appointments::summary');
-        $routes->get('appointments/counts', 'Api\\V1\\Appointments::counts');
-        // Versioned appointments resource - restrict ID to numeric
-        $routes->resource('appointments', [
-            'controller' => 'Api\\V1\\Appointments',
-            'placeholder' => '(:num)'
-        ]);
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
@@ -262,17 +211,8 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
 // Settings (require setup + auth + admin role)
 $routes->group('', ['filter' => 'setup'], function($routes) {
     $routes->get('settings', 'Settings::index', ['filter' => 'role:admin']);
-    // Temporarily allow POST without auth to debug uploads
     $routes->post('settings', 'Settings::save', ['filter' => 'role:admin']);
 });
-
-// Development override: allow Settings POST without auth to debug file uploads
-if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
-    $routes->group('', ['filter' => 'setup'], function($routes) {
-        // Re-declare POST route without auth to take precedence
-        $routes->post('settings', 'Settings::save');
-    });
-}
 
 // Public assets (serve files from public/assets)
 $routes->get('assets/s/(:segment)', 'Assets::settings/$1');
@@ -280,7 +220,3 @@ $routes->get('assets/s/(:segment)', 'Assets::settings/$1');
 $routes->get('assets/p/(:segment)', 'Assets::provider/$1');
 // Public assets from DB store
 $routes->get('assets/db/(:any)', 'Assets::settingsDb/$1');
-
-// Upload test (debugging only - no auth required)
-$routes->get('upload-test', 'UploadTest::index');
-$routes->post('upload-test/upload', 'UploadTest::doUpload');
