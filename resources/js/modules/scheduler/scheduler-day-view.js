@@ -89,10 +89,10 @@ export class DayView {
     }
 
     renderTimeSlot(slot, appointments, providers, data) {
+        // Show appointments that start within this hour (regardless of minute)
         const slotAppointments = appointments.filter(apt => {
             const aptHour = apt.startDateTime.hour;
-            const aptMinute = apt.startDateTime.minute;
-            return aptHour === slot.hour && aptMinute === 0; // Appointments starting at this hour
+            return aptHour === slot.hour; // Match any appointment starting in this hour
         });
 
         return `

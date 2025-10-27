@@ -174,7 +174,7 @@ import{C as wt}from"./charts.js";function ge(){if(typeof Intl<"u"&&Intl.DateTime
                     </div>
                 </div>
             </div>
-        `,this.attachEventListeners(e,t)}renderTimeSlot(e,t,s,r){const i=t.filter(a=>{const o=a.startDateTime.hour,l=a.startDateTime.minute;return o===e.hour&&l===0});return`
+        `,this.attachEventListeners(e,t)}renderTimeSlot(e,t,s,r){const i=t.filter(a=>a.startDateTime.hour===e.hour);return`
             <div class="time-slot flex items-start gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 
                         hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer min-h-[80px]"
                  data-time="${e.time}"
