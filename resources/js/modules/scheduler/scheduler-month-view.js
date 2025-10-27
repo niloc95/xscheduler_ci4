@@ -16,6 +16,12 @@ export class MonthView {
     render(container, data) {
         const { currentDate, appointments, providers, config, settings } = data;
         
+        console.log('🗓️ MonthView.render called');
+        console.log('   Current date:', currentDate.toISO());
+        console.log('   Appointments received:', appointments.length);
+        console.log('   Appointments data:', appointments);
+        console.log('   Providers:', providers.length);
+        
         // Store data for use in other methods
         this.appointments = appointments;
         this.providers = providers;
@@ -46,6 +52,7 @@ export class MonthView {
 
         // Group appointments by date
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
+        console.log('📅 Appointments grouped by date:', this.appointmentsByDate);
 
         // Render HTML
         container.innerHTML = `

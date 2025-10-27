@@ -71,7 +71,13 @@ export class SchedulerCore {
             console.log('✅ Data loaded');
 
             // Set all providers visible by default
-            this.providers.forEach(p => this.visibleProviders.add(p.id));
+            // Convert provider IDs to numbers for consistent type matching
+            this.providers.forEach(p => {
+                const providerId = typeof p.id === 'string' ? parseInt(p.id, 10) : p.id;
+                this.visibleProviders.add(providerId);
+            });
+
+            console.log('✅ Visible providers initialized:', Array.from(this.visibleProviders));
 
             // Render the initial view
             console.log('🎨 Rendering view...');
@@ -141,10 +147,13 @@ export class SchedulerCore {
             }
 
             const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}`;
+            console.log('🔄 Loading appointments from:', url);
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load appointments');
             const data = await response.json();
+            console.log('📥 Raw API response:', data);
             this.appointments = data.data || data || [];
+            console.log('📦 Extracted appointments array:', this.appointments);
             
             // Parse dates with timezone awareness
             this.appointments = this.appointments.map(apt => ({
@@ -154,9 +163,10 @@ export class SchedulerCore {
             }));
 
             console.log('📅 Appointments loaded:', this.appointments.length);
+            console.log('📋 Appointment details:', this.appointments);
             return this.appointments;
         } catch (error) {
-            console.error('Failed to load appointments:', error);
+            console.error('❌ Failed to load appointments:', error);
             this.appointments = [];
             return [];
         }
@@ -191,9 +201,18 @@ export class SchedulerCore {
     }
 
     getFilteredAppointments() {
-        return this.appointments.filter(apt => 
-            this.visibleProviders.has(apt.providerId)
-        );
+        // Convert appointment providerId to number for comparison
+        const filtered = this.appointments.filter(apt => {
+            const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
+            const isVisible = this.visibleProviders.has(providerId);
+            
+            console.log(`   Appointment ${apt.id}: providerId=${apt.providerId} (type: ${typeof apt.providerId}), converted=${providerId}, visible=${isVisible}`);
+            
+            return isVisible;
+        });
+        
+        console.log(`📊 Filter result: ${filtered.length} of ${this.appointments.length} appointments visible`);
+        return filtered;
     }
 
     toggleProvider(providerId) {
@@ -264,11 +283,17 @@ export class SchedulerCore {
             }
         }
 
+        const filteredAppointments = this.getFilteredAppointments();
+        console.log('🎨 Rendering view:', this.currentView);
+        console.log('🔍 Filtered appointments for display:', filteredAppointments.length);
+        console.log('👥 Visible providers:', Array.from(this.visibleProviders));
+        console.log('📋 All appointments:', this.appointments.length);
+
         const view = this.views[this.currentView];
         if (view && typeof view.render === 'function') {
             view.render(this.container, {
                 currentDate: this.currentDate,
-                appointments: this.getFilteredAppointments(),
+                appointments: filteredAppointments,
                 providers: this.providers,
                 config: this.calendarConfig,
                 settings: this.settingsManager, // Pass settings manager
