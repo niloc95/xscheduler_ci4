@@ -195,14 +195,23 @@ export class AppointmentDetailsModal {
      * Open modal with appointment data
      */
     open(appointment) {
-        this.currentAppointment = appointment;
-        this.populateDetails(appointment);
+        if (!this.modal) {
+            console.error('[AppointmentDetailsModal] Modal element not found!');
+            return;
+        }
         
-        // Show modal with fade-in animation
-        this.modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            this.modal.classList.add('scheduler-modal-open');
-        });
+        try {
+            this.currentAppointment = appointment;
+            this.populateDetails(appointment);
+            
+            // Show modal with fade-in animation
+            this.modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                this.modal.classList.add('scheduler-modal-open');
+            });
+        } catch (error) {
+            console.error('[AppointmentDetailsModal] Error opening modal:', error);
+        }
     }
     
     /**
@@ -220,84 +229,89 @@ export class AppointmentDetailsModal {
      * Populate modal with appointment details
      */
     populateDetails(appointment) {
-        // Use existing DateTime objects if available, otherwise parse from ISO
-        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
-        const endDateTime = appointment.endDateTime || DateTime.fromISO(appointment.end_time);
-        const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
+        try {
+            // Use existing DateTime objects if available, otherwise parse from ISO
+            const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
+            const endDateTime = appointment.endDateTime || DateTime.fromISO(appointment.end_time);
+            const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         
-        // Status colors
-        const statusColors = {
-            confirmed: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-800 dark:text-green-200', indicator: 'bg-green-500' },
-            pending: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-800 dark:text-amber-200', indicator: 'bg-amber-500' },
-            completed: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-800 dark:text-blue-200', indicator: 'bg-blue-500' },
-            cancelled: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-800 dark:text-red-200', indicator: 'bg-red-500' },
-            booked: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-800 dark:text-purple-200', indicator: 'bg-purple-500' }
-        };
-        const statusColor = statusColors[appointment.status] || statusColors.pending;
+            // Status colors
+            const statusColors = {
+                confirmed: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-800 dark:text-green-200', indicator: 'bg-green-500' },
+                pending: { bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-800 dark:text-amber-200', indicator: 'bg-amber-500' },
+                completed: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-800 dark:text-blue-200', indicator: 'bg-blue-500' },
+                cancelled: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-800 dark:text-red-200', indicator: 'bg-red-500' },
+                booked: { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-800 dark:text-purple-200', indicator: 'bg-purple-500' }
+            };
+            const statusColor = statusColors[appointment.status] || statusColors.pending;
         
-        // Status indicator
-        const indicator = this.modal.querySelector('#appointment-status-indicator');
-        indicator.className = `w-3 h-3 rounded-full ${statusColor.indicator}`;
-        
-        // Date & Time
-        this.modal.querySelector('#detail-date').textContent = startDateTime.toFormat('EEEE, MMMM d, yyyy');
-        this.modal.querySelector('#detail-time').textContent = `${startDateTime.toFormat(timeFormat)} - ${endDateTime.toFormat(timeFormat)}`;
-        
-        // Duration
-        const duration = appointment.serviceDuration || Math.round(endDateTime.diff(startDateTime, 'minutes').minutes);
-        this.modal.querySelector('#detail-duration').textContent = `Duration: ${duration} minutes`;
-        
-        // Customer
-        this.modal.querySelector('#detail-customer-name').textContent = appointment.name || appointment.customerName || 'Unknown';
-        
-        if (appointment.email) {
-            this.modal.querySelector('#detail-customer-email').textContent = appointment.email;
-            this.modal.querySelector('#detail-customer-email').href = `mailto:${appointment.email}`;
-            this.modal.querySelector('#detail-customer-email-wrapper').classList.remove('hidden');
-        } else {
-            this.modal.querySelector('#detail-customer-email-wrapper').classList.add('hidden');
-        }
-        
-        if (appointment.phone) {
-            this.modal.querySelector('#detail-customer-phone').textContent = appointment.phone;
-            this.modal.querySelector('#detail-customer-phone').href = `tel:${appointment.phone}`;
-            this.modal.querySelector('#detail-customer-phone-wrapper').classList.remove('hidden');
-        } else {
-            this.modal.querySelector('#detail-customer-phone-wrapper').classList.add('hidden');
-        }
-        
-        // Service
-        this.modal.querySelector('#detail-service-name').textContent = appointment.serviceName || 'Service';
-        if (appointment.servicePrice) {
-            this.modal.querySelector('#detail-service-price').textContent = `$${parseFloat(appointment.servicePrice).toFixed(2)}`;
-        } else {
-            this.modal.querySelector('#detail-service-price').textContent = '';
-        }
-        
-        // Provider
-        const providerColor = appointment.providerColor || '#3B82F6';
-        this.modal.querySelector('#detail-provider-color').style.backgroundColor = providerColor;
-        this.modal.querySelector('#detail-provider-name').textContent = appointment.providerName || 'Provider';
-        
-        // Notes
-        if (appointment.notes && appointment.notes.trim()) {
-            this.modal.querySelector('#detail-notes').textContent = appointment.notes;
-            this.modal.querySelector('#detail-notes-wrapper').classList.remove('hidden');
-        } else {
-            this.modal.querySelector('#detail-notes-wrapper').classList.add('hidden');
-        }
-        
-        // Status badge
-        const statusBadge = this.modal.querySelector('#detail-status-badge');
-        statusBadge.textContent = appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1);
-        statusBadge.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor.bg} ${statusColor.text}`;
-        
-        // Hide cancel button if already cancelled
-        const cancelBtn = this.modal.querySelector('#btn-cancel-appointment');
-        if (appointment.status === 'cancelled' || appointment.status === 'completed') {
-            cancelBtn.classList.add('hidden');
-        } else {
-            cancelBtn.classList.remove('hidden');
+            // Status indicator
+            const indicator = this.modal.querySelector('#appointment-status-indicator');
+            indicator.className = `w-3 h-3 rounded-full ${statusColor.indicator}`;
+            
+            // Date & Time
+            this.modal.querySelector('#detail-date').textContent = startDateTime.toFormat('EEEE, MMMM d, yyyy');
+            this.modal.querySelector('#detail-time').textContent = `${startDateTime.toFormat(timeFormat)} - ${endDateTime.toFormat(timeFormat)}`;
+            
+            // Duration
+            const duration = appointment.serviceDuration || Math.round(endDateTime.diff(startDateTime, 'minutes').minutes);
+            this.modal.querySelector('#detail-duration').textContent = `Duration: ${duration} minutes`;
+            
+            // Customer
+            this.modal.querySelector('#detail-customer-name').textContent = appointment.name || appointment.customerName || 'Unknown';
+            
+            if (appointment.email) {
+                this.modal.querySelector('#detail-customer-email').textContent = appointment.email;
+                this.modal.querySelector('#detail-customer-email').href = `mailto:${appointment.email}`;
+                this.modal.querySelector('#detail-customer-email-wrapper').classList.remove('hidden');
+            } else {
+                this.modal.querySelector('#detail-customer-email-wrapper').classList.add('hidden');
+            }
+            
+            if (appointment.phone) {
+                this.modal.querySelector('#detail-customer-phone').textContent = appointment.phone;
+                this.modal.querySelector('#detail-customer-phone').href = `tel:${appointment.phone}`;
+                this.modal.querySelector('#detail-customer-phone-wrapper').classList.remove('hidden');
+            } else {
+                this.modal.querySelector('#detail-customer-phone-wrapper').classList.add('hidden');
+            }
+            
+            // Service
+            this.modal.querySelector('#detail-service-name').textContent = appointment.serviceName || 'Service';
+            if (appointment.servicePrice) {
+                this.modal.querySelector('#detail-service-price').textContent = `$${parseFloat(appointment.servicePrice).toFixed(2)}`;
+            } else {
+                this.modal.querySelector('#detail-service-price').textContent = '';
+            }
+            
+            // Provider
+            const providerColor = appointment.providerColor || '#3B82F6';
+            this.modal.querySelector('#detail-provider-color').style.backgroundColor = providerColor;
+            this.modal.querySelector('#detail-provider-name').textContent = appointment.providerName || 'Provider';
+            
+            // Notes
+            if (appointment.notes && appointment.notes.trim()) {
+                this.modal.querySelector('#detail-notes').textContent = appointment.notes;
+                this.modal.querySelector('#detail-notes-wrapper').classList.remove('hidden');
+            } else {
+                this.modal.querySelector('#detail-notes-wrapper').classList.add('hidden');
+            }
+            
+            // Status badge
+            const statusBadge = this.modal.querySelector('#detail-status-badge');
+            statusBadge.textContent = appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1);
+            statusBadge.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor.bg} ${statusColor.text}`;
+            
+            // Hide cancel button if already cancelled
+            const cancelBtn = this.modal.querySelector('#btn-cancel-appointment');
+            if (appointment.status === 'cancelled' || appointment.status === 'completed') {
+                cancelBtn.classList.add('hidden');
+            } else {
+                cancelBtn.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('[AppointmentDetailsModal] Error populating details:', error);
+            throw error;
         }
     }
     

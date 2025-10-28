@@ -45,6 +45,8 @@ class Appointments extends BaseController
             // Select appointments with related data including provider color
             $builder->select('xs_appointments.*, 
                              CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                             c.email as customer_email,
+                             c.phone as customer_phone,
                              s.name as service_name,
                              s.duration_min as service_duration,
                              s.price as service_price,
@@ -105,20 +107,22 @@ class Appointments extends BaseController
                 ]);
 
                 return [
-                    'id' => $appointment['id'],
+                    'id' => (int)$appointment['id'],
                     'title' => $appointment['customer_name'] ?? 'Appointment #' . $appointment['id'],
                     'start' => $startIso,
                     'end' => $endIso,
-                    'providerId' => $appointment['provider_id'],
-                    'serviceId' => $appointment['service_id'],
-                    'customerId' => $appointment['customer_id'],
+                    'providerId' => (int)$appointment['provider_id'],
+                    'serviceId' => (int)$appointment['service_id'],
+                    'customerId' => (int)$appointment['customer_id'],
                     'status' => $appointment['status'],
                     'name' => $appointment['customer_name'] ?? null,
                     'serviceName' => $appointment['service_name'] ?? null,
                     'providerName' => $appointment['provider_name'] ?? null,
-                    'provider_color' => $appointment['provider_color'] ?? '#3B82F6', // Default blue
-                    'serviceDuration' => $appointment['service_duration'] ?? null,
-                    'price' => $appointment['service_price'] ?? null,
+                    'providerColor' => $appointment['provider_color'] ?? '#3B82F6', // Default blue
+                    'serviceDuration' => $appointment['service_duration'] ? (int)$appointment['service_duration'] : null,
+                    'servicePrice' => $appointment['service_price'] ? (float)$appointment['service_price'] : null,
+                    'email' => $appointment['customer_email'] ?? null,
+                    'phone' => $appointment['customer_phone'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
                     'start_time' => $startIso,
                     'end_time' => $endIso,

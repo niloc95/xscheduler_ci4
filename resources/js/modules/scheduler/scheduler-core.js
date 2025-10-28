@@ -167,9 +167,13 @@ export class SchedulerCore {
             this.appointments = data.data || data || [];
             console.log('📦 Extracted appointments array:', this.appointments);
             
-            // Parse dates with timezone awareness
+            // Parse dates with timezone awareness and ensure IDs are numbers
             this.appointments = this.appointments.map(apt => ({
                 ...apt,
+                id: parseInt(apt.id, 10), // Ensure ID is a number
+                providerId: parseInt(apt.providerId, 10), // Ensure provider ID is a number
+                serviceId: parseInt(apt.serviceId, 10), // Ensure service ID is a number
+                customerId: parseInt(apt.customerId, 10), // Ensure customer ID is a number
                 startDateTime: DateTime.fromISO(apt.start, { zone: this.options.timezone }),
                 endDateTime: DateTime.fromISO(apt.end, { zone: this.options.timezone })
             }));
