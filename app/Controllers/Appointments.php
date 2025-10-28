@@ -68,6 +68,7 @@ class Appointments extends BaseController
 
     /**
      * View specific appointment
+     * Redirects to calendar - viewing is handled by JavaScript modal
      */
     public function view($appointmentId = null)
     {
@@ -76,21 +77,9 @@ class Appointments extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        if (!$appointmentId) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
-        }
-
-        // Mock appointment data
-        $appointment = $this->getMockAppointment($appointmentId);
-        
-        $data = [
-            'title' => 'Appointment Details',
-            'current_page' => 'appointments',
-            'appointment' => $appointment,
-            'user_role' => current_user_role()
-        ];
-
-        return view('appointments/view', $data);
+        // Redirect to appointments index
+        // Viewing is now handled by the JavaScript modal in the calendar
+        return redirect()->to('/appointments')->with('message', 'Please click the appointment in the calendar to view details.');
     }
 
     /**
