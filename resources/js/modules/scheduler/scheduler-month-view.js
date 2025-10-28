@@ -199,11 +199,16 @@ export class MonthView {
         // Appointment click handlers
         container.querySelectorAll('.scheduler-appointment').forEach(el => {
             el.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                console.log('[MonthView] Appointment clicked, prevented default');
                 const aptId = parseInt(el.dataset.appointmentId, 10);
                 const appointment = data.appointments.find(a => a.id === aptId);
                 if (appointment && data.onAppointmentClick) {
+                    console.log('[MonthView] Calling onAppointmentClick');
                     data.onAppointmentClick(appointment);
+                } else {
+                    console.warn('[MonthView] No appointment found or no callback');
                 }
             });
         });

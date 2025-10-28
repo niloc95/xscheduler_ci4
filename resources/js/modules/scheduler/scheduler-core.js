@@ -347,9 +347,14 @@ export class SchedulerCore {
     }
 
     handleAppointmentClick(appointment) {
+        console.log('[SchedulerCore] handleAppointmentClick called with:', appointment);
+        console.log('[SchedulerCore] appointmentDetailsModal exists:', !!this.appointmentDetailsModal);
+        
         if (this.options.onAppointmentClick) {
+            console.log('[SchedulerCore] Using custom onAppointmentClick');
             this.options.onAppointmentClick(appointment);
         } else {
+            console.log('[SchedulerCore] Opening modal with appointmentDetailsModal.open()');
             // Open appointment details modal
             this.appointmentDetailsModal.open(appointment);
         }

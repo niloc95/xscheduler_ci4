@@ -213,6 +213,7 @@ export class WeekView {
         // Appointment click handlers
         container.querySelectorAll('.appointment-block').forEach(el => {
             el.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const aptId = parseInt(el.dataset.appointmentId, 10);
                 const appointment = data.appointments.find(a => a.id === aptId);

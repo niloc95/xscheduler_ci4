@@ -241,6 +241,7 @@ export class DayView {
         // Appointment card/block click handlers
         container.querySelectorAll('[data-appointment-id]').forEach(el => {
             el.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const aptId = parseInt(el.dataset.appointmentId, 10);
                 const appointment = data.appointments.find(a => a.id === aptId);
