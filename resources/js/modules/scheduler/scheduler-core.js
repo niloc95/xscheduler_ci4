@@ -14,7 +14,6 @@ import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentModal } from './appointment-modal.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
-import { AppointmentTooltip } from './appointment-tooltip.js';
 
 export class SchedulerCore {
     constructor(containerId, options = {}) {
@@ -52,9 +51,6 @@ export class SchedulerCore {
         
         // Initialize appointment details modal (for viewing/editing)
         this.appointmentDetailsModal = new AppointmentDetailsModal(this);
-        
-        // Initialize appointment tooltip (for hover preview)
-        this.appointmentTooltip = new AppointmentTooltip(this);
         
         this.options = options;
     }
@@ -331,11 +327,6 @@ export class SchedulerCore {
             // Enable drag-and-drop after rendering (if dragDropManager is available)
             if (this.dragDropManager) {
                 this.dragDropManager.enableDragDrop(this.container);
-            }
-            
-            // Enable hover tooltips
-            if (this.appointmentTooltip) {
-                this.appointmentTooltip.enableTooltips(this.container);
             }
         } else {
             console.error(`View not implemented: ${this.currentView}`);
