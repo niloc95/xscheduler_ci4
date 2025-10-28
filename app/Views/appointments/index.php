@@ -159,11 +159,12 @@
                                 </span>
 
                                 <div class="flex items-center space-x-1">
-                                    <a href="<?= base_url('/appointments/view/' . $appointment['id']) ?>"
-                                       class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
-                                       title="View Details">
+                                    <button type="button"
+                                            data-appointment-view="<?= $appointment['id'] ?>"
+                                            class="appointment-view-btn p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                                            title="View Details">
                                         <span class="material-symbols-outlined">visibility</span>
-                                    </a>
+                                    </button>
 
                                     <?php if (has_role(['admin', 'provider', 'staff'])): ?>
                                     <button class="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200"
@@ -205,4 +206,41 @@
 
     <!-- Include Appointment Details Modal -->
     <?= $this->include('appointments/modal') ?>
+
+    <script type="module">
+        // Handle clicks on PHP-rendered appointment list view buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const viewButtons = document.querySelectorAll('.appointment-view-btn');
+            
+            viewButtons.forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const appointmentId = parseInt(btn.dataset.appointmentView, 10);
+                    console.log('[PHP List] View button clicked for appointment:', appointmentId);
+                    
+                    // Wait for scheduler to be initialized
+                    const checkScheduler = () => {
+                        if (window.scheduler?.appointmentDetailsModal) {
+                            // Fetch full appointment data from API
+                            fetch(`/api/appointments/${appointmentId}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.appointment) {
+                                        console.log('[PHP List] Opening modal with appointment:', data.appointment);
+                                        window.scheduler.appointmentDetailsModal.open(data.appointment);
+                                    }
+                                })
+                                .catch(err => console.error('[PHP List] Error fetching appointment:', err));
+                        } else {
+                            setTimeout(checkScheduler, 100);
+                        }
+                    };
+                    
+                    checkScheduler();
+                });
+            });
+        });
+    </script>
 <?= $this->endSection() ?>
