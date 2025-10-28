@@ -220,8 +220,9 @@ export class AppointmentDetailsModal {
      * Populate modal with appointment details
      */
     populateDetails(appointment) {
-        const startDateTime = DateTime.fromISO(appointment.start);
-        const endDateTime = DateTime.fromISO(appointment.end);
+        // Use existing DateTime objects if available, otherwise parse from ISO
+        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
+        const endDateTime = appointment.endDateTime || DateTime.fromISO(appointment.end_time);
         const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         
         // Status colors
@@ -313,7 +314,8 @@ export class AppointmentDetailsModal {
      * Handle cancel action
      */
     async handleCancel(appointment) {
-        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.name || 'Unknown'}\nDate: ${DateTime.fromISO(appointment.start).toFormat('MMMM d, yyyy h:mm a')}`);
+        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
+        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.name || appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy h:mm a')}`);
         
         if (!confirmed) return;
         
