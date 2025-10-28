@@ -25,7 +25,7 @@ export class AppointmentTooltip {
      */
     createTooltip() {
         const tooltipHTML = `
-            <div id="appointment-tooltip" class="fixed z-50 hidden pointer-events-none">
+            <div id="appointment-tooltip" class="fixed hidden pointer-events-none" style="z-index: 40;">
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 max-w-sm">
                     <div class="flex items-start gap-3 mb-3">
                         <div id="tooltip-status-indicator" class="w-2 h-2 rounded-full mt-2"></div>
@@ -52,10 +52,9 @@ export class AppointmentTooltip {
                     </div>
                     
                     <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Click for full details</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 italic">Click appointment for full details</p>
                     </div>
                 </div>
-                <div class="tooltip-arrow"></div>
             </div>
         `;
         
@@ -83,15 +82,6 @@ export class AppointmentTooltip {
                 this.scheduleHide();
             });
         });
-        
-        // Keep tooltip visible when hovering over it
-        this.tooltip.addEventListener('mouseenter', () => {
-            this.cancelHide();
-        });
-        
-        this.tooltip.addEventListener('mouseleave', () => {
-            this.scheduleHide();
-        });
     }
     
     /**
@@ -116,7 +106,7 @@ export class AppointmentTooltip {
     scheduleHide() {
         this.hideTimeout = setTimeout(() => {
             this.hide();
-        }, 100); // Small delay to allow moving to tooltip
+        }, 200); // 200ms delay before hiding
     }
     
     /**
