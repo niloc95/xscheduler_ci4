@@ -28,6 +28,10 @@ export class SchedulerCore {
         this.providers = [];
         this.visibleProviders = new Set();
         
+        // Debouncing for render operations
+        this.renderDebounceTimer = null;
+        this.renderDebounceDelay = 100; // ms
+        
         // Initialize settings manager
         this.settingsManager = new SettingsManager();
         
@@ -274,6 +278,18 @@ export class SchedulerCore {
     }
 
     render() {
+        // Clear any pending render
+        if (this.renderDebounceTimer) {
+            clearTimeout(this.renderDebounceTimer);
+        }
+        
+        // Debounce render to avoid duplicate calls
+        this.renderDebounceTimer = setTimeout(() => {
+            this._performRender();
+        }, this.renderDebounceDelay);
+    }
+    
+    _performRender() {
         // Re-find container if it's been lost (e.g., due to DOM manipulation)
         if (!this.container || !document.body.contains(this.container)) {
             this.container = document.getElementById(this.containerId);
@@ -378,10 +394,17 @@ Status: ${appointment.status}
     }
 
     destroy() {
-        // Cleanup if needed
+        // Clear any pending renders
+        if (this.renderDebounceTimer) {
+            clearTimeout(this.renderDebounceTimer);
+            this.renderDebounceTimer = null;
+        }
+        
+        // Cleanup references
         this.container = null;
         this.appointments = [];
         this.providers = [];
+        this.visibleProviders.clear();
     }
     
     /**
