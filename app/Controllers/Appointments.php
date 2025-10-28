@@ -289,8 +289,6 @@ class Appointments extends BaseController
             'customer_id' => $customerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'appointment_date' => $startDateTime->format('Y-m-d'),
-            'appointment_time' => $startDateTime->format('H:i:s'),
             'start_time' => $startTimeUtc,
             'end_time' => $endTimeUtc,
             'status' => 'booked',

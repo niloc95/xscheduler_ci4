@@ -471,7 +471,8 @@ export class AppointmentModal {
         
         try {
             const response = await fetch('/api/v1/providers');
-            const providers = await response.json();
+            const result = await response.json();
+            const providers = result.data || result || [];
             
             providers.forEach(provider => {
                 const option = document.createElement('option');
@@ -496,13 +497,14 @@ export class AppointmentModal {
         
         try {
             const response = await fetch('/api/v1/services');
-            const services = await response.json();
+            const result = await response.json();
+            const services = result.data || result || [];
             
             services.forEach(service => {
                 const option = document.createElement('option');
                 option.value = service.id;
                 option.textContent = service.name;
-                option.dataset.duration = service.duration;
+                option.dataset.duration = service.durationMin || service.duration_min || service.duration;
                 option.dataset.price = service.price;
                 select.appendChild(option);
             });
