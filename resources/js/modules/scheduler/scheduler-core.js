@@ -13,6 +13,8 @@ import { DayView } from './scheduler-day-view.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentModal } from './appointment-modal.js';
+import { AppointmentDetailsModal } from './appointment-details-modal.js';
+import { AppointmentTooltip } from './appointment-tooltip.js';
 
 export class SchedulerCore {
     constructor(containerId, options = {}) {
@@ -45,8 +47,14 @@ export class SchedulerCore {
         // Initialize drag-drop manager
         this.dragDropManager = new DragDropManager(this);
         
-        // Initialize appointment modal
+        // Initialize appointment modal (for creating)
         this.appointmentModal = new AppointmentModal(this, this.settingsManager);
+        
+        // Initialize appointment details modal (for viewing/editing)
+        this.appointmentDetailsModal = new AppointmentDetailsModal(this);
+        
+        // Initialize appointment tooltip (for hover preview)
+        this.appointmentTooltip = new AppointmentTooltip(this);
         
         this.options = options;
     }
@@ -320,6 +328,11 @@ export class SchedulerCore {
             if (this.dragDropManager) {
                 this.dragDropManager.enableDragDrop(this.container);
             }
+            
+            // Enable hover tooltips
+            if (this.appointmentTooltip) {
+                this.appointmentTooltip.enableTooltips(this.container);
+            }
         } else {
             console.error(`View not implemented: ${this.currentView}`);
             this.container.innerHTML = `
@@ -342,37 +355,9 @@ export class SchedulerCore {
         if (this.options.onAppointmentClick) {
             this.options.onAppointmentClick(appointment);
         } else {
-            // TODO: Replace with proper appointment details modal
-            this.showAppointmentDetails(appointment);
+            // Open appointment details modal
+            this.appointmentDetailsModal.open(appointment);
         }
-    }
-    
-    /**
-     * Show appointment details (placeholder for proper modal)
-     */
-    showAppointmentDetails(appointment) {
-        const startTime = DateTime.fromISO(appointment.start).toFormat('h:mm a');
-        const endTime = DateTime.fromISO(appointment.end).toFormat('h:mm a');
-        const date = DateTime.fromISO(appointment.start).toFormat('MMMM d, yyyy');
-        
-        const details = `
-Appointment Details:
-━━━━━━━━━━━━━━━━
-${appointment.title || appointment.name || 'Appointment'}
-${date}
-${startTime} - ${endTime}
-
-Customer: ${appointment.name || 'N/A'}
-${appointment.email ? 'Email: ' + appointment.email : ''}
-${appointment.phone ? 'Phone: ' + appointment.phone : ''}
-${appointment.notes ? '\nNotes: ' + appointment.notes : ''}
-
-Status: ${appointment.status}
-        `.trim();
-        
-        // Temporary: Use browser alert. Replace with proper modal component.
-        alert(details);
-        console.log('Appointment details:', appointment);
     }
 
     renderError(message) {
