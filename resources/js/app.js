@@ -344,11 +344,14 @@ function renderProviderLegend(scheduler) {
  * Handle appointment click - open details modal
  */
 function handleAppointmentClick(appointment) {
-    console.log('Appointment clicked:', appointment);
-    // TODO: Open appointment details modal
-    // For now, navigate to view page
-    if (appointment.id) {
-        window.location.href = `/appointments/view/${appointment.id}`;
+    console.log('[app.js] Appointment clicked:', appointment);
+    
+    // Open the appointment details modal
+    if (window.scheduler?.appointmentDetailsModal) {
+        console.log('[app.js] Opening appointment details modal');
+        window.scheduler.appointmentDetailsModal.open(appointment);
+    } else {
+        console.error('[app.js] Appointment details modal not available');
     }
 }
 

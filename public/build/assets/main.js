@@ -564,4 +564,4 @@ Date: ${t.toFormat("MMMM d, yyyy h:mm a")}`))try{if(!(await fetch(`/api/appointm
                 <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${s};"></span>
                 <span class="truncate max-w-[120px]">${t.name}</span>
             </button>
-        `}).join(""),e.querySelectorAll(".provider-legend-item").forEach(t=>{t.addEventListener("click",()=>{const s=parseInt(t.dataset.providerId);n.toggleProvider(s),en(n)})}))}function Mi(n){console.log("Appointment clicked:",n),n.id&&(window.location.href=`/appointments/view/${n.id}`)}console.log("Charts initialized");
+        `}).join(""),e.querySelectorAll(".provider-legend-item").forEach(t=>{t.addEventListener("click",()=>{const s=parseInt(t.dataset.providerId);n.toggleProvider(s),en(n)})}))}function Mi(n){var e;console.log("[app.js] Appointment clicked:",n),(e=window.scheduler)!=null&&e.appointmentDetailsModal?(console.log("[app.js] Opening appointment details modal"),window.scheduler.appointmentDetailsModal.open(n)):console.error("[app.js] Appointment details modal not available")}console.log("Charts initialized");
