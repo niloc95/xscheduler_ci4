@@ -210,38 +210,80 @@
     <script type="module">
         // Handle clicks on PHP-rendered appointment list view buttons
         document.addEventListener('DOMContentLoaded', () => {
-            const viewButtons = document.querySelectorAll('.appointment-view-btn');
+            console.log('[PHP List] DOM loaded, initializing...');
             
-            viewButtons.forEach(btn => {
+            const viewButtons = document.querySelectorAll('.appointment-view-btn');
+            console.log('[PHP List] Found', viewButtons.length, 'view buttons');
+            
+            if (viewButtons.length === 0) {
+                console.warn('[PHP List] No appointment view buttons found! Check if appointments are rendered.');
+            }
+            
+            viewButtons.forEach((btn, index) => {
+                console.log(`[PHP List] Attaching handler to button ${index + 1}:`, btn.dataset.appointmentView);
+                
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     
                     const appointmentId = parseInt(btn.dataset.appointmentView, 10);
-                    console.log('[PHP List] View button clicked for appointment:', appointmentId);
+                    console.log('[PHP List] 🔵 View button clicked for appointment:', appointmentId);
                     
                     // Wait for scheduler to be initialized
+                    let attempts = 0;
+                    const maxAttempts = 50; // 5 seconds max
+                    
                     const checkScheduler = () => {
+                        attempts++;
+                        console.log(`[PHP List] Checking scheduler (attempt ${attempts}/${maxAttempts})...`);
+                        
                         if (window.scheduler?.appointmentDetailsModal) {
+                            console.log('[PHP List] ✅ Scheduler found! Fetching appointment data...');
+                            
                             // Fetch full appointment data from API
                             fetch(`/api/appointments/${appointmentId}`)
-                                .then(res => res.json())
+                                .then(res => {
+                                    console.log('[PHP List] API response status:', res.status);
+                                    return res.json();
+                                })
                                 .then(response => {
+                                    console.log('[PHP List] API response:', response);
+                                    
                                     // API returns { data: { appointment } }
                                     if (response.data) {
-                                        console.log('[PHP List] Opening modal with appointment:', response.data);
+                                        console.log('[PHP List] 🎉 Opening modal with appointment:', response.data);
                                         window.scheduler.appointmentDetailsModal.open(response.data);
+                                    } else if (response.error) {
+                                        console.error('[PHP List] ❌ API error:', response.error);
+                                        alert('Error loading appointment: ' + response.error.message);
+                                    } else {
+                                        console.error('[PHP List] ❌ Unexpected API response format:', response);
                                     }
                                 })
-                                .catch(err => console.error('[PHP List] Error fetching appointment:', err));
+                                .catch(err => {
+                                    console.error('[PHP List] ❌ Fetch error:', err);
+                                    alert('Failed to load appointment. Check console for details.');
+                                });
                         } else {
-                            setTimeout(checkScheduler, 100);
+                            if (attempts >= maxAttempts) {
+                                console.error('[PHP List] ❌ Scheduler not found after', maxAttempts, 'attempts');
+                                console.log('[PHP List] window.scheduler:', window.scheduler);
+                                alert('Calendar not loaded. Please refresh the page.');
+                            } else {
+                                setTimeout(checkScheduler, 100);
+                            }
                         }
                     };
                     
                     checkScheduler();
                 });
             });
+            
+            // Log scheduler status
+            setTimeout(() => {
+                console.log('[PHP List] After 1 second - window.scheduler:', window.scheduler);
+                console.log('[PHP List] Modal available?', !!window.scheduler?.appointmentDetailsModal);
+            }, 1000);
         });
     </script>
 <?= $this->endSection() ?>
