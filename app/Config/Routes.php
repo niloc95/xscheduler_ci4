@@ -130,6 +130,7 @@ $routes->group('appointments', function($routes) {
     $routes->post('store', 'Appointments::store');
     $routes->get('edit/(:num)', 'Appointments::edit/$1');
     $routes->post('update/(:num)', 'Appointments::update/$1');
+    $routes->put('update/(:num)', 'Appointments::update/$1');  // Support PUT method
     $routes->post('cancel/(:num)', 'Appointments::cancel/$1');
 });
 
