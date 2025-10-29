@@ -226,10 +226,11 @@
                             // Fetch full appointment data from API
                             fetch(`/api/appointments/${appointmentId}`)
                                 .then(res => res.json())
-                                .then(data => {
-                                    if (data.appointment) {
-                                        console.log('[PHP List] Opening modal with appointment:', data.appointment);
-                                        window.scheduler.appointmentDetailsModal.open(data.appointment);
+                                .then(response => {
+                                    // API returns { data: { appointment } }
+                                    if (response.data) {
+                                        console.log('[PHP List] Opening modal with appointment:', response.data);
+                                        window.scheduler.appointmentDetailsModal.open(response.data);
                                     }
                                 })
                                 .catch(err => console.error('[PHP List] Error fetching appointment:', err));
