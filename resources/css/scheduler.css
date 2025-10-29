@@ -379,6 +379,11 @@
     justify-content: center;
     padding: 1rem;
     overflow-y: auto;
+    margin: 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
 }
 
 .scheduler-modal.hidden {
