@@ -121,7 +121,7 @@
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
             <?php if (!empty($appointments)): ?>
                 <?php foreach ($appointments as $appointment): ?>
-                    <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                    <div class="p-6 transition-colors duration-200" style="pointer-events: none;">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
                                 <div class="flex-shrink-0">
@@ -144,7 +144,7 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center space-x-3" style="pointer-events: auto;">
                                 <span class="px-3 py-1 text-xs font-medium rounded-full
                                     <?php if ($appointment['status'] === 'confirmed'): ?>
                                         bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
@@ -162,7 +162,8 @@
                                     <button type="button"
                                             data-appointment-view="<?= $appointment['id'] ?>"
                                             class="appointment-view-btn p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
-                                            title="View Details">
+                                            title="View Details"
+                                            onclick="event.preventDefault(); event.stopPropagation(); console.log('INLINE: Button clicked!'); return false;">
                                         <span class="material-symbols-outlined">visibility</span>
                                     </button>
 
