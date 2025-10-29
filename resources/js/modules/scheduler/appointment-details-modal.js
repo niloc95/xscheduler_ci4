@@ -195,6 +195,10 @@ export class AppointmentDetailsModal {
      * Open modal with appointment data
      */
     open(appointment) {
+        console.log('[AppointmentDetailsModal] open() called');
+        console.log('[AppointmentDetailsModal] this.modal:', this.modal);
+        console.log('[AppointmentDetailsModal] modal element in DOM?', document.getElementById('appointment-details-modal'));
+        
         if (!this.modal) {
             console.error('[AppointmentDetailsModal] Modal element not found!');
             return;
@@ -202,12 +206,17 @@ export class AppointmentDetailsModal {
         
         try {
             this.currentAppointment = appointment;
+            console.log('[AppointmentDetailsModal] Populating details...');
             this.populateDetails(appointment);
             
+            console.log('[AppointmentDetailsModal] Removing hidden class...');
             // Show modal with fade-in animation
             this.modal.classList.remove('hidden');
+            console.log('[AppointmentDetailsModal] Adding scheduler-modal-open class...');
             requestAnimationFrame(() => {
                 this.modal.classList.add('scheduler-modal-open');
+                console.log('[AppointmentDetailsModal] Modal should be visible now');
+                console.log('[AppointmentDetailsModal] Modal classes:', this.modal.className);
             });
         } catch (error) {
             console.error('[AppointmentDetailsModal] Error opening modal:', error);
