@@ -370,6 +370,13 @@
    Appointment Modal
    ========================================================================== */
 
+#scheduler-modal-container {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    pointer-events: none !important;
+}
+
 .scheduler-modal {
     position: fixed !important;
     inset: 0 !important;
@@ -384,6 +391,7 @@
     top: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    pointer-events: auto !important;
 }
 
 .scheduler-modal.hidden {

@@ -154,8 +154,20 @@ export class AppointmentDetailsModal {
             </div>
         `;
         
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        // Create a wrapper div at the root body level
+        const modalContainer = document.createElement('div');
+        modalContainer.id = 'scheduler-modal-container';
+        modalContainer.style.cssText = 'position: fixed; inset: 0; z-index: 9999; pointer-events: none;';
+        modalContainer.innerHTML = modalHTML;
+        
+        // Ensure it's appended directly to body
+        document.body.appendChild(modalContainer);
         this.modal = document.getElementById('appointment-details-modal');
+        
+        // Enable pointer events on the modal itself
+        if (this.modal) {
+            this.modal.style.pointerEvents = 'auto';
+        }
     }
     
     /**
