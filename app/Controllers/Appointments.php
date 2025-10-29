@@ -255,7 +255,9 @@ class Appointments extends BaseController
             for ($i = 1; $i <= 6; $i++) {
                 $fieldValue = $this->request->getPost("custom_field_{$i}");
                 if ($fieldValue !== null && $fieldValue !== '') {
-                    $customFieldsData["field_{$i}"] = $fieldValue;
+                    // Use consistent field naming: 'custom_field_1' not 'field_1'
+                    // This matches CustomerManagement controller and BookingSettingsService
+                    $customFieldsData["custom_field_{$i}"] = $fieldValue;
                 }
             }
             if (!empty($customFieldsData)) {
@@ -530,7 +532,9 @@ class Appointments extends BaseController
         for ($i = 1; $i <= 6; $i++) {
             $fieldValue = $this->request->getPost("custom_field_{$i}");
             if ($fieldValue !== null && $fieldValue !== '') {
-                $customFieldsData["field_{$i}"] = $fieldValue;
+                // Use consistent field naming: 'custom_field_1' not 'field_1'
+                // This matches CustomerManagement controller and BookingSettingsService
+                $customFieldsData["custom_field_{$i}"] = $fieldValue;
             }
         }
         if (!empty($customFieldsData)) {
