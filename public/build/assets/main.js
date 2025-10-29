@@ -249,36 +249,41 @@ This will update the appointment and notify the customer.`)}async rescheduleAppo
                 <!-- Backdrop -->
                 <div class="scheduler-modal-backdrop" data-modal-close></div>
                 
-                <!-- Modal Panel -->
-                <div class="scheduler-modal-panel">
-                    <!-- Header -->
-                    <div class="scheduler-modal-header">
-                        <h3 id="modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">
-                            Create Appointment
-                        </h3>
-                        <button type="button" data-modal-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                            <span class="material-symbols-outlined text-2xl">close</span>
-                        </button>
+                <!-- Centering Wrapper -->
+                <div class="scheduler-modal-wrapper">
+                    <!-- Modal Panel -->
+                    <div class="scheduler-modal-panel">
+                        <!-- Header -->
+                        <div class="scheduler-modal-header">
+                            <h3 id="modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Create Appointment
+                            </h3>
+                            <button type="button" data-modal-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <span class="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Body -->
+                        <div class="scheduler-modal-body">
+                            <form id="appointment-form" class="space-y-4">
+                                <!-- Dynamic fields will be inserted here -->
+                            </form>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="scheduler-modal-footer">
+                            <button type="button" data-modal-close class="btn btn-secondary">
+                                Cancel
+                            </button>
+                            <button type="submit" form="appointment-form" class="btn btn-primary">
+                                <span class="material-symbols-outlined text-base">add</span>
+                                Create Appointment
+                            </button>
+                        </div>
                     </div>
-                    
-                    <!-- Body -->
-                    <div class="scheduler-modal-body">
-                        <form id="appointment-form" class="space-y-4">
-                            <!-- Dynamic fields will be inserted here -->
-                        </form>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div class="scheduler-modal-footer">
-                        <button type="button" data-modal-close class="btn btn-secondary">
-                            Cancel
-                        </button>
-                        <button type="submit" form="appointment-form" class="btn btn-primary">
-                            <span class="material-symbols-outlined text-base">add</span>
-                            Create Appointment
-                        </button>
-                    </div>
+                    <!-- End Modal Panel -->
                 </div>
+                <!-- End Centering Wrapper -->
             </div>
         `),this.modal=document.getElementById("appointment-modal"),this.form=document.getElementById("appointment-form")}attachEventListeners(){this.modal.querySelectorAll("[data-modal-close]").forEach(e=>{e.addEventListener("click",()=>this.close())}),document.addEventListener("keydown",e=>{e.key==="Escape"&&!this.modal.classList.contains("hidden")&&this.close()}),this.form.addEventListener("submit",e=>{e.preventDefault(),this.handleSubmit()})}async open(e={}){this.selectedDate=e.date||u.now().toISODate(),this.selectedTime=e.time||null,this.selectedProviderId=e.providerId||null,this.modal.classList.remove("hidden"),requestAnimationFrame(()=>{this.modal.classList.add("scheduler-modal-open")}),await this.renderForm(),this.selectedProviderId&&await this.loadAvailableSlots()}close(){this.modal.classList.remove("scheduler-modal-open"),setTimeout(()=>{this.modal.classList.add("hidden"),this.form.reset(),this.selectedDate=null,this.selectedTime=null,this.selectedProviderId=null,this.availableSlots=[]},300)}async renderForm(){this.settings.isCacheValid()||await this.settings.refresh();const e=await this.settings.getEnabledFields(),t=await this.settings.getTimezone();let s="";s+=this.renderDateTimeFields(t),s+=this.renderProviderField(),s+=this.renderServiceField(),e.includes("customer_name")&&(s+=this.renderTextField("customer_name","Customer Name","person")),e.includes("customer_email")&&(s+=this.renderEmailField("customer_email","Email Address","email")),e.includes("customer_phone")&&(s+=this.renderPhoneField("customer_phone","Phone Number","phone")),e.includes("notes")&&(s+=this.renderTextareaField("notes","Notes","note")),e.includes("location")&&(s+=this.renderTextField("location","Location","location_on")),this.form.innerHTML=s,this.attachFieldListeners()}renderDateTimeFields(e){const t=this.selectedDate||u.now().toISODate(),s=this.selectedTime||"";return`
             <div class="form-field-group">

@@ -39,36 +39,41 @@ export class AppointmentModal {
                 <!-- Backdrop -->
                 <div class="scheduler-modal-backdrop" data-modal-close></div>
                 
-                <!-- Modal Panel -->
-                <div class="scheduler-modal-panel">
-                    <!-- Header -->
-                    <div class="scheduler-modal-header">
-                        <h3 id="modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">
-                            Create Appointment
-                        </h3>
-                        <button type="button" data-modal-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                            <span class="material-symbols-outlined text-2xl">close</span>
-                        </button>
+                <!-- Centering Wrapper -->
+                <div class="scheduler-modal-wrapper">
+                    <!-- Modal Panel -->
+                    <div class="scheduler-modal-panel">
+                        <!-- Header -->
+                        <div class="scheduler-modal-header">
+                            <h3 id="modal-title" class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Create Appointment
+                            </h3>
+                            <button type="button" data-modal-close class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                <span class="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Body -->
+                        <div class="scheduler-modal-body">
+                            <form id="appointment-form" class="space-y-4">
+                                <!-- Dynamic fields will be inserted here -->
+                            </form>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="scheduler-modal-footer">
+                            <button type="button" data-modal-close class="btn btn-secondary">
+                                Cancel
+                            </button>
+                            <button type="submit" form="appointment-form" class="btn btn-primary">
+                                <span class="material-symbols-outlined text-base">add</span>
+                                Create Appointment
+                            </button>
+                        </div>
                     </div>
-                    
-                    <!-- Body -->
-                    <div class="scheduler-modal-body">
-                        <form id="appointment-form" class="space-y-4">
-                            <!-- Dynamic fields will be inserted here -->
-                        </form>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div class="scheduler-modal-footer">
-                        <button type="button" data-modal-close class="btn btn-secondary">
-                            Cancel
-                        </button>
-                        <button type="submit" form="appointment-form" class="btn btn-primary">
-                            <span class="material-symbols-outlined text-base">add</span>
-                            Create Appointment
-                        </button>
-                    </div>
+                    <!-- End Modal Panel -->
                 </div>
+                <!-- End Centering Wrapper -->
             </div>
         `;
         
