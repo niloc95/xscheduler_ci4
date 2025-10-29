@@ -371,9 +371,9 @@
    ========================================================================== */
 
 .scheduler-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -386,11 +386,12 @@
 }
 
 .scheduler-modal-backdrop {
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    inset: 0 !important;
     background-color: rgba(0, 0, 0, 0.5);
     opacity: 0;
     transition: opacity 300ms ease-in-out;
+    z-index: -1;
 }
 
 .scheduler-modal-open .scheduler-modal-backdrop {
