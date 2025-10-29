@@ -8,6 +8,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
+use App\Services\TimezoneService;
 use CodeIgniter\Controller;
 
 class Appointments extends BaseController
@@ -67,6 +68,7 @@ class Appointments extends BaseController
 
     /**
      * View specific appointment
+     * Redirects to calendar - viewing is handled by JavaScript modal
      */
     public function view($appointmentId = null)
     {
@@ -75,21 +77,9 @@ class Appointments extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        if (!$appointmentId) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
-        }
-
-        // Mock appointment data
-        $appointment = $this->getMockAppointment($appointmentId);
-        
-        $data = [
-            'title' => 'Appointment Details',
-            'current_page' => 'appointments',
-            'appointment' => $appointment,
-            'user_role' => current_user_role()
-        ];
-
-        return view('appointments/view', $data);
+        // Redirect to appointments index
+        // Viewing is now handled by the JavaScript modal in the calendar
+        return redirect()->to('/appointments')->with('message', 'Please click the appointment in the calendar to view details.');
     }
 
     /**
@@ -202,9 +192,48 @@ class Appointments extends BaseController
                 ->with('error', 'Invalid service selected');
         }
 
-        // Calculate start and end times
-        $startTime = $appointmentDate . ' ' . $appointmentTime . ':00';
-        $endTime = date('Y-m-d H:i:s', strtotime($startTime) + ($service['duration_min'] * 60));
+        // Determine client timezone context
+        $clientTimezone = $this->resolveClientTimezone();
+
+        // Construct local start DateTime in client timezone
+        $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
+        
+        log_message('info', '[Appointments::store] ========== APPOINTMENT CREATION ==========');
+        log_message('info', '[Appointments::store] Input from form:', [
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'date' => $appointmentDate,
+            'time' => $appointmentTime,
+            'duration' => $service['duration_min'] . ' minutes'
+        ]);
+        log_message('info', '[Appointments::store] Client timezone: ' . $clientTimezone);
+        log_message('info', '[Appointments::store] Local datetime: ' . $startTimeLocal);
+        
+        try {
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+        } catch (\Exception $e) {
+            log_message('error', '[Appointments::store] Failed to create DateTime with timezone ' . $clientTimezone . ': ' . $e->getMessage());
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $clientTimezone = 'UTC';
+        }
+
+        // Calculate local end time based on service duration
+        $endDateTime = clone $startDateTime;
+        $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
+
+        // Convert to UTC for storage
+        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        
+        log_message('info', '[Appointments::store] Timezone conversion:', [
+            'local_start' => $startDateTime->format('Y-m-d H:i:s'),
+            'local_end' => $endDateTime->format('Y-m-d H:i:s'),
+            'utc_start' => $startTimeUtc,
+            'utc_end' => $endTimeUtc,
+            'timezone' => $clientTimezone
+        ]);
+        log_message('info', '[Appointments::store] Will store in database as UTC');
+        log_message('info', '[Appointments::store] =============================================');
 
         // Check if customer exists or create new one
         $customerEmail = $this->request->getPost('customer_email');
@@ -226,7 +255,9 @@ class Appointments extends BaseController
             for ($i = 1; $i <= 6; $i++) {
                 $fieldValue = $this->request->getPost("custom_field_{$i}");
                 if ($fieldValue !== null && $fieldValue !== '') {
-                    $customFieldsData["field_{$i}"] = $fieldValue;
+                    // Use consistent field naming: 'custom_field_1' not 'field_1'
+                    // This matches CustomerManagement controller and BookingSettingsService
+                    $customFieldsData["custom_field_{$i}"] = $fieldValue;
                 }
             }
             if (!empty($customFieldsData)) {
@@ -249,8 +280,8 @@ class Appointments extends BaseController
             'customer_id' => $customerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
+            'start_time' => $startTimeUtc,
+            'end_time' => $endTimeUtc,
             'status' => 'booked',
             'notes' => $this->request->getPost('notes') ?? ''
         ];
@@ -266,6 +297,275 @@ class Appointments extends BaseController
         // Success - redirect to appointments list or view
         return redirect()->to('/appointments')
             ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
+    }
+
+    private function resolveClientTimezone(): string
+    {
+        $session = session();
+
+        $headerTimezone = trim((string) $this->request->getHeaderLine('X-Client-Timezone'));
+        $headerOffset = trim((string) $this->request->getHeaderLine('X-Client-Offset'));
+
+        $postTimezone = (string) $this->request->getPost('client_timezone');
+        $postOffset = (string) $this->request->getPost('client_offset');
+
+        $timezoneCandidate = $headerTimezone ?: $postTimezone;
+
+        if ($timezoneCandidate && TimezoneService::isValidTimezone($timezoneCandidate)) {
+            if ($session) {
+                $session->set('client_timezone', $timezoneCandidate);
+            }
+        } elseif ($session && $session->has('client_timezone')) {
+            $timezoneCandidate = (string) $session->get('client_timezone');
+        } else {
+            $timezoneCandidate = (new LocalizationSettingsService())->getTimezone();
+        }
+
+        $offsetCandidate = $headerOffset !== '' ? $headerOffset : $postOffset;
+        if ($offsetCandidate !== '' && is_numeric($offsetCandidate) && $session) {
+            $session->set('client_timezone_offset', (int) $offsetCandidate);
+        }
+
+        return $timezoneCandidate;
+    }
+
+    /**
+     * Edit existing appointment (staff, provider, admin only)
+     */
+    public function edit($appointmentId = null)
+    {
+        // Check authentication and permissions
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login');
+        }
+
+        if (!has_role(['staff', 'provider', 'admin'])) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
+        }
+
+        if (!$appointmentId) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        }
+
+        // Load appointment with related data
+        $appointment = $this->appointmentModel
+            ->select('xs_appointments.*, 
+                     c.first_name as customer_first_name,
+                     c.last_name as customer_last_name,
+                     c.email as customer_email,
+                     c.phone as customer_phone,
+                     c.address as customer_address,
+                     c.notes as customer_notes,
+                     c.custom_fields as customer_custom_fields')
+            ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
+            ->find($appointmentId);
+
+        if (!$appointment) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        }
+
+        // Initialize services
+        $bookingService = new BookingSettingsService();
+        $localizationService = new LocalizationSettingsService();
+
+        // Get field configuration from settings
+        $fieldConfig = $bookingService->getFieldConfiguration();
+        $customFields = $bookingService->getCustomFieldConfiguration();
+
+        // Parse custom fields from JSON
+        if (!empty($appointment['customer_custom_fields'])) {
+            $customFieldsData = json_decode($appointment['customer_custom_fields'], true);
+            foreach ($customFieldsData as $key => $value) {
+                $appointment[$key] = $value;
+            }
+        }
+
+        // Convert UTC times to local for display
+        $clientTimezone = $this->resolveClientTimezone();
+        if (!empty($appointment['start_time'])) {
+            $startDateTime = new \DateTime($appointment['start_time'], new \DateTimeZone('UTC'));
+            $startDateTime->setTimezone(new \DateTimeZone($clientTimezone));
+            $appointment['date'] = $startDateTime->format('Y-m-d');
+            $appointment['time'] = $startDateTime->format('H:i');
+        }
+
+        // Fetch providers and services
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        // Format providers for dropdown
+        $providersFormatted = array_map(function($provider) {
+            return [
+                'id' => $provider['id'],
+                'name' => $provider['name'],
+                'speciality' => 'Provider'
+            ];
+        }, $providers);
+
+        // Format services for dropdown
+        $servicesFormatted = array_map(function($service) {
+            return [
+                'id' => $service['id'],
+                'name' => $service['name'],
+                'duration' => $service['duration_min'],
+                'price' => $service['price']
+            ];
+        }, $services);
+
+        $data = [
+            'title' => 'Edit Appointment',
+            'current_page' => 'appointments',
+            'appointment' => $appointment,
+            'services' => $servicesFormatted,
+            'providers' => $providersFormatted,
+            'user_role' => current_user_role(),
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'localization' => $localizationService->getContext(),
+        ];
+
+        return view('appointments/edit', $data);
+    }
+
+    /**
+     * Update existing appointment
+     */
+    public function update($appointmentId = null)
+    {
+        // Check authentication and permissions
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login')->with('error', 'Please log in to continue');
+        }
+
+        if (!has_role(['staff', 'provider', 'admin'])) {
+            return redirect()->back()->with('error', 'Access denied');
+        }
+
+        if (!$appointmentId) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        }
+
+        // Load existing appointment
+        $existingAppointment = $this->appointmentModel->find($appointmentId);
+        if (!$existingAppointment) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        }
+
+        $validation = \Config\Services::validation();
+        
+        // Validation rules
+        $rules = [
+            'provider_id' => 'required|is_natural_no_zero',
+            'service_id' => 'required|is_natural_no_zero',
+            'appointment_date' => 'required|valid_date',
+            'appointment_time' => 'required',
+            'status' => 'required|in_list[booked,pending,confirmed,completed,cancelled,no-show]',
+            'customer_first_name' => 'required|min_length[2]|max_length[120]',
+            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_email' => 'required|valid_email|max_length[255]',
+            'customer_phone' => 'required|min_length[10]|max_length[32]',
+            'customer_address' => 'permit_empty|max_length[255]',
+            'notes' => 'permit_empty|max_length[1000]'
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('errors', $validation->getErrors());
+        }
+
+        // Get form data
+        $providerId = $this->request->getPost('provider_id');
+        $serviceId = $this->request->getPost('service_id');
+        $appointmentDate = $this->request->getPost('appointment_date');
+        $appointmentTime = $this->request->getPost('appointment_time');
+        $status = $this->request->getPost('status');
+        
+        // Get service to calculate end time
+        $service = $this->serviceModel->find($serviceId);
+        if (!$service) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Invalid service selected');
+        }
+
+        // Determine client timezone
+        $clientTimezone = $this->resolveClientTimezone();
+
+        // Construct local start DateTime
+        $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
+        
+        log_message('info', '[Appointments::update] Updating appointment #' . $appointmentId);
+        log_message('info', '[Appointments::update] Input: date=' . $appointmentDate . ', time=' . $appointmentTime);
+        log_message('info', '[Appointments::update] Client timezone: ' . $clientTimezone);
+        
+        try {
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+        } catch (\Exception $e) {
+            log_message('error', '[Appointments::update] DateTime error: ' . $e->getMessage());
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $clientTimezone = 'UTC';
+        }
+
+        // Calculate end time based on service duration
+        $endDateTime = clone $startDateTime;
+        $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
+
+        // Convert to UTC for storage
+        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        
+        log_message('info', '[Appointments::update] UTC times: start=' . $startTimeUtc . ', end=' . $endTimeUtc);
+
+        // Update customer record
+        $customerId = $existingAppointment['customer_id'];
+        $customerData = [
+            'first_name' => $this->request->getPost('customer_first_name'),
+            'last_name' => $this->request->getPost('customer_last_name'),
+            'email' => $this->request->getPost('customer_email'),
+            'phone' => $this->request->getPost('customer_phone'),
+            'address' => $this->request->getPost('customer_address')
+        ];
+
+        // Handle custom fields
+        $customFieldsData = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $fieldValue = $this->request->getPost("custom_field_{$i}");
+            if ($fieldValue !== null && $fieldValue !== '') {
+                // Use consistent field naming: 'custom_field_1' not 'field_1'
+                // This matches CustomerManagement controller and BookingSettingsService
+                $customFieldsData["custom_field_{$i}"] = $fieldValue;
+            }
+        }
+        if (!empty($customFieldsData)) {
+            $customerData['custom_fields'] = json_encode($customFieldsData);
+        }
+
+        $this->customerModel->update($customerId, $customerData);
+
+        // Update appointment
+        $appointmentData = [
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'start_time' => $startTimeUtc,
+            'end_time' => $endTimeUtc,
+            'status' => $status,
+            'notes' => $this->request->getPost('notes') ?? ''
+        ];
+
+        $updated = $this->appointmentModel->update($appointmentId, $appointmentData);
+
+        if (!$updated) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update appointment. Please try again.');
+        }
+
+        log_message('info', '[Appointments::update] Successfully updated appointment #' . $appointmentId);
+
+        // Success
+        return redirect()->to('/appointments')
+            ->with('success', 'Appointment updated successfully!');
     }
 
     /**

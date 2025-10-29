@@ -35,13 +35,13 @@ class SecurityHeaders implements FilterInterface
         $response->setHeader('X-XSS-Protection', '1; mode=block');
         
         // Strict Transport Security (HTTPS only)
-        if ($request->isSecure()) {
+        if ($request->getUri()->getScheme() === 'https') {
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         
         // Content Security Policy
-     // Allow Google Fonts for Material Symbols (styles + font files)
-     $csp = "default-src 'self'; " .
+        // Allow Google Fonts for Material Symbols (styles + font files)
+        $csp = "default-src 'self'; " .
          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
          "img-src 'self' data: https:; " .

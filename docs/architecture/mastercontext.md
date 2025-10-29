@@ -1854,6 +1854,452 @@ This update standardizes container widths, rounds, and theme behavior for a cohe
 
 These changes deliver a consistent shell and improve perceived polish, matching the dashboard’s visual language across all layout regions.
 
+
+### September 2025 - Single Page Application (SPA) Architecture Implementation
+
+**Phase**: Modern client-side navigation and user experience enhancement
+
+This update implements a lightweight SPA system that preserves the application shell (header, sidebar, footer) while swapping page content dynamically, eliminating full page reloads and providing a seamless user experience.
+
+#### 🚀 SPA Architecture Overview
+- **Core Implementation**: Lightweight SPA router in `resources/js/spa.js` (157 lines)
+- **Navigation Strategy**: Intercepts same-origin link clicks, fetches content via AJAX, swaps `#spa-content` div
+- **Shell Preservation**: Header, sidebar, and footer remain static; only main content area updates  
+- **Build Integration**: Separate Vite entry point for SPA module (`spa.js`)
+- **Progressive Enhancement**: Graceful degradation - works without JavaScript (falls back to full page loads)
+
+**Technical Implementation**:
+```javascript
+const SPA = (() => {
+  const content = () => document.getElementById('spa-content');
+  const navigate = async (url, push = true) => {
+    const html = await fetchPage(url);
+    el.innerHTML = html;
+    if (push) history.pushState({ spa: true }, '', url);
+    document.dispatchEvent(new CustomEvent('spa:navigated'));
+  };
+})();
+```
+
+#### 🎯 SPA Features
+- ✅ Click interception for same-origin links with opt-out (`data-no-spa`, `.no-spa`)
+- ✅ Browser back/forward button support (popstate handling)
+- ✅ Manual scroll restoration and focus management
+- ✅ Script execution in newly loaded content for per-view initialization
+- ✅ FullCalendar navigation exclusion (`.fc` container, `data-navlink`)
+- ✅ Loading states with aria-busy attributes
+
+#### 📋 Benefits
+- **Performance**: No full page reloads, only content area refreshes, reduced bandwidth
+- **UX**: Seamless transitions, persistent UI state (dark mode, sidebar position)
+- **Developer**: Event-driven pattern (`spa:navigated`), minimal footprint (157 lines)
+
+---
+
+### September 2025 - Role-Based Access Control (RBAC) System
+
+**Phase**: Comprehensive user roles, permissions, and hierarchical access control
+
+This update implements a complete role-based access control system with four distinct user roles, granular permissions, and hierarchical user management for multi-tenant service provider operations.
+
+#### 👥 User Roles
+1. **Administrator (admin)** - Full system access
+2. **Service Provider (provider)** - Business owner/manager  
+3. **Staff Member (staff)** - Employee assigned to provider
+4. **Customer (customer)** - Appointment booking only (separate `xs_customers` table)
+
+**Database Schema**:
+```sql
+CREATE TABLE xs_users (
+  role ENUM('admin','provider','staff','customer') DEFAULT 'customer',
+  provider_id INT NULL,  -- For staff assigned to providers
+  permissions JSON NULL,  -- Custom permissions override
+  status ENUM('active','inactive','suspended') DEFAULT 'active'
+);
+
+CREATE TABLE xs_provider_staff_assignments (
+  provider_id INT NOT NULL,
+  staff_id INT NOT NULL,
+  UNIQUE KEY unique_assignment (provider_id, staff_id)
+);
+```
+
+#### 🔐 Permissions System
+**Role Permissions** (`app/Models/UserPermissionModel.php`):
+- **Admin**: `system_settings`, `user_management`, `create_admin`, `create_provider`, `view_all_appointments`, `backup_restore`
+- **Provider**: `manage_own_calendar`, `create_staff`, `manage_services`, `view_staff_calendars`, `provider_analytics`
+- **Staff**: `manage_own_calendar`, `view_own_appointments`, `create_appointments`, `basic_profile_edit`
+
+**Helper Functions**:
+```php
+has_role($roles)              // Check user role
+has_permission($permissions)   // Check permission
+is_admin(), is_provider()     // Quick role checks
+can_manage_users()            // Permission checks
+get_user_hierarchy()          // Get manageable users
+```
+
+#### 🚦 Access Control
+**Route Protection**:
+```php
+$routes->group('settings', ['filter' => 'role:admin'], function($routes) {});
+$routes->group('user-management', ['filter' => 'role:admin,provider'], function($routes) {});
+```
+
+**Hierarchical Access**:
+- Admin sees all users
+- Provider sees own staff only
+- Staff sees only themselves
+- Customers managed separately
+
+#### 🎯 Role-Specific Features
+**Admin**: User Management, System Settings, Global Analytics, All Calendars
+**Provider**: My Staff, Services, Provider Analytics, Staff Calendars
+**Staff**: My Schedule, My Appointments, Profile
+**Customer**: Book Appointments, My Appointments, Profile
+
+#### 🎨 UI Adaptations
+- Dynamic navigation based on role
+- Role badges with color coding (admin=red, provider=blue, staff=green)
+- Conditional rendering (`<?php if (has_role('admin')): ?>`)
+- Permission-based button visibility
+
+#### 📊 Security
+- Route-level protection (filters: `role:admin`, `role:admin,provider`)
+- Controller-level permission checks (`has_permission()`)
+- View-level conditional rendering
+- Database-level user hierarchy
+- Data isolation by role
+
+#### 📚 Documentation
+- `docs/architecture/ROLE_BASED_SYSTEM.md` - Full system overview
+- `docs/development/staff-assignment.md` - Provider-staff guide  
+- Test users: admin@test.com, provider@test.com, staff@test.com, customer@test.com (all password: password123)
+
+---
+
+### October 2025 - Centralized Settings System Implementation
+
+**Phase**: Application configuration and control center
+
+This implementation establishes a centralized settings system where all application behavior—from localization and business hours to booking fields and integrations—is controlled through a unified admin interface backed by a flexible database schema.
+
+#### 🎛️ Settings Architecture
+
+**Core Principle**: Single source of truth for all application configuration, eliminating hardcoded values and enabling runtime customization.
+
+**Database Schema** (`xs_settings`):
+```sql
+CREATE TABLE xs_settings (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  setting_key VARCHAR(191) UNIQUE NOT NULL,    -- Namespaced key (e.g., 'localization.timezone')
+  setting_value TEXT,                          -- Flexible value storage
+  setting_type ENUM('string','int','float','bool','json') DEFAULT 'string',
+  updated_by INT NULL,                         -- Audit trail: user who last modified
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- File-based settings (logos, avatars)
+CREATE TABLE xs_settings_files (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  setting_key VARCHAR(191) UNIQUE NOT NULL,
+  filename VARCHAR(255),
+  mime VARCHAR(64),
+  data LONGBLOB,                               -- Binary file storage
+  updated_by INT NULL,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+```
+
+#### 📋 Settings Categories
+
+**1. General Settings** (`general.*`)
+- `general.company_name` - Business name displayed throughout app
+- `general.company_email` - Primary contact email
+- `general.company_link` - Website URL
+- `general.telephone_number` - Main phone number
+- `general.mobile_number` - Mobile contact
+- `general.business_address` - Physical location
+- `general.logo` - Company logo (stored in `xs_settings_files`)
+
+**2. Localization Settings** (`localization.*`)
+- `localization.time_format` - '12h' or '24h' (affects all time displays)
+- `localization.first_day` - 'Sunday', 'Monday', etc. (calendar start day)
+- `localization.language` - 'English', 'Portuguese-BR', 'Spanish'
+- `localization.timezone` - IANA timezone (e.g., 'Africa/Johannesburg')
+- `localization.currency` - Currency code (e.g., 'USD', 'ZAR', 'EUR')
+
+**3. Booking Settings** (`booking.*`)
+- **Standard Fields Configuration**:
+  - `booking.first_names_display` - Show first name field (bool)
+  - `booking.first_names_required` - Require first name (bool)
+  - `booking.surname_display` - Show surname field (bool)
+  - `booking.surname_required` - Require surname (bool)
+  - `booking.email_display` - Show email field (bool)
+  - `booking.email_required` - Require email (bool)
+  - `booking.phone_display` - Show phone field (bool)
+  - `booking.phone_required` - Require phone (bool)
+
+- **Custom Fields** (6 configurable fields):
+  - `booking.custom_field_N_title` - Field label
+  - `booking.custom_field_N_type` - 'text', 'number', 'email', 'tel', 'textarea'
+  - `booking.custom_field_N_display` - Show field (bool)
+  - `booking.custom_field_N_required` - Require field (bool)
+
+- **Appointment Management**:
+  - `booking.statuses` - Available appointment statuses (JSON array)
+  - `booking.fields` - Enabled standard fields (JSON: `["email","phone"]`)
+
+**4. Business Hours Settings** (`business.*`)
+- `business.work_start` - Default opening time (e.g., '08:00')
+- `business.work_end` - Default closing time (e.g., '17:00')
+- `business.break_start` - Break period start (e.g., '12:00')
+- `business.break_end` - Break period end (e.g., '13:00')
+- `business.blocked_periods` - Holiday/closure dates (JSON array)
+- `business.reschedule` - Allow rescheduling (bool)
+- `business.cancel` - Allow cancellations (bool)
+- `business.future_limit` - Max days ahead for booking (int)
+
+**5. Legal Content** (`legal.*`)
+- `legal.cookie_notice` - Cookie policy text
+- `legal.terms` - Terms of service
+- `legal.privacy` - Privacy policy
+
+**6. Integrations** (`integrations.*`)
+- `integrations.webhook_url` - External webhook endpoint
+- `integrations.analytics` - Analytics tracking code
+- `integrations.api_integrations` - Third-party API configs (JSON)
+- `integrations.ldap_enabled` - Enable LDAP authentication
+- `integrations.ldap_host` - LDAP server address
+- `integrations.ldap_dn` - LDAP distinguished name
+
+#### 🔧 Implementation Components
+
+**SettingModel** (`app/Models/SettingModel.php`):
+```php
+class SettingModel extends BaseModel {
+    protected $table = 'xs_settings';
+    
+    // Get settings by prefix (e.g., all 'localization.*')
+    public function getByPrefix(string $prefix): array;
+    
+    // Get specific settings by keys
+    public function getByKeys(array $keys): array;
+    
+    // Upsert single setting with type casting
+    public function upsert(string $key, $value, string $type, ?int $updatedBy): bool;
+    
+    // Automatic type casting (string, int, float, bool, json)
+    private function castValue(?string $val, string $type);
+}
+```
+
+**Settings Controller** (`app/Controllers/Settings.php`):
+- `index()` - Display settings interface with all categories
+- `save()` - Process form submissions with validation
+- Admin-only access via `role:admin` filter
+- Handles checkboxes (only send when checked)
+- File upload for logos/avatars
+
+**Service Classes**:
+- **LocalizationSettingsService**: Timezone, time format, language handling
+- **BookingSettingsService**: Field configuration, validation rules
+- **CalendarConfigService**: FullCalendar-specific settings transformation
+- **BusinessHoursService**: Operating hours and breaks management
+
+#### 🌐 Settings API Endpoints
+
+**GET `/api/v1/settings`** - Fetch all settings (authenticated)
+```json
+{
+  "data": {
+    "general.company_name": "WebSchedulr Demo",
+    "localization.timezone": "Africa/Johannesburg",
+    "localization.time_format": "24h",
+    "business.work_start": "08:00",
+    "business.work_end": "17:00",
+    "booking.email_required": true
+  }
+}
+```
+
+**GET `/api/v1/settings/calendar-config`** - Calendar-specific configuration
+```json
+{
+  "timeZone": "Africa/Johannesburg",
+  "locale": "en",
+  "firstDay": 1,
+  "eventTimeFormat": {
+    "hour": "2-digit",
+    "minute": "2-digit",
+    "hour12": false
+  },
+  "slotLabelFormat": {
+    "hour": "2-digit",
+    "minute": "2-digit",
+    "hour12": false
+  },
+  "businessHours": [
+    {"daysOfWeek": [1,2,3,4,5], "startTime": "08:00", "endTime": "17:00"}
+  ],
+  "slotMinTime": "08:00",
+  "slotMaxTime": "18:00"
+}
+```
+
+**POST `/api/v1/settings`** - Update settings (admin only)
+- Accepts form data with namespaced keys
+- Validates and type-casts values
+- Tracks `updated_by` user ID
+- Returns success/error status
+
+#### 🔄 Settings Flow Integration
+
+**Frontend Integration**:
+```javascript
+// Fetch settings on page load
+const response = await fetch('/api/v1/settings');
+const settings = response.json().data;
+
+// Apply to calendar
+calendar.setOption('timeZone', settings['localization.timezone']);
+calendar.setOption('firstDay', settings['localization.first_day'] === 'Monday' ? 1 : 0);
+
+// Apply to booking form
+if (settings['booking.phone_required']) {
+  phoneField.setAttribute('required', 'required');
+}
+```
+
+**Backend Integration**:
+```php
+// In controllers
+$settingModel = new SettingModel();
+$timezone = $settingModel->get('localization.timezone') ?? 'UTC';
+$timeFormat = $settingModel->get('localization.time_format') ?? '24h';
+
+// In services
+$bookingService = new BookingSettingsService();
+$fieldConfig = $bookingService->getFieldConfiguration();
+// Returns: ['email' => ['display' => true, 'required' => true], ...]
+```
+
+#### 📊 Settings Validation
+
+**Form Validation**:
+- Time format: Must be '12h' or '24h'
+- Timezone: Must be valid IANA timezone identifier
+- Work hours: Start must be before end
+- Custom fields: Title required if field is displayed
+- Email fields: Valid email format validation
+
+**Type Validation**:
+```php
+// Automatic type casting in SettingModel
+'time_format' => 'string'          // Stored as string
+'email_required' => 'bool'         // Stored as 'true'/'false', cast to boolean
+'future_limit' => 'int'            // Stored as string, cast to integer
+'blocked_periods' => 'json'        // Stored as JSON, decoded to array
+```
+
+#### 🎨 Settings UI
+
+**Tabbed Interface** (`app/Views/settings.php`):
+- **General** - Company info, contact details, logo upload
+- **Localization** - Time format, timezone, language, currency
+- **Booking** - Field configuration, custom fields
+- **Business Hours** - Work hours, breaks, blocked periods
+- **Legal** - Terms, privacy, cookie notice
+- **Integrations** - Webhooks, analytics, LDAP
+
+**Features**:
+- Live preview of settings changes
+- Edit/Cancel modes for each section
+- Flash messages for success/error feedback
+- Validation errors displayed inline
+- SPA navigation compatible
+
+#### 🔐 Settings Security
+
+**Access Control**:
+- Admin-only access to Settings page
+- `role:admin` filter on all settings routes
+- `updated_by` audit trail for all changes
+- CSRF protection on all forms
+
+**Data Validation**:
+- Server-side validation for all inputs
+- Type safety with SettingModel casting
+- Sanitization of user-provided values
+- File upload validation (MIME types, size limits)
+
+#### 📈 Common/Global Variables Pattern
+
+**Naming Convention**: `category.setting_name`
+```
+general.*          - Company-wide settings
+localization.*     - Regional/cultural settings
+booking.*          - Booking form configuration
+business.*         - Operational parameters
+legal.*            - Legal/compliance content
+integrations.*     - Third-party integrations
+```
+
+**Global Access Pattern**:
+```php
+// Helper function pattern
+function get_time_format(): string {
+    return service('settings')->get('localization.time_format') ?? '24h';
+}
+
+// Service injection pattern
+class AppointmentController {
+    private SettingModel $settings;
+    
+    public function __construct() {
+        $this->settings = new SettingModel();
+    }
+    
+    public function create() {
+        $timezone = $this->settings->get('localization.timezone');
+        // Use timezone for datetime operations
+    }
+}
+```
+
+#### 🧪 Settings Testing
+
+**CLI Commands**:
+- `php spark check:booking` - Display all booking settings
+- `php spark settings:audit` - Comprehensive settings validation
+- `php spark settings:view-audit` - View-to-model mapping verification
+
+**Test Scripts**:
+- `tests/add_new_settings_fields.php` - Seed default settings
+- `tests/add_test_settings.php` - Create test configurations
+- `docs/audit_settings_data_flow.php` - Data flow validation
+
+#### 📚 Documentation
+
+**Complete Settings Documentation**:
+- `docs/frontend/calendar-settings-sync.md` - Calendar settings integration
+- `docs/development/phase-2-testing.md` - Settings testing procedures
+- `docs/technical/SPA_SETTINGS_FIX.md` - Settings form value persistence
+
+**Settings Benefits**:
+- ✅ **Centralized Control**: Single location for all configuration
+- ✅ **Runtime Updates**: Changes apply immediately without code deployment
+- ✅ **Type Safety**: Automatic casting prevents type-related bugs
+- ✅ **Audit Trail**: Track who changed what and when
+- ✅ **Flexible Storage**: Supports strings, numbers, booleans, JSON, and files
+- ✅ **Validation**: Built-in validation prevents invalid configurations
+- ✅ **Extensible**: Easy to add new settings without schema changes
+- ✅ **Multi-Tenant Ready**: Settings can be scoped per tenant (future)
+
+---
+
 ### October 2025 - Data Protection & Profile Experience Enhancements
 
 **Phase**: Operational resilience and user account management overhaul

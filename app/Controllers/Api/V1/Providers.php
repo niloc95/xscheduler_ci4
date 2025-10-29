@@ -10,6 +10,9 @@ class Providers extends BaseApiController
     {
         [$page, $length, $offset] = $this->paginationParams();
         [$sortField, $sortDir] = $this->sortParam(['id','name','email','active'], 'name');
+        
+        // Check if includeColors parameter is set
+        $includeColors = $this->request->getGet('includeColors') === 'true';
 
         $model = new UserModel();
         // Assuming providers identified by role = 'provider'
@@ -17,8 +20,8 @@ class Providers extends BaseApiController
         $rows = $builder->findAll($length, $offset);
         $total = $model->where('role', 'provider')->countAllResults();
 
-    $items = array_map(function ($p) {
-            return [
+    $items = array_map(function ($p) use ($includeColors) {
+            $item = [
                 'id' => (int)$p['id'],
                 'name' => $p['name'] ?? ($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''),
                 'email' => $p['email'] ?? null,
@@ -26,6 +29,13 @@ class Providers extends BaseApiController
                 'active' => isset($p['active']) ? (bool)$p['active'] : true,
         'profile_image' => $this->providerImageUrl($p),
             ];
+            
+            // Include color if requested
+            if ($includeColors) {
+                $item['color'] = $p['color'] ?? '#3B82F6'; // Default blue if no color set
+            }
+            
+            return $item;
         }, $rows);
 
         return $this->ok($items, [

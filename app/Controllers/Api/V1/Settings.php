@@ -6,6 +6,8 @@ use App\Controllers\BaseController;
 use App\Models\SettingFileModel;
 use App\Models\SettingModel;
 use App\Services\CalendarConfigService;
+use App\Services\LocalizationSettingsService;
+use App\Services\BookingSettingsService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -42,8 +44,10 @@ class Settings extends BaseController
 
     /**
      * GET /api/v1/settings/calendar-config
-     * Returns FullCalendar-specific configuration including time format,
+     * Returns calendar/scheduler-specific configuration including time format,
      * business hours, timezone, etc.
+     * 
+     * Note: Previously optimized for FullCalendar, now generic for custom scheduler
      */
     public function calendarConfig()
     {
@@ -54,6 +58,143 @@ class Settings extends BaseController
             'ok' => true,
             'data' => $config
         ]);
+    }
+
+    /**
+     * GET /api/v1/settings/localization
+     * Returns localization settings (timezone, time format, etc.)
+     */
+    public function localization()
+    {
+        try {
+            $service = new LocalizationSettingsService();
+            
+            $data = [
+                'timezone' => $service->getTimezone(),
+                'timeFormat' => $service->getTimeFormat(),
+                'is12Hour' => $service->isTwelveHour(),
+                'context' => $service->getContext(),
+            ];
+            
+            return $this->response->setJSON([
+                'ok' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to load localization settings: ' . $e->getMessage());
+            return $this->failServerError('Failed to load localization settings');
+        }
+    }
+
+    /**
+     * GET /api/v1/settings/booking
+     * Returns booking form configuration (required fields, custom fields, etc.)
+     */
+    public function booking()
+    {
+        try {
+            $service = new BookingSettingsService();
+            
+            $data = [
+                'fieldConfiguration' => $service->getFieldConfiguration(),
+                'customFields' => $service->getCustomFieldConfiguration(),
+                'visibleFields' => $service->getVisibleFields(),
+                'requiredFields' => $service->getRequiredFields(),
+            ];
+            
+            return $this->response->setJSON([
+                'ok' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to load booking settings: ' . $e->getMessage());
+            return $this->failServerError('Failed to load booking settings');
+        }
+    }
+
+    /**
+     * GET /api/v1/settings/business-hours
+     * Returns business hours configuration for all days of the week
+     */
+    public function businessHours()
+    {
+        try {
+            // Query business_hours table - returns provider-specific schedules
+            // For general business hours, we'll use default settings or first provider
+            $db = \Config\Database::connect();
+            
+            // Check if there's default business hours (provider_id = 0 or null)
+            $hours = $db->table('xs_business_hours')
+                ->select('weekday, start_time, end_time, breaks_json')
+                ->where('provider_id', 0)
+                ->orWhere('provider_id IS NULL')
+                ->orderBy('weekday', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            // If no default hours, get from first active provider as template
+            if (empty($hours)) {
+                $hours = $db->table('xs_business_hours bh')
+                    ->select('bh.weekday, bh.start_time, bh.end_time, bh.breaks_json')
+                    ->join('xs_users u', 'u.id = bh.provider_id')
+                    ->where('u.role', 'provider')
+                    ->where('u.is_active', 1)
+                    ->orderBy('bh.weekday', 'ASC')
+                    ->limit(7)
+                    ->get()
+                    ->getResultArray();
+            }
+            
+            // Format for frontend - convert numeric weekday to day names
+            $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            $formatted = [];
+            
+            foreach ($hours as $row) {
+                $dayName = $dayNames[(int)$row['weekday']] ?? 'unknown';
+                $formatted[$dayName] = [
+                    'isWorkingDay' => !empty($row['start_time']) && !empty($row['end_time']),
+                    'startTime' => $row['start_time'] ?? '09:00:00',
+                    'endTime' => $row['end_time'] ?? '17:00:00',
+                    'breaks' => !empty($row['breaks_json']) ? json_decode($row['breaks_json'], true) : [],
+                ];
+            }
+            
+            // If still empty, return default business hours
+            if (empty($formatted)) {
+                foreach ($dayNames as $day) {
+                    $formatted[$day] = [
+                        'isWorkingDay' => in_array($day, ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
+                        'startTime' => '09:00:00',
+                        'endTime' => '17:00:00',
+                        'breaks' => [],
+                    ];
+                }
+            }
+            
+            return $this->response->setJSON([
+                'ok' => true,
+                'data' => $formatted
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to load business hours: ' . $e->getMessage());
+            
+            // Return fallback default hours on error
+            $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            $fallback = [];
+            foreach ($dayNames as $day) {
+                $fallback[$day] = [
+                    'isWorkingDay' => in_array($day, ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
+                    'startTime' => '09:00:00',
+                    'endTime' => '17:00:00',
+                    'breaks' => [],
+                ];
+            }
+            
+            return $this->response->setJSON([
+                'ok' => true,
+                'data' => $fallback
+            ]);
+        }
     }
 
     /**

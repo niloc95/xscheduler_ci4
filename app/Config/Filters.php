@@ -41,6 +41,7 @@ class Filters extends BaseFilters
     'api_auth'      => \App\Filters\ApiAuthFilter::class,
         'setup'         => \App\Filters\SetupFilter::class,
         'setup_auth'    => \App\Filters\SetupAuthFilter::class,
+        'timezone'      => \App\Filters\TimezoneDetection::class,
     ];
 
     /**
@@ -75,6 +76,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             'securityheaders',
+            'timezone',
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',

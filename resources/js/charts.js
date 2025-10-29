@@ -1,6 +1,9 @@
 // Charts configuration and initialization
 import Chart from 'chart.js/auto';
 
+// Store chart instances to prevent duplicates
+const chartInstances = {};
+
 // Chart configuration options
 const chartOptions = {
     responsive: true,
@@ -30,7 +33,12 @@ export function initUserGrowthChart(canvasId) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
     
-    return new Chart(ctx, {
+    // Destroy existing chart instance if it exists
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+    
+    chartInstances[canvasId] = new Chart(ctx, {
         type: 'line',
         data: {
             labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -45,6 +53,8 @@ export function initUserGrowthChart(canvasId) {
         },
         options: chartOptions
     });
+    
+    return chartInstances[canvasId];
 }
 
 // Activity Overview Chart
@@ -52,32 +62,27 @@ export function initActivityChart(canvasId) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
     
-    return new Chart(ctx, {
-        type: 'doughnut',
+    // Destroy existing chart instance if it exists
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+    
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
         data: {
-            labels: ['Active Sessions', 'Completed Tasks', 'Pending Tasks', 'Cancelled'],
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             datasets: [{
-                data: [1789, 856, 456, 123],
-                backgroundColor: [
-                    'rgb(34, 197, 94)',   // green
-                    'rgb(59, 130, 246)',  // blue
-                    'rgb(249, 115, 22)',  // orange
-                    'rgb(239, 68, 68)',   // red
-                ],
-                borderWidth: 0,
+                label: 'Appointments',
+                data: [12, 19, 15, 17, 14, 8, 11],
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 1,
             }]
         },
-        options: {
-            ...chartOptions,
-            cutout: '60%',
-            plugins: {
-                ...chartOptions.plugins,
-                legend: {
-                    position: 'right',
-                },
-            },
-        }
+        options: chartOptions
     });
+    
+    return chartInstances[canvasId];
 }
 
 // Revenue Chart
@@ -85,7 +90,12 @@ export function initRevenueChart(canvasId) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
     
-    return new Chart(ctx, {
+    // Destroy existing chart instance if it exists
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+    
+    chartInstances[canvasId] = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
@@ -99,6 +109,8 @@ export function initRevenueChart(canvasId) {
         },
         options: chartOptions
     });
+    
+    return chartInstances[canvasId];
 }
 
 // Initialize all charts when called

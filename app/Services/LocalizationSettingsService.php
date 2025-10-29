@@ -38,15 +38,47 @@ class LocalizationSettingsService
 
     /**
      * Return the configured timezone or a safe fallback.
+     * 
+     * Resolution order:
+     * 1. Settings database (localization.timezone)
+     * 2. Session (client_timezone) - if already set
+     * 3. Config fallback (App.appTimezone)
      */
     public function getTimezone(): string
     {
-        $value = $this->get('localization.timezone');
-        if (!$value || strtolower($value) === 'automatic') {
-            return 'UTC';
+        $session = session();
+
+        // Priority 1: Check settings database first (authoritative source)
+        $configured = $this->get('localization.timezone');
+        $settingsTimezone = ($configured && strtolower($configured) !== 'automatic')
+            ? $configured
+            : null;
+
+        // Priority 2: Check session (already detected/validated)
+        $sessionTimezone = ($session && $session->has('client_timezone'))
+            ? (string) $session->get('client_timezone')
+            : null;
+
+        // Priority 3: Fallback to config
+        $configTimezone = config('App')->appTimezone ?? 'UTC';
+
+        // Determine final timezone using priority order
+        $timezone = $settingsTimezone ?? $sessionTimezone ?? $configTimezone;
+
+        // Debug logging to track active source
+        $source = $settingsTimezone ? 'settings' : ($sessionTimezone ? 'session' : 'config');
+        log_message('debug', "[Timezone] Active source: {$source}, timezone: {$timezone}");
+
+        // Sync to session for future requests
+        if ($session && !$session->has('client_timezone')) {
+            $session->set('client_timezone', $timezone);
+
+            if (!$session->has('client_timezone_offset')) {
+                $session->set('client_timezone_offset', TimezoneService::getOffsetMinutes($timezone));
+            }
         }
 
-        return $value;
+        return $timezone;
     }
 
     /**
