@@ -30,13 +30,9 @@ export class AppointmentDetailsModal {
     createModal() {
         const modalHTML = `
             <div id="appointment-details-modal" class="scheduler-modal hidden" role="dialog" aria-labelledby="appointment-modal-title" aria-modal="true">
-                <!-- Backdrop -->
                 <div class="scheduler-modal-backdrop" data-modal-close></div>
-                
-                <!-- Centering Wrapper -->
-                <div class="scheduler-modal-wrapper">
-                    <!-- Modal Panel -->
-                    <div class="scheduler-modal-panel max-w-2xl">
+                <div class="scheduler-modal-dialog">
+                    <div class="scheduler-modal-panel">
                     <!-- Header -->
                     <div class="scheduler-modal-header">
                         <div class="flex items-center gap-3">
@@ -59,79 +55,80 @@ export class AppointmentDetailsModal {
                         </div>
                         
                         <!-- Content -->
-                        <div id="details-content" class="space-y-6">
+                        <div id="details-content" class="space-y-4">
                             <!-- Date & Time Section -->
-                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                                <div class="flex items-start gap-4">
-                                    <span class="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400">event</span>
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-2xl text-blue-600 dark:text-blue-400">event</span>
                                     <div class="flex-1">
-                                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Date & Time</h4>
-                                        <p id="detail-date" class="text-lg font-semibold text-gray-900 dark:text-white mb-1"></p>
-                                        <p id="detail-time" class="text-base text-gray-700 dark:text-gray-300"></p>
-                                        <p id="detail-duration" class="text-sm text-gray-600 dark:text-gray-400 mt-1"></p>
+                                        <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date & Time</h4>
+                                        <p id="detail-date" class="text-base font-semibold text-gray-900 dark:text-white mb-1"></p>
+                                        <p id="detail-time" class="text-sm text-gray-700 dark:text-gray-300"></p>
+                                        <p id="detail-duration" class="text-xs text-gray-600 dark:text-gray-400 mt-1"></p>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Customer Section -->
                             <div>
-                                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-base">person</span>
+                                <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">person</span>
                                     Customer Information
                                 </h4>
-                                <div class="space-y-2">
-                                    <div class="flex items-center gap-3">
-                                        <span class="material-symbols-outlined text-gray-400">badge</span>
-                                        <span id="detail-customer-name" class="text-base text-gray-900 dark:text-white font-medium"></span>
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">badge</span>
+                                        <span id="detail-customer-name" class="text-sm text-gray-900 dark:text-white font-medium"></span>
                                     </div>
-                                    <div id="detail-customer-email-wrapper" class="flex items-center gap-3">
-                                        <span class="material-symbols-outlined text-gray-400">mail</span>
-                                        <a id="detail-customer-email" href="#" class="text-base text-blue-600 dark:text-blue-400 hover:underline"></a>
+                                    <div id="detail-customer-email-wrapper" class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">mail</span>
+                                        <a id="detail-customer-email" href="#" class="text-sm text-blue-600 dark:text-blue-400 hover:underline"></a>
                                     </div>
-                                    <div id="detail-customer-phone-wrapper" class="flex items-center gap-3">
-                                        <span class="material-symbols-outlined text-gray-400">phone</span>
-                                        <a id="detail-customer-phone" href="#" class="text-base text-gray-900 dark:text-white hover:underline"></a>
+                                    <div id="detail-customer-phone-wrapper" class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">phone</span>
+                                        <a id="detail-customer-phone" href="#" class="text-sm text-gray-900 dark:text-white hover:underline"></a>
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- Service Section -->
-                            <div>
-                                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-base">medical_services</span>
-                                    Service Details
-                                </h4>
-                                <div class="flex items-center justify-between">
-                                    <span id="detail-service-name" class="text-base text-gray-900 dark:text-white font-medium"></span>
-                                    <span id="detail-service-price" class="text-lg font-bold text-green-600 dark:text-green-400"></span>
+                            <!-- Service & Provider in Grid -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Service Section -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm">medical_services</span>
+                                        Service
+                                    </h4>
+                                    <p id="detail-service-name" class="text-sm text-gray-900 dark:text-white font-medium mb-1"></p>
+                                    <p id="detail-service-price" class="text-base font-bold text-green-600 dark:text-green-400"></p>
                                 </div>
-                            </div>
-                            
-                            <!-- Provider Section -->
-                            <div>
-                                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-base">person_pin</span>
-                                    Provider
-                                </h4>
-                                <div class="flex items-center gap-3">
-                                    <div id="detail-provider-color" class="w-10 h-10 rounded-full"></div>
-                                    <span id="detail-provider-name" class="text-base text-gray-900 dark:text-white font-medium"></span>
+                                
+                                <!-- Provider Section -->
+                                <div>
+                                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm">person_pin</span>
+                                        Provider
+                                    </h4>
+                                    <div class="flex items-center gap-2">
+                                        <div id="detail-provider-color" class="w-8 h-8 rounded-full flex-shrink-0"></div>
+                                        <span id="detail-provider-name" class="text-sm text-gray-900 dark:text-white font-medium"></span>
+                                    </div>
                                 </div>
                             </div>
                             
                             <!-- Notes Section -->
                             <div id="detail-notes-wrapper" class="hidden">
-                                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-base">note</span>
+                                <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">note</span>
                                     Notes
                                 </h4>
-                                <p id="detail-notes" class="text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700 rounded-lg p-3"></p>
+                                <p id="detail-notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700 rounded-lg p-2"></p>
                             </div>
                             
                             <!-- Status Badge -->
-                            <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</span>
-                                <span id="detail-status-badge" class="px-3 py-1 text-sm font-medium rounded-full"></span>
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
+                                <span id="detail-status-badge" class="px-2.5 py-1 text-xs font-medium rounded-full"></span>
                             </div>
                         </div>
                     </div>
@@ -153,26 +150,12 @@ export class AppointmentDetailsModal {
                         </div>
                     </div>
                 </div>
-                <!-- End Modal Panel -->
-                </div>
-                <!-- End Centering Wrapper -->
             </div>
+        </div>
         `;
-        
-        // Create a wrapper div at the root body level
-        const modalContainer = document.createElement('div');
-        modalContainer.id = 'scheduler-modal-container';
-        modalContainer.style.cssText = 'position: fixed; inset: 0; z-index: 9999; pointer-events: none;';
-        modalContainer.innerHTML = modalHTML;
-        
-        // Ensure it's appended directly to body
-        document.body.appendChild(modalContainer);
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
         this.modal = document.getElementById('appointment-details-modal');
-        
-        // Enable pointer events on the modal itself
-        if (this.modal) {
-            this.modal.style.pointerEvents = 'auto';
-        }
     }
     
     /**
@@ -229,11 +212,22 @@ export class AppointmentDetailsModal {
             console.log('[AppointmentDetailsModal] Removing hidden class...');
             // Show modal with fade-in animation
             this.modal.classList.remove('hidden');
+            
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+            
             console.log('[AppointmentDetailsModal] Adding scheduler-modal-open class...');
             requestAnimationFrame(() => {
                 this.modal.classList.add('scheduler-modal-open');
                 console.log('[AppointmentDetailsModal] Modal should be visible now');
                 console.log('[AppointmentDetailsModal] Modal classes:', this.modal.className);
+                console.log('[AppointmentDetailsModal] Modal computed styles:', {
+                    position: window.getComputedStyle(this.modal).position,
+                    zIndex: window.getComputedStyle(this.modal).zIndex,
+                    display: window.getComputedStyle(this.modal).display,
+                    top: window.getComputedStyle(this.modal).top,
+                    left: window.getComputedStyle(this.modal).left
+                });
             });
         } catch (error) {
             console.error('[AppointmentDetailsModal] Error opening modal:', error);
@@ -245,6 +239,10 @@ export class AppointmentDetailsModal {
      */
     close() {
         this.modal.classList.remove('scheduler-modal-open');
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+        
         setTimeout(() => {
             this.modal.classList.add('hidden');
             this.currentAppointment = null;

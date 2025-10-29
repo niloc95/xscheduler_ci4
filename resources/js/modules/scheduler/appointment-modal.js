@@ -36,12 +36,8 @@ export class AppointmentModal {
     createModal() {
         const modalHTML = `
             <div id="appointment-modal" class="scheduler-modal hidden" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-                <!-- Backdrop -->
                 <div class="scheduler-modal-backdrop" data-modal-close></div>
-                
-                <!-- Centering Wrapper -->
-                <div class="scheduler-modal-wrapper">
-                    <!-- Modal Panel -->
+                <div class="scheduler-modal-dialog">
                     <div class="scheduler-modal-panel">
                         <!-- Header -->
                         <div class="scheduler-modal-header">
@@ -71,9 +67,7 @@ export class AppointmentModal {
                             </button>
                         </div>
                     </div>
-                    <!-- End Modal Panel -->
                 </div>
-                <!-- End Centering Wrapper -->
             </div>
         `;
         
@@ -111,14 +105,32 @@ export class AppointmentModal {
      * @param {Object} options - { date, time, providerId }
      */
     async open(options = {}) {
+        console.log('[AppointmentModal] Opening modal with options:', options);
+        console.log('[AppointmentModal] Modal element:', this.modal);
+        console.log('[AppointmentModal] Modal exists in DOM?', document.body.contains(this.modal));
+        
         this.selectedDate = options.date || DateTime.now().toISODate();
         this.selectedTime = options.time || null;
         this.selectedProviderId = options.providerId || null;
         
         // Show modal with fade-in animation
         this.modal.classList.remove('hidden');
+        
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+        
+        console.log('[AppointmentModal] Removed hidden class, current classes:', this.modal.className);
+        
         requestAnimationFrame(() => {
             this.modal.classList.add('scheduler-modal-open');
+            console.log('[AppointmentModal] Added scheduler-modal-open, final classes:', this.modal.className);
+            console.log('[AppointmentModal] Modal computed styles:', {
+                position: window.getComputedStyle(this.modal).position,
+                zIndex: window.getComputedStyle(this.modal).zIndex,
+                display: window.getComputedStyle(this.modal).display,
+                top: window.getComputedStyle(this.modal).top,
+                left: window.getComputedStyle(this.modal).left
+            });
         });
         
         // Load and render form
@@ -135,6 +147,10 @@ export class AppointmentModal {
      */
     close() {
         this.modal.classList.remove('scheduler-modal-open');
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
+        
         setTimeout(() => {
             this.modal.classList.add('hidden');
             this.form.reset();

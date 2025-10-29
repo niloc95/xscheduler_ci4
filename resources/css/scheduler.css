@@ -370,14 +370,6 @@
    Appointment Modal
    ========================================================================== */
 
-#scheduler-modal-container {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 9999 !important;
-    pointer-events: none !important;
-    isolation: isolate !important;
-}
-
 .scheduler-modal {
     position: fixed !important;
     inset: 0 !important;
@@ -385,15 +377,11 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 1rem !important;
-    overflow-y: auto !important;
-    margin: 0 !important;
-    left: 0 !important;
-    top: 0 !important;
+    padding: 1.5rem !important;
     width: 100vw !important;
     height: 100vh !important;
-    pointer-events: auto !important;
     background: transparent !important;
+    overflow-y: auto !important;
 }
 
 .scheduler-modal.hidden {
@@ -401,27 +389,25 @@
 }
 
 .scheduler-modal-backdrop {
-    position: fixed !important;
+    position: absolute !important;
     inset: 0 !important;
-    background-color: rgba(0, 0, 0, 0.75) !important;
+    background-color: rgba(15, 23, 42, 0.6) !important;
     opacity: 0 !important;
-    transition: opacity 300ms ease-in-out !important;
-    z-index: 1 !important;
-    pointer-events: auto !important;
+    transition: opacity 220ms ease-in-out !important;
+    border-radius: inherit !important;
 }
 
 .scheduler-modal-open .scheduler-modal-backdrop {
     opacity: 1 !important;
 }
 
-.scheduler-modal-wrapper {
-    position: fixed !important;
-    inset: 0 !important;
+
+.scheduler-modal-dialog {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 44rem !important;
     display: flex !important;
-    align-items: center !important;
     justify-content: center !important;
-    padding: 1rem !important;
-    z-index: 2 !important;
     pointer-events: none !important;
 }
 
@@ -430,14 +416,13 @@
     background-color: white !important;
     border-radius: 0.75rem !important;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-    max-width: 42rem !important;
     width: 100% !important;
     border: 1px solid #e5e7eb !important;
     opacity: 0 !important;
-    transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-    z-index: 3 !important;
-    margin: 0 auto !important;
-    max-height: 90vh !important;
+    transform: translateY(-16px) !important;
+    transition: all 240ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1 !important;
+    max-height: 85vh !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
@@ -446,6 +431,7 @@
 
 .scheduler-modal-open .scheduler-modal-panel {
     opacity: 1 !important;
+    transform: translateY(0) !important;
 }
 
 .dark .scheduler-modal-panel {
@@ -457,7 +443,7 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 1.5rem !important;
+    padding: 1.25rem 1.5rem !important;
     border-bottom: 1px solid #e5e7eb !important;
     background-color: white !important;
     flex-shrink: 0 !important;
@@ -470,10 +456,11 @@
 
 .scheduler-modal-body {
     padding: 1.5rem !important;
-    max-height: calc(90vh - 200px) !important;
     overflow-y: auto !important;
-    flex: 1 !important;
+    overflow-x: hidden !important;
+    flex: 1 1 auto !important;
     background-color: white !important;
+    min-height: 0 !important;
 }
 
 .dark .scheduler-modal-body {
@@ -485,7 +472,7 @@
     align-items: center !important;
     justify-content: flex-end !important;
     gap: 0.75rem !important;
-    padding: 1.5rem !important;
+    padding: 1.25rem 1.5rem !important;
     border-top: 1px solid #e5e7eb !important;
     background-color: white !important;
     flex-shrink: 0 !important;
