@@ -33,8 +33,10 @@ export class AppointmentDetailsModal {
                 <!-- Backdrop -->
                 <div class="scheduler-modal-backdrop" data-modal-close></div>
                 
-                <!-- Modal Panel -->
-                <div class="scheduler-modal-panel max-w-2xl">
+                <!-- Centering Wrapper -->
+                <div class="scheduler-modal-wrapper">
+                    <!-- Modal Panel -->
+                    <div class="scheduler-modal-panel max-w-2xl">
                     <!-- Header -->
                     <div class="scheduler-modal-header">
                         <div class="flex items-center gap-3">
@@ -151,6 +153,9 @@ export class AppointmentDetailsModal {
                         </div>
                     </div>
                 </div>
+                <!-- End Modal Panel -->
+                </div>
+                <!-- End Centering Wrapper -->
             </div>
         `;
         
