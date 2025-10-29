@@ -205,8 +205,7 @@
         </div>
     </div>
 
-    <!-- Include Appointment Details Modal -->
-    <?= $this->include('appointments/modal') ?>
+    <!-- Modal will be created by JavaScript AppointmentDetailsModal class -->
 
     <script type="module">
         // Handle clicks on PHP-rendered appointment list view buttons
