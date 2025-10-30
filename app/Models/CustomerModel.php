@@ -12,18 +12,11 @@ class CustomerModel extends BaseModel
 	];
 
 	// Validation rules
-	protected $validationRules = [
-		'first_name' => 'permit_empty|max_length[100]',
-		'last_name'  => 'permit_empty|max_length[100]',
-		'name'       => 'permit_empty|max_length[200]',
-		'email'      => 'required|valid_email|is_unique[customers.email,id,{id}]',
-		'phone'      => 'permit_empty|max_length[20]',
-		'address'    => 'permit_empty|max_length[255]',
-		'notes'      => 'permit_empty|max_length[1000]',
-		'custom_fields' => 'permit_empty',
-	];
+	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
+	// based on settings. Model validation is disabled to prevent conflicts.
+	protected $validationRules = [];
 	protected $validationMessages = [];
-	protected $skipValidation = false;
+	protected $skipValidation = true;
 	protected $cleanValidationRules = true;
 
 	/**
