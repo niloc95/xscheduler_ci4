@@ -28,8 +28,11 @@ class AppointmentModel extends BaseModel
         'start_time',
         'end_time',
         'status',
-        'notes'
+        'notes',
+        'hash'
     ];
+
+    protected $beforeInsert = ['generateHash'];
 
     protected $validationRules = [
         'customer_id' => 'required|is_natural_no_zero',
@@ -42,6 +45,27 @@ class AppointmentModel extends BaseModel
         'appointment_time' => 'permit_empty',
         'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]'
     ];
+
+    /**
+     * Generate unique hash for new appointment before insert
+     */
+    protected function generateHash(array $data): array
+    {
+        if (!isset($data['data']['hash']) || empty($data['data']['hash'])) {
+            $encryptionKey = config('Encryption')->key ?? 'default-secret-key';
+            $data['data']['hash'] = hash('sha256', 'appointment_' . uniqid('', true) . $encryptionKey . time());
+        }
+        return $data;
+    }
+
+    /**
+     * Find appointment by hash
+     */
+    public function findByHash(string $hash): ?array
+    {
+        $result = $this->where('hash', $hash)->first();
+        return $result ?: null;
+    }
 
     /**
      * Upcoming appointments for provider

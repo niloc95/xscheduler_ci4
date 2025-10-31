@@ -147,12 +147,12 @@ class CustomerManagement extends BaseController
     /**
      * Edit form
      */
-    public function edit(int $id)
+    public function edit(string $hash)
     {
         if (!session()->get('user_id')) {
             return redirect()->to('/auth/login');
         }
-        $customer = $this->customers->find($id);
+        $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
@@ -181,15 +181,17 @@ class CustomerManagement extends BaseController
     /**
      * Update customer
      */
-    public function update(int $id)
+    public function update(string $hash)
     {
         if (!session()->get('user_id')) {
             return redirect()->to('/auth/login');
         }
-        $customer = $this->customers->find($id);
+        $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
+
+        $id = $customer['id'];
 
         // Use dynamic validation rules from booking settings
         $rules = $this->bookingSettings->getValidationRulesForUpdate($id);

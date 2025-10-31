@@ -47,8 +47,8 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'CustomerManagement::index', ['filter' => 'role:admin,provider,staff']);
     $routes->get('create', 'CustomerManagement::create', ['filter' => 'role:admin,provider,staff']);
     $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
-    $routes->get('edit/(:num)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
-    $routes->post('update/(:num)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('edit/(:any)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('update/(:any)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)
@@ -125,13 +125,13 @@ $routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
 // Appointments Routes (auth required)
 $routes->group('appointments', function($routes) {
     $routes->get('', 'Appointments::index');
-    $routes->get('view/(:num)', 'Appointments::view/$1');
+    $routes->get('view/(:any)', 'Appointments::view/$1');
     $routes->get('create', 'Appointments::create');
     $routes->post('store', 'Appointments::store');
-    $routes->get('edit/(:num)', 'Appointments::edit/$1');
-    $routes->post('update/(:num)', 'Appointments::update/$1');
-    $routes->put('update/(:num)', 'Appointments::update/$1');  // Support PUT method
-    $routes->post('cancel/(:num)', 'Appointments::cancel/$1');
+    $routes->get('edit/(:any)', 'Appointments::edit/$1');
+    $routes->post('update/(:any)', 'Appointments::update/$1');
+    $routes->put('update/(:any)', 'Appointments::update/$1');  // Support PUT method
+    $routes->post('cancel/(:any)', 'Appointments::cancel/$1');
 });
 
 // Help Routes (some require auth)

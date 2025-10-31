@@ -8,8 +8,11 @@ class CustomerModel extends BaseModel
 	protected $table = 'xs_customers';
 	protected $primaryKey = 'id';
 	protected $allowedFields = [
-		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'created_at', 'updated_at'
+		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'hash', 'created_at', 'updated_at'
 	];
+
+	protected $beforeInsert = ['generateHash'];
+	protected $useTimestamps = false;
 
 	// Validation rules
 	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
@@ -18,6 +21,27 @@ class CustomerModel extends BaseModel
 	protected $validationMessages = [];
 	protected $skipValidation = true;
 	protected $cleanValidationRules = true;
+
+	/**
+	 * Generate unique hash for new customer before insert
+	 */
+	protected function generateHash(array $data): array
+	{
+		if (!isset($data['data']['hash']) || empty($data['data']['hash'])) {
+			$encryptionKey = config('Encryption')->key ?? 'default-secret-key';
+			$data['data']['hash'] = hash('sha256', uniqid('customer_', true) . $encryptionKey . time());
+		}
+		return $data;
+	}
+
+	/**
+	 * Find customer by hash
+	 */
+	public function findByHash(string $hash): ?array
+	{
+		$result = $this->where('hash', $hash)->first();
+		return $result ?: null;
+	}
 
 	/**
 	 * Search customers by name or email

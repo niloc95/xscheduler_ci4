@@ -332,7 +332,7 @@ class Appointments extends BaseController
     /**
      * Edit existing appointment (staff, provider, admin only)
      */
-    public function edit($appointmentId = null)
+    public function edit($appointmentHash = null)
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
@@ -343,11 +343,11 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
-        if (!$appointmentId) {
+        if (!$appointmentHash) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
-        // Load appointment with related data
+        // Load appointment by hash with related data
         $appointment = $this->appointmentModel
             ->select('xs_appointments.*, 
                      c.first_name as customer_first_name,
@@ -356,9 +356,11 @@ class Appointments extends BaseController
                      c.phone as customer_phone,
                      c.address as customer_address,
                      c.notes as customer_notes,
-                     c.custom_fields as customer_custom_fields')
+                     c.custom_fields as customer_custom_fields,
+                     c.hash as customer_hash')
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
-            ->find($appointmentId);
+            ->where('xs_appointments.hash', $appointmentHash)
+            ->first();
 
         if (!$appointment) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
@@ -430,7 +432,7 @@ class Appointments extends BaseController
     /**
      * Update existing appointment
      */
-    public function update($appointmentId = null)
+    public function update($appointmentHash = null)
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
@@ -441,15 +443,17 @@ class Appointments extends BaseController
             return redirect()->back()->with('error', 'Access denied');
         }
 
-        if (!$appointmentId) {
+        if (!$appointmentHash) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
-        // Load existing appointment
-        $existingAppointment = $this->appointmentModel->find($appointmentId);
+        // Load existing appointment by hash
+        $existingAppointment = $this->appointmentModel->findByHash($appointmentHash);
         if (!$existingAppointment) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
+
+        $appointmentId = $existingAppointment['id'];
 
         $validation = \Config\Services::validation();
         
