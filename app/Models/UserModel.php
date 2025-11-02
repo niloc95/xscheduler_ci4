@@ -16,6 +16,10 @@ class UserModel extends BaseModel
         'profile_image', 'color'
     ];
 
+    // Model callbacks to ensure provider color is always assigned
+    protected $beforeInsert = ['ensureProviderColor'];
+    protected $beforeUpdate = ['ensureProviderColorOnUpdate'];
+
     // Dates (handled by BaseModel)
 
     // Validation
@@ -117,6 +121,60 @@ class UserModel extends BaseModel
         return $this->where('role', 'provider')
                     ->where('is_active', true)
                     ->findAll();
+    }
+
+    /**
+     * Callback: Ensure a provider has a color on insert
+     */
+    protected function ensureProviderColor(array $data): array
+    {
+        try {
+            $row = $data['data'] ?? [];
+            $role = $row['role'] ?? null;
+            $hasColor = isset($row['color']) && is_string($row['color']) && trim($row['color']) !== '';
+            if ($role === 'provider' && !$hasColor) {
+                $data['data']['color'] = $this->getAvailableProviderColor();
+            }
+        } catch (\Throwable $e) {
+            // Fail-safe: don't block insert on color assignment issues
+            log_message('warning', '[UserModel::ensureProviderColor] Failed to assign provider color: ' . $e->getMessage());
+        }
+        return $data;
+    }
+
+    /**
+     * Callback: Ensure a provider has a color on update when role becomes provider or color cleared
+     */
+    protected function ensureProviderColorOnUpdate(array $data): array
+    {
+        try {
+            $row = $data['data'] ?? [];
+            // Determine the target role: prefer provided role in update payload, else existing role
+            $id = $data['id'][0] ?? ($row['id'] ?? null);
+            $targetRole = $row['role'] ?? null;
+            if (!$targetRole && $id) {
+                $existing = $this->find((int)$id);
+                $targetRole = $existing['role'] ?? null;
+                // If color missing in payload but existing has none, assign
+                $existingColor = $existing['color'] ?? null;
+                if ($targetRole === 'provider' && (!isset($row['color']) || trim((string)$row['color']) === '')) {
+                    if (!$existingColor) {
+                        $data['data']['color'] = $this->getAvailableProviderColor();
+                    }
+                }
+            }
+            // If payload explicitly sets role to provider and no color provided, assign
+            $hasColorInPayload = isset($row['color']) && is_string($row['color']) && trim($row['color']) !== '';
+            if ($targetRole === 'provider' && !$hasColorInPayload) {
+                // Only assign if color not previously set
+                if (!isset($data['data']['color'])) {
+                    $data['data']['color'] = $this->getAvailableProviderColor();
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UserModel::ensureProviderColorOnUpdate] Failed to assign provider color on update: ' . $e->getMessage());
+        }
+        return $data;
     }
 
     /**
