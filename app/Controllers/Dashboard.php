@@ -5,18 +5,21 @@ namespace App\Controllers;
 use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\AppointmentModel;
+use App\Models\CustomerModel;
 
 class Dashboard extends BaseController
 {
     protected $userModel;
     protected $serviceModel;
     protected $appointmentModel;
+    protected $customerModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->serviceModel = new ServiceModel();
         $this->appointmentModel = new AppointmentModel();
+        $this->customerModel = new CustomerModel();
     }
 
     /**
@@ -431,6 +434,85 @@ class Dashboard extends BaseController
                 'status' => 'error',
                 'message' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Global search endpoint for header search
+     * Searches both customers and appointments
+     */
+    public function search()
+    {
+        // Completely bypass CI4's response system
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
+        // Disable the debug toolbar entirely
+        if (defined('CI_DEBUG') && CI_DEBUG) {
+            ini_set('display_errors', '0');
+        }
+        
+        header('Content-Type: application/json; charset=UTF-8');
+        header('X-Content-Type-Options: nosniff');
+        
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized', 'success' => false]);
+            exit(0);
+        }
+
+        $q = trim((string) $this->request->getGet('q'));
+        
+        try {
+            $customers = [];
+            $appointments = [];
+            
+            if ($q !== '') {
+                // Search customers
+                $customers = $this->customerModel->search(['q' => $q, 'limit' => 10]);
+                
+                // Search appointments - search by customer name, service name, or notes
+                $appointmentsQuery = $this->appointmentModel
+                    ->select('xs_appointments.*, 
+                             CONCAT(xs_customers.first_name, " ", xs_customers.last_name) as customer_name,
+                             xs_customers.email as customer_email,
+                             xs_services.name as service_name')
+                    ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
+                    ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
+                    ->groupStart()
+                        ->like('xs_customers.first_name', $q)
+                        ->orLike('xs_customers.last_name', $q)
+                        ->orLike('xs_customers.email', $q)
+                        ->orLike('xs_services.name', $q)
+                        ->orLike('xs_appointments.notes', $q)
+                    ->groupEnd()
+                    ->orderBy('xs_appointments.start_time', 'DESC')
+                    ->limit(10);
+                
+                $appointments = $appointmentsQuery->findAll();
+            }
+
+            echo json_encode([
+                'success' => true,
+                'customers' => $customers,
+                'appointments' => $appointments,
+                'counts' => [
+                    'customers' => count($customers),
+                    'appointments' => count($appointments),
+                    'total' => count($customers) + count($appointments)
+                ]
+            ]);
+            exit(0);
+        } catch (\Exception $e) {
+            log_message('error', '[Dashboard::search] Error: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Search failed: ' . $e->getMessage()
+            ]);
+            exit(0);
         }
     }
 }

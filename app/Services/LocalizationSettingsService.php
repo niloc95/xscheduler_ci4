@@ -37,6 +37,37 @@ class LocalizationSettingsService
     }
 
     /**
+     * Get the configured currency code (e.g., 'ZAR', 'USD', 'EUR').
+     */
+    public function getCurrency(): string
+    {
+        $value = $this->get('localization.currency');
+        return $value ?: 'ZAR'; // Default to South African Rand
+    }
+
+    /**
+     * Get the currency symbol for the configured currency.
+     */
+    public function getCurrencySymbol(): string
+    {
+        helper('currency');
+        return get_currency_symbol($this->getCurrency());
+    }
+
+    /**
+     * Format an amount as currency using the configured currency.
+     *
+     * @param float|string $amount The amount to format
+     * @param int $decimals Number of decimal places (default: 2)
+     * @return string Formatted currency string
+     */
+    public function formatCurrency($amount, int $decimals = 2): string
+    {
+        helper('currency');
+        return format_currency($amount, $this->getCurrency(), $decimals);
+    }
+
+    /**
      * Return the configured timezone or a safe fallback.
      * 
      * Resolution order:
@@ -89,6 +120,8 @@ class LocalizationSettingsService
         return [
             'time_format'         => $this->getTimeFormat(),
             'timezone'            => $this->getTimezone(),
+            'currency'            => $this->getCurrency(),
+            'currency_symbol'     => $this->getCurrencySymbol(),
             'format_example'      => $this->getFormatExample(),
             'format_description'  => $this->describeExpectedFormat(),
         ];
@@ -206,6 +239,7 @@ class LocalizationSettingsService
                 'localization.time_format',
                 'localization.timezone',
                 'localization.first_day',
+                'localization.currency',
             ]);
         }
 

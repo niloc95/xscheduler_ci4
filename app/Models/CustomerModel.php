@@ -8,7 +8,7 @@ class CustomerModel extends BaseModel
 	protected $table = 'xs_customers';
 	protected $primaryKey = 'id';
 	protected $allowedFields = [
-		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'hash', 'created_at', 'updated_at'
+		'first_name', 'last_name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'hash', 'created_at', 'updated_at'
 	];
 
 	protected $beforeInsert = ['generateHash'];
@@ -55,7 +55,6 @@ class CustomerModel extends BaseModel
 			$builder->groupStart()
 				->like('first_name', $q)
 				->orLike('last_name', $q)
-				->orLike('name', $q)
 				->orLike('email', $q)
 			->groupEnd();
 		}

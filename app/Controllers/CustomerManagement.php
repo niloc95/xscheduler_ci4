@@ -271,4 +271,47 @@ class CustomerManagement extends BaseController
         log_message('error', '[CustomerManagement] Failed to update customer ID: ' . $id);
         return redirect()->back()->withInput()->with('error', 'Failed to update customer.');
     }
+
+    /**
+     * AJAX search endpoint for live search  
+     */
+    public function ajaxSearch()
+    {
+        // Bypass CI4's output system completely for JSON response
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
+            header('HTTP/1.1 401 Unauthorized');
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode(['error' => 'Unauthorized', 'success' => false]));
+        }
+
+        $q = trim((string) $this->request->getGet('q'));
+        
+        try {
+            if ($q !== '') {
+                $customers = $this->customers->search(['q' => $q, 'limit' => 200]);
+            } else {
+                $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
+            }
+
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode([
+                'success' => true,
+                'customers' => $customers,
+                'count' => count($customers)
+            ]));
+        } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement::ajaxSearch] Error: ' . $e->getMessage());
+            header('HTTP/1.1 500 Internal Server Error');
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode([
+                'success' => false,
+                'error' => 'Search failed: ' . $e->getMessage()
+            ]));
+        }
+    }
 }

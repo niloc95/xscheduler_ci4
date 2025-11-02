@@ -28,6 +28,7 @@ $routes->group('auth', function($routes) {
 $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Dashboard::index', ['filter' => 'auth']);
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
+    $routes->get('search', 'Dashboard::search', ['filter' => 'auth']);
 });
 
 // User Management Routes (admin and provider access with different permissions)
@@ -45,6 +46,7 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
 // Customer Management Routes (admins, providers, and staff)
 $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'CustomerManagement::index', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('search', 'CustomerManagement::ajaxSearch', ['filter' => 'role:admin,provider,staff']);
     $routes->get('create', 'CustomerManagement::create', ['filter' => 'role:admin,provider,staff']);
     $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
     $routes->get('edit/(:any)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
