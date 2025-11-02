@@ -13,7 +13,16 @@
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price</label>
-        <input type="number" step="0.01" name="price" value="<?= esc($service['price'] ?? '') ?>" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+        <div class="mt-1 relative rounded-lg shadow-sm">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="text-gray-500 dark:text-gray-400 sm:text-sm">
+                    <?php helper('currency'); echo get_app_currency_symbol(); ?>
+                </span>
+            </div>
+            <input type="number" step="0.01" name="price" value="<?= esc($service['price'] ?? '') ?>" 
+                   class="mt-0 block w-full pl-8 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                   placeholder="0.00" />
+        </div>
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>

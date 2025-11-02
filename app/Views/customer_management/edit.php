@@ -26,7 +26,7 @@
     <?php endif; ?>
 
     <div class="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-        <form method="post" action="<?= base_url('customer-management/update/' . ($customer['id'] ?? 0)) ?>" class="space-y-6">
+        <form method="post" action="<?= base_url('customer-management/update/' . esc($customer['hash'] ?? '')) ?>" class="space-y-6">
             <?= csrf_field() ?>
             
             <!-- Dynamic field rendering based on booking settings -->

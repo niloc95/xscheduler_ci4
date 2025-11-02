@@ -8,23 +8,40 @@ class CustomerModel extends BaseModel
 	protected $table = 'xs_customers';
 	protected $primaryKey = 'id';
 	protected $allowedFields = [
-		'first_name', 'last_name', 'name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'created_at', 'updated_at'
+		'first_name', 'last_name', 'email', 'phone', 'address', 'notes', 'custom_fields', 'hash', 'created_at', 'updated_at'
 	];
 
+	protected $beforeInsert = ['generateHash'];
+	protected $useTimestamps = false;
+
 	// Validation rules
-	protected $validationRules = [
-		'first_name' => 'permit_empty|max_length[100]',
-		'last_name'  => 'permit_empty|max_length[100]',
-		'name'       => 'permit_empty|max_length[200]',
-		'email'      => 'required|valid_email|is_unique[customers.email,id,{id}]',
-		'phone'      => 'permit_empty|max_length[20]',
-		'address'    => 'permit_empty|max_length[255]',
-		'notes'      => 'permit_empty|max_length[1000]',
-		'custom_fields' => 'permit_empty',
-	];
+	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
+	// based on settings. Model validation is disabled to prevent conflicts.
+	protected $validationRules = [];
 	protected $validationMessages = [];
-	protected $skipValidation = false;
+	protected $skipValidation = true;
 	protected $cleanValidationRules = true;
+
+	/**
+	 * Generate unique hash for new customer before insert
+	 */
+	protected function generateHash(array $data): array
+	{
+		if (!isset($data['data']['hash']) || empty($data['data']['hash'])) {
+			$encryptionKey = config('Encryption')->key ?? 'default-secret-key';
+			$data['data']['hash'] = hash('sha256', uniqid('customer_', true) . $encryptionKey . time());
+		}
+		return $data;
+	}
+
+	/**
+	 * Find customer by hash
+	 */
+	public function findByHash(string $hash): ?array
+	{
+		$result = $this->where('hash', $hash)->first();
+		return $result ?: null;
+	}
 
 	/**
 	 * Search customers by name or email
@@ -38,7 +55,6 @@ class CustomerModel extends BaseModel
 			$builder->groupStart()
 				->like('first_name', $q)
 				->orLike('last_name', $q)
-				->orLike('name', $q)
 				->orLike('email', $q)
 			->groupEnd();
 		}

@@ -94,6 +94,8 @@ class CustomerManagement extends BaseController
 
         $customFieldPayload = [];
         if (!empty($customFields)) {
+            log_message('info', '[CustomerManagement::store] Processing ' . count($customFields) . ' enabled custom fields');
+            
             foreach ($customFields as $fieldName => $config) {
                 $raw = $this->request->getPost($fieldName);
                 if ($config['type'] === 'checkbox') {
@@ -102,16 +104,18 @@ class CustomerManagement extends BaseController
                     $value = trim((string) ($raw ?? ''));
                 }
 
-                if ($value === '' && !$config['required']) {
-                    continue;
-                }
-
+                // Always save ALL enabled fields, even if empty
+                // This ensures consistent data structure and allows newly enabled fields to be saved
                 $customFieldPayload[$fieldName] = $value;
+                log_message('info', "[CustomerManagement::store] Field '{$fieldName}' = '{$value}' (type: {$config['type']})");
             }
 
-            if (!empty($customFieldPayload)) {
-                $payload['custom_fields'] = json_encode($customFieldPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            }
+            // Save custom fields JSON (even if all values are empty)
+            // This ensures the database has a consistent structure for all enabled fields
+            $payload['custom_fields'] = json_encode($customFieldPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            log_message('info', '[CustomerManagement::store] Custom fields JSON for new customer: ' . $payload['custom_fields']);
+        } else {
+            log_message('info', '[CustomerManagement::store] No custom fields enabled in settings');
         }
 
         // Support combined name field fallback (if first_name/last_name are not displayed)
@@ -122,22 +126,33 @@ class CustomerManagement extends BaseController
             $payload['last_name']  = $parts[1] ?? '';
         }
 
-        $id = $this->customers->insert($payload);
+        // Skip model validation since we already validated with the service
+        // This prevents conflicts with model-level rules
+        $id = $this->customers->insert($payload, false);
         if ($id) {
+            log_message('info', '[CustomerManagement] Successfully created customer ID: ' . $id);
             return redirect()->to('/customer-management')->with('success', 'Customer created successfully.');
         }
+        
+        // Log model validation errors if any
+        $modelErrors = $this->customers->errors();
+        if (!empty($modelErrors)) {
+            log_message('error', '[CustomerManagement] Model validation errors: ' . json_encode($modelErrors));
+        }
+        
+        log_message('error', '[CustomerManagement] Failed to create customer');
         return redirect()->back()->withInput()->with('error', 'Failed to create customer.');
     }
 
     /**
      * Edit form
      */
-    public function edit(int $id)
+    public function edit(string $hash)
     {
         if (!session()->get('user_id')) {
             return redirect()->to('/auth/login');
         }
-        $customer = $this->customers->find($id);
+        $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
@@ -166,15 +181,17 @@ class CustomerManagement extends BaseController
     /**
      * Update customer
      */
-    public function update(int $id)
+    public function update(string $hash)
     {
         if (!session()->get('user_id')) {
             return redirect()->to('/auth/login');
         }
-        $customer = $this->customers->find($id);
+        $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to('/customer-management')->with('error', 'Customer not found.');
         }
+
+        $id = $customer['id'];
 
         // Use dynamic validation rules from booking settings
         $rules = $this->bookingSettings->getValidationRulesForUpdate($id);
@@ -202,14 +219,19 @@ class CustomerManagement extends BaseController
         }
 
         if (!empty($customFields)) {
+            log_message('info', '[CustomerManagement::update] Processing ' . count($customFields) . ' enabled custom fields for customer ID: ' . $id);
+            
+            // Load existing custom fields from database to preserve disabled fields
             $existing = [];
             if (!empty($customer['custom_fields'])) {
                 $decoded = json_decode((string) $customer['custom_fields'], true);
                 if (is_array($decoded)) {
                     $existing = $decoded;
+                    log_message('info', '[CustomerManagement::update] Loaded existing custom fields: ' . json_encode($existing));
                 }
             }
 
+            // Update only the currently enabled custom fields
             foreach ($customFields as $fieldName => $config) {
                 $raw = $this->request->getPost($fieldName);
                 if ($config['type'] === 'checkbox') {
@@ -218,24 +240,78 @@ class CustomerManagement extends BaseController
                     $value = trim((string) ($raw ?? ''));
                 }
 
-                if ($value === '' && !$config['required']) {
-                    unset($existing[$fieldName]);
-                    continue;
-                }
-
+                // Always save ALL enabled fields, even if empty
+                // This allows newly enabled fields to be saved and preserves empty values
                 $existing[$fieldName] = $value;
+                log_message('info', "[CustomerManagement::update] Updating field '{$fieldName}' = '{$value}' (type: {$config['type']})");
             }
 
-            if (!empty($existing)) {
-                $payload['custom_fields'] = json_encode($existing, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            } elseif (!empty($customer['custom_fields'])) {
-                $payload['custom_fields'] = null;
-            }
+            // Save the merged custom fields (existing disabled fields + updated enabled fields)
+            // This preserves data for disabled fields while updating enabled ones
+            $payload['custom_fields'] = json_encode($existing, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            log_message('info', '[CustomerManagement::update] Final custom fields JSON: ' . $payload['custom_fields']);
+        } else {
+            log_message('info', '[CustomerManagement::update] No custom fields enabled in settings for customer ID: ' . $id);
         }
 
-        if ($this->customers->update($id, $payload)) {
+        // Skip model validation since we already validated with the service
+        // This prevents conflicts with model-level rules (e.g., email required, {id} placeholder issues)
+        if ($this->customers->update($id, $payload, false)) {
+            log_message('info', '[CustomerManagement] Successfully updated customer ID: ' . $id);
+            log_message('info', '[CustomerManagement] Redirecting to /customer-management');
             return redirect()->to('/customer-management')->with('success', 'Customer updated successfully.');
         }
+        
+        // Log model validation errors if any
+        $modelErrors = $this->customers->errors();
+        if (!empty($modelErrors)) {
+            log_message('error', '[CustomerManagement] Model validation errors for customer ID ' . $id . ': ' . json_encode($modelErrors));
+        }
+        
+        log_message('error', '[CustomerManagement] Failed to update customer ID: ' . $id);
         return redirect()->back()->withInput()->with('error', 'Failed to update customer.');
+    }
+
+    /**
+     * AJAX search endpoint for live search  
+     */
+    public function ajaxSearch()
+    {
+        // Bypass CI4's output system completely for JSON response
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
+            header('HTTP/1.1 401 Unauthorized');
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode(['error' => 'Unauthorized', 'success' => false]));
+        }
+
+        $q = trim((string) $this->request->getGet('q'));
+        
+        try {
+            if ($q !== '') {
+                $customers = $this->customers->search(['q' => $q, 'limit' => 200]);
+            } else {
+                $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
+            }
+
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode([
+                'success' => true,
+                'customers' => $customers,
+                'count' => count($customers)
+            ]));
+        } catch (\Exception $e) {
+            log_message('error', '[CustomerManagement::ajaxSearch] Error: ' . $e->getMessage());
+            header('HTTP/1.1 500 Internal Server Error');
+            header('Content-Type: application/json; charset=UTF-8');
+            die(json_encode([
+                'success' => false,
+                'error' => 'Search failed: ' . $e->getMessage()
+            ]));
+        }
     }
 }

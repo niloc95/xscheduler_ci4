@@ -108,6 +108,7 @@ class Appointments extends BaseController
 
                 return [
                     'id' => (int)$appointment['id'],
+                    'hash' => $appointment['hash'] ?? null, // Hash for secure URLs
                     'title' => $appointment['customer_name'] ?? 'Appointment #' . $appointment['id'],
                     'start' => $startIso,
                     'end' => $endIso,

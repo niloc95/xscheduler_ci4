@@ -77,7 +77,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($stats['avg_price'], 2) ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?php helper('currency'); echo format_currency($stats['avg_price']); ?></p>
             </div>
         </div>
     </div>
@@ -220,10 +220,9 @@
                                             <?= $service['duration'] ?> min
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                            $<?= number_format($service['price'], 2) ?>
+                                            <?php helper('currency'); echo format_currency($service['price']); ?>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                            <?= $service['bookings_count'] ?>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200"><?= $service['bookings_count'] ?></td>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <?php if ($service['status'] === 'active'): ?>

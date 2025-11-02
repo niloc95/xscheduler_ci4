@@ -154,6 +154,33 @@ export class SettingsManager {
         return `${this.formatDate(dateTime)} ${this.formatTime(dateTime)}`;
     }
 
+    /**
+     * Get currency code
+     */
+    getCurrency() {
+        return this.settings.localization?.context?.currency || 'ZAR';
+    }
+
+    /**
+     * Get currency symbol
+     */
+    getCurrencySymbol() {
+        return this.settings.localization?.context?.currency_symbol || 'R';
+    }
+
+    /**
+     * Format amount as currency
+     * @param {number|string} amount - The amount to format
+     * @param {number} decimals - Number of decimal places (default: 2)
+     * @returns {string} Formatted currency string
+     */
+    formatCurrency(amount, decimals = 2) {
+        const numAmount = parseFloat(amount) || 0;
+        const symbol = this.getCurrencySymbol();
+        const formatted = numAmount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return `${symbol}${formatted}`;
+    }
+
     // ============================================
     // Booking Settings
     // ============================================

@@ -344,8 +344,9 @@ export class AppointmentDetailsModal {
      */
     handleEdit(appointment) {
         this.close();
-        // Navigate to edit page
-        window.location.href = `/appointments/edit/${appointment.id}`;
+        // Navigate to edit page using hash for security
+        const identifier = appointment.hash || appointment.id;
+        window.location.href = `/appointments/edit/${identifier}`;
     }
     
     /**

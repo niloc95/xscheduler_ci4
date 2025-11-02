@@ -1,4 +1,36 @@
 // Lightweight SPA navigation: preserve header/sidebar/footer, swap #spa-content
+//
+// USAGE FOR VIEW-SPECIFIC JAVASCRIPT:
+// If your view needs to initialize JavaScript (e.g., event listeners, search functionality),
+// wrap your initialization in a function and register it with xsRegisterViewInit():
+//
+// Example:
+//   function initMyView() {
+//     const btn = document.getElementById('myButton');
+//     if (!btn || btn.dataset.initialized === 'true') return;
+//     btn.dataset.initialized = 'true';
+//     btn.addEventListener('click', () => console.log('clicked'));
+//   }
+//   xsRegisterViewInit(initMyView);
+//
+// This ensures your init function runs on:
+// 1. Initial page load
+// 2. Every SPA navigation
+//
+// IMPORTANT: Always check for duplicate initialization using dataset flags!
+
+// Global registry for view-specific initializer functions
+// Views can register functions that should run on initial load AND after SPA navigation
+window.xsViewInitializers = window.xsViewInitializers || [];
+window.xsRegisterViewInit = function(initFn) {
+  if (typeof initFn === 'function') {
+    window.xsViewInitializers.push(initFn);
+    // Also run immediately if DOM is already ready
+    if (document.readyState !== 'loading') {
+      try { initFn(); } catch (e) { console.error('View init error:', e); }
+    }
+  }
+};
 
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
@@ -104,6 +136,12 @@ const SPA = (() => {
       if (push) history.pushState({ spa: true }, '', url);
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
+      // Also trigger per-view init functions if registered
+      if (window.xsViewInitializers) {
+        window.xsViewInitializers.forEach(fn => {
+          try { fn(); } catch (e) { console.error('View initializer error:', e); }
+        });
+      }
   // Always reset scroll position to top when switching views
   focusMain(true);
     } catch (e) {

@@ -134,13 +134,29 @@
                             <?= $this->include('components/dark-mode-toggle') ?>
                             
                             <!-- Search -->
-                            <div class="hidden md:block relative">
+                            <div class="hidden md:block relative" id="headerSearchWrapper">
                                 <div class="relative">
                                     <input type="search" 
-                                        placeholder="Search users, appointments..." 
+                                        placeholder="Search customers, appointments..." 
                                         class="w-80 h-12 pl-10 pr-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200 text-sm leading-relaxed"
-                                        id="dashboardSearch">
+                                        id="dashboardSearch"
+                                        autocomplete="off">
                                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-base">search</span>
+                                    
+                                    <!-- Loading spinner -->
+                                    <div id="headerSearchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                                        <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search Results Dropdown -->
+                                <div id="headerSearchResults" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+                                    <div id="headerSearchResultsContent" class="p-2">
+                                        <!-- Results will be inserted here -->
+                                    </div>
                                 </div>
                             </div>
                             
@@ -614,6 +630,298 @@
             document.addEventListener('DOMContentLoaded', () => updateProviderVisibility(document));
             document.addEventListener('spa:navigated', () => updateProviderVisibility(document));
         })();
+
+        // Header search functionality with dropdown results
+        function initHeaderSearch() {
+            const searchInput = document.getElementById('dashboardSearch');
+            const searchWrapper = document.getElementById('headerSearchWrapper');
+            const resultsDropdown = document.getElementById('headerSearchResults');
+            const resultsContent = document.getElementById('headerSearchResultsContent');
+            const spinner = document.getElementById('headerSearchSpinner');
+
+            if (!searchInput || !resultsDropdown) return;
+            
+            // Prevent duplicate initialization
+            if (searchInput.dataset.searchInitialized === 'true') {
+                console.log('Header search already initialized');
+                return;
+            }
+            searchInput.dataset.searchInitialized = 'true';
+            console.log('Initializing header search');
+            
+            let searchTimeout = null;
+
+            // Escape HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text || '';
+                return div.innerHTML;
+            }
+
+            // Format date
+            function formatDate(dateStr) {
+                if (!dateStr) return 'N/A';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+
+            // Perform search
+            async function performSearch(query) {
+                try {
+                    if (spinner) spinner.classList.remove('hidden');
+
+                    const url = `<?= base_url('dashboard/search') ?>?q=${encodeURIComponent(query)}`;
+                    const response = await fetch(url);
+
+                    if (!response.ok) {
+                        throw new Error(`Search failed: ${response.status}`);
+                    }
+
+                    // Get response as text first (handles debug toolbar)
+                    const text = await response.text();
+                    
+                    // Extract JSON from response
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        // Try multiple strategies to extract JSON from HTML-wrapped response
+                        console.log('Initial parse failed, trying extraction...');
+                        
+                        // Strategy 1: Look for JSON object pattern
+                        const jsonMatch = text.match(/\{["']success["']:\s*(?:true|false)[\s\S]*?\}(?=\s*<|$)/);
+                        if (jsonMatch) {
+                            try {
+                                data = JSON.parse(jsonMatch[0]);
+                                console.log('Extracted JSON successfully');
+                            } catch (e2) {
+                                console.error('Strategy 1 failed');
+                            }
+                        }
+                        
+                        // Strategy 2: Find last complete JSON object
+                        if (!data) {
+                            const lastBrace = text.lastIndexOf('}');
+                            if (lastBrace > 0) {
+                                // Work backwards to find opening brace
+                                let depth = 1;
+                                let i = lastBrace - 1;
+                                while (i >= 0 && depth > 0) {
+                                    if (text[i] === '}') depth++;
+                                    if (text[i] === '{') depth--;
+                                    i--;
+                                }
+                                if (depth === 0) {
+                                    try {
+                                        data = JSON.parse(text.substring(i + 1, lastBrace + 1));
+                                        console.log('Extracted JSON using depth strategy');
+                                    } catch (e3) {
+                                        console.error('Strategy 2 failed');
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!data) {
+                            console.error('Could not extract JSON from response');
+                            console.log('Response preview:', text.substring(0, 1000));
+                            throw new Error('Invalid JSON response');
+                        }
+                    }
+
+                    if (data.success) {
+                        displayResults(data.customers, data.appointments, query);
+                    } else {
+                        showError(data.error || 'Search failed');
+                    }
+                } catch (error) {
+                    console.error('Search error:', error);
+                    showError('Error loading results');
+                } finally {
+                    if (spinner) spinner.classList.add('hidden');
+                }
+            }
+
+            // Display results
+            function displayResults(customers, appointments, query) {
+                const hasCustomers = customers && customers.length > 0;
+                const hasAppointments = appointments && appointments.length > 0;
+                
+                if (!hasCustomers && !hasAppointments) {
+                    resultsContent.innerHTML = `
+                        <div class="p-4 text-center text-gray-500 dark:text-gray-400">
+                            <span class="material-symbols-outlined text-4xl mb-2 block">search_off</span>
+                            <p>No results found for "${escapeHtml(query)}"</p>
+                        </div>
+                    `;
+                    resultsDropdown.classList.remove('hidden');
+                    return;
+                }
+
+                let html = '';
+                
+                // Display customers
+                if (hasCustomers) {
+                    html += '<div class="p-2"><div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Customers</div><div class="space-y-1">';
+                    
+                    const displayCustomers = customers.slice(0, 3);
+                    displayCustomers.forEach(customer => {
+                        const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown';
+                        const email = customer.email || '';
+                        const phone = customer.phone_number || '';
+                        const hash = customer.hash || customer.id;
+                        const initial = fullName.substring(0, 1).toUpperCase();
+                        
+                        html += `
+                            <a href="<?= base_url('customer-management/edit/') ?>${hash}" 
+                               class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                                    ${initial}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-sm text-gray-900 dark:text-gray-100">${escapeHtml(fullName)}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${escapeHtml(email || phone)}</div>
+                                </div>
+                                <span class="material-symbols-outlined text-gray-400 text-sm">arrow_forward</span>
+                            </a>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                }
+                
+                // Display appointments
+                if (hasAppointments) {
+                    html += '<div class="p-2 border-t border-gray-200 dark:border-gray-700"><div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Appointments</div><div class="space-y-1">';
+                    
+                    const displayAppointments = appointments.slice(0, 3);
+                    displayAppointments.forEach(appointment => {
+                        const customerName = appointment.customer_name || 'Unknown Customer';
+                        const serviceName = appointment.service_name || 'Unknown Service';
+                        const startDate = formatDate(appointment.start_time);
+                        const hash = appointment.hash || appointment.id;
+                        
+                        // Determine status color
+                        let statusColor = 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+                        if (appointment.status === 'booked') statusColor = 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
+                        else if (appointment.status === 'completed') statusColor = 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
+                        else if (appointment.status === 'cancelled') statusColor = 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+                        
+                        html += `
+                            <a href="<?= base_url('appointments/edit/') ?>${hash}" 
+                               class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white flex-shrink-0">
+                                    <span class="material-symbols-outlined text-base">event</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">${escapeHtml(serviceName)}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">${escapeHtml(customerName)} • ${startDate}</div>
+                                </div>
+                                <span class="px-2 py-1 rounded text-xs font-medium ${statusColor}">${escapeHtml(appointment.status)}</span>
+                            </a>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                }
+
+                // Add "View all results" link if there are more results
+                const totalResults = (customers?.length || 0) + (appointments?.length || 0);
+                if (totalResults > 6) {
+                    html += `
+                        <div class="border-t border-gray-200 dark:border-gray-700 p-2">
+                            <a href="<?= base_url('customer-management') ?>?q=${encodeURIComponent(query)}" 
+                               class="flex items-center justify-center gap-2 p-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                <span>View all ${totalResults} results</span>
+                                <span class="material-symbols-outlined text-sm">open_in_new</span>
+                            </a>
+                        </div>
+                    `;
+                }
+
+                resultsContent.innerHTML = html;
+                resultsDropdown.classList.remove('hidden');
+            }
+
+            // Show error
+            function showError(message) {
+                resultsContent.innerHTML = `
+                    <div class="p-4 text-center text-red-600 dark:text-red-400">
+                        <span class="material-symbols-outlined text-4xl mb-2 block">error</span>
+                        <p>${escapeHtml(message)}</p>
+                    </div>
+                `;
+                resultsDropdown.classList.remove('hidden');
+            }
+
+            // Hide results
+            function hideResults() {
+                resultsDropdown.classList.add('hidden');
+            }
+
+            // Input event - debounced search
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                
+                clearTimeout(searchTimeout);
+                
+                if (query.length === 0) {
+                    hideResults();
+                    return;
+                }
+                
+                if (query.length < 2) {
+                    return; // Wait for at least 2 characters
+                }
+                
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            });
+
+            // Clear on ESC
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    hideResults();
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchWrapper.contains(e.target)) {
+                    hideResults();
+                }
+            });
+
+            // Show dropdown when focusing input with text
+            searchInput.addEventListener('focus', () => {
+                const query = searchInput.value.trim();
+                if (query.length >= 2 && resultsContent.innerHTML) {
+                    resultsDropdown.classList.remove('hidden');
+                }
+            });
+        }
+        
+        // Register header search initializer for SPA navigation
+        if (window.xsRegisterViewInit) {
+            window.xsRegisterViewInit(initHeaderSearch);
+        } else {
+            // Fallback if SPA system not loaded yet
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initHeaderSearch);
+            } else {
+                initHeaderSearch();
+            }
+        }
     </script>
+    
+    <?php
+    // Allow child views to inject custom JavaScript
+    $extraJs = $this->renderSection('extra_js');
+    if (!empty($extraJs)) {
+        echo $extraJs;
+    }
+    ?>
 </body>
 </html>

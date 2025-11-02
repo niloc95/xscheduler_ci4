@@ -58,7 +58,7 @@
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Update the information below</p>
         </div>
 
-        <form action="<?= base_url('/appointments/update/' . $appointment['id']) ?>" method="POST" class="p-6">
+        <form action="<?= base_url('/appointments/update/' . esc($appointment['hash'])) ?>" method="POST" class="p-6">
             <?= csrf_field() ?>
             <input type="hidden" name="_method" value="PUT">
             <input type="hidden" name="client_timezone" id="client_timezone" value="">
