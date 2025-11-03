@@ -215,12 +215,14 @@ export class MonthView {
      * Render daily appointments section showing provider columns for selected day
      */
     renderDailyAppointments() {
-        if (!this.selectedDate) {
-            this.selectedDate = DateTime.now().setZone(this.scheduler.options.timezone);
-        }
+        // For month view, show all appointments for the entire month grouped by provider
+        const monthStart = this.currentDate.startOf('month');
+        const monthEnd = this.currentDate.endOf('month');
         
-        const dateKey = this.selectedDate.toISODate();
-        const dayAppointments = this.appointmentsByDate[dateKey] || [];
+        // Get all appointments for the month
+        const monthAppointments = this.appointments.filter(apt => 
+            apt.startDateTime >= monthStart && apt.startDateTime <= monthEnd
+        );
         
         // Group appointments by provider
         const appointmentsByProvider = {};
@@ -228,16 +230,16 @@ export class MonthView {
             appointmentsByProvider[provider.id] = [];
         });
         
-        dayAppointments.forEach(apt => {
+        monthAppointments.forEach(apt => {
             if (appointmentsByProvider[apt.providerId]) {
                 appointmentsByProvider[apt.providerId].push(apt);
             }
         });
         
-        // Filter to only show providers with appointments or show all providers if there are appointments
-        const activeProviders = dayAppointments.length > 0 
-            ? this.providers.filter(p => appointmentsByProvider[p.id].length > 0)
-            : this.providers;
+        // Filter to only show providers with appointments
+        const activeProviders = this.providers.filter(p => 
+            appointmentsByProvider[p.id].length > 0
+        );
         
         const timeFormat = this.settings?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         
@@ -247,14 +249,14 @@ export class MonthView {
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Daily Schedule
+                            Monthly Schedule
                         </h3>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                            ${this.selectedDate.toFormat('EEEE, MMMM d, yyyy')}
+                            ${this.currentDate.toFormat('MMMM yyyy')}
                         </p>
                     </div>
                     <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        ${dayAppointments.length} ${dayAppointments.length === 1 ? 'appointment' : 'appointments'}
+                        ${monthAppointments.length} ${monthAppointments.length === 1 ? 'appointment' : 'appointments'} this month
                     </span>
                 </div>
             </div>
@@ -264,12 +266,15 @@ export class MonthView {
             html += `
                 <!-- Provider Columns -->
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(activeProviders.length, 4)} gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(activeProviders.length, 3)} gap-4">
             `;
             
             activeProviders.forEach(provider => {
                 const providerAppointments = appointmentsByProvider[provider.id] || [];
                 const color = provider.color || '#3B82F6';
+                
+                // Sort appointments by date
+                providerAppointments.sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
                 
                 html += `
                     <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -286,7 +291,7 @@ export class MonthView {
                                         ${this.escapeHtml(provider.name)}
                                     </h4>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'}
+                                        ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'} this month
                                     </p>
                                 </div>
                             </div>
@@ -297,8 +302,12 @@ export class MonthView {
                 `;
                 
                 if (providerAppointments.length > 0) {
-                    providerAppointments.forEach(apt => {
-                        const time = `${apt.startDateTime.toFormat(timeFormat)} - ${apt.endDateTime.toFormat(timeFormat)}`;
+                    // Show up to 10 appointments, then "+N more"
+                    const displayedAppointments = providerAppointments.slice(0, 10);
+                    
+                    displayedAppointments.forEach(apt => {
+                        const date = apt.startDateTime.toFormat('MMM d');
+                        const time = apt.startDateTime.toFormat(timeFormat);
                         const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
                         const serviceName = apt.serviceName || 'Appointment';
                         
@@ -314,37 +323,33 @@ export class MonthView {
                         html += `
                             <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                                  data-appointment-id="${apt.id}">
-                                <div class="flex items-start justify-between gap-2 mb-2">
-                                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                        ${time}
-                                    </span>
+                                <div class="flex items-start justify-between gap-2 mb-1">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                            ${date} • ${time}
+                                        </div>
+                                    </div>
                                     <span class="px-2 py-0.5 text-xs font-medium rounded-full ${statusClass} flex-shrink-0">
                                         ${apt.status}
                                     </span>
                                 </div>
-                                <h5 class="font-semibold text-sm text-gray-900 dark:text-white mb-1">
+                                <h5 class="font-semibold text-sm text-gray-900 dark:text-white mb-1 truncate">
                                     ${this.escapeHtml(customerName)}
                                 </h5>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                <p class="text-xs text-gray-600 dark:text-gray-400 truncate">
                                     ${this.escapeHtml(serviceName)}
                                 </p>
-                                <div class="flex items-center gap-2">
-                                    <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                            data-action="view"
-                                            data-appointment-id="${apt.id}">
-                                        <span class="material-symbols-outlined text-sm">visibility</span>
-                                        View
-                                    </button>
-                                    <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
-                                            data-action="edit"
-                                            data-appointment-id="${apt.id}">
-                                        <span class="material-symbols-outlined text-sm">edit</span>
-                                        Edit
-                                    </button>
-                                </div>
                             </div>
                         `;
                     });
+                    
+                    if (providerAppointments.length > 10) {
+                        html += `
+                            <div class="p-3 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                +${providerAppointments.length - 10} more appointments
+                            </div>
+                        `;
+                    }
                 } else {
                     html += `
                         <div class="p-8 text-center">
@@ -369,7 +374,7 @@ export class MonthView {
                 <!-- Empty State -->
                 <div class="p-12 text-center">
                     <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">No providers available or no appointments for this day</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">No appointments scheduled for ${this.currentDate.toFormat('MMMM yyyy')}</p>
                 </div>
             `;
         }
