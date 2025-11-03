@@ -128,7 +128,18 @@ export class AppointmentDetailsModal {
                             <!-- Status Badge -->
                             <div class="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
-                                <span id="detail-status-badge" class="px-2.5 py-1 text-xs font-medium rounded-full"></span>
+                                <div class="flex items-center gap-2">
+                                    <select id="detail-status-select" class="text-xs font-medium rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500">
+                                        <option value="pending">Pending</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="no-show">No Show</option>
+                                    </select>
+                                    <button type="button" id="btn-save-status" class="hidden px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                        Save
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -187,6 +198,33 @@ export class AppointmentDetailsModal {
         cancelBtn.addEventListener('click', () => {
             if (this.currentAppointment) {
                 this.handleCancel(this.currentAppointment);
+            }
+        });
+        
+        // Status change handler
+        const statusSelect = this.modal.querySelector('#detail-status-select');
+        const saveStatusBtn = this.modal.querySelector('#btn-save-status');
+        
+        statusSelect.addEventListener('change', () => {
+            // Show save button when status changes
+            if (this.currentAppointment && statusSelect.value !== this.currentAppointment.status) {
+                saveStatusBtn.classList.remove('hidden');
+                
+                // Update status select styling based on new status
+                this.updateStatusSelectStyling(statusSelect, statusSelect.value);
+            } else {
+                saveStatusBtn.classList.add('hidden');
+                // Restore original styling
+                if (this.currentAppointment) {
+                    this.updateStatusSelectStyling(statusSelect, this.currentAppointment.status);
+                }
+            }
+        });
+        
+        // Save status button
+        saveStatusBtn.addEventListener('click', async () => {
+            if (this.currentAppointment) {
+                await this.handleStatusChange(this.currentAppointment, statusSelect.value);
             }
         });
     }
@@ -326,6 +364,14 @@ export class AppointmentDetailsModal {
             statusBadge.textContent = appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1);
             statusBadge.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor.bg} ${statusColor.text}`;
             
+            // Status select
+            const statusSelect = this.modal.querySelector('#detail-status-select');
+            statusSelect.value = appointment.status;
+            this.updateStatusSelectStyling(statusSelect, appointment.status);
+            
+            // Hide save button initially
+            this.modal.querySelector('#btn-save-status').classList.add('hidden');
+            
             // Hide cancel button if already cancelled
             const cancelBtn = this.modal.querySelector('#btn-cancel-appointment');
             if (appointment.status === 'cancelled' || appointment.status === 'completed') {
@@ -336,6 +382,88 @@ export class AppointmentDetailsModal {
         } catch (error) {
             console.error('[AppointmentDetailsModal] Error populating details:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Update status select styling based on status value
+     */
+    updateStatusSelectStyling(selectElement, status) {
+        const statusColors = {
+            confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+            completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+        };
+        
+        const colorClass = statusColors[status] || statusColors.pending;
+        selectElement.className = `text-xs font-medium rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${colorClass}`;
+    }
+    
+    /**
+     * Handle status change
+     */
+    async handleStatusChange(appointment, newStatus) {
+        const saveBtn = this.modal.querySelector('#btn-save-status');
+        const statusSelect = this.modal.querySelector('#detail-status-select');
+        const originalStatus = appointment.status;
+        
+        // Show loading state
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        try {
+            const response = await fetch(`/api/appointments/${appointment.id}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    status: newStatus
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Failed to update status');
+            }
+            
+            // Update current appointment status
+            appointment.status = newStatus;
+            this.currentAppointment.status = newStatus;
+            
+            // Show success message
+            if (this.scheduler.dragDropManager) {
+                this.scheduler.dragDropManager.showToast('Status updated successfully', 'success');
+            }
+            
+            // Hide save button
+            saveBtn.classList.add('hidden');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            
+            // Refresh calendar to show updated status
+            await this.scheduler.loadAppointments();
+            this.scheduler.render();
+            
+        } catch (error) {
+            console.error('Error updating status:', error);
+            
+            // Revert select to original status
+            statusSelect.value = originalStatus;
+            this.updateStatusSelectStyling(statusSelect, originalStatus);
+            
+            // Reset save button
+            saveBtn.classList.add('hidden');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            
+            if (this.scheduler.dragDropManager) {
+                this.scheduler.dragDropManager.showToast(error.message || 'Failed to update status', 'error');
+            } else {
+                alert(error.message || 'Failed to update status. Please try again.');
+            }
         }
     }
     
