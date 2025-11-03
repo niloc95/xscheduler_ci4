@@ -24,7 +24,7 @@ class AddHashToCustomers extends Migration
 
         // Generate hashes for existing customers
         $db = \Config\Database::connect();
-        $builder = $db->table('xs_customers'); // Use prefixed name for query builder
+        $builder = $db->table('customers'); // CodeIgniter automatically adds the prefix
         $customers = $builder->select('id')->get()->getResultArray();
 
         $encryptionKey = config('Encryption')->key ?? 'default-secret-key';

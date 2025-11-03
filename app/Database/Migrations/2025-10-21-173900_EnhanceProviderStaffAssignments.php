@@ -8,6 +8,9 @@ class EnhanceProviderStaffAssignments extends Migration
 {
     public function up()
     {
+        // Get the database prefix from connection config
+        $prefix = $this->db->DBPrefix;
+        
         // Add assigned_by column (DBPrefix is auto-applied by forge)
         $this->forge->addColumn('provider_staff_assignments', [
             'assigned_by' => [
@@ -29,29 +32,32 @@ class EnhanceProviderStaffAssignments extends Migration
             ],
         ]);
 
-        // Add foreign key for assigned_by
-        $this->db->query('
-            ALTER TABLE xs_provider_staff_assignments
+        // Add foreign key for assigned_by (use dynamic prefix)
+        $this->db->query("
+            ALTER TABLE {$prefix}provider_staff_assignments
             ADD CONSTRAINT fk_assigned_by 
             FOREIGN KEY (assigned_by) 
-            REFERENCES xs_users(id) 
+            REFERENCES {$prefix}users(id) 
             ON DELETE SET NULL
-        ');
+        ");
 
-        // Add index for status lookups
-        $this->db->query('
-            ALTER TABLE xs_provider_staff_assignments
+        // Add index for status lookups (use dynamic prefix)
+        $this->db->query("
+            ALTER TABLE {$prefix}provider_staff_assignments
             ADD INDEX idx_status (status)
-        ');
+        ");
     }
 
     public function down()
     {
+        // Get the database prefix from connection config
+        $prefix = $this->db->DBPrefix;
+        
         // Drop foreign key first
-        $this->db->query('ALTER TABLE xs_provider_staff_assignments DROP FOREIGN KEY fk_assigned_by');
+        $this->db->query("ALTER TABLE {$prefix}provider_staff_assignments DROP FOREIGN KEY fk_assigned_by");
         
         // Drop index
-        $this->db->query('ALTER TABLE xs_provider_staff_assignments DROP INDEX idx_status');
+        $this->db->query("ALTER TABLE {$prefix}provider_staff_assignments DROP INDEX idx_status");
         
         // Drop columns (DBPrefix auto-applied by forge)
         $this->forge->dropColumn('provider_staff_assignments', ['assigned_by', 'status']);

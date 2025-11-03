@@ -24,7 +24,7 @@ class AddHashToAppointments extends Migration
 
         // Generate hashes for existing appointments
         $db = \Config\Database::connect();
-        $builder = $db->table('xs_appointments');
+        $builder = $db->table('appointments'); // CodeIgniter automatically adds the prefix
         $appointments = $builder->select('id')->get()->getResultArray();
 
         $encryptionKey = config('Encryption')->key ?? 'default-secret-key';
