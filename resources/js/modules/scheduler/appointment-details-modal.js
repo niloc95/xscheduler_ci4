@@ -132,18 +132,21 @@ export class AppointmentDetailsModal {
                                 <p id="detail-notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700 rounded-lg p-2"></p>
                             </div>
                             
-                            <!-- Status Badge -->
+                            <!-- Status Management -->
                             <div class="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
                                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
                                 <div class="flex items-center gap-2">
-                                    <select id="detail-status-select" class="text-xs font-medium rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500">
-                                        <option value="pending">Pending</option>
-                                        <option value="confirmed">Confirmed</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                        <option value="no-show">No Show</option>
-                                    </select>
-                                    <button type="button" id="btn-save-status" class="hidden px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <div class="relative">
+                                        <select id="detail-status-select" class="appearance-none text-xs font-medium rounded-full pl-3 pr-8 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                            <option value="pending">Pending</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                            <option value="no-show">No Show</option>
+                                        </select>
+                                        <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-sm pointer-events-none">expand_more</span>
+                                    </div>
+                                    <button type="button" id="btn-save-status" class="hidden px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
                                         Save
                                     </button>
                                 </div>
@@ -153,19 +156,19 @@ export class AppointmentDetailsModal {
                     
                     <!-- Footer Actions -->
                     <div class="scheduler-modal-footer">
-                        <button type="button" data-modal-close class="btn btn-secondary">
-                            Close
-                        </button>
                         <div class="flex gap-2">
-                            <button type="button" id="btn-cancel-appointment" class="btn btn-danger">
-                                <span class="material-symbols-outlined text-base">cancel</span>
+                            <button type="button" data-modal-close class="btn btn-secondary">
+                                Close
+                            </button>
+                            <button type="button" id="btn-cancel-appointment" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 hover:border-red-400 dark:bg-gray-800 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 transition-colors">
+                                <span class="material-symbols-outlined text-base">event_busy</span>
                                 Cancel Appointment
                             </button>
-                            <button type="button" id="btn-edit-appointment" class="btn btn-primary">
-                                <span class="material-symbols-outlined text-base">edit</span>
-                                Edit
-                            </button>
                         </div>
+                        <button type="button" id="btn-edit-appointment" class="btn btn-primary">
+                            <span class="material-symbols-outlined text-base">edit</span>
+                            Edit Appointment
+                        </button>
                     </div>
                 </div>
             </div>
@@ -400,7 +403,7 @@ export class AppointmentDetailsModal {
         };
         
         const colorClass = statusColors[status] || statusColors.pending;
-        selectElement.className = `text-xs font-medium rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${colorClass}`;
+        selectElement.className = `appearance-none text-xs font-medium rounded-full pl-3 pr-8 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
     }
     
     /**
