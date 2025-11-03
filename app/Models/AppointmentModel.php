@@ -43,7 +43,7 @@ class AppointmentModel extends BaseModel
         'end_time'    => 'permit_empty|valid_date',
         'appointment_date' => 'permit_empty|valid_date',
         'appointment_time' => 'permit_empty',
-        'status'      => 'required|in_list[booked,cancelled,completed,rescheduled]'
+        'status'      => 'required|in_list[pending,confirmed,completed,cancelled,no-show]'
     ];
 
     /**
@@ -89,7 +89,7 @@ class AppointmentModel extends BaseModel
     public function book(array $payload): int|false
     {
         if (empty($payload['status'])) {
-            $payload['status'] = 'booked';
+            $payload['status'] = 'pending';
         }
         if (empty($payload['user_id']) && !empty($payload['provider_id'])) {
             $payload['user_id'] = $payload['provider_id'];
@@ -119,7 +119,7 @@ class AppointmentModel extends BaseModel
                             ->where('start_time <=', $todayEnd)
                             ->countAllResults(false),
             'upcoming' => $this->where('start_time >', $now)
-                               ->where('status', 'booked')
+                               ->whereIn('status', ['pending', 'confirmed'])
                                ->countAllResults(false),
             'completed' => $this->where('status', 'completed')->countAllResults(false),
             'cancelled' => $this->where('status', 'cancelled')->countAllResults(false),

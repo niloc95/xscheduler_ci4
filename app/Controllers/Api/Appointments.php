@@ -495,12 +495,15 @@ class Appointments extends BaseController
             $appointment = $model->find($id);
             
             if (!$appointment) {
+                log_message('error', "Appointment not found: ID={$id}");
                 return $response->setStatusCode(404)->setJSON([
                     'error' => [
                         'message' => 'Appointment not found'
                     ]
                 ]);
             }
+            
+            log_message('info', "Updating appointment status: ID={$id}, Old={$appointment['status']}, New={$newStatus}");
             
             $updateData = [
                 'status' => $newStatus,
@@ -509,7 +512,20 @@ class Appointments extends BaseController
             
             $updated = $model->update($id, $updateData);
             
+            log_message('info', "Update result: " . ($updated ? 'SUCCESS' : 'FAILED'));
+            
+            if ($model->errors()) {
+                log_message('error', "Model validation errors: " . json_encode($model->errors()));
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => 'Validation failed',
+                        'validation_errors' => $model->errors()
+                    ]
+                ]);
+            }
+            
             if (!$updated) {
+                log_message('error', "Failed to update appointment status: ID={$id}, Status={$newStatus}");
                 return $response->setStatusCode(500)->setJSON([
                     'error' => [
                         'message' => 'Failed to update appointment status'
