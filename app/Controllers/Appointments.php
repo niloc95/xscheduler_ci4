@@ -430,7 +430,17 @@ class Appointments extends BaseController
     }
 
     /**
-     * Update existing appointment
+     * Update existing appointment (full form submission)
+     * PUT /appointments/update/:hash
+     * 
+     * PURPOSE: Handle full appointment edits from edit.php form.
+     * Updates ALL appointment fields including customer information.
+     * This is the comprehensive edit flow, unlike the quick API status updates.
+     * 
+     * Flow: Edit form → This method → Validate all fields → Update customer + appointment
+     * 
+     * @param string|null $appointmentHash Appointment hash for security
+     * @return RedirectResponse
      */
     public function update($appointmentHash = null)
     {
@@ -457,13 +467,13 @@ class Appointments extends BaseController
 
         $validation = \Config\Services::validation();
         
-        // Validation rules
+        // Validation rules (status values must match API)
         $rules = [
             'provider_id' => 'required|is_natural_no_zero',
             'service_id' => 'required|is_natural_no_zero',
             'appointment_date' => 'required|valid_date',
             'appointment_time' => 'required',
-            'status' => 'required|in_list[booked,pending,confirmed,completed,cancelled,no-show]',
+            'status' => 'required|in_list[pending,confirmed,completed,cancelled,no-show]',
             'customer_first_name' => 'required|min_length[2]|max_length[120]',
             'customer_last_name' => 'permit_empty|max_length[160]',
             'customer_email' => 'required|valid_email|max_length[255]',
@@ -484,6 +494,10 @@ class Appointments extends BaseController
         $appointmentDate = $this->request->getPost('appointment_date');
         $appointmentTime = $this->request->getPost('appointment_time');
         $status = $this->request->getPost('status');
+        
+        // Debug: Log status value
+        log_message('info', '[Appointments::update] Status from form: ' . $status);
+        log_message('info', '[Appointments::update] Current appointment status: ' . $existingAppointment['status']);
         
         // Get service to calculate end time
         $service = $this->serviceModel->find($serviceId);
@@ -556,6 +570,8 @@ class Appointments extends BaseController
             'status' => $status,
             'notes' => $this->request->getPost('notes') ?? ''
         ];
+        
+        log_message('info', '[Appointments::update] Appointment data to save: ' . json_encode($appointmentData));
 
         $updated = $this->appointmentModel->update($appointmentId, $appointmentData);
 

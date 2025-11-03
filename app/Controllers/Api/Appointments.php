@@ -443,8 +443,16 @@ class Appointments extends BaseController
     }
     
     /**
-     * Update appointment status
+     * Update appointment status only (quick status changes)
      * PATCH /api/appointments/:id/status
+     * 
+     * PURPOSE: Fast status updates from calendar modal without full form validation.
+     * Use this for quick status changes (pending → confirmed, etc.) from the UI.
+     * 
+     * For full appointment updates (dates, customer info, etc.), use update() method below.
+     * 
+     * @param int|null $id Appointment ID
+     * @return ResponseInterface JSON response with success/error
      */
     public function updateStatus($id = null)
     {
@@ -609,9 +617,16 @@ class Appointments extends BaseController
     }
 
     /**
-     * Update appointment via API
+     * Update appointment (flexible field updates)
      * PATCH /api/appointments/:id
      * Body: { start?, end?, status? }
+     * 
+     * PURPOSE: Flexible updates for multiple fields (reschedule, status, etc.).
+     * Used by drag-drop reschedule and other programmatic updates.
+     * Accepts partial updates - only provided fields are updated.
+     * 
+     * For status-only updates, you can use updateStatus() above for clarity,
+     * but this method handles status changes too.
      */
     public function update($id = null)
     {

@@ -1,12 +1,19 @@
 /**
  * Appointment Details Modal
  * 
- * Displays appointment information in a modal with actions:
- * - View full details
- * - Edit appointment
- * - Reschedule (drag to new slot)
+ * PURPOSE: Quick view and status management for appointments from calendar.
+ * This modal is designed for QUICK ACTIONS only:
+ * - View appointment details
+ * - Quick status changes (pending → confirmed, etc.)
  * - Cancel appointment
- * - Quick hover preview (tooltip)
+ * - Navigate to full edit page
+ * 
+ * For FULL EDITING (customer info, dates, services), use the Edit page.
+ * The "Edit" button redirects to /appointments/edit/:hash for comprehensive changes.
+ * 
+ * UPDATE FLOWS:
+ * - Status changes → PATCH /api/appointments/:id/status (API)
+ * - Full edits → Navigate to edit page → PUT /appointments/update/:hash (Controller)
  */
 
 import { DateTime } from 'luxon';
@@ -358,11 +365,6 @@ export class AppointmentDetailsModal {
             } else {
                 this.modal.querySelector('#detail-notes-wrapper').classList.add('hidden');
             }
-            
-            // Status badge
-            const statusBadge = this.modal.querySelector('#detail-status-badge');
-            statusBadge.textContent = appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1);
-            statusBadge.className = `px-3 py-1 text-sm font-medium rounded-full ${statusColor.bg} ${statusColor.text}`;
             
             // Status select
             const statusSelect = this.modal.querySelector('#detail-status-select');
