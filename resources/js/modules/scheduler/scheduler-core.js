@@ -87,6 +87,9 @@ export class SchedulerCore {
 
             console.log('✅ Visible providers initialized:', Array.from(this.visibleProviders));
 
+            // Set initial visibility of daily appointments section
+            this.toggleDailyAppointmentsSection();
+
             // Render the initial view
             console.log('🎨 Rendering view...');
             this.render();
@@ -243,6 +246,10 @@ export class SchedulerCore {
         }
 
         this.currentView = viewName;
+        
+        // Toggle visibility of daily provider appointments section based on view
+        this.toggleDailyAppointmentsSection();
+        
         await this.loadAppointments();
         this.render();
     }
@@ -312,6 +319,9 @@ export class SchedulerCore {
         console.log('🔍 Filtered appointments for display:', filteredAppointments.length);
         console.log('👥 Visible providers:', Array.from(this.visibleProviders));
         console.log('📋 All appointments:', this.appointments.length);
+
+        // Update date display in toolbar
+        this.updateDateDisplay();
 
         const view = this.views[this.currentView];
         if (view && typeof view.render === 'function') {
@@ -390,6 +400,65 @@ export class SchedulerCore {
         this.appointments = [];
         this.providers = [];
         this.visibleProviders.clear();
+    }
+    
+    /**
+     * Toggle visibility of daily provider appointments section
+     * Hide when in day view (redundant), show for month/week views
+     */
+    toggleDailyAppointmentsSection() {
+        const dailySection = document.getElementById('daily-provider-appointments');
+        if (!dailySection) return;
+        
+        if (this.currentView === 'day') {
+            // Hide daily section when in day view (it's redundant)
+            dailySection.style.display = 'none';
+        } else {
+            // Show daily section for month/week views
+            dailySection.style.display = 'block';
+        }
+    }
+    
+    /**
+     * Update the date display in the toolbar based on current view
+     */
+    updateDateDisplay() {
+        const displayElement = document.getElementById('scheduler-date-display');
+        if (!displayElement) return;
+        
+        let displayText = '';
+        
+        switch (this.currentView) {
+            case 'day':
+                // Single day: "Monday, November 3, 2025"
+                displayText = this.currentDate.toFormat('EEEE, MMMM d, yyyy');
+                break;
+                
+            case 'week':
+                // Week range: "Nov 3 - Nov 9, 2025"
+                const weekStart = this.currentDate.startOf('week');
+                const weekEnd = weekStart.plus({ days: 6 });
+                
+                if (weekStart.month === weekEnd.month) {
+                    // Same month: "Nov 3 - 9, 2025"
+                    displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('d, yyyy')}`;
+                } else if (weekStart.year === weekEnd.year) {
+                    // Different months, same year: "Oct 30 - Nov 5, 2025"
+                    displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
+                } else {
+                    // Different years: "Dec 30, 2024 - Jan 5, 2025"
+                    displayText = `${weekStart.toFormat('MMM d, yyyy')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
+                }
+                break;
+                
+            case 'month':
+            default:
+                // Month view: "November 2025"
+                displayText = this.currentDate.toFormat('MMMM yyyy');
+                break;
+        }
+        
+        displayElement.textContent = displayText;
     }
     
     /**

@@ -73,6 +73,9 @@ export class WeekView {
 
         // Add event listeners
         this.attachEventListeners(container, data);
+        
+        // Render daily appointments section for the week
+        this.renderWeeklyAppointmentsSection(days, appointments, providers, data);
     }
 
     renderDayHeader(day, blockedPeriods) {
@@ -281,5 +284,180 @@ export class WeekView {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    /**
+     * Render weekly appointments section showing provider schedules for the week
+     */
+    renderWeeklyAppointmentsSection(days, appointments, providers, data) {
+        const dailySection = document.getElementById('daily-provider-appointments');
+        if (!dailySection) return;
+        
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
+        
+        // Group appointments by provider and day
+        const appointmentsByProvider = {};
+        providers.forEach(provider => {
+            appointmentsByProvider[provider.id] = {};
+            days.forEach(day => {
+                appointmentsByProvider[provider.id][day.toISODate()] = [];
+            });
+        });
+        
+        appointments.forEach(apt => {
+            const dateKey = apt.startDateTime.toISODate();
+            if (appointmentsByProvider[apt.providerId] && appointmentsByProvider[apt.providerId][dateKey]) {
+                appointmentsByProvider[apt.providerId][dateKey].push(apt);
+            }
+        });
+        
+        // Calculate total appointments per provider for the week
+        const providerTotals = {};
+        providers.forEach(provider => {
+            providerTotals[provider.id] = Object.values(appointmentsByProvider[provider.id]).flat().length;
+        });
+        
+        // Filter to only show providers with appointments
+        const activeProviders = providers.filter(p => providerTotals[p.id] > 0);
+        
+        const weekStart = days[0];
+        const weekEnd = days[days.length - 1];
+        
+        dailySection.innerHTML = `
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Weekly Schedule
+                        </h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            ${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}
+                        </p>
+                    </div>
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        ${appointments.length} ${appointments.length === 1 ? 'appointment' : 'appointments'} this week
+                    </span>
+                </div>
+            </div>
+            
+            ${activeProviders.length > 0 ? `
+                <!-- Provider Schedule Grid -->
+                <div class="p-6">
+                    <div class="space-y-6">
+                        ${activeProviders.map(provider => {
+                            const color = provider.color || '#3B82F6';
+                            const weekAppointments = Object.values(appointmentsByProvider[provider.id]).flat();
+                            
+                            return `
+                                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                                    <!-- Provider Header -->
+                                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
+                                         style="border-left: 4px solid ${color};">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                                                 style="background-color: ${color};">
+                                                ${provider.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <h4 class="font-semibold text-gray-900 dark:text-white truncate">
+                                                    ${this.escapeHtml(provider.name)}
+                                                </h4>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                    ${weekAppointments.length} ${weekAppointments.length === 1 ? 'appointment' : 'appointments'} this week
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Days Grid -->
+                                    <div class="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700">
+                                        ${days.map(day => {
+                                            const dateKey = day.toISODate();
+                                            const dayAppointments = appointmentsByProvider[provider.id][dateKey] || [];
+                                            const isToday = day.hasSame(DateTime.now(), 'day');
+                                            
+                                            return `
+                                                <div class="p-3 min-h-[120px] ${isToday ? 'bg-blue-50 dark:bg-blue-900/10' : ''}">
+                                                    <!-- Day Header -->
+                                                    <div class="mb-2">
+                                                        <div class="text-xs font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}">
+                                                            ${day.toFormat('ccc')}
+                                                        </div>
+                                                        <div class="${isToday ? 'inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-semibold' : 'text-lg font-semibold text-gray-900 dark:text-white'}">
+                                                            ${day.day}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Appointments List -->
+                                                    <div class="space-y-1.5">
+                                                        ${dayAppointments.length > 0 ? 
+                                                            dayAppointments.slice(0, 3).map(apt => {
+                                                                const time = apt.startDateTime.toFormat(timeFormat);
+                                                                const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
+                                                                
+                                                                const statusColors = {
+                                                                    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                                                                    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+                                                                    completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                                                                    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                                                                    'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                                                };
+                                                                const statusClass = statusColors[apt.status] || statusColors.pending;
+                                                                
+                                                                return `
+                                                                    <div class="text-xs p-2 rounded border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer transition-colors"
+                                                                         data-appointment-id="${apt.id}">
+                                                                        <div class="font-medium text-gray-900 dark:text-white truncate">${time}</div>
+                                                                        <div class="text-gray-600 dark:text-gray-300 truncate">${this.escapeHtml(customerName)}</div>
+                                                                        <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded ${statusClass}">
+                                                                            ${apt.status}
+                                                                        </span>
+                                                                    </div>
+                                                                `;
+                                                            }).join('') 
+                                                            : `<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>`
+                                                        }
+                                                        ${dayAppointments.length > 3 ? `
+                                                            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium text-center pt-1">
+                                                                +${dayAppointments.length - 3} more
+                                                            </div>
+                                                        ` : ''}
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : `
+                <div class="p-12 text-center">
+                    <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">No appointments scheduled this week</p>
+                </div>
+            `}
+        `;
+        
+        // Add click handlers for appointments in the section
+        this.attachWeeklySectionListeners(dailySection, data);
+    }
+    
+    /**
+     * Attach event listeners to appointments in the weekly section
+     */
+    attachWeeklySectionListeners(section, data) {
+        section.querySelectorAll('[data-appointment-id]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const aptId = parseInt(el.dataset.appointmentId, 10);
+                const appointment = data.appointments.find(a => a.id === aptId);
+                if (appointment && data.onAppointmentClick) {
+                    data.onAppointmentClick(appointment);
+                }
+            });
+        });
     }
 }

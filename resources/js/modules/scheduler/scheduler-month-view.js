@@ -101,8 +101,8 @@ export class MonthView {
         // Add event listeners
         this.attachEventListeners(container, data);
         
-        // Render daily appointments section separately (if container exists)
-        this.renderDailySection();
+        // Render daily appointments section for the selected day
+        this.renderDailySection(data);
     }
 
     renderDayHeaders(config, settings) {
@@ -215,7 +215,9 @@ export class MonthView {
      * Render daily appointments section showing provider columns for selected day
      */
     renderDailyAppointments() {
-        if (!this.selectedDate) return '';
+        if (!this.selectedDate) {
+            this.selectedDate = DateTime.now().setZone(this.scheduler.options.timezone);
+        }
         
         const dateKey = this.selectedDate.toISODate();
         const dayAppointments = this.appointmentsByDate[dateKey] || [];
@@ -232,16 +234,15 @@ export class MonthView {
             }
         });
         
-        // Filter to only show providers with appointments or all if no appointments
-        const activeProviders = this.providers.filter(p => 
-            dayAppointments.length === 0 || appointmentsByProvider[p.id].length > 0
-        );
-        
-        if (activeProviders.length === 0) return '';
+        // Filter to only show providers with appointments or show all providers if there are appointments
+        const activeProviders = dayAppointments.length > 0 
+            ? this.providers.filter(p => appointmentsByProvider[p.id].length > 0)
+            : this.providers;
         
         const timeFormat = this.settings?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         
-        return `
+        // Build the HTML
+        let html = `
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
                     <div>
@@ -257,105 +258,129 @@ export class MonthView {
                     </span>
                 </div>
             </div>
+        `;
+        
+        if (activeProviders.length > 0) {
+            html += `
+                <!-- Provider Columns -->
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(activeProviders.length, 4)} gap-4">
+            `;
             
-            <!-- Provider Columns -->
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(activeProviders.length, 4)} gap-4">
-                    ${activeProviders.map(provider => {
-                        const providerAppointments = appointmentsByProvider[provider.id] || [];
-                        const color = provider.color || '#3B82F6';
-                        
-                        return `
-                            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                                <!-- Provider Header -->
-                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
-                                     style="border-left: 4px solid ${color};">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                                             style="background-color: ${color};">
-                                            ${provider.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <h4 class="font-medium text-gray-900 dark:text-white truncate">
-                                                ${this.escapeHtml(provider.name)}
-                                            </h4>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'}
-                                            </p>
-                                        </div>
-                                    </div>
+            activeProviders.forEach(provider => {
+                const providerAppointments = appointmentsByProvider[provider.id] || [];
+                const color = provider.color || '#3B82F6';
+                
+                html += `
+                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <!-- Provider Header -->
+                        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
+                             style="border-left: 4px solid ${color};">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                                     style="background-color: ${color};">
+                                    ${provider.name.charAt(0).toUpperCase()}
                                 </div>
-                                
-                                <!-- Appointments List -->
-                                <div class="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
-                                    ${providerAppointments.length > 0 ? 
-                                        providerAppointments.map(apt => {
-                                            const time = `${apt.startDateTime.toFormat(timeFormat)} - ${apt.endDateTime.toFormat(timeFormat)}`;
-                                            const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
-                                            const serviceName = apt.serviceName || 'Appointment';
-                                            
-                                            const statusColors = {
-                                                confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                                                pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-                                                completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                                cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                            };
-                                            const statusClass = statusColors[apt.status] || statusColors.pending;
-                                            
-                                            return `
-                                                <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                                                     data-appointment-id="${apt.id}">
-                                                    <div class="flex items-start justify-between gap-2 mb-2">
-                                                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                                                            ${time}
-                                                        </span>
-                                                        <span class="px-2 py-0.5 text-xs font-medium rounded-full ${statusClass} flex-shrink-0">
-                                                            ${apt.status}
-                                                        </span>
-                                                    </div>
-                                                    <h5 class="font-semibold text-sm text-gray-900 dark:text-white mb-1">
-                                                        ${this.escapeHtml(customerName)}
-                                                    </h5>
-                                                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                                        ${this.escapeHtml(serviceName)}
-                                                    </p>
-                                                    <div class="flex items-center gap-2">
-                                                        <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                                                data-action="view"
-                                                                data-appointment-id="${apt.id}">
-                                                            <span class="material-symbols-outlined text-sm">visibility</span>
-                                                            View
-                                                        </button>
-                                                        <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
-                                                                data-action="edit"
-                                                                data-appointment-id="${apt.id}">
-                                                            <span class="material-symbols-outlined text-sm">edit</span>
-                                                            Edit
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            `;
-                                        }).join('') :
-                                        `
-                                        <div class="p-8 text-center">
-                                            <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-4xl mb-2">event_available</span>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">No appointments</p>
-                                        </div>
-                                        `
-                                    }
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-medium text-gray-900 dark:text-white truncate">
+                                        ${this.escapeHtml(provider.name)}
+                                    </h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Appointments List -->
+                        <div class="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
+                `;
+                
+                if (providerAppointments.length > 0) {
+                    providerAppointments.forEach(apt => {
+                        const time = `${apt.startDateTime.toFormat(timeFormat)} - ${apt.endDateTime.toFormat(timeFormat)}`;
+                        const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
+                        const serviceName = apt.serviceName || 'Appointment';
+                        
+                        const statusColors = {
+                            confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+                            completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+                            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                            'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                        };
+                        const statusClass = statusColors[apt.status] || statusColors.pending;
+                        
+                        html += `
+                            <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                 data-appointment-id="${apt.id}">
+                                <div class="flex items-start justify-between gap-2 mb-2">
+                                    <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                        ${time}
+                                    </span>
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full ${statusClass} flex-shrink-0">
+                                        ${apt.status}
+                                    </span>
+                                </div>
+                                <h5 class="font-semibold text-sm text-gray-900 dark:text-white mb-1">
+                                    ${this.escapeHtml(customerName)}
+                                </h5>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                    ${this.escapeHtml(serviceName)}
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                            data-action="view"
+                                            data-appointment-id="${apt.id}">
+                                        <span class="material-symbols-outlined text-sm">visibility</span>
+                                        View
+                                    </button>
+                                    <button class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                                            data-action="edit"
+                                            data-appointment-id="${apt.id}">
+                                        <span class="material-symbols-outlined text-sm">edit</span>
+                                        Edit
+                                    </button>
                                 </div>
                             </div>
                         `;
-                    }).join('')}
+                    });
+                } else {
+                    html += `
+                        <div class="p-8 text-center">
+                            <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-4xl mb-2">event_available</span>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">No appointments</p>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            html += `
+                <!-- Empty State -->
+                <div class="p-12 text-center">
+                    <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">No providers available or no appointments for this day</p>
+                </div>
+            `;
+        }
+        
+        return html;
     }
     
     /**
      * Render daily section to the separate container outside the calendar
      */
-    renderDailySection() {
+    renderDailySection(data) {
         const dailyContainer = document.getElementById('daily-provider-appointments');
         if (!dailyContainer) {
             console.log('[MonthView] Daily provider appointments container not found');
@@ -366,19 +391,18 @@ export class MonthView {
         dailyContainer.innerHTML = this.renderDailyAppointments();
         
         // Attach event listeners to the daily section
-        this.attachDailySectionListeners(dailyContainer);
+        this.attachDailySectionListeners(dailyContainer, data);
     }
     
     /**
      * Attach event listeners to daily section content
      */
-    attachDailySectionListeners(container) {
+    attachDailySectionListeners(container, data) {
         if (!container) return;
         
-        const data = {
-            appointments: this.appointments,
-            onAppointmentClick: this.scheduler.handleAppointmentClick.bind(this.scheduler)
-        };
+        // Use passed data or fallback to instance data
+        const appointments = data?.appointments || this.appointments;
+        const onAppointmentClick = data?.onAppointmentClick || this.scheduler.handleAppointmentClick.bind(this.scheduler);
         
         // Action buttons (view/edit)
         container.querySelectorAll('[data-action]').forEach(btn => {
@@ -388,10 +412,10 @@ export class MonthView {
                 
                 const action = btn.dataset.action;
                 const aptId = parseInt(btn.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
+                const appointment = appointments.find(a => a.id === aptId);
                 
                 if (appointment && (action === 'view' || action === 'edit')) {
-                    data.onAppointmentClick(appointment);
+                    onAppointmentClick(appointment);
                 }
             });
         });
@@ -402,10 +426,10 @@ export class MonthView {
                 if (e.target.closest('[data-action]')) return;
                 
                 const aptId = parseInt(card.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
+                const appointment = appointments.find(a => a.id === aptId);
                 
                 if (appointment) {
-                    data.onAppointmentClick(appointment);
+                    onAppointmentClick(appointment);
                 }
             });
         });
@@ -479,7 +503,11 @@ export class MonthView {
      */
     updateDailySection(container) {
         // Update the daily section outside the calendar (if it exists)
-        this.renderDailySection();
+        const data = {
+            appointments: this.appointments,
+            onAppointmentClick: this.scheduler.handleAppointmentClick.bind(this.scheduler)
+        };
+        this.renderDailySection(data);
     }
 
     getContrastColor(hexColor) {
