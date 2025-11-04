@@ -47,27 +47,35 @@ class SetupFilter implements FilterInterface
      */
     private function isSetupCompleted(): bool
     {
-        // In production, do NOT rely on flag files. Require .env and DB readiness
-        if (ENVIRONMENT === 'production') {
-            if (!file_exists(ROOTPATH . '.env')) {
-                return false;
-            }
-            try {
-                $db = \Config\Database::connect();
-                if (!$db) return false;
-                return $db->tableExists('users');
-            } catch (\Throwable $e) {
-                return false;
-            }
-        }
-
-        // Non-production: allow legacy/new flag files to indicate completion (plus .env if present)
+        // Check for setup completion flag files first (no database query needed)
         $flagPathNew = WRITEPATH . 'setup_complete.flag';
         $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        
         if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
-            // If an .env file exists, even better; but not strictly required in local flows
             return true;
         }
-        return false;
+
+        // If no flag files exist, check .env and database (but only if credentials are set)
+        if (!file_exists(ROOTPATH . '.env')) {
+            return false;
+        }
+
+        try {
+            // Check if database credentials are actually configured
+            $dbConfig = new \Config\Database();
+            $defaultGroup = $dbConfig->{$dbConfig->defaultGroup};
+            
+            // If database credentials are empty, setup is not complete
+            if (empty($defaultGroup['hostname']) || empty($defaultGroup['database'])) {
+                return false;
+            }
+
+            // Try to connect and check for users table
+            $db = \Config\Database::connect();
+            if (!$db) return false;
+            return $db->tableExists('users');
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

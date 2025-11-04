@@ -1103,33 +1103,48 @@ class Setup extends BaseController
 
     private function isSetupCompleted(): bool
     {
-        // In production: rely on .env presence and DB readiness, not flag files
-        if (ENVIRONMENT === 'production') {
-            $envReady = file_exists(ROOTPATH . '.env');
-            if (!$envReady) {
-                log_message('debug', 'Setup not completed: .env file missing');
-                return false;
-            }
-            // Try simple DB readiness check: can we connect and does the users table exist?
-            try {
-                $db = \Config\Database::connect();
-                if (!$db) {
-                    log_message('debug', 'Setup not completed: DB connection failed');
-                    return false;
-                }
-                // Require both users and settings tables to avoid partial setup state
-                $hasUsers = $db->tableExists('users');
-                $hasSettings = $db->tableExists('settings');
-                log_message('debug', 'Setup check: users=' . ($hasUsers ? 'yes' : 'no') . ' settings=' . ($hasSettings ? 'yes' : 'no'));
-                return $hasUsers && $hasSettings;
-            } catch (\Throwable $e) {
-                log_message('debug', 'Setup not completed: DB check failed - ' . $e->getMessage());
-                return false;
-            }
+        // Check for setup completion flag files first (no database query needed)
+        $flagPathNew = WRITEPATH . 'setup_complete.flag';
+        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        
+        if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
+            log_message('debug', 'Setup completed: flag file found');
+            return true;
         }
 
-        // In non-production (development/test), allow flag file check for local setup flows
-        return file_exists(WRITEPATH . 'setup_complete.flag') || file_exists(WRITEPATH . 'setup_completed.flag');
+        // If no flag files, check .env and database (but only if credentials are set)
+        $envReady = file_exists(ROOTPATH . '.env');
+        if (!$envReady) {
+            log_message('debug', 'Setup not completed: .env file missing');
+            return false;
+        }
+
+        // Try simple DB readiness check: can we connect and does the users table exist?
+        try {
+            // Check if database credentials are actually configured
+            $dbConfig = new \Config\Database();
+            $defaultGroup = $dbConfig->{$dbConfig->defaultGroup};
+            
+            // If database credentials are empty, setup is not complete
+            if (empty($defaultGroup['hostname']) || empty($defaultGroup['database'])) {
+                log_message('debug', 'Setup not completed: database credentials not configured');
+                return false;
+            }
+
+            $db = \Config\Database::connect();
+            if (!$db) {
+                log_message('debug', 'Setup not completed: DB connection failed');
+                return false;
+            }
+            // Require both users and settings tables to avoid partial setup state
+            $hasUsers = $db->tableExists('users');
+            $hasSettings = $db->tableExists('settings');
+            log_message('debug', 'Setup check: users=' . ($hasUsers ? 'yes' : 'no') . ' settings=' . ($hasSettings ? 'yes' : 'no'));
+            return $hasUsers && $hasSettings;
+        } catch (\Throwable $e) {
+            log_message('debug', 'Setup not completed: DB check failed - ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
