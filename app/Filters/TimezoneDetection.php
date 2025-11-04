@@ -45,13 +45,29 @@ class TimezoneDetection implements FilterInterface
         }
 
         if (!$session->has('client_timezone')) {
-            $localizationService = new LocalizationSettingsService();
-            $resolvedTimezone = $localizationService->getTimezone();
-            $session->set('client_timezone', $resolvedTimezone);
+            // Skip database query if setup hasn't been completed yet
+            $setupCompleted = file_exists(WRITEPATH . 'setup_completed.flag') || 
+                              file_exists(WRITEPATH . 'setup_complete.flag');
+            
+            if ($setupCompleted) {
+                try {
+                    $localizationService = new LocalizationSettingsService();
+                    $resolvedTimezone = $localizationService->getTimezone();
+                    $session->set('client_timezone', $resolvedTimezone);
 
-            if (!$session->has('client_timezone_offset')) {
-                $minutes = TimezoneService::getOffsetMinutes($resolvedTimezone);
-                $session->set('client_timezone_offset', $minutes);
+                    if (!$session->has('client_timezone_offset')) {
+                        $minutes = TimezoneService::getOffsetMinutes($resolvedTimezone);
+                        $session->set('client_timezone_offset', $minutes);
+                    }
+                } catch (\Exception $e) {
+                    // If database query fails (e.g., during setup), use default UTC
+                    $session->set('client_timezone', 'UTC');
+                    $session->set('client_timezone_offset', 0);
+                }
+            } else {
+                // Setup not complete - use default UTC
+                $session->set('client_timezone', 'UTC');
+                $session->set('client_timezone_offset', 0);
             }
         }
 
