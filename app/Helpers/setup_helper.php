@@ -11,6 +11,7 @@ if (!function_exists('is_setup_completed')) {
         // Production: require .env and DB readiness; ignore flags
         if (ENVIRONMENT === 'production') {
             if (!file_exists(ROOTPATH . '.env')) {
+                log_message('debug', 'setup_helper: .env file not found, setup incomplete');
                 return false;
             }
 
@@ -18,6 +19,7 @@ if (!function_exists('is_setup_completed')) {
             /** @var \Config\Database $dbConfig */
             $dbConfig = config('Database');
             if (!is_object($dbConfig) || !property_exists($dbConfig, 'default')) {
+                log_message('debug', 'setup_helper: Database config missing default group');
                 return false;
             }
             $defaultConfig = (array) $dbConfig->default;
@@ -26,16 +28,22 @@ if (!function_exists('is_setup_completed')) {
             $database = $defaultConfig['database'] ?? '';
 
             if (empty($hostname) || empty($database)) {
+                log_message('debug', sprintf('setup_helper: DB credentials incomplete (hostname="%s", database="%s")', $hostname, $database));
                 return false;
             }
 
             try {
+                log_message('debug', 'setup_helper: Attempting DB connection to check users table');
                 $db = \Config\Database::connect();
                 if (!$db) {
+                    log_message('debug', 'setup_helper: DB connection failed to initialize');
                     return false;
                 }
+                $tableExists = $db->tableExists('users');
+                log_message('debug', 'setup_helper: users table exists status: ' . ($tableExists ? 'true' : 'false'));
                 return $db->tableExists('users');
             } catch (\Throwable $e) {
+                log_message('error', 'setup_helper: Exception while checking setup completion: ' . $e->getMessage());
                 return false;
             }
         }
