@@ -163,6 +163,7 @@ essentialFiles.forEach(({ src, dest }) => {
                     // Exclude all debug and log files, setup flags, and SQLite DB files
                     const excludePatterns = [
                         'setup_completed.flag',
+                        'setup_complete.flag',
                         /^database\/.*\.db$/i,
                         /^logs\/.*\.log$/i,
                         /^debugbar\/.*\.json$/i,
