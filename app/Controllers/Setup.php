@@ -686,7 +686,7 @@ class Setup extends BaseController
             log_message('info', 'Setup: .env file generated successfully at: ' . $envPath);
             return true;
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->envError = 'Exception during .env generation: ' . $e->getMessage();
             log_message('error', 'Setup: Error generating .env file - ' . $e->getMessage());
             return false;
@@ -1001,7 +1001,7 @@ class Setup extends BaseController
                 'message' => $testResult['message']
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             log_message('error', 'Database connection test failed: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
@@ -1053,7 +1053,7 @@ class Setup extends BaseController
                 'message' => 'SQLite connection successful. Database will be created automatically.'
             ];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => 'SQLite connection failed: ' . $e->getMessage()
@@ -1093,7 +1093,7 @@ class Setup extends BaseController
                 'message' => 'MySQL connection successful. Database exists and is accessible.'
             ];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => 'MySQL connection failed: ' . $e->getMessage()
