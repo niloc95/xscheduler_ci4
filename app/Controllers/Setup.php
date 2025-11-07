@@ -958,38 +958,8 @@ class Setup extends BaseController
             // Test the connection
             $testResult = $this->testDatabaseConnection($data);
 
-            // If connection is successful, update .env file and reset setup flag
-            if ($testResult['success']) {
-                log_message('info', 'Database connection test successful, updating .env file');
-                
-                // Update .env file with working credentials
-                $envUpdateSuccess = $this->generateEnvFile($data);
-                
-                if ($envUpdateSuccess) {
-                    // Reset setup completion flag to allow re-running setup with new credentials
-                    $this->resetSetupFlags();
-                    
-                    log_message('info', 'Database credentials updated in .env file and setup flags reset');
-                    
-                    return $this->response->setJSON([
-                        'success' => true,
-                        'message' => $testResult['message'] . ' Database credentials have been saved to configuration file.',
-                        'env_updated' => true,
-                        'setup_reset' => true
-                    ]);
-                } else {
-                    log_message('warning', 'Database connection successful but .env update failed: ' . ($this->envError ?? 'Unknown error'));
-                    
-                    return $this->response->setJSON([
-                        'success' => true,
-                        'message' => $testResult['message'] . ' Warning: Could not save credentials to configuration file.',
-                        'env_updated' => false,
-                        'setup_reset' => false,
-                        'warning' => $this->envError ?? 'Failed to update configuration file'
-                    ]);
-                }
-            }
-
+            // Just return the test result - don't try to write .env or reset flags
+            // The full setup process will handle that
             return $this->response->setJSON([
                 'success' => $testResult['success'],
                 'message' => $testResult['message']
