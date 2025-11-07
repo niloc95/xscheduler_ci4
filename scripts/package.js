@@ -8,7 +8,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
-console.log('📦 Creating standalone deployment package...');
+// Version management
+const versionFilePath = path.join(projectRoot, '.deploy-version');
+let deployVersion = 1;
+
+// Read and increment version
+if (fs.existsSync(versionFilePath)) {
+    const currentVersion = parseInt(fs.readFileSync(versionFilePath, 'utf8').trim(), 10);
+    deployVersion = isNaN(currentVersion) ? 1 : currentVersion + 1;
+} else {
+    deployVersion = 1;
+}
+
+// Write new version
+fs.writeFileSync(versionFilePath, deployVersion.toString());
+
+console.log(`📦 Creating standalone deployment package v${deployVersion}...`);
 console.log('⚠️  NOTE: setup_completed.flag will be excluded from deployment package');
 console.log('   This ensures fresh installations start with the setup wizard');
 console.log('⚠️  NOTE: app/Views/test/ folder will be excluded from deployment package');
@@ -673,13 +688,21 @@ console.log('📋 Upload the contents to your hosting provider and point domain 
 // Create ZIP file for easy deployment
 console.log('\n📦 Creating ZIP package for deployment...');
 
-const zipName = 'webschedulr-deploy.zip';
+const zipName = `webschedulr-deploy-v${deployVersion}.zip`;
 const zipPath = path.join(projectRoot, zipName);
 
-// Remove existing zip file if it exists
+// Also keep the generic name for backward compatibility
+const genericZipName = 'webschedulr-deploy.zip';
+const genericZipPath = path.join(projectRoot, genericZipName);
+
+// Remove existing zip files if they exist
 if (fs.existsSync(zipPath)) {
     fs.unlinkSync(zipPath);
-    console.log('🗑️  Removed existing ZIP file');
+    console.log(`🗑️  Removed existing versioned ZIP: v${deployVersion}`);
+}
+if (fs.existsSync(genericZipPath)) {
+    fs.unlinkSync(genericZipPath);
+    console.log('🗑️  Removed existing generic ZIP file');
 }
 
 async function createZipFile() {
@@ -696,7 +719,17 @@ async function createZipFile() {
             console.log(`✅ ZIP package created successfully!`);
             console.log(`📁 ZIP location: ${zipPath}`);
             console.log(`📊 ZIP size: ${fileSizeInMB} MB`);
-            console.log(`📊 Total files: ${archive.pointer()} bytes`);
+            console.log(`📊 Version: v${deployVersion}`);
+            console.log(`📊 Total bytes: ${archive.pointer()}`);
+            
+            // Create generic copy for backward compatibility
+            try {
+                fs.copyFileSync(zipPath, genericZipPath);
+                console.log(`📋 Created generic copy: ${genericZipPath}`);
+            } catch (err) {
+                console.warn('⚠️  Could not create generic copy:', err.message);
+            }
+            
             resolve();
         });
 
@@ -737,8 +770,24 @@ async function createZipFile() {
         // Add entire directory contents to ZIP
         archive.directory(packageDir, false);
 
-        // Add a deployment timestamp file
-        archive.append(`Deployment package created: ${new Date().toISOString()}\nVersion: WebSchedulr CI4\nPackaged by: package.js script\nSource directory: ${packageDir}\nFiles included: ${files.join(', ')}`, { name: 'DEPLOYMENT-INFO.txt' });
+        // Add a deployment info file with version
+        const deploymentInfo = `WebSchedulr Deployment Package
+Version: v${deployVersion}
+Created: ${new Date().toISOString()}
+Git Branch: ${execSync('git rev-parse --abbrev-ref HEAD', { cwd: projectRoot }).toString().trim()}
+Git Commit: ${execSync('git rev-parse --short HEAD', { cwd: projectRoot }).toString().trim()}
+Package Script: package.js
+Source Directory: ${packageDir}
+Files Included: ${files.join(', ')}
+
+DEPLOYMENT INSTRUCTIONS:
+1. Extract this ZIP to your web server
+2. Point your domain to the public/ folder
+3. Ensure writable/ folder has write permissions (755 or 775)
+4. Run the setup wizard if this is a fresh install
+5. Check the logs in writable/logs/ if you encounter issues
+`;
+        archive.append(deploymentInfo, { name: 'DEPLOYMENT-INFO.txt' });
 
         // Finalize the archive (ie we are done appending files but streams have to finish yet)
         archive.finalize();

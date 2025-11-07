@@ -13,10 +13,10 @@
     "preview": "vite preview",
     "package": "node scripts/package.js",
     "package:archive": "node scripts/package.js --archive-logs",
+    "deploy": "node scripts/package.js",
     "build:dev": "node scripts/build-config.js build development",
     "build:staging": "node scripts/build-config.js build staging",
-    "build:prod": "node scripts/build-config.js build production",
-    "deploy": "node scripts/build-config.js deploy"
+    "build:prod": "node scripts/build-config.js build production"
   },
   "keywords": [],
   "author": "",

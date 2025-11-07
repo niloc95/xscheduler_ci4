@@ -214,6 +214,9 @@ webschedulr-deploy/
 deploy.log
 deployment-*.zip
 
+# Deployment version tracking (auto-incremented locally)
+.deploy-version
+
 #-------------------------
 # Documentation
 #-------------------------
