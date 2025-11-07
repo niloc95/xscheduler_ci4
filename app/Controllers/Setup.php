@@ -546,12 +546,6 @@ class Setup extends BaseController
      */
     protected function writeSetupCompletedFlag(array $setupData): array
     {
-        // Do not create flag files in production environments
-        if (ENVIRONMENT === 'production') {
-            log_message('info', 'Setup: Skipping flag file creation in production.');
-            return [ 'success' => true, 'message' => 'Skipped flag write in production' ];
-        }
-
         // Prefer the provided admin email; if missing, derive from userid; else use default
         $adminEmail = null;
         if (!empty($setupData['admin']['email']) && filter_var($setupData['admin']['email'], FILTER_VALIDATE_EMAIL)) {
@@ -1157,26 +1151,6 @@ class Setup extends BaseController
         // Remove flag files if they exist
         $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
         $flagPathNew = WRITEPATH . 'setup_complete.flag';
-        
-        if (file_exists($flagPathNew)) {
-            if (!unlink($flagPathNew)) {
-                log_message('warning', 'Failed to remove setup flag: ' . $flagPathNew);
-                $flagsReset = false;
-            } else {
-                log_message('info', 'Removed setup flag: ' . $flagPathNew);
-            }
-        }
-        
-        if (file_exists($flagPathLegacy)) {
-            if (!unlink($flagPathLegacy)) {
-                log_message('warning', 'Failed to remove legacy setup flag: ' . $flagPathLegacy);
-                $flagsReset = false;
-            } else {
-                log_message('info', 'Removed legacy setup flag: ' . $flagPathLegacy);
-            }
-        }
-        
-        return $flagsReset;
         
         if (file_exists($flagPathNew)) {
             if (!unlink($flagPathNew)) {
