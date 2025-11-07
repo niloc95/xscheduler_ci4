@@ -3,23 +3,33 @@
 if (!function_exists('is_setup_completed')) {
     /**
      * Check if the application setup has been completed
+     * Single source of truth for setup status across the application
      * 
      * @return bool
      */
     function is_setup_completed(): bool
     {
-        // Production: require .env and DB readiness; ignore flags
-        if (ENVIRONMENT === 'production') {
-            if (!file_exists(ROOTPATH . '.env')) {
-                log_message('debug', 'setup_helper: .env file not found, setup incomplete');
-                return false;
-            }
+        // Check for setup completion flag files first (fastest check, no DB needed)
+        $flagPathNew = WRITEPATH . 'setup_complete.flag';
+        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        
+        if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
+            log_message('debug', 'Setup completed: flag file found');
+            return true;
+        }
 
-            // Ensure database credentials are present before attempting connection
+        // If no flag files, check .env exists
+        if (!file_exists(ROOTPATH . '.env')) {
+            log_message('debug', 'Setup not completed: .env file missing');
+            return false;
+        }
+
+        // Ensure database credentials are present before attempting connection
+        try {
             /** @var \Config\Database $dbConfig */
             $dbConfig = config('Database');
             if (!is_object($dbConfig) || !property_exists($dbConfig, 'default')) {
-                log_message('debug', 'setup_helper: Database config missing default group');
+                log_message('debug', 'Setup not completed: Database config missing default group');
                 return false;
             }
             $defaultConfig = (array) $dbConfig->default;
@@ -28,30 +38,29 @@ if (!function_exists('is_setup_completed')) {
             $database = $defaultConfig['database'] ?? '';
 
             if (empty($hostname) || empty($database)) {
-                log_message('debug', sprintf('setup_helper: DB credentials incomplete (hostname="%s", database="%s")', $hostname, $database));
+                log_message('debug', sprintf('Setup not completed: DB credentials incomplete (hostname="%s", database="%s")', $hostname, $database));
                 return false;
             }
 
-            try {
-                log_message('debug', 'setup_helper: Attempting DB connection to check users table');
-                $db = \Config\Database::connect();
-                if (!$db) {
-                    log_message('debug', 'setup_helper: DB connection failed to initialize');
-                    return false;
-                }
-                $tableExists = $db->tableExists('users');
-                log_message('debug', 'setup_helper: users table exists status: ' . ($tableExists ? 'true' : 'false'));
-                return $db->tableExists('users');
-            } catch (\Throwable $e) {
-                log_message('error', 'setup_helper: Exception while checking setup completion: ' . $e->getMessage());
+            // Try to connect and check for required tables
+            log_message('debug', 'Setup check: Attempting DB connection to verify tables');
+            $db = \Config\Database::connect();
+            if (!$db) {
+                log_message('debug', 'Setup not completed: DB connection failed');
                 return false;
             }
+            
+            // Require both users and settings tables to avoid partial setup state
+            $hasUsers = $db->tableExists('users');
+            $hasSettings = $db->tableExists('settings');
+            log_message('debug', 'Setup check: users=' . ($hasUsers ? 'yes' : 'no') . ' settings=' . ($hasSettings ? 'yes' : 'no'));
+            
+            return $hasUsers && $hasSettings;
+            
+        } catch (\Throwable $e) {
+            log_message('error', 'Setup check exception: ' . $e->getMessage());
+            return false;
         }
-
-        // Non-production: rely on flag files for local/dev convenience
-        $flagPathNew = WRITEPATH . 'setup_complete.flag';
-        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
-        return file_exists($flagPathNew) || file_exists($flagPathLegacy);
     }
 }
 

@@ -15,13 +15,13 @@ class Setup extends BaseController
 
     public function __construct()
     {
-        helper(['form', 'url']);
+        helper(['form', 'url', 'setup']);
     }
 
     public function index()
     {
-        // Check if setup is already completed
-        if ($this->isSetupCompleted()) {
+        // Check if setup is already completed using global helper
+        if (is_setup_completed()) {
             return redirect()->to('/auth/login')->with('info', 'Setup has already been completed. Please log in.');
         }
 
@@ -39,8 +39,8 @@ class Setup extends BaseController
         if (function_exists('ob_start')) {
             @ob_start();
         }
-        // Check if setup is already completed
-        if ($this->isSetupCompleted()) {
+        // Check if setup is already completed using global helper
+        if (is_setup_completed()) {
             $this->cleanOutputBuffer();
             return $this->response->setJSON([
                 'success' => false,
@@ -1062,52 +1062,6 @@ class Setup extends BaseController
                 'success' => false,
                 'message' => 'MySQL connection failed: ' . $e->getMessage()
             ];
-        }
-    }
-
-    private function isSetupCompleted(): bool
-    {
-        // Check for setup completion flag files first (no database query needed)
-        $flagPathNew = WRITEPATH . 'setup_complete.flag';
-        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
-        
-        if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
-            log_message('debug', 'Setup completed: flag file found');
-            return true;
-        }
-
-        // If no flag files, check .env and database (but only if credentials are set)
-        $envReady = file_exists(ROOTPATH . '.env');
-        if (!$envReady) {
-            log_message('debug', 'Setup not completed: .env file missing');
-            return false;
-        }
-
-        // Try simple DB readiness check: can we connect and does the users table exist?
-        try {
-            // Check if database credentials are actually configured
-            $dbConfig = new \Config\Database();
-            $defaultGroup = $dbConfig->{$dbConfig->defaultGroup};
-            
-            // If database credentials are empty, setup is not complete
-            if (empty($defaultGroup['hostname']) || empty($defaultGroup['database'])) {
-                log_message('debug', 'Setup not completed: database credentials not configured');
-                return false;
-            }
-
-            $db = \Config\Database::connect();
-            if (!$db) {
-                log_message('debug', 'Setup not completed: DB connection failed');
-                return false;
-            }
-            // Require both users and settings tables to avoid partial setup state
-            $hasUsers = $db->tableExists('users');
-            $hasSettings = $db->tableExists('settings');
-            log_message('debug', 'Setup check: users=' . ($hasUsers ? 'yes' : 'no') . ' settings=' . ($hasSettings ? 'yes' : 'no'));
-            return $hasUsers && $hasSettings;
-        } catch (\Throwable $e) {
-            log_message('debug', 'Setup not completed: DB check failed - ' . $e->getMessage());
-            return false;
         }
     }
 
