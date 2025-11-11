@@ -1,0 +1,11 @@
+u61WMK3ysZluOWQ
+webscheduler.42web.io
+
+Errors Production setup 
+DB select was SQLITE
+1 Migration failed: Database migration failed: Unable to prepare statement: 1, near "SHOW": syntax error: 
+
+
+1. Edit Services change or add category but no provider assigned - Returns a 404 
+
+In production > Logo

@@ -84,16 +84,17 @@
                         title="Previous">
                     <span class="material-symbols-outlined">chevron_left</span>
                 </button>
+                
+                <!-- Current Date Display (dynamically updated by JavaScript) -->
+                <div id="scheduler-date-display" class="text-lg font-semibold text-gray-900 dark:text-white">
+                    <?= date('F Y') ?>
+                </div>
+                
                 <button type="button" data-calendar-action="next" 
                         class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         title="Next">
                     <span class="material-symbols-outlined">chevron_right</span>
                 </button>
-            </div>
-
-            <!-- Current Date Display -->
-            <div id="scheduler-date-display" class="text-lg font-semibold text-gray-900 dark:text-white">
-                <?= date('F Y') ?>
             </div>
 
             <!-- Provider Legend (will be populated by JavaScript) -->

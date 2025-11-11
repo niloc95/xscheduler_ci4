@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -42,27 +43,6 @@ export class DayView {
         // Render HTML
         container.innerHTML = `
             <div class="scheduler-day-view bg-white dark:bg-gray-800">
-                <!-- Day Header -->
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${currentDate.toFormat('EEEE, MMMM d, yyyy')}
-                    </h2>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        ${dayAppointments.length} ${dayAppointments.length === 1 ? 'appointment' : 'appointments'} scheduled
-                    </p>
-                    ${isBlocked ? `
-                        <div class="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-red-600 dark:text-red-400 text-xl">block</span>
-                                <div>
-                                    <p class="text-sm font-medium text-red-800 dark:text-red-300">Blocked Period</p>
-                                    <p class="text-xs text-red-600 dark:text-red-400">${this.escapeHtml(blockedNotice?.notes || 'No appointments allowed')}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-
                 <!-- Calendar Grid -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
                     <!-- Time Slots Column (2/3 width) -->
@@ -146,42 +126,42 @@ export class DayView {
 
     renderAppointmentCard(appointment, providers, data) {
         const provider = providers.find(p => p.id === appointment.providerId);
-        const color = provider?.color || '#3B82F6';
+        const darkMode = isDarkMode();
+        const statusColors = getStatusColors(appointment.status, darkMode);
+        const providerColor = getProviderColor(provider);
         
         // Format time based on settings
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const time = `${appointment.startDateTime.toFormat(timeFormat)} - ${appointment.endDateTime.toFormat(timeFormat)}`;
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
-        const statusColors = {
-            confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-            completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-        };
-        const statusClass = statusColors[appointment.status] || statusColors.pending;
+        const statusLabel = getStatusLabel(appointment.status);
 
         return `
-            <div class="appointment-card p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
-                 style="border-left: 4px solid ${color};"
+            <div class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
+                 style="background-color: ${statusColors.bg}; border-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}">
                 <div class="flex items-start justify-between mb-2">
-                    <div class="text-sm font-medium text-gray-600 dark:text-gray-400">${time}</div>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">
-                        ${appointment.status}
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                        <div class="text-sm font-medium">${time}</div>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full border"
+                          style="background-color: ${statusColors.dot}; border-color: ${statusColors.border}; color: white;">
+                        ${statusLabel}
                     </span>
                 </div>
                 
-                <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                <h4 class="text-lg font-semibold mb-1">
                     ${this.escapeHtml(customerName)}
                 </h4>
                 
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <p class="text-sm mb-2 opacity-90">
                     ${this.escapeHtml(serviceName)}
                 </p>
                 
                 ${provider ? `
-                    <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div class="flex items-center gap-2 text-xs opacity-75">
                         <span class="material-symbols-outlined text-sm">person</span>
                         ${this.escapeHtml(provider.name)}
                     </div>

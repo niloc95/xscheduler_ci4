@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { getStatusColors, getProviderColor, isDarkMode } from './appointment-colors.js';
 
 export class WeekView {
     constructor(scheduler) {
@@ -44,13 +45,6 @@ export class WeekView {
         // Render HTML
         container.innerHTML = `
             <div class="scheduler-week-view bg-white dark:bg-gray-800">
-                <!-- Week Header -->
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}
-                    </h2>
-                </div>
-
                 <!-- Calendar Grid -->
                 <div class="overflow-x-auto">
                     <div class="inline-block min-w-full">
@@ -125,8 +119,9 @@ export class WeekView {
 
     renderAppointmentBlock(appointment, providers, slot) {
         const provider = providers.find(p => p.id === appointment.providerId);
-        const color = provider?.color || '#3B82F6';
-        const textColor = this.getContrastColor(color);
+        const darkMode = isDarkMode();
+        const statusColors = getStatusColors(appointment.status, darkMode);
+        const providerColor = getProviderColor(provider);
         
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
@@ -136,13 +131,16 @@ export class WeekView {
         const time = appointment.startDateTime.toFormat(timeFormat);
 
         return `
-            <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-shadow text-xs z-10"
-                 style="background-color: ${color}; color: ${textColor};"
+            <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs z-10 border-l-4"
+                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 title="${customerName} - ${serviceName} at ${time}">
-                <div class="font-semibold truncate">${time}</div>
+                 title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                    <div class="font-semibold truncate">${time}</div>
+                </div>
                 <div class="truncate">${this.escapeHtml(customerName)}</div>
-                <div class="text-xs opacity-90 truncate">${this.escapeHtml(serviceName)}</div>
+                <div class="text-xs opacity-80 truncate">${this.escapeHtml(serviceName)}</div>
             </div>
         `;
     }

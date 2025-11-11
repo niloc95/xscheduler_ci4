@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { getStatusColors, getProviderColor, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -64,13 +65,6 @@ export class MonthView {
         // Render HTML
         container.innerHTML = `
             <div class="scheduler-month-view bg-white dark:bg-gray-800">
-                <!-- Month Header -->
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${currentDate.toFormat('MMMM yyyy')}
-                    </h2>
-                </div>
-
                 <!-- Day Headers -->
                 <div class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
                     ${this.renderDayHeaders(config, settings)}
@@ -168,19 +162,22 @@ export class MonthView {
 
     renderAppointmentBlock(appointment) {
         const provider = this.providers.find(p => p.id === appointment.providerId);
-        const color = provider?.color || '#3B82F6';
-        const textColor = this.getContrastColor(color);
+        const darkMode = isDarkMode();
+        const statusColors = getStatusColors(appointment.status, darkMode);
+        const providerColor = getProviderColor(provider);
         
         // Use settings to format time
         const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
         const title = appointment.title || appointment.customerName || 'Appointment';
 
         return `
-            <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate"
-                 style="background-color: ${color}; color: ${textColor};"
+            <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-90 transition-all truncate border-l-4 flex items-center gap-1.5"
+                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 title="${title} at ${time}">
-                <span class="font-medium">${time}</span> ${this.escapeHtml(title)}
+                 title="${title} at ${time} - ${appointment.status}">
+                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                <span class="font-medium">${time}</span>
+                <span class="truncate">${this.escapeHtml(title)}</span>
             </div>
         `;
     }
@@ -311,32 +308,30 @@ export class MonthView {
                         const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
                         const serviceName = apt.serviceName || 'Appointment';
                         
-                        const statusColors = {
-                            confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-                            completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-                            'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        };
-                        const statusClass = statusColors[apt.status] || statusColors.pending;
+                        const darkMode = isDarkMode();
+                        const statusColors = getStatusColors(apt.status, darkMode);
+                        const providerColor = getProviderColor(provider);
                         
                         html += `
-                            <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                            <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer border-l-4"
+                                 style="border-left-color: ${statusColors.border}; background-color: ${statusColors.bg}; color: ${statusColors.text};"
                                  data-appointment-id="${apt.id}">
                                 <div class="flex items-start justify-between gap-2 mb-1">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    <div class="flex-1 min-w-0 flex items-center gap-2">
+                                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};"></span>
+                                        <div class="text-xs font-medium">
                                             ${date} • ${time}
                                         </div>
                                     </div>
-                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full ${statusClass} flex-shrink-0">
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0"
+                                          style="background-color: ${statusColors.dot}; color: white;">
                                         ${apt.status}
                                     </span>
                                 </div>
-                                <h5 class="font-semibold text-sm text-gray-900 dark:text-white mb-1 truncate">
+                                <h5 class="font-semibold text-sm mb-1 truncate">
                                     ${this.escapeHtml(customerName)}
                                 </h5>
-                                <p class="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                <p class="text-xs opacity-80 truncate">
                                     ${this.escapeHtml(serviceName)}
                                 </p>
                             </div>
