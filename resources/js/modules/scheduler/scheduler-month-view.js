@@ -490,10 +490,7 @@ export class MonthView {
                 // Update daily appointments section
                 this.updateDailySection(container);
                 
-                // Also support creating new appointment with double-click
-                if (e.detail === 2) {
-                    this.scheduler.openCreateModal({ date });
-                }
+                // Removed: Double-click to create appointment modal
             });
         });
     }

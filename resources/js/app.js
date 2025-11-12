@@ -265,15 +265,6 @@ function setupSchedulerToolbar(scheduler) {
     
     // Initial date display update
     updateDateDisplay(scheduler);
-    
-    // Click-to-create: Open modal when clicking empty day cells
-    document.addEventListener('click', (e) => {
-        const dayCell = e.target.closest('[data-click-create="day"]');
-        if (dayCell && !e.target.closest('.scheduler-appointment')) {
-            const date = dayCell.dataset.date;
-            scheduler.openCreateModal({ date });
-        }
-    });
 }
 
 /**

@@ -231,17 +231,8 @@ export class DayView {
             });
         });
 
-        // Time slot click handlers (for creating new appointments)
-        container.querySelectorAll('.time-slot').forEach(el => {
-            el.addEventListener('click', (e) => {
-                if (e.target === el || e.target.closest('.flex-1:not(.inline-appointment)')) {
-                    const time = el.dataset.time;
-                    const date = data.currentDate.toISODate();
-                    console.log('Time slot clicked:', date, time);
-                    this.scheduler.openCreateModal({ date, time });
-                }
-            });
-        });
+        // Removed: Click-to-create modal functionality
+        // Time slots no longer open creation modal
     }
 
     getContrastColor(hexColor) {

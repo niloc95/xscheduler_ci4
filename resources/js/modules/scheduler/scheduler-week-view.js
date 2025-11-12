@@ -224,19 +224,8 @@ export class WeekView {
             });
         });
 
-        // Time slot click handlers (for creating new appointments)
-        container.querySelectorAll('[data-date][data-time]').forEach(el => {
-            if (!el.closest('[data-time-slot]')) return; // Only day cells, not time labels
-            
-            el.addEventListener('click', (e) => {
-                if (e.target === el && !e.target.closest('.appointment-block')) {
-                    const date = el.dataset.date;
-                    const time = el.dataset.time;
-                    console.log('Time slot clicked:', date, time);
-                    this.scheduler.openCreateModal({ date, time });
-                }
-            });
-        });
+        // Removed: Click-to-create modal functionality
+        // Time slots no longer open creation modal
     }
 
     getContrastColor(hexColor) {
