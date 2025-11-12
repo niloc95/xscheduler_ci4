@@ -147,12 +147,17 @@ class Appointments extends BaseController
      */
     public function store()
     {
+        log_message('info', '[Appointments::store] ========== STORE METHOD CALLED ==========');
+        log_message('info', '[Appointments::store] POST data: ' . json_encode($this->request->getPost()));
+        
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
+            log_message('error', '[Appointments::store] Not logged in');
             return redirect()->to('/auth/login')->with('error', 'Please log in to book an appointment');
         }
 
         if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
+            log_message('error', '[Appointments::store] Access denied - role check failed');
             return redirect()->back()->with('error', 'Access denied');
         }
 
@@ -189,10 +194,13 @@ class Appointments extends BaseController
         }
 
         if (!$this->validate($rules)) {
+            log_message('error', '[Appointments::store] Validation failed: ' . json_encode($validation->getErrors()));
             return redirect()->back()
                 ->withInput()
                 ->with('errors', $validation->getErrors());
         }
+
+        log_message('info', '[Appointments::store] Validation passed');
 
         // Get form data
         $providerId = $this->request->getPost('provider_id');
