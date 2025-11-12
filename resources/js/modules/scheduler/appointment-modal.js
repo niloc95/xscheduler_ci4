@@ -300,63 +300,99 @@ export class AppointmentModal {
      * Render customer form fields based on settings
      */
     renderCustomerFormFields(enabledFields) {
-        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        console.log('[AppointmentModal] Rendering customer form fields with enabled fields:', enabledFields);
         
-        // First Name
-        if (enabledFields.includes('customer_first_name') || enabledFields.includes('first_name')) {
-            const isRequired = this.settings.isFieldRequired('customer_first_name') || this.settings.isFieldRequired('first_name');
+        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        let fieldsRendered = 0;
+        
+        // First Name - always show for customer creation
+        const firstNameEnabled = enabledFields.includes('customer_first_name') || 
+                                enabledFields.includes('first_name') || 
+                                enabledFields.includes('customer_name');
+        
+        if (firstNameEnabled || true) { // Force show for now
+            const isRequired = this.settings.isFieldRequired('customer_first_name') || 
+                              this.settings.isFieldRequired('first_name');
             html += `
                 <div class="form-field-group">
                     <label class="form-label ${isRequired ? 'required' : ''}">First Name</label>
-                    <input type="text" name="customer_first_name" ${isRequired ? 'required' : ''} class="form-input" />
+                    <input type="text" name="customer_first_name" class="form-input" placeholder="Enter first name" />
                 </div>
             `;
+            fieldsRendered++;
         }
         
-        // Last Name
-        if (enabledFields.includes('customer_last_name') || enabledFields.includes('last_name')) {
-            const isRequired = this.settings.isFieldRequired('customer_last_name') || this.settings.isFieldRequired('last_name');
+        // Last Name - always show for customer creation
+        const lastNameEnabled = enabledFields.includes('customer_last_name') || 
+                               enabledFields.includes('last_name');
+        
+        if (lastNameEnabled || true) { // Force show for now
+            const isRequired = this.settings.isFieldRequired('customer_last_name') || 
+                              this.settings.isFieldRequired('last_name');
             html += `
                 <div class="form-field-group">
                     <label class="form-label ${isRequired ? 'required' : ''}">Last Name</label>
-                    <input type="text" name="customer_last_name" ${isRequired ? 'required' : ''} class="form-input" />
+                    <input type="text" name="customer_last_name" class="form-input" placeholder="Enter last name" />
                 </div>
             `;
+            fieldsRendered++;
         }
         
         html += '</div>';
         
-        // Email
-        if (enabledFields.includes('customer_email') || enabledFields.includes('email')) {
-            const isRequired = this.settings.isFieldRequired('customer_email') || this.settings.isFieldRequired('email');
+        // Email - always show for customer creation
+        const emailEnabled = enabledFields.includes('customer_email') || 
+                            enabledFields.includes('email');
+        
+        if (emailEnabled || true) { // Force show for now
+            const isRequired = this.settings.isFieldRequired('customer_email') || 
+                              this.settings.isFieldRequired('email');
             html += `
                 <div class="form-field-group">
                     <label class="form-label ${isRequired ? 'required' : ''}">Email</label>
-                    <input type="email" name="customer_email" ${isRequired ? 'required' : ''} class="form-input" />
+                    <input type="email" name="customer_email" class="form-input" placeholder="customer@example.com" />
                 </div>
             `;
+            fieldsRendered++;
         }
         
-        // Phone
-        if (enabledFields.includes('customer_phone') || enabledFields.includes('phone')) {
-            const isRequired = this.settings.isFieldRequired('customer_phone') || this.settings.isFieldRequired('phone');
+        // Phone - always show for customer creation
+        const phoneEnabled = enabledFields.includes('customer_phone') || 
+                            enabledFields.includes('phone') ||
+                            enabledFields.includes('phone_number');
+        
+        if (phoneEnabled || true) { // Force show for now
+            const isRequired = this.settings.isFieldRequired('customer_phone') || 
+                              this.settings.isFieldRequired('phone');
             html += `
                 <div class="form-field-group">
                     <label class="form-label ${isRequired ? 'required' : ''}">Phone</label>
-                    <input type="tel" name="customer_phone" ${isRequired ? 'required' : ''} class="form-input" />
+                    <input type="tel" name="customer_phone" class="form-input" placeholder="(555) 123-4567" />
                 </div>
             `;
+            fieldsRendered++;
         }
         
         // Address
-        if (enabledFields.includes('customer_address') || enabledFields.includes('address')) {
-            const isRequired = this.settings.isFieldRequired('customer_address') || this.settings.isFieldRequired('address');
+        const addressEnabled = enabledFields.includes('customer_address') || 
+                              enabledFields.includes('address');
+        
+        if (addressEnabled) {
+            const isRequired = this.settings.isFieldRequired('customer_address') || 
+                              this.settings.isFieldRequired('address');
             html += `
                 <div class="form-field-group">
                     <label class="form-label ${isRequired ? 'required' : ''}">Address</label>
-                    <input type="text" name="customer_address" ${isRequired ? 'required' : ''} class="form-input" />
+                    <input type="text" name="customer_address" class="form-input" placeholder="123 Main St, City, State" />
                 </div>
             `;
+            fieldsRendered++;
+        }
+        
+        console.log('[AppointmentModal] Customer form fields rendered:', fieldsRendered);
+        
+        if (fieldsRendered === 0) {
+            html += '<p class="text-sm text-gray-500 dark:text-gray-400">No customer fields configured. Please check booking settings.</p>';
         }
         
         return html;
