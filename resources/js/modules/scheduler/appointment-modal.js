@@ -386,28 +386,47 @@ export class AppointmentModal {
 
         // Customer mode toggle (Search vs Create)
         const modeBtns = this.form.querySelectorAll('[data-customer-mode]');
+        console.log('[AppointmentModal] Found mode buttons:', modeBtns.length);
+        
         modeBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const mode = btn.dataset.customerMode;
+                console.log('[AppointmentModal] Mode button clicked:', mode);
+                
                 const searchSection = document.getElementById('customer-search-section');
                 const createSection = document.getElementById('customer-create-section');
+                
+                console.log('[AppointmentModal] Sections found:', {
+                    search: !!searchSection,
+                    create: !!createSection
+                });
+                
+                if (!searchSection || !createSection) {
+                    console.error('[AppointmentModal] Customer sections not found in DOM');
+                    return;
+                }
                 
                 // Update button states
                 modeBtns.forEach(b => {
                     if (b.dataset.customerMode === mode) {
-                        b.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600');
+                        b.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600', 'hover:bg-gray-50', 'dark:hover:bg-gray-600');
                         b.classList.add('bg-blue-600', 'text-white');
                     } else {
-                        b.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600');
+                        b.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600', 'hover:bg-gray-50', 'dark:hover:bg-gray-600');
                         b.classList.remove('bg-blue-600', 'text-white');
                     }
                 });
                 
                 // Show/hide sections
                 if (mode === 'search') {
+                    console.log('[AppointmentModal] Showing search section');
                     searchSection.classList.remove('hidden');
                     createSection.classList.add('hidden');
                 } else {
+                    console.log('[AppointmentModal] Showing create section');
                     searchSection.classList.add('hidden');
                     createSection.classList.remove('hidden');
                 }
