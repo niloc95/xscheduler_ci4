@@ -117,7 +117,7 @@ class Scheduler extends BaseController
             'service_id' => $serviceId,
             'start_time' => date('Y-m-d H:i:s', $startDT),
             'end_time' => date('Y-m-d H:i:s', $endDT),
-            'status' => 'booked',
+            'status' => 'pending',
             'notes' => $data['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
         ]);

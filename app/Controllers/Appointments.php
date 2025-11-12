@@ -319,17 +319,22 @@ class Appointments extends BaseController
             'service_id' => $serviceId,
             'start_time' => $startTimeUtc,
             'end_time' => $endTimeUtc,
-            'status' => 'booked',
+            'status' => 'pending', // Valid enum values: pending, confirmed, completed, cancelled, no-show
             'notes' => $this->request->getPost('notes') ?? ''
         ];
 
+        log_message('info', '[Appointments::store] Attempting to insert appointment: ' . json_encode($appointmentData));
         $appointmentId = $this->appointmentModel->insert($appointmentData);
 
         if (!$appointmentId) {
+            $errors = $this->appointmentModel->errors();
+            log_message('error', '[Appointments::store] Failed to insert appointment. Model errors: ' . json_encode($errors));
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create appointment. Please try again.');
         }
+        
+        log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
 
         // Success - redirect to appointments list or view
         return redirect()->to('/appointments')
