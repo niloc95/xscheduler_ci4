@@ -125,15 +125,15 @@ $routes->group('staff-providers', ['filter' => 'setup'], function($routes) {
 });
 
 // Appointments Routes (auth required)
-$routes->group('appointments', function($routes) {
-    $routes->get('', 'Appointments::index');
-    $routes->get('view/(:any)', 'Appointments::view/$1');
-    $routes->get('create', 'Appointments::create');
-    $routes->post('store', 'Appointments::store');
-    $routes->get('edit/(:any)', 'Appointments::edit/$1');
-    $routes->post('update/(:any)', 'Appointments::update/$1');
-    $routes->put('update/(:any)', 'Appointments::update/$1');  // Support PUT method
-    $routes->post('cancel/(:any)', 'Appointments::cancel/$1');
+$routes->group('appointments', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'Appointments::index', ['filter' => 'auth']);
+    $routes->get('view/(:any)', 'Appointments::view/$1', ['filter' => 'auth']);
+    $routes->get('create', 'Appointments::create', ['filter' => 'auth']);
+    $routes->post('store', 'Appointments::store', ['filter' => 'auth']);
+    $routes->get('edit/(:any)', 'Appointments::edit/$1', ['filter' => 'auth']);
+    $routes->post('update/(:any)', 'Appointments::update/$1', ['filter' => 'auth']);
+    $routes->put('update/(:any)', 'Appointments::update/$1', ['filter' => 'auth']);  // Support PUT method
+    $routes->post('cancel/(:any)', 'Appointments::cancel/$1', ['filter' => 'auth']);
 });
 
 // Help Routes (some require auth)
