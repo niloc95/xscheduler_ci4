@@ -397,6 +397,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mode === 'search') {
                 customerSearchSection.classList.remove('hidden');
                 customerCreateSection.classList.add('hidden');
+                // Disable required validation on customer fields when in search mode
+                disableCustomerFieldValidation();
                 // Clear create form fields when switching to search
                 if (selectedCustomer) {
                     clearCustomerFormFields();
@@ -404,6 +406,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 customerSearchSection.classList.add('hidden');
                 customerCreateSection.classList.remove('hidden');
+                // Enable required validation on customer fields when in create mode
+                enableCustomerFieldValidation();
                 // Clear search when switching to create
                 clearCustomerSelection();
             }
@@ -585,6 +589,34 @@ document.addEventListener('DOMContentLoaded', function() {
             if (field) field.value = '';
         });
     }
+
+    // Enable/disable customer field validation
+    function enableCustomerFieldValidation() {
+        ['customer_first_name', 'customer_last_name', 'customer_email', 'customer_phone', 'customer_address', 
+         'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4', 'custom_field_5', 'custom_field_6'].forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field && field.dataset.originalRequired) {
+                field.required = true;
+            }
+        });
+    }
+
+    function disableCustomerFieldValidation() {
+        ['customer_first_name', 'customer_last_name', 'customer_email', 'customer_phone', 'customer_address',
+         'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4', 'custom_field_5', 'custom_field_6'].forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                // Store original required state
+                if (field.required) {
+                    field.dataset.originalRequired = 'true';
+                }
+                field.required = false;
+            }
+        });
+    }
+
+    // Initialize: disable customer field validation on page load (default is search mode)
+    disableCustomerFieldValidation();
 
     // Escape HTML helper
     function escapeHtml(text) {
