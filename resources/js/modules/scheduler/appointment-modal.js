@@ -21,6 +21,9 @@ export class AppointmentModal {
         this.selectedTime = null;
         this.selectedProviderId = null;
         this.availableSlots = [];
+        this.selectedCustomer = null;
+        this.customerSearchTimeout = null;
+        this.showCustomerForm = false;
         
         this.init();
     }
@@ -169,11 +172,14 @@ export class AppointmentModal {
         if (!this.settings.isCacheValid()) {
             await this.settings.refresh();
         }
-        
+
         const enabledFields = await this.settings.getEnabledFields();
         const timezone = await this.settings.getTimezone();
         
         let formHTML = '';
+        
+        // Customer Section (Search or Create)
+        formHTML += this.renderCustomerSection(enabledFields);
         
         // Always show date/time selection
         formHTML += this.renderDateTimeFields(timezone);
@@ -184,19 +190,7 @@ export class AppointmentModal {
         // Service selection (always required)
         formHTML += this.renderServiceField();
         
-        // Customer info fields (dynamic based on settings)
-        if (enabledFields.includes('customer_name')) {
-            formHTML += this.renderTextField('customer_name', 'Customer Name', 'person');
-        }
-        
-        if (enabledFields.includes('customer_email')) {
-            formHTML += this.renderEmailField('customer_email', 'Email Address', 'email');
-        }
-        
-        if (enabledFields.includes('customer_phone')) {
-            formHTML += this.renderPhoneField('customer_phone', 'Phone Number', 'phone');
-        }
-        
+        // Notes field if enabled
         if (enabledFields.includes('notes')) {
             formHTML += this.renderTextareaField('notes', 'Notes', 'note');
         }
@@ -210,8 +204,348 @@ export class AppointmentModal {
         
         // Attach field-specific listeners
         this.attachFieldListeners();
+        this.attachCustomerSectionListeners();
     }
     
+    /**
+     * Render customer section with search and create options
+     */
+    renderCustomerSection(enabledFields) {
+        const selectedCustomerDisplay = this.selectedCustomer ? `
+            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                            ${this.selectedCustomer.first_name?.charAt(0) || 'C'}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white">
+                                ${this.escapeHtml(this.selectedCustomer.first_name || '')} ${this.escapeHtml(this.selectedCustomer.last_name || '')}
+                            </div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                ${this.escapeHtml(this.selectedCustomer.email || this.selectedCustomer.phone_number || '')}
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" data-action="clear-customer" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <input type="hidden" name="customer_id" value="${this.selectedCustomer.id || this.selectedCustomer.hash}" />
+            </div>
+        ` : '';
+
+        return `
+            <!-- Customer Section -->
+            <div class="form-section border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                <button type="button" 
+                        class="flex items-center justify-between w-full text-left"
+                        data-toggle="customer-section">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xl">person</span>
+                        <h4 class="font-medium text-gray-900 dark:text-white">Customer Information</h4>
+                        ${this.selectedCustomer ? '<span class="ml-2 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded-full">Selected</span>' : ''}
+                    </div>
+                    <span class="material-symbols-outlined transition-transform" data-icon="expand">
+                        ${this.showCustomerForm ? 'expand_less' : 'expand_more'}
+                    </span>
+                </button>
+                
+                <div id="customer-section-content" class="${this.showCustomerForm ? '' : 'hidden'} mt-4 space-y-4">
+                    ${selectedCustomerDisplay}
+                    
+                    ${!this.selectedCustomer ? `
+                        <!-- Toggle between Search and Create -->
+                        <div class="flex gap-2 mb-4">
+                            <button type="button" 
+                                    data-customer-mode="search"
+                                    class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-blue-600 text-white">
+                                <span class="material-symbols-outlined text-base mr-1">search</span>
+                                Search Existing
+                            </button>
+                            <button type="button" 
+                                    data-customer-mode="create"
+                                    class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <span class="material-symbols-outlined text-base mr-1">person_add</span>
+                                Create New
+                            </button>
+                        </div>
+                        
+                        <!-- Search Customer -->
+                        <div id="customer-search-section" class="space-y-3">
+                            <div class="relative">
+                                <input type="text" 
+                                       id="customer-search-input"
+                                       placeholder="Search by name, email, or phone..." 
+                                       class="form-input pl-10" />
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                                <div id="customer-search-spinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div class="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                                </div>
+                            </div>
+                            <div id="customer-search-results" class="hidden max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg"></div>
+                        </div>
+                        
+                        <!-- Create Customer Form -->
+                        <div id="customer-create-section" class="hidden space-y-4">
+                            ${this.renderCustomerFormFields(enabledFields)}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render customer form fields based on settings
+     */
+    renderCustomerFormFields(enabledFields) {
+        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        
+        // First Name
+        if (enabledFields.includes('customer_first_name') || enabledFields.includes('first_name')) {
+            const isRequired = this.settings.isFieldRequired('customer_first_name') || this.settings.isFieldRequired('first_name');
+            html += `
+                <div class="form-field-group">
+                    <label class="form-label ${isRequired ? 'required' : ''}">First Name</label>
+                    <input type="text" name="customer_first_name" ${isRequired ? 'required' : ''} class="form-input" />
+                </div>
+            `;
+        }
+        
+        // Last Name
+        if (enabledFields.includes('customer_last_name') || enabledFields.includes('last_name')) {
+            const isRequired = this.settings.isFieldRequired('customer_last_name') || this.settings.isFieldRequired('last_name');
+            html += `
+                <div class="form-field-group">
+                    <label class="form-label ${isRequired ? 'required' : ''}">Last Name</label>
+                    <input type="text" name="customer_last_name" ${isRequired ? 'required' : ''} class="form-input" />
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // Email
+        if (enabledFields.includes('customer_email') || enabledFields.includes('email')) {
+            const isRequired = this.settings.isFieldRequired('customer_email') || this.settings.isFieldRequired('email');
+            html += `
+                <div class="form-field-group">
+                    <label class="form-label ${isRequired ? 'required' : ''}">Email</label>
+                    <input type="email" name="customer_email" ${isRequired ? 'required' : ''} class="form-input" />
+                </div>
+            `;
+        }
+        
+        // Phone
+        if (enabledFields.includes('customer_phone') || enabledFields.includes('phone')) {
+            const isRequired = this.settings.isFieldRequired('customer_phone') || this.settings.isFieldRequired('phone');
+            html += `
+                <div class="form-field-group">
+                    <label class="form-label ${isRequired ? 'required' : ''}">Phone</label>
+                    <input type="tel" name="customer_phone" ${isRequired ? 'required' : ''} class="form-input" />
+                </div>
+            `;
+        }
+        
+        // Address
+        if (enabledFields.includes('customer_address') || enabledFields.includes('address')) {
+            const isRequired = this.settings.isFieldRequired('customer_address') || this.settings.isFieldRequired('address');
+            html += `
+                <div class="form-field-group">
+                    <label class="form-label ${isRequired ? 'required' : ''}">Address</label>
+                    <input type="text" name="customer_address" ${isRequired ? 'required' : ''} class="form-input" />
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    /**
+     * Attach customer section listeners
+     */
+    attachCustomerSectionListeners() {
+        // Toggle customer section
+        const toggleBtn = this.form.querySelector('[data-toggle="customer-section"]');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                this.showCustomerForm = !this.showCustomerForm;
+                const content = document.getElementById('customer-section-content');
+                const icon = toggleBtn.querySelector('[data-icon="expand"]');
+                
+                if (this.showCustomerForm) {
+                    content.classList.remove('hidden');
+                    icon.textContent = 'expand_less';
+                } else {
+                    content.classList.add('hidden');
+                    icon.textContent = 'expand_more';
+                }
+            });
+        }
+
+        // Customer mode toggle (Search vs Create)
+        const modeBtns = this.form.querySelectorAll('[data-customer-mode]');
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.customerMode;
+                const searchSection = document.getElementById('customer-search-section');
+                const createSection = document.getElementById('customer-create-section');
+                
+                // Update button states
+                modeBtns.forEach(b => {
+                    if (b.dataset.customerMode === mode) {
+                        b.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600');
+                        b.classList.add('bg-blue-600', 'text-white');
+                    } else {
+                        b.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border', 'border-gray-300', 'dark:border-gray-600');
+                        b.classList.remove('bg-blue-600', 'text-white');
+                    }
+                });
+                
+                // Show/hide sections
+                if (mode === 'search') {
+                    searchSection.classList.remove('hidden');
+                    createSection.classList.add('hidden');
+                } else {
+                    searchSection.classList.add('hidden');
+                    createSection.classList.remove('hidden');
+                }
+            });
+        });
+
+        // Customer search
+        const searchInput = document.getElementById('customer-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(this.customerSearchTimeout);
+                const query = e.target.value.trim();
+                
+                if (query.length < 2) {
+                    document.getElementById('customer-search-results').classList.add('hidden');
+                    return;
+                }
+                
+                this.customerSearchTimeout = setTimeout(() => {
+                    this.performCustomerSearch(query);
+                }, 300);
+            });
+        }
+
+        // Clear customer
+        const clearBtn = this.form.querySelector('[data-action="clear-customer"]');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.selectedCustomer = null;
+                this.renderForm();
+            });
+        }
+    }
+
+    /**
+     * Perform customer search using existing search endpoint
+     */
+    async performCustomerSearch(query) {
+        const resultsContainer = document.getElementById('customer-search-results');
+        const spinner = document.getElementById('customer-search-spinner');
+        
+        try {
+            if (spinner) spinner.classList.remove('hidden');
+            resultsContainer.classList.remove('hidden');
+            
+            const response = await fetch(`/dashboard/search?q=${encodeURIComponent(query)}`);
+            const text = await response.text();
+            
+            // Extract JSON from response (handles debug toolbar)
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                const jsonMatch = text.match(/\{["']success["']:\s*(?:true|false)[\s\S]*?\}(?=\s*<|$)/);
+                if (jsonMatch) {
+                    data = JSON.parse(jsonMatch[0]);
+                }
+            }
+            
+            if (data && data.success) {
+                this.displayCustomerSearchResults(data.customers || [], query);
+            } else {
+                this.displayCustomerSearchResults([], query);
+            }
+        } catch (error) {
+            console.error('Customer search error:', error);
+            resultsContainer.innerHTML = '<div class="p-4 text-center text-red-600">Error searching customers</div>';
+        } finally {
+            if (spinner) spinner.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Display customer search results
+     */
+    displayCustomerSearchResults(customers, query) {
+        const resultsContainer = document.getElementById('customer-search-results');
+        
+        if (customers.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="p-4 text-center text-gray-500 dark:text-gray-400">
+                    <span class="material-symbols-outlined text-3xl mb-2 block">search_off</span>
+                    <p class="text-sm">No customers found for "${this.escapeHtml(query)}"</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div class="divide-y divide-gray-200 dark:divide-gray-700">';
+        customers.slice(0, 5).forEach(customer => {
+            const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown';
+            const initial = fullName.charAt(0).toUpperCase();
+            
+            html += `
+                <button type="button" 
+                        class="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                        data-select-customer='${JSON.stringify(customer)}'>
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                        ${initial}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white">${this.escapeHtml(fullName)}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 truncate">${this.escapeHtml(customer.email || customer.phone_number || '')}</div>
+                    </div>
+                    <span class="material-symbols-outlined text-gray-400">chevron_right</span>
+                </button>
+            `;
+        });
+        html += '</div>';
+        
+        resultsContainer.innerHTML = html;
+        
+        // Attach select customer listeners
+        resultsContainer.querySelectorAll('[data-select-customer]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const customer = JSON.parse(btn.dataset.selectCustomer);
+                this.selectCustomer(customer);
+            });
+        });
+    }
+
+    /**
+     * Select a customer
+     */
+    selectCustomer(customer) {
+        this.selectedCustomer = customer;
+        this.renderForm();
+    }
+
+    /**
+     * Escape HTML
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
     /**
      * Render date and time selection fields
      */
