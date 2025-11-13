@@ -289,11 +289,51 @@
                         <label for="appointment_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Time <span class="text-red-500">*</span>
                         </label>
-                        <input type="time" 
+                        
+                        <!-- Hidden input to store selected time -->
+                        <input type="hidden" 
                                id="appointment_time" 
                                name="appointment_time" 
-                               required 
-                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                               required />
+                        
+                        <!-- Time Slots Container -->
+                        <div id="time-slots-container" class="mt-2">
+                            <!-- Loading state -->
+                            <div id="time-slots-loading" class="hidden">
+                                <div class="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                                    <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Loading available time slots...
+                                </div>
+                            </div>
+                            
+                            <!-- Empty state -->
+                            <div id="time-slots-empty" class="hidden">
+                                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
+                                    <p class="text-sm">No available time slots for this date</p>
+                                    <p class="text-xs mt-1">Try selecting a different date or provider</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Error state -->
+                            <div id="time-slots-error" class="hidden">
+                                <div class="text-center py-8 text-red-600 dark:text-red-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">error</span>
+                                    <p class="text-sm" id="time-slots-error-message">Failed to load time slots</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Initial prompt -->
+                            <div id="time-slots-prompt" class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                                Select a service, provider, and date to see available time slots
+                            </div>
+                            
+                            <!-- Time slots grid -->
+                            <div id="time-slots-grid" class="hidden"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -707,9 +747,124 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Attach event listeners
-    serviceSelect.addEventListener('change', updateSummary);
-    dateInput.addEventListener('change', updateSummary);
-    timeInput.addEventListener('change', updateSummary);
+    serviceSelect.addEventListener('change', function() {
+        updateSummary();
+        loadTimeSlots(); // Fetch available time slots
+    });
+    dateInput.addEventListener('change', function() {
+        updateSummary();
+        loadTimeSlots(); // Fetch available time slots
+    });
+    providerSelect.addEventListener('change', loadTimeSlots);
+    
+    // Time slots functionality
+    async function loadTimeSlots() {
+        const providerId = providerSelect.value;
+        const date = dateInput.value;
+        const serviceId = serviceSelect.value;
+        
+        const timeSlotsGrid = document.getElementById('time-slots-grid');
+        const timeSlotsLoading = document.getElementById('time-slots-loading');
+        const timeSlotsEmpty = document.getElementById('time-slots-empty');
+        const timeSlotsError = document.getElementById('time-slots-error');
+        const timeSlotsPrompt = document.getElementById('time-slots-prompt');
+        
+        // Hide all states
+        timeSlotsGrid.classList.add('hidden');
+        timeSlotsLoading.classList.add('hidden');
+        timeSlotsEmpty.classList.add('hidden');
+        timeSlotsError.classList.add('hidden');
+        timeSlotsPrompt.classList.add('hidden');
+        
+        // Check if all required fields are filled
+        if (!providerId || !date || !serviceId) {
+            timeSlotsPrompt.classList.remove('hidden');
+            timeInput.value = '';
+            return;
+        }
+        
+        // Show loading state
+        timeSlotsLoading.classList.remove('hidden');
+        
+        try {
+            const response = await fetch(`/api/availability/slots?provider_id=${providerId}&date=${date}&service_id=${serviceId}`);
+            
+            if (!response.ok) {
+                throw new Error('Failed to load time slots');
+            }
+            
+            const result = await response.json();
+            
+            if (!result.ok || !result.data || !result.data.slots) {
+                throw new Error('Invalid response format');
+            }
+            
+            const slots = result.data.slots;
+            
+            // Hide loading
+            timeSlotsLoading.classList.add('hidden');
+            
+            // Check if slots are available
+            if (slots.length === 0) {
+                timeSlotsEmpty.classList.remove('hidden');
+                timeInput.value = '';
+                return;
+            }
+            
+            // Render time slots
+            timeSlotsGrid.innerHTML = '';
+            timeSlotsGrid.className = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2';
+            
+            slots.forEach(slot => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'time-slot-btn px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
+                button.textContent = slot.start;
+                button.dataset.time = slot.start;
+                button.dataset.startTime = slot.startTime;
+                button.dataset.endTime = slot.endTime;
+                
+                button.addEventListener('click', function() {
+                    // Remove selected state from all buttons
+                    document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600', 'dark:bg-blue-600', 'dark:border-blue-600');
+                        btn.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
+                    });
+                    
+                    // Add selected state to clicked button
+                    this.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
+                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600', 'dark:bg-blue-600', 'dark:border-blue-600');
+                    
+                    // Update hidden input with selected time
+                    timeInput.value = this.dataset.time;
+                    
+                    // Update summary
+                    updateSummary();
+                    
+                    // Show confirmation feedback
+                    const feedback = document.createElement('div');
+                    feedback.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+                    feedback.innerHTML = `
+                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                        <span>Time slot selected: ${this.dataset.time}</span>
+                    `;
+                    document.body.appendChild(feedback);
+                    setTimeout(() => feedback.remove(), 2000);
+                });
+                
+                timeSlotsGrid.appendChild(button);
+            });
+            
+            timeSlotsGrid.classList.remove('hidden');
+            
+        } catch (error) {
+            console.error('Error loading time slots:', error);
+            timeSlotsLoading.classList.add('hidden');
+            timeSlotsError.classList.remove('hidden');
+            document.getElementById('time-slots-error-message').textContent = error.message || 'Failed to load time slots';
+            timeInput.value = '';
+        }
+    }
 });
 </script>
 <?= $this->endSection() ?>
