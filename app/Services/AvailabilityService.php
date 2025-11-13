@@ -228,14 +228,22 @@ class AvailabilityService
         $cacheKey = 'blocked_periods';
         
         if (!isset($this->cache[$cacheKey])) {
-            $blockedPeriodsJson = $this->settingModel->get('business.blocked_periods') ?? '[]';
-            $this->cache[$cacheKey] = json_decode($blockedPeriodsJson, true) ?: [];
+            $settings = $this->settingModel->getByKeys(['business.blocked_periods']);
+            $blockedPeriods = $settings['business.blocked_periods'] ?? [];
+            
+            // If it's a string, decode it
+            if (is_string($blockedPeriods)) {
+                $blockedPeriods = json_decode($blockedPeriods, true) ?: [];
+            }
+            
+            $this->cache[$cacheKey] = $blockedPeriods;
         }
         
         $blockedPeriods = $this->cache[$cacheKey];
         
         foreach ($blockedPeriods as $period) {
-            if ($date >= $period['start'] && $date <= $period['end']) {
+            if (isset($period['start']) && isset($period['end']) && 
+                $date >= $period['start'] && $date <= $period['end']) {
                 return true;
             }
         }
@@ -518,7 +526,8 @@ class AvailabilityService
     {
         // TODO: Implement provider-specific buffer times
         // For now, return global default
-        $bufferTime = (int) ($this->settingModel->get('business.buffer_time') ?? 0);
+        $settings = $this->settingModel->getByKeys(['business.buffer_time']);
+        $bufferTime = (int) ($settings['business.buffer_time'] ?? 0);
         
         // Validate buffer time (must be 0, 15, or 30)
         if (!in_array($bufferTime, [0, 15, 30])) {
