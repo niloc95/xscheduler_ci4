@@ -277,13 +277,16 @@ class Appointments extends BaseController
 
             if (!$customer) {
                 // Create new customer
+                $now = date('Y-m-d H:i:s');
                 $customerData = [
                     'first_name' => $this->request->getPost('customer_first_name'),
                     'last_name' => $this->request->getPost('customer_last_name'),
                     'email' => $customerEmail,
                     'phone' => $this->request->getPost('customer_phone'),
                     'address' => $this->request->getPost('customer_address'),
-                    'notes' => $this->request->getPost('notes')
+                    'notes' => $this->request->getPost('notes'),
+                    'created_at' => $now,
+                    'updated_at' => $now
                 ];
 
                 // Handle custom fields if provided

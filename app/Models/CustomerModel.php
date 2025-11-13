@@ -12,7 +12,9 @@ class CustomerModel extends BaseModel
 	];
 
 	protected $beforeInsert = ['generateHash'];
-	protected $useTimestamps = false;
+	protected $useTimestamps = true;
+	protected $createdField = 'created_at';
+	protected $updatedField = 'updated_at';
 
 	// Validation rules
 	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
