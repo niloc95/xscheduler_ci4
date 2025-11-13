@@ -312,6 +312,24 @@ class Appointments extends BaseController
             }
         }
 
+        // Validate availability before creating appointment
+        $availabilityService = new \App\Services\AvailabilityService();
+        $availabilityCheck = $availabilityService->isSlotAvailable(
+            $providerId,
+            $startTimeUtc,
+            $endTimeUtc,
+            $clientTimezone
+        );
+
+        if (!$availabilityCheck['available']) {
+            log_message('warning', '[Appointments::store] Slot not available: ' . $availabilityCheck['reason']);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'This time slot is not available. ' . $availabilityCheck['reason']);
+        }
+
+        log_message('info', '[Appointments::store] ✅ Availability validated - slot is available');
+
         // Create appointment
         $appointmentData = [
             'customer_id' => $customerId,

@@ -183,6 +183,12 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
 
+    // Availability API - Comprehensive slot availability calculation
+    $routes->get('availability/slots', 'Api\\Availability::slots');
+    $routes->post('availability/check', 'Api\\Availability::check');
+    $routes->get('availability/summary', 'Api\\Availability::summary');
+    $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
+
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {
         // Settings endpoints - public for frontend initialization
