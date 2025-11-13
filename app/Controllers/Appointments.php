@@ -354,9 +354,10 @@ class Appointments extends BaseController
         
         log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
 
-        // Success - redirect to appointments list or view
-        return redirect()->to('/appointments')
-            ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
+        // Success - redirect to appointments calendar with refresh parameter
+        // The timestamp parameter forces the calendar to bypass cache and reload
+        return redirect()->to('/appointments?refresh=' . time())
+            ->with('success', 'Appointment booked successfully! The appointment is now visible in your calendar.');
     }
 
     private function resolveClientTimezone(): string

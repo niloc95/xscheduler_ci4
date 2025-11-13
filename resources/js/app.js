@@ -174,6 +174,16 @@ async function initScheduler() {
         // Store scheduler instance globally for debugging
         window.scheduler = scheduler;
 
+        // Check if we need to refresh (e.g., after creating an appointment)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('refresh')) {
+            console.log('🔄 Refreshing calendar after appointment creation');
+            // Remove the refresh parameter from URL without reload
+            window.history.replaceState({}, document.title, window.location.pathname);
+            // Force a calendar refresh
+            await scheduler.loadAppointments();
+        }
+
         console.log('✅ Custom scheduler initialized');
     } catch (error) {
         console.error('❌ Failed to initialize scheduler:', error);
