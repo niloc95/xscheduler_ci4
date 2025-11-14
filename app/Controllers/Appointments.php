@@ -179,6 +179,7 @@ class Appointments extends BaseController
             ];
         } else {
             // New customer - full validation
+            // Phone formats supported: +27 82 529 7070 (international) or 082 529 2242 (local)
             $rules = [
                 'provider_id' => 'required|is_natural_no_zero',
                 'service_id' => 'required|is_natural_no_zero',
@@ -187,7 +188,7 @@ class Appointments extends BaseController
                 'customer_first_name' => 'required|min_length[2]|max_length[120]',
                 'customer_last_name' => 'permit_empty|max_length[160]',
                 'customer_email' => 'required|valid_email|max_length[255]',
-                'customer_phone' => 'required|min_length[10]|max_length[32]',
+                'customer_phone' => 'required|min_length[10]|max_length[20]',
                 'customer_address' => 'permit_empty|max_length[255]',
                 'notes' => 'permit_empty|max_length[1000]'
             ];
@@ -532,6 +533,7 @@ class Appointments extends BaseController
         $validation = \Config\Services::validation();
         
         // Validation rules (status values must match API)
+        // Phone formats supported: +27 82 529 7070 (international) or 082 529 2242 (local)
         $rules = [
             'provider_id' => 'required|is_natural_no_zero',
             'service_id' => 'required|is_natural_no_zero',
@@ -541,7 +543,7 @@ class Appointments extends BaseController
             'customer_first_name' => 'required|min_length[2]|max_length[120]',
             'customer_last_name' => 'permit_empty|max_length[160]',
             'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[32]',
+            'customer_phone' => 'required|min_length[10]|max_length[20]',
             'customer_address' => 'permit_empty|max_length[255]',
             'notes' => 'permit_empty|max_length[1000]'
         ];

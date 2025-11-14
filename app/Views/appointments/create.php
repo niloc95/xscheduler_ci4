@@ -36,6 +36,23 @@
         </a>
     </div>
 
+    <!-- Validation Errors -->
+    <?php if (session('errors')): ?>
+    <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div class="flex items-start">
+            <span class="material-symbols-outlined text-red-600 dark:text-red-400 mr-3">error</span>
+            <div class="flex-1">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Please correct the following errors:</h3>
+                <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-300 space-y-1">
+                    <?php foreach (session('errors') as $error): ?>
+                        <li><?= esc($error) ?></li>
+                    <?php endforeach ?>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <?php endif ?>
+
     <!-- Form Card -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
