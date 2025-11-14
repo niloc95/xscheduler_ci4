@@ -415,6 +415,22 @@
 <script>
 // Update appointment summary dynamically
 document.addEventListener('DOMContentLoaded', function() {
+    // Populate timezone fields immediately
+    const clientTimezoneField = document.getElementById('client_timezone');
+    const clientOffsetField = document.getElementById('client_offset');
+    
+    if (clientTimezoneField) {
+        try {
+            clientTimezoneField.value = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        } catch (e) {
+            clientTimezoneField.value = 'UTC';
+        }
+    }
+    
+    if (clientOffsetField) {
+        clientOffsetField.value = new Date().getTimezoneOffset();
+    }
+
     const serviceSelect = document.getElementById('service_id');
     const providerSelect = document.getElementById('provider_id');
     const dateInput = document.getElementById('appointment_date');
