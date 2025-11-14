@@ -76,7 +76,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             'securityheaders',
-            'timezone',
+            'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',

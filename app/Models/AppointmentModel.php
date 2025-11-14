@@ -198,7 +198,7 @@ class AppointmentModel extends BaseModel
      */
     public function getStatusDistribution(): array
     {
-        $statuses = ['booked', 'completed', 'cancelled', 'rescheduled'];
+        $statuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
         $data = [];
         $labels = [];
         foreach ($statuses as $status) {

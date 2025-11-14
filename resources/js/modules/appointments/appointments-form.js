@@ -267,6 +267,7 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
 
 /**
  * Check availability for selected appointment slot
+ * TEMPORARILY DISABLED: API endpoint causing 500 errors
  */
 async function checkAvailability(formState, feedbackElement) {
     // Need all required fields
@@ -275,6 +276,13 @@ async function checkAvailability(formState, feedbackElement) {
         return;
     }
 
+    // DISABLED: Availability checking temporarily disabled due to API errors
+    // The endpoint /api/appointments/check-availability is returning 500 errors
+    // TODO: Fix the API endpoint or remove this feature entirely
+    clearAvailabilityCheck(feedbackElement);
+    return;
+
+    /* COMMENTED OUT UNTIL API IS FIXED
     formState.isChecking = true;
     showAvailabilityChecking(feedbackElement);
 
@@ -331,6 +339,7 @@ async function checkAvailability(formState, feedbackElement) {
     } finally {
         formState.isChecking = false;
     }
+    END OF COMMENTED CODE */
 }
 
 /**

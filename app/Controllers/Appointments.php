@@ -147,36 +147,60 @@ class Appointments extends BaseController
      */
     public function store()
     {
+        log_message('info', '[Appointments::store] ========== STORE METHOD CALLED ==========');
+        log_message('info', '[Appointments::store] POST data: ' . json_encode($this->request->getPost()));
+        
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
+            log_message('error', '[Appointments::store] Not logged in');
             return redirect()->to('/auth/login')->with('error', 'Please log in to book an appointment');
         }
 
         if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
+            log_message('error', '[Appointments::store] Access denied - role check failed');
             return redirect()->back()->with('error', 'Access denied');
         }
 
         $validation = \Config\Services::validation();
         
-        // Validation rules
-        $rules = [
-            'provider_id' => 'required|is_natural_no_zero',
-            'service_id' => 'required|is_natural_no_zero',
-            'appointment_date' => 'required|valid_date',
-            'appointment_time' => 'required',
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
-            'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[32]',
-            'customer_address' => 'permit_empty|max_length[255]',
-            'notes' => 'permit_empty|max_length[1000]'
-        ];
+        // Check if customer_id is provided (from search)
+        $customerId = $this->request->getPost('customer_id');
+        
+        // Validation rules - adjust based on whether customer is selected or new
+        if ($customerId) {
+            // Customer selected from search - minimal validation
+            $rules = [
+                'provider_id' => 'required|is_natural_no_zero',
+                'service_id' => 'required|is_natural_no_zero',
+                'appointment_date' => 'required|valid_date',
+                'appointment_time' => 'required',
+                'customer_id' => 'required|is_natural_no_zero',
+                'notes' => 'permit_empty|max_length[1000]'
+            ];
+        } else {
+            // New customer - full validation
+            $rules = [
+                'provider_id' => 'required|is_natural_no_zero',
+                'service_id' => 'required|is_natural_no_zero',
+                'appointment_date' => 'required|valid_date',
+                'appointment_time' => 'required',
+                'customer_first_name' => 'required|min_length[2]|max_length[120]',
+                'customer_last_name' => 'permit_empty|max_length[160]',
+                'customer_email' => 'required|valid_email|max_length[255]',
+                'customer_phone' => 'required|min_length[10]|max_length[32]',
+                'customer_address' => 'permit_empty|max_length[255]',
+                'notes' => 'permit_empty|max_length[1000]'
+            ];
+        }
 
         if (!$this->validate($rules)) {
+            log_message('error', '[Appointments::store] Validation failed: ' . json_encode($validation->getErrors()));
             return redirect()->back()
                 ->withInput()
                 ->with('errors', $validation->getErrors());
         }
+
+        log_message('info', '[Appointments::store] Validation passed');
 
         // Get form data
         $providerId = $this->request->getPost('provider_id');
@@ -235,44 +259,57 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::store] Will store in database as UTC');
         log_message('info', '[Appointments::store] =============================================');
 
-        // Check if customer exists or create new one
-        $customerEmail = $this->request->getPost('customer_email');
-        $customer = $this->customerModel->where('email', $customerEmail)->first();
-
-        if (!$customer) {
-            // Create new customer
-            $customerData = [
-                'first_name' => $this->request->getPost('customer_first_name'),
-                'last_name' => $this->request->getPost('customer_last_name'),
-                'email' => $customerEmail,
-                'phone' => $this->request->getPost('customer_phone'),
-                'address' => $this->request->getPost('customer_address'),
-                'notes' => $this->request->getPost('notes')
-            ];
-
-            // Handle custom fields if provided
-            $customFieldsData = [];
-            for ($i = 1; $i <= 6; $i++) {
-                $fieldValue = $this->request->getPost("custom_field_{$i}");
-                if ($fieldValue !== null && $fieldValue !== '') {
-                    // Use consistent field naming: 'custom_field_1' not 'field_1'
-                    // This matches CustomerManagement controller and BookingSettingsService
-                    $customFieldsData["custom_field_{$i}"] = $fieldValue;
-                }
-            }
-            if (!empty($customFieldsData)) {
-                $customerData['custom_fields'] = json_encode($customFieldsData);
-            }
-
-            $customerId = $this->customerModel->insert($customerData);
+        // Handle customer - either use existing or create new
+        if ($customerId) {
+            // Customer selected from search
+            log_message('info', '[Appointments::store] Using existing customer ID: ' . $customerId);
+            $customer = $this->customerModel->find($customerId);
             
-            if (!$customerId) {
+            if (!$customer) {
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', 'Failed to create customer record');
+                    ->with('error', 'Selected customer not found');
             }
         } else {
-            $customerId = $customer['id'];
+            // Check if customer exists by email or create new one
+            $customerEmail = $this->request->getPost('customer_email');
+            $customer = $this->customerModel->where('email', $customerEmail)->first();
+
+            if (!$customer) {
+                // Create new customer
+                $customerData = [
+                    'first_name' => $this->request->getPost('customer_first_name'),
+                    'last_name' => $this->request->getPost('customer_last_name'),
+                    'email' => $customerEmail,
+                    'phone' => $this->request->getPost('customer_phone'),
+                    'address' => $this->request->getPost('customer_address'),
+                    'notes' => $this->request->getPost('notes')
+                ];
+
+                // Handle custom fields if provided
+                $customFieldsData = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $fieldValue = $this->request->getPost("custom_field_{$i}");
+                    if ($fieldValue !== null && $fieldValue !== '') {
+                        // Use consistent field naming: 'custom_field_1' not 'field_1'
+                        // This matches CustomerManagement controller and BookingSettingsService
+                        $customFieldsData["custom_field_{$i}"] = $fieldValue;
+                    }
+                }
+                if (!empty($customFieldsData)) {
+                    $customerData['custom_fields'] = json_encode($customFieldsData);
+                }
+
+                $customerId = $this->customerModel->insert($customerData);
+                
+                if (!$customerId) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Failed to create customer record');
+                }
+            } else {
+                $customerId = $customer['id'];
+            }
         }
 
         // Create appointment
@@ -282,17 +319,22 @@ class Appointments extends BaseController
             'service_id' => $serviceId,
             'start_time' => $startTimeUtc,
             'end_time' => $endTimeUtc,
-            'status' => 'booked',
+            'status' => 'pending', // Valid enum values: pending, confirmed, completed, cancelled, no-show
             'notes' => $this->request->getPost('notes') ?? ''
         ];
 
+        log_message('info', '[Appointments::store] Attempting to insert appointment: ' . json_encode($appointmentData));
         $appointmentId = $this->appointmentModel->insert($appointmentData);
 
         if (!$appointmentId) {
+            $errors = $this->appointmentModel->errors();
+            log_message('error', '[Appointments::store] Failed to insert appointment. Model errors: ' . json_encode($errors));
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create appointment. Please try again.');
         }
+        
+        log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
 
         // Success - redirect to appointments list or view
         return redirect()->to('/appointments')

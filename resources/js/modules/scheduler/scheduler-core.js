@@ -12,7 +12,6 @@ import { WeekView } from './scheduler-week-view.js';
 import { DayView } from './scheduler-day-view.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
-import { AppointmentModal } from './appointment-modal.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
 
 export class SchedulerCore {
@@ -45,9 +44,6 @@ export class SchedulerCore {
         
         // Initialize drag-drop manager
         this.dragDropManager = new DragDropManager(this);
-        
-        // Initialize appointment modal (for creating)
-        this.appointmentModal = new AppointmentModal(this, this.settingsManager);
         
         // Initialize appointment details modal (for viewing/editing)
         this.appointmentDetailsModal = new AppointmentDetailsModal(this);
@@ -461,11 +457,4 @@ export class SchedulerCore {
         displayElement.textContent = displayText;
     }
     
-    /**
-     * Open appointment creation modal
-     * @param {Object} options - { date, time, providerId }
-     */
-    openCreateModal(options = {}) {
-        this.appointmentModal.open(options);
-    }
 }

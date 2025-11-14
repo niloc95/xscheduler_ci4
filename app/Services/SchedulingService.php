@@ -93,7 +93,7 @@ class SchedulingService
             'appointment_time' => $startDateTime->format('H:i:s'),
             'start_time' => TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone),
             'end_time' => TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone),
-            'status' => 'booked',
+            'status' => 'pending',
             'notes' => $payload['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
