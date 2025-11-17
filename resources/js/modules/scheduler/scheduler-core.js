@@ -167,6 +167,7 @@ export class SchedulerCore {
             logger.debug('📦 Extracted appointments array:', this.appointments);
             
             // Parse dates with timezone awareness and ensure IDs are numbers
+            // P0-2 FIX: Normalize all IDs to integers to prevent type mismatch in filtering
             this.appointments = this.appointments.map(raw => {
                 const id = raw.id ?? raw.appointment_id ?? raw.appointmentId;
                 const providerId = raw.providerId ?? raw.provider_id;
@@ -179,6 +180,11 @@ export class SchedulerCore {
                 if (!startISO || !endISO) {
                     logger.warn('Appointment missing start/end fields:', raw);
                 }
+                
+                // P0-2 FIX: Warn if providerId is missing - this causes appointments to be filtered out
+                if (providerId == null) {
+                    logger.error('❌ Appointment missing providerId:', raw);
+                }
 
                 const startDateTime = startISO ? DateTime.fromISO(startISO, { zone: this.options.timezone }) : null;
                 const endDateTime = endISO ? DateTime.fromISO(endISO, { zone: this.options.timezone }) : null;
@@ -186,6 +192,8 @@ export class SchedulerCore {
                 return {
                     ...raw,
                     id: id != null ? parseInt(id, 10) : undefined,
+                    // P0-2 FIX: Ensure providerId is always an integer, never undefined/null/string
+                    // This prevents type mismatch when filtering against visibleProviders Set
                     providerId: providerId != null ? parseInt(providerId, 10) : undefined,
                     serviceId: serviceId != null ? parseInt(serviceId, 10) : undefined,
                     customerId: customerId != null ? parseInt(customerId, 10) : undefined,
