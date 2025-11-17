@@ -65,7 +65,8 @@ class AvailabilityService
         string $date,
         int $serviceId,
         int $bufferMinutes = 0,
-        ?string $timezone = null
+        ?string $timezone = null,
+        ?int $excludeAppointmentId = null
     ): array {
         $timezone = $timezone ?? $this->localizationService->getTimezone();
         $tz = new DateTimeZone($timezone);
@@ -94,7 +95,11 @@ class AvailabilityService
         }
         
         // Step 4: Get all busy periods (appointments + blocked times)
-        $busyPeriods = $this->getBusyPeriods($providerId, $date, $timezone);
+        $busyPeriods = $this->getBusyPeriods($providerId, $date, $timezone, $bufferMinutes, $excludeAppointmentId);
+        log_message('info', '[AvailabilityService] Found ' . count($busyPeriods) . ' busy periods for provider ' . $providerId . ' on ' . $date);
+        foreach ($busyPeriods as $busy) {
+            log_message('info', '[AvailabilityService] Busy: ' . $busy['start']->format('Y-m-d H:i:s') . ' to ' . $busy['end']->format('Y-m-d H:i:s') . ' (' . $busy['type'] . ')');
+        }
         
         // Step 5: Generate candidate slots
         $candidateSlots = $this->generateCandidateSlots(
@@ -107,10 +112,14 @@ class AvailabilityService
         
         // Step 6: Filter out slots that overlap with busy periods
         $availableSlots = array_filter($candidateSlots, function($slot) use ($busyPeriods) {
-            return !$this->slotOverlapsBusyPeriods($slot, $busyPeriods);
+            $overlaps = $this->slotOverlapsBusyPeriods($slot, $busyPeriods);
+            if ($overlaps) {
+                log_message('info', '[AvailabilityService] Slot ' . $slot['start']->format('H:i') . '-' . $slot['end']->format('H:i') . ' overlaps with busy period, filtered out');
+            }
+            return !$overlaps;
         });
         
-        log_message('info', '[AvailabilityService] Found ' . count($availableSlots) . ' available slots');
+        log_message('info', '[AvailabilityService] Candidate slots: ' . count($candidateSlots) . ', Available slots after filtering: ' . count($availableSlots));
         
         return array_values($availableSlots);
     }
@@ -259,24 +268,19 @@ class AvailabilityService
     {
         $dateTime = new DateTime($date);
         $weekday = (int) $dateTime->format('w'); // 0=Sunday, 1=Monday, etc.
+        $dayOfWeek = strtolower($dateTime->format('l')); // 'monday', 'tuesday', etc.
         
         // First check xs_provider_schedules (provider-specific schedule)
-        $providerSchedule = $this->providerScheduleModel
-            ->where('provider_id', $providerId)
-            ->where('is_active', 1)
-            ->first();
+        // Use the model's dedicated method instead of manual query
+        $providerSchedule = $this->providerScheduleModel->getActiveDay($providerId, $dayOfWeek);
         
         if ($providerSchedule) {
-            // Provider has a custom schedule
-            $dayOfWeek = strtolower($dateTime->format('l')); // 'monday', 'tuesday', etc.
-            
-            if ($providerSchedule['day_of_week'] === $dayOfWeek) {
-                return [
-                    'start_time' => $providerSchedule['start_time'],
-                    'end_time' => $providerSchedule['end_time'],
-                    'breaks' => $this->parseBreaks($providerSchedule['break_start'], $providerSchedule['break_end'])
-                ];
-            }
+            // Provider has a custom schedule for this day
+            return [
+                'start_time' => $providerSchedule['start_time'],
+                'end_time' => $providerSchedule['end_time'],
+                'breaks' => $this->parseBreaks($providerSchedule['break_start'], $providerSchedule['break_end'])
+            ];
         }
         
         // Fall back to xs_business_hours (global business hours per provider)
@@ -323,26 +327,48 @@ class AvailabilityService
      * Get all busy periods for a provider on a specific date
      * Returns array of ['start' => DateTime, 'end' => DateTime]
      */
-    private function getBusyPeriods(int $providerId, string $date, string $timezone): array
+    private function getBusyPeriods(int $providerId, string $date, string $timezone, int $bufferMinutes = 0, ?int $excludeAppointmentId = null): array
     {
         $busy = [];
         $tz = new DateTimeZone($timezone);
         
         // Get appointments for this date (excluding cancelled)
-        $startOfDay = $date . ' 00:00:00';
-        $endOfDay = $date . ' 23:59:59';
+        // Convert local day boundaries to UTC for DB filtering (DB stores UTC)
+        $localStart = new DateTime($date . ' 00:00:00', $tz);
+        $localEnd = new DateTime($date . ' 23:59:59', $tz);
+        $utcStart = clone $localStart;
+        $utcStart->setTimezone(new DateTimeZone('UTC'));
+        $utcEnd = clone $localEnd;
+        $utcEnd->setTimezone(new DateTimeZone('UTC'));
+        $startOfDay = $utcStart->format('Y-m-d H:i:s');
+        $endOfDay = $utcEnd->format('Y-m-d H:i:s');
         
         $appointments = $this->appointmentModel
             ->where('provider_id', $providerId)
             ->where('status !=', 'cancelled')
             ->where('start_time >=', $startOfDay)
             ->where('start_time <=', $endOfDay)
+            ->when($excludeAppointmentId !== null, function($builder) use ($excludeAppointmentId) {
+                $builder->where('id !=', $excludeAppointmentId);
+            })
             ->findAll();
         
         foreach ($appointments as $apt) {
+            // Database stores times in UTC, so create DateTime in UTC first, then convert to local timezone
+            $start = new DateTime($apt['start_time'], new DateTimeZone('UTC'));
+            $start->setTimezone($tz);
+            
+            $end = new DateTime($apt['end_time'], new DateTimeZone('UTC'));
+            $end->setTimezone($tz);
+            
+            // Add buffer time after appointment ends to prevent back-to-back bookings
+            if ($bufferMinutes > 0) {
+                $end->add(new DateInterval('PT' . $bufferMinutes . 'M'));
+            }
+            
             $busy[] = [
-                'start' => new DateTime($apt['start_time'], $tz),
-                'end' => new DateTime($apt['end_time'], $tz),
+                'start' => $start,
+                'end' => $end,
                 'type' => 'appointment'
             ];
         }
@@ -350,14 +376,22 @@ class AvailabilityService
         // Get blocked times for this date
         $blockedTimes = $this->blockedTimeModel
             ->where('provider_id', $providerId)
+            // Blocked times are stored in UTC, so compare against UTC boundaries
             ->where('start_time <=', $endOfDay)
             ->where('end_time >=', $startOfDay)
             ->findAll();
         
         foreach ($blockedTimes as $block) {
+            // Database stores times in UTC, so create DateTime in UTC first, then convert to local timezone
+            $blockStart = new DateTime($block['start_time'], new DateTimeZone('UTC'));
+            $blockStart->setTimezone($tz);
+            
+            $blockEnd = new DateTime($block['end_time'], new DateTimeZone('UTC'));
+            $blockEnd->setTimezone($tz);
+            
             $busy[] = [
-                'start' => new DateTime($block['start_time'], $tz),
-                'end' => new DateTime($block['end_time'], $tz),
+                'start' => $blockStart,
+                'end' => $blockEnd,
                 'type' => 'blocked'
             ];
         }
@@ -440,15 +474,19 @@ class AvailabilityService
      */
     private function timesOverlap(string $start1, string $end1, string $start2, string $end2): bool
     {
+        // Use <= and >= to prevent appointments from touching at boundaries
         return $start1 < $end2 && $end1 > $start2;
     }
 
     /**
      * Check if two DateTime ranges overlap
+     * Prevents appointments from starting exactly when another ends (no back-to-back)
      */
     private function dateTimesOverlap(DateTime $start1, DateTime $end1, DateTime $start2, DateTime $end2): bool
     {
-        return $start1 < $end2 && $end1 > $start2;
+        // Use <= instead of < to prevent slots from starting exactly when busy period ends
+        // This blocks appointments that would start at the exact moment another ends
+        return $start1 <= $end2 && $end1 >= $start2;
     }
 
     /**

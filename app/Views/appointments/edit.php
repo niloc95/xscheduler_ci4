@@ -213,19 +213,11 @@
                             name="service_id" 
                             required 
                             class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select a service...</option>
-                        <?php foreach ($services as $service): ?>
-                            <option value="<?= $service['id'] ?>" 
-                                    <?= old('service_id', $appointment['service_id'] ?? '') == $service['id'] ? 'selected' : '' ?>
-                                    data-duration="<?= $service['duration'] ?>"
-                                    data-price="<?= $service['price'] ?>">
-                                <?= esc($service['name']) ?> - <?= $service['duration'] ?> min - $<?= number_format($service['price'], 2) ?>
-                            </option>
-                        <?php endforeach; ?>
+                        <option value="">Select a provider first...</option>
                     </select>
                 </div>
 
-                <!-- Date & Time Selection -->
+                <!-- Date & Time Selection (Time Slots UI like create.php) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="appointment_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -242,12 +234,47 @@
                         <label for="appointment_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Time <span class="text-red-500">*</span>
                         </label>
-                        <input type="time" 
+                        <!-- Hidden input to store selected time -->
+                        <input type="hidden" 
                                id="appointment_time" 
                                name="appointment_time" 
                                value="<?= esc(old('appointment_time', $appointment['time'] ?? '')) ?>"
-                               required 
-                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                               required />
+
+                        <!-- Time Slots Container -->
+                        <div id="time-slots-container" class="mt-2">
+                            <!-- Loading state -->
+                            <div id="time-slots-loading" class="hidden">
+                                <div class="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                                    <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Loading available time slots...
+                                </div>
+                            </div>
+                            <!-- Empty state -->
+                            <div id="time-slots-empty" class="hidden">
+                                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
+                                    <p class="text-sm">No available time slots for this date</p>
+                                    <p class="text-xs mt-1">Try selecting a different date or provider</p>
+                                </div>
+                            </div>
+                            <!-- Error state -->
+                            <div id="time-slots-error" class="hidden">
+                                <div class="text-center py-8 text-red-600 dark:text-red-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">error</span>
+                                    <p class="text-sm" id="time-slots-error-message">Failed to load time slots</p>
+                                </div>
+                            </div>
+                            <!-- Initial prompt -->
+                            <div id="time-slots-prompt" class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
+                                Select a service, provider, and date to see available time slots
+                            </div>
+                            <!-- Time slots grid -->
+                            <div id="time-slots-grid" class="hidden"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -303,3 +330,25 @@
     </div>
 </div>
 <?= $this->endSection() ?>
+
+<script>
+// Match create.php time slot behavior via shared module
+document.addEventListener('DOMContentLoaded', function() {
+    const currentAptId = "<?= esc($appointment['id'] ?? $appointment['appointment_id'] ?? '') ?>";
+    const currentServiceId = "<?= esc(old('service_id', $appointment['service_id'] ?? '')) ?>";
+    const timeInput = document.getElementById('appointment_time');
+    const initialTime = timeInput ? timeInput.value : '';
+
+    if (window.initTimeSlotsUI) {
+        window.initTimeSlotsUI({
+            providerSelectId: 'provider_id',
+            serviceSelectId: 'service_id',
+            dateInputId: 'appointment_date',
+            timeInputId: 'appointment_time',
+            excludeAppointmentId: currentAptId,
+            preselectServiceId: currentServiceId,
+            initialTime
+        });
+    }
+});
+</script>

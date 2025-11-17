@@ -8,6 +8,21 @@ use App\Models\BlockedTimeModel;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 
+/**
+ * SlotGenerator - DEPRECATED
+ * 
+ * @deprecated Use App\Services\AvailabilityService instead
+ * 
+ * This class is maintained for backward compatibility only.
+ * New code should use AvailabilityService which provides:
+ * - Better architecture and maintainability
+ * - Comprehensive conflict detection
+ * - Buffer time support
+ * - Better timezone handling
+ * - More detailed logging
+ * 
+ * @see \App\Services\AvailabilityService
+ */
 class SlotGenerator
 {
     protected BusinessHourModel $businessHours;

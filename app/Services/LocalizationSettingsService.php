@@ -37,6 +37,33 @@ class LocalizationSettingsService
     }
 
     /**
+     * Get the configured first day of week (0=Sunday, 1=Monday, etc.).
+     * Returns numeric value even if stored as day name in database.
+     */
+    public function getFirstDayOfWeek(): int
+    {
+        $value = $this->get('localization.first_day');
+        
+        // If numeric, return as-is
+        if (is_numeric($value)) {
+            return max(0, min(6, (int) $value));
+        }
+        
+        // Convert day name to number
+        $dayMap = [
+            'Sunday' => 0, 'sunday' => 0,
+            'Monday' => 1, 'monday' => 1,
+            'Tuesday' => 2, 'tuesday' => 2,
+            'Wednesday' => 3, 'wednesday' => 3,
+            'Thursday' => 4, 'thursday' => 4,
+            'Friday' => 5, 'friday' => 5,
+            'Saturday' => 6, 'saturday' => 6,
+        ];
+        
+        return $dayMap[$value] ?? 0; // Default to Sunday
+    }
+
+    /**
      * Get the configured currency code (e.g., 'ZAR', 'USD', 'EUR').
      */
     public function getCurrency(): string
@@ -120,6 +147,7 @@ class LocalizationSettingsService
         return [
             'time_format'         => $this->getTimeFormat(),
             'timezone'            => $this->getTimezone(),
+            'first_day_of_week'   => $this->getFirstDayOfWeek(),
             'currency'            => $this->getCurrency(),
             'currency_symbol'     => $this->getCurrencySymbol(),
             'format_example'      => $this->getFormatExample(),

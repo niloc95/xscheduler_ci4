@@ -12,8 +12,8 @@ class SchedulingService
 {
     public function getAvailabilities(int $providerId, int $serviceId, string $date): array
     {
-        $slotGen = new SlotGenerator();
-        return $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new AvailabilityService();
+        return $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
     }
 
     public function createAppointment(array $payload): array
@@ -51,23 +51,13 @@ class SchedulingService
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . $duration . ' minutes');
 
-        // Upsert customer in xs_customers
+        // Find or create customer - using helper method
         $custModel = new CustomerModel();
-        $customer = $custModel->where('email', $payload['email'])->first();
-        if (!$customer) {
-            $names = preg_split('/\s+/', trim((string)$payload['name']));
-            $first = $names[0] ?? '';
-            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
-            $customerId = $custModel->insert([
-                'first_name' => $first,
-                'last_name'  => $last,
-                'email'      => $payload['email'],
-                'phone'      => $payload['phone'] ?? null,
-                'created_at' => date('Y-m-d H:i:s'),
-            ], false);
-        } else {
-            $customerId = $customer['id'];
-        }
+        $customerId = $custModel->findOrCreateByEmail(
+            $payload['email'],
+            $payload['name'],
+            $payload['phone'] ?? null
+        );
 
         // Check availability
         $available = $this->getAvailabilities($providerId, $serviceId, $date);

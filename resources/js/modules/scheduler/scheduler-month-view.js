@@ -7,6 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
+import { logger } from './logger.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -18,11 +19,11 @@ export class MonthView {
     render(container, data) {
         const { currentDate, appointments, providers, config, settings } = data;
         
-        console.log('🗓️ MonthView.render called');
-        console.log('   Current date:', currentDate.toISO());
-        console.log('   Appointments received:', appointments.length);
-        console.log('   Appointments data:', appointments);
-        console.log('   Providers:', providers.length);
+        logger.debug('🗓️ MonthView.render called');
+        logger.debug('   Current date:', currentDate.toISO());
+        logger.debug('   Appointments received:', appointments.length);
+        logger.debug('   Appointments data:', appointments);
+        logger.debug('   Providers:', providers.length);
         
         // Store data for use in other methods
         this.appointments = appointments;
@@ -40,10 +41,23 @@ export class MonthView {
         const monthStart = currentDate.startOf('month');
         const monthEnd = currentDate.endOf('month');
         
-        // Use first day of week from settings
+        // Use first day of week from settings (0 = Sunday, 1 = Monday, etc.)
         const firstDayOfWeek = settings?.getFirstDayOfWeek() || 0;
-        const gridStart = monthStart.startOf('week').minus({ days: (7 - firstDayOfWeek) % 7 });
-        const gridEnd = monthEnd.endOf('week').minus({ days: (7 - firstDayOfWeek) % 7 });
+        
+        // Luxon uses Monday as week start by default (ISO 8601)
+        // We need to adjust to start from the configured day
+        // If firstDayOfWeek is 0 (Sunday), we need to go back 1 more day from Luxon's Monday start
+        let gridStart = monthStart.startOf('week'); // This gives us Monday
+        if (firstDayOfWeek === 0) {
+            // For Sunday start, go back one more day
+            gridStart = gridStart.minus({ days: 1 });
+        }
+        
+        let gridEnd = monthEnd.endOf('week'); // This gives us Sunday (end of ISO week)
+        if (firstDayOfWeek === 0) {
+            // For Sunday start, the week ends on Saturday, so go back one day
+            gridEnd = gridEnd.minus({ days: 1 });
+        }
         
         // Generate weeks
         const weeks = [];
@@ -60,7 +74,7 @@ export class MonthView {
 
         // Group appointments by date
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
-        console.log('📅 Appointments grouped by date:', this.appointmentsByDate);
+        logger.debug('📅 Appointments grouped by date:', this.appointmentsByDate);
 
         // Render HTML
         container.innerHTML = `
@@ -118,6 +132,12 @@ export class MonthView {
         const isCurrentMonth = day.month === currentMonth;
         const isPast = day < DateTime.now().startOf('day');
         const dayAppointments = this.getAppointmentsForDay(day);
+        
+        // Debug logging for days with appointments
+        if (dayAppointments.length > 0) {
+            logger.debug(`📆 Day ${day.toISODate()} has ${dayAppointments.length} appointments:`, dayAppointments.map(a => `#${a.id}`));
+        }
+        
         const isWorkingDay = settings?.isWorkingDay ? settings.isWorkingDay(day) : true;
         const isBlocked = this.isDateBlocked(day);
         const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day) : null;
@@ -170,7 +190,7 @@ export class MonthView {
         const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
         const title = appointment.title || appointment.customerName || 'Appointment';
 
-        return `
+        const html = `
             <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-90 transition-all truncate border-l-4 flex items-center gap-1.5"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
@@ -180,6 +200,9 @@ export class MonthView {
                 <span class="truncate">${this.escapeHtml(title)}</span>
             </div>
         `;
+        
+        logger.debug(`🎨 Rendering appointment #${appointment.id} for ${appointment.startDateTime.toISODate()}:`, html.substring(0, 100) + '...');
+        return html;
     }
     
     getAppointmentsForDay(day) {
@@ -190,8 +213,10 @@ export class MonthView {
     groupAppointmentsByDate(appointments) {
         const grouped = {};
         
+        logger.debug('🗂️ Grouping appointments by date...');
         appointments.forEach(apt => {
             const dateKey = apt.startDateTime.toISODate();
+            logger.debug(`   Appointment #${apt.id}: ${apt.startDateTime.toISO()} → date key: ${dateKey}`);
             if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
             }
@@ -204,7 +229,8 @@ export class MonthView {
                 a.startDateTime.toMillis() - b.startDateTime.toMillis()
             );
         });
-
+        
+        logger.debug('🗂️ Final grouped appointments:', Object.keys(grouped).map(key => `${key}: ${grouped[key].length} appointments`));
         return grouped;
     }
 
@@ -383,11 +409,11 @@ export class MonthView {
     renderDailySection(data) {
         const dailyContainer = document.getElementById('daily-provider-appointments');
         if (!dailyContainer) {
-            console.log('[MonthView] Daily provider appointments container not found');
+            logger.debug('[MonthView] Daily provider appointments container not found');
             return;
         }
         
-        console.log('[MonthView] Rendering daily section to separate container');
+        logger.debug('[MonthView] Rendering daily section to separate container');
         dailyContainer.innerHTML = this.renderDailyAppointments();
         
         // Attach event listeners to the daily section
@@ -441,14 +467,14 @@ export class MonthView {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[MonthView] Appointment clicked, prevented default');
+                logger.debug('[MonthView] Appointment clicked, prevented default');
                 const aptId = parseInt(el.dataset.appointmentId, 10);
                 const appointment = data.appointments.find(a => a.id === aptId);
                 if (appointment && data.onAppointmentClick) {
-                    console.log('[MonthView] Calling onAppointmentClick');
+                    logger.debug('[MonthView] Calling onAppointmentClick');
                     data.onAppointmentClick(appointment);
                 } else {
-                    console.warn('[MonthView] No appointment found or no callback');
+                    logger.warn('[MonthView] No appointment found or no callback');
                 }
             });
         });
@@ -461,7 +487,7 @@ export class MonthView {
                 // Update selected date and refresh daily section
                 this.selectedDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });
                 this.updateDailySection(container);
-                console.log('Show more appointments for', date);
+                logger.debug('Show more appointments for', date);
             });
         });
 
@@ -476,7 +502,7 @@ export class MonthView {
                 }
                 
                 const date = el.dataset.selectDay;
-                console.log('Day cell clicked:', date);
+                logger.debug('Day cell clicked:', date);
                 
                 // Update selected date
                 this.selectedDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });

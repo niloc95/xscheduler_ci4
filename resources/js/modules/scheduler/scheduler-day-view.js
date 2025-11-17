@@ -7,6 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { generateTimeSlots } from './time-slots.js';
+import { escapeHtml as escapeHtmlUtil, isDateBlocked as isDateBlockedUtil } from './utils.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -26,10 +28,12 @@ export class DayView {
             isWorkingDay: true
         };
         
-        const timeSlots = this.generateTimeSlots(businessHours);
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
+        // Show 30-minute granularity in day view
+        const timeSlots = generateTimeSlots(businessHours, timeFormat, 30);
         
         // Check if this date is blocked
-        const isBlocked = this.isDateBlocked(currentDate, config?.blockedPeriods);
+        const isBlocked = isDateBlockedUtil(currentDate, config?.blockedPeriods);
         const blockedNotice = isBlocked ? config.blockedPeriods.find(period => {
             const checkDate = currentDate.toISODate();
             return checkDate >= period.start && checkDate <= period.end;
@@ -69,15 +73,15 @@ export class DayView {
     }
 
     renderTimeSlot(slot, appointments, providers, data) {
-        // Show appointments that start within this hour (regardless of minute)
+        // Show appointments that start exactly at this slot time (HH:mm)
         const slotAppointments = appointments.filter(apt => {
-            const aptHour = apt.startDateTime.hour;
-            return aptHour === slot.hour; // Match any appointment starting in this hour
+            const aptTime = apt.startDateTime.toFormat('HH:mm');
+            return aptTime === slot.time;
         });
 
         return `
-            <div class="time-slot flex items-start gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 
-                        hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer min-h-[80px]"
+            <div class="time-slot flex items-start gap-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 
+                        hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer min-h-[56px]"
                  data-time="${slot.time}"
                  data-hour="${slot.hour}">
                 <!-- Time Label -->
@@ -114,9 +118,9 @@ export class DayView {
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-medium opacity-90 mb-1">${time}</div>
-                        <div class="font-semibold truncate">${this.escapeHtml(customerName)}</div>
-                        <div class="text-sm opacity-90 truncate">${this.escapeHtml(serviceName)}</div>
-                        ${provider ? `<div class="text-xs opacity-75 mt-1">with ${this.escapeHtml(provider.name)}</div>` : ''}
+                        <div class="font-semibold truncate">${escapeHtml(customerName)}</div>
+                        <div class="text-sm opacity-90 truncate">${escapeHtmlUtil(serviceName)}</div>
+                        ${provider ? `<div class="text-xs opacity-75 mt-1">with ${escapeHtmlUtil(provider.name)}</div>` : ''}
                     </div>
                     <span class="material-symbols-outlined text-lg flex-shrink-0">arrow_forward</span>
                 </div>
@@ -153,17 +157,17 @@ export class DayView {
                 </div>
                 
                 <h4 class="text-lg font-semibold mb-1">
-                    ${this.escapeHtml(customerName)}
+                    ${escapeHtml(customerName)}
                 </h4>
                 
                 <p class="text-sm mb-2 opacity-90">
-                    ${this.escapeHtml(serviceName)}
+                    ${escapeHtml(serviceName)}
                 </p>
                 
                 ${provider ? `
                     <div class="flex items-center gap-2 text-xs opacity-75">
                         <span class="material-symbols-outlined text-sm">person</span>
-                        ${this.escapeHtml(provider.name)}
+                        ${escapeHtml(provider.name)}
                     </div>
                 ` : ''}
             </div>
@@ -179,43 +183,7 @@ export class DayView {
         `;
     }
 
-    generateTimeSlots(businessHours) {
-        const slots = [];
-        
-        // Handle both 'HH:MM:SS' and 'HH:MM' formats
-        const parseTime = (timeStr) => {
-            if (!timeStr) return 9; // Default to 9 AM
-            const parts = timeStr.split(':');
-            return parseInt(parts[0], 10);
-        };
-        
-        const startHour = parseTime(businessHours.startTime);
-        const endHour = parseTime(businessHours.endTime);
-        
-        for (let hour = startHour; hour <= endHour; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00`;
-            const display = this.formatTime(hour);
-            slots.push({ time, display, hour });
-        }
-        
-        return slots;
-    }
-
-    formatTime(hour) {
-        // Get time format from settings (default to 12h if not available)
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
-        
-        if (timeFormat === '24h') {
-            // 24-hour format: 09:00, 13:00, etc.
-            return `${hour.toString().padStart(2, '0')}:00`;
-        } else {
-            // 12-hour format with AM/PM
-            if (hour === 0) return '12:00 AM';
-            if (hour === 12) return '12:00 PM';
-            if (hour < 12) return `${hour}:00 AM`;
-            return `${hour - 12}:00 PM`;
-        }
-    }
+    // generateTimeSlots and formatTime moved to shared util (time-slots.js)
 
     attachEventListeners(container, data) {
         // Appointment card/block click handlers
@@ -264,4 +232,5 @@ export class DayView {
         div.textContent = text;
         return div.innerHTML;
     }
+    // escapeHtml and isDateBlocked moved to shared utils
 }

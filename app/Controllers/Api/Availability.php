@@ -81,13 +81,18 @@ class Availability extends BaseController
         $timezone = $this->request->getGet('timezone') ?? $this->localizationService->getTimezone();
         
         try {
+            // Optional: exclude current appointment when editing
+            $excludeAppointmentId = $this->request->getGet('exclude_appointment_id');
+            $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
+
             // Get available slots
             $slots = $this->availabilityService->getAvailableSlots(
                 (int) $providerId,
                 $date,
                 (int) $serviceId,
                 $bufferMinutes,
-                $timezone
+                $timezone,
+                $excludeAppointmentId
             );
             
             // Format slots for response

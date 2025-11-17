@@ -105,9 +105,8 @@ class Appointments extends BaseController
         $customFields = $bookingService->getCustomFieldConfiguration();
         $localizationContext = $localizationService->getContext();
 
-        // Fetch real providers and services from database
+        // Fetch providers only - services are loaded dynamically via JavaScript
         $providers = $this->userModel->getProviders();
-        $services = $this->serviceModel->findAll();
 
         // Format providers for dropdown
         $providersFormatted = array_map(function($provider) {
@@ -118,20 +117,9 @@ class Appointments extends BaseController
             ];
         }, $providers);
 
-        // Format services for dropdown
-        $servicesFormatted = array_map(function($service) {
-            return [
-                'id' => $service['id'],
-                'name' => $service['name'],
-                'duration' => $service['duration_min'], // Map duration_min to duration for consistency
-                'price' => $service['price']
-            ];
-        }, $services);
-
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
-            'services' => $servicesFormatted,
             'providers' => $providersFormatted,
             'user_role' => current_user_role(),
             'fieldConfig' => $fieldConfig,
@@ -456,9 +444,8 @@ class Appointments extends BaseController
             $appointment['time'] = $startDateTime->format('H:i');
         }
 
-        // Fetch providers and services
+        // Fetch providers only - services are loaded dynamically via JavaScript
         $providers = $this->userModel->getProviders();
-        $services = $this->serviceModel->findAll();
 
         // Format providers for dropdown
         $providersFormatted = array_map(function($provider) {
@@ -469,21 +456,10 @@ class Appointments extends BaseController
             ];
         }, $providers);
 
-        // Format services for dropdown
-        $servicesFormatted = array_map(function($service) {
-            return [
-                'id' => $service['id'],
-                'name' => $service['name'],
-                'duration' => $service['duration_min'],
-                'price' => $service['price']
-            ];
-        }, $services);
-
         $data = [
             'title' => 'Edit Appointment',
             'current_page' => 'appointments',
             'appointment' => $appointment,
-            'services' => $servicesFormatted,
             'providers' => $providersFormatted,
             'user_role' => current_user_role(),
             'fieldConfig' => $fieldConfig,

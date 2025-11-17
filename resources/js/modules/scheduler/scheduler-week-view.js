@@ -7,6 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, isDarkMode } from './appointment-colors.js';
+import { generateTimeSlots } from './time-slots.js';
+import { escapeHtml, isDateBlocked as isDateBlockedUtil, getBlockedPeriodInfo as getBlockedInfo } from './utils.js';
 
 export class WeekView {
     constructor(scheduler) {
@@ -37,7 +39,8 @@ export class WeekView {
             endTime: endTime
         };
         
-        const timeSlots = this.generateTimeSlots(businessHours);
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
+        const timeSlots = generateTimeSlots(businessHours, timeFormat, 30);
 
         // Group appointments by day
         const appointmentsByDay = this.groupAppointmentsByDay(appointments, weekStart);
@@ -74,8 +77,8 @@ export class WeekView {
 
     renderDayHeader(day, blockedPeriods) {
         const isToday = day.hasSame(DateTime.now(), 'day');
-        const isBlocked = this.isDateBlocked(day, blockedPeriods);
-        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, blockedPeriods) : null;
+        const isBlocked = isDateBlockedUtil(day, blockedPeriods);
+        const blockedInfo = isBlocked ? getBlockedInfo(day, blockedPeriods) : null;
         
         return `
             <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10' : ''}">
@@ -92,7 +95,7 @@ export class WeekView {
 
     renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods) {
         return `
-            <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[60px]"
+              <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[56px]"
                  data-time-slot="${slot.time}">
                 <!-- Time Label -->
                 <div class="px-4 py-2 text-right border-r border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
@@ -103,7 +106,7 @@ export class WeekView {
                 ${days.map(day => {
                     const dateKey = day.toISODate();
                     const slotAppointments = this.getAppointmentsForSlot(appointmentsByDay[dateKey] || [], slot);
-                    const isBlocked = this.isDateBlocked(day, blockedPeriods);
+                    const isBlocked = isDateBlockedUtil(day, blockedPeriods);
                     
                     return `
                         <div class="relative px-2 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10 opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors"
@@ -139,49 +142,13 @@ export class WeekView {
                     <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
                     <div class="font-semibold truncate">${time}</div>
                 </div>
-                <div class="truncate">${this.escapeHtml(customerName)}</div>
-                <div class="text-xs opacity-80 truncate">${this.escapeHtml(serviceName)}</div>
+                <div class="truncate">${escapeHtml(customerName)}</div>
+                <div class="text-xs opacity-80 truncate">${escapeHtml(serviceName)}</div>
             </div>
         `;
     }
 
-    generateTimeSlots(businessHours) {
-        const slots = [];
-        
-        // Handle both 'HH:MM:SS' and 'HH:MM' formats
-        const parseTime = (timeStr) => {
-            if (!timeStr) return 9; // Default to 9 AM
-            const parts = timeStr.split(':');
-            return parseInt(parts[0], 10);
-        };
-        
-        const startHour = parseTime(businessHours.startTime);
-        const endHour = parseTime(businessHours.endTime);
-        
-        for (let hour = startHour; hour <= endHour; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00`;
-            const display = this.formatTime(hour);
-            slots.push({ time, display, hour });
-        }
-        
-        return slots;
-    }
-
-    formatTime(hour) {
-        // Get time format from settings (default to 12h if not available)
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
-        
-        if (timeFormat === '24h') {
-            // 24-hour format: 09:00, 13:00, etc.
-            return `${hour.toString().padStart(2, '0')}:00`;
-        } else {
-            // 12-hour format with AM/PM
-            if (hour === 0) return '12:00 AM';
-            if (hour === 12) return '12:00 PM';
-            if (hour < 12) return `${hour}:00 AM`;
-            return `${hour - 12}:00 PM`;
-        }
-    }
+    // generateTimeSlots and formatTime moved to shared util (time-slots.js)
 
     groupAppointmentsByDay(appointments, weekStart) {
         const grouped = {};
@@ -204,10 +171,7 @@ export class WeekView {
     }
 
     getAppointmentsForSlot(dayAppointments, slot) {
-        return dayAppointments.filter(apt => {
-            const aptHour = apt.startDateTime.hour;
-            return aptHour === slot.hour;
-        });
+        return dayAppointments.filter(apt => apt.startDateTime.toFormat('HH:mm') === slot.time);
     }
 
     attachEventListeners(container, data) {
@@ -240,38 +204,7 @@ export class WeekView {
     /**
      * Check if a date falls within a blocked period
      */
-    isDateBlocked(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return false;
-        
-        const checkDate = date.toISODate();
-        
-        return blockedPeriods.some(period => {
-            const start = period.start;
-            const end = period.end;
-            return checkDate >= start && checkDate <= end;
-        });
-    }
-
-    /**
-     * Get blocked period information for a date
-     */
-    getBlockedPeriodInfo(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return null;
-        
-        const checkDate = date.toISODate();
-        
-        const period = blockedPeriods.find(p => {
-            return checkDate >= p.start && checkDate <= p.end;
-        });
-        
-        return period || null;
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // isDateBlocked, getBlockedPeriodInfo, escapeHtml moved to shared utils
     
     /**
      * Render weekly appointments section showing provider schedules for the week

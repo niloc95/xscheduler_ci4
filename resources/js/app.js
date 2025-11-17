@@ -18,6 +18,11 @@ import { SettingsManager } from './modules/scheduler/settings-manager.js';
 
 // Import scheduler styles
 import '../css/scheduler.css';
+// Export shared time-slot UI initializer to window so PHP views can call it
+import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
+if (typeof window !== 'undefined') {
+    window.initTimeSlotsUI = initTimeSlotsUI;
+}
 
 /**
  * Navigate to create appointment page with pre-filled slot data
@@ -180,8 +185,10 @@ async function initScheduler() {
             console.log('🔄 Refreshing calendar after appointment creation');
             // Remove the refresh parameter from URL without reload
             window.history.replaceState({}, document.title, window.location.pathname);
-            // Force a calendar refresh
+            // Force a calendar refresh by reloading appointments and re-rendering
             await scheduler.loadAppointments();
+            scheduler.render();
+            console.log('✅ Calendar refreshed - appointments reloaded and re-rendered');
         }
 
         console.log('✅ Custom scheduler initialized');

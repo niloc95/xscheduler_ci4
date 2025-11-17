@@ -299,7 +299,8 @@
                                id="appointment_date" 
                                name="appointment_date" 
                                required 
-                               min="<?= date('Y-m-d') ?>"
+                               min="<?= date('Y-m-d', strtotime('-30 days')) ?>"
+                               max="<?= date('Y-m-d', strtotime('+90 days')) ?>"
                                class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                     </div>
                     <div>
@@ -698,53 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
-    // Dynamic service filtering based on provider selection
-    providerSelect.addEventListener('change', async function() {
-        const providerId = this.value;
-        
-        // Reset service dropdown
-        serviceSelect.innerHTML = '<option value="">Loading services...</option>';
-        serviceSelect.disabled = true;
-        
-        if (!providerId) {
-            serviceSelect.innerHTML = '<option value="">Select a provider first...</option>';
-            updateSummary();
-            return;
-        }
-        
-        try {
-            // Fetch services for the selected provider
-            const response = await fetch(`/api/v1/providers/${providerId}/services`);
-            
-            if (!response.ok) {
-                throw new Error('Failed to load services');
-            }
-            
-            const result = await response.json();
-            const services = result.data || [];
-            
-            // Populate services dropdown
-            if (services.length === 0) {
-                serviceSelect.innerHTML = '<option value="">No services available for this provider</option>';
-            } else {
-                serviceSelect.innerHTML = '<option value="">Select a service...</option>';
-                services.forEach(service => {
-                    const option = document.createElement('option');
-                    option.value = service.id;
-                    option.textContent = `${service.name} - $${parseFloat(service.price).toFixed(2)}`;
-                    option.dataset.duration = service.durationMin || service.duration_min;
-                    option.dataset.price = service.price;
-                    serviceSelect.appendChild(option);
-                });
-                serviceSelect.disabled = false;
-            }
-        } catch (error) {
-            console.error('Error loading services:', error);
-            serviceSelect.innerHTML = '<option value="">Error loading services. Please try again.</option>';
-        }
-        
-        updateSummary();
-    });
+    // Services and time-slots UI is handled by a shared module (initialized below)
 
     function updateSummary() {
         const service = serviceSelect.options[serviceSelect.selectedIndex];
@@ -758,16 +713,25 @@ document.addEventListener('DOMContentLoaded', function() {
             
             document.getElementById('summary-service').textContent = service.text.split(' - ')[0] || '-';
             document.getElementById('summary-provider').textContent = provider.text.split(' - ')[0] || '-';
-            document.getElementById('summary-datetime').textContent = date && time 
-                ? new Date(date + 'T' + time).toLocaleString('en-US', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
+            
+            // Format datetime based on localization settings
+            if (date && time) {
+                const dt = new Date(date + 'T' + time);
+                const timeFormat = '<?= esc($localization['time_format'] ?? '12h') ?>';
+                const options = {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
                     day: 'numeric',
                     hour: 'numeric',
-                    minute: '2-digit'
-                  })
-                : '-';
+                    minute: '2-digit',
+                    hour12: timeFormat !== '24h'
+                };
+                document.getElementById('summary-datetime').textContent = dt.toLocaleString('en-US', options);
+            } else {
+                document.getElementById('summary-datetime').textContent = '-';
+            }
+            
             document.getElementById('summary-duration').textContent = service.dataset.duration 
                 ? service.dataset.duration + ' minutes' 
                 : '-';
@@ -779,124 +743,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Attach event listeners
-    serviceSelect.addEventListener('change', function() {
-        updateSummary();
-        loadTimeSlots(); // Fetch available time slots
-    });
-    dateInput.addEventListener('change', function() {
-        updateSummary();
-        loadTimeSlots(); // Fetch available time slots
-    });
-    providerSelect.addEventListener('change', loadTimeSlots);
-    
-    // Time slots functionality
-    async function loadTimeSlots() {
-        const providerId = providerSelect.value;
-        const date = dateInput.value;
-        const serviceId = serviceSelect.value;
-        
-        const timeSlotsGrid = document.getElementById('time-slots-grid');
-        const timeSlotsLoading = document.getElementById('time-slots-loading');
-        const timeSlotsEmpty = document.getElementById('time-slots-empty');
-        const timeSlotsError = document.getElementById('time-slots-error');
-        const timeSlotsPrompt = document.getElementById('time-slots-prompt');
-        
-        // Hide all states
-        timeSlotsGrid.classList.add('hidden');
-        timeSlotsLoading.classList.add('hidden');
-        timeSlotsEmpty.classList.add('hidden');
-        timeSlotsError.classList.add('hidden');
-        timeSlotsPrompt.classList.add('hidden');
-        
-        // Check if all required fields are filled
-        if (!providerId || !date || !serviceId) {
-            timeSlotsPrompt.classList.remove('hidden');
-            timeInput.value = '';
-            return;
-        }
-        
-        // Show loading state
-        timeSlotsLoading.classList.remove('hidden');
-        
-        try {
-            const response = await fetch(`/api/availability/slots?provider_id=${providerId}&date=${date}&service_id=${serviceId}`);
-            
-            if (!response.ok) {
-                throw new Error('Failed to load time slots');
-            }
-            
-            const result = await response.json();
-            
-            if (!result.ok || !result.data || !result.data.slots) {
-                throw new Error('Invalid response format');
-            }
-            
-            const slots = result.data.slots;
-            
-            // Hide loading
-            timeSlotsLoading.classList.add('hidden');
-            
-            // Check if slots are available
-            if (slots.length === 0) {
-                timeSlotsEmpty.classList.remove('hidden');
-                timeInput.value = '';
-                return;
-            }
-            
-            // Render time slots
-            timeSlotsGrid.innerHTML = '';
-            timeSlotsGrid.className = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2';
-            
-            slots.forEach(slot => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'time-slot-btn px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
-                button.textContent = slot.start;
-                button.dataset.time = slot.start;
-                button.dataset.startTime = slot.startTime;
-                button.dataset.endTime = slot.endTime;
-                
-                button.addEventListener('click', function() {
-                    // Remove selected state from all buttons
-                    document.querySelectorAll('.time-slot-btn').forEach(btn => {
-                        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600', 'dark:bg-blue-600', 'dark:border-blue-600');
-                        btn.classList.add('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
-                    });
-                    
-                    // Add selected state to clicked button
-                    this.classList.remove('bg-white', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'border-gray-300', 'dark:border-gray-600');
-                    this.classList.add('bg-blue-600', 'text-white', 'border-blue-600', 'dark:bg-blue-600', 'dark:border-blue-600');
-                    
-                    // Update hidden input with selected time
-                    timeInput.value = this.dataset.time;
-                    
-                    // Update summary
-                    updateSummary();
-                    
-                    // Show confirmation feedback
-                    const feedback = document.createElement('div');
-                    feedback.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
-                    feedback.innerHTML = `
-                        <span class="material-symbols-outlined text-sm">check_circle</span>
-                        <span>Time slot selected: ${this.dataset.time}</span>
-                    `;
-                    document.body.appendChild(feedback);
-                    setTimeout(() => feedback.remove(), 2000);
-                });
-                
-                timeSlotsGrid.appendChild(button);
-            });
-            
-            timeSlotsGrid.classList.remove('hidden');
-            
-        } catch (error) {
-            console.error('Error loading time slots:', error);
-            timeSlotsLoading.classList.add('hidden');
-            timeSlotsError.classList.remove('hidden');
-            document.getElementById('time-slots-error-message').textContent = error.message || 'Failed to load time slots';
-            timeInput.value = '';
-        }
+    // Attach event listeners to keep summary updated
+    serviceSelect.addEventListener('change', updateSummary);
+    dateInput.addEventListener('change', updateSummary);
+
+    // Initialize shared time-slots module
+    if (window.initTimeSlotsUI) {
+        window.initTimeSlotsUI({
+            providerSelectId: 'provider_id',
+            serviceSelectId: 'service_id',
+            dateInputId: 'appointment_date',
+            timeInputId: 'appointment_time',
+            onTimeSelected: () => updateSummary()
+        });
     }
 });
 </script>

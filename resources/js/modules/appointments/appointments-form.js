@@ -14,9 +14,11 @@ import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '/r
 
 /**
  * Initialize the appointment booking form
+ * Works for both create (/appointments/store) and edit (/appointments/update/X) forms
  */
 export async function initAppointmentForm() {
-    const form = document.querySelector('form[action*="/appointments/store"]');
+    // Match both create and edit forms
+    const form = document.querySelector('form[action*="/appointments/store"], form[action*="/appointments/update"]');
     if (!form) return;
 
     const providerSelect = document.getElementById('provider_id');
@@ -267,43 +269,37 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
 
 /**
  * Check availability for selected appointment slot
- * TEMPORARILY DISABLED: API endpoint causing 500 errors
  */
 async function checkAvailability(formState, feedbackElement) {
     // Need all required fields
-    if (!formState.provider_id || !formState.service_id || !formState.date || !formState.time) {
+    if (!formState.provider_id || !formState.service_id || !formState.date || !formState.time || !formState.duration) {
         clearAvailabilityCheck(feedbackElement);
         return;
     }
 
-    // DISABLED: Availability checking temporarily disabled due to API errors
-    // The endpoint /api/appointments/check-availability is returning 500 errors
-    // TODO: Fix the API endpoint or remove this feature entirely
-    clearAvailabilityCheck(feedbackElement);
-    return;
-
-    /* COMMENTED OUT UNTIL API IS FIXED
     formState.isChecking = true;
     showAvailabilityChecking(feedbackElement);
 
     try {
-        // Combine date and time into ISO format start_time
+        // Calculate start and end times
         const startTime = `${formState.date} ${formState.time}:00`;
+        const startDate = new Date(`${formState.date}T${formState.time}:00`);
+        const endDate = new Date(startDate.getTime() + formState.duration * 60000);
+        const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
         
-        const response = await fetch('/api/appointments/check-availability', {
+        // Use the correct availability API endpoint
+        const response = await fetch('/api/availability/check', {
             method: 'POST',
             headers: {
-                ...attachTimezoneHeaders(),
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 provider_id: parseInt(formState.provider_id),
-                service_id: parseInt(formState.service_id),
                 start_time: startTime,
-                timezone: getBrowserTimezone(),
-                offset: getTimezoneOffset()
+                end_time: endTime,
+                timezone: getBrowserTimezone()
             })
         });
 
@@ -311,24 +307,16 @@ async function checkAvailability(formState, feedbackElement) {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || result;
         
         formState.isAvailable = data.available === true;
         
         if (formState.isAvailable) {
-            showAvailabilitySuccess(feedbackElement, 'Time slot available');
+            showAvailabilitySuccess(feedbackElement, '✓ Time slot available');
         } else {
-            // Build detailed error message
-            let message = 'Time slot not available';
-            
-            if (data.businessHoursViolation) {
-                message = data.businessHoursViolation;
-            } else if (data.conflicts && data.conflicts.length > 0) {
-                message = `Conflicts with ${data.conflicts.length} existing appointment(s)`;
-            } else if (data.blockedTimeConflicts > 0) {
-                message = 'Time slot is blocked';
-            }
-            
+            // Build detailed error message from the reason
+            const message = data.reason || 'Time slot not available';
             showAvailabilityError(feedbackElement, message);
         }
 
@@ -339,7 +327,6 @@ async function checkAvailability(formState, feedbackElement) {
     } finally {
         formState.isChecking = false;
     }
-    END OF COMMENTED CODE */
 }
 
 /**

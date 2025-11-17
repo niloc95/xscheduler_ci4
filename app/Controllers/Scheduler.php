@@ -46,8 +46,8 @@ class Scheduler extends BaseController
             return $this->response->setStatusCode(400)->setJSON(['error' => 'provider_id and service_id are required']);
         }
 
-        $slotGen = new SlotGenerator();
-        $slots = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new \App\Services\AvailabilityService();
+        $slots = $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
         return $this->response->setJSON(['date' => $date, 'slots' => $slots]);
     }
 
@@ -75,27 +75,17 @@ class Scheduler extends BaseController
         $startDT = strtotime($date . ' ' . $start);
         $endDT   = $startDT + ($duration * 60);
 
-        // Create or find customer by email in xs_customers
+        // Create or find customer by email - using helper method
         $customerModel = new CustomerModel();
-        $customer = $customerModel->where('email', $data['email'])->first();
-        if (!$customer) {
-            $names = preg_split('/\s+/', trim((string)$data['name']));
-            $first = $names[0] ?? '';
-            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
-            $customerId = $customerModel->insert([
-                'first_name' => $first,
-                'last_name'  => $last,
-                'email'      => $data['email'],
-                'phone'      => $data['phone'] ?? null,
-                'created_at' => date('Y-m-d H:i:s'),
-            ], false);
-        } else {
-            $customerId = $customer['id'];
-        }
+        $customerId = $customerModel->findOrCreateByEmail(
+            $data['email'],
+            $data['name'],
+            $data['phone'] ?? null
+        );
 
         // Final availability check to avoid race conditions
-        $slotGen = new SlotGenerator();
-        $available = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new \App\Services\AvailabilityService();
+        $available = $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
         $requested = date('H:i', $startDT) . '-' . date('H:i', $endDT);
         $isAvailable = false;
         foreach ($available as $s) {

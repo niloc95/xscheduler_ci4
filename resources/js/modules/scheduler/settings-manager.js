@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { logger } from './logger.js';
 
 export class SettingsManager {
     constructor() {
@@ -34,10 +35,10 @@ export class SettingsManager {
             ]);
             
             this.cache.lastFetch = Date.now();
-            console.log('⚙️ Settings Manager initialized', this.settings);
+            logger.debug('⚙️ Settings Manager initialized', this.settings);
             return true;
         } catch (error) {
-            console.error('❌ Failed to initialize settings:', error);
+            logger.error('❌ Failed to initialize settings:', error);
             return false;
         }
     }
@@ -54,7 +55,7 @@ export class SettingsManager {
      * Refresh all settings
      */
     async refresh() {
-        console.log('🔄 Refreshing settings...');
+        logger.debug('🔄 Refreshing settings...');
         this.cache.lastFetch = null;
         return await this.init();
     }
@@ -78,7 +79,7 @@ export class SettingsManager {
             
             return this.settings.localization;
         } catch (error) {
-            console.error('Failed to load localization:', error);
+            logger.error('Failed to load localization:', error);
             // Fallback to defaults - try to use browser timezone or UTC
             const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
             this.settings.localization = {
@@ -114,7 +115,37 @@ export class SettingsManager {
     }
 
     getFirstDayOfWeek() {
-        return this.settings.localization?.first_day_of_week ?? 0;
+        // Check for numeric value first (preferred format: 0-6)
+        // Try camelCase from API first, then snake_case from context
+        const numericValue = this.settings.localization?.firstDayOfWeek ?? 
+                            this.settings.localization?.first_day_of_week ??
+                            this.settings.localization?.context?.first_day_of_week;
+        if (typeof numericValue === 'number') {
+            logger.debug(`📅 First day of week from settings: ${numericValue} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][numericValue]})`);
+            return numericValue;
+        }
+        
+        // Fall back to string value from database (localization.first_day)
+        const stringValue = this.settings.localization?.first_day;
+        if (typeof stringValue === 'string') {
+            // Convert day name to number: Sunday=0, Monday=1, etc.
+            const dayMap = {
+                'Sunday': 0, 'sunday': 0,
+                'Monday': 1, 'monday': 1,
+                'Tuesday': 2, 'tuesday': 2,
+                'Wednesday': 3, 'wednesday': 3,
+                'Thursday': 4, 'thursday': 4,
+                'Friday': 5, 'friday': 5,
+                'Saturday': 6, 'saturday': 6
+            };
+            const result = dayMap[stringValue] ?? 0;
+            logger.debug(`📅 First day of week from string "${stringValue}": ${result}`);
+            return result;
+        }
+        
+        // Default to Sunday (0)
+        logger.debug('📅 First day of week using default: 0 (Sunday)');
+        return 0;
     }
 
     /**
@@ -195,7 +226,7 @@ export class SettingsManager {
             
             return this.settings.booking;
         } catch (error) {
-            console.error('Failed to load booking settings:', error);
+            logger.error('Failed to load booking settings:', error);
             // Fallback to defaults
             this.settings.booking = {
                 enabled_fields: [
@@ -291,7 +322,7 @@ export class SettingsManager {
             
             return this.settings.businessHours;
         } catch (error) {
-            console.error('Failed to load business hours:', error);
+            logger.error('Failed to load business hours:', error);
             // Fallback to defaults
             this.settings.businessHours = {
                 enabled: true,
@@ -393,7 +424,7 @@ export class SettingsManager {
             this.settings.providerSchedules.set(providerId, schedule);
             return schedule;
         } catch (error) {
-            console.error(`Failed to load schedule for provider ${providerId}:`, error);
+            logger.error(`Failed to load schedule for provider ${providerId}:`, error);
             return null;
         }
     }

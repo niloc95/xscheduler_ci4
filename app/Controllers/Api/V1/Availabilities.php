@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Api\V1;
 
-use App\Services\SchedulingService;
+use App\Services\AvailabilityService;
 
 class Availabilities extends BaseApiController
 {
@@ -22,8 +22,10 @@ class Availabilities extends BaseApiController
         $serviceId  = (int) $this->request->getGet('serviceId');
         $date       = $this->request->getGet('date');
 
-        $svc = new SchedulingService();
-        $slots = $svc->getAvailabilities($providerId, $serviceId, $date);
+        // Use modern AvailabilityService instead of legacy SchedulingService
+        $availabilityService = new AvailabilityService();
+        $slots = $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
+        
         return $this->ok([
             'providerId' => $providerId,
             'serviceId' => $serviceId,
