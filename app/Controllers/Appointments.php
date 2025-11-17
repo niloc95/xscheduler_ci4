@@ -234,9 +234,12 @@ class Appointments extends BaseController
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Convert to UTC for storage
-        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        // Convert to UTC for storage using DateTime's native timezone conversion
+        // This avoids double-conversion bug (DateTime already has timezone, don't convert again)
+        $startDateTime->setTimezone(new \DateTimeZone('UTC'));
+        $endDateTime->setTimezone(new \DateTimeZone('UTC'));
+        $startTimeUtc = $startDateTime->format('Y-m-d H:i:s');
+        $endTimeUtc = $endDateTime->format('Y-m-d H:i:s');
         
         log_message('info', '[Appointments::store] Timezone conversion:', [
             'local_start' => $startDateTime->format('Y-m-d H:i:s'),
@@ -571,9 +574,12 @@ class Appointments extends BaseController
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Convert to UTC for storage
-        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        // Convert to UTC for storage using DateTime's native timezone conversion
+        // This avoids double-conversion bug (DateTime already has timezone, don't convert again)
+        $startDateTime->setTimezone(new \DateTimeZone('UTC'));
+        $endDateTime->setTimezone(new \DateTimeZone('UTC'));
+        $startTimeUtc = $startDateTime->format('Y-m-d H:i:s');
+        $endTimeUtc = $endDateTime->format('Y-m-d H:i:s');
         
         log_message('info', '[Appointments::update] UTC times: start=' . $startTimeUtc . ', end=' . $endTimeUtc);
 
