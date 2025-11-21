@@ -182,6 +182,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
+    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
 
     // Availability API - Comprehensive slot availability calculation
     $routes->get('availability/slots', 'Api\\Availability::slots');

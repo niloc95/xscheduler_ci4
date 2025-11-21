@@ -516,8 +516,6 @@ class SchedulingSampleDataSeeder extends Seeder
                         'service_id'       => $serviceId,
                         'start_time'       => $startTime->format('Y-m-d H:i:s'),
                         'end_time'         => $endTime->format('Y-m-d H:i:s'),
-                        'appointment_date' => $startTime->format('Y-m-d'),
-                        'appointment_time' => $startTime->format('H:i:s'),
                         'status'           => $this->randomStatus($startTime),
                         'notes'            => 'Auto-generated sample appointment',
                         'hash'             => bin2hex(random_bytes(16)),

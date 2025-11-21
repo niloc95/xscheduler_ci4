@@ -74,7 +74,6 @@ export class MonthView {
 
         // Group appointments by date
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
-        logger.debug('📅 Appointments grouped by date:', this.appointmentsByDate);
 
         // Render HTML
         container.innerHTML = `
@@ -133,10 +132,6 @@ export class MonthView {
         const isPast = day < DateTime.now().startOf('day');
         const dayAppointments = this.getAppointmentsForDay(day);
         
-        // Debug logging for days with appointments
-        if (dayAppointments.length > 0) {
-            logger.debug(`📆 Day ${day.toISODate()} has ${dayAppointments.length} appointments:`, dayAppointments.map(a => `#${a.id}`));
-        }
         
         const isWorkingDay = settings?.isWorkingDay ? settings.isWorkingDay(day) : true;
         const isBlocked = this.isDateBlocked(day);
@@ -161,7 +156,7 @@ export class MonthView {
             isSelected ? 'ring-2 ring-blue-500 ring-inset bg-blue-50 dark:bg-blue-900/20' : ''
         ].filter(Boolean).join(' ');
         
-        return `
+        const html = `
             <div class="${cellClasses}" data-date="${day.toISODate()}" data-click-create="day" data-select-day="${day.toISODate()}">
                 <div class="day-number text-sm font-medium mb-1 ${isCurrentMonth ? isBlocked ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}">
                     ${day.day}
@@ -178,19 +173,23 @@ export class MonthView {
                 </div>
             </div>
         `;
+        
+        return html;
     }
 
     renderAppointmentBlock(appointment) {
-        const provider = this.providers.find(p => p.id === appointment.providerId);
-        const darkMode = isDarkMode();
-        const statusColors = getStatusColors(appointment.status, darkMode);
-        const providerColor = getProviderColor(provider);
-        
-        // Use settings to format time
-        const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
-        const title = appointment.title || appointment.customerName || 'Appointment';
+        try {
+            const provider = this.providers.find(p => p.id === appointment.providerId);
+            const darkMode = isDarkMode();
+            const statusColors = getStatusColors(appointment.status, darkMode);
+            const providerColor = getProviderColor(provider);
+            
+            // Use settings to format time
+            const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
+            
+            const title = appointment.title || appointment.customerName || 'Appointment';
 
-        const html = `
+            const html = `
             <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-90 transition-all truncate border-l-4 flex items-center gap-1.5"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
@@ -200,23 +199,31 @@ export class MonthView {
                 <span class="truncate">${this.escapeHtml(title)}</span>
             </div>
         `;
-        
-        logger.debug(`🎨 Rendering appointment #${appointment.id} for ${appointment.startDateTime.toISODate()}:`, html.substring(0, 100) + '...');
-        return html;
+            
+            return html;
+        } catch (error) {
+            console.error(`Error rendering appointment #${appointment.id}:`, error);
+            return `<div class="text-red-500">Error rendering appointment</div>`;
+        }
     }
     
     getAppointmentsForDay(day) {
         const dateKey = day.toISODate();
-        return this.appointmentsByDate[dateKey] || [];
+        const appointments = this.appointmentsByDate[dateKey] || [];
+        return appointments;
     }
 
     groupAppointmentsByDate(appointments) {
         const grouped = {};
         
-        logger.debug('🗂️ Grouping appointments by date...');
         appointments.forEach(apt => {
+            // Check if startDateTime exists
+            if (!apt.startDateTime) {
+                console.error('Appointment missing startDateTime:', apt);
+                return; // Skip this appointment
+            }
+            
             const dateKey = apt.startDateTime.toISODate();
-            logger.debug(`   Appointment #${apt.id}: ${apt.startDateTime.toISO()} → date key: ${dateKey}`);
             if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
             }

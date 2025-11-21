@@ -27,7 +27,8 @@ class Appointments extends BaseController
             
             // Pagination parameters
             $page = max(1, (int)($this->request->getGet('page') ?? 1));
-            $length = min(100, max(1, (int)($this->request->getGet('length') ?? 50)));
+            // Custom scheduler can request hundreds of records per month, so use a higher default to avoid truncation
+            $length = min(2000, max(1, (int)($this->request->getGet('length') ?? 1000)));
             $offset = ($page - 1) * $length;
             
             // Sort parameters (default: start_time ASC)
@@ -75,6 +76,11 @@ class Appointments extends BaseController
             
             if ($serviceId) {
                 $builder->where('xs_appointments.service_id', (int)$serviceId);
+            }
+
+            $statusFilter = $model->normalizeStatusFilter($this->request->getGet('status'));
+            if ($statusFilter !== null) {
+                $model->applyStatusFilter($builder, $statusFilter);
             }
             
             // Get total count for pagination
@@ -142,7 +148,8 @@ class Appointments extends BaseController
                         'start' => $start,
                         'end' => $end,
                         'providerId' => $providerId,
-                        'serviceId' => $serviceId
+                        'serviceId' => $serviceId,
+                        'status' => $statusFilter
                     ]
                 ]
             ]);
@@ -301,10 +308,13 @@ class Appointments extends BaseController
             $endDateTime = clone $startDateTime;
             $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
 
-            $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone);
-            $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone);
+            $startTimeLocal = $startDateTime->format('Y-m-d H:i:s');
+            $endTimeLocal = $endDateTime->format('Y-m-d H:i:s');
+            $startTimeUtc = TimezoneService::toUTC($startTimeLocal, $timezone);
+            $endTimeUtc = TimezoneService::toUTC($endTimeLocal, $timezone);
             
             // Check for overlapping appointments
+            // NOTE: Database stores times in LOCAL timezone, so compare against local times
             $model = new AppointmentModel();
             $builder = $model->builder();
             $builder->where('provider_id', (int)$providerId)
@@ -312,18 +322,18 @@ class Appointments extends BaseController
                     ->groupStart()
                         // New appointment starts during existing appointment
                         ->groupStart()
-                            ->where('start_time <=', $startTimeUtc)
-                            ->where('end_time >', $startTimeUtc)
+                            ->where('start_time <=', $startTimeLocal)
+                            ->where('end_time >', $startTimeLocal)
                         ->groupEnd()
                         // New appointment ends during existing appointment
                         ->orGroupStart()
-                            ->where('start_time <', $endTimeUtc)
-                            ->where('end_time >=', $endTimeUtc)
+                            ->where('start_time <', $endTimeLocal)
+                            ->where('end_time >=', $endTimeLocal)
                         ->groupEnd()
                         // New appointment completely contains existing appointment
                         ->orGroupStart()
-                            ->where('start_time >=', $startTimeUtc)
-                            ->where('end_time <=', $endTimeUtc)
+                            ->where('start_time >=', $startTimeLocal)
+                            ->where('end_time <=', $endTimeLocal)
                         ->groupEnd()
                     ->groupEnd();
             
@@ -361,23 +371,24 @@ class Appointments extends BaseController
             }
             
             // Check blocked times
+            // NOTE: Database stores times in LOCAL timezone
             $blockedTimes = $db->table('blocked_times')
                 ->where('provider_id', (int)$providerId)
                 ->groupStart()
                     // Blocked time overlaps with appointment start
                     ->groupStart()
-                        ->where('start_time <=', $startTimeUtc)
-                        ->where('end_time >', $startTimeUtc)
+                        ->where('start_time <=', $startTimeLocal)
+                        ->where('end_time >', $startTimeLocal)
                     ->groupEnd()
                     // Blocked time overlaps with appointment end
                     ->orGroupStart()
-                        ->where('start_time <', $endTimeUtc)
-                        ->where('end_time >=', $endTimeUtc)
+                        ->where('start_time <', $endTimeLocal)
+                        ->where('end_time >=', $endTimeLocal)
                     ->groupEnd()
                     // Appointment completely contains blocked time
                     ->orGroupStart()
-                        ->where('start_time >=', $startTimeUtc)
-                        ->where('end_time <=', $endTimeUtc)
+                        ->where('start_time >=', $startTimeLocal)
+                        ->where('end_time <=', $endTimeLocal)
                     ->groupEnd()
                 ->groupEnd()
                 ->get()
@@ -394,8 +405,8 @@ class Appointments extends BaseController
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
-                    'start_time_local' => $startDateTime->format('Y-m-d H:i:s'),
-                    'end_time_local' => $endDateTime->format('Y-m-d H:i:s'),
+                    'start_time_local' => $startTimeLocal,
+                    'end_time_local' => $endTimeLocal,
                     'start_time_utc' => $startTimeUtc,
                     'end_time_utc' => $endTimeUtc,
                     'timezone' => $timezone,
@@ -559,7 +570,11 @@ class Appointments extends BaseController
         }
 
         try {
-            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            // Database stores times in local timezone (Africa/Johannesburg)
+            // Create DateTime in local timezone, then convert to UTC for API response
+            $appTimezone = config('App')->appTimezone ?? 'Africa/Johannesburg';
+            $dt = new \DateTime($datetime, new \DateTimeZone($appTimezone));
+            $dt->setTimezone(new \DateTimeZone('UTC'));
             return $dt->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception $e) {
             return $datetime;

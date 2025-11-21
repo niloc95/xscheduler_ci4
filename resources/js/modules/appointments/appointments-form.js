@@ -121,17 +121,6 @@ export async function initAppointmentForm() {
         }
         
         // AJAX form submission
-        console.log('[appointments-form] ========== FORM SUBMISSION START ==========');
-        console.log('[appointments-form] Form data being submitted:', {
-            provider_id: formState.provider_id,
-            service_id: formState.service_id,
-            date: formState.date,
-            time: formState.time,
-            duration: formState.duration,
-            timezone: getBrowserTimezone(),
-            offset: getTimezoneOffset()
-        });
-        
         const submitButton = form.querySelector('button[type="submit"]');
         const originalButtonText = submitButton.textContent;
         
@@ -143,9 +132,10 @@ export async function initAppointmentForm() {
             // Submit form via AJAX
             const formData = new FormData(form);
             
-            console.log('[appointments-form] Sending POST request to:', form.action);
+            // Get form action URL (use getAttribute to avoid conflict with button named "action")
+            const formActionUrl = form.getAttribute('action');
             
-            const response = await fetch(form.action, {
+            const response = await fetch(formActionUrl, {
                 method: 'POST',
                 headers: {
                     ...attachTimezoneHeaders(),
@@ -153,8 +143,6 @@ export async function initAppointmentForm() {
                 },
                 body: formData
             });
-            
-            console.log('[appointments-form] Server response status:', response.status);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -167,25 +155,35 @@ export async function initAppointmentForm() {
             
             if (contentType && contentType.includes('application/json')) {
                 const result = await response.json();
-                console.log('[appointments-form] JSON response:', result);
                 
                 if (result.success || result.data) {
-                    console.log('[appointments-form] ✅ Appointment created successfully!');
-                    console.log('[appointments-form] Appointment ID:', result.data?.id || result.id);
-                    
                     // Show success message
                     alert('✅ Appointment booked successfully!');
+
+                    if (typeof window !== 'undefined') {
+                        const detail = { source: 'appointment-form', action: 'create-or-update' };
+                        if (typeof window.emitAppointmentsUpdated === 'function') {
+                            window.emitAppointmentsUpdated(detail);
+                        } else {
+                            window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                        }
+                    }
                     
                     // Redirect to appointments page so calendar can refresh
-                    console.log('[appointments-form] Redirecting to /appointments...');
                     window.location.href = '/appointments';
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
             } else {
                 // HTML response (redirect) - follow it
-                console.log('[appointments-form] ✅ Appointment created (redirect response)');
-                console.log('[appointments-form] Redirecting to /appointments...');
+                if (typeof window !== 'undefined') {
+                    const detail = { source: 'appointment-form', action: 'create-or-update' };
+                    if (typeof window.emitAppointmentsUpdated === 'function') {
+                        window.emitAppointmentsUpdated(detail);
+                    } else {
+                        window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                    }
+                }
                 window.location.href = '/appointments';
             }
             
@@ -197,8 +195,6 @@ export async function initAppointmentForm() {
             submitButton.disabled = false;
             submitButton.textContent = originalButtonText;
         }
-        
-        console.log('[appointments-form] ========================================');
         
         return false;
     });

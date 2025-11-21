@@ -259,6 +259,18 @@ curl "http://localhost/api/availability/next-available?provider_id=2&service_id=
 ### Branch: scheduling
 **Based on:** cal-enhancements
 
+### Architecture Cleanup (Nov 17, 2025)
+**Fixed Code Duplication:**
+- `SchedulingService` now properly delegates to `AvailabilityService`
+- Removed duplicate availability checking logic
+- Fixed timezone handling: database stores LOCAL time (not UTC)
+- Updated `createAppointment()` to use `isSlotAvailable()` for validation
+
+**Services Clarification:**
+- **`AvailabilityService`** - Core scheduling logic (checks all constraints)
+- **`SchedulingService`** - Appointment creation wrapper (validates then inserts)
+- No duplication - clean separation of concerns
+
 ### Uncommitted Changes:
 - `app/Services/AvailabilityService.php` (new)
 - `app/Controllers/Api/Availability.php` (new)

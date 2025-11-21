@@ -28,6 +28,7 @@ export class SchedulerCore {
         this.appointments = [];
         this.providers = [];
         this.visibleProviders = new Set();
+        this.statusFilter = options.statusFilter ?? null;
         
         // Debouncing for render operations
         this.renderDebounceTimer = null;
@@ -86,6 +87,15 @@ export class SchedulerCore {
 
             logger.debug('✅ Visible providers initialized:', Array.from(this.visibleProviders));
             logger.debug('📊 Appointments provider IDs:', this.appointments.map(a => `${a.id}: provider ${a.providerId}`));
+            
+            // P0-2 DIAGNOSTIC: Check for type mismatches
+            logger.info('🔍 P0-2 DIAGNOSTIC CHECK:');
+            logger.info('   Visible providers Set:', this.visibleProviders);
+            logger.info('   Visible providers Array:', Array.from(this.visibleProviders));
+            this.appointments.forEach(apt => {
+                const hasMatch = this.visibleProviders.has(apt.providerId);
+                logger.info(`   Appointment ${apt.id}: providerId=${apt.providerId} (${typeof apt.providerId}), has match=${hasMatch}`);
+            });
 
             // Set initial visibility of daily appointments section
             this.toggleDailyAppointmentsSection();
@@ -157,7 +167,12 @@ export class SchedulerCore {
                 end = range.end;
             }
 
-            const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}`;
+            const params = new URLSearchParams({ start, end });
+            if (this.statusFilter) {
+                params.append('status', this.statusFilter);
+            }
+
+            const url = `${this.options.apiBaseUrl}?${params.toString()}`;
             logger.debug('🔄 Loading appointments from:', url);
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load appointments');
@@ -241,26 +256,15 @@ export class SchedulerCore {
     }
 
     getFilteredAppointments() {
-        logger.debug('🔍 Filtering appointments...');
-        logger.debug('   Total appointments:', this.appointments.length);
-        logger.debug('   Visible providers:', Array.from(this.visibleProviders));
-        
         // Convert appointment providerId to number for comparison
         const filtered = this.appointments.filter(apt => {
             const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
             const isVisible = this.visibleProviders.has(providerId);
-            
-            logger.debug(`   Appointment ${apt.id}: providerId=${apt.providerId} (type: ${typeof apt.providerId}), converted=${providerId}, visible=${isVisible}`);
-            
             return isVisible;
         });
         
-        logger.debug(`📊 Filter result: ${filtered.length} of ${this.appointments.length} appointments visible`);
-        
         if (filtered.length === 0 && this.appointments.length > 0) {
-            logger.warn('⚠️  NO APPOINTMENTS VISIBLE - All filtered out!');
-            logger.warn('   This usually means provider IDs don\'t match between appointments and visible providers');
-            logger.warn('   Check if appointment.providerId matches any ID in visibleProviders Set');
+            logger.warn('No appointments visible - all filtered out by provider visibility');
         }
         
         return filtered;
@@ -272,6 +276,23 @@ export class SchedulerCore {
         } else {
             this.visibleProviders.add(providerId);
         }
+        this.render();
+    }
+
+    async setStatusFilter(status) {
+        const normalizedStatus = typeof status === 'string' && status !== '' ? status : null;
+
+        if (this.statusFilter === normalizedStatus) {
+            return;
+        }
+
+        this.statusFilter = normalizedStatus;
+
+        if (this.container) {
+            this.container.dataset.activeStatus = normalizedStatus || '';
+        }
+
+        await this.loadAppointments();
         this.render();
     }
 

@@ -70,7 +70,10 @@ export function initTimeSlotsUI(options) {
 
     try {
       const res = await fetch(`/api/v1/providers/${providerId}/services`);
-      if (!res.ok) throw new Error('Failed to load services');
+      if (!res.ok) {
+        console.error('[time-slots-ui] Service API error:', res.status);
+        throw new Error('Failed to load services');
+      }
       const result = await res.json();
       const services = result.data || [];
 
@@ -81,6 +84,7 @@ export function initTimeSlotsUI(options) {
       }
 
       serviceSelect.innerHTML = '<option value="">Select a service...</option>';
+      let preselectFound = false;
       services.forEach(svc => {
         const opt = document.createElement('option');
         opt.value = svc.id;
@@ -89,14 +93,18 @@ export function initTimeSlotsUI(options) {
         opt.dataset.price = svc.price;
         if (preselectServiceId && String(preselectServiceId) === String(svc.id)) {
           opt.selected = true;
+          preselectFound = true;
         }
         serviceSelect.appendChild(opt);
       });
       serviceSelect.disabled = false;
+      
+      return preselectFound;
     } catch (e) {
       console.error('[time-slots-ui] Error loading services:', e);
       serviceSelect.innerHTML = '<option value="">Error loading services. Please try again.</option>';
       serviceSelect.disabled = false;
+      return false;
     }
   }
 
@@ -147,8 +155,13 @@ export function initTimeSlotsUI(options) {
     try {
       const qs = new URLSearchParams({ provider_id: providerId, service_id: serviceId, date });
       if (excludeAppointmentId) qs.append('exclude_appointment_id', String(excludeAppointmentId));
-      const res = await fetch(`/api/availability/slots?${qs.toString()}`);
-      if (!res.ok) throw new Error('Failed to load time slots');
+      const url = `/api/availability/slots?${qs.toString()}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error('[time-slots-ui] Slots API error:', res.status);
+        throw new Error('Failed to load time slots');
+      }
       const result = await res.json();
       const slots = result?.data?.slots || [];
 
@@ -180,19 +193,11 @@ export function initTimeSlotsUI(options) {
       if (initialTime && !matchedInitial && excludeAppointmentId) {
         const currentBtn = document.createElement('button');
         currentBtn.type = 'button';
-        currentBtn.className = 'time-slot-btn px-3 py-2 text-sm font-medium text-white bg-amber-600 border border-amber-600 rounded-lg hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500';
-        currentBtn.textContent = `Current: ${initialTime}`;
+        currentBtn.className = 'time-slot-btn px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
+        currentBtn.textContent = initialTime;
         currentBtn.dataset.time = initialTime;
-        currentBtn.title = 'Currently scheduled time';
-        currentBtn.addEventListener('click', function() {
-          document.querySelectorAll('.time-slot-btn').forEach(b => {
-            b.classList.remove('bg-blue-600','text-white','border-blue-600','dark:bg-blue-600','dark:border-blue-600');
-            b.classList.add('bg-white','dark:bg-gray-700','text-gray-700','dark:text-gray-300','border-gray-300','dark:border-gray-600');
-          });
-          this.classList.add('bg-amber-600','text-white','border-amber-600');
-          timeInput.value = initialTime;
-          if (typeof onTimeSelected === 'function') onTimeSelected(initialTime);
-        });
+        currentBtn.title = 'Currently scheduled time (keep this time)';
+        attachSlotHandlers(currentBtn);
         // Preselect current
         timeInput.value = initialTime;
         el.grid.prepend(currentBtn);
@@ -221,7 +226,9 @@ export function initTimeSlotsUI(options) {
     hideAllStates();
     el.prompt?.classList.remove('hidden');
     // If a service is preselected after loading, attempt loading slots when date present
-    if (serviceSelect.value && dateInput.value) loadSlots();
+    if (serviceSelect.value && dateInput.value) {
+      loadSlots();
+    }
   });
 
   serviceSelect.addEventListener('change', () => {
@@ -238,12 +245,18 @@ export function initTimeSlotsUI(options) {
   (async () => {
     // If provider is already chosen, load services and respect preselect
     if (providerSelect.value) {
-      await loadServices(providerSelect.value);
+      const servicePreselected = await loadServices(providerSelect.value);
+      
       // After loading services, check if we should load slots
-      // Need to check again after services are loaded and potentially preselected
-      if (serviceSelect.value && dateInput.value) {
-        await loadSlots();
-      }
+      // Small delay to allow DOM to update with service selection
+      setTimeout(() => {
+        if (serviceSelect.value && dateInput.value) {
+          loadSlots();
+        }
+      }, 100);
+    } else {
+      hideAllStates();
+      el.prompt?.classList.remove('hidden');
     }
   })();
 }

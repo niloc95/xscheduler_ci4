@@ -49,7 +49,6 @@ function navigateToCreateAppointment(slotInfo) {
     
     // Navigate to create page
     const url = `/appointments/create?${params.toString()}`;
-    console.log('[app] Navigating to create appointment:', url);
     window.location.href = url;
 }
 
@@ -72,7 +71,6 @@ function prefillAppointmentForm() {
         const dateInput = document.getElementById('appointment_date');
         if (dateInput) {
             dateInput.value = date;
-            console.log('[app] Pre-filled appointment date:', date);
             
             // Trigger change event to update form state
             dateInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -84,7 +82,6 @@ function prefillAppointmentForm() {
         const timeInput = document.getElementById('appointment_time');
         if (timeInput) {
             timeInput.value = time;
-            console.log('[app] Pre-filled appointment time:', time);
             
             // Trigger change event to update form state
             timeInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -96,12 +93,218 @@ function prefillAppointmentForm() {
         const providerSelect = document.getElementById('provider_id');
         if (providerSelect) {
             providerSelect.value = providerId;
-            console.log('[app] Pre-selected provider:', providerId);
             
             // Trigger change event to load services
             providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
+}
+
+/**
+ * Wire up dashboard status filter buttons
+ */
+function initStatusFilterControls() {
+    const container = document.querySelector('[data-status-filter-container]');
+    if (!container) {
+        return;
+    }
+
+    const buttons = Array.from(container.querySelectorAll('.status-filter-btn'));
+    if (!buttons.length) {
+        return;
+    }
+
+    const calendar = document.getElementById('appointments-inline-calendar');
+
+    const setActiveState = (nextStatus) => {
+        buttons.forEach(button => {
+            if (button.dataset.status === nextStatus && nextStatus !== '') {
+                button.classList.add('is-active');
+                button.setAttribute('aria-pressed', 'true');
+            } else {
+                button.classList.remove('is-active');
+                button.setAttribute('aria-pressed', 'false');
+            }
+        });
+        container.dataset.activeStatus = nextStatus;
+        if (calendar) {
+            calendar.dataset.activeStatus = nextStatus;
+        }
+    };
+
+    const setLoadingState = (isLoading) => {
+        buttons.forEach(button => {
+            if (isLoading) {
+                button.classList.add('is-loading');
+            } else {
+                button.classList.remove('is-loading');
+            }
+        });
+    };
+
+    const updateQueryString = (nextStatus) => {
+        const url = new URL(window.location.href);
+        if (nextStatus) {
+            url.searchParams.set('status', nextStatus);
+        } else {
+            url.searchParams.delete('status');
+        }
+        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+    };
+
+    const applySchedulerFilter = (nextStatus) => {
+        if (!calendar) {
+            return Promise.resolve();
+        }
+
+        const normalizedStatus = nextStatus || null;
+        const schedulerInstance = window.scheduler;
+
+        if (schedulerInstance && typeof schedulerInstance.setStatusFilter === 'function') {
+            return schedulerInstance.setStatusFilter(normalizedStatus);
+        }
+
+        return new Promise(resolve => {
+            const readyHandler = (event) => {
+                const instance = event?.detail?.scheduler || window.scheduler;
+                if (instance && typeof instance.setStatusFilter === 'function') {
+                    Promise.resolve(instance.setStatusFilter(normalizedStatus)).finally(resolve);
+                } else {
+                    resolve();
+                }
+            };
+
+            window.addEventListener('scheduler:ready', readyHandler, { once: true });
+        });
+    };
+
+    const initialStatus = container.dataset.activeStatus || '';
+    setActiveState(initialStatus);
+
+    buttons.forEach(button => {
+        if (button.dataset.statusFilterBound === 'true') {
+            return;
+        }
+        button.dataset.statusFilterBound = 'true';
+
+        button.addEventListener('click', () => {
+            const clickedStatus = button.dataset.status || '';
+            const currentStatus = container.dataset.activeStatus || '';
+            const toggledOff = clickedStatus === currentStatus;
+            const nextStatus = toggledOff ? '' : clickedStatus;
+
+            setActiveState(nextStatus);
+            updateQueryString(nextStatus);
+            setLoadingState(true);
+
+            applySchedulerFilter(nextStatus)
+                .catch(error => {
+                    console.error('[app.js] Failed to apply scheduler status filter', error);
+                })
+                .finally(() => {
+                    setLoadingState(false);
+                });
+
+            emitAppointmentsUpdated({ source: 'status-filter', status: nextStatus || null });
+        });
+    });
+}
+
+let statsRefreshAbortController = null;
+
+function getActiveStatusFilter() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return '';
+    }
+
+    const container = document.querySelector('[data-status-filter-container]');
+    if (container) {
+        const containerStatus = container.dataset.activeStatus;
+        if (typeof containerStatus === 'string' && containerStatus !== '') {
+            return containerStatus;
+        }
+    }
+
+    const calendar = document.getElementById('appointments-inline-calendar');
+    if (calendar) {
+        const calendarStatus = calendar.dataset.activeStatus;
+        if (typeof calendarStatus === 'string' && calendarStatus !== '') {
+            return calendarStatus;
+        }
+    }
+
+    if (window.scheduler && typeof window.scheduler.statusFilter !== 'undefined' && window.scheduler.statusFilter !== null) {
+        return window.scheduler.statusFilter;
+    }
+
+    return '';
+}
+
+async function refreshAppointmentStats() {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (statsRefreshAbortController) {
+        statsRefreshAbortController.abort();
+    }
+
+    statsRefreshAbortController = new AbortController();
+
+    try {
+        const activeStatus = getActiveStatusFilter();
+        const url = new URL('/api/dashboard/appointment-stats', window.location.origin);
+        if (activeStatus) {
+            url.searchParams.set('status', activeStatus);
+        }
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            cache: 'no-store',
+            signal: statsRefreshAbortController.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to refresh stats: HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const stats = payload.data || payload;
+
+        updateCountElement('upcomingCount', stats.upcoming);
+        updateCountElement('completedCount', stats.completed);
+        updateCountElement('pendingCount', stats.pending);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            return;
+        }
+        console.error('[app.js] Failed to refresh appointment stats', error);
+    } finally {
+        statsRefreshAbortController = null;
+    }
+}
+
+function updateCountElement(elementId, value) {
+    const el = document.getElementById(elementId);
+    if (!el) {
+        return;
+    }
+
+    const formatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+    const numericValue = typeof value === 'number' ? value : parseInt(value ?? 0, 10) || 0;
+    el.textContent = formatter.format(numericValue);
+}
+
+function emitAppointmentsUpdated(detail = {}) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    refreshAppointmentStats();
+    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
 }
 
 // ⚠️ DEPRECATED: Calendar initialization removed
@@ -119,6 +322,9 @@ function initializeComponents() {
 
     // Initialize custom scheduler
     initScheduler();
+
+    // Wire up dashboard filters
+    initStatusFilterControls();
     
     // Initialize appointment booking form if present
     initAppointmentForm();
@@ -129,16 +335,20 @@ function initializeComponents() {
 
 // Initialize on DOM ready (initial page load)
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initial page load - initializing components');
     initializeComponents();
+    refreshAppointmentStats();
 });
 
 // Re-initialize after SPA navigation
 document.addEventListener('spa:navigated', function(e) {
-    console.log('🔄 SPA navigated to:', e.detail.url);
-    console.log('🔄 Re-initializing components...');
     initializeComponents();
+    refreshAppointmentStats();
 });
+
+if (typeof window !== 'undefined') {
+    window.refreshAppointmentStats = refreshAppointmentStats;
+    window.emitAppointmentsUpdated = emitAppointmentsUpdated;
+}
 
 /**
  * Initialize custom scheduler
@@ -153,13 +363,13 @@ async function initScheduler() {
     try {
         // Destroy existing scheduler instance if it exists
         if (window.scheduler && typeof window.scheduler.destroy === 'function') {
-            console.log('🧹 Cleaning up existing scheduler instance');
             window.scheduler.destroy();
             window.scheduler = null;
         }
         
-        // Get initial date from data attribute
+        // Get initial date and active status from data attributes
         const initialDate = schedulerContainer.dataset.initialDate || new Date().toISOString().split('T')[0];
+        const activeStatusFilter = schedulerContainer.dataset.activeStatus || '';
         
         // Create scheduler instance
         const scheduler = new SchedulerCore('appointments-inline-calendar', {
@@ -167,6 +377,7 @@ async function initScheduler() {
             initialDate: initialDate,
             timezone: window.appTimezone || 'America/New_York',
             apiBaseUrl: '/api/appointments',
+            statusFilter: activeStatusFilter || null,
             onAppointmentClick: handleAppointmentClick
         });
 
@@ -178,20 +389,17 @@ async function initScheduler() {
 
         // Store scheduler instance globally for debugging
         window.scheduler = scheduler;
+        window.dispatchEvent(new CustomEvent('scheduler:ready', { detail: { scheduler } }));
 
         // Check if we need to refresh (e.g., after creating an appointment)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('refresh')) {
-            console.log('🔄 Refreshing calendar after appointment creation');
             // Remove the refresh parameter from URL without reload
             window.history.replaceState({}, document.title, window.location.pathname);
             // Force a calendar refresh by reloading appointments and re-rendering
             await scheduler.loadAppointments();
             scheduler.render();
-            console.log('✅ Calendar refreshed - appointments reloaded and re-rendered');
         }
-
-        console.log('✅ Custom scheduler initialized');
     } catch (error) {
         console.error('❌ Failed to initialize scheduler:', error);
         // Show fallback placeholder
@@ -352,15 +560,10 @@ function renderProviderLegend(scheduler) {
  * Handle appointment click - open details modal
  */
 function handleAppointmentClick(appointment) {
-    console.log('[app.js] Appointment clicked:', appointment);
-    
     // Open the appointment details modal
     if (window.scheduler?.appointmentDetailsModal) {
-        console.log('[app.js] Opening appointment details modal');
         window.scheduler.appointmentDetailsModal.open(appointment);
     } else {
         console.error('[app.js] Appointment details modal not available');
     }
 }
-
-console.log('Charts initialized');

@@ -39,29 +39,51 @@
     <?php $upcomingCount = ($stats['pending'] ?? 0) + ($stats['today'] ?? 0); ?>
     <?php $completedCount = $stats['completed'] ?? 0; ?>
 
+    <?php
+        $statCards = [
+            [
+                'label' => 'Upcoming Appointments',
+                'value' => $upcomingCount,
+                'options' => ['valueId' => 'upcomingCount']
+            ],
+            [
+                'label' => 'Completed Appointments',
+                'value' => $completedCount,
+                'options' => ['valueId' => 'completedCount']
+            ],
+        ];
+
+        $statusFilters = [
+            ['label' => 'Pending', 'status' => 'pending', 'title' => 'Show pending appointments'],
+            ['label' => 'Completed', 'status' => 'completed', 'title' => 'Show completed appointments'],
+        ];
+    ?>
+
     <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming Appointments</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $upcomingCount ?></p>
-            </div>
-            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed Appointments</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $completedCount ?></p>
-            </div>
+            <?php foreach ($statCards as $card): ?>
+                <?= ui_dashboard_stat_card($card['label'], $card['value'], $card['options'] ?? []); ?>
+            <?php endforeach; ?>
         </div>
 
         <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
-            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
                 <!-- View Selection Buttons - Material Design 3 Styled -->
                 <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Today</button>
                 <button type="button" data-calendar-action="day" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Day</button>
-                <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
+                    <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
                 <button type="button" data-calendar-action="month" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200">Month</button>
                 
                 <!-- Status Filter Buttons -->
-                <button type="button" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" title="Show pending appointments">Pending</button>
-                <button type="button" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" title="Show completed appointments">Completed</button>
+                <?php foreach ($statusFilters as $filter): ?>
+                    <?php $isActive = ($activeStatusFilter ?? null) === $filter['status']; ?>
+                    <button type="button"
+                            class="status-filter-btn<?= $isActive ? ' is-active' : '' ?>"
+                            data-status="<?= esc($filter['status']) ?>"
+                            title="<?= esc($filter['title']) ?>">
+                        <?= esc($filter['label']) ?>
+                    </button>
+                <?php endforeach; ?>
             </div>
 
                 <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
@@ -108,6 +130,7 @@
             id="appointments-inline-calendar"
             class="w-full"
             data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
+            data-active-status="<?= esc($activeStatusFilter ?? '') ?>"
         ></div>
     </div>
 <?= $this->endSection() ?>

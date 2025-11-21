@@ -451,6 +451,20 @@ export class AppointmentDetailsModal {
             // Refresh calendar to show updated status
             await this.scheduler.loadAppointments();
             this.scheduler.render();
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'status-change',
+                    appointmentId: appointment.id,
+                    status: newStatus
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
             
         } catch (error) {
             console.error('Error updating status:', error);
@@ -515,6 +529,20 @@ export class AppointmentDetailsModal {
             this.close();
             await this.scheduler.loadAppointments();
             this.scheduler.render();
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'status-change',
+                    appointmentId: appointment.id,
+                    status: 'cancelled'
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
             
         } catch (error) {
             console.error('Error cancelling appointment:', error);

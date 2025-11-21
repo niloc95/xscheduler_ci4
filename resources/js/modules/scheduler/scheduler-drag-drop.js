@@ -277,6 +277,20 @@ export class DragDropManager {
             this.scheduler.render();
 
             this.showSuccess('Appointment rescheduled successfully');
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'drag-drop',
+                    action: 'reschedule',
+                    appointmentId
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
         } catch (error) {
             console.error('❌ Reschedule failed:', error);
             this.showError('Failed to reschedule appointment. Please try again.');

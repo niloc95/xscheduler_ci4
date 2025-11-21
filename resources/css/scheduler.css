@@ -293,6 +293,61 @@
 }
 
 /* ============================================
+   Status Filter Buttons
+   ============================================ */
+
+.status-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.95rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: #f8fafc;
+    color: #1f2937;
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.status-filter-btn:hover {
+    background-color: #e2e8f0;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.status-filter-btn:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.status-filter-btn.is-active {
+    background-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+    transform: translateY(-1px);
+}
+
+.status-filter-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.dark .status-filter-btn {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.dark .status-filter-btn:hover {
+    background-color: #334155;
+}
+
+.dark .status-filter-btn.is-active {
+    background-color: #3b82f6;
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.35);
+}
+
+/* ============================================
    Modal Animations
    ============================================ */
 
