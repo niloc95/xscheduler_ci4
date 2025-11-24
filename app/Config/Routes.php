@@ -162,14 +162,28 @@ $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Scheduler::index', ['filter' => 'auth']);
 });
 
-// Public/client-facing booking view
+// Public/client-facing booking view (legacy)
 $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
+
+// New dedicated public booking experience (Option B)
+$routes->group('public/booking', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
+    $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
+    $routes->post('', 'PublicSite\BookingController::store', ['filter' => 'public_rate_limit|csrf']);
+    $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
+    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => 'public_rate_limit|csrf']);
+});
 
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
+
+    // Calendar prototype (feature-flagged)
+    $routes->get('calendar-prototype/bootstrap', 'Api\\CalendarPrototype::bootstrap');
+    $routes->get('calendar-prototype/range', 'Api\\CalendarPrototype::range');
+        $routes->post('calendar-prototype/telemetry', 'Api\\CalendarPrototype::telemetry');
 
     // Consolidated Appointments API (unversioned, future-proof)
     // Specific endpoints BEFORE resource to avoid shadowing

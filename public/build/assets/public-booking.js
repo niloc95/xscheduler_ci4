@@ -1,0 +1,236 @@
+const p=document.getElementById("public-booking-root"),ke={first_name:"First name",last_name:"Last name",email:"Email address",phone:"Phone number",address:"Address",notes:"Notes"};p?ye():console.warn("[public-booking] Root element not found.");function ye(){const m=he(),v=new Date().toISOString().slice(0,10);let u={view:"book",booking:U(m,v),manage:M(m,v),csrf:{header:p.dataset.csrfHeader||"X-CSRF-TOKEN",value:p.dataset.csrfValue||"",name:p.dataset.csrfName||"csrf_token"}};P(),u.booking.providerId&&u.booking.serviceId&&y("booking");function $(e){u=typeof e=="function"?e(ve(u)):{...u,...e},P()}function E(e){$(t=>({...t,booking:typeof e=="function"?e(t.booking):{...t.booking,...e}}))}function h(e){$(t=>({...t,manage:typeof e=="function"?e(t.manage):{...t.manage,...e}}))}function L(e){$(t=>({...t,manage:{...t.manage,formState:typeof e=="function"?e(t.manage.formState):{...t.manage.formState,...e}}}))}function S(e){return e==="manage"?u.manage.formState:u.booking}function b(e,t){if(e==="manage"){L(t);return}E(t)}function P(){const e=oe(m),t=se(u.view),o=u.view==="book"?u.booking.success?A(u.booking.success,m):j(u.booking,m):re(u.manage,m);p.innerHTML=`
+      <div class="px-4 py-10 sm:px-6 lg:px-0">
+        <div class="mx-auto w-full max-w-4xl space-y-6">
+          ${e}
+          ${t}
+          ${o}
+        </div>
+      </div>
+    `,V()}function V(){var e,t,o;if(W(),u.view==="book"){if(u.booking.success){(e=p.querySelector("[data-start-over]"))==null||e.addEventListener("click",X);return}q("booking");return}if(u.manage.stage==="lookup"){H();return}if(u.manage.stage==="reschedule"){q("manage"),(t=p.querySelector("[data-manage-reset]"))==null||t.addEventListener("click",D);return}u.manage.stage==="success"&&((o=p.querySelector("[data-manage-start-over]"))==null||o.addEventListener("click",D))}function W(){p.querySelectorAll("[data-view-toggle]").forEach(e=>{e.addEventListener("click",()=>{const t=e.getAttribute("data-view-toggle");!t||t===u.view||$(o=>({...o,view:t}))})})}function q(e){const t=e==="booking"?"#public-booking-form":"#public-reschedule-form",o=p.querySelector(t);if(!o)return;const n=o.querySelector("[data-provider-select]"),s=o.querySelector("[data-service-select]"),r=o.querySelector("[data-date-input]");n==null||n.addEventListener("change",l=>J(l.target.value,e)),s==null||s.addEventListener("change",l=>Y(l.target.value,e)),r==null||r.addEventListener("change",l=>K(l.target.value,e)),o.addEventListener("input",l=>N(l,e)),o.addEventListener("change",l=>N(l,e)),o.addEventListener("submit",l=>ee(l,e)),o.querySelectorAll("[data-slot-option]").forEach(l=>{l.addEventListener("click",()=>{const d=l.getAttribute("data-slot-option");z(d,e)})})}function H(){const e=p.querySelector("#booking-lookup-form");e&&(e.addEventListener("input",G),e.addEventListener("submit",Q))}function X(){E(()=>U(m,v)),y("booking")}function D(){h(()=>M(m,v))}function J(e,t="booking"){b(t,o=>({...o,providerId:e,selectedSlot:null,slotsError:"",errors:{...o.errors,provider_id:void 0,slot_start:void 0}})),y(t)}function Y(e,t="booking"){b(t,o=>({...o,serviceId:e,selectedSlot:null,slotsError:"",errors:{...o.errors,service_id:void 0,slot_start:void 0}})),y(t)}function K(e,t="booking"){b(t,o=>({...o,appointmentDate:e,selectedSlot:null,slotsError:"",errors:{...o.errors,slot_start:void 0}})),y(t)}function z(e,t="booking"){if(!e)return;const o=S(t),n=o.slots.find(s=>s.start===e);!n||o.submitting||b(t,s=>({...s,selectedSlot:n,errors:{...s.errors,slot_start:void 0}}))}function G(e){const{name:t}=e.target;t&&h(o=>({...o,lookupForm:{...o.lookupForm,[t]:e.target.value},lookupErrors:{...o.lookupErrors,[t]:void 0,contact:void 0},lookupError:""}))}async function Q(e){if(e.preventDefault(),u.manage.lookupLoading)return;const t=u.manage.lookupForm,o=(t.token??"").trim(),n=(t.email??"").trim(),s=(t.phone??"").trim(),r={};if(o||(r.token="Enter your confirmation token"),!n&&!s&&(r.contact="Provide the email or phone used on the booking."),Object.keys(r).length>0){h(l=>({...l,lookupErrors:{...l.lookupErrors,...r}}));return}h(l=>({...l,lookupLoading:!0,lookupError:"",lookupErrors:{}}));try{const l=new URLSearchParams;n&&l.set("email",n),s&&l.set("phone",s);const d=l.toString(),f=d?`/public/booking/${encodeURIComponent(o)}?${d}`:`/public/booking/${encodeURIComponent(o)}`,a=await fetch(f,{headers:{Accept:"application/json","X-Requested-With":"XMLHttpRequest"}});I(a.headers);const c=await _(a);if(!a.ok){const x=(c==null?void 0:c.details)??{};throw new w((c==null?void 0:c.error)??"Unable to locate that booking.",x)}h(x=>({...x,lookupLoading:!1})),Z(c==null?void 0:c.data,{email:n,phone:s})}catch(l){if(l instanceof w){h(d=>({...d,lookupLoading:!1,lookupError:l.message,lookupErrors:{...d.lookupErrors,...l.details}}));return}h(d=>({...d,lookupLoading:!1,lookupError:l.message??"Unable to locate that booking."}))}}function Z(e,t={}){if(!e){h(r=>({...r,lookupError:"We could not load that booking. Please try again."}));return}const o=e.start?new Date(e.start):null,n=o&&!Number.isNaN(o.getTime())?o.toISOString().slice(0,10):v,s=e.start?C({start:e.start,end:e.end}):"";h(r=>{var l,d;return{...r,stage:"reschedule",appointment:e,contact:{email:t.email??((l=r.contact)==null?void 0:l.email)??"",phone:t.phone??((d=r.contact)==null?void 0:d.phone)??""},lookupError:"",lookupErrors:{},success:null}}),L(r=>({...r,providerId:String(e.provider_id??""),serviceId:String(e.service_id??""),appointmentDate:n,selectedSlot:e.start?{start:e.start,end:e.end,label:s}:null,form:{...r.form,notes:e.notes??r.form.notes??"",email:r.form.email||t.email||"",phone:r.form.phone||t.phone||""},slots:[],slotsError:"",errors:{},globalError:"",submitting:!1})),u.view!=="manage"&&$(r=>({...r,view:"manage"})),y("manage")}function N(e,t="booking"){const{name:o,type:n}=e.target;if(!o||["provider_id","service_id","appointment_date"].includes(o))return;const s=n==="checkbox"?e.target.checked?"1":"0":e.target.value;b(t,r=>({...r,form:{...r.form,[o]:s},errors:{...r.errors,[o]:void 0}}))}async function ee(e,t="booking"){var n;e.preventDefault();const o=S(t);if(!o.submitting){if(!o.providerId||!o.serviceId){b(t,s=>({...s,errors:{...s.errors,provider_id:o.providerId?void 0:"Select a provider",service_id:o.serviceId?void 0:"Select a service"}}));return}if(!o.selectedSlot){b(t,s=>({...s,errors:{...s.errors,slot_start:"Choose an available time before continuing."}}));return}b(t,s=>({...s,submitting:!0,globalError:"",errors:{...s.errors}}));try{const s=t==="manage"?u.manage.contact??{}:{},r=te(o,s);let l="/public/booking",d="POST";if(t==="manage"){const c=(n=u.manage.appointment)==null?void 0:n.token;if(!c)throw new Error("Missing appointment token.");l=`/public/booking/${encodeURIComponent(c)}`,d="PATCH"}const f=await fetch(l,{method:d,headers:{"Content-Type":"application/json",Accept:"application/json","X-Requested-With":"XMLHttpRequest",...u.csrf.value?{[u.csrf.header]:u.csrf.value}:{}},body:JSON.stringify(r)});I(f.headers);const a=await _(f);if(!f.ok){const c=(a==null?void 0:a.details)??{};throw new w((a==null?void 0:a.error)??(t==="booking"?"Unable to save your booking.":"Unable to update the booking."),c)}t==="booking"?E(c=>({...c,submitting:!1,success:(a==null?void 0:a.data)??null,globalError:""})):(L(c=>({...c,submitting:!1,globalError:""})),h(c=>{var x,k;return{...c,stage:"success",success:(a==null?void 0:a.data)??null,appointment:(a==null?void 0:a.data)??c.appointment,contact:{email:o.form.email??((x=c.contact)==null?void 0:x.email)??"",phone:o.form.phone??((k=c.contact)==null?void 0:k.phone)??""}}}))}catch(s){if(s instanceof w){b(t,r=>({...r,submitting:!1,globalError:s.message,errors:{...r.errors,...s.details}}));return}b(t,r=>({...r,submitting:!1,globalError:s.message??"Something went wrong. Please try again."}))}}}async function y(e="booking"){var n;const t=S(e);if(!t.providerId||!t.serviceId||!t.appointmentDate){b(e,s=>({...s,slots:[],slotsError:""}));return}b(e,s=>({...s,slotsLoading:!0,slotsError:"",slots:[]}));const o=new URLSearchParams({provider_id:t.providerId,service_id:t.serviceId,date:t.appointmentDate});try{const s=await fetch(`/public/booking/slots?${o.toString()}`,{headers:{Accept:"application/json","X-Requested-With":"XMLHttpRequest"}});I(s.headers);const r=await _(s);if(!s.ok)throw new Error((r==null?void 0:r.error)??"Unable to load availability.");const l=Array.isArray(r==null?void 0:r.data)?r.data:[],d=(n=t.selectedSlot)==null?void 0:n.start,f=l.find(a=>a.start===d)??null;b(e,a=>({...a,slotsLoading:!1,slots:l,selectedSlot:f,slotsError:l.length===0?"No slots available for this date. Try another day.":""}))}catch(s){b(e,r=>({...r,slotsLoading:!1,slotsError:s.message??"Unable to load availability."}))}}function te(e,t={}){var n;const o={provider_id:Number(e.providerId),service_id:Number(e.serviceId),slot_start:((n=e.selectedSlot)==null?void 0:n.start)??null,notes:e.form.notes??""};return Object.entries(e.form).forEach(([s,r])=>{o[s]=r}),{...o,...t}}function I(e){if(!e||!u.csrf.header)return;const t=u.csrf.header,o=e.get(t)||e.get(t.toLowerCase());o&&o!==u.csrf.value&&(u.csrf={...u.csrf,value:o},p.dataset.csrfValue=o)}function oe(e){const t=e.timezone??"local timezone";return`
+      <header class="text-center">
+        <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Secure Self-Service Booking</p>
+        <h1 class="mt-2 text-3xl font-semibold text-slate-900">Reserve an appointment</h1>
+        <p class="mt-3 text-base text-slate-600">Pick a provider, choose a service, and lock in a time that works for you. All times are shown in <span class="font-semibold">${i(t)}</span>.</p>
+      </header>
+    `}function se(e){return`
+      <div class="rounded-3xl border border-slate-200 bg-white p-1 shadow-sm">
+        <nav class="grid gap-1 sm:flex" role="tablist">
+          ${[{key:"book",label:"Book a visit",description:"Plan a new appointment"},{key:"manage",label:"Manage booking",description:"Look up or reschedule"}].map(o=>{const n=o.key===e,s="w-full rounded-2xl px-5 py-3 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200",r=n?"bg-slate-900 text-white shadow":"text-slate-500 hover:text-slate-900",l=n?"text-slate-200":"text-slate-400";return`
+              <button type="button" data-view-toggle="${o.key}" class="${s} ${r}" role="tab" aria-selected="${n}">
+                <span class="block">${i(o.label)}</span>
+                <span class="text-xs font-normal ${l}">${i(o.description)}</span>
+              </button>
+            `}).join("")}
+        </nav>
+      </div>
+    `}function re(e,t){return e.stage==="success"&&e.success?A(e.success,t,{title:"Appointment updated",subtitle:"We emailed your updated confirmation. Use the new token for any future changes.",primaryButton:{label:"Look up another booking",attr:"data-manage-start-over"},footerText:"Need to adjust again? Submit your new confirmation token to reopen this booking."}):e.stage==="reschedule"?le(e,t):ne(e,t)}function ne(e,t){var d;const o=e.lookupError?`<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">${i(e.lookupError)}</div>`:"",n=(d=e.lookupErrors)!=null&&d.contact?`<p class="text-sm text-red-600">${i(e.lookupErrors.contact)}</p>`:"",s=t.reschedulePolicy??{enabled:!0,label:"24 hours"},r=s.enabled?`You can reschedule online up to ${i(s.label??"24 hours")} before the appointment.`:"Online changes are disabled. Contact the office for assistance.",l=s.enabled?"text-slate-600":"text-amber-600";return`
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form id="booking-lookup-form" class="space-y-5" novalidate>
+          <div>
+            <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
+            <p class="mt-1 text-sm text-slate-600">Enter your confirmation token plus the email or phone used when booking. We will pull up your appointment instantly.</p>
+          </div>
+          ${o}
+          <label class="block text-sm font-medium text-slate-700">
+            Confirmation token
+            <input name="token" value="${i(e.lookupForm.token??"")}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="abcd-1234-efgh" required>
+            ${g("token",e.lookupErrors)}
+          </label>
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="block text-sm font-medium text-slate-700">
+              Email address
+              <input type="email" name="email" value="${i(e.lookupForm.email??"")}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="you@example.com">
+              ${g("email",e.lookupErrors)}
+            </label>
+            <label class="block text-sm font-medium text-slate-700">
+              Phone number
+              <input type="tel" name="phone" value="${i(e.lookupForm.phone??"")}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="(555) 555-1234">
+              ${g("phone",e.lookupErrors)}
+            </label>
+          </div>
+          <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-600">
+            Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
+            ${n}
+          </div>
+          <p class="text-xs font-medium ${l}">${r}</p>
+          <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300" ${e.lookupLoading?"disabled":""}>${e.lookupLoading?"Finding your booking...":"Find my booking"}</button>
+        </form>
+      </section>
+    `}function le(e,t){const n=j(e.formState,t,{formId:"public-reschedule-form",actionOptions:{submitLabel:"Save new time",pendingLabel:"Updating booking...",helperText:"We will send your updated confirmation immediately after you save."}});return`
+      <div class="space-y-6">
+        ${ie(e,t)}
+        ${n}
+      </div>
+    `}function ie(e,t){var a,c,x,k;const o=e.appointment;if(!o)return"";const n=T(o,t),s=B(o,t),r=O(o),l=((a=e.contact)==null?void 0:a.email)||((c=o.customer)==null?void 0:c.email),d=((x=e.contact)==null?void 0:x.phone)||((k=o.customer)==null?void 0:k.phone),f=l?`Verified via <span class="font-semibold">${i(l)}</span>`:d?`Verified via <span class="font-semibold">${i(d)}</span>`:"Contact verified";return`
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking token</p>
+            <p class="mt-0.5 font-mono text-base text-slate-900">${i(o.token??"")}</p>
+            <p class="mt-2 text-sm text-slate-600">${f}</p>
+          </div>
+          <button type="button" data-manage-reset class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600">Use a different token</button>
+        </div>
+        <dl class="mt-6 grid gap-4 text-left md:grid-cols-3">
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Current time</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(r)}</dd>
+          </div>
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Provider</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(n)}</dd>
+          </div>
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Service</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(s)}</dd>
+          </div>
+        </dl>
+      </section>
+    `}function j(e,t,o={}){const n=e.globalError?`<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">${i(e.globalError)}</div>`:"";return`
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form id="${o.formId??"public-booking-form"}" class="space-y-6" novalidate>
+          ${n}
+          ${ae(e,t)}
+          ${de(e)}
+          ${ce(e,t)}
+          ${ue(e,t)}
+          ${fe(e,t)}
+          ${be(t)}
+          ${me(e,o.actionOptions)}
+        </form>
+      </section>
+    `}function ae(e,t){var l,d;const o=(t.providers??[]).map(f=>{const a=i(String(f.id??"")),c=String(f.id)===String(e.providerId)?"selected":"";return`
+        <option value="${a}" ${c}>
+          ${i(f.name??f.displayName??"Provider")}
+        </option>
+      `}).join(""),n=(t.services??[]).map(f=>{const a=i(String(f.id??"")),c=String(f.id)===String(e.serviceId)?"selected":"";return`
+        <option value="${a}" ${c}>
+          ${i(f.name??"Service")}${f.formattedPrice?` &middot; ${i(f.formattedPrice)}`:""}
+        </option>
+      `}).join(""),s=(t.services??[]).find(f=>String(f.id)===String(e.serviceId)),r=s?`<p class="text-sm text-slate-500">${i(s.name??"Service")} &middot; ${(s.duration??s.durationMinutes??0)||0} min${s.formattedPrice?` &middot; ${i(s.formattedPrice)}`:""}</p>`:"";return`
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="block text-sm font-medium text-slate-700">
+          Provider
+          <select name="provider_id" data-provider-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${(l=t.providers)!=null&&l.length?"":"disabled"}>
+            <option value="" ${e.providerId?"":"selected"}>Choose a provider</option>
+            ${o}
+          </select>
+          ${g("provider_id",e.errors)}
+        </label>
+        <label class="block text-sm font-medium text-slate-700">
+          Service
+          <select name="service_id" data-service-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${(d=t.services)!=null&&d.length?"":"disabled"}>
+            <option value="" ${e.serviceId?"":"selected"}>Choose a service</option>
+            ${n}
+          </select>
+          ${r}
+          ${g("service_id",e.errors)}
+        </label>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="block text-sm font-medium text-slate-700">
+          Preferred date
+          <input type="date" data-date-input name="appointment_date" min="${new Date().toISOString().slice(0,10)}" value="${i(e.appointmentDate)}" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+        </label>
+        <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <span class="font-semibold text-slate-700">Scheduling tips</span>
+          <span>Selecting a different provider or day can reveal more openings. Slots refresh in real-time.</span>
+        </div>
+      </div>
+    `}function de(e){const t=e.slotsLoading?'<p class="text-sm text-slate-500">Checking availability...</p>':"",o=e.slots.map(r=>{var a;const l=r.start===((a=e.selectedSlot)==null?void 0:a.start),d="w-full rounded-2xl border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200",f=l?"border-blue-600 bg-blue-50 text-blue-900 shadow-sm":"border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700";return`<button type="button" data-slot-option="${r.start}" class="${d} ${f}">${i(r.label??xe(r))}</button>`}).join(""),n=o?`<div class="grid gap-2 sm:grid-cols-2">${o}</div>`:"",s=!e.slotsLoading&&!e.slots.length?`<p class="text-sm text-slate-500">${e.providerId&&e.serviceId?i(e.slotsError||"No open times for this day. Try another date."):"Select a provider and service to view appointments."}</p>`:"";return`
+      <div>
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-slate-900">Pick an available time</h2>
+          ${e.selectedSlot?`<span class="text-sm text-slate-600">Selected: ${i(C(e.selectedSlot))}</span>`:""}
+        </div>
+        <div class="mt-3 space-y-3">
+          ${t}
+          ${n}
+          ${s}
+          ${g("slot_start",e.errors)}
+        </div>
+      </div>
+    `}function ce(e,t){const o=t.fieldConfig??{},s=["first_name","last_name","email","phone","address"].filter(l=>{var d;return((d=o[l])==null?void 0:d.display)!==!1});return s.length?`
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">Your details</h2>
+        <p class="text-sm text-slate-500">We will use this information to confirm your appointment and send reminders.</p>
+        <div class="mt-4 grid gap-4 md:grid-cols-2">
+          ${s.map(l=>pe(l,o[l]??{},e)).join("")}
+        </div>
+      </div>
+    `:""}function ue(e,t){const o=t.customFieldConfig??{},n=Object.keys(o);if(!n.length)return"";const s=n.map(r=>ge(r,o[r],e)).filter(Boolean).join("");return s?`
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">Additional information</h2>
+        <div class="mt-4 grid gap-4">
+          ${s}
+        </div>
+      </div>
+    `:""}function fe(e,t){var s,r;const o=t.fieldConfig??{};return((s=o.notes)==null?void 0:s.display)===!1?"":`
+      <div>
+        <label class="block text-sm font-medium text-slate-700">
+          Notes for your provider ${((r=o.notes)==null?void 0:r.required)?'<span class="text-red-500">*</span>':""}
+          <textarea name="notes" rows="4" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${i(e.form.notes??"")}</textarea>
+        </label>
+        ${g("notes",e.errors)}
+      </div>
+    `}function be(e){const t=e.reschedulePolicy??{enabled:!0,label:"24 hours"};return`<p class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">${t.enabled?`Need to make a change? You can reschedule online up to ${i(t.label??"24 hours")} before your appointment.`:"Contact the office directly if you need to make a change."}</p>`}function me(e,t={}){const o=(t==null?void 0:t.submitLabel)??"Confirm appointment",n=(t==null?void 0:t.pendingLabel)??"Booking your appointment...",s=(t==null?void 0:t.helperText)??"We respect your privacy. Your confirmation token will be displayed and emailed immediately.",r=e.submitting?"disabled":"",l=e.submitting?n:o;return`
+      <div class="flex flex-col gap-3">
+        <button type="submit" class="inline-flex items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300" ${r}>${i(l)}</button>
+        <p class="text-center text-xs text-slate-400">${i(s)}</p>
+      </div>
+    `}function A(e,t,o={}){if(!e)return"";const n=T(e,t),s=B(e,t),r=O(e),l=o.title??"You're booked!",d=o.subtitle??"We'll send a confirmation email shortly. Keep your token handy if you need to make changes.",f=o.footerText??"Need to reschedule? Use your token and contact email to pull up this booking anytime.",a=o.primaryButton??{label:"Book another appointment",attr:"data-start-over"},c=o.secondaryButton,x=(a==null?void 0:a.attr)??"data-start-over",k=(c==null?void 0:c.attr)??"";return`
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <span class="text-2xl">&#10003;</span>
+        </div>
+        <h2 class="mt-4 text-2xl font-semibold text-slate-900">${i(l)}</h2>
+        <p class="mt-2 text-sm text-slate-600">${i(d)}</p>
+        <dl class="mt-6 grid gap-4 text-left md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Date & time</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(r)}</dd>
+          </div>
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Provider</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(n)}</dd>
+          </div>
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Service</dt>
+            <dd class="text-base font-semibold text-slate-900">${i(s)}</dd>
+          </div>
+          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+            <dt class="text-sm font-medium text-slate-500">Confirmation token</dt>
+            <dd class="text-base font-mono text-slate-900">${i(e.token??"")}</dd>
+          </div>
+        </dl>
+        <div class="mt-6 flex flex-col gap-3">
+          ${a?`<button type="button" ${x} class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600">${i(a.label)}</button>`:""}
+          ${c?`<button type="button" ${k} class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-6 py-3 text-base font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600">${i(c.label)}</button>`:""}
+          <p class="text-xs text-slate-500">${i(f)}</p>
+        </div>
+      </section>
+    `}function pe(e,t,o){const n=t.label??ke[e]??e,s=t.required;return`
+      <label class="block text-sm font-medium text-slate-700">
+        ${i(n)} ${s?'<span class="text-red-500">*</span>':""}
+        <input name="${e}" value="${i(o.form[e]??"")}" type="${e==="email"?"email":e==="phone"?"tel":"text"}" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${s?'aria-required="true"':""}>
+        ${g(e,o.errors)}
+      </label>
+    `}function ge(e,t,o){if(!t||t.display===!1)return"";const n=t.title??`Custom field ${t.index}`;if(t.type==="textarea")return`
+        <label class="block text-sm font-medium text-slate-700">
+          ${i(n)} ${t.required?'<span class="text-red-500">*</span>':""}
+          <textarea name="${e}" rows="3" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${i(o.form[e]??"")}</textarea>
+          ${g(e,o.errors)}
+        </label>
+      `;if(t.type==="checkbox"){const s=(o.form[e]??"")==="1"?"checked":"";return`
+        <label class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+          <span>${i(n)}</span>
+          <input type="checkbox" name="${e}" class="h-4 w-4" ${s}>
+        </label>
+        ${g(e,o.errors)}
+      `}return`
+      <label class="block text-sm font-medium text-slate-700">
+        ${i(n)} ${t.required?'<span class="text-red-500">*</span>':""}
+        <input name="${e}" value="${i(o.form[e]??"")}" type="text" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+        ${g(e,o.errors)}
+      </label>
+    `}function g(e,t){return!t||!t[e]?"":`<p class="mt-1 text-sm text-red-600">${i(t[e])}</p>`}function xe(e){const t=e!=null&&e.start?new Date(e.start):null,o=e!=null&&e.end?new Date(e.end):null;if(!t||!o)return"Selected time";const n=new Intl.DateTimeFormat(void 0,{hour:"numeric",minute:"2-digit"});return`${n.format(t)} - ${n.format(o)}`}function C(e){if(!(e!=null&&e.start))return"";const t=new Date(e.start),o=e.end?new Date(e.end):null,n=new Intl.DateTimeFormat(void 0,{weekday:"short",month:"short",day:"numeric"}),s=new Intl.DateTimeFormat(void 0,{hour:"numeric",minute:"2-digit"}),r=n.format(t),l=o?`${s.format(t)} - ${s.format(o)}`:s.format(t);return`${r}, ${l}`}function O(e){return e?e.display_range?e.display_range:C({start:e.start,end:e.end}):""}function T(e,t){var n;if((n=e==null?void 0:e.provider)!=null&&n.name)return e.provider.name;const o=(t.providers??[]).find(s=>Number(s.id)===Number(e==null?void 0:e.provider_id));return(o==null?void 0:o.name)??(o==null?void 0:o.displayName)??"Assigned provider"}function B(e,t){var n;if((n=e==null?void 0:e.service)!=null&&n.name)return e.service.name;const o=(t.services??[]).find(s=>Number(s.id)===Number(e==null?void 0:e.service_id));return(o==null?void 0:o.name)??"Selected service"}function he(){try{return JSON.parse(p.dataset.context??"{}")||window.__PUBLIC_BOOKING__||{}}catch(e){return console.error("[public-booking] Failed to parse context payload.",e),window.__PUBLIC_BOOKING__||{}}}function R(e){const t={first_name:"",last_name:"",email:"",phone:"",address:"",notes:""},o=e.fieldConfig??{};Object.keys(o).forEach(s=>{t[s]===void 0&&(t[s]="")});const n=e.customFieldConfig??{};return Object.keys(n).forEach(s=>{t[s]=n[s].type==="checkbox"?"0":""}),t}function U(e,t){var o,n,s,r,l,d;return{providerId:((s=(n=(o=e.providers)==null?void 0:o[0])==null?void 0:n.id)==null?void 0:s.toString())??"",serviceId:((d=(l=(r=e.services)==null?void 0:r[0])==null?void 0:l.id)==null?void 0:d.toString())??"",appointmentDate:t,slots:[],slotsLoading:!1,slotsError:"",selectedSlot:null,form:R(e),errors:{},globalError:"",submitting:!1,success:null}}function M(e,t){return{stage:"lookup",lookupForm:{token:"",email:"",phone:""},lookupErrors:{},lookupError:"",lookupLoading:!1,appointment:null,success:null,contact:{email:"",phone:""},formState:{providerId:"",serviceId:"",appointmentDate:t,slots:[],slotsLoading:!1,slotsError:"",selectedSlot:null,form:R(e),errors:{},globalError:"",submitting:!1}}}async function _(e){try{return await e.json()}catch{return null}}function ve(e){return typeof structuredClone=="function"?structuredClone(e):JSON.parse(JSON.stringify(e))}}class w extends Error{constructor(F,v={}){super(F),this.details=v}}function i(m){return m==null?"":String(m).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
