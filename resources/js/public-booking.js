@@ -37,8 +37,10 @@ function bootstrapPublicBooking() {
   }
 
   function setState(updater) {
+    const focusSnapshot = snapshotFocus();
     state = typeof updater === 'function' ? updater(cloneState(state)) : { ...state, ...updater };
     render();
+    restoreFocus(focusSnapshot);
   }
 
   function updateBooking(updater) {
@@ -1187,6 +1189,39 @@ function bootstrapPublicBooking() {
       return structuredClone(value);
     }
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function snapshotFocus() {
+    const active = document.activeElement;
+    if (!active || !root.contains(active)) {
+      return null;
+    }
+    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+      return {
+        name: active.name || null,
+        selectionStart: active.selectionStart,
+        selectionEnd: active.selectionEnd,
+      };
+    }
+    return null;
+  }
+
+  function restoreFocus(snapshot) {
+    if (!snapshot?.name) {
+      return;
+    }
+    const selector = `input[name="${snapshot.name}"]`;
+    const input = root.querySelector(selector) || root.querySelector(`textarea[name="${snapshot.name}"]`);
+    if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+      input.focus({ preventScroll: true });
+      if (typeof snapshot.selectionStart === 'number' && typeof snapshot.selectionEnd === 'number') {
+        try {
+          input.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+        } catch (error) {
+          // ignore selection errors
+        }
+      }
+    }
   }
 }
 
