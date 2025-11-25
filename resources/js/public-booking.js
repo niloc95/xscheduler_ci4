@@ -1214,12 +1214,16 @@ function bootstrapPublicBooking() {
     const input = root.querySelector(selector) || root.querySelector(`textarea[name="${snapshot.name}"]`);
     if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
       input.focus({ preventScroll: true });
-      if (typeof snapshot.selectionStart === 'number' && typeof snapshot.selectionEnd === 'number') {
-        try {
+      const hasRange = typeof snapshot.selectionStart === 'number' && typeof snapshot.selectionEnd === 'number';
+      try {
+        if (hasRange) {
           input.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
-        } catch (error) {
-          // ignore selection errors
+        } else {
+          const end = input.value.length;
+          input.setSelectionRange(end, end);
         }
+      } catch (error) {
+        // ignore selection errors
       }
     }
   }
