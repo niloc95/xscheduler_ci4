@@ -18,11 +18,17 @@ if (!root) {
 function bootstrapPublicBooking() {
   const context = parseContext();
   const today = new Date();
-  const defaultDate = today.toISOString().slice(0, 10);
+  const initialAvailability = context.initialAvailability ?? null;
+  const initialCalendar = context.initialCalendar ?? null;
+  const calendarDates = Array.isArray(initialCalendar?.availableDates) ? initialCalendar.availableDates : [];
+    const calendarDefaultDate = initialCalendar?.defaultDate ?? calendarDates[0] ?? null;
+  const defaultDate = initialAvailability?.date ?? calendarDefaultDate ?? today.toISOString().slice(0, 10);
+  const initialCalendarSlots = initialCalendar?.slotsByDate?.[defaultDate] ?? [];
+  const hasInitialCalendar = calendarDates.length > 0 && initialCalendarSlots.length > 0;
 
   let state = {
     view: 'book',
-    booking: createBookingDraft(context, defaultDate),
+    booking: createBookingDraft(context, defaultDate, initialAvailability, initialCalendar),
     manage: createManageDraft(context, defaultDate),
     csrf: {
       header: root.dataset.csrfHeader || 'X-CSRF-TOKEN',
@@ -33,7 +39,11 @@ function bootstrapPublicBooking() {
 
   render();
   if (state.booking.providerId && state.booking.serviceId) {
-    fetchSlots('booking');
+    if (hasInitialCalendar) {
+      syncSlotsFromCalendar('booking');
+    } else {
+      fetchCalendar('booking');
+    }
   }
 
   function setState(updater) {
@@ -156,10 +166,18 @@ function bootstrapPublicBooking() {
     const providerSelect = form.querySelector('[data-provider-select]');
     const serviceSelect = form.querySelector('[data-service-select]');
     const dateInput = form.querySelector('[data-date-input]');
+    const dateSelect = form.querySelector('[data-date-select]');
 
     providerSelect?.addEventListener('change', (event) => handleProviderChange(event.target.value, target));
     serviceSelect?.addEventListener('change', (event) => handleServiceChange(event.target.value, target));
     dateInput?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
+    dateSelect?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
+    form.querySelectorAll('[data-date-pill]').forEach(button => {
+      button.addEventListener('click', () => {
+        const dateValue = button.getAttribute('data-date-pill');
+        handleDateChange(dateValue, target);
+      });
+    });
 
     form.addEventListener('input', (event) => handleFormInput(event, target));
     form.addEventListener('change', (event) => handleFormInput(event, target));
@@ -183,8 +201,8 @@ function bootstrapPublicBooking() {
   }
 
   function resetBookingFlow() {
-    updateBooking(() => createBookingDraft(context, defaultDate));
-    fetchSlots('booking');
+    updateBooking(() => createBookingDraft(context, defaultDate, initialAvailability, initialCalendar));
+    fetchCalendar('booking');
   }
 
   function resetManageFlow() {
@@ -195,11 +213,19 @@ function bootstrapPublicBooking() {
     updateDraft(target, prev => ({
       ...prev,
       providerId: value,
+      serviceId: '',
+      services: [],
+      servicesLoading: true,
       selectedSlot: null,
+      slots: [],
       slotsError: '',
-      errors: { ...prev.errors, provider_id: undefined, slot_start: undefined },
+      prefetched: null,
+      calendar: createCalendarState(),
+      errors: { ...prev.errors, provider_id: undefined, service_id: undefined, slot_start: undefined },
     }));
-    fetchSlots(target);
+    if (value) {
+      fetchProviderServices(value, target);
+    }
   }
 
   function handleServiceChange(value, target = 'booking') {
@@ -207,21 +233,91 @@ function bootstrapPublicBooking() {
       ...prev,
       serviceId: value,
       selectedSlot: null,
+      slots: [],
       slotsError: '',
+      prefetched: null,
+      calendar: { ...createCalendarState(), loading: true, error: '' },
       errors: { ...prev.errors, service_id: undefined, slot_start: undefined },
     }));
-    fetchSlots(target);
+    if (value) {
+      fetchCalendar(target);
+    }
+  }
+
+  async function fetchProviderServices(providerId, target = 'booking') {
+    if (!providerId) {
+      updateDraft(target, prev => ({
+        ...prev,
+        services: [],
+        servicesLoading: false,
+      }));
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/providers/${providerId}/services`, {
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      updateCsrfFromHeaders(response.headers);
+      const payload = await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Unable to load services.');
+      }
+
+      const services = (payload?.data ?? payload ?? []).map(svc => ({
+        id: svc.id,
+        name: svc.name,
+        duration: svc.duration_min ?? svc.durationMin ?? svc.duration,
+        durationMinutes: svc.duration_min ?? svc.durationMin ?? svc.duration,
+        price: svc.price,
+        formattedPrice: svc.price ? `$${parseFloat(svc.price).toFixed(2)}` : '',
+      }));
+
+      updateDraft(target, prev => ({
+        ...prev,
+        services,
+        servicesLoading: false,
+      }));
+    } catch (error) {
+      console.error('[public-booking] Failed to fetch services:', error);
+      updateDraft(target, prev => ({
+        ...prev,
+        services: [],
+        servicesLoading: false,
+      }));
+    }
   }
 
   function handleDateChange(value, target = 'booking') {
+    if (!value) {
+      return;
+    }
+    updateDraft(target, prev => ({
+      ...prev,
+      errors: { ...prev.errors, slot_start: undefined },
+    }));
+
+    const draft = getDraft(target);
+    const availableDates = draft.calendar?.availableDates ?? [];
+    if (availableDates.includes(value)) {
+      syncSlotsFromCalendar(target, value);
+      return;
+    }
+
     updateDraft(target, prev => ({
       ...prev,
       appointmentDate: value,
       selectedSlot: null,
+      slots: [],
       slotsError: '',
-      errors: { ...prev.errors, slot_start: undefined },
+      prefetched: null,
     }));
-    fetchSlots(target);
+    fetchSlots(target, { forceRemote: true });
   }
 
   function handleSlotSelection(slotStart, target = 'booking') {
@@ -371,13 +467,14 @@ function bootstrapPublicBooking() {
       errors: {},
       globalError: '',
       submitting: false,
+      calendar: createCalendarState(),
     }));
 
     if (state.view !== 'manage') {
       setState(prev => ({ ...prev, view: 'manage' }));
     }
 
-    fetchSlots('manage');
+    fetchCalendar('manage', { preferredDate: appointmentDate });
   }
 
   function handleFormInput(event, target = 'booking') {
@@ -506,10 +603,111 @@ function bootstrapPublicBooking() {
     }
   }
 
-  async function fetchSlots(target = 'booking') {
+  async function fetchCalendar(target = 'booking', options = {}) {
+    const { preferredDate = null } = options;
+    const draft = getDraft(target);
+
+    if (!draft.providerId || !draft.serviceId) {
+      updateDraft(target, prev => ({
+        ...prev,
+        calendar: createCalendarState(),
+        slots: [],
+        slotsError: '',
+        selectedSlot: null,
+        prefetched: null,
+      }));
+      return;
+    }
+
+    updateDraft(target, prev => ({
+      ...prev,
+      calendar: { ...createCalendarState(), loading: true, error: '' },
+      slots: [],
+      slotsError: '',
+      selectedSlot: null,
+      prefetched: null,
+      slotsLoading: true,
+    }));
+
+    const query = new URLSearchParams({
+      provider_id: draft.providerId,
+      service_id: draft.serviceId,
+      days: '60',
+    });
+
+    try {
+      const response = await fetch(`/public/booking/calendar?${query.toString()}`, {
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      updateCsrfFromHeaders(response.headers);
+      const payload = await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Unable to load availability.');
+      }
+
+      const calendarPayload = payload?.data ?? payload ?? {};
+      updateDraft(target, prev => {
+        const normalizedCalendar = { ...createCalendarState(calendarPayload), loading: false, error: '' };
+        const selection = syncCalendarSelection(prev, normalizedCalendar, preferredDate);
+        return {
+          ...prev,
+          ...selection,
+          calendar: normalizedCalendar,
+          slotsLoading: false,
+        };
+      });
+    } catch (error) {
+      updateDraft(target, prev => ({
+        ...prev,
+        calendar: { ...prev.calendar, loading: false, error: error.message ?? 'Unable to load availability.' },
+        slotsLoading: false,
+      }));
+    }
+  }
+
+  function syncSlotsFromCalendar(target = 'booking', preferredDate = null) {
+    const draft = getDraft(target);
+    if (!draft.calendar || !Array.isArray(draft.calendar.availableDates) || !draft.calendar.availableDates.length) {
+      return;
+    }
+
+    updateDraft(target, prev => {
+      const normalizedCalendar = {
+        ...createCalendarState(prev.calendar),
+        loading: prev.calendar?.loading ?? false,
+        error: prev.calendar?.error ?? '',
+      };
+      const selection = syncCalendarSelection(prev, normalizedCalendar, preferredDate);
+      return {
+        ...prev,
+        ...selection,
+        calendar: normalizedCalendar,
+      };
+    });
+  }
+
+  async function fetchSlots(target = 'booking', options = {}) {
+    const { forceRemote = false } = options;
     const draft = getDraft(target);
     if (!draft.providerId || !draft.serviceId || !draft.appointmentDate) {
       updateDraft(target, prev => ({ ...prev, slots: [], slotsError: '' }));
+      return;
+    }
+
+    const calendarSlots = draft.calendar?.slotsByDate?.[draft.appointmentDate];
+    if (!forceRemote && Array.isArray(calendarSlots)) {
+      updateDraft(target, prev => ({
+        ...prev,
+        slots: calendarSlots,
+        slotsLoading: false,
+        slotsError: calendarSlots.length === 0 ? 'No slots available for this date. Try another day.' : '',
+        selectedSlot: calendarSlots.find(slot => slot.start === prev.selectedSlot?.start) ?? null,
+      }));
       return;
     }
 
@@ -778,7 +976,8 @@ function bootstrapPublicBooking() {
       `;
     }).join('');
 
-    const serviceOptions = (ctx.services ?? []).map(service => {
+    const availableServices = currentState.services?.length ? currentState.services : (ctx.services ?? []);
+    const serviceOptions = availableServices.map(service => {
       const optionValue = escapeHtml(String(service.id ?? ''));
       const isSelected = String(service.id) === String(currentState.serviceId) ? 'selected' : '';
       return `
@@ -788,7 +987,7 @@ function bootstrapPublicBooking() {
       `;
     }).join('');
 
-    const selectedService = (ctx.services ?? []).find(service => String(service.id) === String(currentState.serviceId));
+    const selectedService = availableServices.find(service => String(service.id) === String(currentState.serviceId));
     const serviceSummary = selectedService
       ? `<p class="text-sm text-slate-500">${escapeHtml(selectedService.name ?? 'Service')} &middot; ${(selectedService.duration ?? selectedService.durationMinutes ?? 0) || 0} min${selectedService.formattedPrice ? ` &middot; ${escapeHtml(selectedService.formattedPrice)}` : ''}</p>`
       : '';
@@ -805,8 +1004,8 @@ function bootstrapPublicBooking() {
         </label>
         <label class="block text-sm font-medium text-slate-700">
           Service
-          <select name="service_id" data-service-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${ctx.services?.length ? '' : 'disabled'}>
-            <option value="" ${currentState.serviceId ? '' : 'selected'}>Choose a service</option>
+          <select name="service_id" data-service-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${currentState.servicesLoading || !currentState.providerId ? 'disabled' : ''}>
+            <option value="" ${currentState.serviceId ? '' : 'selected'}>${currentState.servicesLoading ? 'Loading services...' : (currentState.providerId ? 'Choose a service' : 'Select a provider first')}</option>
             ${serviceOptions}
           </select>
           ${serviceSummary}
@@ -814,14 +1013,8 @@ function bootstrapPublicBooking() {
         </label>
       </div>
       <div class="grid gap-4 md:grid-cols-2">
-        <label class="block text-sm font-medium text-slate-700">
-          Preferred date
-          <input type="date" data-date-input name="appointment_date" min="${new Date().toISOString().slice(0, 10)}" value="${escapeHtml(currentState.appointmentDate)}" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
-        </label>
-        <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <span class="font-semibold text-slate-700">Scheduling tips</span>
-          <span>Selecting a different provider or day can reveal more openings. Slots refresh in real-time.</span>
-        </div>
+        ${renderDatePickerField(currentState)}
+        ${renderSchedulingTips()}
       </div>
     `;
   }
@@ -860,6 +1053,89 @@ function bootstrapPublicBooking() {
           ${emptyMessage}
           ${renderFieldError('slot_start', currentState.errors)}
         </div>
+      </div>
+    `;
+  }
+
+  function renderSchedulingTips() {
+    return `
+      <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <span class="font-semibold text-slate-700">Scheduling tips</span>
+        <span>Only days with openings are shown. Need another time? Try a different provider or service.</span>
+      </div>
+    `;
+  }
+
+  function renderDatePickerField(state) {
+    const calendar = state.calendar ?? createCalendarState();
+    const dates = calendar.availableDates ?? [];
+    const disabled = calendar.loading;
+    const hasSelections = Boolean(state.providerId && state.serviceId);
+
+    if (!dates.length && calendar.loading) {
+      return `
+        <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm">
+          <p class="font-medium text-slate-600">Preparing availability…</p>
+          <p class="text-slate-500">We are checking the next 60 days for openings.</p>
+        </div>
+      `;
+    }
+
+    if (!dates.length && calendar.error) {
+      return `
+        <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          <p class="font-semibold">Availability unavailable</p>
+          <p>${escapeHtml(calendar.error)}</p>
+        </div>
+      `;
+    }
+
+    if (!dates.length) {
+      if (!hasSelections) {
+        return `
+          <div class="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-600">
+            <p class="font-semibold text-slate-700">Select provider & service</p>
+            <p>Pick your provider and service to see available days.</p>
+          </div>
+        `;
+      }
+      return `
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <p class="font-semibold">No open days</p>
+          <p>We could not find any openings in the next 60 days. Try another provider or service.</p>
+        </div>
+      `;
+    }
+
+    const options = dates.map(date => {
+      const selected = date === state.appointmentDate ? 'selected' : '';
+      return `<option value="${escapeHtml(date)}" ${selected}>${escapeHtml(formatDateSelectLabel(date))}</option>`;
+    }).join('');
+
+    const pills = dates.slice(0, 6).map(date => {
+      const isSelected = date === state.appointmentDate;
+      const base = 'rounded-2xl border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200';
+      const stateClass = isSelected
+        ? 'border-blue-600 bg-blue-50 text-blue-900'
+        : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
+      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${base} ${stateClass}">${escapeHtml(formatDatePillLabel(date))}</button>`;
+    }).join('');
+
+    const moreCount = Math.max(0, dates.length - 6);
+
+    return `
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">Choose a day</label>
+        <div class="flex flex-wrap gap-2 mb-3" role="listbox">
+          ${pills || '<span class="text-sm text-slate-500">No available days found.</span>'}
+          ${moreCount > 0 ? `<span class="rounded-2xl border border-dashed border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500">+${moreCount} more days</span>` : ''}
+        </div>
+        <label class="block text-sm font-medium text-slate-600">Browse all available days
+          <select data-date-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${disabled ? 'disabled' : ''}>
+            ${options}
+          </select>
+        </label>
+        ${calendar.error ? `<p class="mt-2 text-sm text-red-600">${escapeHtml(calendar.error)}</p>` : ''}
       </div>
     `;
   }
@@ -1111,6 +1387,99 @@ function bootstrapPublicBooking() {
     }
   }
 
+  function createCalendarState(source = null) {
+    const base = {
+      availableDates: [],
+      slotsByDate: {},
+      startDate: null,
+      endDate: null,
+      timezone: null,
+      generatedAt: null,
+      defaultDate: null,
+      loading: false,
+      error: '',
+    };
+
+    if (!source || typeof source !== 'object') {
+      return { ...base };
+    }
+
+    const availableDates = Array.isArray(source.availableDates) ? [...source.availableDates] : [];
+    const rawSlots = (source.slotsByDate && typeof source.slotsByDate === 'object') ? source.slotsByDate : {};
+    const slotsByDate = Object.keys(rawSlots).reduce((acc, date) => {
+      const slots = Array.isArray(rawSlots[date]) ? rawSlots[date].map(slot => ({ ...slot })) : [];
+      acc[date] = slots;
+      return acc;
+    }, {});
+
+    return {
+      ...base,
+      availableDates,
+      slotsByDate,
+      startDate: source.start_date ?? source.startDate ?? null,
+      endDate: source.end_date ?? source.endDate ?? null,
+      timezone: source.timezone ?? null,
+      generatedAt: source.generated_at ?? source.generatedAt ?? null,
+      defaultDate: source.default_date ?? source.defaultDate ?? (availableDates[0] ?? null),
+    };
+  }
+
+  function syncCalendarSelection(prevState, calendar, preferredDate = null) {
+    const availableDates = Array.isArray(calendar.availableDates) ? calendar.availableDates : [];
+
+    if (!availableDates.length) {
+      return {
+        appointmentDate: prevState.appointmentDate,
+        slots: [],
+        selectedSlot: null,
+        slotsError: calendar.error || 'No availability found in the next 60 days.',
+        prefetched: null,
+      };
+    }
+
+    let appointmentDate = preferredDate || prevState.appointmentDate;
+    if (!availableDates.includes(appointmentDate)) {
+      appointmentDate = availableDates[0];
+    }
+
+    const slotList = Array.isArray(calendar.slotsByDate?.[appointmentDate])
+      ? calendar.slotsByDate[appointmentDate]
+      : [];
+    const selectedSlotStart = prevState.selectedSlot?.start;
+    const selectedSlot = slotList.find(slot => slot.start === selectedSlotStart) ?? null;
+
+    return {
+      appointmentDate,
+      slots: slotList,
+      selectedSlot,
+      slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
+      prefetched: slotList.length ? { date: appointmentDate } : null,
+    };
+  }
+
+  function formatDateDisplay(dateStr, options) {
+    if (!dateStr) {
+      return '';
+    }
+    const date = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return dateStr;
+    }
+    try {
+      return new Intl.DateTimeFormat(undefined, options).format(date);
+    } catch (error) {
+      return date.toLocaleDateString();
+    }
+  }
+
+  function formatDateSelectLabel(dateStr) {
+    return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function formatDatePillLabel(dateStr) {
+    return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
   function createInitialFormState(ctx) {
     const base = {
       first_name: '',
@@ -1133,15 +1502,36 @@ function bootstrapPublicBooking() {
     return base;
   }
 
-  function createBookingDraft(ctx, defaultDate) {
+  function createBookingDraft(ctx, defaultDate, initialAvailability = null, initialCalendar = null) {
+    const providerId = ctx.providers?.[0]?.id?.toString() ?? '';
+    const serviceId = ctx.services?.[0]?.id?.toString() ?? '';
+    const calendarState = createCalendarState(initialCalendar);
+    const matchesPrefetch = initialAvailability
+      && String(initialAvailability.provider_id ?? '') === providerId
+      && String(initialAvailability.service_id ?? '') === serviceId
+      && Array.isArray(initialAvailability.slots)
+      && initialAvailability.slots.length > 0;
+    const calendarDate = calendarState.availableDates[0] ?? null;
+    const fallbackDate = matchesPrefetch ? initialAvailability.date : null;
+    const selectedDate = calendarDate || fallbackDate || defaultDate;
+    const calendarSlots = (calendarState.slotsByDate?.[selectedDate]) ?? [];
+    const slots = calendarSlots.length ? calendarSlots : (matchesPrefetch ? initialAvailability.slots : []);
+    if (!calendarState.availableDates.length && matchesPrefetch && initialAvailability?.date) {
+      calendarState.availableDates = [initialAvailability.date];
+      calendarState.slotsByDate = { ...calendarState.slotsByDate, [initialAvailability.date]: initialAvailability.slots ?? [] };
+    }
     return {
-      providerId: ctx.providers?.[0]?.id?.toString() ?? '',
-      serviceId: ctx.services?.[0]?.id?.toString() ?? '',
-      appointmentDate: defaultDate,
-      slots: [],
+      providerId,
+      serviceId,
+      services: ctx.services ?? [],
+      servicesLoading: false,
+      appointmentDate: selectedDate,
+      slots,
       slotsLoading: false,
       slotsError: '',
       selectedSlot: null,
+      prefetched: slots.length ? { date: selectedDate } : null,
+      calendar: calendarState,
       form: createInitialFormState(ctx),
       errors: {},
       globalError: '',
@@ -1163,11 +1553,14 @@ function bootstrapPublicBooking() {
       formState: {
         providerId: '',
         serviceId: '',
+        services: ctx.services ?? [],
+        servicesLoading: false,
         appointmentDate: defaultDate,
         slots: [],
         slotsLoading: false,
         slotsError: '',
         selectedSlot: null,
+        calendar: createCalendarState(),
         form: createInitialFormState(ctx),
         errors: {},
         globalError: '',

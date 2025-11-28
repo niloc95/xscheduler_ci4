@@ -79,6 +79,8 @@ class Availability extends BaseController
         $bufferMinutes = (int) ($this->request->getGet('buffer_minutes') ?? 
                                 $this->availabilityService->getBufferTime((int)$providerId));
         $timezone = $this->request->getGet('timezone') ?? $this->localizationService->getTimezone();
+        $excludeAppointmentId = $this->request->getGet('exclude_appointment_id');
+        $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
         
         try {
             // Optional: exclude current appointment when editing
@@ -287,6 +289,59 @@ class Availability extends BaseController
                     'message' => 'Failed to generate availability summary',
                     'details' => $e->getMessage()
                 ]
+            ]);
+        }
+    }
+
+    public function calendar()
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+
+        $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
+        $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
+        $startDate = $this->request->getGet('start_date');
+        $days = (int) ($this->request->getGet('days') ?? 60);
+        $timezone = $this->request->getGet('timezone') ?? $this->localizationService->getTimezone();
+
+        if ($providerId <= 0 || $serviceId <= 0) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => [
+                    'message' => 'provider_id and service_id are required',
+                ],
+            ]);
+        }
+
+        if ($startDate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => [
+                    'message' => 'start_date must use Y-m-d format',
+                ],
+            ]);
+        }
+
+        $days = max(1, min($days, 120));
+
+        try {
+            $calendar = $this->availabilityService->getCalendarAvailability(
+                $providerId,
+                $serviceId,
+                $startDate,
+                $days,
+                $timezone,
+                $excludeAppointmentId
+            );
+
+            return $response->setJSON([
+                'ok' => true,
+                'data' => $calendar,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[API/Availability::calendar] Error: ' . $e->getMessage());
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to calculate availability calendar',
+                    'details' => $e->getMessage(),
+                ],
             ]);
         }
     }

@@ -31,7 +31,9 @@ class AppointmentModel extends BaseModel
         'end_time',
         'status',
         'notes',
-        'hash'
+        'hash',
+        'public_token',
+        'public_token_expires_at',
     ];
 
     protected $beforeInsert = ['generateHash'];

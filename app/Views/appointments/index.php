@@ -13,8 +13,34 @@
  *
  * Sections are injected into the main dashboard layout.
  */
+
+$calendarPrototypeAssets = null;
+if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])) {
+    $manifestPath = FCPATH . 'build/.vite/manifest.json';
+    if (is_file($manifestPath)) {
+        helper('vite');
+        $prototypeEntry = 'resources/js/calendar-prototype.js';
+        try {
+            $calendarPrototypeAssets = [
+                'js' => vite_js($prototypeEntry),
+                'css' => vite_css($prototypeEntry),
+            ];
+        } catch (\Throwable $exception) {
+            log_message('error', 'Calendar prototype assets unavailable: ' . $exception->getMessage());
+            $calendarPrototypeAssets = null;
+        }
+    }
+}
 ?>
 <?= $this->extend('layouts/dashboard') ?>
+
+<?php if (!empty($calendarPrototypeAssets['css'])): ?>
+<?= $this->section('head') ?>
+    <?php foreach ($calendarPrototypeAssets['css'] as $href): ?>
+        <link rel="stylesheet" href="<?= esc($href) ?>">
+    <?php endforeach; ?>
+<?= $this->endSection() ?>
+<?php endif; ?>
 
 <?php // Override stats grid to two responsive columns ?>
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 gap-6<?= $this->endSection() ?>
@@ -146,3 +172,19 @@
         </div>
     </div>
 <?= $this->endSection() ?>
+
+<?php if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])): ?>
+<?= $this->section('extra_js') ?>
+<script>
+    window.__calendarPrototype = {
+        enabled: true,
+        feature: <?= json_encode($calendarPrototype['featureKey'] ?? 'calendar_prototype') ?>,
+        endpoints: <?= json_encode($calendarPrototype['endpoints'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+    };
+    window.__calendarBootstrap = <?= json_encode($calendarPrototype['bootstrap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<?php if (!empty($calendarPrototypeAssets['js'])): ?>
+<script type="module" src="<?= esc($calendarPrototypeAssets['js']) ?>"></script>
+<?php endif; ?>
+<?= $this->endSection() ?>
+<?php endif; ?>

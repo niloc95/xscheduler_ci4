@@ -54,6 +54,39 @@ class BookingController extends BaseController
         }
     }
 
+    public function calendar()
+    {
+        try {
+            $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
+            $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
+            $startDate = $this->request->getGet('start_date');
+            $days = (int) ($this->request->getGet('days') ?? 60);
+
+            if ($providerId <= 0 || $serviceId <= 0) {
+                return $this->respondJson([
+                    'error' => 'provider_id and service_id are required.',
+                ], 422);
+            }
+
+            if ($startDate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+                return $this->respondJson([
+                    'error' => 'start_date must use Y-m-d format.',
+                ], 422);
+            }
+
+            $calendar = $this->booking->getAvailabilityCalendar($providerId, $serviceId, $startDate, $days);
+            return $this->respondJson(['data' => $calendar]);
+        } catch (PublicBookingException $e) {
+            return $this->respondJson([
+                'error' => $e->getMessage(),
+                'details' => $e->getErrors(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            log_message('error', '[PublicBooking] Calendar fetch failed: ' . $e->getMessage());
+            return $this->respondJson(['error' => 'Unable to load availability calendar.'], 500);
+        }
+    }
+
     public function store()
     {
         try {

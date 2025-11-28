@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week View Prototype</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "luxon": "https://cdn.jsdelivr.net/npm/luxon@3.4.4/+esm"
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/resources/css/calendar/tailwind-prototype.css">
+</head>
+<body class="min-h-screen bg-[#FDF7E3] px-6 py-10 text-slate-900 transition dark:bg-[#1F2937] dark:text-white/90">
+    <div class="mx-auto max-w-6xl rounded-3xl border border-slate-200/80 bg-white/95 shadow-xl dark:border-slate-800 dark:bg-slate-900/90">
+        <header class="border-b border-slate-200/70 px-6 py-5 dark:border-slate-800">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Rendered inside #ws-calendar-root</p>
+                    <p class="text-xl font-semibold text-[#003049] dark:text-white" data-week-range>Week of Jan 20 – 26</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <span class="rounded-full bg-blue-100 px-3 py-1 text-blue-900 dark:bg-blue-500/20 dark:text-blue-100">Provider Columns</span>
+                    <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">Combined Grid</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="grid grid-cols-[220px_1fr]">
+            <aside class="border-r border-slate-200/70 bg-white/90 p-5 dark:border-slate-800 dark:bg-slate-900/70">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Providers</h2>
+                <div class="mt-4 space-y-3 text-sm" data-provider-list></div>
+                <div class="mt-6 rounded-2xl border border-dashed border-slate-300 p-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    Multi-provider toggle + filter placeholder
+                </div>
+            </aside>
+
+            <div class="overflow-hidden">
+                <div class="grid grid-cols-[80px_1fr] divide-x divide-slate-200/70 dark:divide-slate-800">
+                    <div class="bg-white/70 dark:bg-slate-900/60">
+                        <div class="sticky top-0 z-10 border-b border-slate-200/70 bg-white/90 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/90">Time</div>
+                        <div class="space-y-8 px-4 py-6 text-xs text-slate-500 dark:text-slate-400">
+                            <div>7:00 AM</div>
+                            <div>8:00 AM</div>
+                            <div>9:00 AM</div>
+                            <div>10:00 AM</div>
+                            <div>11:00 AM</div>
+                            <div>12:00 PM</div>
+                            <div>1:00 PM</div>
+                            <div>2:00 PM</div>
+                            <div>3:00 PM</div>
+                            <div>4:00 PM</div>
+                        </div>
+                    </div>
+
+                    <div class="relative overflow-auto bg-white dark:bg-slate-900">
+                        <div class="sticky top-0 z-10 grid min-w-[1100px] grid-cols-7 border-b border-slate-200/70 bg-white/95 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/95 dark:text-slate-400" data-weekday-row></div>
+
+                        <div class="relative min-h-[900px] px-4 py-4">
+                            <div class="grid min-w-[1100px] grid-cols-7 gap-4" data-week-grid></div>
+                            <div class="pointer-events-none absolute inset-x-0" data-week-now>
+                                <div class="flex items-center gap-2" data-week-now-label>
+                                    <span class="h-3 w-3 rounded-full border-2 border-white bg-rose-500 shadow shadow-rose-500/40"></span>
+                                    <span class="h-0.5 flex-1 rounded bg-gradient-to-r from-rose-500 via-rose-400 to-transparent opacity-80"></span>
+                                    <span class="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-300">Now</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { calendarStore, boundActions, selectors } from '/resources/js/modules/calendar/state/index.js';
+        import { samplePayload } from '/resources/js/modules/calendar/state/fixtures/samplePayload.js';
+        import { getProviderTheme, formatWeekRangeLabel, formatDayLabel, formatTimeLabel, minutesToPixels, getNowOffset } from '/resources/js/modules/calendar/prototype-helpers.js';
+
+        const COLUMN_PADDING_PX = 24;
+
+        boundActions.hydrate(samplePayload, { source: 'week-prototype' });
+
+        const providerListEl = document.querySelector('[data-provider-list]');
+        const weekRangeEl = document.querySelector('[data-week-range]');
+        const weekdayRowEl = document.querySelector('[data-weekday-row]');
+        const weekGridEl = document.querySelector('[data-week-grid]');
+        const nowIndicatorEl = document.querySelector('[data-week-now]');
+
+        const unsubscribe = calendarStore.subscribe(render);
+        render();
+
+        function render() {
+            const state = calendarStore.getState();
+            const providers = selectors.selectProviders(state);
+            const columns = selectors.selectWeekColumns(state);
+
+            weekRangeEl.textContent = formatWeekRangeLabel(state.meta.rangeStart);
+            providerListEl.innerHTML = providers.length ? providers.map(provider => renderProvider(provider, state)).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 p-3 text-xs text-slate-400 dark:border-slate-700">No providers</div>';
+            bindProviderFilters(state);
+            weekdayRowEl.innerHTML = columns.map(renderWeekdayHeading).join('');
+            weekGridEl.innerHTML = columns.map(col => renderColumn(col, state)).join('');
+
+            const nowOffset = getNowOffset(state.meta.nowTimestamp) + COLUMN_PADDING_PX;
+            nowIndicatorEl.style.top = `${nowOffset}px`;
+        }
+
+        function renderProvider(provider, state) {
+            const theme = getProviderTheme(provider);
+            const activeSet = state.filters.providerIds ?? new Set();
+            const restrictMode = activeSet.size > 0;
+            const isChecked = !restrictMode || activeSet.has(provider.id);
+            return `
+                <label class="flex items-center justify-between rounded-2xl bg-slate-100 px-3 py-2 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    <span class="flex items-center gap-2">
+                        <span class="h-2.5 w-2.5 rounded-full ${theme.dot}"></span>
+                        ${provider.displayName}
+                    </span>
+                    <input type="checkbox" data-provider-checkbox value="${provider.id}" ${isChecked ? 'checked' : ''} class="h-4 w-4 rounded border-slate-300 text-slate-600">
+                </label>
+            `;
+        }
+
+        function bindProviderFilters(state) {
+            if (!providerListEl) return;
+            providerListEl.querySelectorAll('[data-provider-checkbox]').forEach(input => {
+                input.addEventListener('change', () => boundActions.toggleProvider(input.value));
+            });
+        }
+
+        function renderWeekdayHeading(column) {
+            const label = formatDayLabel(column.date);
+            const accent = column.isToday ? 'text-[#003049] dark:text-white' : '';
+            return `<div class="border-r border-slate-200/70 px-4 py-3 dark:border-slate-800 ${accent}">${label}</div>`;
+        }
+
+        function renderColumn(column, state) {
+            const blocks = column.appointments.map(block => renderBlock(block, state));
+            const weekendShade = column.isWeekend ? 'bg-[#F7EFE0]' : 'bg-white/80 dark:bg-slate-900/70';
+            return `
+                <div class="relative min-h-[820px] rounded-3xl border border-dashed border-slate-200 ${weekendShade} px-2 pb-4 pt-6 dark:border-slate-700">
+                    ${blocks.join('') || '<div class="text-center text-xs text-slate-400">No appointments</div>'}
+                </div>
+            `;
+        }
+
+        function renderBlock(block, state) {
+            const provider = state.providers[block.providerId];
+            const theme = getProviderTheme(provider);
+            const top = minutesToPixels(block.startOffsetMinutes);
+            const height = minutesToPixels(block.heightMinutes);
+            const durationLabel = `${Math.round(block.heightMinutes)}m`;
+            const widthPercent = 100 / (block.laneCount || 1);
+            const leftPercent = widthPercent * (block.laneIndex || 0);
+            return `
+                <article class="absolute rounded-2xl border ${theme.chipBorder} ${theme.chipBg} p-3 text-xs shadow-sm dark:border-opacity-40" style="top:${top}px; height:${height}px; left:calc(${leftPercent}% + 2px); width:calc(${widthPercent}% - 4px);">
+                    <div class="flex items-center justify-between text-[11px] font-semibold ${theme.chipText}">
+                        <span>${formatTimeLabel(block.startIso)}</span>
+                        <span class="rounded-full bg-white/70 px-2 py-0.5 text-[10px]">${durationLabel}</span>
+                    </div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">${block.summary}</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-300">${provider?.displayName ?? ''} • ${block.subtext}</div>
+                </article>
+            `;
+        }
+
+        window.addEventListener('beforeunload', unsubscribe);
+    </script>
+</body>
+</html>

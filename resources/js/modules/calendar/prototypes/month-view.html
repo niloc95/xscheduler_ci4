@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <title>Month View Prototype</title>
+    <link rel="stylesheet" href="tailwind-prototype.css">
+</head>
+<body class="min-h-screen bg-[#FDF7E3] px-6 py-10 text-slate-900 transition dark:bg-[#1F2937] dark:text-white/90">
+    <div class="mx-auto max-w-6xl rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/90">
+        <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div class="text-2xl font-semibold tracking-tight text-[#003049] dark:text-white">January 2026</div>
+            <div class="flex items-center gap-3">
+                <div class="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <button class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500">Month</button>
+                    <button class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500">Week</button>
+                    <button class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500">Day</button>
+                </div>
+                <label class="flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">
+                    <span>Dark</span>
+                    <input type="checkbox" data-theme-toggle class="h-4 w-8 cursor-pointer rounded-full border border-slate-300 bg-slate-200 p-1 transition checked:bg-blue-600">
+                </label>
+                <div class="rounded-full bg-[#003049]/10 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-[#003049] dark:bg-blue-500/20 dark:text-blue-100">Today: Jan 24</div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-7 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div class="pb-3">Sun</div>
+            <div class="pb-3">Mon</div>
+            <div class="pb-3">Tue</div>
+            <div class="pb-3">Wed</div>
+            <div class="pb-3">Thu</div>
+            <div class="pb-3">Fri</div>
+            <div class="pb-3">Sat</div>
+        </div>
+
+        <div class="grid grid-cols-7 gap-2 rounded-3xl border border-slate-200/80 bg-white/90 p-3 dark:border-slate-800 dark:bg-slate-900/80">
+            <!-- Week rows -->
+            <!-- 6 rows x 7 columns to allow for overflow months -->
+            <!-- Example day cell -->
+            <template id="day-cell-template">
+                <div class="relative flex min-h-[130px] flex-col rounded-2xl border border-transparent bg-[#FBF1D0] p-3 text-sm transition hover:border-[#003049]/20 dark:bg-slate-800">
+                    <div class="flex items-start justify-between text-xs font-semibold text-slate-500 dark:text-slate-300">
+                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-700">Wed</span>
+                        <span>24</span>
+                    </div>
+                    <div class="mt-2 space-y-1 text-xs">
+                        <div class="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-2 py-1 text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-100">
+                            <span class="inline-flex h-2 w-2 rounded-full bg-blue-500"></span>
+                            <span>Dr. Smith • 10:30a</span>
+                        </div>
+                        <div class="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-100">
+                            <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                            <span>Consult • 1:00p</span>
+                        </div>
+                        <div class="rounded-xl border border-dashed border-slate-300 px-2 py-1 text-slate-400 dark:border-slate-600 dark:text-slate-500">+3 more</div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Rendered cells -->
+            <!-- For brevity, replicate manually -->
+            <!-- Row 1 -->
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">26</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">27</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">28</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">29</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">30</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-dashed border-slate-200/80 bg-slate-50 p-3 text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">31</div>
+            <div class="relative min-h-[130px] rounded-2xl border border-slate-200/80 bg-[#F7EFE0] p-3 text-xs font-semibold text-[#003049] dark:border-blue-500/30 dark:bg-blue-500/20">1</div>
+
+            <!-- Additional rows with placeholders -->
+            <!-- Using weekend shading -->
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">2</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">3</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">4</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">5</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">6</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">7</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">8</div>
+
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">9</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">10</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">11</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">12</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">13</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">14</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">15</div>
+
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">16</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">17</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">18</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">19</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">20</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">21</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">22</div>
+
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">23</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">24</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">25</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">26</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">27</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">28</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">29</div>
+
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">30</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">31</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">1</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">2</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">3</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">4</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">5</div>
+
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">6</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">7</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">8</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">9</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">10</div>
+            <div class="rounded-2xl border border-transparent bg-white p-3 text-xs dark:bg-slate-800">11</div>
+            <div class="rounded-2xl border border-transparent bg-[#F7EFE0] p-3 text-xs">12</div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const root = document.documentElement;
+            const toggles = Array.from(document.querySelectorAll('[data-theme-toggle]'));
+            const stored = localStorage.getItem('calendar-prototype-theme');
+            const initial = stored === 'dark' ? 'dark' : 'light';
+            applyTheme(initial);
+
+            toggles.forEach(toggle => {
+                toggle.checked = initial === 'dark';
+                toggle.addEventListener('change', () => {
+                    applyTheme(toggle.checked ? 'dark' : 'light');
+                });
+            });
+
+            function applyTheme(theme) {
+                root.dataset.theme = theme;
+                root.classList.toggle('dark', theme === 'dark');
+                localStorage.setItem('calendar-prototype-theme', theme);
+                toggles.forEach(toggle => {
+                    if (toggle.checked !== (theme === 'dark')) {
+                        toggle.checked = theme === 'dark';
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

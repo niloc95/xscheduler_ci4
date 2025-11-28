@@ -169,6 +169,7 @@ $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 $routes->group('public/booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
     $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
+    $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
     $routes->post('', 'PublicSite\BookingController::store', ['filter' => 'public_rate_limit|csrf']);
     $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
     $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => 'public_rate_limit|csrf']);
@@ -202,6 +203,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('availability/slots', 'Api\\Availability::slots');
     $routes->post('availability/check', 'Api\\Availability::check');
     $routes->get('availability/summary', 'Api\\Availability::summary');
+    $routes->get('availability/calendar', 'Api\\Availability::calendar');
     $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
 
     // Public API endpoints (no auth required)

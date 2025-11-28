@@ -46,9 +46,35 @@ class PublicBookingService
 
     public function buildViewContext(): array
     {
+        $providers = $this->listProviders();
+        $services = $this->listServices();
+        $initialAvailability = null;
+        $initialCalendar = null;
+
+        if (!empty($providers) && !empty($services)) {
+            $initialCalendar = $this->availability->getCalendarAvailability(
+                (int) $providers[0]['id'],
+                (int) $services[0]['id'],
+                null,
+                60,
+                $this->localization->getTimezone(),
+                null
+            );
+
+            $firstDate = $initialCalendar['availableDates'][0] ?? null;
+            if ($firstDate) {
+                $initialAvailability = [
+                    'date' => $firstDate,
+                    'provider_id' => (int) $providers[0]['id'],
+                    'service_id' => (int) $services[0]['id'],
+                    'slots' => $initialCalendar['slotsByDate'][$firstDate] ?? [],
+                ];
+            }
+        }
+
         return [
-            'providers' => $this->listProviders(),
-            'services' => $this->listServices(),
+            'providers' => $providers,
+            'services' => $services,
             'fieldConfig' => $this->bookingSettings->getFieldConfiguration(),
             'customFieldConfig' => $this->bookingSettings->getCustomFieldConfiguration(),
             'timezone' => $this->localization->getTimezone(),
@@ -56,6 +82,8 @@ class PublicBookingService
             'currency' => $this->localization->getCurrency(),
             'currencySymbol' => $this->localization->getCurrencySymbol(),
             'reschedulePolicy' => $this->getReschedulePolicy(),
+            'initialAvailability' => $initialAvailability,
+            'initialCalendar' => $initialCalendar,
         ];
     }
 
@@ -85,6 +113,22 @@ class PublicBookingService
                 'timezone' => $timezone,
             ];
         }, $slots);
+    }
+
+    public function getAvailabilityCalendar(
+        int $providerId,
+        int $serviceId,
+        ?string $startDate = null,
+        int $days = 60
+    ): array {
+        return $this->availability->getCalendarAvailability(
+            $providerId,
+            $serviceId,
+            $startDate,
+            $days,
+            $this->localization->getTimezone(),
+            null
+        );
     }
 
     public function createBooking(array $payload): array
@@ -573,4 +617,5 @@ class PublicBookingService
             substr($hex, 20, 12)
         );
     }
+
 }

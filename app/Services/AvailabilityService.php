@@ -8,9 +8,10 @@ use App\Models\ProviderScheduleModel;
 use App\Models\BlockedTimeModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
-use DateTime;
-use DateTimeZone;
 use DateInterval;
+use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * AvailabilityService
@@ -562,5 +563,110 @@ class AvailabilityService
         }
         
         return $bufferTime;
+    }
+
+    public function getCalendarAvailability(
+        int $providerId,
+        int $serviceId,
+        ?string $startDate = null,
+        int $days = 60,
+        ?string $timezone = null,
+        ?int $excludeAppointmentId = null
+    ): array {
+        $timezone = $timezone ?? $this->localizationService->getTimezone();
+        $tz = new DateTimeZone($timezone);
+        $days = max(1, min($days, 120));
+        $bufferMinutes = $this->getBufferTime($providerId);
+
+        $startDate = $startDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)
+            ? $startDate
+            : (new DateTimeImmutable('today', $tz))->format('Y-m-d');
+
+        $start = new DateTimeImmutable($startDate, $tz);
+        $end = $start->modify('+' . ($days - 1) . ' days');
+
+        $cacheKey = sprintf(
+            'availability_calendar_%d_%d_%s_%d_%s_%d_%s',
+            $providerId,
+            $serviceId,
+            $start->format('Ymd'),
+            $days,
+            str_replace(['/', '\\'], '_', $timezone),
+            $bufferMinutes,
+            $excludeAppointmentId ? (string) $excludeAppointmentId : 'none'
+        );
+
+        $cacheTtl = 300; // 5 minutes
+        $cache = cache();
+        if ($cache) {
+            $cached = $cache->get($cacheKey);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $availableDates = [];
+        $slotsByDate = [];
+
+        for ($i = 0; $i < $days; $i++) {
+            $current = $start->modify("+{$i} days");
+            $dateStr = $current->format('Y-m-d');
+            $slots = $this->getAvailableSlots(
+                $providerId,
+                $dateStr,
+                $serviceId,
+                $bufferMinutes,
+                $timezone,
+                $excludeAppointmentId
+            );
+
+            if (empty($slots)) {
+                continue;
+            }
+
+            $availableDates[] = $dateStr;
+            $slotsByDate[$dateStr] = array_map(function (array $slot) use ($timezone) {
+                $startTime = ($slot['start'] instanceof DateTimeImmutable || $slot['start'] instanceof \DateTime)
+                    ? $slot['start']
+                    : new DateTimeImmutable((string) $slot['start']);
+                $endTime = ($slot['end'] instanceof DateTimeImmutable || $slot['end'] instanceof \DateTime)
+                    ? $slot['end']
+                    : new DateTimeImmutable((string) $slot['end']);
+
+                $label = $slot['label'] ?? sprintf(
+                    '%s - %s',
+                    $this->localizationService->formatTimeForDisplay($startTime->format('H:i:s')),
+                    $this->localizationService->formatTimeForDisplay($endTime->format('H:i:s'))
+                );
+
+                return [
+                    'start' => $startTime->format(DATE_ATOM),
+                    'end' => $endTime->format(DATE_ATOM),
+                    'startFormatted' => $slot['startFormatted'] ?? $startTime->format('H:i'),
+                    'endFormatted' => $slot['endFormatted'] ?? $endTime->format('H:i'),
+                    'label' => $label,
+                    'timezone' => $slot['timezone'] ?? $timezone,
+                ];
+            }, $slots);
+        }
+
+        $result = [
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'start_date' => $start->format('Y-m-d'),
+            'end_date' => $end->format('Y-m-d'),
+            'days' => $days,
+            'timezone' => $timezone,
+            'availableDates' => $availableDates,
+            'slotsByDate' => $slotsByDate,
+            'default_date' => $availableDates[0] ?? null,
+            'generated_at' => (new DateTimeImmutable('now', $tz))->format(DATE_ATOM),
+        ];
+
+        if ($cache) {
+            $cache->save($cacheKey, $result, $cacheTtl);
+        }
+
+        return $result;
     }
 }
