@@ -1,3 +1,5 @@
+import { normalizeCalendarPayload } from './modules/calendar/calendar-utils.js';
+
 const root = document.getElementById('public-booking-root');
 
 const FIELD_LABELS = {
@@ -1388,39 +1390,12 @@ function bootstrapPublicBooking() {
   }
 
   function createCalendarState(source = null) {
-    const base = {
-      availableDates: [],
-      slotsByDate: {},
-      startDate: null,
-      endDate: null,
-      timezone: null,
-      generatedAt: null,
-      defaultDate: null,
+    // Use shared normalizer for data, add UI state properties
+    const normalized = normalizeCalendarPayload(source);
+    return {
+      ...normalized,
       loading: false,
       error: '',
-    };
-
-    if (!source || typeof source !== 'object') {
-      return { ...base };
-    }
-
-    const availableDates = Array.isArray(source.availableDates) ? [...source.availableDates] : [];
-    const rawSlots = (source.slotsByDate && typeof source.slotsByDate === 'object') ? source.slotsByDate : {};
-    const slotsByDate = Object.keys(rawSlots).reduce((acc, date) => {
-      const slots = Array.isArray(rawSlots[date]) ? rawSlots[date].map(slot => ({ ...slot })) : [];
-      acc[date] = slots;
-      return acc;
-    }, {});
-
-    return {
-      ...base,
-      availableDates,
-      slotsByDate,
-      startDate: source.start_date ?? source.startDate ?? null,
-      endDate: source.end_date ?? source.endDate ?? null,
-      timezone: source.timezone ?? null,
-      generatedAt: source.generated_at ?? source.generatedAt ?? null,
-      defaultDate: source.default_date ?? source.defaultDate ?? (availableDates[0] ?? null),
     };
   }
 

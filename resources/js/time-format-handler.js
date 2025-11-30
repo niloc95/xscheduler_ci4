@@ -24,8 +24,6 @@ export class TimeFormatHandler {
             const settings = await response.json();
             this.timeFormat = settings['localization.time_format'] || '24h';
             this.initialized = true;
-            
-            console.log('[TimeFormatHandler] Initialized with format:', this.timeFormat);
         } catch (error) {
             console.warn('[TimeFormatHandler] Failed to load settings, using default 24h format:', error);
             this.timeFormat = '24h';
@@ -172,7 +170,6 @@ export class TimeFormatHandler {
         // Listen for custom event when settings are saved
         document.addEventListener('settingsSaved', async (event) => {
             if (event.detail?.includes('localization.time_format')) {
-                console.log('[TimeFormatHandler] Time format changed, reinitializing...');
                 this.initialized = false;
                 await this.init();
                 this.refreshTimeDisplays();
@@ -189,8 +186,6 @@ export class TimeFormatHandler {
         
         // Re-apply format
         this.addFormattedDisplays();
-        
-        console.log('[TimeFormatHandler] Time displays refreshed with new format:', this.timeFormat);
     }
 
     /**

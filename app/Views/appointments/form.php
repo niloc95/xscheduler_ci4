@@ -401,6 +401,18 @@ $pageSubtitle = $isEditMode
                                value="<?= esc(old('appointment_date', $appointment['date'] ?? '')) ?>"
                                required 
                                class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                        <!-- Available dates hint -->
+                        <div id="available-dates-hint" class="hidden mt-2">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                <span class="material-symbols-outlined text-xs align-middle">event_available</span>
+                                Available dates:
+                            </p>
+                            <div id="available-dates-pills" class="flex flex-wrap gap-1"></div>
+                        </div>
+                        <div id="no-availability-warning" class="hidden mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-700 dark:text-amber-300">
+                            <span class="material-symbols-outlined text-xs align-middle">warning</span>
+                            No availability found in the next 60 days for this provider/service combination.
+                        </div>
                     </div>
                     <div>
                         <label for="appointment_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -12,6 +12,7 @@ Central service that combines all scheduling variables to calculate available ti
 
 **Key Methods:**
 - `getAvailableSlots($providerId, $date, $serviceId, $bufferMinutes, $timezone)` - Returns array of available time slots
+- `getCalendarAvailability($providerId, $serviceId, $startDate, $days, $excludeAppointmentId)` - Returns 60-day availability calendar with all slots pre-computed
 - `isSlotAvailable($providerId, $startTime, $endTime, $timezone, $excludeAppointmentId)` - Validates if a specific slot is bookable
 - `getProviderHoursForDate($providerId, $date)` - Gets working hours with breaks for a specific date
 - `getBusyPeriods($providerId, $date)` - Collects all appointments and blocked times
@@ -22,7 +23,7 @@ Central service that combines all scheduling variables to calculate available ti
 **Features:**
 - Timezone-aware calculations using DateTime and DateTimeZone
 - Comprehensive logging for debugging
-- Caching for blocked periods
+- 5-minute server-side caching for calendar availability
 - Conflict detection with detailed reasons
 - Respects all scheduling constraints simultaneously
 
@@ -30,6 +31,43 @@ Central service that combines all scheduling variables to calculate available ti
 RESTful API endpoints for availability operations.
 
 **Endpoints:**
+
+##### GET `/api/availability/calendar` ⭐ NEW
+Get pre-computed availability calendar with all slots for a 60-day window. Used by both admin and public booking interfaces to enable "preloaded availability" UX - users see available dates immediately without clicking each date.
+
+**Parameters:**
+- `provider_id` (required): Provider ID
+- `service_id` (required): Service ID
+- `start_date` (optional): Start date (defaults to today)
+- `days` (optional): Window size in days (default 60)
+- `exclude_appointment_id` (optional): Exclude existing appointment when editing
+
+**Response:**
+```json
+{
+  "ok": true,
+  "data": {
+    "availableDates": ["2025-11-15", "2025-11-16", "2025-11-18"],
+    "slotsByDate": {
+      "2025-11-15": [
+        {"start": "2025-11-15T09:00:00+02:00", "startFormatted": "09:00", "endFormatted": "10:00", "available": true}
+      ],
+      "2025-11-16": [
+        {"start": "2025-11-16T14:00:00+02:00", "startFormatted": "14:00", "endFormatted": "15:00", "available": true}
+      ]
+    },
+    "default_date": "2025-11-15",
+    "start_date": "2025-11-15",
+    "end_date": "2025-01-14",
+    "timezone": "Africa/Johannesburg",
+    "generated_at": "2025-11-14T10:30:00+02:00"
+  }
+}
+```
+
+**Caching:**
+- Server-side: 5-minute TTL per provider/service/date/timezone combination
+- Client-side (JS): 1-minute TTL per browser session
 
 ##### GET `/api/availability/slots`
 Get available time slots for a provider on a specific date.
@@ -442,6 +480,104 @@ curl "http://localhost/api/availability/next-available?provider_id=2&service_id=
 - Provider notifications of new bookings
 - Customer reminders with buffer time considered
 
+## Frontend Architecture
+
+### Shared Calendar Utilities (`resources/js/modules/calendar/calendar-utils.js`)
+Common utilities used by both admin and public booking interfaces:
+
+```javascript
+// Normalize API response to consistent structure
+normalizeCalendarPayload(source)
+
+// Extract time string from slot object
+slotTimeValue(slot)  // Returns "09:00"
+
+// Get display label for slot
+slotLabel(slot)      // Returns "09:00 - 10:00"
+
+// Get slots for a specific date
+getSlotsForDate(calendar, date)
+
+// Format date for pill display
+formatDateShort(dateStr)  // Returns "Mon, Jan 15"
+
+// Auto-select best available date
+selectAvailableDate(calendar, desiredDate)
+
+// Generate cache key for client-side caching
+buildCalendarCacheKey(providerId, serviceId, startDate, excludeId)
+```
+
+### Admin Time Slots UI (`resources/js/modules/appointments/time-slots-ui.js`)
+Handles the appointment form time slot selection with preloaded availability:
+
+**Features:**
+- Fetches 60-day calendar on provider/service selection
+- Displays clickable date pills (first 5 available dates)
+- Auto-selects first available date if none specified
+- Client-side caching (1-minute TTL)
+- Shows "no availability" warning when empty
+
+**Usage:**
+```javascript
+import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
+
+initTimeSlotsUI({
+  providerSelectId: 'provider_id',
+  serviceSelectId: 'service_id',
+  dateInputId: 'appointment_date',
+  timeInputId: 'start_time',
+  excludeAppointmentId: 123,  // For edit mode
+  preselectServiceId: 5,
+  initialTime: '09:00',
+  onTimeSelected: (time) => console.log('Selected:', time)
+});
+```
+
+### Public Booking SPA (`resources/js/public-booking.js`)
+Single-page application for public appointment booking:
+
+**Features:**
+- Provider-specific services dropdown
+- Calendar state management with `createCalendarState()`
+- Date pills for quick date selection
+- Slot selection with visual feedback
+- Appointment lookup and rescheduling
+
+**State Structure:**
+```javascript
+{
+  view: 'book' | 'manage',
+  booking: {
+    providerId, serviceId, appointmentDate, selectedSlot,
+    slots: [], slotsError: '', slotsLoading: false,
+    calendar: { availableDates, slotsByDate, defaultDate, loading, error },
+    form: { first_name, last_name, email, phone, notes },
+    errors: {}, submitting: false, submitted: false
+  },
+  manage: { stage, appointment, contact, form }
+}
+```
+
+### UI Components (Admin Form)
+Located in `app/Views/appointments/form.php`:
+
+```html
+<!-- Available dates hint with clickable pills -->
+<div id="available-dates-hint" class="hidden mb-4">
+  <p class="text-xs text-green-600">Next available dates:</p>
+  <div id="available-dates-pills" class="flex flex-wrap gap-2"></div>
+</div>
+
+<!-- No availability warning -->
+<div id="no-availability-warning" class="hidden mb-4 p-3 bg-yellow-50">
+  No availability found in the next 60 days...
+</div>
+
+<!-- Time slot grid -->
+<div id="time-slots-grid" class="grid grid-cols-4 gap-2"></div>
+```
+
 ## Troubleshooting
 
 ### No Slots Available
@@ -481,6 +617,18 @@ curl "http://localhost/api/availability/next-available?provider_id=2&service_id=
 1. Check Appointments::store() has validation
 2. Add database-level unique constraints
 3. Verify timezone handling in both validation and insert
+
+### Calendar Not Loading (Frontend)
+**Possible Causes:**
+1. API endpoint returning error
+2. Invalid provider/service combination
+3. Cache key collision
+
+**Debug Steps:**
+1. Check browser Network tab for API responses
+2. Verify provider has services assigned
+3. Clear client-side cache (page refresh)
+4. Check console for JavaScript errors
 
 ## Implementation Checklist
 

@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\CustomerModel;
@@ -36,8 +35,14 @@ class Scheduler extends BaseController
     }
 
     // API: GET /api/slots?provider_id=1&service_id=2&date=2025-08-24
+    // @deprecated Use /api/availability or /api/availability/calendar instead
     public function slots()
     {
+        // Add deprecation headers
+        $this->response->setHeader('Deprecation', 'true');
+        $this->response->setHeader('Sunset', 'Sat, 01 Mar 2026 00:00:00 GMT');
+        $this->response->setHeader('Link', '</api/availability>; rel="successor-version"');
+        
         $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
         $serviceId  = (int) ($this->request->getGet('service_id') ?? 0);
         $date       = $this->request->getGet('date') ?? date('Y-m-d');
@@ -53,8 +58,14 @@ class Scheduler extends BaseController
 
     // API: POST /api/book
     // body: { name, email, phone?, provider_id, service_id, date, start, notes? }
+    // @deprecated Use /api/appointments POST instead
     public function book()
     {
+        // Add deprecation headers
+        $this->response->setHeader('Deprecation', 'true');
+        $this->response->setHeader('Sunset', 'Sat, 01 Mar 2026 00:00:00 GMT');
+        $this->response->setHeader('Link', '</api/appointments>; rel="successor-version"');
+        
         $data = $this->request->getJSON(true) ?? $this->request->getPost();
         $required = ['name','email','provider_id','service_id','date','start'];
         foreach ($required as $r) {

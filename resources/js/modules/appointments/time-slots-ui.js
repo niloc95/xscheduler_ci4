@@ -2,6 +2,15 @@
  * Shared Time Slots UI module
  * Unifies service loading and slot grid rendering for create/edit flows.
  */
+import {
+  normalizeCalendarPayload,
+  slotTimeValue,
+  slotLabel,
+  getSlotsForDate,
+  formatDateShort,
+  selectAvailableDate,
+  buildCalendarCacheKey,
+} from '../calendar/calendar-utils.js';
 
 /**
  * Initialize the time slots UI
@@ -56,51 +65,14 @@ export function initTimeSlotsUI(options) {
     error: document.getElementById(errorId),
     errorMsg: document.getElementById(errorMsgId),
     prompt: document.getElementById(promptId),
+    availableDatesHint: document.getElementById('available-dates-hint'),
+    availableDatesPills: document.getElementById('available-dates-pills'),
+    noAvailabilityWarning: document.getElementById('no-availability-warning'),
   };
 
   const CALENDAR_CACHE_TTL = 60 * 1000; // 1 minute client-side cache to avoid hammering API
   const calendarCache = new Map();
   let calendarFetchToken = 0;
-
-  function buildCalendarKey(providerId, serviceId, startDate) {
-    const keyParts = [providerId, serviceId, startDate || 'auto'];
-    if (excludeAppointmentId) {
-      keyParts.push(`exclude:${excludeAppointmentId}`);
-    }
-    return keyParts.join('|');
-  }
-
-  function normalizeCalendar(payload) {
-    if (!payload || typeof payload !== 'object') {
-      return {
-        availableDates: [],
-        slotsByDate: {},
-        defaultDate: null,
-        startDate: null,
-        endDate: null,
-        timezone: null,
-        generatedAt: null,
-      };
-    }
-
-    const availableDates = Array.isArray(payload.availableDates) ? [...payload.availableDates] : [];
-    const rawSlots = (payload.slotsByDate && typeof payload.slotsByDate === 'object') ? payload.slotsByDate : {};
-    const slotsByDate = Object.keys(rawSlots).reduce((carry, date) => {
-      const slotList = Array.isArray(rawSlots[date]) ? rawSlots[date].map(slot => ({ ...slot })) : [];
-      carry[date] = slotList;
-      return carry;
-    }, {});
-
-    return {
-      availableDates,
-      slotsByDate,
-      defaultDate: payload.default_date ?? payload.defaultDate ?? (availableDates[0] ?? null),
-      startDate: payload.start_date ?? payload.startDate ?? null,
-      endDate: payload.end_date ?? payload.endDate ?? null,
-      timezone: payload.timezone ?? null,
-      generatedAt: payload.generated_at ?? payload.generatedAt ?? null,
-    };
-  }
 
   function getCacheEntry(key) {
     const cached = calendarCache.get(key);
@@ -115,7 +87,7 @@ export function initTimeSlotsUI(options) {
   }
 
   async function fetchCalendar(providerId, serviceId, startDate, forceRefresh = false) {
-    const key = buildCalendarKey(providerId, serviceId, startDate);
+    const key = buildCalendarCacheKey(providerId, serviceId, startDate, excludeAppointmentId);
     const cached = forceRefresh ? null : getCacheEntry(key);
     if (cached) {
       return cached.data;
@@ -152,7 +124,7 @@ export function initTimeSlotsUI(options) {
       throw new Error(message);
     }
 
-    const normalized = normalizeCalendar(payload?.data ?? payload ?? {});
+    const normalized = normalizeCalendarPayload(payload?.data ?? payload ?? {});
     if (token === calendarFetchToken) {
       calendarCache.set(key, { data: normalized, fetchedAt: Date.now() });
     }
@@ -160,56 +132,58 @@ export function initTimeSlotsUI(options) {
   }
 
   function ensureDateFromCalendar(calendar, desiredDate) {
-    if (!calendar || !Array.isArray(calendar.availableDates) || calendar.availableDates.length === 0) {
-      return { date: desiredDate || '', updated: false };
+    const { date, autoSelected } = selectAvailableDate(calendar, desiredDate);
+    
+    if (autoSelected && date) {
+      dateInput.value = date;
     }
-
-    if (desiredDate && calendar.availableDates.includes(desiredDate)) {
-      return { date: desiredDate, updated: false };
-    }
-
-    const fallback = calendar.defaultDate || calendar.availableDates[0];
-    if (fallback) {
-      dateInput.value = fallback;
-      return { date: fallback, updated: true };
-    }
-
-    return { date: desiredDate || '', updated: false };
+    
+    return { date, updated: autoSelected };
   }
 
-  function slotValue(slot) {
-    if (slot?.startFormatted) {
-      return slot.startFormatted;
+  function renderAvailableDatesHint(availableDates) {
+    if (!el.availableDatesHint || !el.availableDatesPills) {
+      return;
     }
-    if (slot?.start) {
-      try {
-        const date = new Date(slot.start);
-        if (!Number.isNaN(date.getTime())) {
-          return date.toISOString().slice(11, 16);
-        }
-      } catch (_) {
-        // ignore parsing error
-      }
-    }
-    return '';
-  }
 
-  function slotLabel(slot) {
-    if (slot?.label) {
-      return slot.label;
-    }
-    const value = slotValue(slot);
-    if (slot?.endFormatted) {
-      return `${value} - ${slot.endFormatted}`;
-    }
-    return value || 'Available slot';
-  }
+    // Hide warning by default
+    el.noAvailabilityWarning?.classList.add('hidden');
 
-  function getSlotsForDate(calendar, date) {
-    if (!calendar || !calendar.slotsByDate) {
-      return [];
+    if (!availableDates || availableDates.length === 0) {
+      el.availableDatesHint.classList.add('hidden');
+      el.noAvailabilityWarning?.classList.remove('hidden');
+      return;
     }
-    return Array.isArray(calendar.slotsByDate[date]) ? calendar.slotsByDate[date] : [];
+
+    // Show first 5 dates as clickable pills
+    const maxPills = 5;
+    const displayDates = availableDates.slice(0, maxPills);
+    const remainingCount = availableDates.length - maxPills;
+
+    el.availableDatesPills.innerHTML = '';
+    
+    displayDates.forEach(dateStr => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'px-2 py-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors';
+      pill.textContent = formatDateShort(dateStr);
+      pill.dataset.date = dateStr;
+      pill.addEventListener('click', () => {
+        dateInput.value = dateStr;
+        timeInput.value = '';
+        loadSlots();
+      });
+      el.availableDatesPills.appendChild(pill);
+    });
+
+    if (remainingCount > 0) {
+      const moreSpan = document.createElement('span');
+      moreSpan.className = 'px-2 py-1 text-xs text-gray-500 dark:text-gray-400';
+      moreSpan.textContent = `+${remainingCount} more`;
+      el.availableDatesPills.appendChild(moreSpan);
+    }
+
+    el.availableDatesHint.classList.remove('hidden');
   }
 
   async function loadServices(providerId) {
@@ -303,7 +277,7 @@ export function initTimeSlotsUI(options) {
       btn.type = 'button';
       btn.className = 'time-slot-btn px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-500 dark:hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500';
       btn.textContent = slotLabel(slot);
-      const formattedValue = slotValue(slot);
+      const formattedValue = slotTimeValue(slot);
       btn.dataset.time = formattedValue;
       btn.dataset.startTime = slot.start ?? slot.startTime ?? '';
       btn.dataset.endTime = slot.end ?? slot.endTime ?? '';
@@ -337,6 +311,10 @@ export function initTimeSlotsUI(options) {
     const serviceId = serviceSelect.value;
     let date = dateInput.value;
 
+    // Hide available dates hint when loading
+    el.availableDatesHint?.classList.add('hidden');
+    el.noAvailabilityWarning?.classList.add('hidden');
+
     if (!providerId || !serviceId) {
       el.prompt?.classList.remove('hidden');
       timeInput.value = '';
@@ -353,6 +331,9 @@ export function initTimeSlotsUI(options) {
         calendar = await fetchCalendar(providerId, serviceId, date, true);
       }
 
+      // Render available dates hint
+      renderAvailableDatesHint(calendar.availableDates);
+
       if (!calendar.availableDates.length) {
         el.loading?.classList.add('hidden');
         el.empty?.classList.remove('hidden');
@@ -360,7 +341,8 @@ export function initTimeSlotsUI(options) {
         return;
       }
 
-      const { date: resolvedDate } = ensureDateFromCalendar(calendar, date);
+      // Auto-select first available date if no date is set
+      const { date: resolvedDate, updated: dateWasUpdated } = ensureDateFromCalendar(calendar, date);
       if (resolvedDate) {
         date = resolvedDate;
       }
@@ -390,6 +372,7 @@ export function initTimeSlotsUI(options) {
   providerSelect.addEventListener('change', async () => {
     await loadServices(providerSelect.value);
     timeInput.value = '';
+    dateInput.value = ''; // Clear date when provider changes
     hideAllStates();
     el.prompt?.classList.remove('hidden');
     if (serviceSelect.value) {
@@ -399,6 +382,7 @@ export function initTimeSlotsUI(options) {
 
   serviceSelect.addEventListener('change', () => {
     timeInput.value = '';
+    dateInput.value = ''; // Clear date when service changes
     loadSlots(true);
   });
 

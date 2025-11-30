@@ -83,10 +83,6 @@ class Availability extends BaseController
         $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
         
         try {
-            // Optional: exclude current appointment when editing
-            $excludeAppointmentId = $this->request->getGet('exclude_appointment_id');
-            $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
-
             // Get available slots
             $slots = $this->availabilityService->getAvailableSlots(
                 (int) $providerId,
@@ -320,6 +316,10 @@ class Availability extends BaseController
         }
 
         $days = max(1, min($days, 120));
+
+        // Optional: exclude current appointment when editing
+        $excludeAppointmentId = $this->request->getGet('exclude_appointment_id');
+        $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
 
         try {
             $calendar = $this->availabilityService->getCalendarAvailability(

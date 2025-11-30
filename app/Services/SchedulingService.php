@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;

@@ -223,7 +223,6 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
 
     // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
-        $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');

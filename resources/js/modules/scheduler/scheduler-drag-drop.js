@@ -82,8 +82,6 @@ export class DragDropManager {
         setTimeout(() => {
             element.classList.add('opacity-50', 'scale-95');
         }, 0);
-
-        console.log('🎯 Drag started:', this.draggedAppointment);
     }
 
     handleDragOver(e, slot) {
@@ -140,12 +138,6 @@ export class DragDropManager {
         ).minutes;
 
         const newEndDateTime = newStartDateTime.plus({ minutes: duration });
-
-        console.log('📅 Attempting reschedule:', {
-            from: this.draggedAppointment.startDateTime.toISO(),
-            to: newStartDateTime.toISO(),
-            duration: `${duration} minutes`
-        });
 
         // Validate the move
         const validation = this.validateReschedule(newStartDateTime, newEndDateTime);
@@ -270,7 +262,6 @@ export class DragDropManager {
             }
 
             const result = await response.json();
-            console.log('✅ Appointment rescheduled:', result);
 
             // Reload appointments and re-render
             await this.scheduler.loadAppointments();
