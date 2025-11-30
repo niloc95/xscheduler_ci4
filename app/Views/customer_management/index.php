@@ -94,6 +94,9 @@
                         <td class="px-6 py-4 text-gray-500 dark:text-gray-400"><?= !empty($c['created_at']) ? date('M j, Y', strtotime($c['created_at'])) : '—' ?></td>
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-2">
+                                <a href="<?= base_url('customer-management/history/' . esc($c['hash'] ?? '')) ?>" class="p-1 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400" title="View History">
+                                    <span class="material-symbols-outlined">history</span>
+                                </a>
                                 <a href="<?= base_url('customer-management/edit/' . esc($c['hash'] ?? '')) ?>" class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" title="Edit Customer">
                                     <span class="material-symbols-outlined">edit</span>
                                 </a>

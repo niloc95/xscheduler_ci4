@@ -51,6 +51,7 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
     $routes->get('edit/(:any)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
     $routes->post('update/(:any)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('history/(:any)', 'CustomerManagement::history/$1', ['filter' => 'role:admin,provider,staff']);
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)
@@ -175,6 +176,14 @@ $routes->group('public/booking', ['filter' => 'setup'], function($routes) {
     $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => 'public_rate_limit|csrf']);
 });
 
+// Public customer portal - My Appointments (no auth, uses customer hash)
+$routes->group('public/my-appointments', ['filter' => 'setup'], function($routes) {
+    $routes->get('(:segment)', 'PublicSite\CustomerPortalController::index/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/upcoming', 'PublicSite\CustomerPortalController::upcoming/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/history', 'PublicSite\CustomerPortalController::history/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/autofill', 'PublicSite\CustomerPortalController::autofill/$1', ['filter' => 'public_rate_limit']);
+});
+
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
     // Legacy simple endpoints
@@ -185,6 +194,17 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('calendar-prototype/bootstrap', 'Api\\CalendarPrototype::bootstrap');
     $routes->get('calendar-prototype/range', 'Api\\CalendarPrototype::range');
         $routes->post('calendar-prototype/telemetry', 'Api\\CalendarPrototype::telemetry');
+
+    // Customer Appointments API (history, stats, autofill)
+    $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1');
+    $routes->get('customers/(:num)/appointments/history', 'Api\\CustomerAppointments::history/$1');
+    $routes->get('customers/(:num)/appointments/stats', 'Api\\CustomerAppointments::stats/$1');
+    $routes->get('customers/(:num)/appointments', 'Api\\CustomerAppointments::index/$1');
+    $routes->get('customers/(:num)/autofill', 'Api\\CustomerAppointments::autofill/$1');
+    $routes->get('customers/by-hash/(:segment)/appointments', 'Api\\CustomerAppointments::byHash/$1');
+    $routes->get('customers/by-hash/(:segment)/autofill', 'Api\\CustomerAppointments::autofillByHash/$1');
+    $routes->get('appointments/search', 'Api\\CustomerAppointments::search');
+    $routes->get('appointments/filters', 'Api\\CustomerAppointments::filterOptions');
 
     // Consolidated Appointments API (unversioned, future-proof)
     // Specific endpoints BEFORE resource to avoid shadowing
