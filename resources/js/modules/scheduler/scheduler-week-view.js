@@ -60,7 +60,7 @@ export class WeekView {
                         </div>
 
                         <!-- Time Grid -->
-                        <div class="relative">
+                        <div>
                             ${timeSlots.map((slot, index) => this.renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods)).join('')}
                         </div>
                     </div>
@@ -140,7 +140,7 @@ export class WeekView {
         const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${appointment.status}`;
         
         return `
-            <article class="appointment-block relative w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
+            <article class="appointment-block w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
                  role="button"

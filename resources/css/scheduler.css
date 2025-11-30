@@ -179,6 +179,10 @@
     /* Ensure solid background - no transparency */
     opacity: 1 !important;
     background-clip: padding-box;
+    /* Prevent any inherited transparency */
+    isolation: isolate;
+    /* Ensure proper stacking */
+    position: static;
 }
 
 .scheduler-week-view .appointment-block:hover {

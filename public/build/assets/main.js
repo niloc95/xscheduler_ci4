@@ -259,7 +259,7 @@ import{C as tn}from"./charts.js";import{g as _s,n as Rs,b as Zs,f as Ys,s as js,
                         </div>
 
                         <!-- Time Grid -->
-                        <div class="relative">
+                        <div>
                             ${f.map((x,b)=>this.renderTimeSlot(x,b,l,p,i,t,d)).join("")}
                         </div>
                     </div>
@@ -293,7 +293,7 @@ import{C as tn}from"./charts.js";import{g as _s,n as Rs,b as Zs,f as Ys,s as js,
                     `}).join("")}
             </div>
         `}renderAppointmentBlock(e,t,n){var m,f;const r=t.find(p=>p.id===e.providerId),i=We(),a=ze(e.status,i),o=it(r),l=e.name||e.title||"Unknown",d=e.serviceName||"Appointment",c=((f=(m=this.scheduler)==null?void 0:m.settingsManager)==null?void 0:f.getTimeFormat())==="24h"?"HH:mm":"h:mm a",u=e.startDateTime.toFormat(c),h=`Appointment: ${l} for ${d} at ${u} with ${(r==null?void 0:r.name)||"Provider"}. Status: ${e.status}`;return`
-            <article class="appointment-block relative w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
+            <article class="appointment-block w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
                  style="background-color: ${a.bg}; border-left-color: ${a.border}; color: ${a.text};"
                  data-appointment-id="${e.id}"
                  role="button"
