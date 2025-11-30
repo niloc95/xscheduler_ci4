@@ -142,7 +142,7 @@ export class DayView {
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-medium opacity-90 mb-1">${time}</div>
-                        <div class="font-semibold truncate">${escapeHtml(customerName)}</div>
+                        <div class="font-semibold truncate">${escapeHtmlUtil(customerName)}</div>
                         <div class="text-sm opacity-90 truncate">${escapeHtmlUtil(serviceName)}</div>
                         ${provider ? `<div class="text-xs opacity-75 mt-1">with ${escapeHtmlUtil(provider.name)}</div>` : ''}
                     </div>
@@ -181,17 +181,17 @@ export class DayView {
                 </div>
                 
                 <h4 class="text-lg font-semibold mb-1">
-                    ${escapeHtml(customerName)}
+                    ${escapeHtmlUtil(customerName)}
                 </h4>
                 
                 <p class="text-sm mb-2 opacity-90">
-                    ${escapeHtml(serviceName)}
+                    ${escapeHtmlUtil(serviceName)}
                 </p>
                 
                 ${provider ? `
                     <div class="flex items-center gap-2 text-xs opacity-75">
                         <span class="material-symbols-outlined text-sm">person</span>
-                        ${escapeHtml(provider.name)}
+                        ${escapeHtmlUtil(provider.name)}
                     </div>
                 ` : ''}
             </div>
