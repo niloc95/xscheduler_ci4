@@ -174,7 +174,26 @@ export class WeekView {
     }
 
     getAppointmentsForSlot(dayAppointments, slot) {
-        return dayAppointments.filter(apt => apt.startDateTime.toFormat('HH:mm') === slot.time);
+        // Parse slot time
+        const slotHour = parseInt(slot.time.split(':')[0], 10);
+        const slotMinute = parseInt(slot.time.split(':')[1], 10);
+        
+        return dayAppointments.filter(apt => {
+            if (!apt.startDateTime) return false;
+            const aptHour = apt.startDateTime.hour;
+            const aptMinute = apt.startDateTime.minute;
+            
+            // Check if appointment falls within this 30-minute slot
+            // Slot 09:00 covers 09:00-09:29, Slot 09:30 covers 09:30-09:59
+            if (aptHour === slotHour) {
+                if (slotMinute === 0) {
+                    return aptMinute >= 0 && aptMinute < 30;
+                } else {
+                    return aptMinute >= 30 && aptMinute < 60;
+                }
+            }
+            return false;
+        });
     }
 
     attachEventListeners(container, data) {

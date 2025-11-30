@@ -18,6 +18,23 @@ export class DayView {
     render(container, data) {
         const { currentDate, appointments, providers, config } = data;
         
+        console.log('[DayView] render() called with:', {
+            currentDate: currentDate?.toISO?.() || currentDate,
+            appointmentsCount: appointments?.length || 0,
+            providersCount: providers?.length || 0,
+            configKeys: config ? Object.keys(config) : []
+        });
+        
+        // Debug: Log all appointments to see what we're working with
+        if (appointments && appointments.length > 0) {
+            console.log('[DayView] All appointments:', appointments.map(apt => ({
+                id: apt.id,
+                start: apt.startDateTime?.toISO?.() || apt.start,
+                provider: apt.providerId,
+                name: apt.name || apt.title
+            })));
+        }
+        
         // Use slotMinTime and slotMaxTime from calendar config (reads from business.work_start/work_end settings)
         const startTime = config?.slotMinTime || '08:00';
         const endTime = config?.slotMaxTime || '17:00';
@@ -202,7 +219,8 @@ export class DayView {
         return `
             <div class="text-center py-8">
                 <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
-                <p class="text-sm text-gray-600 dark:text-gray-400">No appointments scheduled</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">No appointments scheduled for this day</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500">Use the navigation arrows to view other dates</p>
             </div>
         `;
     }
