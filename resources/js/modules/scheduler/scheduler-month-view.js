@@ -76,6 +76,7 @@ export class MonthView {
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
 
         // Render HTML
+        // P0-3 FIX: Changed auto-rows-fr to auto-rows-[minmax(100px,auto)] to prevent bottom row clipping
         container.innerHTML = `
             <div class="scheduler-month-view bg-white dark:bg-gray-800">
                 <!-- Day Headers -->
@@ -83,8 +84,8 @@ export class MonthView {
                     ${this.renderDayHeaders(config, settings)}
                 </div>
 
-                <!-- Calendar Grid -->
-                <div class="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Calendar Grid - P0-3 FIX: Use minmax for proper row sizing -->
+                <div class="grid grid-cols-7 auto-rows-[minmax(100px,auto)] divide-x divide-y divide-gray-200 dark:divide-gray-700">
                     ${weeks.map(week => week.map(day => 
                         this.renderDayCell(day, monthStart.month, settings)
                     ).join('')).join('')}
@@ -143,7 +144,7 @@ export class MonthView {
             'min-h-[100px]',
             'p-2',
             'relative',
-            'overflow-hidden',
+            // P0-3 FIX: Removed 'overflow-hidden' to prevent content clipping
             'cursor-pointer',
             'hover:bg-gray-50',
             'dark:hover:bg-gray-700/50',

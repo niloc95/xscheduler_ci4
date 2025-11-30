@@ -82,6 +82,26 @@
 /* Month View */
 .scheduler-month-view {
     animation: fadeIn 0.3s ease-out;
+    /* P0-3 FIX: Ensure month view does not get cut off at bottom */
+    overflow: visible;
+    min-height: 0;
+}
+
+/* P0-3 FIX: Month grid container - ensure proper height calculation */
+.scheduler-month-view > .grid {
+    /* Reset auto-rows-fr that can cause truncation */
+    grid-auto-rows: minmax(100px, auto);
+}
+
+/* P0-3 FIX: Day headers row */
+.scheduler-month-view > .grid.grid-cols-7:first-child {
+    flex-shrink: 0;
+}
+
+/* P0-3 FIX: Calendar grid - allow natural height expansion */
+.scheduler-month-view > .grid.grid-cols-7:last-of-type {
+    min-height: auto;
+    overflow: visible;
 }
 
 .scheduler-month-view .scheduler-appointment {
@@ -93,9 +113,38 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* P0-3 FIX: Day cell overflow handling */
 .scheduler-day-cell {
     cursor: pointer;
     transition: background-color 0.15s ease;
+    /* P0-3 FIX: Allow cells to expand with content */
+    min-height: 100px;
+    overflow: visible;
+}
+
+/* P0-3 FIX: Day appointments container within cell */
+.scheduler-day-cell .day-appointments {
+    overflow-y: auto;
+    max-height: 150px;
+    scrollbar-width: thin;
+}
+
+/* P0-3 FIX: Webkit scrollbar styling for appointments overflow */
+.scheduler-day-cell .day-appointments::-webkit-scrollbar {
+    width: 4px;
+}
+
+.scheduler-day-cell .day-appointments::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scheduler-day-cell .day-appointments::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.4);
+    border-radius: 4px;
+}
+
+.dark .scheduler-day-cell .day-appointments::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5);
 }
 
 .scheduler-day-cell:hover {

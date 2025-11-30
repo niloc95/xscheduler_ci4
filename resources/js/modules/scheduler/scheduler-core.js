@@ -171,6 +171,16 @@ export class SchedulerCore {
             if (this.statusFilter) {
                 params.append('status', this.statusFilter);
             }
+            
+            // P0-3 Performance Optimization: Enable futureOnly mode by default for calendar views
+            // This prevents loading historical appointments which significantly improves performance
+            // Past appointments can be accessed via Customer Appointment History module
+            if (this.options.futureOnly !== false) {
+                params.append('futureOnly', '1');
+                // Configurable look-ahead window (default: 90 days)
+                const lookAheadDays = this.options.lookAheadDays ?? 90;
+                params.append('lookAheadDays', lookAheadDays.toString());
+            }
 
             const url = `${this.options.apiBaseUrl}?${params.toString()}`;
             logger.debug('🔄 Loading appointments from:', url);

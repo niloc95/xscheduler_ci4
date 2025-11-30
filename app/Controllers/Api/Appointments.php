@@ -13,6 +13,10 @@ class Appointments extends BaseController
     /**
      * List appointments with pagination, filtering, and date range support
      * GET /api/appointments?start=&end=&providerId=&serviceId=&page=&length=&sort=
+     * 
+     * P0-3 Performance Optimization Parameters:
+     * - futureOnly=1: Only load today's and future appointments (excludes historical data)
+     * - lookAheadDays=90: Limit how far into the future to load (default: 90 days)
      */
     public function index()
     {
@@ -24,6 +28,11 @@ class Appointments extends BaseController
             $end = $this->request->getGet('end');
             $providerId = $this->request->getGet('providerId');
             $serviceId = $this->request->getGet('serviceId');
+            
+            // P0-3 Performance Optimization: Future-only mode for calendar views
+            $futureOnly = filter_var($this->request->getGet('futureOnly'), FILTER_VALIDATE_BOOLEAN);
+            $lookAheadDays = (int)($this->request->getGet('lookAheadDays') ?? 90);
+            $lookAheadDays = max(1, min($lookAheadDays, 365)); // Clamp between 1 and 365 days
             
             // Pagination parameters
             $page = max(1, (int)($this->request->getGet('page') ?? 1));
@@ -58,12 +67,33 @@ class Appointments extends BaseController
                     ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
                     ->orderBy('xs_appointments.' . $sortField, $sortDir);
             
-            // Apply date range filter
+            // P0-3 Performance Optimization: Apply future-only filter if enabled
+            // This significantly reduces load for calendars with historical data
+            if ($futureOnly) {
+                $todayStart = date('Y-m-d 00:00:00');
+                $builder->where('xs_appointments.start_time >=', $todayStart);
+                
+                // Also apply look-ahead limit to prevent loading too far into future
+                if ($lookAheadDays > 0) {
+                    $futureLimit = date('Y-m-d 23:59:59', strtotime("+{$lookAheadDays} days"));
+                    $builder->where('xs_appointments.start_time <=', $futureLimit);
+                }
+                
+                log_message('info', "[API/Appointments::index] P0-3 futureOnly mode: loading $todayStart to $futureLimit");
+            }
+            
+            // Apply date range filter (respects futureOnly constraints)
             if ($start || $end) {
                 // Custom scheduler sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
                 // Parse into DateTimeImmutable for consistent handling
                 $startDate = substr($start, 0, 10); // Get YYYY-MM-DD
                 $endDate = substr($end, 0, 10);     // Get YYYY-MM-DD
+                
+                // P0-3: If futureOnly is enabled, enforce minimum start date as today
+                if ($futureOnly) {
+                    $today = date('Y-m-d');
+                    $startDate = max($startDate, $today);
+                }
                 
                 $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00')
                         ->where('xs_appointments.start_time <=', $endDate . ' 23:59:59');
@@ -95,7 +125,9 @@ class Appointments extends BaseController
                 'start' => $start,
                 'end' => $end,
                 'providerId' => $providerId,
-                'serviceId' => $serviceId
+                'serviceId' => $serviceId,
+                'futureOnly' => $futureOnly,
+                'lookAheadDays' => $lookAheadDays
             ]);
             log_message('info', '[API/Appointments::index] Found ' . count($appointments) . ' appointments');
             

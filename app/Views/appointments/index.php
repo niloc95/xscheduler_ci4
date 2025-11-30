@@ -122,7 +122,7 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
         </div>
     </div>
 
-    <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <!-- Calendar Toolbar -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
             <!-- Navigation Controls -->
