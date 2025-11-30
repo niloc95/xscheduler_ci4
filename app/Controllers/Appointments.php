@@ -8,7 +8,6 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\AppointmentDashboardContextService;
 use App\Services\BookingSettingsService;
-use App\Services\CalendarPrototypeService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
 use CodeIgniter\Controller;
@@ -20,7 +19,6 @@ class Appointments extends BaseController
     protected $appointmentModel;
     protected $customerModel;
     protected $dashboardContextService;
-    protected ?CalendarPrototypeService $calendarPrototypeService = null;
 
     public function __construct()
     {
@@ -79,29 +77,12 @@ class Appointments extends BaseController
         return !empty($customFieldsData) ? json_encode($customFieldsData) : null;
     }
 
+    /**
+     * Calendar prototype feature is archived - always return disabled
+     */
     private function resolveCalendarPrototypeContext(): array
     {
-        $config = config('Calendar');
-        if (!$config || !($config->prototypeEnabled ?? false)) {
-            return ['enabled' => false];
-        }
-
-        if ($this->calendarPrototypeService === null) {
-            $this->calendarPrototypeService = new CalendarPrototypeService();
-        }
-
-        helper('url');
-
-        return [
-            'enabled' => true,
-            'featureKey' => $config->prototypeFeatureKey ?? 'calendar_prototype',
-            'bootstrap' => $this->calendarPrototypeService->buildBootstrapPayload(),
-            'endpoints' => [
-                'bootstrap' => base_url('api/calendar-prototype/bootstrap'),
-                'range' => base_url('api/calendar-prototype/range'),
-                'telemetry' => base_url('api/calendar-prototype/telemetry'),
-            ],
-        ];
+        return ['enabled' => false];
     }
 
     /**

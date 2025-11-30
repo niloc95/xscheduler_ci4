@@ -190,10 +190,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
 
-    // Calendar prototype (feature-flagged)
-    $routes->get('calendar-prototype/bootstrap', 'Api\\CalendarPrototype::bootstrap');
-    $routes->get('calendar-prototype/range', 'Api\\CalendarPrototype::range');
-        $routes->post('calendar-prototype/telemetry', 'Api\\CalendarPrototype::telemetry');
+    // Calendar prototype routes removed (archived)
 
     // Customer Appointments API (history, stats, autofill)
     $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1');
