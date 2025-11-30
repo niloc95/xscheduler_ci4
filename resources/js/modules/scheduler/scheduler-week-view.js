@@ -107,9 +107,11 @@ export class WeekView {
                     const dateKey = day.toISODate();
                     const slotAppointments = this.getAppointmentsForSlot(appointmentsByDay[dateKey] || [], slot);
                     const isBlocked = isDateBlockedUtil(day, blockedPeriods);
+                    const hasAppointments = slotAppointments.length > 0;
                     
+                    // P0-5 FIX: Changed container from relative to flex for proper appointment stacking
                     return `
-                        <div class="relative px-2 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10 opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors"
+                        <div class="flex flex-col px-1 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10 opacity-50' : hasAppointments ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors ${hasAppointments ? 'min-h-[60px]' : ''}"
                              data-date="${dateKey}"
                              data-time="${slot.time}">
                             ${slotAppointments.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
@@ -133,8 +135,9 @@ export class WeekView {
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const time = appointment.startDateTime.toFormat(timeFormat);
 
+        // P0-5 FIX: Changed from absolute to relative positioning to prevent transparent overlay stacking
         return `
-            <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs z-10 border-l-4"
+            <div class="appointment-block relative w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
                  title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
@@ -142,7 +145,7 @@ export class WeekView {
                     <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
                     <div class="font-semibold truncate">${time}</div>
                 </div>
-                <div class="truncate">${escapeHtml(customerName)}</div>
+                <div class="truncate font-medium">${escapeHtml(customerName)}</div>
                 <div class="text-xs opacity-80 truncate">${escapeHtml(serviceName)}</div>
             </div>
         `;

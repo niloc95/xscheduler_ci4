@@ -39,10 +39,18 @@ export class DayView {
             return checkDate >= period.start && checkDate <= period.end;
         }) : null;
 
-        // Filter appointments for this day
-        const dayAppointments = appointments.filter(apt => 
-            apt.startDateTime.hasSame(currentDate, 'day')
-        ).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        // P0-5 FIX: Filter appointments for this day with improved date comparison
+        const currentDateStr = currentDate.toISODate();
+        const dayAppointments = appointments.filter(apt => {
+            if (!apt.startDateTime) {
+                console.warn('[DayView] Appointment missing startDateTime:', apt);
+                return false;
+            }
+            const aptDateStr = apt.startDateTime.toISODate();
+            return aptDateStr === currentDateStr;
+        }).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        
+        console.log(`[DayView] Rendering ${currentDateStr}: ${dayAppointments.length} appointments found (from ${appointments.length} total)`);
 
         // Render HTML
         container.innerHTML = `
@@ -73,10 +81,26 @@ export class DayView {
     }
 
     renderTimeSlot(slot, appointments, providers, data) {
-        // Show appointments that start exactly at this slot time (HH:mm)
+        // P0-5 FIX: Show appointments that start in this time slot's range (e.g., 09:00-09:29 for 09:00 slot)
+        const slotHour = parseInt(slot.time.split(':')[0], 10);
+        const slotMinute = parseInt(slot.time.split(':')[1], 10);
+        
         const slotAppointments = appointments.filter(apt => {
-            const aptTime = apt.startDateTime.toFormat('HH:mm');
-            return aptTime === slot.time;
+            if (!apt.startDateTime) return false;
+            const aptHour = apt.startDateTime.hour;
+            const aptMinute = apt.startDateTime.minute;
+            
+            // Check if appointment falls within this 30-minute slot
+            // Slot 09:00 covers 09:00-09:29, Slot 09:30 covers 09:30-09:59
+            if (aptHour === slotHour) {
+                // Same hour - check if minute falls in range
+                if (slotMinute === 0) {
+                    return aptMinute >= 0 && aptMinute < 30;
+                } else {
+                    return aptMinute >= 30 && aptMinute < 60;
+                }
+            }
+            return false;
         });
 
         return `

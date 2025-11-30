@@ -172,14 +172,19 @@
     animation: fadeIn 0.3s ease-out;
 }
 
+/* P0-5 FIX: Week view appointment blocks - solid background, no transparency */
 .scheduler-week-view .appointment-block {
     transition: all 0.2s ease;
     border-left: 3px solid currentColor;
+    /* Ensure solid background - no transparency */
+    opacity: 1 !important;
+    background-clip: padding-box;
 }
 
 .scheduler-week-view .appointment-block:hover {
-    transform: translateX(2px);
+    transform: translateY(-1px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    z-index: 20;
 }
 
 /* Day View */
