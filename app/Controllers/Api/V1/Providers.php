@@ -99,6 +99,131 @@ class Providers extends BaseApiController
         ]);
     }
 
+    /**
+     * GET /api/v1/providers/{id}/appointments
+     * Fetch appointments for a specific provider with pagination
+     * 
+     * Query parameters:
+     * - month: YYYY-MM format (defaults to current month)
+     * - page: Page number (default: 1)
+     * - per_page: Items per page (default: 20, max: 100)
+     * - status: Filter by status (optional)
+     * - service_id: Filter by service (optional)
+     * - futureOnly: Only show today + future (default: false for this endpoint)
+     */
+    public function appointments($id = null)
+    {
+        if (!$id) {
+            return $this->error(400, 'Provider ID is required');
+        }
+
+        $id = (int) $id;
+        $userModel = new UserModel();
+        $provider = $userModel->find($id);
+
+        if (!$provider || ($provider['role'] ?? null) !== 'provider') {
+            return $this->error(404, 'Provider not found');
+        }
+
+        // Parse query parameters
+        $month = $this->request->getGet('month'); // YYYY-MM format
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? 20)));
+        $offset = ($page - 1) * $perPage;
+        $status = $this->request->getGet('status');
+        $serviceId = $this->request->getGet('service_id');
+        $futureOnly = filter_var($this->request->getGet('futureOnly'), FILTER_VALIDATE_BOOLEAN);
+
+        // Determine date range
+        if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $startDate = $month . '-01';
+            $endDate = date('Y-m-t', strtotime($startDate)); // Last day of month
+        } else {
+            // Default to current month
+            $startDate = date('Y-m-01');
+            $endDate = date('Y-m-t');
+        }
+
+        // Build query
+        $db = \Config\Database::connect();
+        $builder = $db->table('xs_appointments a')
+            ->select('a.*, 
+                      CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                      c.email as customer_email,
+                      c.phone as customer_phone,
+                      s.name as service_name,
+                      s.duration_min as service_duration,
+                      s.price as service_price')
+            ->join('xs_customers c', 'c.id = a.customer_id', 'left')
+            ->join('xs_services s', 's.id = a.service_id', 'left')
+            ->where('a.provider_id', $id)
+            ->where('a.start_time >=', $startDate . ' 00:00:00')
+            ->where('a.start_time <=', $endDate . ' 23:59:59')
+            ->orderBy('a.start_time', 'ASC');
+
+        // Apply optional filters
+        if ($futureOnly) {
+            $today = date('Y-m-d 00:00:00');
+            $builder->where('a.start_time >=', $today);
+        }
+
+        if ($status) {
+            $builder->where('a.status', $status);
+        }
+
+        if ($serviceId) {
+            $builder->where('a.service_id', (int) $serviceId);
+        }
+
+        // Get total count
+        $countBuilder = clone $builder;
+        $total = $countBuilder->countAllResults(false);
+
+        // Apply pagination
+        $appointments = $builder->limit($perPage, $offset)->get()->getResultArray();
+
+        // Format response
+        $items = array_map(function ($apt) {
+            return [
+                'id' => (int) $apt['id'],
+                'hash' => $apt['hash'] ?? null,
+                'customerId' => (int) $apt['customer_id'],
+                'customerName' => $apt['customer_name'] ?? 'Unknown',
+                'customerEmail' => $apt['customer_email'] ?? null,
+                'customerPhone' => $apt['customer_phone'] ?? null,
+                'serviceId' => (int) $apt['service_id'],
+                'serviceName' => $apt['service_name'] ?? 'Appointment',
+                'serviceDuration' => $apt['service_duration'] ? (int) $apt['service_duration'] : null,
+                'servicePrice' => $apt['service_price'] ? (float) $apt['service_price'] : null,
+                'start' => $apt['start_time'],
+                'end' => $apt['end_time'],
+                'status' => $apt['status'],
+                'notes' => $apt['notes'] ?? null,
+                'location' => $apt['location'] ?? null,
+            ];
+        }, $appointments);
+
+        $totalPages = ceil($total / $perPage);
+
+        return $this->ok($items, [
+            'providerId' => $id,
+            'providerName' => $provider['name'] ?? ($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? ''),
+            'month' => substr($startDate, 0, 7),
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'total' => (int) $total,
+                'totalPages' => (int) $totalPages,
+                'hasMore' => $page < $totalPages,
+            ],
+            'filters' => [
+                'status' => $status,
+                'serviceId' => $serviceId ? (int) $serviceId : null,
+                'futureOnly' => $futureOnly,
+            ],
+        ]);
+    }
+
     // POST /api/v1/providers/{id}/profile-image
     public function uploadProfileImage($id)
     {

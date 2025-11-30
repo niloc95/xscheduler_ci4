@@ -236,6 +236,8 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->get('settings/business-hours', 'Api\\V1\\Settings::businessHours');
         // Provider services - public for booking form
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
+        // Provider appointments - for monthly schedule view
+        $routes->get('providers/(:num)/appointments', 'Api\\V1\\Providers::appointments/$1');
     });
     
     // Public providers endpoint (no auth required for calendar)
