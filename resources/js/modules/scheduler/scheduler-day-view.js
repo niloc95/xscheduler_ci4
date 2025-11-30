@@ -152,10 +152,16 @@ export class DayView {
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
 
+        // P1-2: Added ARIA labels for accessibility
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}`;
+
         return `
-            <div class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            <article class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                  style="background-color: ${color}; color: ${textColor};"
-                 data-appointment-id="${appointment.id}">
+                 data-appointment-id="${appointment.id}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="${ariaLabel}">
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-medium opacity-90 mb-1">${time}</div>
@@ -165,7 +171,7 @@ export class DayView {
                     </div>
                     <span class="material-symbols-outlined text-lg flex-shrink-0">arrow_forward</span>
                 </div>
-            </div>
+            </article>
         `;
     }
 
@@ -181,14 +187,20 @@ export class DayView {
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
         const statusLabel = getStatusLabel(appointment.status);
+        
+        // P1-2: Added ARIA labels for accessibility
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${statusLabel}`;
 
         return `
-            <div class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
+            <article class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
                  style="background-color: ${statusColors.bg}; border-color: ${statusColors.border}; color: ${statusColors.text};"
-                 data-appointment-id="${appointment.id}">
+                 data-appointment-id="${appointment.id}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="${ariaLabel}">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" aria-hidden="true" title="${provider?.name || 'Provider'}"></span>
                         <div class="text-sm font-medium">${time}</div>
                     </div>
                     <span class="px-2 py-1 text-xs font-medium rounded-full border"
@@ -207,11 +219,11 @@ export class DayView {
                 
                 ${provider ? `
                     <div class="flex items-center gap-2 text-xs opacity-75">
-                        <span class="material-symbols-outlined text-sm">person</span>
+                        <span class="material-symbols-outlined text-sm" aria-hidden="true">person</span>
                         ${escapeHtmlUtil(provider.name)}
                     </div>
                 ` : ''}
-            </div>
+            </article>
         `;
     }
 
@@ -228,21 +240,35 @@ export class DayView {
     // generateTimeSlots and formatTime moved to shared util (time-slots.js)
 
     attachEventListeners(container, data) {
-        // Appointment card/block click handlers
+        // Appointment card/block click and keyboard handlers
         container.querySelectorAll('[data-appointment-id]').forEach(el => {
+            // Click handler
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const aptId = parseInt(el.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
-                if (appointment && data.onAppointmentClick) {
-                    data.onAppointmentClick(appointment);
+                this._handleAppointmentSelect(el, data);
+            });
+            
+            // P1-2: Keyboard handler for accessibility (Enter and Space)
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this._handleAppointmentSelect(el, data);
                 }
             });
         });
 
         // Removed: Click-to-create modal functionality
         // Time slots no longer open creation modal
+    }
+    
+    _handleAppointmentSelect(el, data) {
+        const aptId = parseInt(el.dataset.appointmentId, 10);
+        const appointment = data.appointments.find(a => a.id === aptId);
+        if (appointment && data.onAppointmentClick) {
+            data.onAppointmentClick(appointment);
+        }
     }
 
     getContrastColor(hexColor) {

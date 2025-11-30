@@ -136,10 +136,16 @@ export class WeekView {
         const time = appointment.startDateTime.toFormat(timeFormat);
 
         // P0-5 FIX: Changed from absolute to relative positioning to prevent transparent overlay stacking
+        // P1-2: Added ARIA labels for accessibility
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${appointment.status}`;
+        
         return `
-            <div class="appointment-block relative w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
+            <article class="appointment-block relative w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="${ariaLabel}"
                  title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
                 <div class="flex items-center gap-1.5 mb-1">
                     <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
@@ -147,7 +153,7 @@ export class WeekView {
                 </div>
                 <div class="truncate font-medium">${escapeHtml(customerName)}</div>
                 <div class="text-xs opacity-80 truncate">${escapeHtml(serviceName)}</div>
-            </div>
+            </article>
         `;
     }
 
@@ -197,21 +203,35 @@ export class WeekView {
     }
 
     attachEventListeners(container, data) {
-        // Appointment click handlers
+        // Appointment click and keyboard handlers
         container.querySelectorAll('.appointment-block').forEach(el => {
+            // Click handler
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const aptId = parseInt(el.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
-                if (appointment && data.onAppointmentClick) {
-                    data.onAppointmentClick(appointment);
+                this._handleAppointmentSelect(el, data);
+            });
+            
+            // P1-2: Keyboard handler for accessibility (Enter and Space)
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this._handleAppointmentSelect(el, data);
                 }
             });
         });
 
         // Removed: Click-to-create modal functionality
         // Time slots no longer open creation modal
+    }
+    
+    _handleAppointmentSelect(el, data) {
+        const aptId = parseInt(el.dataset.appointmentId, 10);
+        const appointment = data.appointments.find(a => a.id === aptId);
+        if (appointment && data.onAppointmentClick) {
+            data.onAppointmentClick(appointment);
+        }
     }
 
     getContrastColor(hexColor) {
