@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderDotHtml, isDarkMode, formatDuration } from './appointment-colors.js';
 import { logger } from './logger.js';
 
 export class MonthView {
@@ -168,9 +168,16 @@ export class MonthView {
                         ${this.escapeHtml(blockedInfo.notes || 'Blocked')}
                     </div>
                 ` : ''}
-                <div class="day-appointments space-y-1">
+                <div class="day-appointments space-y-1.5">
                     ${dayAppointments.slice(0, 3).map(apt => this.renderAppointmentBlock(apt)).join('')}
-                    ${dayAppointments.length > 3 ? `<div class="text-xs text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:text-blue-600" data-show-more="${day.toISODate()}">+${dayAppointments.length - 3} more</div>` : ''}
+                    ${dayAppointments.length > 3 ? `
+                        <div class="text-xs rounded-xl border border-dashed border-slate-300 dark:border-slate-600 
+                                    px-2 py-1 text-slate-400 dark:text-slate-500 cursor-pointer 
+                                    hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400
+                                    transition-colors text-center" 
+                             data-show-more="${day.toISODate()}">
+                            +${dayAppointments.length - 3} more
+                        </div>` : ''}
                 </div>
             </div>
         `;
@@ -186,18 +193,25 @@ export class MonthView {
             const providerColor = getProviderColor(provider);
             
             // Use settings to format time
-            const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
+            const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mma').toLowerCase();
             
             const title = appointment.title || appointment.customerName || 'Appointment';
+            const providerName = provider?.name || 'Provider';
 
+            // Phase 1 Prototype Styling: Rounded pill chips with colored borders
             const html = `
-            <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-90 transition-all truncate border-l-4 flex items-center gap-1.5"
-                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
+            <div class="scheduler-appointment text-xs rounded-xl cursor-pointer transition-all 
+                        border px-2 py-1.5 flex items-center gap-2 
+                        hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                 style="background-color: ${statusColors.chipBg}; 
+                        border-color: ${statusColors.chipBorder}; 
+                        color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 title="${title} at ${time} - ${appointment.status}">
-                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
-                <span class="font-medium">${time}</span>
-                <span class="truncate">${this.escapeHtml(title)}</span>
+                 title="${title} at ${time} with ${providerName} - ${appointment.status}">
+                <span class="inline-flex h-2 w-2 rounded-full flex-shrink-0" 
+                      style="background-color: ${providerColor};" 
+                      title="${providerName}"></span>
+                <span class="font-medium truncate">${providerName} • ${time}</span>
             </div>
         `;
             
