@@ -12,7 +12,9 @@ class CustomerModel extends BaseModel
 	];
 
 	protected $beforeInsert = ['generateHash'];
-	protected $useTimestamps = false;
+	protected $useTimestamps = true;
+	protected $createdField = 'created_at';
+	protected $updatedField = 'updated_at';
 
 	// Validation rules
 	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
@@ -97,5 +99,37 @@ class CustomerModel extends BaseModel
 			'today' => $today,
 			'recent' => $recent
 		];
+	}
+
+	/**
+	 * Find existing customer by email or create new one
+	 * 
+	 * @param string $email Customer email address
+	 * @param string $name Full name (will be split into first/last)
+	 * @param string|null $phone Optional phone number
+	 * @return int Customer ID
+	 */
+	public function findOrCreateByEmail(string $email, string $name, ?string $phone = null): int
+	{
+		// Try to find existing customer
+		$customer = $this->where('email', $email)->first();
+		if ($customer) {
+			return (int) $customer['id'];
+		}
+
+		// Create new customer - split name into first/last
+		$names = preg_split('/\s+/', trim($name));
+		$firstName = $names[0] ?? '';
+		$lastName = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
+
+		$customerId = $this->insert([
+			'first_name' => $firstName,
+			'last_name' => $lastName,
+			'email' => $email,
+			'phone' => $phone,
+			'created_at' => date('Y-m-d H:i:s'),
+		], false);
+
+		return (int) $customerId;
 	}
 }

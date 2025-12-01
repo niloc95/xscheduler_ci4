@@ -7,6 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { generateTimeSlots } from './time-slots.js';
+import { escapeHtml as escapeHtmlUtil, isDateBlocked as isDateBlockedUtil } from './utils.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -15,6 +17,23 @@ export class DayView {
 
     render(container, data) {
         const { currentDate, appointments, providers, config } = data;
+        
+        console.log('[DayView] render() called with:', {
+            currentDate: currentDate?.toISO?.() || currentDate,
+            appointmentsCount: appointments?.length || 0,
+            providersCount: providers?.length || 0,
+            configKeys: config ? Object.keys(config) : []
+        });
+        
+        // Debug: Log all appointments to see what we're working with
+        if (appointments && appointments.length > 0) {
+            console.log('[DayView] All appointments:', appointments.map(apt => ({
+                id: apt.id,
+                start: apt.startDateTime?.toISO?.() || apt.start,
+                provider: apt.providerId,
+                name: apt.name || apt.title
+            })));
+        }
         
         // Use slotMinTime and slotMaxTime from calendar config (reads from business.work_start/work_end settings)
         const startTime = config?.slotMinTime || '08:00';
@@ -26,19 +45,29 @@ export class DayView {
             isWorkingDay: true
         };
         
-        const timeSlots = this.generateTimeSlots(businessHours);
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
+        // Show 30-minute granularity in day view
+        const timeSlots = generateTimeSlots(businessHours, timeFormat, 30);
         
         // Check if this date is blocked
-        const isBlocked = this.isDateBlocked(currentDate, config?.blockedPeriods);
+        const isBlocked = isDateBlockedUtil(currentDate, config?.blockedPeriods);
         const blockedNotice = isBlocked ? config.blockedPeriods.find(period => {
             const checkDate = currentDate.toISODate();
             return checkDate >= period.start && checkDate <= period.end;
         }) : null;
 
-        // Filter appointments for this day
-        const dayAppointments = appointments.filter(apt => 
-            apt.startDateTime.hasSame(currentDate, 'day')
-        ).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        // P0-5 FIX: Filter appointments for this day with improved date comparison
+        const currentDateStr = currentDate.toISODate();
+        const dayAppointments = appointments.filter(apt => {
+            if (!apt.startDateTime) {
+                console.warn('[DayView] Appointment missing startDateTime:', apt);
+                return false;
+            }
+            const aptDateStr = apt.startDateTime.toISODate();
+            return aptDateStr === currentDateStr;
+        }).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        
+        console.log(`[DayView] Rendering ${currentDateStr}: ${dayAppointments.length} appointments found (from ${appointments.length} total)`);
 
         // Render HTML
         container.innerHTML = `
@@ -69,15 +98,31 @@ export class DayView {
     }
 
     renderTimeSlot(slot, appointments, providers, data) {
-        // Show appointments that start within this hour (regardless of minute)
+        // P0-5 FIX: Show appointments that start in this time slot's range (e.g., 09:00-09:29 for 09:00 slot)
+        const slotHour = parseInt(slot.time.split(':')[0], 10);
+        const slotMinute = parseInt(slot.time.split(':')[1], 10);
+        
         const slotAppointments = appointments.filter(apt => {
+            if (!apt.startDateTime) return false;
             const aptHour = apt.startDateTime.hour;
-            return aptHour === slot.hour; // Match any appointment starting in this hour
+            const aptMinute = apt.startDateTime.minute;
+            
+            // Check if appointment falls within this 30-minute slot
+            // Slot 09:00 covers 09:00-09:29, Slot 09:30 covers 09:30-09:59
+            if (aptHour === slotHour) {
+                // Same hour - check if minute falls in range
+                if (slotMinute === 0) {
+                    return aptMinute >= 0 && aptMinute < 30;
+                } else {
+                    return aptMinute >= 30 && aptMinute < 60;
+                }
+            }
+            return false;
         });
 
         return `
-            <div class="time-slot flex items-start gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 
-                        hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer min-h-[80px]"
+            <div class="time-slot flex items-start gap-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 
+                        hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer min-h-[56px]"
                  data-time="${slot.time}"
                  data-hour="${slot.hour}">
                 <!-- Time Label -->
@@ -107,20 +152,26 @@ export class DayView {
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
 
+        // P1-2: Added ARIA labels for accessibility
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}`;
+
         return `
-            <div class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            <article class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                  style="background-color: ${color}; color: ${textColor};"
-                 data-appointment-id="${appointment.id}">
+                 data-appointment-id="${appointment.id}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="${ariaLabel}">
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-medium opacity-90 mb-1">${time}</div>
-                        <div class="font-semibold truncate">${this.escapeHtml(customerName)}</div>
-                        <div class="text-sm opacity-90 truncate">${this.escapeHtml(serviceName)}</div>
-                        ${provider ? `<div class="text-xs opacity-75 mt-1">with ${this.escapeHtml(provider.name)}</div>` : ''}
+                        <div class="font-semibold truncate">${escapeHtmlUtil(customerName)}</div>
+                        <div class="text-sm opacity-90 truncate">${escapeHtmlUtil(serviceName)}</div>
+                        ${provider ? `<div class="text-xs opacity-75 mt-1">with ${escapeHtmlUtil(provider.name)}</div>` : ''}
                     </div>
                     <span class="material-symbols-outlined text-lg flex-shrink-0">arrow_forward</span>
                 </div>
-            </div>
+            </article>
         `;
     }
 
@@ -136,14 +187,20 @@ export class DayView {
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
         const statusLabel = getStatusLabel(appointment.status);
+        
+        // P1-2: Added ARIA labels for accessibility
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${statusLabel}`;
 
         return `
-            <div class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
+            <article class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
                  style="background-color: ${statusColors.bg}; border-color: ${statusColors.border}; color: ${statusColors.text};"
-                 data-appointment-id="${appointment.id}">
+                 data-appointment-id="${appointment.id}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="${ariaLabel}">
                 <div class="flex items-start justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" aria-hidden="true" title="${provider?.name || 'Provider'}"></span>
                         <div class="text-sm font-medium">${time}</div>
                     </div>
                     <span class="px-2 py-1 text-xs font-medium rounded-full border"
@@ -153,20 +210,20 @@ export class DayView {
                 </div>
                 
                 <h4 class="text-lg font-semibold mb-1">
-                    ${this.escapeHtml(customerName)}
+                    ${escapeHtmlUtil(customerName)}
                 </h4>
                 
                 <p class="text-sm mb-2 opacity-90">
-                    ${this.escapeHtml(serviceName)}
+                    ${escapeHtmlUtil(serviceName)}
                 </p>
                 
                 ${provider ? `
                     <div class="flex items-center gap-2 text-xs opacity-75">
-                        <span class="material-symbols-outlined text-sm">person</span>
-                        ${this.escapeHtml(provider.name)}
+                        <span class="material-symbols-outlined text-sm" aria-hidden="true">person</span>
+                        ${escapeHtmlUtil(provider.name)}
                     </div>
                 ` : ''}
-            </div>
+            </article>
         `;
     }
 
@@ -174,65 +231,44 @@ export class DayView {
         return `
             <div class="text-center py-8">
                 <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
-                <p class="text-sm text-gray-600 dark:text-gray-400">No appointments scheduled</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">No appointments scheduled for this day</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500">Use the navigation arrows to view other dates</p>
             </div>
         `;
     }
 
-    generateTimeSlots(businessHours) {
-        const slots = [];
-        
-        // Handle both 'HH:MM:SS' and 'HH:MM' formats
-        const parseTime = (timeStr) => {
-            if (!timeStr) return 9; // Default to 9 AM
-            const parts = timeStr.split(':');
-            return parseInt(parts[0], 10);
-        };
-        
-        const startHour = parseTime(businessHours.startTime);
-        const endHour = parseTime(businessHours.endTime);
-        
-        for (let hour = startHour; hour <= endHour; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00`;
-            const display = this.formatTime(hour);
-            slots.push({ time, display, hour });
-        }
-        
-        return slots;
-    }
-
-    formatTime(hour) {
-        // Get time format from settings (default to 12h if not available)
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
-        
-        if (timeFormat === '24h') {
-            // 24-hour format: 09:00, 13:00, etc.
-            return `${hour.toString().padStart(2, '0')}:00`;
-        } else {
-            // 12-hour format with AM/PM
-            if (hour === 0) return '12:00 AM';
-            if (hour === 12) return '12:00 PM';
-            if (hour < 12) return `${hour}:00 AM`;
-            return `${hour - 12}:00 PM`;
-        }
-    }
+    // generateTimeSlots and formatTime moved to shared util (time-slots.js)
 
     attachEventListeners(container, data) {
-        // Appointment card/block click handlers
+        // Appointment card/block click and keyboard handlers
         container.querySelectorAll('[data-appointment-id]').forEach(el => {
+            // Click handler
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const aptId = parseInt(el.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
-                if (appointment && data.onAppointmentClick) {
-                    data.onAppointmentClick(appointment);
+                this._handleAppointmentSelect(el, data);
+            });
+            
+            // P1-2: Keyboard handler for accessibility (Enter and Space)
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this._handleAppointmentSelect(el, data);
                 }
             });
         });
 
         // Removed: Click-to-create modal functionality
         // Time slots no longer open creation modal
+    }
+    
+    _handleAppointmentSelect(el, data) {
+        const aptId = parseInt(el.dataset.appointmentId, 10);
+        const appointment = data.appointments.find(a => a.id === aptId);
+        if (appointment && data.onAppointmentClick) {
+            data.onAppointmentClick(appointment);
+        }
     }
 
     getContrastColor(hexColor) {
@@ -264,4 +300,5 @@ export class DayView {
         div.textContent = text;
         return div.innerHTML;
     }
+    // escapeHtml and isDateBlocked moved to shared utils
 }

@@ -13,8 +13,34 @@
  *
  * Sections are injected into the main dashboard layout.
  */
+
+$calendarPrototypeAssets = null;
+if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])) {
+    $manifestPath = FCPATH . 'build/.vite/manifest.json';
+    if (is_file($manifestPath)) {
+        helper('vite');
+        $prototypeEntry = 'resources/js/calendar-prototype.js';
+        try {
+            $calendarPrototypeAssets = [
+                'js' => vite_js($prototypeEntry),
+                'css' => vite_css($prototypeEntry),
+            ];
+        } catch (\Throwable $exception) {
+            log_message('error', 'Calendar prototype assets unavailable: ' . $exception->getMessage());
+            $calendarPrototypeAssets = null;
+        }
+    }
+}
 ?>
 <?= $this->extend('layouts/dashboard') ?>
+
+<?php if (!empty($calendarPrototypeAssets['css'])): ?>
+<?= $this->section('head') ?>
+    <?php foreach ($calendarPrototypeAssets['css'] as $href): ?>
+        <link rel="stylesheet" href="<?= esc($href) ?>">
+    <?php endforeach; ?>
+<?= $this->endSection() ?>
+<?php endif; ?>
 
 <?php // Override stats grid to two responsive columns ?>
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 gap-6<?= $this->endSection() ?>
@@ -39,29 +65,50 @@
     <?php $upcomingCount = ($stats['pending'] ?? 0) + ($stats['today'] ?? 0); ?>
     <?php $completedCount = $stats['completed'] ?? 0; ?>
 
+    <?php
+        $statCards = [
+            [
+                'label' => 'Upcoming Appointments',
+                'value' => $upcomingCount,
+                'options' => ['valueId' => 'upcomingCount']
+            ],
+            [
+                'label' => 'Completed Appointments',
+                'value' => $completedCount,
+                'options' => ['valueId' => 'completedCount']
+            ],
+        ];
+
+        $statusFilters = [
+            ['label' => 'Pending', 'status' => 'pending', 'title' => 'Show pending appointments'],
+            ['label' => 'Completed', 'status' => 'completed', 'title' => 'Show completed appointments'],
+        ];
+    ?>
+
     <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming Appointments</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $upcomingCount ?></p>
-            </div>
-            <div class="stat-card min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed Appointments</p>
-                <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100"><?= $completedCount ?></p>
-            </div>
+            <?php foreach ($statCards as $card): ?>
+                <?= ui_dashboard_stat_card($card['label'], $card['value'], $card['options'] ?? []); ?>
+            <?php endforeach; ?>
         </div>
 
         <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
-            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
                 <!-- View Selection Buttons - Material Design 3 Styled -->
                 <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Today</button>
                 <button type="button" data-calendar-action="day" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Day</button>
-                <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
+                    <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
                 <button type="button" data-calendar-action="month" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200">Month</button>
                 
-                <!-- Status Filter Buttons -->
-                <button type="button" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" title="Show pending appointments">Pending</button>
-                <button type="button" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" title="Show completed appointments">Completed</button>
+                <!-- Advanced Filter Toggle -->
+                <button type="button" 
+                        id="advanced-filter-toggle"
+                        class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm inline-flex items-center gap-1"
+                        title="Advanced Filters">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    Filters
+                    <span class="material-symbols-outlined text-base transition-transform duration-200" id="filter-toggle-icon">expand_more</span>
+                </button>
             </div>
 
                 <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
@@ -74,7 +121,51 @@
         </div>
     </div>
 
-    <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <!-- Advanced Filter Panel -->
+    <div id="advanced-filter-panel" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <select id="filter-status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Statuses</option>
+                    <option value="pending" <?= ($currentFilters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="confirmed" <?= ($currentFilters['status'] ?? '') === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
+                    <option value="completed" <?= ($currentFilters['status'] ?? '') === 'completed' ? 'selected' : '' ?>>Completed</option>
+                    <option value="cancelled" <?= ($currentFilters['status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                    <option value="no-show" <?= ($currentFilters['status'] ?? '') === 'no-show' ? 'selected' : '' ?>>No Show</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider</label>
+                <select id="filter-provider" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Providers</option>
+                    <?php foreach ($allProviders ?? [] as $provider): ?>
+                        <option value="<?= esc($provider['id']) ?>" <?= ($currentFilters['provider_id'] ?? '') == $provider['id'] ? 'selected' : '' ?>><?= esc($provider['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service</label>
+                <select id="filter-service" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Services</option>
+                    <?php foreach ($allServices ?? [] as $service): ?>
+                        <option value="<?= esc($service['id']) ?>" <?= ($currentFilters['service_id'] ?? '') == $service['id'] ? 'selected' : '' ?>><?= esc($service['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="button" id="apply-filters-btn" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium inline-flex items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    Apply
+                </button>
+                <button type="button" id="clear-filters-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <!-- Calendar Toolbar -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
             <!-- Navigation Controls -->
@@ -108,6 +199,7 @@
             id="appointments-inline-calendar"
             class="w-full"
             data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
+            data-active-status="<?= esc($activeStatusFilter ?? '') ?>"
         ></div>
     </div>
 <?= $this->endSection() ?>
@@ -123,3 +215,19 @@
         </div>
     </div>
 <?= $this->endSection() ?>
+
+<?php if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])): ?>
+<?= $this->section('extra_js') ?>
+<script>
+    window.__calendarPrototype = {
+        enabled: true,
+        feature: <?= json_encode($calendarPrototype['featureKey'] ?? 'calendar_prototype') ?>,
+        endpoints: <?= json_encode($calendarPrototype['endpoints'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
+    };
+    window.__calendarBootstrap = <?= json_encode($calendarPrototype['bootstrap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<?php if (!empty($calendarPrototypeAssets['js'])): ?>
+<script type="module" src="<?= esc($calendarPrototypeAssets['js']) ?>"></script>
+<?php endif; ?>
+<?= $this->endSection() ?>
+<?php endif; ?>

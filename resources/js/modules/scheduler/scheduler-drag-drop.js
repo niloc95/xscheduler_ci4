@@ -82,8 +82,6 @@ export class DragDropManager {
         setTimeout(() => {
             element.classList.add('opacity-50', 'scale-95');
         }, 0);
-
-        console.log('🎯 Drag started:', this.draggedAppointment);
     }
 
     handleDragOver(e, slot) {
@@ -140,12 +138,6 @@ export class DragDropManager {
         ).minutes;
 
         const newEndDateTime = newStartDateTime.plus({ minutes: duration });
-
-        console.log('📅 Attempting reschedule:', {
-            from: this.draggedAppointment.startDateTime.toISO(),
-            to: newStartDateTime.toISO(),
-            duration: `${duration} minutes`
-        });
 
         // Validate the move
         const validation = this.validateReschedule(newStartDateTime, newEndDateTime);
@@ -270,13 +262,26 @@ export class DragDropManager {
             }
 
             const result = await response.json();
-            console.log('✅ Appointment rescheduled:', result);
 
             // Reload appointments and re-render
             await this.scheduler.loadAppointments();
             this.scheduler.render();
 
             this.showSuccess('Appointment rescheduled successfully');
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'drag-drop',
+                    action: 'reschedule',
+                    appointmentId
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
         } catch (error) {
             console.error('❌ Reschedule failed:', error);
             this.showError('Failed to reschedule appointment. Please try again.');

@@ -31,11 +31,17 @@ WebSchedulr_ci4/
 ├── app/                          # CodeIgniter 4 application
 │   ├── Controllers/              # Request handlers
 │   │   ├── BaseController.php    # Base controller with UI helper loading
+│   │   ├── Api/                  # API controllers
+│   │   │   └── Availability.php  # Availability/scheduling API endpoints
+│   │   ├── PublicSite/           # Public-facing controllers
+│   │   │   └── BookingController.php # Public booking page
 │   │   ├── Dashboard.php         # Material Design dashboard controller
+│   │   ├── Appointments.php      # Appointment CRUD controller
 │   │   ├── Home.php             # Default welcome controller
 │   │   ├── Setup.php            # Setup wizard controller
-│   │   ├── Styleguide.php       # Design system documentation
-│   │   └── Tw.php               # Tailwind testing controller
+│   │   └── Styleguide.php       # Design system documentation
+│   ├── Services/                # Business logic services
+│   │   └── AvailabilityService.php # Core scheduling/availability engine
 │   ├── Config/                  # Application configuration
 │   │   ├── App.php              # Main app config (baseURL, indexPage)
 │   │   └── Routes.php           # URL routing definitions
@@ -43,22 +49,26 @@ WebSchedulr_ci4/
 │   │   ├── ui_helper.php        # UI component helper functions
 │   │   └── vite_helper.php      # Vite asset management helpers
 │   └── Views/                   # Template files
+│       ├── appointments/        # Appointment management views
+│       │   └── form.php         # Create/edit appointment form
 │       ├── components/          # Reusable view components
 │       │   ├── layout.php       # Main layout template
 │       │   ├── header.php       # Header component
 │       │   └── footer.php       # Footer component
+│       ├── public_booking/      # Public booking views
+│       │   └── index.php        # Public booking SPA container
 │       ├── dashboard.php        # Production Material Design dashboard
-│       ├── dashboard_simple.php # Simplified dashboard variant
-│       ├── dashboard_example.php # Dashboard development examples
-│       ├── material_web_example.php # Material Web Components showcase
-│       ├── styleguide/          # Design system documentation
-│       │   ├── index.php        # Style guide home
-│       │   └── components.php   # Component showcase
 │       ├── setup.php            # Setup wizard view
-│       └── tw.php               # Tailwind test page
+│       └── styleguide/          # Design system documentation
 ├── resources/                   # Frontend assets
 │   ├── js/
 │   │   ├── app.js              # Main JavaScript entry point
+│   │   ├── public-booking.js   # Public booking SPA
+│   │   ├── modules/
+│   │   │   ├── appointments/
+│   │   │   │   └── time-slots-ui.js  # Admin time slot picker
+│   │   │   └── calendar/
+│   │   │       └── calendar-utils.js # Shared calendar utilities
 │   │   ├── material-web.js     # Material Web Components setup
 │   │   └── charts.js           # Chart.js configurations and utilities
 │   └── scss/
@@ -68,9 +78,15 @@ WebSchedulr_ci4/
 │   ├── build/assets/           # Compiled assets (Vite output)
 │   │   ├── style.css          # Compiled Tailwind + Material styles
 │   │   ├── main.js            # App logic + Chart.js bundle
+│   │   ├── public-booking.js  # Public booking SPA bundle
 │   │   └── materialWeb.js     # Material Web Components bundle
 │   ├── index.php              # Application entry point
 │   └── .htaccess              # Apache rewrite rules with security headers
+├── docs/                      # Documentation
+│   ├── architecture/          # Architecture documentation
+│   ├── design/                # Design documentation
+│   │   └── PRELOADED_AVAILABILITY_SYSTEM.md # Availability system docs
+│   └── SCHEDULING_SYSTEM.md   # Core scheduling documentation
 ├── scripts/                   # Build and deployment scripts
 │   └── package.js             # Production deployment packaging script
 ├── system/                    # CodeIgniter 4 framework (copied to deployment)
@@ -448,12 +464,22 @@ npm run package
 
 ### Routes Configuration
 ```php
+// Public routes
 $routes->get('/', 'Home::index');                    # Welcome page
 $routes->get('setup', 'Setup::setup');               # Setup wizard
-$routes->get('tw', 'Tw::tw');                       # Tailwind test
-$routes->get('styleguide', 'Styleguide::index');     # Design system docs
-$routes->get('styleguide/components', 'Styleguide::components');
-$routes->get('styleguide/scheduler', 'Styleguide::scheduler');
+$routes->get('book', 'PublicSite\BookingController::index');  # Public booking
+
+// API routes
+$routes->group('api', function($routes) {
+  $routes->get('availability/calendar', 'Api\Availability::calendar');
+  $routes->get('availability/slots', 'Api\Availability::slots');
+  $routes->post('availability/check', 'Api\Availability::check');
+});
+
+// Admin routes (requires authentication)
+$routes->get('appointments', 'Appointments::index');
+$routes->get('appointments/create', 'Appointments::create');
+$routes->get('appointments/(:num)/edit', 'Appointments::edit/$1');
 ```
 
 ### Environment Configuration
@@ -466,6 +492,82 @@ app.baseURL = 'http://localhost:8080/'
 CI_ENVIRONMENT = production
 app.baseURL = ''  # Flexible for any domain
 ```
+
+## Scheduling & Availability System
+
+The core scheduling system provides real-time availability calculation with preloaded calendar data for optimal UX.
+
+### Architecture Overview
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    AVAILABILITY ARCHITECTURE                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Frontend                    API Layer                 Backend       │
+│  ────────                    ─────────                 ───────       │
+│                                                                      │
+│  ┌──────────────┐     ┌──────────────────┐     ┌─────────────────┐  │
+│  │ Admin Form   │────▶│ Api\Availability │────▶│ Availability    │  │
+│  │ time-slots-  │     │ ::calendar()     │     │ Service         │  │
+│  │ ui.js        │     └──────────────────┘     │                 │  │
+│  └──────────────┘                              │ getCalendar     │  │
+│                                                │ Availability()  │  │
+│  ┌──────────────┐     ┌──────────────────┐     │                 │  │
+│  │ Public       │────▶│ PublicSite\      │────▶│ 5-min cache     │  │
+│  │ Booking SPA  │     │ Booking::        │     │ per combo       │  │
+│  │ public-      │     │ calendar()       │     └─────────────────┘  │
+│  │ booking.js   │     └──────────────────┘              │           │
+│  └──────────────┘                                       ▼           │
+│         │                                      ┌─────────────────┐  │
+│         │         Calendar Response            │ Database        │  │
+│         ▼         ─────────────────            │ - appointments  │  │
+│  ┌──────────────┐  {availableDates,            │ - schedules     │  │
+│  │ Date Pills   │   slotsByDate,               │ - blocked_times │  │
+│  │ Auto-select  │   defaultDate}               │ - services      │  │
+│  │ Slot Grid    │                              └─────────────────┘  │
+│  └──────────────┘                                                   │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+#### Backend Service (`app/Services/AvailabilityService.php`)
+- `getCalendarAvailability()` - Pre-compute 60-day availability window
+- `getAvailableSlots()` - Get slots for a specific date
+- `isSlotAvailable()` - Validate slot availability
+- 5-minute server-side caching per provider/service/date combo
+
+#### API Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/availability/calendar` | GET | 60-day preloaded availability |
+| `/api/availability/slots` | GET | Single-day slot list |
+| `/api/availability/check` | POST | Validate specific slot |
+| `/public/booking/calendar` | GET | Public calendar (no auth) |
+
+#### Frontend Modules
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `calendar-utils.js` | `resources/js/modules/calendar/` | Shared normalization utilities |
+| `time-slots-ui.js` | `resources/js/modules/appointments/` | Admin form time slot picker |
+| `public-booking.js` | `resources/js/` | Public booking SPA |
+
+### Preloaded Availability UX
+When user selects provider + service:
+1. **Immediate feedback**: Date pills show first 5 available dates
+2. **Auto-selection**: First available date auto-selected if none specified
+3. **Slot grid**: Time slots populate instantly from cached calendar
+4. **No empty states**: Warning shown if no availability in 60 days
+
+### Caching Strategy
+- **Server (PHP)**: 5-minute TTL per provider/service/timezone
+- **Client (JS)**: 1-minute TTL per browser session
+- **Cache invalidation**: Manual clear or TTL expiry
+
+For detailed documentation, see:
+- `docs/SCHEDULING_SYSTEM.md` - Core scheduling logic
+- `docs/design/PRELOADED_AVAILABILITY_SYSTEM.md` - Frontend integration
 
 ## Application Entry Points
 

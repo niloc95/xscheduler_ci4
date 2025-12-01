@@ -28,6 +28,12 @@ class RoleFilter implements FilterInterface
     {
         // Check if user is logged in first
         if (!session()->get('isLoggedIn')) {
+            // Check if this is an API request
+            if ($this->isApiRequest()) {
+                return service('response')
+                    ->setStatusCode(401)
+                    ->setJSON(['error' => ['message' => 'Authentication required. Please log in.', 'code' => 'unauthenticated']]);
+            }
             session()->set('redirect_url', current_url());
             return redirect()->to('/auth/login')->with('error', 'Please log in to access this page.');
         }
@@ -36,6 +42,12 @@ class RoleFilter implements FilterInterface
         $user = session()->get('user');
 
         if (!$userId || !$user) {
+            // Check if this is an API request
+            if ($this->isApiRequest()) {
+                return service('response')
+                    ->setStatusCode(401)
+                    ->setJSON(['error' => ['message' => 'Invalid session. Please log in again.', 'code' => 'session_invalid']]);
+            }
             return redirect()->to('/auth/login')->with('error', 'Invalid session. Please log in again.');
         }
 
@@ -99,5 +111,16 @@ class RoleFilter implements FilterInterface
 
         // Web request - redirect to dashboard with error
         return redirect()->to('/dashboard')->with('error', 'Access denied. You do not have permission to access that resource.');
+    }
+
+    /**
+     * Check if this is an API/AJAX request
+     */
+    private function isApiRequest(): bool
+    {
+        $request = service('request');
+        return $request->isAJAX() 
+            || $request->getHeaderLine('Accept') === 'application/json'
+            || str_starts_with($request->getPath(), 'api/');
     }
 }

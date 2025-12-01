@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\BaseModel;
 
+use CodeIgniter\Database\BaseBuilder;
+
 class AppointmentModel extends BaseModel
 {
     protected $table            = 'xs_appointments';
@@ -29,7 +31,9 @@ class AppointmentModel extends BaseModel
         'end_time',
         'status',
         'notes',
-        'hash'
+        'hash',
+        'public_token',
+        'public_token_expires_at',
     ];
 
     protected $beforeInsert = ['generateHash'];
@@ -103,9 +107,28 @@ class AppointmentModel extends BaseModel
     /**
      * Dashboard / analytics helpers
      */
-    public function getStats(): array
+    public const SIMPLE_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
+
+    /**
+     * Count appointments by semantic status (supports "upcoming" virtual status)
+     */
+    public function countByStatus(string $status, array $context = [], ?string $baseStatusFilter = null): int
     {
-        $total = $this->countAll();
+        $builder = $this->builder();
+        $this->applyContextScope($builder, $context);
+        if ($baseStatusFilter) {
+            $this->applyStatusFilter($builder, $baseStatusFilter);
+        }
+        $this->applyStatusFilter($builder, $status);
+        return (int) $builder->countAllResults();
+    }
+
+    /**
+     * Return summarized stats for dashboards.
+     */
+    public function getStats(array $context = [], ?string $statusFilter = null): array
+    {
+        $statusFilter = $this->normalizeStatusFilter($statusFilter);
         $now        = date('Y-m-d H:i:s');
         $todayStart = date('Y-m-d 00:00:00');
         $todayEnd   = date('Y-m-d 23:59:59');
@@ -113,23 +136,125 @@ class AppointmentModel extends BaseModel
         $weekEnd    = date('Y-m-d 23:59:59', strtotime('sunday this week'));
         $monthStart = date('Y-m-01 00:00:00');
         $monthEnd   = date('Y-m-t 23:59:59');
+
         return [
-            'total' => $total,
-            'today' => $this->where('start_time >=', $todayStart)
-                            ->where('start_time <=', $todayEnd)
-                            ->countAllResults(false),
-            'upcoming' => $this->where('start_time >', $now)
-                               ->whereIn('status', ['pending', 'confirmed'])
-                               ->countAllResults(false),
-            'completed' => $this->where('status', 'completed')->countAllResults(false),
-            'cancelled' => $this->where('status', 'cancelled')->countAllResults(false),
-            'this_week' => $this->where('start_time >=', $weekStart)
-                                ->where('start_time <=', $weekEnd)
-                                ->countAllResults(false),
-            'this_month' => $this->where('start_time >=', $monthStart)
-                                 ->where('start_time <=', $monthEnd)
-                                 ->countAllResults(false)
+            'total'     => (int) $this->applyAllScopes($this->builder(), $context, $statusFilter)->countAllResults(),
+            'today'     => (int) $this->applyAllScopes($this->builder()
+                ->where('start_time >=', $todayStart)
+                ->where('start_time <=', $todayEnd), $context, $statusFilter)->countAllResults(),
+            'upcoming'  => $this->countByStatus('upcoming', $context, $statusFilter),
+            'pending'   => $this->countByStatus('pending', $context, $statusFilter),
+            'completed' => $this->countByStatus('completed', $context, $statusFilter),
+            'cancelled' => $this->countByStatus('cancelled', $context, $statusFilter),
+            'this_week' => (int) $this->applyAllScopes($this->builder()
+                ->where('start_time >=', $weekStart)
+                ->where('start_time <=', $weekEnd), $context, $statusFilter)->countAllResults(),
+            'this_month'=> (int) $this->applyAllScopes($this->builder()
+                ->where('start_time >=', $monthStart)
+                ->where('start_time <=', $monthEnd), $context, $statusFilter)->countAllResults(),
         ];
+    }
+
+    /**
+     * Fetch appointments for dashboard widgets with optional status filter.
+     */
+    public function getDashboardAppointments(?string $status = null, array $context = [], int $limit = 50): array
+    {
+        $builder = $this->builder()
+            ->select('xs_appointments.*, 
+                     CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                     c.email as customer_email,
+                     c.phone as customer_phone,
+                     s.name as service_name,
+                     u.name as provider_name,
+                     u.color as provider_color')
+            ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
+            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
+            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
+            ->orderBy('xs_appointments.start_time', 'ASC')
+            ->limit($limit);
+
+        $this->applyStatusFilter($builder, $status);
+        $this->applyContextScope($builder, $context);
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Normalize and apply status filter to a builder instance.
+     */
+    public function applyStatusFilter(BaseBuilder $builder, ?string $status): BaseBuilder
+    {
+        $normalized = $this->normalizeStatusFilter($status);
+
+        if ($normalized === null) {
+            return $builder;
+        }
+
+        if ($normalized === 'upcoming') {
+            $builder->where('xs_appointments.start_time >=', date('Y-m-d H:i:s'))
+                    ->whereIn('xs_appointments.status', ['pending', 'confirmed']);
+            return $builder;
+        }
+
+        return $builder->where('xs_appointments.status', $normalized);
+    }
+
+    /**
+     * Apply context scope (provider/customer) to builder or counts.
+     */
+    private function applyContextScope(BaseBuilder $builder, array $context): BaseBuilder
+    {
+        if (array_key_exists('provider_id', $context)) {
+            $providerConstraint = $context['provider_id'];
+            if (is_array($providerConstraint)) {
+                $providerIds = array_values(array_filter(array_map('intval', $providerConstraint)));
+                if (!empty($providerIds)) {
+                    $builder->whereIn('xs_appointments.provider_id', $providerIds);
+                }
+            } elseif (!empty($providerConstraint)) {
+                $builder->where('xs_appointments.provider_id', (int) $providerConstraint);
+            }
+        }
+
+        if (array_key_exists('customer_id', $context)) {
+            $customerConstraint = $context['customer_id'];
+            if (is_array($customerConstraint)) {
+                $customerIds = array_values(array_filter(array_map('intval', $customerConstraint)));
+                if (!empty($customerIds)) {
+                    $builder->whereIn('xs_appointments.customer_id', $customerIds);
+                }
+            } elseif (!empty($customerConstraint)) {
+                $builder->where('xs_appointments.customer_id', (int) $customerConstraint);
+            }
+        }
+
+        return $builder;
+    }
+
+    private function applyAllScopes(BaseBuilder $builder, array $context, ?string $statusFilter = null): BaseBuilder
+    {
+        $this->applyContextScope($builder, $context);
+        if ($statusFilter) {
+            $this->applyStatusFilter($builder, $statusFilter);
+        }
+
+        return $builder;
+    }
+
+    public function normalizeStatusFilter(?string $status): ?string
+    {
+        if (!$status) {
+            return null;
+        }
+
+        $status = strtolower($status);
+
+        if ($status === 'upcoming') {
+            return 'upcoming';
+        }
+
+        return in_array($status, self::SIMPLE_STATUSES, true) ? $status : null;
     }
 
     /**

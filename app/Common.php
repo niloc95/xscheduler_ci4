@@ -13,3 +13,6 @@
  *
  * @see: https://codeigniter.com/user_guide/extending/common.html
  */
+
+// Set application timezone - CodeIgniter will use this from App config
+// The timezone is set in app/Config/App.php

@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\CustomerModel;
@@ -36,8 +35,14 @@ class Scheduler extends BaseController
     }
 
     // API: GET /api/slots?provider_id=1&service_id=2&date=2025-08-24
+    // @deprecated Use /api/availability or /api/availability/calendar instead
     public function slots()
     {
+        // Add deprecation headers
+        $this->response->setHeader('Deprecation', 'true');
+        $this->response->setHeader('Sunset', 'Sat, 01 Mar 2026 00:00:00 GMT');
+        $this->response->setHeader('Link', '</api/availability>; rel="successor-version"');
+        
         $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
         $serviceId  = (int) ($this->request->getGet('service_id') ?? 0);
         $date       = $this->request->getGet('date') ?? date('Y-m-d');
@@ -46,15 +51,21 @@ class Scheduler extends BaseController
             return $this->response->setStatusCode(400)->setJSON(['error' => 'provider_id and service_id are required']);
         }
 
-        $slotGen = new SlotGenerator();
-        $slots = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new \App\Services\AvailabilityService();
+        $slots = $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
         return $this->response->setJSON(['date' => $date, 'slots' => $slots]);
     }
 
     // API: POST /api/book
     // body: { name, email, phone?, provider_id, service_id, date, start, notes? }
+    // @deprecated Use /api/appointments POST instead
     public function book()
     {
+        // Add deprecation headers
+        $this->response->setHeader('Deprecation', 'true');
+        $this->response->setHeader('Sunset', 'Sat, 01 Mar 2026 00:00:00 GMT');
+        $this->response->setHeader('Link', '</api/appointments>; rel="successor-version"');
+        
         $data = $this->request->getJSON(true) ?? $this->request->getPost();
         $required = ['name','email','provider_id','service_id','date','start'];
         foreach ($required as $r) {
@@ -75,27 +86,17 @@ class Scheduler extends BaseController
         $startDT = strtotime($date . ' ' . $start);
         $endDT   = $startDT + ($duration * 60);
 
-        // Create or find customer by email in xs_customers
+        // Create or find customer by email - using helper method
         $customerModel = new CustomerModel();
-        $customer = $customerModel->where('email', $data['email'])->first();
-        if (!$customer) {
-            $names = preg_split('/\s+/', trim((string)$data['name']));
-            $first = $names[0] ?? '';
-            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
-            $customerId = $customerModel->insert([
-                'first_name' => $first,
-                'last_name'  => $last,
-                'email'      => $data['email'],
-                'phone'      => $data['phone'] ?? null,
-                'created_at' => date('Y-m-d H:i:s'),
-            ], false);
-        } else {
-            $customerId = $customer['id'];
-        }
+        $customerId = $customerModel->findOrCreateByEmail(
+            $data['email'],
+            $data['name'],
+            $data['phone'] ?? null
+        );
 
         // Final availability check to avoid race conditions
-        $slotGen = new SlotGenerator();
-        $available = $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new \App\Services\AvailabilityService();
+        $available = $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
         $requested = date('H:i', $startDT) . '-' . date('H:i', $endDT);
         $isAvailable = false;
         foreach ($available as $s) {

@@ -243,10 +243,6 @@ export class AppointmentDetailsModal {
      * Open modal with appointment data
      */
     open(appointment) {
-        console.log('[AppointmentDetailsModal] open() called');
-        console.log('[AppointmentDetailsModal] this.modal:', this.modal);
-        console.log('[AppointmentDetailsModal] modal element in DOM?', document.getElementById('appointment-details-modal'));
-        
         if (!this.modal) {
             console.error('[AppointmentDetailsModal] Modal element not found!');
             return;
@@ -254,28 +250,16 @@ export class AppointmentDetailsModal {
         
         try {
             this.currentAppointment = appointment;
-            console.log('[AppointmentDetailsModal] Populating details...');
             this.populateDetails(appointment);
             
-            console.log('[AppointmentDetailsModal] Removing hidden class...');
             // Show modal with fade-in animation
             this.modal.classList.remove('hidden');
             
             // Prevent body scroll when modal is open
             document.body.style.overflow = 'hidden';
             
-            console.log('[AppointmentDetailsModal] Adding scheduler-modal-open class...');
             requestAnimationFrame(() => {
                 this.modal.classList.add('scheduler-modal-open');
-                console.log('[AppointmentDetailsModal] Modal should be visible now');
-                console.log('[AppointmentDetailsModal] Modal classes:', this.modal.className);
-                console.log('[AppointmentDetailsModal] Modal computed styles:', {
-                    position: window.getComputedStyle(this.modal).position,
-                    zIndex: window.getComputedStyle(this.modal).zIndex,
-                    display: window.getComputedStyle(this.modal).display,
-                    top: window.getComputedStyle(this.modal).top,
-                    left: window.getComputedStyle(this.modal).left
-                });
             });
         } catch (error) {
             console.error('[AppointmentDetailsModal] Error opening modal:', error);
@@ -451,6 +435,20 @@ export class AppointmentDetailsModal {
             // Refresh calendar to show updated status
             await this.scheduler.loadAppointments();
             this.scheduler.render();
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'status-change',
+                    appointmentId: appointment.id,
+                    status: newStatus
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
             
         } catch (error) {
             console.error('Error updating status:', error);
@@ -515,6 +513,20 @@ export class AppointmentDetailsModal {
             this.close();
             await this.scheduler.loadAppointments();
             this.scheduler.render();
+
+            if (typeof window !== 'undefined') {
+                const detail = {
+                    source: 'status-change',
+                    appointmentId: appointment.id,
+                    status: 'cancelled'
+                };
+
+                if (typeof window.emitAppointmentsUpdated === 'function') {
+                    window.emitAppointmentsUpdated(detail);
+                } else {
+                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                }
+            }
             
         } catch (error) {
             console.error('Error cancelling appointment:', error);

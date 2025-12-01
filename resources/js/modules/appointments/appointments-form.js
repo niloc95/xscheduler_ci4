@@ -14,9 +14,11 @@ import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '/r
 
 /**
  * Initialize the appointment booking form
+ * Works for both create (/appointments/store) and edit (/appointments/update/X) forms
  */
 export async function initAppointmentForm() {
-    const form = document.querySelector('form[action*="/appointments/store"]');
+    // Match both create and edit forms
+    const form = document.querySelector('form[action*="/appointments/store"], form[action*="/appointments/update"]');
     if (!form) return;
 
     const providerSelect = document.getElementById('provider_id');
@@ -119,17 +121,6 @@ export async function initAppointmentForm() {
         }
         
         // AJAX form submission
-        console.log('[appointments-form] ========== FORM SUBMISSION START ==========');
-        console.log('[appointments-form] Form data being submitted:', {
-            provider_id: formState.provider_id,
-            service_id: formState.service_id,
-            date: formState.date,
-            time: formState.time,
-            duration: formState.duration,
-            timezone: getBrowserTimezone(),
-            offset: getTimezoneOffset()
-        });
-        
         const submitButton = form.querySelector('button[type="submit"]');
         const originalButtonText = submitButton.textContent;
         
@@ -141,9 +132,10 @@ export async function initAppointmentForm() {
             // Submit form via AJAX
             const formData = new FormData(form);
             
-            console.log('[appointments-form] Sending POST request to:', form.action);
+            // Get form action URL (use getAttribute to avoid conflict with button named "action")
+            const formActionUrl = form.getAttribute('action');
             
-            const response = await fetch(form.action, {
+            const response = await fetch(formActionUrl, {
                 method: 'POST',
                 headers: {
                     ...attachTimezoneHeaders(),
@@ -151,8 +143,6 @@ export async function initAppointmentForm() {
                 },
                 body: formData
             });
-            
-            console.log('[appointments-form] Server response status:', response.status);
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -165,25 +155,35 @@ export async function initAppointmentForm() {
             
             if (contentType && contentType.includes('application/json')) {
                 const result = await response.json();
-                console.log('[appointments-form] JSON response:', result);
                 
                 if (result.success || result.data) {
-                    console.log('[appointments-form] ✅ Appointment created successfully!');
-                    console.log('[appointments-form] Appointment ID:', result.data?.id || result.id);
-                    
                     // Show success message
                     alert('✅ Appointment booked successfully!');
+
+                    if (typeof window !== 'undefined') {
+                        const detail = { source: 'appointment-form', action: 'create-or-update' };
+                        if (typeof window.emitAppointmentsUpdated === 'function') {
+                            window.emitAppointmentsUpdated(detail);
+                        } else {
+                            window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                        }
+                    }
                     
                     // Redirect to appointments page so calendar can refresh
-                    console.log('[appointments-form] Redirecting to /appointments...');
                     window.location.href = '/appointments';
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
             } else {
                 // HTML response (redirect) - follow it
-                console.log('[appointments-form] ✅ Appointment created (redirect response)');
-                console.log('[appointments-form] Redirecting to /appointments...');
+                if (typeof window !== 'undefined') {
+                    const detail = { source: 'appointment-form', action: 'create-or-update' };
+                    if (typeof window.emitAppointmentsUpdated === 'function') {
+                        window.emitAppointmentsUpdated(detail);
+                    } else {
+                        window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
+                    }
+                }
                 window.location.href = '/appointments';
             }
             
@@ -195,8 +195,6 @@ export async function initAppointmentForm() {
             submitButton.disabled = false;
             submitButton.textContent = originalButtonText;
         }
-        
-        console.log('[appointments-form] ========================================');
         
         return false;
     });
@@ -267,43 +265,37 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
 
 /**
  * Check availability for selected appointment slot
- * TEMPORARILY DISABLED: API endpoint causing 500 errors
  */
 async function checkAvailability(formState, feedbackElement) {
     // Need all required fields
-    if (!formState.provider_id || !formState.service_id || !formState.date || !formState.time) {
+    if (!formState.provider_id || !formState.service_id || !formState.date || !formState.time || !formState.duration) {
         clearAvailabilityCheck(feedbackElement);
         return;
     }
 
-    // DISABLED: Availability checking temporarily disabled due to API errors
-    // The endpoint /api/appointments/check-availability is returning 500 errors
-    // TODO: Fix the API endpoint or remove this feature entirely
-    clearAvailabilityCheck(feedbackElement);
-    return;
-
-    /* COMMENTED OUT UNTIL API IS FIXED
     formState.isChecking = true;
     showAvailabilityChecking(feedbackElement);
 
     try {
-        // Combine date and time into ISO format start_time
+        // Calculate start and end times
         const startTime = `${formState.date} ${formState.time}:00`;
+        const startDate = new Date(`${formState.date}T${formState.time}:00`);
+        const endDate = new Date(startDate.getTime() + formState.duration * 60000);
+        const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
         
-        const response = await fetch('/api/appointments/check-availability', {
+        // Use the correct availability API endpoint
+        const response = await fetch('/api/availability/check', {
             method: 'POST',
             headers: {
-                ...attachTimezoneHeaders(),
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 provider_id: parseInt(formState.provider_id),
-                service_id: parseInt(formState.service_id),
                 start_time: startTime,
-                timezone: getBrowserTimezone(),
-                offset: getTimezoneOffset()
+                end_time: endTime,
+                timezone: getBrowserTimezone()
             })
         });
 
@@ -311,24 +303,16 @@ async function checkAvailability(formState, feedbackElement) {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || result;
         
         formState.isAvailable = data.available === true;
         
         if (formState.isAvailable) {
-            showAvailabilitySuccess(feedbackElement, 'Time slot available');
+            showAvailabilitySuccess(feedbackElement, '✓ Time slot available');
         } else {
-            // Build detailed error message
-            let message = 'Time slot not available';
-            
-            if (data.businessHoursViolation) {
-                message = data.businessHoursViolation;
-            } else if (data.conflicts && data.conflicts.length > 0) {
-                message = `Conflicts with ${data.conflicts.length} existing appointment(s)`;
-            } else if (data.blockedTimeConflicts > 0) {
-                message = 'Time slot is blocked';
-            }
-            
+            // Build detailed error message from the reason
+            const message = data.reason || 'Time slot not available';
             showAvailabilityError(feedbackElement, message);
         }
 
@@ -339,7 +323,6 @@ async function checkAvailability(formState, feedbackElement) {
     } finally {
         formState.isChecking = false;
     }
-    END OF COMMENTED CODE */
 }
 
 /**

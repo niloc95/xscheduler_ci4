@@ -42,6 +42,7 @@ class Filters extends BaseFilters
         'setup'         => \App\Filters\SetupFilter::class,
         'setup_auth'    => \App\Filters\SetupAuthFilter::class,
         'timezone'      => \App\Filters\TimezoneDetection::class,
+        'public_rate_limit' => \App\Filters\PublicBookingRateLimiter::class,
     ];
 
     /**

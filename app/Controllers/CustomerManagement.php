@@ -4,16 +4,19 @@ namespace App\Controllers;
 
 use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
+use App\Services\CustomerAppointmentService;
 
 class CustomerManagement extends BaseController
 {
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
+    protected CustomerAppointmentService $appointmentService;
 
     public function __construct()
     {
         $this->customers = new CustomerModel();
         $this->bookingSettings = new BookingSettingsService();
+        $this->appointmentService = new CustomerAppointmentService();
     }
 
     /**
@@ -313,5 +316,64 @@ class CustomerManagement extends BaseController
                 'error' => 'Search failed: ' . $e->getMessage()
             ]));
         }
+    }
+
+    /**
+     * View customer appointment history
+     */
+    public function history(string $hash)
+    {
+        if (!session()->get('user_id')) {
+            return redirect()->to('/auth/login');
+        }
+        
+        $customer = $this->customers->findByHash($hash);
+        if (!$customer) {
+            return redirect()->to('/customer-management')->with('error', 'Customer not found.');
+        }
+
+        $customerId = (int) $customer['id'];
+        
+        // Get query parameters for filtering
+        $page = max(1, (int) $this->request->getGet('page') ?: 1);
+        $status = $this->request->getGet('status');
+        $providerId = $this->request->getGet('provider_id');
+        $serviceId = $this->request->getGet('service_id');
+        $dateFrom = $this->request->getGet('date_from');
+        $dateTo = $this->request->getGet('date_to');
+
+        $filters = [];
+        if ($status) $filters['status'] = $status;
+        if ($providerId) $filters['provider_id'] = (int) $providerId;
+        if ($serviceId) $filters['service_id'] = (int) $serviceId;
+        if ($dateFrom) $filters['date_from'] = $dateFrom;
+        if ($dateTo) $filters['date_to'] = $dateTo;
+
+        // Get appointment history with pagination
+        $history = $this->appointmentService->getHistory($customerId, $filters, $page, 20);
+        
+        // Get stats
+        $stats = $this->appointmentService->getStats($customerId);
+        
+        // Get upcoming appointments
+        $upcoming = $this->appointmentService->getUpcoming($customerId, 5);
+        
+        // Get filter options
+        $providers = $this->appointmentService->getProvidersForFilter();
+        $services = $this->appointmentService->getServicesForFilter();
+
+        $data = [
+            'title' => 'Customer History - ' . trim($customer['first_name'] . ' ' . ($customer['last_name'] ?? '')),
+            'customer' => $customer,
+            'history' => $history,
+            'stats' => $stats,
+            'upcoming' => $upcoming,
+            'providers' => $providers,
+            'services' => $services,
+            'filters' => $filters,
+            'currentPage' => $page,
+        ];
+
+        return view('customer_management/history', $data);
     }
 }

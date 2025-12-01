@@ -73,6 +73,7 @@ class Settings extends BaseController
                 'timezone' => $service->getTimezone(),
                 'timeFormat' => $service->getTimeFormat(),
                 'is12Hour' => $service->isTwelveHour(),
+                'firstDayOfWeek' => $service->getFirstDayOfWeek(),
                 'context' => $service->getContext(),
             ];
             

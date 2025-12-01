@@ -13,6 +13,10 @@ class Appointments extends BaseController
     /**
      * List appointments with pagination, filtering, and date range support
      * GET /api/appointments?start=&end=&providerId=&serviceId=&page=&length=&sort=
+     * 
+     * P0-3 Performance Optimization Parameters:
+     * - futureOnly=1: Only load today's and future appointments (excludes historical data)
+     * - lookAheadDays=90: Limit how far into the future to load (default: 90 days)
      */
     public function index()
     {
@@ -25,9 +29,15 @@ class Appointments extends BaseController
             $providerId = $this->request->getGet('providerId');
             $serviceId = $this->request->getGet('serviceId');
             
+            // P0-3 Performance Optimization: Future-only mode for calendar views
+            $futureOnly = filter_var($this->request->getGet('futureOnly'), FILTER_VALIDATE_BOOLEAN);
+            $lookAheadDays = (int)($this->request->getGet('lookAheadDays') ?? 90);
+            $lookAheadDays = max(1, min($lookAheadDays, 365)); // Clamp between 1 and 365 days
+            
             // Pagination parameters
             $page = max(1, (int)($this->request->getGet('page') ?? 1));
-            $length = min(100, max(1, (int)($this->request->getGet('length') ?? 50)));
+            // Custom scheduler can request hundreds of records per month, so use a higher default to avoid truncation
+            $length = min(2000, max(1, (int)($this->request->getGet('length') ?? 1000)));
             $offset = ($page - 1) * $length;
             
             // Sort parameters (default: start_time ASC)
@@ -57,12 +67,33 @@ class Appointments extends BaseController
                     ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
                     ->orderBy('xs_appointments.' . $sortField, $sortDir);
             
-            // Apply date range filter
+            // P0-3 Performance Optimization: Apply future-only filter if enabled
+            // This significantly reduces load for calendars with historical data
+            if ($futureOnly) {
+                $todayStart = date('Y-m-d 00:00:00');
+                $builder->where('xs_appointments.start_time >=', $todayStart);
+                
+                // Also apply look-ahead limit to prevent loading too far into future
+                if ($lookAheadDays > 0) {
+                    $futureLimit = date('Y-m-d 23:59:59', strtotime("+{$lookAheadDays} days"));
+                    $builder->where('xs_appointments.start_time <=', $futureLimit);
+                }
+                
+                log_message('info', "[API/Appointments::index] P0-3 futureOnly mode: loading $todayStart to $futureLimit");
+            }
+            
+            // Apply date range filter (respects futureOnly constraints)
             if ($start || $end) {
                 // Custom scheduler sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
                 // Parse into DateTimeImmutable for consistent handling
                 $startDate = substr($start, 0, 10); // Get YYYY-MM-DD
                 $endDate = substr($end, 0, 10);     // Get YYYY-MM-DD
+                
+                // P0-3: If futureOnly is enabled, enforce minimum start date as today
+                if ($futureOnly) {
+                    $today = date('Y-m-d');
+                    $startDate = max($startDate, $today);
+                }
                 
                 $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00')
                         ->where('xs_appointments.start_time <=', $endDate . ' 23:59:59');
@@ -75,6 +106,11 @@ class Appointments extends BaseController
             
             if ($serviceId) {
                 $builder->where('xs_appointments.service_id', (int)$serviceId);
+            }
+
+            $statusFilter = $model->normalizeStatusFilter($this->request->getGet('status'));
+            if ($statusFilter !== null) {
+                $model->applyStatusFilter($builder, $statusFilter);
             }
             
             // Get total count for pagination
@@ -89,7 +125,9 @@ class Appointments extends BaseController
                 'start' => $start,
                 'end' => $end,
                 'providerId' => $providerId,
-                'serviceId' => $serviceId
+                'serviceId' => $serviceId,
+                'futureOnly' => $futureOnly,
+                'lookAheadDays' => $lookAheadDays
             ]);
             log_message('info', '[API/Appointments::index] Found ' . count($appointments) . ' appointments');
             
@@ -142,7 +180,8 @@ class Appointments extends BaseController
                         'start' => $start,
                         'end' => $end,
                         'providerId' => $providerId,
-                        'serviceId' => $serviceId
+                        'serviceId' => $serviceId,
+                        'status' => $statusFilter
                     ]
                 ]
             ]);
@@ -301,10 +340,13 @@ class Appointments extends BaseController
             $endDateTime = clone $startDateTime;
             $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
 
-            $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone);
-            $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone);
+            $startTimeLocal = $startDateTime->format('Y-m-d H:i:s');
+            $endTimeLocal = $endDateTime->format('Y-m-d H:i:s');
+            $startTimeUtc = TimezoneService::toUTC($startTimeLocal, $timezone);
+            $endTimeUtc = TimezoneService::toUTC($endTimeLocal, $timezone);
             
             // Check for overlapping appointments
+            // NOTE: Database stores times in LOCAL timezone, so compare against local times
             $model = new AppointmentModel();
             $builder = $model->builder();
             $builder->where('provider_id', (int)$providerId)
@@ -312,18 +354,18 @@ class Appointments extends BaseController
                     ->groupStart()
                         // New appointment starts during existing appointment
                         ->groupStart()
-                            ->where('start_time <=', $startTimeUtc)
-                            ->where('end_time >', $startTimeUtc)
+                            ->where('start_time <=', $startTimeLocal)
+                            ->where('end_time >', $startTimeLocal)
                         ->groupEnd()
                         // New appointment ends during existing appointment
                         ->orGroupStart()
-                            ->where('start_time <', $endTimeUtc)
-                            ->where('end_time >=', $endTimeUtc)
+                            ->where('start_time <', $endTimeLocal)
+                            ->where('end_time >=', $endTimeLocal)
                         ->groupEnd()
                         // New appointment completely contains existing appointment
                         ->orGroupStart()
-                            ->where('start_time >=', $startTimeUtc)
-                            ->where('end_time <=', $endTimeUtc)
+                            ->where('start_time >=', $startTimeLocal)
+                            ->where('end_time <=', $endTimeLocal)
                         ->groupEnd()
                     ->groupEnd();
             
@@ -361,23 +403,24 @@ class Appointments extends BaseController
             }
             
             // Check blocked times
+            // NOTE: Database stores times in LOCAL timezone
             $blockedTimes = $db->table('blocked_times')
                 ->where('provider_id', (int)$providerId)
                 ->groupStart()
                     // Blocked time overlaps with appointment start
                     ->groupStart()
-                        ->where('start_time <=', $startTimeUtc)
-                        ->where('end_time >', $startTimeUtc)
+                        ->where('start_time <=', $startTimeLocal)
+                        ->where('end_time >', $startTimeLocal)
                     ->groupEnd()
                     // Blocked time overlaps with appointment end
                     ->orGroupStart()
-                        ->where('start_time <', $endTimeUtc)
-                        ->where('end_time >=', $endTimeUtc)
+                        ->where('start_time <', $endTimeLocal)
+                        ->where('end_time >=', $endTimeLocal)
                     ->groupEnd()
                     // Appointment completely contains blocked time
                     ->orGroupStart()
-                        ->where('start_time >=', $startTimeUtc)
-                        ->where('end_time <=', $endTimeUtc)
+                        ->where('start_time >=', $startTimeLocal)
+                        ->where('end_time <=', $endTimeLocal)
                     ->groupEnd()
                 ->groupEnd()
                 ->get()
@@ -394,8 +437,8 @@ class Appointments extends BaseController
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
-                    'start_time_local' => $startDateTime->format('Y-m-d H:i:s'),
-                    'end_time_local' => $endDateTime->format('Y-m-d H:i:s'),
+                    'start_time_local' => $startTimeLocal,
+                    'end_time_local' => $endTimeLocal,
                     'start_time_utc' => $startTimeUtc,
                     'end_time_utc' => $endTimeUtc,
                     'timezone' => $timezone,
@@ -559,7 +602,11 @@ class Appointments extends BaseController
         }
 
         try {
-            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            // Database stores times in local timezone (Africa/Johannesburg)
+            // Create DateTime in local timezone, then convert to UTC for API response
+            $appTimezone = config('App')->appTimezone ?? 'Africa/Johannesburg';
+            $dt = new \DateTime($datetime, new \DateTimeZone($appTimezone));
+            $dt->setTimezone(new \DateTimeZone('UTC'));
             return $dt->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception $e) {
             return $datetime;

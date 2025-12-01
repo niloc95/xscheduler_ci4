@@ -7,8 +7,6 @@ document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
 
 // Initialize Material Web Components when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Material Web Components loaded');
-    
     // Optional: Add any global Material Web configuration here
     
     // Example: Configure theme colors
@@ -25,6 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Export for use in other modules if needed
 export default {
     init: () => {
-        console.log('Material Web Components initialized');
+        // Material Web Components initialized
     }
 };

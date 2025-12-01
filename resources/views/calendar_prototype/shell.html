@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Shell Prototype</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "luxon": "https://cdn.jsdelivr.net/npm/luxon@3.4.4/+esm"
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="/resources/css/calendar/tailwind-prototype.css">
+</head>
+<body class="min-h-screen bg-[#FDF7E3] px-6 py-10 text-slate-900 transition dark:bg-[#1F2937] dark:text-white/90">
+    <div class="mx-auto max-w-6xl space-y-6">
+        <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Embedded shell content only. Global navigation + theme controls remain in the primary layout.
+        </p>
+
+        <section class="rounded-3xl border border-slate-200/70 bg-white/95 shadow-xl dark:border-slate-800 dark:bg-slate-900/90">
+            <header class="border-b border-slate-200/70 px-6 py-5 dark:border-slate-800">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 text-sm">
+                        <button data-nav="today" class="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Today</button>
+                        <div class="flex items-center gap-2">
+                            <button data-nav="prev" class="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Previous Range">Prev</button>
+                            <button data-nav="next" class="rounded-full border border-slate-200 px-4 py-2 font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Next Range">Next</button>
+                        </div>
+                        <span class="text-lg font-semibold text-[#003049] dark:text-white" data-range-label>January 2026</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold shadow-sm dark:border-slate-700 dark:bg-slate-800" data-view-switcher>
+                            <button type="button" data-view="month" class="rounded-full px-3 py-1 text-white bg-[#003049]">Month</button>
+                            <button type="button" data-view="week" class="rounded-full px-3 py-1 text-slate-500">Week</button>
+                            <button type="button" data-view="day" class="rounded-full px-3 py-1 text-slate-500">Day</button>
+                        </div>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                            Context: Provider Filters
+                        </span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-[220px_1fr] gap-0">
+                <aside class="border-r border-slate-200/70 bg-white/90 p-5 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div class="space-y-4">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Provider Rail</div>
+                        <div class="space-y-3 text-sm" data-provider-rail>
+                            <!-- providers rendered here -->
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="p-6">
+                    <div data-shell-root class="h-[720px] rounded-3xl border border-dashed border-slate-300 bg-white/70 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
+                        <!-- calendar view mounts here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script type="module">
+        import { calendarStore, boundActions, selectors } from '/resources/js/modules/calendar/state/index.js';
+        import { samplePayload } from '/resources/js/modules/calendar/state/fixtures/samplePayload.js';
+
+        boundActions.hydrate(samplePayload, { source: 'sandbox' });
+
+        const root = document.querySelector('[data-shell-root]');
+        const providerRail = document.querySelector('[data-provider-rail]');
+        const viewButtons = document.querySelectorAll('[data-view-switcher] button');
+        const navButtons = {
+            today: document.querySelector('[data-nav="today"]'),
+            prev: document.querySelector('[data-nav="prev"]'),
+            next: document.querySelector('[data-nav="next"]'),
+        };
+
+        function render() {
+            const state = calendarStore.getState();
+            renderProviders(state);
+            renderMeta(state);
+            renderActiveView(state);
+        }
+
+        function renderProviders(state) {
+            const providers = selectors.selectProviders(state);
+            if (!providerRail) return;
+            const activeSet = state.filters.providerIds ?? new Set();
+            const restrictMode = activeSet.size > 0;
+            providerRail.innerHTML = providers.map(provider => {
+                const isChecked = !restrictMode || activeSet.has(provider.id);
+                return `
+                    <label class="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/80 px-3 py-2 text-sm font-medium dark:border-slate-700 dark:bg-slate-800">
+                        <span class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-${provider.colorToken}"></span>
+                            ${provider.displayName}
+                        </span>
+                        <input type="checkbox" data-provider-checkbox value="${provider.id}" ${isChecked ? 'checked' : ''} class="h-4 w-4 rounded border-slate-300 text-${provider.colorToken}">
+                    </label>
+                `;
+            }).join('');
+            providerRail.querySelectorAll('[data-provider-checkbox]').forEach(input => {
+                input.addEventListener('change', () => boundActions.toggleProvider(input.value));
+            });
+        }
+
+        function renderMeta(state) {
+            const headerLabel = document.querySelector('[data-range-label]');
+            if (headerLabel) {
+                headerLabel.textContent = new Date(state.meta.rangeStart ?? Date.now()).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+            }
+        }
+
+        function renderActiveView(state) {
+            viewButtons.forEach(btn => {
+                const active = btn.dataset.view === state.meta.activeView;
+                btn.classList.toggle('bg-[#003049]', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('text-slate-500', !active);
+            });
+        }
+
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', () => boundActions.setActiveView(btn.dataset.view));
+        });
+
+        navButtons.today?.addEventListener('click', () => boundActions.setToday());
+        navButtons.prev?.addEventListener('click', () => boundActions.shiftRange(-1));
+        navButtons.next?.addEventListener('click', () => boundActions.shiftRange(1));
+
+        const unsubscribe = calendarStore.subscribe(render);
+        render();
+
+        window.addEventListener('beforeunload', unsubscribe);
+    </script>
+</body>
+</html>

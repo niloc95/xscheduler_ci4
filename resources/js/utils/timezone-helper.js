@@ -94,12 +94,6 @@ export function attachTimezoneHeaders() {
   // Store globally for reference
   window.__timezone = { timezone, offset };
   
-  console.log('[timezone-helper] Timezone headers prepared:', {
-    timezone,
-    offset: `${offset} minutes`,
-    offsetHours: `UTC${offset > 0 ? '+' : '-'}${Math.abs(offset / 60)}`
-  });
-  
   return {
     'X-Client-Timezone': timezone,
     'X-Client-Offset': offset.toString()

@@ -82,6 +82,26 @@
 /* Month View */
 .scheduler-month-view {
     animation: fadeIn 0.3s ease-out;
+    /* P0-3 FIX: Ensure month view does not get cut off at bottom */
+    overflow: visible;
+    min-height: 0;
+}
+
+/* P0-3 FIX: Month grid container - ensure proper height calculation */
+.scheduler-month-view > .grid {
+    /* Reset auto-rows-fr that can cause truncation */
+    grid-auto-rows: minmax(100px, auto);
+}
+
+/* P0-3 FIX: Day headers row */
+.scheduler-month-view > .grid.grid-cols-7:first-child {
+    flex-shrink: 0;
+}
+
+/* P0-3 FIX: Calendar grid - allow natural height expansion */
+.scheduler-month-view > .grid.grid-cols-7:last-of-type {
+    min-height: auto;
+    overflow: visible;
 }
 
 .scheduler-month-view .scheduler-appointment {
@@ -93,9 +113,38 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
+/* P0-3 FIX: Day cell overflow handling */
 .scheduler-day-cell {
     cursor: pointer;
     transition: background-color 0.15s ease;
+    /* P0-3 FIX: Allow cells to expand with content */
+    min-height: 100px;
+    overflow: visible;
+}
+
+/* P0-3 FIX: Day appointments container within cell */
+.scheduler-day-cell .day-appointments {
+    overflow-y: auto;
+    max-height: 150px;
+    scrollbar-width: thin;
+}
+
+/* P0-3 FIX: Webkit scrollbar styling for appointments overflow */
+.scheduler-day-cell .day-appointments::-webkit-scrollbar {
+    width: 4px;
+}
+
+.scheduler-day-cell .day-appointments::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scheduler-day-cell .day-appointments::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.4);
+    border-radius: 4px;
+}
+
+.dark .scheduler-day-cell .day-appointments::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5);
 }
 
 .scheduler-day-cell:hover {
@@ -123,14 +172,23 @@
     animation: fadeIn 0.3s ease-out;
 }
 
+/* P0-5 FIX: Week view appointment blocks - solid background, no transparency */
 .scheduler-week-view .appointment-block {
     transition: all 0.2s ease;
     border-left: 3px solid currentColor;
+    /* Ensure solid background - no transparency */
+    opacity: 1 !important;
+    background-clip: padding-box;
+    /* Prevent any inherited transparency */
+    isolation: isolate;
+    /* Ensure proper stacking */
+    position: static;
 }
 
 .scheduler-week-view .appointment-block:hover {
-    transform: translateX(2px);
+    transform: translateY(-1px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    z-index: 20;
 }
 
 /* Day View */
@@ -290,6 +348,61 @@
 [data-calendar-action]:active::before {
     width: 200%;
     height: 200%;
+}
+
+/* ============================================
+   Status Filter Buttons
+   ============================================ */
+
+.status-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.95rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background-color: #f8fafc;
+    color: #1f2937;
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.status-filter-btn:hover {
+    background-color: #e2e8f0;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.status-filter-btn:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.status-filter-btn.is-active {
+    background-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+    transform: translateY(-1px);
+}
+
+.status-filter-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.dark .status-filter-btn {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.dark .status-filter-btn:hover {
+    background-color: #334155;
+}
+
+.dark .status-filter-btn.is-active {
+    background-color: #3b82f6;
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.35);
 }
 
 /* ============================================

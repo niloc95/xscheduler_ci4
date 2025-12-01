@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Libraries\SlotGenerator;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
@@ -12,8 +11,8 @@ class SchedulingService
 {
     public function getAvailabilities(int $providerId, int $serviceId, string $date): array
     {
-        $slotGen = new SlotGenerator();
-        return $slotGen->getAvailableSlots($providerId, $serviceId, $date);
+        $availabilityService = new AvailabilityService();
+        return $availabilityService->getAvailableSlots($providerId, $date, $serviceId);
     }
 
     public function createAppointment(array $payload): array
@@ -51,37 +50,34 @@ class SchedulingService
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . $duration . ' minutes');
 
-        // Upsert customer in xs_customers
+        // Find or create customer - using helper method
         $custModel = new CustomerModel();
-        $customer = $custModel->where('email', $payload['email'])->first();
-        if (!$customer) {
-            $names = preg_split('/\s+/', trim((string)$payload['name']));
-            $first = $names[0] ?? '';
-            $last  = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
-            $customerId = $custModel->insert([
-                'first_name' => $first,
-                'last_name'  => $last,
-                'email'      => $payload['email'],
-                'phone'      => $payload['phone'] ?? null,
-                'created_at' => date('Y-m-d H:i:s'),
-            ], false);
-        } else {
-            $customerId = $customer['id'];
-        }
+        $customerId = $custModel->findOrCreateByEmail(
+            $payload['email'],
+            $payload['name'],
+            $payload['phone'] ?? null
+        );
 
-        // Check availability
-        $available = $this->getAvailabilities($providerId, $serviceId, $date);
-        $isAvailable = false;
-        foreach ($available as $s) {
-            if ($s['start'] === $startDateTime->format('H:i') && $s['end'] === $endDateTime->format('H:i')) {
-                $isAvailable = true; break;
-            }
-        }
-        if (!$isAvailable) {
-            throw new \RuntimeException('Time slot no longer available');
+        // Check availability using proper validation method
+        $availabilityService = new AvailabilityService();
+        $startTimeLocal = $startDateTime->format('Y-m-d H:i:s');
+        $endTimeLocal = $endDateTime->format('Y-m-d H:i:s');
+        
+        $availabilityCheck = $availabilityService->isSlotAvailable(
+            $providerId,
+            $startTimeLocal,
+            $endTimeLocal,
+            $timezone
+        );
+        
+        if (!$availabilityCheck['available']) {
+            $reason = $availabilityCheck['reason'] ?? 'Time slot not available';
+            log_message('warning', '[SchedulingService::createAppointment] Slot unavailable: ' . $reason);
+            throw new \RuntimeException('Time slot no longer available. ' . $reason);
         }
 
         // Create appointment
+        // NOTE: Database stores times in LOCAL timezone (not UTC)
         $apptModel = new AppointmentModel();
         $id = $apptModel->insert([
             'customer_id' => $customerId,
@@ -91,13 +87,15 @@ class SchedulingService
             'service_id' => $serviceId,
             'appointment_date' => $startDateTime->format('Y-m-d'),
             'appointment_time' => $startDateTime->format('H:i:s'),
-            'start_time' => TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone),
-            'end_time' => TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone),
+            'start_time' => $startTimeLocal,  // Store in local timezone
+            'end_time' => $endTimeLocal,      // Store in local timezone
             'status' => 'pending',
             'notes' => $payload['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
+        log_message('info', '[SchedulingService::createAppointment] Created appointment #' . $id . ' for provider ' . $providerId . ' at ' . $startTimeLocal);
+        
         return ['appointmentId' => $id];
     }
 }

@@ -187,3 +187,39 @@ if (!function_exists('ui_alert')) {
         return $html;
     }
 }
+
+if (!function_exists('ui_dashboard_stat_card')) {
+    /**
+     * Render a compact dashboard stat card used across admin widgets.
+     */
+    function ui_dashboard_stat_card(string $label, $value, array $options = []): string
+    {
+        $defaults = [
+            'class' => 'min-w-[12rem] rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800',
+            'labelClass' => 'text-sm font-medium text-gray-500 dark:text-gray-400',
+            'valueClass' => 'mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100',
+            'valueId' => null,
+            'valueAttributes' => [],
+        ];
+
+        $config = array_merge($defaults, $options);
+
+        $valueText = is_numeric($value) ? number_format((float) $value) : esc((string) $value);
+
+        $valueAttributes = '';
+        if (!empty($config['valueId'])) {
+            $valueAttributes .= ' id="' . esc($config['valueId']) . '"';
+        }
+
+        if (!empty($config['valueAttributes']) && is_array($config['valueAttributes'])) {
+            foreach ($config['valueAttributes'] as $attr => $attrValue) {
+                $valueAttributes .= ' ' . esc($attr) . '="' . esc($attrValue) . '"';
+            }
+        }
+
+        return '<div class="' . esc($config['class']) . '">' .
+            '<p class="' . esc($config['labelClass']) . '">' . esc($label) . '</p>' .
+            '<p class="' . esc($config['valueClass']) . '"' . $valueAttributes . '>' . $valueText . '</p>' .
+        '</div>';
+    }
+}

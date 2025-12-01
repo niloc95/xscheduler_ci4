@@ -51,6 +51,7 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->post('store', 'CustomerManagement::store', ['filter' => 'role:admin,provider,staff']);
     $routes->get('edit/(:any)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
     $routes->post('update/(:any)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->get('history/(:any)', 'CustomerManagement::history/$1', ['filter' => 'role:admin,provider,staff']);
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)
@@ -162,14 +163,45 @@ $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Scheduler::index', ['filter' => 'auth']);
 });
 
-// Public/client-facing booking view
+// Public/client-facing booking view (legacy)
 $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
+
+// New dedicated public booking experience (Option B)
+$routes->group('public/booking', ['filter' => 'setup'], function($routes) {
+    $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
+    $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
+    $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
+    $routes->post('', 'PublicSite\BookingController::store', ['filter' => 'public_rate_limit|csrf']);
+    $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
+    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => 'public_rate_limit|csrf']);
+});
+
+// Public customer portal - My Appointments (no auth, uses customer hash)
+$routes->group('public/my-appointments', ['filter' => 'setup'], function($routes) {
+    $routes->get('(:segment)', 'PublicSite\CustomerPortalController::index/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/upcoming', 'PublicSite\CustomerPortalController::upcoming/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/history', 'PublicSite\CustomerPortalController::history/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('(:segment)/autofill', 'PublicSite\CustomerPortalController::autofill/$1', ['filter' => 'public_rate_limit']);
+});
 
 // Scheduler API routes
 $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
+
+    // Calendar prototype routes removed (archived)
+
+    // Customer Appointments API (history, stats, autofill)
+    $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1');
+    $routes->get('customers/(:num)/appointments/history', 'Api\\CustomerAppointments::history/$1');
+    $routes->get('customers/(:num)/appointments/stats', 'Api\\CustomerAppointments::stats/$1');
+    $routes->get('customers/(:num)/appointments', 'Api\\CustomerAppointments::index/$1');
+    $routes->get('customers/(:num)/autofill', 'Api\\CustomerAppointments::autofill/$1');
+    $routes->get('customers/by-hash/(:segment)/appointments', 'Api\\CustomerAppointments::byHash/$1');
+    $routes->get('customers/by-hash/(:segment)/autofill', 'Api\\CustomerAppointments::autofillByHash/$1');
+    $routes->get('appointments/search', 'Api\\CustomerAppointments::search');
+    $routes->get('appointments/filters', 'Api\\CustomerAppointments::filterOptions');
 
     // Consolidated Appointments API (unversioned, future-proof)
     // Specific endpoints BEFORE resource to avoid shadowing
@@ -182,6 +214,14 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
+    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
+
+    // Availability API - Comprehensive slot availability calculation
+    $routes->get('availability/slots', 'Api\\Availability::slots');
+    $routes->post('availability/check', 'Api\\Availability::check');
+    $routes->get('availability/summary', 'Api\\Availability::summary');
+    $routes->get('availability/calendar', 'Api\\Availability::calendar');
+    $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
 
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {
@@ -193,6 +233,8 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->get('settings/business-hours', 'Api\\V1\\Settings::businessHours');
         // Provider services - public for booking form
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
+        // Provider appointments - for monthly schedule view
+        $routes->get('providers/(:num)/appointments', 'Api\\V1\\Providers::appointments/$1');
     });
     
     // Public providers endpoint (no auth required for calendar)
@@ -200,7 +242,6 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
 
     // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
-        $routes->get('availabilities', 'Api\\V1\\Availabilities::index');
         $routes->get('services', 'Api\\V1\\Services::index');
         $routes->get('providers', 'Api\\V1\\Providers::index');
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
@@ -209,6 +250,16 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
         $routes->put('settings', 'Api\\V1\\Settings::update');
         $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
     });
+});
+
+// Database Backup API (admin only, outside versioned API for cleaner URLs)
+$routes->group('api/database-backup', ['filter' => 'setup'], function($routes) {
+    $routes->get('status', 'Api\\DatabaseBackup::status', ['filter' => 'role:admin']);
+    $routes->get('list', 'Api\\DatabaseBackup::list', ['filter' => 'role:admin']);
+    $routes->post('create', 'Api\\DatabaseBackup::create', ['filter' => 'role:admin']);
+    $routes->post('toggle', 'Api\\DatabaseBackup::toggleBackup', ['filter' => 'role:admin']);
+    $routes->get('download/(:segment)', 'Api\\DatabaseBackup::download/$1', ['filter' => 'role:admin']);
+    $routes->delete('delete/(:segment)', 'Api\\DatabaseBackup::delete/$1', ['filter' => 'role:admin']);
 });
 
 // Settings (require setup + auth + admin role)
