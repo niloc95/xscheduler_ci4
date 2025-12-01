@@ -70,8 +70,8 @@ class DatabaseBackup extends BaseController
             // AC3: Generate randomized filename
             $timestamp = date('Y-m-d_His');
             $randomHash = bin2hex(random_bytes(8));
-            $filename = "backup-{$timestamp}-{$randomHash}.sql";
-            $filepath = $this->backupDirectory . DIRECTORY_SEPARATOR . $filename;
+            $baseFilename = "backup-{$timestamp}-{$randomHash}.sql";
+            $basePath = $this->backupDirectory . DIRECTORY_SEPARATOR . $baseFilename;
 
             // Get database configuration from .env
             $dbConfig = $this->getDatabaseConfig();
@@ -80,19 +80,20 @@ class DatabaseBackup extends BaseController
                 throw new \RuntimeException('Database name is not configured');
             }
 
-            // Perform backup based on database type
-            $success = $this->performBackup($dbConfig, $filepath);
+            // Perform backup based on database type - returns actual filename (may have .gz added)
+            $actualFilepath = $this->performBackup($dbConfig, $basePath);
 
-            if (!$success) {
+            if ($actualFilepath === false) {
                 throw new \RuntimeException('Backup process failed');
             }
 
             // Verify file was created
-            if (!file_exists($filepath)) {
+            if (!file_exists($actualFilepath)) {
                 throw new \RuntimeException('Backup file was not created');
             }
 
-            $filesize = filesize($filepath);
+            $filesize = filesize($actualFilepath);
+            $filename = basename($actualFilepath);
             $backupTime = date('Y-m-d H:i:s');
 
             // Save backup info to settings
@@ -394,8 +395,9 @@ class DatabaseBackup extends BaseController
 
     /**
      * Perform the actual database backup
+     * @return string|false The actual filepath on success, false on failure
      */
-    protected function performBackup(array $config, string $outputPath): bool
+    protected function performBackup(array $config, string $outputPath): string|false
     {
         $driver = strtolower($config['driver'] ?? 'mysqli');
 
@@ -410,8 +412,9 @@ class DatabaseBackup extends BaseController
 
     /**
      * Backup MySQL database using mysqldump
+     * @return string|false The actual filepath (with .gz if compressed) on success, false on failure
      */
-    protected function backupMySQL(array $config, string $outputPath): bool
+    protected function backupMySQL(array $config, string $outputPath): string|false
     {
         $host = escapeshellarg($config['hostname']);
         $user = escapeshellarg($config['username']);
@@ -420,19 +423,20 @@ class DatabaseBackup extends BaseController
         $port = escapeshellarg($config['port'] ?? '3306');
 
         // Build mysqldump command
-        // Use --defaults-extra-file or MYSQL_PWD env var to avoid password on command line
+        // Use --defaults-extra-file to avoid password on command line
         $tmpConfigFile = tempnam(sys_get_temp_dir(), 'mysql_');
         file_put_contents($tmpConfigFile, "[client]\npassword=" . addslashes($pass) . "\n");
         chmod($tmpConfigFile, 0600);
 
-        $outputFile = escapeshellarg($outputPath);
         $configFile = escapeshellarg($tmpConfigFile);
-
-        // Use gzip compression if available
+        
+        // Determine final output path (with or without gzip)
         $useGzip = $this->commandExists('gzip');
+        $finalPath = $useGzip ? $outputPath . '.gz' : $outputPath;
+        $outputFile = escapeshellarg($finalPath);
+
+        // Build command
         if ($useGzip) {
-            $outputPath .= '.gz';
-            $outputFile = escapeshellarg($outputPath);
             $command = "mysqldump --defaults-extra-file={$configFile} -h {$host} -P {$port} -u {$user} {$db} 2>/dev/null | gzip > {$outputFile}";
         } else {
             $command = "mysqldump --defaults-extra-file={$configFile} -h {$host} -P {$port} -u {$user} {$db} > {$outputFile} 2>/dev/null";
@@ -444,18 +448,20 @@ class DatabaseBackup extends BaseController
         // Clean up temporary config file
         @unlink($tmpConfigFile);
 
-        if ($exitCode !== 0) {
-            @unlink($outputPath);
+        // Check if file was created and has content
+        if (!file_exists($finalPath) || filesize($finalPath) === 0) {
+            @unlink($finalPath);
             return false;
         }
 
-        return file_exists($useGzip ? $outputPath : $outputPath) && filesize($useGzip ? $outputPath : $outputPath) > 0;
+        return $finalPath;
     }
 
     /**
      * Backup SQLite database
+     * @return string|false The actual filepath on success, false on failure
      */
-    protected function backupSQLite(array $config, string $outputPath): bool
+    protected function backupSQLite(array $config, string $outputPath): string|false
     {
         $dbPath = $config['database'];
         
@@ -472,7 +478,8 @@ class DatabaseBackup extends BaseController
         $exitCode = 0;
         system($command, $exitCode);
 
-        return $exitCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0;
+        // Return filepath on success, false on failure
+        return ($exitCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0) ? $outputPath : false;
     }
 
     /**
