@@ -488,6 +488,9 @@ function setupSchedulerToolbar(scheduler) {
     // Render provider legend
     renderProviderLegend(scheduler);
     
+    // Setup advanced filter panel
+    setupAdvancedFilterPanel(scheduler);
+    
     // Initial date display update
     updateDateDisplay(scheduler);
 }
@@ -518,6 +521,115 @@ function updateDateDisplay(scheduler) {
     }
 
     displayEl.textContent = displayText;
+}
+
+/**
+ * Setup the advanced filter panel toggle and apply/clear handlers
+ */
+function setupAdvancedFilterPanel(scheduler) {
+    const toggleBtn = document.getElementById('advanced-filter-toggle');
+    const filterPanel = document.getElementById('advanced-filter-panel');
+    const toggleIcon = document.getElementById('filter-toggle-icon');
+    const applyBtn = document.getElementById('apply-filters-btn');
+    const clearBtn = document.getElementById('clear-filters-btn');
+    
+    // Filter dropdowns
+    const statusSelect = document.getElementById('filter-status');
+    const providerSelect = document.getElementById('filter-provider');
+    const serviceSelect = document.getElementById('filter-service');
+    
+    if (!toggleBtn || !filterPanel) {
+        return; // Panel elements not present
+    }
+    
+    // Toggle panel visibility
+    toggleBtn.addEventListener('click', () => {
+        const isHidden = filterPanel.classList.toggle('hidden');
+        
+        // Rotate icon
+        if (toggleIcon) {
+            toggleIcon.style.transform = isHidden ? '' : 'rotate(180deg)';
+        }
+        
+        // Update toggle button styling to indicate active state
+        if (!isHidden) {
+            toggleBtn.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300');
+            toggleBtn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+        } else {
+            toggleBtn.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300');
+            toggleBtn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+        }
+    });
+    
+    // Apply filters
+    if (applyBtn) {
+        applyBtn.addEventListener('click', async () => {
+            const status = statusSelect?.value || '';
+            const providerId = providerSelect?.value || '';
+            const serviceId = serviceSelect?.value || '';
+            
+            try {
+                await scheduler.setFilters({ status, providerId, serviceId });
+                
+                // Show success feedback
+                applyBtn.textContent = 'Applied!';
+                setTimeout(() => {
+                    applyBtn.innerHTML = '<span class="material-symbols-outlined text-base">filter_alt</span> Apply';
+                }, 1000);
+                
+                // Update filter indicator on toggle button
+                const hasActiveFilters = status || providerId || serviceId;
+                updateFilterIndicator(toggleBtn, hasActiveFilters);
+            } catch (error) {
+                console.error('Failed to apply filters:', error);
+            }
+        });
+    }
+    
+    // Clear filters
+    if (clearBtn) {
+        clearBtn.addEventListener('click', async () => {
+            // Reset all dropdowns
+            if (statusSelect) statusSelect.value = '';
+            if (providerSelect) providerSelect.value = '';
+            if (serviceSelect) serviceSelect.value = '';
+            
+            try {
+                await scheduler.setFilters({ status: '', providerId: '', serviceId: '' });
+                updateFilterIndicator(toggleBtn, false);
+            } catch (error) {
+                console.error('Failed to clear filters:', error);
+            }
+        });
+    }
+    
+    // Check for initial active filters (from URL or server-side)
+    const hasActiveFilters = 
+        (statusSelect?.value && statusSelect.value !== '') ||
+        (providerSelect?.value && providerSelect.value !== '') ||
+        (serviceSelect?.value && serviceSelect.value !== '');
+    
+    if (hasActiveFilters) {
+        updateFilterIndicator(toggleBtn, true);
+    }
+}
+
+/**
+ * Update the filter indicator badge on the toggle button
+ */
+function updateFilterIndicator(toggleBtn, hasActiveFilters) {
+    // Remove existing indicator
+    const existingIndicator = toggleBtn.querySelector('.filter-active-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    if (hasActiveFilters) {
+        const indicator = document.createElement('span');
+        indicator.className = 'filter-active-indicator absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800';
+        toggleBtn.style.position = 'relative';
+        toggleBtn.appendChild(indicator);
+    }
 }
 
 /**

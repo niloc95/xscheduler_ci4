@@ -100,16 +100,15 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
                     <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
                 <button type="button" data-calendar-action="month" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200">Month</button>
                 
-                <!-- Status Filter Buttons -->
-                <?php foreach ($statusFilters as $filter): ?>
-                    <?php $isActive = ($activeStatusFilter ?? null) === $filter['status']; ?>
-                    <button type="button"
-                            class="status-filter-btn<?= $isActive ? ' is-active' : '' ?>"
-                            data-status="<?= esc($filter['status']) ?>"
-                            title="<?= esc($filter['title']) ?>">
-                        <?= esc($filter['label']) ?>
-                    </button>
-                <?php endforeach; ?>
+                <!-- Advanced Filter Toggle -->
+                <button type="button" 
+                        id="advanced-filter-toggle"
+                        class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm inline-flex items-center gap-1"
+                        title="Advanced Filters">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    Filters
+                    <span class="material-symbols-outlined text-base transition-transform duration-200" id="filter-toggle-icon">expand_more</span>
+                </button>
             </div>
 
                 <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
@@ -119,6 +118,50 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
                 <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
             </a>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Panel -->
+    <div id="advanced-filter-panel" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <select id="filter-status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Statuses</option>
+                    <option value="pending" <?= ($currentFilters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="confirmed" <?= ($currentFilters['status'] ?? '') === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
+                    <option value="completed" <?= ($currentFilters['status'] ?? '') === 'completed' ? 'selected' : '' ?>>Completed</option>
+                    <option value="cancelled" <?= ($currentFilters['status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                    <option value="no-show" <?= ($currentFilters['status'] ?? '') === 'no-show' ? 'selected' : '' ?>>No Show</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider</label>
+                <select id="filter-provider" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Providers</option>
+                    <?php foreach ($allProviders ?? [] as $provider): ?>
+                        <option value="<?= esc($provider['id']) ?>" <?= ($currentFilters['provider_id'] ?? '') == $provider['id'] ? 'selected' : '' ?>><?= esc($provider['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service</label>
+                <select id="filter-service" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
+                    <option value="">All Services</option>
+                    <?php foreach ($allServices ?? [] as $service): ?>
+                        <option value="<?= esc($service['id']) ?>" <?= ($currentFilters['service_id'] ?? '') == $service['id'] ? 'selected' : '' ?>><?= esc($service['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="button" id="apply-filters-btn" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium inline-flex items-center justify-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    Apply
+                </button>
+                <button type="button" id="clear-filters-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
+                    Clear
+                </button>
+            </div>
         </div>
     </div>
 

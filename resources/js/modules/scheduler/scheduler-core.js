@@ -29,6 +29,8 @@ export class SchedulerCore {
         this.providers = [];
         this.visibleProviders = new Set();
         this.statusFilter = options.statusFilter ?? null;
+        this.providerFilter = options.providerFilter ?? null;  // Advanced filter: specific provider
+        this.serviceFilter = options.serviceFilter ?? null;    // Advanced filter: specific service
         
         // Debouncing for render operations
         this.renderDebounceTimer = null;
@@ -171,6 +173,12 @@ export class SchedulerCore {
             if (this.statusFilter) {
                 params.append('status', this.statusFilter);
             }
+            if (this.providerFilter) {
+                params.append('provider_id', this.providerFilter);
+            }
+            if (this.serviceFilter) {
+                params.append('service_id', this.serviceFilter);
+            }
             
             // P0-3 Performance Optimization: Enable futureOnly mode by default for calendar views
             // This prevents loading historical appointments which significantly improves performance
@@ -302,6 +310,66 @@ export class SchedulerCore {
             this.container.dataset.activeStatus = normalizedStatus || '';
         }
 
+        await this.loadAppointments();
+        this.render();
+    }
+
+    /**
+     * Set provider filter - filter appointments to specific provider
+     */
+    async setProviderFilter(providerId) {
+        const normalizedProviderId = providerId && providerId !== '' ? providerId : null;
+        
+        if (this.providerFilter === normalizedProviderId) {
+            return;
+        }
+        
+        this.providerFilter = normalizedProviderId;
+        await this.loadAppointments();
+        this.render();
+    }
+
+    /**
+     * Set service filter - filter appointments to specific service
+     */
+    async setServiceFilter(serviceId) {
+        const normalizedServiceId = serviceId && serviceId !== '' ? serviceId : null;
+        
+        if (this.serviceFilter === normalizedServiceId) {
+            return;
+        }
+        
+        this.serviceFilter = normalizedServiceId;
+        await this.loadAppointments();
+        this.render();
+    }
+
+    /**
+     * Apply multiple filters at once (more efficient than setting individually)
+     */
+    async setFilters({ status, providerId, serviceId }) {
+        const normalizedStatus = typeof status === 'string' && status !== '' ? status : null;
+        const normalizedProviderId = providerId && providerId !== '' ? providerId : null;
+        const normalizedServiceId = serviceId && serviceId !== '' ? serviceId : null;
+        
+        // Check if any filter has changed
+        const hasChanges = 
+            this.statusFilter !== normalizedStatus ||
+            this.providerFilter !== normalizedProviderId ||
+            this.serviceFilter !== normalizedServiceId;
+        
+        if (!hasChanges) {
+            return;
+        }
+        
+        this.statusFilter = normalizedStatus;
+        this.providerFilter = normalizedProviderId;
+        this.serviceFilter = normalizedServiceId;
+        
+        if (this.container) {
+            this.container.dataset.activeStatus = normalizedStatus || '';
+        }
+        
         await this.loadAppointments();
         this.render();
     }

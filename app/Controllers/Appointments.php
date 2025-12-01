@@ -100,6 +100,9 @@ class Appointments extends BaseController
         $currentRole = current_user_role();
 
         $statusFilter = $this->appointmentModel->normalizeStatusFilter($this->request->getGet('status'));
+        $providerFilter = $this->request->getGet('provider_id');
+        $serviceFilter = $this->request->getGet('service_id');
+        
         $context = $this->dashboardContextService->build($currentRole, $currentUserId, $currentUser);
 
         $appointments = $this->appointmentModel->getDashboardAppointments($statusFilter, $context);
@@ -113,8 +116,28 @@ class Appointments extends BaseController
             ->orderBy('name', 'ASC')
             ->findAll();
         
+        // Get all providers for filter dropdown
+        $allProviders = $this->userModel
+            ->where('role', 'provider')
+            ->where('is_active', true)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
+        // Get all services for filter dropdown
+        $allServices = $this->serviceModel
+            ->where('is_active', true)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
         $stats = $this->appointmentModel->getStats($context, $statusFilter);
         $calendarPrototype = $this->resolveCalendarPrototypeContext();
+        
+        // Build current filters array for the view
+        $currentFilters = [
+            'status' => $statusFilter,
+            'provider_id' => $providerFilter,
+            'service_id' => $serviceFilter,
+        ];
 
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
@@ -126,6 +149,9 @@ class Appointments extends BaseController
             'upcomingCount' => $stats['upcoming'] ?? 0,
             'completedCount' => $stats['completed'] ?? 0,
             'activeProviders' => $activeProviders,
+            'allProviders' => $allProviders,
+            'allServices' => $allServices,
+            'currentFilters' => $currentFilters,
             'activeStatusFilter' => $statusFilter,
             'calendarPrototype' => $calendarPrototype,
         ];
