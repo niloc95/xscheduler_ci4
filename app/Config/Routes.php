@@ -252,6 +252,16 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     });
 });
 
+// Database Backup API (admin only, outside versioned API for cleaner URLs)
+$routes->group('api/database-backup', ['filter' => 'setup'], function($routes) {
+    $routes->get('status', 'Api\\DatabaseBackup::status', ['filter' => 'role:admin']);
+    $routes->get('list', 'Api\\DatabaseBackup::list', ['filter' => 'role:admin']);
+    $routes->post('create', 'Api\\DatabaseBackup::create', ['filter' => 'role:admin']);
+    $routes->post('toggle', 'Api\\DatabaseBackup::toggleBackup', ['filter' => 'role:admin']);
+    $routes->get('download/(:segment)', 'Api\\DatabaseBackup::download/$1', ['filter' => 'role:admin']);
+    $routes->delete('delete/(:segment)', 'Api\\DatabaseBackup::delete/$1', ['filter' => 'role:admin']);
+});
+
 // Settings (require setup + auth + admin role)
 $routes->group('', ['filter' => 'setup'], function($routes) {
     $routes->get('settings', 'Settings::index', ['filter' => 'role:admin']);

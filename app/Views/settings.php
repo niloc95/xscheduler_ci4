@@ -30,7 +30,7 @@
                 <button class="tab-btn" data-tab="business">Business hours</button>
                 <button class="tab-btn" data-tab="legal">Legal Contents</button>
                 <button class="tab-btn" data-tab="integrations">Integrations</button>
-                
+                <button class="tab-btn" data-tab="database">Database</button>
             </nav>
         </div>
 
@@ -548,6 +548,128 @@
             </section>
             </form>
 
+            <!-- Database Settings Panel -->
+            <section id="panel-database" class="tab-panel hidden">
+                <div class="space-y-6">
+                    <!-- Database Information -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">database</span>
+                            Database Information
+                        </h4>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Database Type</label>
+                                    <p id="db-info-type" class="text-sm text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Database Name</label>
+                                    <p id="db-info-name" class="text-sm text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Host</label>
+                                    <p id="db-info-host" class="text-sm text-gray-900 dark:text-gray-100 font-medium">Loading...</p>
+                                </div>
+                            </div>
+                            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                <span class="material-symbols-outlined text-xs align-middle">info</span>
+                                Database connection is configured via the <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">.env</code> file. Contact your system administrator to change database settings.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Database Backup Section -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">backup</span>
+                            Database Backup
+                        </h4>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                            <!-- Backup Enable Toggle -->
+                            <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
+                                <div>
+                                    <label class="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Database Backups</label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Master switch for backup functionality</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="backup-enabled-toggle" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Last Backup Info -->
+                            <div id="last-backup-info" class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-600">
+                                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Last Backup</label>
+                                <div id="last-backup-details" class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">No backups yet</span>
+                                </div>
+                            </div>
+
+                            <!-- Backup Actions -->
+                            <div class="flex items-center gap-3">
+                                <button type="button" id="create-backup-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium inline-flex items-center gap-2 transition-colors" disabled>
+                                    <span class="material-symbols-outlined text-base">backup</span>
+                                    Create Backup Now
+                                </button>
+                                <button type="button" id="view-backups-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition-colors">
+                                    <span class="material-symbols-outlined text-base">folder_open</span>
+                                    View All Backups
+                                </button>
+                            </div>
+
+                            <!-- Backup Progress -->
+                            <div id="backup-progress" class="mt-4 hidden">
+                                <div class="flex items-center gap-3">
+                                    <div class="loading-spinner"></div>
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">Creating backup...</span>
+                                </div>
+                            </div>
+
+                            <!-- Backup Error -->
+                            <div id="backup-error" class="mt-4 hidden p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm"></div>
+
+                            <!-- Backup Success -->
+                            <div id="backup-success" class="mt-4 hidden p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm"></div>
+                        </div>
+                    </div>
+
+                    <!-- Security Notice -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">security</span>
+                            <div>
+                                <h5 class="text-sm font-medium text-amber-800 dark:text-amber-200">Security Notice</h5>
+                                <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                    Database backups are stored securely outside the web root. Only administrators can create and download backups. 
+                                    All backup operations are logged for audit purposes.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Backup List Modal -->
+        <div id="backup-list-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="card card-elevated max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+                <div class="card-header flex items-center justify-between">
+                    <h3 class="card-title">Database Backups</h3>
+                    <button type="button" id="close-backup-modal" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="card-body overflow-y-auto">
+                    <div id="backup-list-content">
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="loading-spinner mx-auto mb-2"></div>
+                            Loading backups...
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Block Period Modal (Outside all forms) -->
@@ -1586,5 +1708,302 @@
             
             // Re-run on SPA navigation
             document.addEventListener('spa:navigated', initTimeFormatting);
+        </script>
+
+        <!-- Database Settings Tab Script -->
+        <script>
+        (function initDatabaseSettingsTab() {
+            const backupToggle = document.getElementById('backup-enabled-toggle');
+            const createBackupBtn = document.getElementById('create-backup-btn');
+            const viewBackupsBtn = document.getElementById('view-backups-btn');
+            const backupProgress = document.getElementById('backup-progress');
+            const backupError = document.getElementById('backup-error');
+            const backupSuccess = document.getElementById('backup-success');
+            const lastBackupDetails = document.getElementById('last-backup-details');
+            const backupListModal = document.getElementById('backup-list-modal');
+            const closeBackupModal = document.getElementById('close-backup-modal');
+            const backupListContent = document.getElementById('backup-list-content');
+
+            // Database info elements
+            const dbInfoType = document.getElementById('db-info-type');
+            const dbInfoName = document.getElementById('db-info-name');
+            const dbInfoHost = document.getElementById('db-info-host');
+
+            if (!backupToggle || !createBackupBtn) return;
+
+            const API_BASE = '<?= base_url('api/database-backup') ?>';
+
+            // Load initial status
+            async function loadBackupStatus() {
+                try {
+                    const response = await fetch(`${API_BASE}/status`, {
+                        credentials: 'same-origin'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load backup status');
+                    }
+
+                    const data = await response.json();
+
+                    // Update toggle state
+                    backupToggle.checked = data.backup_enabled;
+                    createBackupBtn.disabled = !data.backup_enabled;
+
+                    // Update database info
+                    if (dbInfoType) dbInfoType.textContent = data.database?.type || 'Unknown';
+                    if (dbInfoName) dbInfoName.textContent = data.database?.name || 'Unknown';
+                    if (dbInfoHost) dbInfoHost.textContent = data.database?.host || 'Unknown';
+
+                    // Update last backup info
+                    updateLastBackupDisplay(data.last_backup);
+
+                } catch (error) {
+                    console.error('Failed to load backup status:', error);
+                    if (dbInfoType) dbInfoType.textContent = 'Error loading';
+                }
+            }
+
+            // Update last backup display
+            function updateLastBackupDisplay(lastBackup) {
+                if (!lastBackupDetails) return;
+
+                if (lastBackup?.time && lastBackup?.filename) {
+                    lastBackupDetails.innerHTML = `
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-900 dark:text-gray-100">${escapeHtml(lastBackup.time)}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                ${escapeHtml(lastBackup.filename)} 
+                                <span class="text-gray-400">(${escapeHtml(lastBackup.size_formatted || 'Unknown size')})</span>
+                            </p>
+                        </div>
+                        <a href="${API_BASE}/download/${encodeURIComponent(lastBackup.filename)}" 
+                           class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm inline-flex items-center gap-1">
+                            <span class="material-symbols-outlined text-base">download</span>
+                            Download
+                        </a>
+                    `;
+                } else {
+                    lastBackupDetails.innerHTML = '<span class="text-sm text-gray-500 dark:text-gray-400">No backups yet</span>';
+                }
+            }
+
+            // Toggle backup enabled
+            backupToggle.addEventListener('change', async () => {
+                const enabled = backupToggle.checked;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/toggle`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ enabled })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update setting');
+                    }
+
+                    createBackupBtn.disabled = !enabled;
+                    
+                } catch (error) {
+                    console.error('Failed to toggle backup:', error);
+                    // Revert toggle
+                    backupToggle.checked = !enabled;
+                    showError('Failed to update backup setting');
+                }
+            });
+
+            // Create backup
+            createBackupBtn.addEventListener('click', async () => {
+                if (createBackupBtn.disabled) return;
+
+                hideMessages();
+                backupProgress.classList.remove('hidden');
+                createBackupBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`${API_BASE}/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.messages?.error || data.message || 'Backup failed');
+                    }
+
+                    // Update last backup display
+                    updateLastBackupDisplay({
+                        time: data.timestamp,
+                        filename: data.filename,
+                        size_formatted: data.size_formatted
+                    });
+
+                    showSuccess(`Backup created successfully: ${data.filename}`);
+
+                } catch (error) {
+                    console.error('Backup failed:', error);
+                    showError(error.message || 'Failed to create backup');
+                } finally {
+                    backupProgress.classList.add('hidden');
+                    createBackupBtn.disabled = !backupToggle.checked;
+                }
+            });
+
+            // View all backups
+            viewBackupsBtn.addEventListener('click', async () => {
+                backupListModal.classList.remove('hidden');
+                backupListModal.classList.add('flex');
+                
+                backupListContent.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="loading-spinner mx-auto mb-2"></div>
+                        Loading backups...
+                    </div>
+                `;
+
+                try {
+                    const response = await fetch(`${API_BASE}/list`, {
+                        credentials: 'same-origin'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load backups');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.backups?.length === 0) {
+                        backupListContent.innerHTML = `
+                            <div class="text-center py-8 text-gray-500">
+                                <span class="material-symbols-outlined text-4xl mb-2">folder_off</span>
+                                <p>No backups found</p>
+                            </div>
+                        `;
+                    } else {
+                        backupListContent.innerHTML = `
+                            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                                ${data.backups.map(backup => `
+                                    <div class="py-3 flex items-center justify-between gap-4">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${escapeHtml(backup.filename)}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                                ${escapeHtml(backup.created)} • ${escapeHtml(backup.size_formatted)}
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${API_BASE}/download/${encodeURIComponent(backup.filename)}" 
+                                               class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
+                                               title="Download">
+                                                <span class="material-symbols-outlined text-xl">download</span>
+                                            </a>
+                                            <button type="button" 
+                                                    class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition delete-backup-btn"
+                                                    data-filename="${escapeHtml(backup.filename)}"
+                                                    title="Delete">
+                                                <span class="material-symbols-outlined text-xl">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+
+                        // Add delete handlers
+                        backupListContent.querySelectorAll('.delete-backup-btn').forEach(btn => {
+                            btn.addEventListener('click', async () => {
+                                const filename = btn.dataset.filename;
+                                if (!confirm(`Delete backup "${filename}"?`)) return;
+
+                                try {
+                                    const delResponse = await fetch(`${API_BASE}/delete/${encodeURIComponent(filename)}`, {
+                                        method: 'DELETE',
+                                        credentials: 'same-origin'
+                                    });
+
+                                    if (!delResponse.ok) {
+                                        throw new Error('Failed to delete backup');
+                                    }
+
+                                    // Refresh list
+                                    viewBackupsBtn.click();
+                                    loadBackupStatus();
+
+                                } catch (error) {
+                                    console.error('Delete failed:', error);
+                                    alert('Failed to delete backup');
+                                }
+                            });
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Failed to load backups:', error);
+                    backupListContent.innerHTML = `
+                        <div class="text-center py-8 text-red-500">
+                            <span class="material-symbols-outlined text-4xl mb-2">error</span>
+                            <p>Failed to load backups</p>
+                        </div>
+                    `;
+                }
+            });
+
+            // Close modal
+            closeBackupModal?.addEventListener('click', () => {
+                backupListModal.classList.add('hidden');
+                backupListModal.classList.remove('flex');
+            });
+
+            backupListModal?.addEventListener('click', (e) => {
+                if (e.target === backupListModal) {
+                    backupListModal.classList.add('hidden');
+                    backupListModal.classList.remove('flex');
+                }
+            });
+
+            // Helper functions
+            function hideMessages() {
+                backupError.classList.add('hidden');
+                backupSuccess.classList.add('hidden');
+            }
+
+            function showError(message) {
+                backupError.textContent = message;
+                backupError.classList.remove('hidden');
+            }
+
+            function showSuccess(message) {
+                backupSuccess.textContent = message;
+                backupSuccess.classList.remove('hidden');
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // Initialize when database tab is shown
+            document.querySelectorAll('[data-tab="database"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    loadBackupStatus();
+                });
+            });
+
+            // Also load on initial page load if database tab is active
+            if (document.querySelector('[data-tab="database"].active')) {
+                loadBackupStatus();
+            }
+        })();
         </script>
 <?= $this->endSection() ?>
