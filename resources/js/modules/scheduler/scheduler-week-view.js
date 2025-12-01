@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, isDarkMode, formatDuration } from './appointment-colors.js';
 import { generateTimeSlots } from './time-slots.js';
 import { escapeHtml, isDateBlocked as isDateBlockedUtil, getBlockedPeriodInfo as getBlockedInfo } from './utils.js';
 
@@ -132,27 +132,49 @@ export class WeekView {
         const serviceName = appointment.serviceName || 'Appointment';
         
         // Format time based on settings
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const time = appointment.startDateTime.toFormat(timeFormat);
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mma';
+        const time = appointment.startDateTime.toFormat(timeFormat).toLowerCase();
+        
+        // Calculate duration for badge
+        const duration = appointment.endDateTime && appointment.startDateTime 
+            ? Math.round((appointment.endDateTime.toMillis() - appointment.startDateTime.toMillis()) / 60000)
+            : null;
+        const durationLabel = formatDuration(duration);
+        
+        const providerName = provider?.name || 'Provider';
 
-        // P0-5 FIX: Changed from absolute to relative positioning to prevent transparent overlay stacking
-        // P1-2: Added ARIA labels for accessibility
-        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${appointment.status}`;
+        // Phase 1 Prototype Styling: Rounded-2xl cards with duration badges
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${providerName}. Status: ${appointment.status}`;
         
         return `
-            <article class="appointment-block w-full p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-4 mb-1"
-                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
+            <article class="appointment-block w-full rounded-2xl cursor-pointer transition-all 
+                          border p-3 shadow-sm hover:shadow-md active:scale-[0.98]"
+                 style="background-color: ${statusColors.chipBg}; 
+                        border-color: ${statusColors.chipBorder}; 
+                        color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
                  role="button"
                  tabindex="0"
                  aria-label="${ariaLabel}"
                  title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
-                    <div class="font-semibold truncate">${time}</div>
+                <!-- Header row: Time + Duration badge -->
+                <div class="flex items-center justify-between text-[11px] font-semibold mb-1">
+                    <span>${time}</span>
+                    ${durationLabel ? `
+                        <span class="rounded-full px-2 py-0.5 text-[10px]" 
+                              style="background-color: ${statusColors.badgeBg};">
+                            ${durationLabel}
+                        </span>
+                    ` : ''}
                 </div>
-                <div class="truncate font-medium">${escapeHtml(customerName)}</div>
-                <div class="text-xs opacity-80 truncate">${escapeHtml(serviceName)}</div>
+                <!-- Title -->
+                <div class="text-sm font-semibold truncate">${escapeHtml(serviceName)}</div>
+                <!-- Provider + Customer -->
+                <div class="flex items-center gap-1.5 text-xs opacity-80 mt-1">
+                    <span class="inline-flex h-2 w-2 rounded-full flex-shrink-0" 
+                          style="background-color: ${providerColor};"></span>
+                    <span class="truncate">${escapeHtml(providerName)} • ${escapeHtml(customerName)}</span>
+                </div>
             </article>
         `;
     }

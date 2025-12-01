@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode, formatDuration } from './appointment-colors.js';
 import { generateTimeSlots } from './time-slots.js';
 import { escapeHtml as escapeHtmlUtil, isDateBlocked as isDateBlockedUtil } from './utils.js';
 
@@ -143,33 +143,63 @@ export class DayView {
 
     renderInlineAppointment(appointment, providers) {
         const provider = providers.find(p => p.id === appointment.providerId);
-        const color = provider?.color || '#3B82F6';
-        const textColor = this.getContrastColor(color);
+        const darkMode = isDarkMode();
+        const statusColors = getStatusColors(appointment.status, darkMode);
+        const providerColor = getProviderColor(provider);
         
         // Format time based on settings
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const time = `${appointment.startDateTime.toFormat(timeFormat)} - ${appointment.endDateTime.toFormat(timeFormat)}`;
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mma';
+        const startTime = appointment.startDateTime.toFormat(timeFormat).toLowerCase();
+        const endTime = appointment.endDateTime.toFormat(timeFormat).toLowerCase();
+        const time = `${startTime}`;
+        
+        // Calculate duration for badge
+        const duration = appointment.endDateTime && appointment.startDateTime 
+            ? Math.round((appointment.endDateTime.toMillis() - appointment.startDateTime.toMillis()) / 60000)
+            : null;
+        const durationLabel = formatDuration(duration);
+        
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
+        const providerName = provider?.name || 'Provider';
 
-        // P1-2: Added ARIA labels for accessibility
-        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}`;
+        // Phase 1 Prototype Styling: Rounded-3xl cards like prototype day-view.html
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${providerName}`;
 
         return `
-            <article class="inline-appointment p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                 style="background-color: ${color}; color: ${textColor};"
+            <article class="inline-appointment rounded-3xl cursor-pointer transition-all 
+                          border p-4 shadow-sm hover:shadow-md active:scale-[0.98]"
+                 style="background-color: ${statusColors.chipBg}; 
+                        border-color: ${statusColors.chipBorder}; 
+                        color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
                  role="button"
                  tabindex="0"
                  aria-label="${ariaLabel}">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs font-medium opacity-90 mb-1">${time}</div>
-                        <div class="font-semibold truncate">${escapeHtmlUtil(customerName)}</div>
-                        <div class="text-sm opacity-90 truncate">${escapeHtmlUtil(serviceName)}</div>
-                        ${provider ? `<div class="text-xs opacity-75 mt-1">with ${escapeHtmlUtil(provider.name)}</div>` : ''}
-                    </div>
-                    <span class="material-symbols-outlined text-lg flex-shrink-0">arrow_forward</span>
+                <!-- Header: Time + Duration badge -->
+                <div class="flex items-center justify-between text-[11px] font-semibold mb-1">
+                    <span>${startTime}</span>
+                    ${durationLabel ? `
+                        <span class="rounded-full px-2 py-0.5 text-[10px]" 
+                              style="background-color: ${statusColors.badgeBg};">
+                            ${durationLabel}
+                        </span>
+                    ` : ''}
+                </div>
+                <!-- Service name -->
+                <div class="text-sm font-semibold">${escapeHtmlUtil(serviceName)}</div>
+                <!-- Description/notes if available -->
+                ${appointment.notes ? `<div class="text-xs opacity-70 mt-0.5">${escapeHtmlUtil(appointment.notes.substring(0, 50))}${appointment.notes.length > 50 ? '...' : ''}</div>` : ''}
+                <!-- Customer + Provider tags -->
+                <div class="flex items-center gap-2 text-[11px] mt-2 flex-wrap">
+                    <span class="rounded-full px-2 py-0.5" style="background-color: ${statusColors.badgeBg};">
+                        ${escapeHtmlUtil(customerName)}
+                    </span>
+                    <span class="flex items-center gap-1 rounded-full px-2 py-0.5" 
+                          style="background-color: rgba(${this.hexToRgb(providerColor)}, 0.1); color: ${statusColors.text};">
+                        <span class="inline-flex h-2 w-2 rounded-full" style="background-color: ${providerColor};"></span>
+                        ${escapeHtmlUtil(providerName)}
+                    </span>
                 </div>
             </article>
         `;
@@ -182,47 +212,78 @@ export class DayView {
         const providerColor = getProviderColor(provider);
         
         // Format time based on settings
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const time = `${appointment.startDateTime.toFormat(timeFormat)} - ${appointment.endDateTime.toFormat(timeFormat)}`;
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mma';
+        const startTime = appointment.startDateTime.toFormat(timeFormat).toLowerCase();
+        const endTime = appointment.endDateTime.toFormat(timeFormat).toLowerCase();
+        
+        // Calculate duration for badge
+        const duration = appointment.endDateTime && appointment.startDateTime 
+            ? Math.round((appointment.endDateTime.toMillis() - appointment.startDateTime.toMillis()) / 60000)
+            : null;
+        const durationLabel = formatDuration(duration);
+        
         const customerName = appointment.name || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
         const statusLabel = getStatusLabel(appointment.status);
+        const providerName = provider?.name || 'Provider';
         
         // P1-2: Added ARIA labels for accessibility
-        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${provider?.name || 'Provider'}. Status: ${statusLabel}`;
+        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${startTime} with ${providerName}. Status: ${statusLabel}`;
 
+        // Phase 1 Prototype Styling: Large rounded-3xl cards for sidebar
         return `
-            <article class="appointment-card p-4 rounded-lg border-2 hover:shadow-md transition-all cursor-pointer"
-                 style="background-color: ${statusColors.bg}; border-color: ${statusColors.border}; color: ${statusColors.text};"
+            <article class="appointment-card rounded-3xl border transition-all cursor-pointer 
+                          hover:shadow-lg active:scale-[0.98] mb-4 overflow-hidden"
+                 style="background-color: ${statusColors.chipBg}; 
+                        border-color: ${statusColors.chipBorder}; 
+                        color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
                  role="button"
                  tabindex="0"
                  aria-label="${ariaLabel}">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="inline-block w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${providerColor};" aria-hidden="true" title="${provider?.name || 'Provider'}"></span>
-                        <div class="text-sm font-medium">${time}</div>
+                <!-- Card content -->
+                <div class="p-4">
+                    <!-- Header: Time + Duration + Status -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex h-3 w-3 rounded-full flex-shrink-0" 
+                                  style="background-color: ${providerColor};" 
+                                  aria-hidden="true"></span>
+                            <span class="text-sm font-semibold">${startTime} - ${endTime}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${durationLabel ? `
+                                <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" 
+                                      style="background-color: ${statusColors.badgeBg};">
+                                    ${durationLabel}
+                                </span>
+                            ` : ''}
+                            <span class="px-2 py-1 text-[10px] font-semibold rounded-full"
+                                  style="background-color: ${statusColors.dot}; color: white;">
+                                ${statusLabel}
+                            </span>
+                        </div>
                     </div>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full border"
-                          style="background-color: ${statusColors.dot}; border-color: ${statusColors.border}; color: white;">
-                        ${statusLabel}
-                    </span>
+                    
+                    <!-- Customer name -->
+                    <h4 class="text-lg font-semibold mb-1">
+                        ${escapeHtmlUtil(customerName)}
+                    </h4>
+                    
+                    <!-- Service name -->
+                    <p class="text-sm mb-3 opacity-80">
+                        ${escapeHtmlUtil(serviceName)}
+                    </p>
+                    
+                    <!-- Provider info -->
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="flex items-center gap-1.5 rounded-full px-2.5 py-1" 
+                              style="background-color: rgba(${this.hexToRgb(providerColor)}, 0.15);">
+                            <span class="material-symbols-outlined text-sm" aria-hidden="true">person</span>
+                            ${escapeHtmlUtil(providerName)}
+                        </span>
+                    </div>
                 </div>
-                
-                <h4 class="text-lg font-semibold mb-1">
-                    ${escapeHtmlUtil(customerName)}
-                </h4>
-                
-                <p class="text-sm mb-2 opacity-90">
-                    ${escapeHtmlUtil(serviceName)}
-                </p>
-                
-                ${provider ? `
-                    <div class="flex items-center gap-2 text-xs opacity-75">
-                        <span class="material-symbols-outlined text-sm" aria-hidden="true">person</span>
-                        ${escapeHtmlUtil(provider.name)}
-                    </div>
-                ` : ''}
             </article>
         `;
     }
@@ -278,6 +339,19 @@ export class DayView {
         const b = parseInt(hex.substr(4, 2), 16);
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         return luminance > 0.5 ? '#000000' : '#FFFFFF';
+    }
+
+    /**
+     * Convert hex color to RGB string for rgba() usage
+     * @param {string} hexColor - Hex color (e.g., '#3B82F6')
+     * @returns {string} RGB values (e.g., '59, 130, 246')
+     */
+    hexToRgb(hexColor) {
+        const hex = hexColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        return `${r}, ${g}, ${b}`;
     }
 
     /**
