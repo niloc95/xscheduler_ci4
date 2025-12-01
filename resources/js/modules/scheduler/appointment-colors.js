@@ -13,114 +13,118 @@
  * Status color mapping
  * Background colors for appointment cards based on their status
  * Enhanced with prototype-style chip tokens
+ * 
+ * LIGHT MODE: Uses solid opaque backgrounds with dark text for readability
  */
 export const STATUS_COLORS = {
     pending: {
         bg: '#FEF3C7',          // amber-100
         border: '#F59E0B',      // amber-500
-        text: '#78350F',        // amber-900
+        text: '#78350F',        // amber-900 - DARK text for light bg
         dot: '#F59E0B',         // amber-500
-        // Prototype-style tokens
-        chipBg: 'rgba(254, 243, 199, 0.9)',      // amber-50 with opacity
-        chipBorder: 'rgba(245, 158, 11, 0.3)',   // amber-500 border
-        badgeBg: 'rgba(255, 255, 255, 0.7)'      // white badge background
+        // Prototype-style tokens - solid backgrounds for readability
+        chipBg: '#FEF3C7',                       // amber-100 solid
+        chipBorder: '#FCD34D',                   // amber-300 visible border
+        badgeBg: 'rgba(255, 255, 255, 0.8)'      // white badge background
     },
     confirmed: {
         bg: '#DBEAFE',          // blue-100
         border: '#3B82F6',      // blue-500
-        text: '#1E3A8A',        // blue-900
+        text: '#1E3A8A',        // blue-900 - DARK text for light bg
         dot: '#3B82F6',         // blue-500
-        // Prototype-style tokens
-        chipBg: 'rgba(219, 234, 254, 0.9)',      // blue-50 with opacity
-        chipBorder: 'rgba(59, 130, 246, 0.3)',   // blue-500 border
-        badgeBg: 'rgba(255, 255, 255, 0.7)'      // white badge background
+        // Prototype-style tokens - solid backgrounds for readability
+        chipBg: '#DBEAFE',                       // blue-100 solid
+        chipBorder: '#93C5FD',                   // blue-300 visible border
+        badgeBg: 'rgba(255, 255, 255, 0.8)'      // white badge background
     },
     completed: {
-        bg: '#D1FAE5',          // green-100 (emerald)
-        border: '#10B981',      // green-500 (emerald)
-        text: '#064E3B',        // green-900 (emerald)
-        dot: '#10B981',         // green-500 (emerald)
-        // Prototype-style tokens
-        chipBg: 'rgba(209, 250, 229, 0.9)',      // emerald-50 with opacity
-        chipBorder: 'rgba(16, 185, 129, 0.3)',   // emerald-500 border
-        badgeBg: 'rgba(255, 255, 255, 0.7)'      // white badge background
+        bg: '#D1FAE5',          // emerald-100
+        border: '#10B981',      // emerald-500
+        text: '#064E3B',        // emerald-900 - DARK text for light bg
+        dot: '#10B981',         // emerald-500
+        // Prototype-style tokens - solid backgrounds for readability
+        chipBg: '#D1FAE5',                       // emerald-100 solid
+        chipBorder: '#6EE7B7',                   // emerald-300 visible border
+        badgeBg: 'rgba(255, 255, 255, 0.8)'      // white badge background
     },
     cancelled: {
         bg: '#FEE2E2',          // red-100
         border: '#EF4444',      // red-500
-        text: '#7F1D1D',        // red-900
+        text: '#7F1D1D',        // red-900 - DARK text for light bg
         dot: '#EF4444',         // red-500
-        // Prototype-style tokens
-        chipBg: 'rgba(254, 226, 226, 0.9)',      // red-50 with opacity
-        chipBorder: 'rgba(239, 68, 68, 0.3)',    // red-500 border
-        badgeBg: 'rgba(255, 255, 255, 0.7)'      // white badge background
+        // Prototype-style tokens - solid backgrounds for readability
+        chipBg: '#FEE2E2',                       // red-100 solid
+        chipBorder: '#FCA5A5',                   // red-300 visible border
+        badgeBg: 'rgba(255, 255, 255, 0.8)'      // white badge background
     },
     'no-show': {
         bg: '#F3F4F6',          // gray-100
         border: '#6B7280',      // gray-500
-        text: '#1F2937',        // gray-800
+        text: '#1F2937',        // gray-800 - DARK text for light bg
         dot: '#6B7280',         // gray-500
-        // Prototype-style tokens
-        chipBg: 'rgba(243, 244, 246, 0.9)',      // gray-50 with opacity
-        chipBorder: 'rgba(107, 114, 128, 0.3)',  // gray-500 border
-        badgeBg: 'rgba(255, 255, 255, 0.7)'      // white badge background
+        // Prototype-style tokens - solid backgrounds for readability
+        chipBg: '#F3F4F6',                       // gray-100 solid
+        chipBorder: '#D1D5DB',                   // gray-300 visible border
+        badgeBg: 'rgba(255, 255, 255, 0.8)'      // white badge background
     }
 };
 
 /**
  * Dark mode status colors
  * Enhanced with prototype-style chip tokens for dark mode
+ * 
+ * DARK MODE: Uses semi-transparent colored backgrounds with LIGHT text
  */
 export const STATUS_COLORS_DARK = {
     pending: {
         bg: '#78350F',          // amber-900 (dark)
         border: '#F59E0B',      // amber-500
-        text: '#FEF3C7',        // amber-100 (light text)
+        text: '#FEF3C7',        // amber-100 - LIGHT text for dark bg
         dot: '#F59E0B',         // amber-500
-        // Prototype-style tokens for dark mode
-        chipBg: 'rgba(245, 158, 11, 0.2)',       // amber-500/20
-        chipBorder: 'rgba(245, 158, 11, 0.4)',   // amber-500/40
-        badgeBg: 'rgba(255, 255, 255, 0.1)'      // white/10
+        // Prototype-style tokens for dark mode - more opaque for visibility
+        chipBg: 'rgba(120, 53, 15, 0.8)',        // amber-900/80
+        chipBorder: 'rgba(245, 158, 11, 0.5)',   // amber-500/50
+        badgeBg: 'rgba(255, 255, 255, 0.15)'     // white/15
     },
     confirmed: {
         bg: '#1E3A8A',          // blue-900 (dark)
         border: '#3B82F6',      // blue-500
-        text: '#DBEAFE',        // blue-100 (light text)
+        text: '#DBEAFE',        // blue-100 - LIGHT text for dark bg
         dot: '#3B82F6',         // blue-500
-        // Prototype-style tokens for dark mode
-        chipBg: 'rgba(59, 130, 246, 0.2)',       // blue-500/20
-        chipBorder: 'rgba(59, 130, 246, 0.4)',   // blue-500/40
-        badgeBg: 'rgba(255, 255, 255, 0.1)'      // white/10
+        // Prototype-style tokens for dark mode - more opaque for visibility
+        chipBg: 'rgba(30, 58, 138, 0.8)',        // blue-900/80
+        chipBorder: 'rgba(59, 130, 246, 0.5)',   // blue-500/50
+        badgeBg: 'rgba(255, 255, 255, 0.15)'     // white/15
     },
     completed: {
-        bg: '#064E3B',          // green-900 (dark)
-        border: '#10B981',      // green-500
-        text: '#D1FAE5',        // green-100 (light text)
-        dot: '#10B981',         // green-500
-        // Prototype-style tokens for dark mode
-        chipBg: 'rgba(16, 185, 129, 0.2)',       // emerald-500/20
-        chipBorder: 'rgba(16, 185, 129, 0.4)',   // emerald-500/40
-        badgeBg: 'rgba(255, 255, 255, 0.1)'      // white/10
+        bg: '#064E3B',          // emerald-900 (dark)
+        border: '#10B981',      // emerald-500
+        text: '#D1FAE5',        // emerald-100 - LIGHT text for dark bg
+        dot: '#10B981',         // emerald-500
+        // Prototype-style tokens for dark mode - more opaque for visibility
+        chipBg: 'rgba(6, 78, 59, 0.8)',          // emerald-900/80
+        chipBorder: 'rgba(16, 185, 129, 0.5)',   // emerald-500/50
+        badgeBg: 'rgba(255, 255, 255, 0.15)'     // white/15
     },
     cancelled: {
         bg: '#7F1D1D',          // red-900 (dark)
         border: '#EF4444',      // red-500
-        text: '#FEE2E2',        // red-100 (light text)
+        text: '#FEE2E2',        // red-100 - LIGHT text for dark bg
         dot: '#EF4444',         // red-500
-        // Prototype-style tokens for dark mode
-        chipBg: 'rgba(239, 68, 68, 0.2)',        // red-500/20
-        chipBorder: 'rgba(239, 68, 68, 0.4)',    // red-500/40
-        badgeBg: 'rgba(255, 255, 255, 0.1)'      // white/10
+        // Prototype-style tokens for dark mode - more opaque for visibility
+        chipBg: 'rgba(127, 29, 29, 0.8)',        // red-900/80
+        chipBorder: 'rgba(239, 68, 68, 0.5)',    // red-500/50
+        badgeBg: 'rgba(255, 255, 255, 0.15)'     // white/15
     },
     'no-show': {
         bg: '#374151',          // gray-700 (dark)
         border: '#9CA3AF',      // gray-400
-        text: '#F3F4F6',        // gray-100 (light text)
+        text: '#F3F4F6',        // gray-100 - LIGHT text for dark bg
         dot: '#9CA3AF',         // gray-400
-        // Prototype-style tokens for dark mode
-        chipBg: 'rgba(156, 163, 175, 0.2)',      // gray-400/20
-        chipBorder: 'rgba(156, 163, 175, 0.4)',  // gray-400/40
-        badgeBg: 'rgba(255, 255, 255, 0.1)'      // white/10
+        // Prototype-style tokens for dark mode - more opaque for visibility
+        chipBg: 'rgba(55, 65, 81, 0.8)',         // gray-700/80
+        chipBorder: 'rgba(156, 163, 175, 0.5)',  // gray-400/50
+        badgeBg: 'rgba(255, 255, 255, 0.15)'     // white/15
     }
 };
 
