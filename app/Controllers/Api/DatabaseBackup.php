@@ -343,7 +343,9 @@ class DatabaseBackup extends BaseController
             return false;
         }
         
-        $role = session()->get('user_role') ?? session()->get('role');
+        // Session stores user data in a 'user' array with 'role' key
+        $user = session()->get('user');
+        $role = $user['role'] ?? session()->get('user_role') ?? session()->get('role');
         return $role === 'admin';
     }
 
