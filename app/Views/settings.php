@@ -1737,11 +1737,16 @@
             async function loadBackupStatus() {
                 try {
                     const response = await fetch(`${API_BASE}/status`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         credentials: 'same-origin'
                     });
                     
                     if (!response.ok) {
-                        throw new Error('Failed to load backup status');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.messages?.error || errorData.error?.message || 'Failed to load backup status');
                     }
 
                     const data = await response.json();
@@ -1796,6 +1801,7 @@
                     const response = await fetch(`${API_BASE}/toggle`, {
                         method: 'POST',
                         headers: {
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest'
                         },
@@ -1804,7 +1810,8 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to update setting');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.messages?.error || errorData.error?.message || 'Failed to update setting');
                     }
 
                     createBackupBtn.disabled = !enabled;
@@ -1813,7 +1820,7 @@
                     console.error('Failed to toggle backup:', error);
                     // Revert toggle
                     backupToggle.checked = !enabled;
-                    showError('Failed to update backup setting');
+                    showError(error.message || 'Failed to update backup setting');
                 }
             });
 
@@ -1873,11 +1880,16 @@
 
                 try {
                     const response = await fetch(`${API_BASE}/list`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         credentials: 'same-origin'
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to load backups');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.messages?.error || errorData.error?.message || 'Failed to load backups');
                     }
 
                     const data = await response.json();
@@ -1927,11 +1939,16 @@
                                 try {
                                     const delResponse = await fetch(`${API_BASE}/delete/${encodeURIComponent(filename)}`, {
                                         method: 'DELETE',
+                                        headers: {
+                                            'Accept': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        },
                                         credentials: 'same-origin'
                                     });
 
                                     if (!delResponse.ok) {
-                                        throw new Error('Failed to delete backup');
+                                        const errorData = await delResponse.json().catch(() => ({}));
+                                        throw new Error(errorData.messages?.error || 'Failed to delete backup');
                                     }
 
                                     // Refresh list
@@ -1940,7 +1957,7 @@
 
                                 } catch (error) {
                                     console.error('Delete failed:', error);
-                                    alert('Failed to delete backup');
+                                    alert(error.message || 'Failed to delete backup');
                                 }
                             });
                         });
