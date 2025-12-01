@@ -69,73 +69,94 @@
 
     <!-- User summary cards removed (now only shown in User Management module) -->
 
+        <?php
+        // Helper function to render trend indicator
+        function renderTrend(array $trend, string $periodLabel = 'from last month'): string {
+            $direction = $trend['direction'] ?? 'neutral';
+            $percentage = $trend['percentage'] ?? 0;
+            
+            if ($direction === 'up') {
+                $icon = 'trending_up';
+                $colorClass = 'text-green-300';
+                $prefix = '+';
+            } elseif ($direction === 'down') {
+                $icon = 'trending_down';
+                $colorClass = 'text-red-300';
+                $prefix = '-';
+            } else {
+                $icon = 'trending_flat';
+                $colorClass = 'text-gray-300';
+                $prefix = '';
+            }
+            
+            return '<span class="material-symbols-outlined mr-1 ' . $colorClass . ' text-base">' . $icon . '</span>'
+                 . '<span class="opacity-80">' . $prefix . $percentage . '% ' . $periodLabel . '</span>';
+        }
+        ?>
+
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Card 1 - Total Users -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-primary);">
+            <md-outlined-card class="stats-card p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-primary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Total Users</p>
-                        <p class="text-3xl font-bold"><?= number_format($stats['total_users'] ?? 2345) ?></p>
+                        <p class="text-3xl font-bold"><span id="dash-total-users"><?= number_format($stats['total_users'] ?? 0) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">group</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
-                    <span class="opacity-80">+12% from last month</span>
+                    <?= renderTrend($trends['users'] ?? [], 'from last month') ?>
                 </div>
             </md-outlined-card>
 
             <!-- Card 2 - Active Appointments -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
+            <md-outlined-card class="stats-card p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-secondary); color: var(--md-sys-color-on-surface);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Active Appointments</p>
-                        <p class="text-3xl font-bold"><span id="dash-appointments-week"><?= number_format($stats['active_sessions'] ?? 1789) ?></span></p>
+                        <p class="text-3xl font-bold"><span id="dash-appointments-week"><?= number_format($stats['active_sessions'] ?? 0) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">calendar_month</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
-                    <span class="opacity-80">+8% from last month</span>
+                    <?= renderTrend($trends['appointments'] ?? [], 'from last month') ?>
                 </div>
             </md-outlined-card>
 
             <!-- Card 3 - Pending Requests -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-tertiary);">
+            <md-outlined-card class="stats-card p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background-color: var(--md-sys-color-tertiary);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <p class="opacity-80 text-sm">Pending Requests</p>
-                        <p class="text-3xl font-bold"><span id="dash-appointments-today"><?= number_format($stats['pending_tasks'] ?? 456) ?></span></p>
+                        <p class="opacity-80 text-sm">Today's Appointments</p>
+                        <p class="text-3xl font-bold"><span id="dash-appointments-today"><?= number_format($stats['pending_tasks'] ?? 0) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">schedule</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <span class="material-symbols-outlined mr-1 text-red-300 text-base">trending_down</span>
-                    <span class="opacity-80">-3% from last month</span>
+                    <?= renderTrend($trends['pending'] ?? [], 'vs yesterday') ?>
                 </div>
             </md-outlined-card>
 
             <!-- Card 4 - Monthly Revenue -->
-            <md-outlined-card class="p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            <md-outlined-card class="stats-card p-6 text-white transition-colors duration-300 rounded-lg shadow-brand" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="opacity-80 text-sm">Monthly Revenue</p>
-                        <p class="text-3xl font-bold">$<?= number_format($stats['revenue'] ?? 12456) ?></p>
+                        <p class="text-3xl font-bold"><span id="dash-revenue">$<?= number_format($stats['revenue'] ?? 0) ?></span></p>
                     </div>
                     <div class="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-2xl">attach_money</span>
                     </div>
                 </div>
                 <div class="flex items-center text-sm">
-                    <span class="material-symbols-outlined mr-1 text-green-300 text-base">trending_up</span>
-                    <span class="opacity-80">+15% from last month</span>
+                    <?= renderTrend($trends['revenue'] ?? [], 'from last month') ?>
                 </div>
             </md-outlined-card>
         </div>
@@ -224,25 +245,13 @@
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
-                                <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">JD</div>
-                                        John Doe
+                            <tr class="bg-white dark:bg-gray-800">
+                                <td colspan="5" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center">
+                                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-4xl mb-3">event_busy</span>
+                                        <p class="text-gray-500 dark:text-gray-400 text-sm">No recent activities</p>
+                                        <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">Activities will appear here as appointments are scheduled</p>
                                     </div>
-                                </td>
-                                <td class="px-6 py-4">Scheduled meeting</td>
-                                <td class="px-6 py-4">
-                                    <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded transition-colors duration-300">Active</span>
-                                </td>
-                                <td class="px-6 py-4">Jan 1, 2025</td>
-                                <td class="px-6 py-4">
-                                    <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 mr-2">
-                                        <span class="material-symbols-outlined text-base">edit</span>
-                                    </button>
-                                    <button class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200">
-                                        <span class="material-symbols-outlined text-base">delete</span>
-                                    </button>
                                 </td>
                             </tr>
                         <?php endif; ?>
@@ -281,26 +290,10 @@
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 transition-colors duration-300 shadow-brand">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm mr-3 transition-colors duration-300">JD</div>
-                                <div>
-                                    <p class="font-medium text-gray-900 dark:text-gray-100 transition-colors duration-300">John Doe</p>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Jan 1, 2025</p>
-                                </div>
-                            </div>
-                            <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium px-2.5 py-0.5 rounded transition-colors duration-300">Active</span>
-                        </div>
-                        <p class="text-gray-700 dark:text-gray-300 mb-3 transition-colors duration-300">Scheduled meeting</p>
-                        <div class="flex justify-end space-x-2">
-                            <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <span class="material-symbols-outlined text-base">edit</span>
-                            </button>
-                            <button class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 bg-white dark:bg-gray-800 rounded-lg">
-                                <span class="material-symbols-outlined text-base">delete</span>
-                            </button>
-                        </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-8 transition-colors duration-300 shadow-brand text-center">
+                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-4xl mb-3">event_busy</span>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">No recent activities</p>
+                        <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">Activities will appear here as appointments are scheduled</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -310,20 +303,34 @@
     <div class="p-4 md:p-6 mb-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <div>
-                    <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Scheduler</h2>
+                    <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Quick Book</h2>
                     <p class="text-gray-600 dark:text-gray-400 text-sm transition-colors duration-300">Find and book time slots</p>
                 </div>
+                <?php if (!empty($servicesList)): ?>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full sm:w-auto">
                     <select id="sch-service" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                        <?php foreach (($servicesList ?? []) as $s): ?>
+                        <?php foreach ($servicesList as $s): ?>
                             <option value="<?= esc($s['id']) ?>"><?= esc($s['name']) ?> (<?= esc($s['duration_min']) ?> min)</option>
                         <?php endforeach; ?>
                     </select>
                     <input id="sch-provider" type="number" min="1" value="1" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Provider ID" />
                     <input id="sch-date" type="date" value="<?= date('Y-m-d') ?>" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
                 </div>
+                <?php endif; ?>
             </div>
+            <?php if (!empty($servicesList)): ?>
             <div id="sch-slots" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            <?php else: ?>
+            <div class="text-center py-8">
+                <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-4xl mb-3">calendar_add_on</span>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">No services configured</p>
+                <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">Add services in Settings to enable quick booking</p>
+                <a href="<?= base_url('settings') ?>" class="btn btn-secondary mt-4 inline-flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">settings</span>
+                    <span>Configure Services</span>
+                </a>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Quick Actions -->
@@ -368,42 +375,105 @@
     <!-- Page Scripts -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-            // Global appointment summary refresher
+            const BASE_URL = window.__BASE_URL__ || '';
+            let refreshInterval = null;
+            const REFRESH_INTERVAL_MS = 60000; // 60 seconds
+
+            // Comprehensive dashboard refresh
+            async function refreshDashboardStats() {
+                try {
+                    const res = await fetch(`${BASE_URL}/dashboard/api`);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    
+                    // Update stats cards
+                    updateElement('dash-total-users', data.total_users);
+                    updateElement('dash-appointments-week', data.active_sessions);
+                    updateElement('dash-appointments-today', data.pending_tasks);
+                    updateElement('dash-revenue', '$' + numberFormat(data.revenue));
+                    
+                    // Flash animation to indicate update
+                    document.querySelectorAll('.stats-card').forEach(card => {
+                        card.classList.add('ring-2', 'ring-green-400/50');
+                        setTimeout(() => card.classList.remove('ring-2', 'ring-green-400/50'), 500);
+                    });
+                    
+                    console.log('Dashboard stats refreshed at', new Date().toLocaleTimeString());
+                } catch (e) {
+                    console.log('Dashboard refresh failed:', e.message);
+                }
+            }
+
+            // Helper to update element text
+            function updateElement(id, value) {
+                const el = document.getElementById(id);
+                if (el && value !== undefined) {
+                    el.textContent = String(value);
+                }
+            }
+
+            // Number formatting helper
+            function numberFormat(num) {
+                return new Intl.NumberFormat().format(num);
+            }
+
+            // Legacy appointment summary for compatibility
             async function refreshAppointmentSummary() {
                 try {
-                    const base = (window.__BASE_URL__ || '') + '/api';
-                    const res = await fetch(base + '/v1/appointments/summary');
+                    const res = await fetch(`${BASE_URL}/api/v1/appointments/summary`);
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const json = await res.json();
                     const data = json && typeof json === 'object' && 'data' in json ? json.data : json;
                     if (data && typeof data === 'object') {
-                        const weekEl = document.getElementById('dash-appointments-week');
-                        const todayEl = document.getElementById('dash-appointments-today');
-                        if (weekEl && typeof data.week === 'number') weekEl.textContent = String(data.week);
-                        if (todayEl && typeof data.today === 'number') todayEl.textContent = String(data.today);
+                        if (typeof data.week === 'number') updateElement('dash-appointments-week', data.week);
+                        if (typeof data.today === 'number') updateElement('dash-appointments-today', data.today);
                     }
                 } catch (e) {
                     // Silent fail; keep server-rendered values
                 }
             }
 
-            // Expose a global hook for other modules to trigger updates after changes
-            window.refreshAppointmentSummary = refreshAppointmentSummary;
-            document.addEventListener('appointment:changed', refreshAppointmentSummary);
+            // Start auto-refresh
+            function startAutoRefresh() {
+                if (refreshInterval) clearInterval(refreshInterval);
+                refreshInterval = setInterval(refreshDashboardStats, REFRESH_INTERVAL_MS);
+                console.log('Dashboard auto-refresh started (every 60s)');
+            }
 
-            // Initial fetch
-            refreshAppointmentSummary();
+            // Stop auto-refresh (useful when page hidden)
+            function stopAutoRefresh() {
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                    console.log('Dashboard auto-refresh stopped');
+                }
+            }
+
+            // Pause refresh when tab is hidden
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopAutoRefresh();
+                } else {
+                    refreshDashboardStats(); // Immediate refresh on return
+                    startAutoRefresh();
+                }
+            });
+
+            // Expose global hooks
+            window.refreshAppointmentSummary = refreshAppointmentSummary;
+            window.refreshDashboardStats = refreshDashboardStats;
+            document.addEventListener('appointment:changed', refreshDashboardStats);
+
+            // Initial fetch and start auto-refresh
+            refreshDashboardStats();
+            startAutoRefresh();
 
             // Search functionality
             const searchInput = document.getElementById('dashboardSearch');
             if (searchInput) {
                 searchInput.addEventListener('input', function(e) {
                     const query = e.target.value.toLowerCase();
-                    // Simple search feedback
                     if (query.length > 2) {
-                        console.log('Searching for:', query);
-                        // Here you could implement actual search functionality
-                        // For now, just show visual feedback
                         e.target.classList.add('ring-2', 'ring-blue-500');
                     } else {
                         e.target.classList.remove('ring-2', 'ring-blue-500');
@@ -414,8 +484,7 @@
                     if (e.key === 'Enter') {
                         const query = e.target.value;
                         if (query.trim()) {
-                            // Simulate search action
-                            alert(`Searching for: "${query}"`);
+                            window.location.href = `${BASE_URL}/appointments?search=${encodeURIComponent(query)}`;
                         }
                     }
                 });
@@ -424,15 +493,24 @@
 
         // (Removed role-based user summary cards and dynamic user list for dashboard. This functionality now lives only in User Management module.)
 
-        function initCharts() {
-            import('<?= base_url('/build/assets/charts.js') ?>').then(module => {
-                if (module?.default?.initAllCharts) module.default.initAllCharts();
-            }).catch(error => {
+        async function initCharts() {
+            try {
+                const module = await import('<?= base_url('/build/assets/charts.js') ?>');
+                if (module?.default?.initAllCharts) {
+                    await module.default.initAllCharts();
+                    // Setup dark mode listener for chart re-rendering
+                    if (module.default.setupDarkModeListener) {
+                        module.default.setupDarkModeListener();
+                    }
+                }
+            } catch (error) {
                 console.log('Charts not available:', error);
                 document.querySelectorAll('.chart-container').forEach(container => {
-                    container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 transition-colors duration-300"><p>Chart data will be displayed here</p></div>';
+                    container.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 transition-colors duration-300">' +
+                        '<span class="material-symbols-outlined text-4xl mb-2">show_chart</span>' +
+                        '<p class="text-sm">Chart data unavailable</p></div>';
                 });
-            });
+            }
         }
 
         function initEmbeddedScheduler() {

@@ -48,6 +48,53 @@ class UserModel extends BaseModel
     }
 
     /**
+     * Calculate month-over-month growth trend for users
+     * Returns percentage change and direction
+     */
+    public function getTrend(): array
+    {
+        // Current month count
+        $currentMonthStart = date('Y-m-01 00:00:00');
+        $currentMonthEnd = date('Y-m-t 23:59:59');
+        $currentCount = $this->where('created_at >=', $currentMonthStart)
+                             ->where('created_at <=', $currentMonthEnd)
+                             ->countAllResults(false);
+
+        // Previous month count
+        $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+        $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+        $prevCount = $this->where('created_at >=', $prevMonthStart)
+                          ->where('created_at <=', $prevMonthEnd)
+                          ->countAllResults(false);
+
+        return $this->calculateTrendPercentage($currentCount, $prevCount);
+    }
+
+    /**
+     * Helper to calculate trend percentage
+     */
+    protected function calculateTrendPercentage(int $current, int $previous): array
+    {
+        if ($previous === 0) {
+            // No previous data - show current as 100% increase if any, or 0%
+            return [
+                'percentage' => $current > 0 ? 100 : 0,
+                'direction' => $current > 0 ? 'up' : 'neutral',
+                'current' => $current,
+                'previous' => $previous
+            ];
+        }
+
+        $change = (($current - $previous) / $previous) * 100;
+        return [
+            'percentage' => round(abs($change), 1),
+            'direction' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'neutral'),
+            'current' => $current,
+            'previous' => $previous
+        ];
+    }
+
+    /**
      * Get recent user registrations
      */
     public function getRecentUsers($limit = 5)
