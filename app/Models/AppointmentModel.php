@@ -133,6 +133,92 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Calculate month-over-month trend for appointments
+     */
+    public function getTrend(): array
+    {
+        // Current month appointments
+        $currentMonthStart = date('Y-m-01 00:00:00');
+        $currentMonthEnd = date('Y-m-t 23:59:59');
+        $currentCount = $this->where('start_time >=', $currentMonthStart)
+                             ->where('start_time <=', $currentMonthEnd)
+                             ->countAllResults(false);
+
+        // Previous month appointments
+        $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+        $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+        $prevCount = $this->where('start_time >=', $prevMonthStart)
+                          ->where('start_time <=', $prevMonthEnd)
+                          ->countAllResults(false);
+
+        return $this->calculateTrendPercentage($currentCount, $prevCount);
+    }
+
+    /**
+     * Calculate trend for pending/today's appointments
+     */
+    public function getPendingTrend(): array
+    {
+        // Today's pending
+        $todayStart = date('Y-m-d 00:00:00');
+        $todayEnd = date('Y-m-d 23:59:59');
+        $todayCount = $this->where('start_time >=', $todayStart)
+                           ->where('start_time <=', $todayEnd)
+                           ->countAllResults(false);
+
+        // Yesterday's count (same time comparison)
+        $yesterdayStart = date('Y-m-d 00:00:00', strtotime('-1 day'));
+        $yesterdayEnd = date('Y-m-d 23:59:59', strtotime('-1 day'));
+        $yesterdayCount = $this->where('start_time >=', $yesterdayStart)
+                               ->where('start_time <=', $yesterdayEnd)
+                               ->countAllResults(false);
+
+        return $this->calculateTrendPercentage($todayCount, $yesterdayCount);
+    }
+
+    /**
+     * Calculate revenue trend month-over-month
+     */
+    public function getRevenueTrend(): array
+    {
+        $currentRevenue = $this->getRevenue('month');
+        
+        // Previous month revenue
+        $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+        $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+        $prevCount = $this->where('status', 'completed')
+                          ->where('start_time >=', $prevMonthStart)
+                          ->where('start_time <=', $prevMonthEnd)
+                          ->countAllResults();
+        $prevRevenue = $prevCount * 50; // Same calculation as getRevenue
+
+        return $this->calculateTrendPercentage($currentRevenue, $prevRevenue);
+    }
+
+    /**
+     * Helper to calculate trend percentage
+     */
+    protected function calculateTrendPercentage(int $current, int $previous): array
+    {
+        if ($previous === 0) {
+            return [
+                'percentage' => $current > 0 ? 100 : 0,
+                'direction' => $current > 0 ? 'up' : 'neutral',
+                'current' => $current,
+                'previous' => $previous
+            ];
+        }
+
+        $change = (($current - $previous) / $previous) * 100;
+        return [
+            'percentage' => round(abs($change), 1),
+            'direction' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'neutral'),
+            'current' => $current,
+            'previous' => $previous
+        ];
+    }
+
+    /**
      * Recent appointments
      */
     public function getRecentAppointments(int $limit = 10): array
@@ -143,23 +229,30 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Recent activity for dashboard
+     * Recent activity for dashboard - includes service and customer names
      */
     public function getRecentActivity(int $limit = 5): array
     {
-        $appointments = $this->orderBy('updated_at', 'DESC')
-                             ->limit($limit)
-                             ->find();
-        $activities = [];
-        foreach ($appointments as $appointment) {
-            $activities[] = [
-                'customer_id' => $appointment['customer_id'] ?? null,
-                'service_id'  => $appointment['service_id'] ?? null,
-                'status'      => $appointment['status'] ?? null,
-                'updated_at'  => $appointment['updated_at'] ?? null,
-            ];
-        }
-        return $activities;
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                a.id,
+                a.customer_id,
+                a.service_id,
+                a.status,
+                a.updated_at,
+                COALESCE(c.name, 'Unknown Customer') as customer_name,
+                COALESCE(s.name, 'Unknown Service') as service_name
+            FROM {$tableName} a
+            LEFT JOIN xs_customers c ON a.customer_id = c.id
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            ORDER BY a.updated_at DESC
+            LIMIT {$limit}
+        ");
+        
+        return $query->getResultArray();
     }
 
     /**

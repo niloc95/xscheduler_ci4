@@ -66,6 +66,12 @@ class Dashboard extends BaseController
             $appointmentStats = $this->appointmentModel->getStats();
             $serviceStats = $this->serviceModel->getStats();
 
+            // Calculate trends for dashboard cards
+            $userTrend = $this->userModel->getTrend();
+            $appointmentTrend = $this->appointmentModel->getTrend();
+            $pendingTrend = $this->appointmentModel->getPendingTrend();
+            $revenueTrend = $this->appointmentModel->getRevenueTrend();
+
             // Calculate revenue
             $monthlyRevenue = $this->appointmentModel->getRevenue('month');
             $weeklyRevenue = $this->appointmentModel->getRevenue('week');
@@ -114,6 +120,13 @@ class Dashboard extends BaseController
                     'pending_tasks' => $appointmentStats['today'], // Today's appointments as pending tasks
                     'revenue' => round($monthlyRevenue, 2)
                 ],
+                // Trend data for dashboard cards (real month-over-month calculations)
+                'trends' => [
+                    'users' => $userTrend,
+                    'appointments' => $appointmentTrend,
+                    'pending' => $pendingTrend,
+                    'revenue' => $revenueTrend
+                ],
                 // Provide services list for embedded scheduler section
                 'servicesList' => $this->serviceModel->orderBy('name', 'ASC')->findAll(),
                 'detailed_stats' => [
@@ -148,7 +161,14 @@ class Dashboard extends BaseController
                     'pending_tasks' => 0,
                     'revenue' => 0
                 ],
-                'recent_activities' => []
+                'trends' => [
+                    'users' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
+                    'appointments' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
+                    'pending' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
+                    'revenue' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0]
+                ],
+                'recent_activities' => [],
+                'servicesList' => []
             ];
             
             return view('dashboard', $fallbackData);
