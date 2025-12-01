@@ -117,15 +117,17 @@ class Appointments extends BaseController
             ->findAll();
         
         // Get all providers for filter dropdown
+        // Note: xs_users uses 'status' column ('active'/'inactive'/'suspended'), not 'is_active'
         $allProviders = $this->userModel
             ->where('role', 'provider')
-            ->where('is_active', true)
+            ->where('status', 'active')
             ->orderBy('name', 'ASC')
             ->findAll();
         
         // Get all services for filter dropdown
+        // Note: xs_services uses 'active' column (0/1), not 'is_active'
         $allServices = $this->serviceModel
-            ->where('is_active', true)
+            ->where('active', 1)
             ->orderBy('name', 'ASC')
             ->findAll();
         
