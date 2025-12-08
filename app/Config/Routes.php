@@ -27,6 +27,8 @@ $routes->group('auth', function($routes) {
 // Dashboard Routes (require both setup and authentication)
 $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Dashboard::index', ['filter' => 'auth']);
+    $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
+    $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
     $routes->get('search', 'Dashboard::search', ['filter' => 'auth']);
 });
@@ -185,7 +187,10 @@ $routes->group('public/my-appointments', ['filter' => 'setup'], function($routes
 });
 
 // Scheduler API routes
-$routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($routes) {
+$routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
+    // Dashboard API endpoint
+    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats');
+
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
@@ -243,7 +248,7 @@ $routes->group('api', ['filter' => 'setup', 'filter' => 'api_cors'], function($r
     // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {
         $routes->get('services', 'Api\\V1\\Services::index');
-        $routes->get('providers', 'Api\\V1\\Providers::index');
+        // Note: providers route is public (defined above) for calendar access
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
         // Settings API (authenticated)
         $routes->get('settings', 'Api\\V1\\Settings::index');

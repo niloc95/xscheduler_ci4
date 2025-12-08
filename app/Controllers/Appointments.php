@@ -6,7 +6,6 @@ use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
-use App\Services\AppointmentDashboardContextService;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
@@ -18,7 +17,6 @@ class Appointments extends BaseController
     protected $serviceModel;
     protected $appointmentModel;
     protected $customerModel;
-    protected $dashboardContextService;
 
     public function __construct()
     {
@@ -26,63 +24,7 @@ class Appointments extends BaseController
         $this->serviceModel = new ServiceModel();
         $this->appointmentModel = new AppointmentModel();
         $this->customerModel = new CustomerModel();
-        $this->dashboardContextService = new AppointmentDashboardContextService();
-        helper(['permissions', 'ui']);
-    }
-
-    /**
-     * Get formatted providers list for dropdown
-     */
-    private function getFormattedProviders(): array
-    {
-        $providers = $this->userModel->getProviders();
-        
-        return array_map(function($provider) {
-            return [
-                'id' => $provider['id'],
-                'name' => $provider['name'],
-                'speciality' => 'Provider' // TODO: Add speciality field to users table
-            ];
-        }, $providers);
-    }
-
-    /**
-     * Get booking configuration (field config, custom fields, localization)
-     */
-    private function getBookingConfiguration(): array
-    {
-        $bookingService = new BookingSettingsService();
-        $localizationService = new LocalizationSettingsService();
-        
-        return [
-            'fieldConfig' => $bookingService->getFieldConfiguration(),
-            'customFields' => $bookingService->getCustomFieldConfiguration(),
-            'localization' => $localizationService->getContext()
-        ];
-    }
-
-    /**
-     * Extract custom fields from POST data
-     */
-    private function extractCustomFields(): ?string
-    {
-        $customFieldsData = [];
-        for ($i = 1; $i <= 6; $i++) {
-            $fieldValue = $this->request->getPost("custom_field_{$i}");
-            if ($fieldValue !== null && $fieldValue !== '') {
-                $customFieldsData["custom_field_{$i}"] = $fieldValue;
-            }
-        }
-        
-        return !empty($customFieldsData) ? json_encode($customFieldsData) : null;
-    }
-
-    /**
-     * Calendar prototype feature is archived - always return disabled
-     */
-    private function resolveCalendarPrototypeContext(): array
-    {
-        return ['enabled' => false];
+        helper('permissions');
     }
 
     /**
@@ -99,13 +41,8 @@ class Appointments extends BaseController
         $currentUserId = session()->get('user_id');
         $currentRole = current_user_role();
 
-        $statusFilter = $this->appointmentModel->normalizeStatusFilter($this->request->getGet('status'));
-        $providerFilter = $this->request->getGet('provider_id');
-        $serviceFilter = $this->request->getGet('service_id');
-        
-        $context = $this->dashboardContextService->build($currentRole, $currentUserId, $currentUser);
-
-        $appointments = $this->appointmentModel->getDashboardAppointments($statusFilter, $context);
+        // Mock appointment data - in real implementation, this would come from AppointmentModel
+        $appointments = $this->getMockAppointments($currentRole, $currentUserId);
         
         // Get active providers with colors for legend
         $activeProviders = $this->userModel
@@ -116,46 +53,14 @@ class Appointments extends BaseController
             ->orderBy('name', 'ASC')
             ->findAll();
         
-        // Get all providers for filter dropdown
-        // Note: xs_users uses 'status' column ('active'/'inactive'/'suspended'), not 'is_active'
-        $allProviders = $this->userModel
-            ->where('role', 'provider')
-            ->where('status', 'active')
-            ->orderBy('name', 'ASC')
-            ->findAll();
-        
-        // Get all services for filter dropdown
-        // Note: xs_services uses 'active' column (0/1), not 'is_active'
-        $allServices = $this->serviceModel
-            ->where('active', 1)
-            ->orderBy('name', 'ASC')
-            ->findAll();
-        
-        $stats = $this->appointmentModel->getStats($context, $statusFilter);
-        $calendarPrototype = $this->resolveCalendarPrototypeContext();
-        
-        // Build current filters array for the view
-        $currentFilters = [
-            'status' => $statusFilter,
-            'provider_id' => $providerFilter,
-            'service_id' => $serviceFilter,
-        ];
-
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
             'current_page' => 'appointments',
             'appointments' => $appointments,
             'user_role' => $currentRole,
             'user' => $currentUser,
-            'stats' => $stats,
-            'upcomingCount' => $stats['upcoming'] ?? 0,
-            'completedCount' => $stats['completed'] ?? 0,
-            'activeProviders' => $activeProviders,
-            'allProviders' => $allProviders,
-            'allServices' => $allServices,
-            'currentFilters' => $currentFilters,
-            'activeStatusFilter' => $statusFilter,
-            'calendarPrototype' => $calendarPrototype,
+            'stats' => $this->getAppointmentStats($currentRole, $currentUserId),
+            'activeProviders' => $activeProviders
         ];
 
         return view('appointments/index', $data);
@@ -191,20 +96,50 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
-        // Get booking configuration and providers
-        $config = $this->getBookingConfiguration();
-        $providersFormatted = $this->getFormattedProviders();
+        // Initialize services
+        $bookingService = new BookingSettingsService();
+        $localizationService = new LocalizationSettingsService();
+
+        // Get field configuration from settings
+        $fieldConfig = $bookingService->getFieldConfiguration();
+        $customFields = $bookingService->getCustomFieldConfiguration();
+        $localizationContext = $localizationService->getContext();
+
+        // Fetch real providers and services from database
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        // Format providers for dropdown
+        $providersFormatted = array_map(function($provider) {
+            return [
+                'id' => $provider['id'],
+                'name' => $provider['name'],
+                'speciality' => 'Provider' // TODO: Add speciality field to users table
+            ];
+        }, $providers);
+
+        // Format services for dropdown
+        $servicesFormatted = array_map(function($service) {
+            return [
+                'id' => $service['id'],
+                'name' => $service['name'],
+                'duration' => $service['duration_min'], // Map duration_min to duration for consistency
+                'price' => $service['price']
+            ];
+        }, $services);
 
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
+            'services' => $servicesFormatted,
             'providers' => $providersFormatted,
             'user_role' => current_user_role(),
-            'appointment' => [], // Empty for create mode
-            'formAction' => base_url('appointments/store'),
-        ] + $config;
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'localization' => $localizationContext,
+        ];
 
-        return view('appointments/form', $data);
+        return view('appointments/create', $data);
     }
 
     /**
@@ -244,7 +179,6 @@ class Appointments extends BaseController
             ];
         } else {
             // New customer - full validation
-            // Phone formats supported: +27 82 529 7070 (international) or 082 529 2242 (local)
             $rules = [
                 'provider_id' => 'required|is_natural_no_zero',
                 'service_id' => 'required|is_natural_no_zero',
@@ -253,7 +187,7 @@ class Appointments extends BaseController
                 'customer_first_name' => 'required|min_length[2]|max_length[120]',
                 'customer_last_name' => 'permit_empty|max_length[160]',
                 'customer_email' => 'required|valid_email|max_length[255]',
-                'customer_phone' => 'required|min_length[10]|max_length[20]',
+                'customer_phone' => 'required|min_length[10]|max_length[32]',
                 'customer_address' => 'permit_empty|max_length[255]',
                 'notes' => 'permit_empty|max_length[1000]'
             ];
@@ -265,6 +199,8 @@ class Appointments extends BaseController
                 ->withInput()
                 ->with('errors', $validation->getErrors());
         }
+
+        log_message('info', '[Appointments::store] Validation passed');
 
         // Get form data
         $providerId = $this->request->getPost('provider_id');
@@ -286,21 +222,91 @@ class Appointments extends BaseController
         // Construct local start DateTime in client timezone
         $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
         
-        // Create DateTime WITHOUT timezone to keep values as-is (already in local time)
-        // The form sends times in the user's local timezone, so we store them as-is
-        $startDateTime = new \DateTime($startTimeLocal);
+        log_message('info', '[Appointments::store] ========== APPOINTMENT CREATION ==========');
+        log_message('info', '[Appointments::store] Input from form:', [
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'date' => $appointmentDate,
+            'time' => $appointmentTime,
+            'duration' => $service['duration_min'] . ' minutes'
+        ]);
+        log_message('info', '[Appointments::store] Client timezone: ' . $clientTimezone);
+        log_message('info', '[Appointments::store] Local datetime: ' . $startTimeLocal);
+        
+        try {
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+        } catch (\Exception $e) {
+            log_message('error', '[Appointments::store] Failed to create DateTime with timezone ' . $clientTimezone . ': ' . $e->getMessage());
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $clientTimezone = 'UTC';
+        }
 
         // Calculate local end time based on service duration
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Format times for storage (database stores in LOCAL timezone as-is)
-        $startTimeForDb = $startDateTime->format('Y-m-d H:i:s');
-        $endTimeForDb = $endDateTime->format('Y-m-d H:i:s');
+        // Convert to UTC for storage
+        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        
+        log_message('info', '[Appointments::store] Timezone conversion:', [
+            'local_start' => $startDateTime->format('Y-m-d H:i:s'),
+            'local_end' => $endDateTime->format('Y-m-d H:i:s'),
+            'utc_start' => $startTimeUtc,
+            'utc_end' => $endTimeUtc,
+            'timezone' => $clientTimezone
+        ]);
+        log_message('info', '[Appointments::store] Will store in database as UTC');
+        
+        // ===== BUSINESS HOURS VALIDATION =====
+        // Check if the appointment is on a working day and within business hours
+        $dayOfWeekName = strtolower($startDateTime->format('l'));
+        $dayMapping = [
+            'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3,
+            'thursday' => 4, 'friday' => 5, 'saturday' => 6
+        ];
+        $weekdayNum = $dayMapping[$dayOfWeekName] ?? 0;
+        
+        $db = \Config\Database::connect();
+        $businessHours = $db->table('business_hours')
+            ->where('weekday', $weekdayNum)
+            ->get()
+            ->getRowArray();
+        
+        if (!$businessHours) {
+            log_message('warning', '[Appointments::store] Attempted booking on closed day: ' . ucfirst($dayOfWeekName));
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.');
+        }
+        
+        // Check if time is within business hours
+        $requestedTime = $startDateTime->format('H:i:s');
+        $requestedEndTime = $endDateTime->format('H:i:s');
+        
+        if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {
+            $startFormatted = date('g:i A', strtotime($businessHours['start_time']));
+            $endFormatted = date('g:i A', strtotime($businessHours['end_time']));
+            log_message('warning', '[Appointments::store] Attempted booking outside business hours: ' . $requestedTime);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time.");
+        }
+        
+        if ($requestedEndTime > $businessHours['end_time']) {
+            log_message('warning', '[Appointments::store] Appointment would extend past business hours');
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'This appointment would extend past our closing time. Please choose an earlier time slot.');
+        }
+        
+        log_message('info', '[Appointments::store] ✅ Business hours validation passed');
+        log_message('info', '[Appointments::store] =============================================');
 
         // Handle customer - either use existing or create new
         if ($customerId) {
             // Customer selected from search
+            log_message('info', '[Appointments::store] Using existing customer ID: ' . $customerId);
             $customer = $this->customerModel->find($customerId);
             
             if (!$customer) {
@@ -315,22 +321,27 @@ class Appointments extends BaseController
 
             if (!$customer) {
                 // Create new customer
-                $now = date('Y-m-d H:i:s');
                 $customerData = [
                     'first_name' => $this->request->getPost('customer_first_name'),
                     'last_name' => $this->request->getPost('customer_last_name'),
                     'email' => $customerEmail,
                     'phone' => $this->request->getPost('customer_phone'),
                     'address' => $this->request->getPost('customer_address'),
-                    'notes' => $this->request->getPost('notes'),
-                    'created_at' => $now,
-                    'address' => $this->request->getPost('customer_address')
+                    'notes' => $this->request->getPost('notes')
                 ];
 
                 // Handle custom fields if provided
-                $customFieldsJson = $this->extractCustomFields();
-                if ($customFieldsJson) {
-                    $customerData['custom_fields'] = $customFieldsJson;
+                $customFieldsData = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $fieldValue = $this->request->getPost("custom_field_{$i}");
+                    if ($fieldValue !== null && $fieldValue !== '') {
+                        // Use consistent field naming: 'custom_field_1' not 'field_1'
+                        // This matches CustomerManagement controller and BookingSettingsService
+                        $customFieldsData["custom_field_{$i}"] = $fieldValue;
+                    }
+                }
+                if (!empty($customFieldsData)) {
+                    $customerData['custom_fields'] = json_encode($customFieldsData);
                 }
 
                 $customerId = $this->customerModel->insert($customerData);
@@ -345,46 +356,33 @@ class Appointments extends BaseController
             }
         }
 
-        // Validate availability before creating appointment
-        // NOTE: AvailabilityService expects LOCAL times (database stores local times)
-        $availabilityService = new \App\Services\AvailabilityService();
-        $availabilityCheck = $availabilityService->isSlotAvailable(
-            $providerId,
-            $startTimeForDb,
-            $endTimeForDb,
-            $clientTimezone
-        );
-
-        if (!$availabilityCheck['available']) {
-            log_message('warning', '[Appointments::store] Slot not available: ' . $availabilityCheck['reason']);
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'This time slot is not available. ' . $availabilityCheck['reason']);
-        }
-
         // Create appointment
         $appointmentData = [
             'customer_id' => $customerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTimeForDb,  // Store in local timezone
-            'end_time' => $endTimeForDb,      // Store in local timezone
+            'start_time' => $startTimeUtc,
+            'end_time' => $endTimeUtc,
             'status' => 'pending', // Valid enum values: pending, confirmed, completed, cancelled, no-show
             'notes' => $this->request->getPost('notes') ?? ''
         ];
 
+        log_message('info', '[Appointments::store] Attempting to insert appointment: ' . json_encode($appointmentData));
         $appointmentId = $this->appointmentModel->insert($appointmentData);
 
         if (!$appointmentId) {
             $errors = $this->appointmentModel->errors();
-            log_message('error', '[Appointments::store] Failed to insert: ' . json_encode($errors));
+            log_message('error', '[Appointments::store] Failed to insert appointment. Model errors: ' . json_encode($errors));
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create appointment. Please try again.');
-        }        // Success - redirect to appointments calendar with refresh parameter
-        // The timestamp parameter forces the calendar to bypass cache and reload
-        return redirect()->to('/appointments?refresh=' . time())
-            ->with('success', 'Appointment booked successfully! The appointment is now visible in your calendar.');
+        }
+        
+        log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
+
+        // Success - redirect to appointments list or view
+        return redirect()->to('/appointments')
+            ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
     }
 
     private function resolveClientTimezone(): string
@@ -454,9 +452,13 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
-        // Get booking configuration and providers
-        $config = $this->getBookingConfiguration();
-        $providersFormatted = $this->getFormattedProviders();
+        // Initialize services
+        $bookingService = new BookingSettingsService();
+        $localizationService = new LocalizationSettingsService();
+
+        // Get field configuration from settings
+        $fieldConfig = $bookingService->getFieldConfiguration();
+        $customFields = $bookingService->getCustomFieldConfiguration();
 
         // Parse custom fields from JSON
         if (!empty($appointment['customer_custom_fields'])) {
@@ -466,24 +468,51 @@ class Appointments extends BaseController
             }
         }
 
-        // Database stores times in LOCAL timezone (not UTC)
-        // Simply extract date and time for form display
+        // Convert UTC times to local for display
+        $clientTimezone = $this->resolveClientTimezone();
         if (!empty($appointment['start_time'])) {
-            $startDateTime = new \DateTime($appointment['start_time']);
+            $startDateTime = new \DateTime($appointment['start_time'], new \DateTimeZone('UTC'));
+            $startDateTime->setTimezone(new \DateTimeZone($clientTimezone));
             $appointment['date'] = $startDateTime->format('Y-m-d');
             $appointment['time'] = $startDateTime->format('H:i');
         }
+
+        // Fetch providers and services
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        // Format providers for dropdown
+        $providersFormatted = array_map(function($provider) {
+            return [
+                'id' => $provider['id'],
+                'name' => $provider['name'],
+                'speciality' => 'Provider'
+            ];
+        }, $providers);
+
+        // Format services for dropdown
+        $servicesFormatted = array_map(function($service) {
+            return [
+                'id' => $service['id'],
+                'name' => $service['name'],
+                'duration' => $service['duration_min'],
+                'price' => $service['price']
+            ];
+        }, $services);
 
         $data = [
             'title' => 'Edit Appointment',
             'current_page' => 'appointments',
             'appointment' => $appointment,
+            'services' => $servicesFormatted,
             'providers' => $providersFormatted,
             'user_role' => current_user_role(),
-            'formAction' => base_url('appointments/update/' . $appointmentHash),
-        ] + $config;
+            'fieldConfig' => $fieldConfig,
+            'customFields' => $customFields,
+            'localization' => $localizationService->getContext(),
+        ];
 
-        return view('appointments/form', $data);
+        return view('appointments/edit', $data);
     }
 
     /**
@@ -525,7 +554,6 @@ class Appointments extends BaseController
         $validation = \Config\Services::validation();
         
         // Validation rules (status values must match API)
-        // Phone formats supported: +27 82 529 7070 (international) or 082 529 2242 (local)
         $rules = [
             'provider_id' => 'required|is_natural_no_zero',
             'service_id' => 'required|is_natural_no_zero',
@@ -535,7 +563,7 @@ class Appointments extends BaseController
             'customer_first_name' => 'required|min_length[2]|max_length[120]',
             'customer_last_name' => 'permit_empty|max_length[160]',
             'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[20]',
+            'customer_phone' => 'required|min_length[10]|max_length[32]',
             'customer_address' => 'permit_empty|max_length[255]',
             'notes' => 'permit_empty|max_length[1000]'
         ];
@@ -553,6 +581,10 @@ class Appointments extends BaseController
         $appointmentTime = $this->request->getPost('appointment_time');
         $status = $this->request->getPost('status');
         
+        // Debug: Log status value
+        log_message('info', '[Appointments::update] Status from form: ' . $status);
+        log_message('info', '[Appointments::update] Current appointment status: ' . $existingAppointment['status']);
+        
         // Get service to calculate end time
         $service = $this->serviceModel->find($serviceId);
         if (!$service) {
@@ -567,17 +599,27 @@ class Appointments extends BaseController
         // Construct local start DateTime
         $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
         
-        // Create DateTime WITHOUT timezone to keep values as-is (already in local time)
-        // The form sends times in the user's local timezone, so we store them as-is
-        $startDateTime = new \DateTime($startTimeLocal);
+        log_message('info', '[Appointments::update] Updating appointment #' . $appointmentId);
+        log_message('info', '[Appointments::update] Input: date=' . $appointmentDate . ', time=' . $appointmentTime);
+        log_message('info', '[Appointments::update] Client timezone: ' . $clientTimezone);
+        
+        try {
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+        } catch (\Exception $e) {
+            log_message('error', '[Appointments::update] DateTime error: ' . $e->getMessage());
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $clientTimezone = 'UTC';
+        }
 
         // Calculate end time based on service duration
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Format times for storage (database stores in LOCAL timezone as-is)
-        $startTimeForDb = $startDateTime->format('Y-m-d H:i:s');
-        $endTimeForDb = $endDateTime->format('Y-m-d H:i:s');
+        // Convert to UTC for storage
+        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
+        
+        log_message('info', '[Appointments::update] UTC times: start=' . $startTimeUtc . ', end=' . $endTimeUtc);
 
         // Update customer record
         $customerId = $existingAppointment['customer_id'];
@@ -590,9 +632,17 @@ class Appointments extends BaseController
         ];
 
         // Handle custom fields
-        $customFieldsJson = $this->extractCustomFields();
-        if ($customFieldsJson) {
-            $customerData['custom_fields'] = $customFieldsJson;
+        $customFieldsData = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $fieldValue = $this->request->getPost("custom_field_{$i}");
+            if ($fieldValue !== null && $fieldValue !== '') {
+                // Use consistent field naming: 'custom_field_1' not 'field_1'
+                // This matches CustomerManagement controller and BookingSettingsService
+                $customFieldsData["custom_field_{$i}"] = $fieldValue;
+            }
+        }
+        if (!empty($customFieldsData)) {
+            $customerData['custom_fields'] = json_encode($customFieldsData);
         }
 
         $this->customerModel->update($customerId, $customerData);
@@ -601,11 +651,13 @@ class Appointments extends BaseController
         $appointmentData = [
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTimeForDb,
-            'end_time' => $endTimeForDb,
+            'start_time' => $startTimeUtc,
+            'end_time' => $endTimeUtc,
             'status' => $status,
             'notes' => $this->request->getPost('notes') ?? ''
         ];
+        
+        log_message('info', '[Appointments::update] Appointment data to save: ' . json_encode($appointmentData));
 
         $updated = $this->appointmentModel->update($appointmentId, $appointmentData);
 
@@ -622,4 +674,111 @@ class Appointments extends BaseController
             ->with('success', 'Appointment updated successfully!');
     }
 
+    /**
+     * Get mock appointment data based on role
+     */
+    private function getMockAppointments($role, $userId)
+    {
+        $baseAppointments = [
+            [
+                'id' => 1,
+                'customer_name' => 'John Smith',
+                'customer_email' => 'john@example.com',
+                'service' => 'Hair Cut',
+                'provider' => 'Sarah Johnson',
+                'date' => '2025-09-05',
+                'time' => '10:00',
+                'duration' => 60,
+                'status' => 'confirmed',
+                'notes' => 'Regular trim'
+            ],
+            [
+                'id' => 2,
+                'customer_name' => 'Emma Davis',
+                'customer_email' => 'emma@example.com',
+                'service' => 'Color Treatment',
+                'provider' => 'Sarah Johnson',
+                'date' => '2025-09-05',
+                'time' => '14:30',
+                'duration' => 120,
+                'status' => 'pending',
+                'notes' => 'Full highlights'
+            ],
+            [
+                'id' => 3,
+                'customer_name' => 'Mike Wilson',
+                'customer_email' => 'mike@example.com',
+                'service' => 'Beard Trim',
+                'provider' => 'Alex Brown',
+                'date' => '2025-09-06',
+                'time' => '11:30',
+                'duration' => 30,
+                'status' => 'completed',
+                'notes' => ''
+            ]
+        ];
+
+        // Filter based on role
+        if ($role === 'customer') {
+            $userEmail = session()->get('user')['email'];
+            return array_filter($baseAppointments, function($apt) use ($userEmail) {
+                return $apt['customer_email'] === $userEmail;
+            });
+        }
+
+        return $baseAppointments;
+    }
+
+    /**
+     * Get mock appointment by ID
+     */
+    private function getMockAppointment($id)
+    {
+        $appointments = $this->getMockAppointments('admin', null);
+        foreach ($appointments as $appointment) {
+            if ($appointment['id'] == $id) {
+                return $appointment;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get appointment statistics
+     */
+    private function getAppointmentStats($role, $userId)
+    {
+        return [
+            'total' => 24,
+            'today' => 3,
+            'pending' => 5,
+            'completed' => 18,
+            'cancelled' => 1
+        ];
+    }
+
+    /**
+     * Get mock services
+     */
+    private function getMockServices()
+    {
+        return [
+            ['id' => 1, 'name' => 'Hair Cut', 'duration' => 60, 'price' => 35.00],
+            ['id' => 2, 'name' => 'Color Treatment', 'duration' => 120, 'price' => 85.00],
+            ['id' => 3, 'name' => 'Beard Trim', 'duration' => 30, 'price' => 20.00],
+            ['id' => 4, 'name' => 'Hair Wash & Style', 'duration' => 45, 'price' => 25.00]
+        ];
+    }
+
+    /**
+     * Get mock providers
+     */
+    private function getMockProviders()
+    {
+        return [
+            ['id' => 1, 'name' => 'Sarah Johnson', 'speciality' => 'Hair Styling'],
+            ['id' => 2, 'name' => 'Alex Brown', 'speciality' => 'Barber Services'],
+            ['id' => 3, 'name' => 'Maria Garcia', 'speciality' => 'Color Specialist']
+        ];
+    }
 }

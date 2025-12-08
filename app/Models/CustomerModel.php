@@ -12,9 +12,7 @@ class CustomerModel extends BaseModel
 	];
 
 	protected $beforeInsert = ['generateHash'];
-	protected $useTimestamps = true;
-	protected $createdField = 'created_at';
-	protected $updatedField = 'updated_at';
+	protected $useTimestamps = false;
 
 	// Validation rules
 	// NOTE: Validation is handled by BookingSettingsService which provides dynamic rules
@@ -102,34 +100,124 @@ class CustomerModel extends BaseModel
 	}
 
 	/**
-	 * Find existing customer by email or create new one
-	 * 
-	 * @param string $email Customer email address
-	 * @param string $name Full name (will be split into first/last)
-	 * @param string|null $phone Optional phone number
-	 * @return int Customer ID
+	 * Get new customers in a time period
 	 */
-	public function findOrCreateByEmail(string $email, string $name, ?string $phone = null): int
+	public function getNewCustomers(string $period = 'month'): int
 	{
-		// Try to find existing customer
-		$customer = $this->where('email', $email)->first();
-		if ($customer) {
-			return (int) $customer['id'];
+		$startDate = match($period) {
+			'today' => date('Y-m-d 00:00:00'),
+			'week' => date('Y-m-d 00:00:00', strtotime('monday this week')),
+			'month' => date('Y-m-01 00:00:00'),
+			'last_month' => date('Y-m-01 00:00:00', strtotime('first day of last month')),
+			default => date('Y-m-01 00:00:00')
+		};
+		
+		$endDate = match($period) {
+			'today' => date('Y-m-d 23:59:59'),
+			'week' => date('Y-m-d 23:59:59', strtotime('sunday this week')),
+			'month' => date('Y-m-t 23:59:59'),
+			'last_month' => date('Y-m-t 23:59:59', strtotime('last day of last month')),
+			default => date('Y-m-t 23:59:59')
+		};
+
+		return $this->where('created_at >=', $startDate)
+					->where('created_at <=', $endDate)
+					->countAllResults();
+	}
+
+	/**
+	 * Get customer growth trend (month over month)
+	 */
+	public function getGrowthTrend(): array
+	{
+		$currentMonth = $this->getNewCustomers('month');
+		$lastMonth = $this->getNewCustomers('last_month');
+		
+		if ($lastMonth === 0) {
+			return [
+				'percentage' => $currentMonth > 0 ? 100 : 0,
+				'direction' => $currentMonth > 0 ? 'up' : 'neutral',
+				'current' => $currentMonth,
+				'previous' => $lastMonth
+			];
 		}
+		
+		$change = (($currentMonth - $lastMonth) / $lastMonth) * 100;
+		return [
+			'percentage' => round(abs($change), 1),
+			'direction' => $change > 0 ? 'up' : ($change < 0 ? 'down' : 'neutral'),
+			'current' => $currentMonth,
+			'previous' => $lastMonth
+		];
+	}
 
-		// Create new customer - split name into first/last
-		$names = preg_split('/\s+/', trim($name));
-		$firstName = $names[0] ?? '';
-		$lastName = count($names) > 1 ? trim(implode(' ', array_slice($names, 1))) : null;
+	/**
+	 * Get new vs returning customers (based on appointment count)
+	 */
+	public function getNewVsReturning(): array
+	{
+		$db = \Config\Database::connect();
+		
+		// Count customers with only 1 appointment (new) vs more than 1 (returning)
+		$query = $db->query("
+			SELECT 
+				SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as new_customers,
+				SUM(CASE WHEN appt_count > 1 THEN 1 ELSE 0 END) as returning_customers
+			FROM (
+				SELECT c.id, COUNT(a.id) as appt_count
+				FROM xs_customers c
+				LEFT JOIN xs_appointments a ON c.id = a.customer_id
+				GROUP BY c.id
+			) as customer_counts
+		");
+		
+		$result = $query->getRow();
+		return [
+			'new' => (int)($result->new_customers ?? 0),
+			'returning' => (int)($result->returning_customers ?? 0)
+		];
+	}
 
-		$customerId = $this->insert([
-			'first_name' => $firstName,
-			'last_name' => $lastName,
-			'email' => $email,
-			'phone' => $phone,
-			'created_at' => date('Y-m-d H:i:s'),
-		], false);
+	/**
+	 * Get customer retention rate
+	 */
+	public function getRetentionRate(): float
+	{
+		$newVsReturning = $this->getNewVsReturning();
+		$total = $newVsReturning['new'] + $newVsReturning['returning'];
+		
+		if ($total === 0) return 0;
+		
+		return round(($newVsReturning['returning'] / $total) * 100, 1);
+	}
 
-		return (int) $customerId;
+	/**
+	 * Get customer loyalty segments
+	 */
+	public function getLoyaltySegments(): array
+	{
+		$db = \Config\Database::connect();
+		
+		$query = $db->query("
+			SELECT 
+				SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as first_time,
+				SUM(CASE WHEN appt_count BETWEEN 2 AND 4 THEN 1 ELSE 0 END) as occasional,
+				SUM(CASE WHEN appt_count BETWEEN 5 AND 10 THEN 1 ELSE 0 END) as regular,
+				SUM(CASE WHEN appt_count > 10 THEN 1 ELSE 0 END) as vip
+			FROM (
+				SELECT c.id, COUNT(a.id) as appt_count
+				FROM xs_customers c
+				LEFT JOIN xs_appointments a ON c.id = a.customer_id
+				GROUP BY c.id
+			) as customer_counts
+		");
+		
+		$result = $query->getRow();
+		return [
+			'first_time' => (int)($result->first_time ?? 0),
+			'occasional' => (int)($result->occasional ?? 0),
+			'regular' => (int)($result->regular ?? 0),
+			'vip' => (int)($result->vip ?? 0)
+		];
 	}
 }

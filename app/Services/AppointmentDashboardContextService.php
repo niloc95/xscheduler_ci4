@@ -2,70 +2,64 @@
 
 namespace App\Services;
 
-use App\Models\CustomerModel;
-use App\Models\ProviderStaffModel;
-
+/**
+ * Service to build dashboard context for appointment queries.
+ * Determines filtering based on user role and permissions.
+ */
 class AppointmentDashboardContextService
 {
-    protected CustomerModel $customerModel;
-    protected ProviderStaffModel $providerStaffModel;
-
-    public function __construct()
-    {
-        $this->customerModel = new CustomerModel();
-        $this->providerStaffModel = new ProviderStaffModel();
-    }
-
     /**
-     * Build a role-aware query scope for appointment dashboards.
+     * Build context array for dashboard appointment queries.
+     *
+     * @param string|null $role Current user's role
+     * @param int|null $userId Current user's ID
+     * @param array|null $user Current user data
+     * @return array Context array with role-based filtering info
      */
-    public function build(?string $role, ?int $userId, ?array $currentUser = null): array
+    public function build(?string $role, ?int $userId, ?array $user): array
     {
-        $context = [];
+        $context = [
+            'role' => $role ?? 'guest',
+            'user_id' => $userId,
+            'provider_id' => null,
+            'staff_id' => null,
+            'customer_id' => null,
+            'filter_by_provider' => false,
+            'filter_by_staff' => false,
+            'filter_by_customer' => false,
+        ];
 
-        if ($role === 'provider' && $userId) {
-            $context['provider_id'] = (int) $userId;
-            return $context;
-        }
-
-        if ($role === 'staff' && $userId) {
-            $assignments = $this->providerStaffModel->getProvidersForStaff((int) $userId);
-            if (!empty($assignments)) {
-                $context['provider_id'] = array_map(static fn ($provider) => (int) $provider['id'], $assignments);
-            }
-        }
-
-        if ($role === 'customer') {
-            $customerId = $this->resolveCustomerId($currentUser);
-            if ($customerId) {
-                $context['customer_id'] = $customerId;
-            }
+        // Determine context based on role
+        switch ($role) {
+            case 'admin':
+                // Admin sees all appointments - no filtering
+                break;
+                
+            case 'provider':
+                // Provider sees only their appointments
+                $context['provider_id'] = $userId;
+                $context['filter_by_provider'] = true;
+                break;
+                
+            case 'staff':
+                // Staff sees appointments for their assigned providers
+                $context['staff_id'] = $userId;
+                $context['filter_by_staff'] = true;
+                break;
+                
+            case 'customer':
+                // Customer sees only their own appointments
+                $context['customer_id'] = $user['customer_id'] ?? $userId;
+                $context['filter_by_customer'] = true;
+                break;
+                
+            default:
+                // Guest or unknown role - no access
+                $context['filter_by_customer'] = true;
+                $context['customer_id'] = 0; // Will return no results
+                break;
         }
 
         return $context;
-    }
-
-    private function resolveCustomerId(?array $currentUser): ?int
-    {
-        $sessionCustomerId = session()->get('customer_id');
-        if ($sessionCustomerId) {
-            return (int) $sessionCustomerId;
-        }
-
-        if (!$currentUser) {
-            return null;
-        }
-
-        $email = $currentUser['email'] ?? null;
-        if (!$email) {
-            return null;
-        }
-
-        $customer = $this->customerModel
-            ->select('id')
-            ->where('email', $email)
-            ->first();
-
-        return isset($customer['id']) ? (int) $customer['id'] : null;
     }
 }

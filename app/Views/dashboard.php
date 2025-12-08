@@ -163,29 +163,80 @@
 
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- User Growth Chart -->
+            <!-- Appointment Volume Chart -->
             <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">User Growth</h3>
-                    <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
-                        <span class="material-symbols-outlined">more_vert</span>
-                    </button>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Appointment Volume</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" id="chartPeriodHint">Rolling 4-week view (* = current)</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button data-chart-period="day" class="px-2 py-1 text-xs rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">Today</button>
+                        <button data-chart-period="week" class="px-2 py-1 text-xs rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">Week</button>
+                        <button data-chart-period="month" class="px-2 py-1 text-xs rounded-md bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 active transition-colors duration-200">Month</button>
+                        <button data-chart-period="year" class="px-2 py-1 text-xs rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">Year</button>
+                    </div>
                 </div>
                 <div class="chart-container">
                     <canvas id="userGrowthChart"></canvas>
                 </div>
             </md-outlined-card>
 
-            <!-- Activity Overview Chart -->
+            <!-- Services by Provider Chart -->
             <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Activity Overview</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Services by Provider</h3>
                     <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
                         <span class="material-symbols-outlined">more_vert</span>
                     </button>
                 </div>
                 <div class="chart-container">
                     <canvas id="activityChart"></canvas>
+                </div>
+            </md-outlined-card>
+        </div>
+
+        <!-- Appointment Status Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <md-outlined-card class="p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Appointment Status</h3>
+                    <button class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200">
+                        <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                </div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </md-outlined-card>
+
+            <!-- Quick Stats Summary -->
+            <md-outlined-card class="lg:col-span-2 p-6 bg-white dark:bg-gray-800 transition-colors duration-300 rounded-lg shadow-brand">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 transition-colors duration-300">Status Breakdown</h3>
+                </div>
+                <div id="statusBreakdown" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <!-- Status items populated by JavaScript -->
+                    <div class="text-center p-3 rounded-lg bg-green-50 dark:bg-green-900/30">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400" id="confirmedCount">-</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Confirmed</div>
+                    </div>
+                    <div class="text-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+                        <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400" id="pendingCount">-</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Pending</div>
+                    </div>
+                    <div class="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="completedCount">-</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Completed</div>
+                    </div>
+                    <div class="text-center p-3 rounded-lg bg-red-50 dark:bg-red-900/30">
+                        <div class="text-2xl font-bold text-red-600 dark:text-red-400" id="cancelledCount">-</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Cancelled</div>
+                    </div>
+                    <div class="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700/30">
+                        <div class="text-2xl font-bold text-gray-600 dark:text-gray-400" id="noShowCount">-</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">No-Show</div>
+                    </div>
                 </div>
             </md-outlined-card>
         </div>

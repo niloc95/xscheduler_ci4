@@ -6,9 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, isDarkMode, formatDuration } from './appointment-colors.js';
-import { generateTimeSlots } from './time-slots.js';
-import { escapeHtml, isDateBlocked as isDateBlockedUtil, getBlockedPeriodInfo as getBlockedInfo } from './utils.js';
+import { getStatusColors, getProviderColor, isDarkMode } from './appointment-colors.js';
 
 export class WeekView {
     constructor(scheduler) {
@@ -16,10 +14,25 @@ export class WeekView {
     }
 
     render(container, data) {
-        const { currentDate, appointments, providers, config } = data;
+        const { currentDate, appointments, providers, config, settings } = data;
         
-        const weekStart = currentDate.startOf('week');
+        // Get first day of week from settings (0=Sunday, 1=Monday, etc.)
+        const firstDayOfWeek = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 0;
+        
+        // Calculate week start based on firstDayOfWeek setting
+        // Luxon's startOf('week') uses ISO weeks (Monday=1), we need to adjust
+        const currentWeekday = currentDate.weekday; // 1=Mon, 7=Sun in Luxon
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek; // Convert to Luxon (Sun=7)
+        
+        // Calculate days to subtract to get to the start of the week
+        let daysToSubtract = currentWeekday - luxonFirstDay;
+        if (daysToSubtract < 0) daysToSubtract += 7;
+        
+        const weekStart = currentDate.minus({ days: daysToSubtract }).startOf('day');
         const weekEnd = weekStart.plus({ days: 6 });
+        
+        // Store settings for use in other methods
+        this.settings = settings;
         
         // Generate array of 7 days for the week
         const days = [];
@@ -39,8 +52,7 @@ export class WeekView {
             endTime: endTime
         };
         
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
-        const timeSlots = generateTimeSlots(businessHours, timeFormat, 30);
+        const timeSlots = this.generateTimeSlots(businessHours);
 
         // Group appointments by day
         const appointmentsByDay = this.groupAppointmentsByDay(appointments, weekStart);
@@ -60,7 +72,7 @@ export class WeekView {
                         </div>
 
                         <!-- Time Grid -->
-                        <div>
+                        <div class="relative">
                             ${timeSlots.map((slot, index) => this.renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods)).join('')}
                         </div>
                     </div>
@@ -77,12 +89,24 @@ export class WeekView {
 
     renderDayHeader(day, blockedPeriods) {
         const isToday = day.hasSame(DateTime.now(), 'day');
-        const isBlocked = isDateBlockedUtil(day, blockedPeriods);
-        const blockedInfo = isBlocked ? getBlockedInfo(day, blockedPeriods) : null;
+        const isBlocked = this.isDateBlocked(day, blockedPeriods);
+        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, blockedPeriods) : null;
+        
+        // Check if this is a non-working day from business hours settings
+        const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
+        
+        // Determine background class based on blocked/non-working status
+        // Use subtle background colors without opacity to avoid graying out content
+        let bgClass = '';
+        if (isBlocked) {
+            bgClass = 'bg-red-100 dark:bg-red-900/20';
+        } else if (isNonWorkingDay) {
+            bgClass = 'bg-gray-50 dark:bg-gray-800';
+        }
         
         return `
-            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10' : ''}">
-                <div class="${isToday ? 'text-blue-600 dark:text-blue-400 font-bold' : isBlocked ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}">
+            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${bgClass}">
+                <div class="${isToday ? 'text-blue-600 dark:text-blue-400 font-bold' : isBlocked ? 'text-red-600 dark:text-red-400' : isNonWorkingDay ? 'text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}">
                     <div class="text-xs font-medium">${day.toFormat('ccc')}</div>
                     <div class="text-lg ${isToday ? 'flex items-center justify-center w-8 h-8 mx-auto mt-1 rounded-full bg-blue-600 text-white' : 'mt-1'}">
                         ${day.day}
@@ -95,7 +119,7 @@ export class WeekView {
 
     renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods) {
         return `
-              <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[56px]"
+            <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[60px]"
                  data-time-slot="${slot.time}">
                 <!-- Time Label -->
                 <div class="px-4 py-2 text-right border-r border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
@@ -106,14 +130,23 @@ export class WeekView {
                 ${days.map(day => {
                     const dateKey = day.toISODate();
                     const slotAppointments = this.getAppointmentsForSlot(appointmentsByDay[dateKey] || [], slot);
-                    const isBlocked = isDateBlockedUtil(day, blockedPeriods);
-                    const hasAppointments = slotAppointments.length > 0;
+                    const isBlocked = this.isDateBlocked(day, blockedPeriods);
+                    const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
                     
-                    // P0-5 FIX: Changed container from relative to flex for proper appointment stacking
+                    // Determine cell styling based on status
+                    // Note: Don't use opacity on container as it grays out appointment cards inside
+                    let cellClass = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                    if (isBlocked) {
+                        cellClass = 'bg-red-100 dark:bg-red-900/20';
+                    } else if (isNonWorkingDay) {
+                        cellClass = 'bg-gray-50 dark:bg-gray-800';
+                    }
+                    
                     return `
-                        <div class="flex flex-col px-1 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10 opacity-50' : hasAppointments ? '' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors ${hasAppointments ? 'min-h-[60px]' : ''}"
+                        <div class="relative px-2 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${cellClass} transition-colors"
                              data-date="${dateKey}"
-                             data-time="${slot.time}">
+                             data-time="${slot.time}"
+                             data-non-working="${isNonWorkingDay}">
                             ${slotAppointments.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
                         </div>
                     `;
@@ -132,54 +165,61 @@ export class WeekView {
         const serviceName = appointment.serviceName || 'Appointment';
         
         // Format time based on settings
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mma';
-        const time = appointment.startDateTime.toFormat(timeFormat).toLowerCase();
-        
-        // Calculate duration for badge
-        const duration = appointment.endDateTime && appointment.startDateTime 
-            ? Math.round((appointment.endDateTime.toMillis() - appointment.startDateTime.toMillis()) / 60000)
-            : null;
-        const durationLabel = formatDuration(duration);
-        
-        const providerName = provider?.name || 'Provider';
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
+        const time = appointment.startDateTime.toFormat(timeFormat);
 
-        // Phase 1 Prototype Styling: Rounded-2xl cards with duration badges
-        const ariaLabel = `Appointment: ${customerName} for ${serviceName} at ${time} with ${providerName}. Status: ${appointment.status}`;
-        
         return `
-            <article class="appointment-block w-full rounded-2xl cursor-pointer transition-all 
-                          border p-3 shadow-sm hover:shadow-md active:scale-[0.98]"
-                 style="background-color: ${statusColors.chipBg}; 
-                        border-color: ${statusColors.chipBorder}; 
-                        color: ${statusColors.text};"
+            <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs z-10 border-l-4"
+                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 role="button"
-                 tabindex="0"
-                 aria-label="${ariaLabel}"
                  title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
-                <!-- Header row: Time + Duration badge -->
-                <div class="flex items-center justify-between text-[11px] font-semibold mb-1">
-                    <span>${time}</span>
-                    ${durationLabel ? `
-                        <span class="rounded-full px-2 py-0.5 text-[10px]" 
-                              style="background-color: ${statusColors.badgeBg};">
-                            ${durationLabel}
-                        </span>
-                    ` : ''}
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                    <div class="font-semibold truncate">${time}</div>
                 </div>
-                <!-- Title -->
-                <div class="text-sm font-semibold truncate">${escapeHtml(serviceName)}</div>
-                <!-- Provider + Customer -->
-                <div class="flex items-center gap-1.5 text-xs opacity-80 mt-1">
-                    <span class="inline-flex h-2 w-2 rounded-full flex-shrink-0" 
-                          style="background-color: ${providerColor};"></span>
-                    <span class="truncate">${escapeHtml(providerName)} • ${escapeHtml(customerName)}</span>
-                </div>
-            </article>
+                <div class="truncate">${this.escapeHtml(customerName)}</div>
+                <div class="text-xs opacity-80 truncate">${this.escapeHtml(serviceName)}</div>
+            </div>
         `;
     }
 
-    // generateTimeSlots and formatTime moved to shared util (time-slots.js)
+    generateTimeSlots(businessHours) {
+        const slots = [];
+        
+        // Handle both 'HH:MM:SS' and 'HH:MM' formats
+        const parseTime = (timeStr) => {
+            if (!timeStr) return 9; // Default to 9 AM
+            const parts = timeStr.split(':');
+            return parseInt(parts[0], 10);
+        };
+        
+        const startHour = parseTime(businessHours.startTime);
+        const endHour = parseTime(businessHours.endTime);
+        
+        for (let hour = startHour; hour <= endHour; hour++) {
+            const time = `${hour.toString().padStart(2, '0')}:00`;
+            const display = this.formatTime(hour);
+            slots.push({ time, display, hour });
+        }
+        
+        return slots;
+    }
+
+    formatTime(hour) {
+        // Get time format from settings (default to 12h if not available)
+        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
+        
+        if (timeFormat === '24h') {
+            // 24-hour format: 09:00, 13:00, etc.
+            return `${hour.toString().padStart(2, '0')}:00`;
+        } else {
+            // 12-hour format with AM/PM
+            if (hour === 0) return '12:00 AM';
+            if (hour === 12) return '12:00 PM';
+            if (hour < 12) return `${hour}:00 AM`;
+            return `${hour - 12}:00 PM`;
+        }
+    }
 
     groupAppointmentsByDay(appointments, weekStart) {
         const grouped = {};
@@ -202,58 +242,28 @@ export class WeekView {
     }
 
     getAppointmentsForSlot(dayAppointments, slot) {
-        // Parse slot time
-        const slotHour = parseInt(slot.time.split(':')[0], 10);
-        const slotMinute = parseInt(slot.time.split(':')[1], 10);
-        
         return dayAppointments.filter(apt => {
-            if (!apt.startDateTime) return false;
             const aptHour = apt.startDateTime.hour;
-            const aptMinute = apt.startDateTime.minute;
-            
-            // Check if appointment falls within this 30-minute slot
-            // Slot 09:00 covers 09:00-09:29, Slot 09:30 covers 09:30-09:59
-            if (aptHour === slotHour) {
-                if (slotMinute === 0) {
-                    return aptMinute >= 0 && aptMinute < 30;
-                } else {
-                    return aptMinute >= 30 && aptMinute < 60;
-                }
-            }
-            return false;
+            return aptHour === slot.hour;
         });
     }
 
     attachEventListeners(container, data) {
-        // Appointment click and keyboard handlers
+        // Appointment click handlers
         container.querySelectorAll('.appointment-block').forEach(el => {
-            // Click handler
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this._handleAppointmentSelect(el, data);
-            });
-            
-            // P1-2: Keyboard handler for accessibility (Enter and Space)
-            el.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this._handleAppointmentSelect(el, data);
+                const aptId = parseInt(el.dataset.appointmentId, 10);
+                const appointment = data.appointments.find(a => a.id === aptId);
+                if (appointment && data.onAppointmentClick) {
+                    data.onAppointmentClick(appointment);
                 }
             });
         });
 
         // Removed: Click-to-create modal functionality
         // Time slots no longer open creation modal
-    }
-    
-    _handleAppointmentSelect(el, data) {
-        const aptId = parseInt(el.dataset.appointmentId, 10);
-        const appointment = data.appointments.find(a => a.id === aptId);
-        if (appointment && data.onAppointmentClick) {
-            data.onAppointmentClick(appointment);
-        }
     }
 
     getContrastColor(hexColor) {
@@ -268,7 +278,38 @@ export class WeekView {
     /**
      * Check if a date falls within a blocked period
      */
-    // isDateBlocked, getBlockedPeriodInfo, escapeHtml moved to shared utils
+    isDateBlocked(date, blockedPeriods) {
+        if (!blockedPeriods || blockedPeriods.length === 0) return false;
+        
+        const checkDate = date.toISODate();
+        
+        return blockedPeriods.some(period => {
+            const start = period.start;
+            const end = period.end;
+            return checkDate >= start && checkDate <= end;
+        });
+    }
+
+    /**
+     * Get blocked period information for a date
+     */
+    getBlockedPeriodInfo(date, blockedPeriods) {
+        if (!blockedPeriods || blockedPeriods.length === 0) return null;
+        
+        const checkDate = date.toISODate();
+        
+        const period = blockedPeriods.find(p => {
+            return checkDate >= p.start && checkDate <= p.end;
+        });
+        
+        return period || null;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
     
     /**
      * Render weekly appointments section showing provider schedules for the week
@@ -379,33 +420,21 @@ export class WeekView {
                                                                 const time = apt.startDateTime.toFormat(timeFormat);
                                                                 const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
                                                                 
-                                                                const statusColors = {
-                                                                    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                                                                    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-                                                                    completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                                                    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-                                                                    'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                                                                };
-                                                                const statusClass = statusColors[apt.status] || statusColors.pending;
+                                                                const darkModeCheck = typeof isDarkMode === 'function' ? isDarkMode() : false;
+                                                                const aptStatusColors = getStatusColors(apt.status, darkModeCheck);
                                                                 
-                                                                return `
-                                                                    <div class="text-xs p-2 rounded border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer transition-colors"
-                                                                         data-appointment-id="${apt.id}">
-                                                                        <div class="font-medium text-gray-900 dark:text-white truncate">${time}</div>
-                                                                        <div class="text-gray-600 dark:text-gray-300 truncate">${this.escapeHtml(customerName)}</div>
-                                                                        <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded ${statusClass}">
-                                                                            ${apt.status}
-                                                                        </span>
-                                                                    </div>
-                                                                `;
+                                                                return '<div class="text-xs p-2 rounded cursor-pointer transition-colors border-l-2" ' +
+                                                                    'style="background-color: ' + aptStatusColors.bg + '; border-left-color: ' + aptStatusColors.border + '; color: ' + aptStatusColors.text + ';" ' +
+                                                                    'data-appointment-id="' + apt.id + '">' +
+                                                                    '<div class="font-medium truncate">' + time + '</div>' +
+                                                                    '<div class="truncate opacity-90">' + this.escapeHtml(customerName) + '</div>' +
+                                                                    '<span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full" ' +
+                                                                    'style="background-color: ' + aptStatusColors.dot + '; color: white;">' + apt.status + '</span>' +
+                                                                    '</div>';
                                                             }).join('') 
-                                                            : `<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>`
+                                                            : '<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>'
                                                         }
-                                                        ${dayAppointments.length > 3 ? `
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium text-center pt-1">
-                                                                +${dayAppointments.length - 3} more
-                                                            </div>
-                                                        ` : ''}
+                                                        ${dayAppointments.length > 3 ? '<div class="text-xs text-blue-600 dark:text-blue-400 font-medium text-center pt-1 cursor-pointer hover:underline flex items-center justify-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" /></svg>+' + (dayAppointments.length - 3) + ' more</div>' : ''}
                                                     </div>
                                                 </div>
                                             `;

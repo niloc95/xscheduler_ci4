@@ -106,4 +106,81 @@ class ServiceModel extends BaseModel
             ]);
         }
     }
+
+    /**
+     * Get popular services with booking counts and revenue
+     */
+    public function getPopularServicesWithStats(int $limit = 10): array
+    {
+        $db = \Config\Database::connect();
+        
+        $query = $db->query("
+            SELECT 
+                s.id,
+                s.name,
+                s.price,
+                COUNT(a.id) as bookings,
+                COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) as revenue,
+                ROUND(
+                    ((COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) - 
+                      COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_time < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END)) /
+                     NULLIF(COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_time < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END), 0)) * 100,
+                    1
+                ) as growth
+            FROM xs_services s
+            LEFT JOIN xs_appointments a ON s.id = a.service_id
+            WHERE s.active = 1
+            GROUP BY s.id, s.name, s.price
+            ORDER BY bookings DESC
+            LIMIT {$limit}
+        ");
+        
+        return $query->getResultArray();
+    }
+
+    /**
+     * Get service performance metrics
+     */
+    public function getPerformanceMetrics(): array
+    {
+        $db = \Config\Database::connect();
+        
+        // Average duration
+        $avgDuration = $this->where('active', 1)->selectAvg('duration_min')->get()->getRow()->duration_min ?? 0;
+        
+        // Completion rate from appointments
+        $appointmentQuery = $db->query("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+            FROM xs_appointments
+        ");
+        $appointmentStats = $appointmentQuery->getRow();
+        $completionRate = $appointmentStats->total > 0 
+            ? round(($appointmentStats->completed / $appointmentStats->total) * 100, 1) 
+            : 0;
+        
+        // Repeat booking rate (customers with more than 1 appointment)
+        $repeatQuery = $db->query("
+            SELECT 
+                COUNT(DISTINCT customer_id) as total_customers,
+                COUNT(DISTINCT CASE WHEN appt_count > 1 THEN customer_id END) as repeat_customers
+            FROM (
+                SELECT customer_id, COUNT(*) as appt_count
+                FROM xs_appointments
+                GROUP BY customer_id
+            ) as customer_appts
+        ");
+        $repeatStats = $repeatQuery->getRow();
+        $repeatRate = $repeatStats->total_customers > 0
+            ? round(($repeatStats->repeat_customers / $repeatStats->total_customers) * 100, 1)
+            : 0;
+        
+        return [
+            'avg_duration' => round((float)$avgDuration, 1),
+            'completion_rate' => $completionRate,
+            'customer_satisfaction' => 0, // Would need rating system
+            'repeat_booking_rate' => $repeatRate
+        ];
+    }
 }

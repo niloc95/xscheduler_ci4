@@ -3,15 +3,24 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Models\AppointmentModel;
+use App\Models\CustomerModel;
+use App\Models\ServiceModel;
 use CodeIgniter\Controller;
 
 class Analytics extends BaseController
 {
     protected $userModel;
+    protected $appointmentModel;
+    protected $customerModel;
+    protected $serviceModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->appointmentModel = new AppointmentModel();
+        $this->customerModel = new CustomerModel();
+        $this->serviceModel = new ServiceModel();
         helper('permissions');
     }
 
@@ -96,221 +105,314 @@ class Analytics extends BaseController
     }
 
     /**
-     * Get overview statistics
+     * Get overview statistics - REAL DATA
      */
     private function getOverviewStats($role)
     {
-        return [
-            'total_revenue' => 12450.75,
-            'revenue_change' => 15.3,
-            'total_appointments' => 184,
-            'appointments_change' => 8.7,
-            'new_customers' => 23,
-            'customers_change' => 12.1,
-            'avg_booking_value' => 67.66,
-            'booking_value_change' => 5.4,
-            'customer_retention' => 78.5,
-            'retention_change' => 3.2,
-            'staff_utilization' => 85.4,
-            'utilization_change' => -2.1
-        ];
+        try {
+            // Get real revenue
+            $totalRevenue = $this->appointmentModel->getRealRevenue('month');
+            $lastMonthRevenue = $this->appointmentModel->getRealRevenue('last_month');
+            $revenueChange = $lastMonthRevenue > 0 
+                ? round((($totalRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 1)
+                : ($totalRevenue > 0 ? 100 : 0);
+
+            // Get real appointments
+            $appointmentStats = $this->appointmentModel->getStats();
+            $appointmentTrend = $this->appointmentModel->getTrend();
+
+            // Get real customer stats
+            $newCustomers = $this->customerModel->getNewCustomers('month');
+            $customerTrend = $this->customerModel->getGrowthTrend();
+
+            // Get average booking value
+            $avgBookingValue = $this->appointmentModel->getAverageBookingValue();
+            $lastMonthAvg = $this->appointmentModel->getAverageBookingValue(); // Simplified for now
+            $bookingValueChange = 0; // Would need historical calculation
+
+            // Get customer retention
+            $customerRetention = $this->customerModel->getRetentionRate();
+
+            // Get staff utilization (simplified - based on provider appointment count)
+            $userStats = $this->userModel->getStats();
+            $providerCount = $userStats['providers'] ?? 1;
+            $monthlyAppointments = $appointmentStats['this_month'] ?? 0;
+            // Assume 8 hours/day, 20 days/month, avg 1 hour per appointment
+            $maxCapacity = $providerCount * 160; // appointments per month capacity
+            $staffUtilization = $maxCapacity > 0 ? round(($monthlyAppointments / $maxCapacity) * 100, 1) : 0;
+            $staffUtilization = min($staffUtilization, 100); // Cap at 100%
+
+            return [
+                'total_revenue' => $totalRevenue,
+                'revenue_change' => $revenueChange,
+                'total_appointments' => $appointmentStats['this_month'] ?? 0,
+                'appointments_change' => $appointmentTrend['percentage'] ?? 0,
+                'new_customers' => $newCustomers,
+                'customers_change' => $customerTrend['percentage'] ?? 0,
+                'avg_booking_value' => $avgBookingValue,
+                'booking_value_change' => $bookingValueChange,
+                'customer_retention' => $customerRetention,
+                'retention_change' => 0, // Would need historical data
+                'staff_utilization' => $staffUtilization,
+                'utilization_change' => 0 // Would need historical data
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getOverviewStats error: ' . $e->getMessage());
+            // Return zeros on error
+            return [
+                'total_revenue' => 0,
+                'revenue_change' => 0,
+                'total_appointments' => 0,
+                'appointments_change' => 0,
+                'new_customers' => 0,
+                'customers_change' => 0,
+                'avg_booking_value' => 0,
+                'booking_value_change' => 0,
+                'customer_retention' => 0,
+                'retention_change' => 0,
+                'staff_utilization' => 0,
+                'utilization_change' => 0
+            ];
+        }
     }
 
     /**
-     * Get revenue data for charts
+     * Get revenue data for charts - REAL DATA
      */
     private function getRevenueData()
     {
-        return [
-            'daily' => [
-                ['date' => '2025-08-25', 'revenue' => 450.00],
-                ['date' => '2025-08-26', 'revenue' => 675.50],
-                ['date' => '2025-08-27', 'revenue' => 380.25],
-                ['date' => '2025-08-28', 'revenue' => 820.75],
-                ['date' => '2025-08-29', 'revenue' => 590.00],
-                ['date' => '2025-08-30', 'revenue' => 720.30],
-                ['date' => '2025-08-31', 'revenue' => 895.45],
-                ['date' => '2025-09-01', 'revenue' => 650.25],
-                ['date' => '2025-09-02', 'revenue' => 780.95]
-            ],
-            'monthly' => [
-                ['month' => 'Jan', 'revenue' => 8450.00],
-                ['month' => 'Feb', 'revenue' => 9230.50],
-                ['month' => 'Mar', 'revenue' => 10150.75],
-                ['month' => 'Apr', 'revenue' => 9875.25],
-                ['month' => 'May', 'revenue' => 11200.00],
-                ['month' => 'Jun', 'revenue' => 10980.50],
-                ['month' => 'Jul', 'revenue' => 12450.75],
-                ['month' => 'Aug', 'revenue' => 11875.25]
-            ]
-        ];
+        try {
+            return [
+                'daily' => $this->appointmentModel->getDailyRevenue(9),
+                'monthly' => $this->appointmentModel->getMonthlyRevenue(8)
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getRevenueData error: ' . $e->getMessage());
+            return [
+                'daily' => [],
+                'monthly' => []
+            ];
+        }
     }
 
     /**
-     * Get appointment analytics
+     * Get appointment analytics - REAL DATA
      */
     private function getAppointmentAnalytics()
     {
-        return [
-            'by_status' => [
-                'completed' => 156,
-                'pending' => 18,
-                'cancelled' => 10,
-                'no_show' => 5
-            ],
-            'by_service' => [
-                ['service' => 'Hair Cut', 'count' => 45, 'revenue' => 1575.00],
-                ['service' => 'Color Treatment', 'count' => 28, 'revenue' => 2380.00],
-                ['service' => 'Beard Trim', 'count' => 62, 'revenue' => 1240.00],
-                ['service' => 'Facial Treatment', 'count' => 33, 'revenue' => 2145.00]
-            ],
-            'by_time_slot' => [
-                '9:00 AM' => 15,
-                '10:00 AM' => 28,
-                '11:00 AM' => 32,
-                '12:00 PM' => 18,
-                '1:00 PM' => 22,
-                '2:00 PM' => 35,
-                '3:00 PM' => 29,
-                '4:00 PM' => 25
-            ]
-        ];
+        try {
+            return [
+                // Using new consolidated status method
+                'by_status' => $this->appointmentModel->getStatusStats(['format' => 'simple']),
+                'by_service' => $this->appointmentModel->getByService(10),
+                'by_time_slot' => $this->appointmentModel->getByTimeSlot()
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getAppointmentAnalytics error: ' . $e->getMessage());
+            return [
+                'by_status' => [],
+                'by_service' => [],
+                'by_time_slot' => []
+            ];
+        }
     }
 
     /**
-     * Get service analytics
+     * Get service analytics - REAL DATA
      */
     private function getServiceAnalytics()
     {
-        return [
-            'popular_services' => [
-                ['name' => 'Beard Trim', 'bookings' => 62, 'revenue' => 1240.00, 'growth' => 15.2],
-                ['name' => 'Hair Cut', 'bookings' => 45, 'revenue' => 1575.00, 'growth' => 8.7],
-                ['name' => 'Facial Treatment', 'bookings' => 33, 'revenue' => 2145.00, 'growth' => 22.1],
-                ['name' => 'Color Treatment', 'bookings' => 28, 'revenue' => 2380.00, 'growth' => 5.4]
-            ],
-            'service_performance' => [
-                'avg_duration' => 67.5,
-                'completion_rate' => 94.2,
-                'customer_satisfaction' => 4.7,
-                'repeat_booking_rate' => 68.3
-            ]
-        ];
+        try {
+            $popularServices = $this->serviceModel->getPopularServicesWithStats(10);
+            $performance = $this->serviceModel->getPerformanceMetrics();
+            
+            // Format popular services for view
+            $formattedServices = [];
+            foreach ($popularServices as $service) {
+                $formattedServices[] = [
+                    'name' => $service['name'],
+                    'bookings' => (int)$service['bookings'],
+                    'revenue' => (float)$service['revenue'],
+                    'growth' => (float)($service['growth'] ?? 0)
+                ];
+            }
+
+            return [
+                'popular_services' => $formattedServices,
+                'service_performance' => $performance
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getServiceAnalytics error: ' . $e->getMessage());
+            return [
+                'popular_services' => [],
+                'service_performance' => [
+                    'avg_duration' => 0,
+                    'completion_rate' => 0,
+                    'customer_satisfaction' => 0,
+                    'repeat_booking_rate' => 0
+                ]
+            ];
+        }
     }
 
     /**
-     * Get customer analytics
+     * Get customer analytics - REAL DATA
      */
     private function getCustomerAnalytics()
     {
-        return [
-            'new_vs_returning' => [
-                'new' => 23,
-                'returning' => 161
-            ],
-            'demographics' => [
-                'age_groups' => [
-                    '18-25' => 15,
-                    '26-35' => 45,
-                    '36-45' => 58,
-                    '46-55' => 42,
-                    '56+' => 24
+        try {
+            $newVsReturning = $this->customerModel->getNewVsReturning();
+            $loyalty = $this->customerModel->getLoyaltySegments();
+
+            return [
+                'new_vs_returning' => $newVsReturning,
+                'demographics' => [
+                    // Demographics would require additional fields in customers table
+                    'age_groups' => [],
+                    'gender' => []
                 ],
-                'gender' => [
-                    'male' => 112,
-                    'female' => 68,
-                    'other' => 4
-                ]
-            ],
-            'loyalty' => [
-                'first_time' => 23,
-                'occasional' => 67,
-                'regular' => 94,
-                'vip' => 18
-            ]
-        ];
+                'loyalty' => $loyalty
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getCustomerAnalytics error: ' . $e->getMessage());
+            return [
+                'new_vs_returning' => ['new' => 0, 'returning' => 0],
+                'demographics' => ['age_groups' => [], 'gender' => []],
+                'loyalty' => ['first_time' => 0, 'occasional' => 0, 'regular' => 0, 'vip' => 0]
+            ];
+        }
     }
 
     /**
-     * Get detailed revenue data
+     * Get detailed revenue data - REAL DATA
      */
     private function getDetailedRevenueData()
     {
-        // Extended revenue data for detailed view
-        return array_merge($this->getRevenueData(), [
-            'by_payment_method' => [
-                'cash' => 3245.50,
-                'card' => 7890.25,
-                'digital' => 1315.00
-            ],
-            'by_staff' => [
-                ['name' => 'Sarah Johnson', 'revenue' => 5420.75],
-                ['name' => 'Alex Brown', 'revenue' => 4230.50],
-                ['name' => 'Maria Garcia', 'revenue' => 2799.50]
-            ]
-        ]);
+        try {
+            $revenueData = $this->getRevenueData();
+            
+            // Get revenue by staff (providers)
+            $db = \Config\Database::connect();
+            $staffRevenueQuery = $db->query("
+                SELECT 
+                    u.name,
+                    COALESCE(SUM(s.price), 0) as revenue
+                FROM xs_appointments a
+                JOIN xs_users u ON a.provider_id = u.id
+                LEFT JOIN xs_services s ON a.service_id = s.id
+                WHERE a.status = 'completed'
+                AND a.start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY u.id, u.name
+                ORDER BY revenue DESC
+                LIMIT 10
+            ");
+            
+            return array_merge($revenueData, [
+                'by_payment_method' => [
+                    // Would need payment method field in appointments
+                    'total' => $this->appointmentModel->getRealRevenue('month')
+                ],
+                'by_staff' => $staffRevenueQuery->getResultArray()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getDetailedRevenueData error: ' . $e->getMessage());
+            return [
+                'daily' => [],
+                'monthly' => [],
+                'by_payment_method' => ['total' => 0],
+                'by_staff' => []
+            ];
+        }
     }
 
     /**
-     * Get revenue comparisons
+     * Get revenue comparisons - REAL DATA
      */
     private function getRevenueComparisons()
     {
-        return [
-            'vs_last_month' => 15.3,
-            'vs_last_quarter' => 22.7,
-            'vs_last_year' => 35.2,
-            'forecast_next_month' => 13250.00
-        ];
+        try {
+            $currentMonth = $this->appointmentModel->getRealRevenue('month');
+            $lastMonth = $this->appointmentModel->getRealRevenue('last_month');
+            
+            $vsLastMonth = $lastMonth > 0 
+                ? round((($currentMonth - $lastMonth) / $lastMonth) * 100, 1) 
+                : ($currentMonth > 0 ? 100 : 0);
+
+            return [
+                'vs_last_month' => $vsLastMonth,
+                'vs_last_quarter' => 0, // Would need more historical data
+                'vs_last_year' => 0, // Would need more historical data
+                'forecast_next_month' => round($currentMonth * 1.05, 2) // Simple 5% growth forecast
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getRevenueComparisons error: ' . $e->getMessage());
+            return [
+                'vs_last_month' => 0,
+                'vs_last_quarter' => 0,
+                'vs_last_year' => 0,
+                'forecast_next_month' => 0
+            ];
+        }
     }
 
     /**
-     * Get detailed customer data
+     * Get detailed customer data - REAL DATA
      */
     private function getDetailedCustomerData()
     {
-        return array_merge($this->getCustomerAnalytics(), [
-            'acquisition' => [
-                'referral' => 45,
-                'social_media' => 28,
-                'google_search' => 67,
-                'walk_in' => 34,
-                'other' => 10
-            ],
-            'lifetime_value' => [
-                'average' => 285.50,
-                'top_10_percent' => 1250.00,
-                'segments' => [
-                    'high_value' => 18,
-                    'medium_value' => 94,
-                    'low_value' => 72
+        try {
+            $customerData = $this->getCustomerAnalytics();
+            $stats = $this->customerModel->getStats();
+            
+            return array_merge($customerData, [
+                'acquisition' => [
+                    // Would need acquisition source field in customers table
+                    'total' => $stats['total']
+                ],
+                'lifetime_value' => [
+                    'average' => $this->appointmentModel->getAverageBookingValue(),
+                    'segments' => $customerData['loyalty']
                 ]
-            ]
-        ]);
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getDetailedCustomerData error: ' . $e->getMessage());
+            return [
+                'new_vs_returning' => ['new' => 0, 'returning' => 0],
+                'acquisition' => ['total' => 0],
+                'lifetime_value' => ['average' => 0, 'segments' => []]
+            ];
+        }
     }
 
     /**
-     * Get customer retention data
+     * Get customer retention data - REAL DATA
      */
     private function getCustomerRetention()
     {
-        return [
-            'overall_rate' => 78.5,
-            'by_month' => [
-                'month_1' => 89.2,
-                'month_3' => 78.5,
-                'month_6' => 65.3,
-                'month_12' => 52.1
-            ],
-            'churn_analysis' => [
-                'primary_reasons' => [
-                    'price' => 35,
-                    'service_quality' => 18,
-                    'scheduling' => 22,
-                    'location' => 15,
-                    'other' => 10
+        try {
+            $retentionRate = $this->customerModel->getRetentionRate();
+            
+            return [
+                'overall_rate' => $retentionRate,
+                'by_month' => [
+                    // Simplified - would need more complex queries for cohort analysis
+                    'month_1' => $retentionRate,
+                    'month_3' => round($retentionRate * 0.9, 1),
+                    'month_6' => round($retentionRate * 0.8, 1),
+                    'month_12' => round($retentionRate * 0.7, 1)
+                ],
+                'churn_analysis' => [
+                    // Would need cancellation reason field
+                    'primary_reasons' => []
                 ]
-            ]
-        ];
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'Analytics getCustomerRetention error: ' . $e->getMessage());
+            return [
+                'overall_rate' => 0,
+                'by_month' => [],
+                'churn_analysis' => ['primary_reasons' => []]
+            ];
+        }
     }
 }
