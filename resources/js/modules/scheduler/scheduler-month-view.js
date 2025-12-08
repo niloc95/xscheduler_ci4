@@ -20,8 +20,17 @@ export class MonthView {
         
         console.log('🗓️ MonthView.render called');
         console.log('   Current date:', currentDate.toISO());
+        console.log('   Current date zone:', currentDate.zoneName);
         console.log('   Appointments received:', appointments.length);
-        console.log('   Appointments data:', appointments);
+        if (appointments.length > 0) {
+            console.log('   First appointment:', {
+                id: appointments[0].id,
+                start: appointments[0].start,
+                startDateTime: appointments[0].startDateTime?.toISO?.(),
+                startDateTimeZone: appointments[0].startDateTime?.zoneName,
+                dateKey: appointments[0].startDateTime?.toISODate?.()
+            });
+        }
         console.log('   Providers:', providers.length);
         
         // Store data for use in other methods
@@ -40,10 +49,30 @@ export class MonthView {
         const monthStart = currentDate.startOf('month');
         const monthEnd = currentDate.endOf('month');
         
-        // Use first day of week from settings
-        const firstDayOfWeek = settings?.getFirstDayOfWeek() || 0;
-        const gridStart = monthStart.startOf('week').minus({ days: (7 - firstDayOfWeek) % 7 });
-        const gridEnd = monthEnd.endOf('week').minus({ days: (7 - firstDayOfWeek) % 7 });
+        // Use first day of week from settings (0=Sunday, 1=Monday, etc.)
+        const firstDayOfWeek = settings?.getFirstDayOfWeek?.() || 0;
+        
+        // Calculate grid start: find the first day of the week containing month start
+        // Luxon weekday: 1=Mon, 7=Sun. We need to convert our firstDayOfWeek (0=Sun) to Luxon format
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
+        const monthStartWeekday = monthStart.weekday; // 1-7 (Mon-Sun)
+        
+        // Calculate days to go back to reach the first day of the week
+        let daysBack = monthStartWeekday - luxonFirstDay;
+        if (daysBack < 0) daysBack += 7;
+        
+        const gridStart = monthStart.minus({ days: daysBack });
+        
+        // Calculate grid end: find the last day of the week containing month end
+        const monthEndWeekday = monthEnd.weekday;
+        const lastDayOfWeek = luxonFirstDay === 1 ? 7 : luxonFirstDay - 1; // Last day is one before first
+        let daysForward = (lastDayOfWeek === 7 ? 7 : lastDayOfWeek) - monthEndWeekday;
+        if (daysForward < 0) daysForward += 7;
+        if (daysForward === 0 && monthEndWeekday !== (luxonFirstDay === 1 ? 7 : luxonFirstDay - 1)) {
+            // We're not on the last day of week, so we need to complete the week
+        }
+        // Simpler approach: just complete 6 weeks from grid start
+        const gridEnd = gridStart.plus({ days: 41 }); // 6 weeks - 1 day
         
         // Generate weeks
         const weeks = [];
@@ -152,51 +181,79 @@ export class MonthView {
                         ${this.escapeHtml(blockedInfo.notes || 'Blocked')}
                     </div>
                 ` : ''}
-                <div class="day-appointments space-y-1">
-                    ${dayAppointments.slice(0, 3).map(apt => this.renderAppointmentBlock(apt)).join('')}
-                    ${dayAppointments.length > 3 ? `<div class="text-xs text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:text-blue-600" data-show-more="${day.toISODate()}">+${dayAppointments.length - 3} more</div>` : ''}
+                <div class="day-appointments space-y-0.5">
+                    ${dayAppointments.slice(0, 2).map(apt => this.renderAppointmentBlock(apt)).join('')}
+                    ${dayAppointments.slice(2).map(apt => this.renderAppointmentBlock(apt, true)).join('')}
+                    ${dayAppointments.length > 2 ? `
+                        <button type="button" class="expand-day-btn w-full text-xs text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded px-1 py-0.5 flex items-center justify-center gap-1 transition-colors" 
+                             data-expand-day="${day.toISODate()}"
+                             data-expanded="false"
+                             title="Click to view all ${dayAppointments.length} appointments">
+                            <svg class="expand-icon w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />
+                            </svg>
+                            <span class="expand-text">+${dayAppointments.length - 2} more</span>
+                        </button>
+                    ` : ''}
                 </div>
             </div>
         `;
     }
 
-    renderAppointmentBlock(appointment) {
+    renderAppointmentBlock(appointment, isHidden = false) {
         const provider = this.providers.find(p => p.id === appointment.providerId);
         const darkMode = isDarkMode();
         const statusColors = getStatusColors(appointment.status, darkMode);
         const providerColor = getProviderColor(provider);
         
-        // Use settings to format time
-        const time = this.settings?.formatTime ? this.settings.formatTime(appointment.startDateTime) : appointment.startDateTime.toFormat('h:mm a');
+        // Use settings to format time - shorter format for month view
+        const time = appointment.startDateTime.toFormat('h:mm');
+        const ampm = appointment.startDateTime.toFormat('a').toLowerCase();
         const title = appointment.title || appointment.customerName || 'Appointment';
+        const hiddenClass = isHidden ? 'hidden' : '';
 
         return `
-            <div class="scheduler-appointment text-xs px-2 py-1 rounded cursor-pointer hover:opacity-90 transition-all truncate border-l-4 flex items-center gap-1.5"
+            <div class="scheduler-appointment text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:shadow-sm transition-all truncate border-l-2 flex items-center gap-1 ${hiddenClass}"
                  style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 title="${title} at ${time} - ${appointment.status}">
-                <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
+                 title="${title} at ${time}${ampm} - ${appointment.status}">
+                <span class="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color: ${providerColor};"></span>
                 <span class="font-medium">${time}</span>
-                <span class="truncate">${this.escapeHtml(title)}</span>
+                <span class="truncate opacity-80">${this.escapeHtml(title)}</span>
             </div>
         `;
     }
     
     getAppointmentsForDay(day) {
         const dateKey = day.toISODate();
-        return this.appointmentsByDate[dateKey] || [];
+        const appointments = this.appointmentsByDate[dateKey] || [];
+        if (appointments.length > 0) {
+            console.log(`📅 Day ${dateKey}: ${appointments.length} appointments found`);
+        }
+        return appointments;
     }
 
     groupAppointmentsByDate(appointments) {
         const grouped = {};
         
-        appointments.forEach(apt => {
+        console.log(`📊 Grouping ${appointments.length} appointments by date`);
+        
+        appointments.forEach((apt, idx) => {
+            if (!apt.startDateTime || typeof apt.startDateTime.toISODate !== 'function') {
+                console.error(`❌ Appointment ${apt.id} has invalid startDateTime:`, apt.startDateTime);
+                return;
+            }
             const dateKey = apt.startDateTime.toISODate();
+            if (idx < 3) {
+                console.log(`   Apt ${apt.id}: startDateTime=${apt.startDateTime.toISO()}, dateKey=${dateKey}`);
+            }
             if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
             }
             grouped[dateKey].push(apt);
         });
+        
+        console.log(`📅 Grouped into ${Object.keys(grouped).length} unique dates:`, Object.keys(grouped).slice(0, 10));
 
         // Sort appointments by start time within each day
         Object.keys(grouped).forEach(dateKey => {
@@ -275,19 +332,19 @@ export class MonthView {
                 
                 html += `
                     <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                        <!-- Provider Header -->
+                        <!-- Provider Header - matching Week View -->
                         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
                              style="border-left: 4px solid ${color};">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
                                      style="background-color: ${color};">
                                     ${provider.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <h4 class="font-medium text-gray-900 dark:text-white truncate">
+                                    <h4 class="font-semibold text-gray-900 dark:text-white truncate">
                                         ${this.escapeHtml(provider.name)}
                                     </h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">
                                         ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'} this month
                                     </p>
                                 </div>
@@ -299,10 +356,10 @@ export class MonthView {
                 `;
                 
                 if (providerAppointments.length > 0) {
-                    // Show up to 10 appointments, then "+N more"
-                    const displayedAppointments = providerAppointments.slice(0, 10);
+                    // Show all appointments, but hide those beyond first 10
+                    const maxVisible = 10;
                     
-                    displayedAppointments.forEach(apt => {
+                    providerAppointments.forEach((apt, index) => {
                         const date = apt.startDateTime.toFormat('MMM d');
                         const time = apt.startDateTime.toFormat(timeFormat);
                         const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
@@ -312,8 +369,11 @@ export class MonthView {
                         const statusColors = getStatusColors(apt.status, darkMode);
                         const providerColor = getProviderColor(provider);
                         
+                        // Hide appointments beyond maxVisible
+                        const hiddenClass = index >= maxVisible ? 'hidden' : '';
+                        
                         html += `
-                            <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer border-l-4"
+                            <div class="appointment-item p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer border-l-4 ${hiddenClass}"
                                  style="border-left-color: ${statusColors.border}; background-color: ${statusColors.bg}; color: ${statusColors.text};"
                                  data-appointment-id="${apt.id}">
                                 <div class="flex items-start justify-between gap-2 mb-1">
@@ -338,10 +398,18 @@ export class MonthView {
                         `;
                     });
                     
-                    if (providerAppointments.length > 10) {
+                    if (providerAppointments.length > maxVisible) {
+                        const remaining = providerAppointments.length - maxVisible;
                         html += `
-                            <div class="p-3 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
-                                +${providerAppointments.length - 10} more appointments
+                            <div class="p-3 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-t border-gray-200 dark:border-gray-700"
+                                 data-expand-provider="${provider.id}"
+                                 data-expanded="false">
+                                <div class="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />
+                                    </svg>
+                                    <span>+${remaining} more</span>
+                                </div>
                             </div>
                         `;
                     }
@@ -424,6 +492,7 @@ export class MonthView {
         container.querySelectorAll('[data-appointment-id]:not([data-action])').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('[data-action]')) return;
+                if (e.target.closest('[data-expand-provider]')) return;
                 
                 const aptId = parseInt(card.dataset.appointmentId, 10);
                 const appointment = appointments.find(a => a.id === aptId);
@@ -431,6 +500,15 @@ export class MonthView {
                 if (appointment) {
                     onAppointmentClick(appointment);
                 }
+            });
+        });
+        
+        // "Expand provider" handlers for monthly schedule panel
+        container.querySelectorAll('[data-expand-provider]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const providerId = parseInt(el.dataset.expandProvider, 10);
+                this.toggleProviderExpansion(providerId, el);
             });
         });
     }
@@ -453,15 +531,20 @@ export class MonthView {
             });
         });
 
-        // "Show more" handlers
-        container.querySelectorAll('[data-show-more]').forEach(el => {
+        // "Expand day" handlers for calendar grid - toggle hidden appointments
+        container.querySelectorAll('[data-expand-day]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const date = el.dataset.showMore;
-                // Update selected date and refresh daily section
-                this.selectedDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });
-                this.updateDailySection(container);
-                console.log('Show more appointments for', date);
+                this.toggleDayExpansion(el);
+            });
+        });
+
+        // "Expand provider" handlers for monthly schedule panel
+        container.querySelectorAll('[data-expand-provider]').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const providerId = parseInt(el.dataset.expandProvider, 10);
+                this.toggleProviderExpansion(providerId, el);
             });
         });
 
@@ -471,7 +554,7 @@ export class MonthView {
                 // Check if click was on an appointment or action button
                 if (e.target.closest('.scheduler-appointment') || 
                     e.target.closest('[data-action]') ||
-                    e.target.closest('[data-show-more]')) {
+                    e.target.closest('[data-expand-day]')) {
                     return; // Let those handlers deal with it
                 }
                 
@@ -554,5 +637,109 @@ export class MonthView {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Toggle expansion of provider appointments in monthly schedule
+     */
+    toggleProviderExpansion(providerId, buttonEl) {
+        const card = buttonEl.closest('.bg-white, [class*="dark:bg-gray-800"]');
+        if (!card) return;
+        
+        const appointmentsList = card.querySelector('.divide-y');
+        if (!appointmentsList) return;
+        
+        const maxVisible = 10;
+        const isExpanded = buttonEl.dataset.expanded === 'true';
+        const allAppointments = appointmentsList.querySelectorAll('.appointment-item');
+        
+        if (isExpanded) {
+            // Collapse - hide items beyond first 10
+            allAppointments.forEach((item, index) => {
+                if (index >= maxVisible) {
+                    item.classList.add('hidden');
+                }
+            });
+            buttonEl.dataset.expanded = 'false';
+            const icon = buttonEl.querySelector('svg');
+            if (icon) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />';
+            }
+            const textSpan = buttonEl.querySelector('span');
+            if (textSpan) {
+                const totalHidden = Math.max(0, allAppointments.length - maxVisible);
+                textSpan.textContent = `+${totalHidden} more`;
+            }
+        } else {
+            // Expand - show all items
+            allAppointments.forEach(item => {
+                item.classList.remove('hidden');
+            });
+            buttonEl.dataset.expanded = 'true';
+            const icon = buttonEl.querySelector('svg');
+            if (icon) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12h12" />';
+            }
+            const textSpan = buttonEl.querySelector('span');
+            if (textSpan) {
+                textSpan.textContent = 'Show less';
+            }
+        }
+    }
+
+    /**
+     * Toggle expansion of appointments in a calendar day cell
+     */
+    toggleDayExpansion(buttonEl) {
+        const dayCell = buttonEl.closest('.scheduler-day-cell');
+        if (!dayCell) {
+            console.warn('[MonthView] toggleDayExpansion: dayCell not found');
+            return;
+        }
+        
+        const appointmentsContainer = dayCell.querySelector('.day-appointments');
+        if (!appointmentsContainer) {
+            console.warn('[MonthView] toggleDayExpansion: appointmentsContainer not found');
+            return;
+        }
+        
+        const maxVisible = 2; // Show only 2 appointments by default
+        const isExpanded = buttonEl.dataset.expanded === 'true';
+        const allAppointments = appointmentsContainer.querySelectorAll('.scheduler-appointment');
+        
+        console.log('[MonthView] toggleDayExpansion:', { isExpanded, totalAppointments: allAppointments.length });
+        
+        if (isExpanded) {
+            // Collapse - hide appointments beyond first 2
+            allAppointments.forEach((item, index) => {
+                if (index >= maxVisible) {
+                    item.classList.add('hidden');
+                }
+            });
+            buttonEl.dataset.expanded = 'false';
+            const icon = buttonEl.querySelector('.expand-icon');
+            if (icon) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />';
+            }
+            const textSpan = buttonEl.querySelector('.expand-text');
+            if (textSpan) {
+                const totalHidden = Math.max(0, allAppointments.length - maxVisible);
+                textSpan.textContent = `+${totalHidden} more`;
+            }
+        } else {
+            // Expand - show all appointments
+            allAppointments.forEach(item => {
+                item.classList.remove('hidden');
+            });
+            buttonEl.dataset.expanded = 'true';
+            const icon = buttonEl.querySelector('.expand-icon');
+            if (icon) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />';
+            }
+            const textSpan = buttonEl.querySelector('.expand-text');
+            if (textSpan) {
+                textSpan.textContent = 'Show less';
+            }
+        }
     }
 }

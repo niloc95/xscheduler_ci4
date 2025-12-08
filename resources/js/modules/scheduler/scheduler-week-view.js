@@ -14,10 +14,25 @@ export class WeekView {
     }
 
     render(container, data) {
-        const { currentDate, appointments, providers, config } = data;
+        const { currentDate, appointments, providers, config, settings } = data;
         
-        const weekStart = currentDate.startOf('week');
+        // Get first day of week from settings (0=Sunday, 1=Monday, etc.)
+        const firstDayOfWeek = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 0;
+        
+        // Calculate week start based on firstDayOfWeek setting
+        // Luxon's startOf('week') uses ISO weeks (Monday=1), we need to adjust
+        const currentWeekday = currentDate.weekday; // 1=Mon, 7=Sun in Luxon
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek; // Convert to Luxon (Sun=7)
+        
+        // Calculate days to subtract to get to the start of the week
+        let daysToSubtract = currentWeekday - luxonFirstDay;
+        if (daysToSubtract < 0) daysToSubtract += 7;
+        
+        const weekStart = currentDate.minus({ days: daysToSubtract }).startOf('day');
         const weekEnd = weekStart.plus({ days: 6 });
+        
+        // Store settings for use in other methods
+        this.settings = settings;
         
         // Generate array of 7 days for the week
         const days = [];
@@ -77,9 +92,21 @@ export class WeekView {
         const isBlocked = this.isDateBlocked(day, blockedPeriods);
         const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, blockedPeriods) : null;
         
+        // Check if this is a non-working day from business hours settings
+        const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
+        
+        // Determine background class based on blocked/non-working status
+        // Use subtle background colors without opacity to avoid graying out content
+        let bgClass = '';
+        if (isBlocked) {
+            bgClass = 'bg-red-100 dark:bg-red-900/20';
+        } else if (isNonWorkingDay) {
+            bgClass = 'bg-gray-50 dark:bg-gray-800';
+        }
+        
         return `
-            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10' : ''}">
-                <div class="${isToday ? 'text-blue-600 dark:text-blue-400 font-bold' : isBlocked ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-300'}">
+            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${bgClass}">
+                <div class="${isToday ? 'text-blue-600 dark:text-blue-400 font-bold' : isBlocked ? 'text-red-600 dark:text-red-400' : isNonWorkingDay ? 'text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}">
                     <div class="text-xs font-medium">${day.toFormat('ccc')}</div>
                     <div class="text-lg ${isToday ? 'flex items-center justify-center w-8 h-8 mx-auto mt-1 rounded-full bg-blue-600 text-white' : 'mt-1'}">
                         ${day.day}
@@ -104,11 +131,22 @@ export class WeekView {
                     const dateKey = day.toISODate();
                     const slotAppointments = this.getAppointmentsForSlot(appointmentsByDay[dateKey] || [], slot);
                     const isBlocked = this.isDateBlocked(day, blockedPeriods);
+                    const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
+                    
+                    // Determine cell styling based on status
+                    // Note: Don't use opacity on container as it grays out appointment cards inside
+                    let cellClass = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                    if (isBlocked) {
+                        cellClass = 'bg-red-100 dark:bg-red-900/20';
+                    } else if (isNonWorkingDay) {
+                        cellClass = 'bg-gray-50 dark:bg-gray-800';
+                    }
                     
                     return `
-                        <div class="relative px-2 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${isBlocked ? 'bg-red-50 dark:bg-red-900/10 opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors"
+                        <div class="relative px-2 py-1 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${cellClass} transition-colors"
                              data-date="${dateKey}"
-                             data-time="${slot.time}">
+                             data-time="${slot.time}"
+                             data-non-working="${isNonWorkingDay}">
                             ${slotAppointments.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
                         </div>
                     `;
@@ -382,33 +420,21 @@ export class WeekView {
                                                                 const time = apt.startDateTime.toFormat(timeFormat);
                                                                 const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
                                                                 
-                                                                const statusColors = {
-                                                                    confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                                                                    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-                                                                    completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                                                    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-                                                                    'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                                                                };
-                                                                const statusClass = statusColors[apt.status] || statusColors.pending;
+                                                                const darkModeCheck = typeof isDarkMode === 'function' ? isDarkMode() : false;
+                                                                const aptStatusColors = getStatusColors(apt.status, darkModeCheck);
                                                                 
-                                                                return `
-                                                                    <div class="text-xs p-2 rounded border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 cursor-pointer transition-colors"
-                                                                         data-appointment-id="${apt.id}">
-                                                                        <div class="font-medium text-gray-900 dark:text-white truncate">${time}</div>
-                                                                        <div class="text-gray-600 dark:text-gray-300 truncate">${this.escapeHtml(customerName)}</div>
-                                                                        <span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded ${statusClass}">
-                                                                            ${apt.status}
-                                                                        </span>
-                                                                    </div>
-                                                                `;
+                                                                return '<div class="text-xs p-2 rounded cursor-pointer transition-colors border-l-2" ' +
+                                                                    'style="background-color: ' + aptStatusColors.bg + '; border-left-color: ' + aptStatusColors.border + '; color: ' + aptStatusColors.text + ';" ' +
+                                                                    'data-appointment-id="' + apt.id + '">' +
+                                                                    '<div class="font-medium truncate">' + time + '</div>' +
+                                                                    '<div class="truncate opacity-90">' + this.escapeHtml(customerName) + '</div>' +
+                                                                    '<span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full" ' +
+                                                                    'style="background-color: ' + aptStatusColors.dot + '; color: white;">' + apt.status + '</span>' +
+                                                                    '</div>';
                                                             }).join('') 
-                                                            : `<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>`
+                                                            : '<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>'
                                                         }
-                                                        ${dayAppointments.length > 3 ? `
-                                                            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium text-center pt-1">
-                                                                +${dayAppointments.length - 3} more
-                                                            </div>
-                                                        ` : ''}
+                                                        ${dayAppointments.length > 3 ? '<div class="text-xs text-blue-600 dark:text-blue-400 font-medium text-center pt-1 cursor-pointer hover:underline flex items-center justify-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" /></svg>+' + (dayAppointments.length - 3) + ' more</div>' : ''}
                                                     </div>
                                                 </div>
                                             `;

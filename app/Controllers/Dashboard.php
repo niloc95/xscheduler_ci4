@@ -207,33 +207,49 @@ class Dashboard extends BaseController
     public function charts()
     {
         try {
-            // Real chart data from database
-            $userGrowth = $this->userModel->getUserGrowthData(6);
-            $appointmentWeekly = $this->appointmentModel->getChartData('week');
-            $statusDistribution = $this->appointmentModel->getStatusDistribution();
+            // Get period from query parameter (default: month)
+            $period = $this->request->getGet('period') ?? 'month';
+            
+            // Validate period
+            $validPeriods = ['day', 'week', 'month', 'year'];
+            if (!in_array($period, $validPeriods)) {
+                $period = 'month';
+            }
+            
+            // Get chart data based on period
+            $appointmentGrowth = $this->appointmentModel->getAppointmentGrowth($period);
+            $providerServices = $this->appointmentModel->getProviderServicesByPeriod($period);
+            // Using new consolidated status method with colors
+            $statusDistribution = $this->appointmentModel->getStatusStats([
+                'format' => 'chart',
+                'includeColors' => true
+            ]);
 
             $chartData = [
-                'userGrowth' => $userGrowth,
-                'activity' => $statusDistribution,
-                'appointments' => $appointmentWeekly
+                'appointmentGrowth' => $appointmentGrowth,
+                'servicesByProvider' => $providerServices,
+                'statusDistribution' => $statusDistribution,
+                'period' => $period
             ];
 
             return $this->response->setJSON($chartData);
         } catch (\Exception $e) {
             // Fallback chart data
             $chartData = [
-                'userGrowth' => [
-                    'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    'data' => [0, 0, 0, 0, 0, 0]
-                ],
-                'activity' => [
-                    'labels' => ['No Data'],
-                    'data' => [1]
-                ],
-                'appointments' => [
+                'appointmentGrowth' => [
                     'labels' => ['No Data'],
                     'data' => [0]
-                ]
+                ],
+                'servicesByProvider' => [
+                    'labels' => ['No Data'],
+                    'data' => [0]
+                ],
+                'statusDistribution' => [
+                    'labels' => ['No Data'],
+                    'data' => [0],
+                    'colors' => ['#9aa0a6']
+                ],
+                'error' => $e->getMessage()
             ];
 
             return $this->response->setJSON($chartData);
@@ -277,18 +293,21 @@ class Dashboard extends BaseController
                 'appointments' => [
                     'stats' => $this->appointmentModel->getStats(),
                     'recent' => $this->appointmentModel->getRecentAppointments(20),
-                    'weekly_data' => $this->appointmentModel->getChartData('week'),
-                    'monthly_data' => $this->appointmentModel->getChartData('month'),
-                    'status_distribution' => $this->appointmentModel->getStatusDistribution()
+                    // Using consolidated getAppointmentGrowth() method
+                    'weekly_data' => $this->appointmentModel->getAppointmentGrowth('week'),
+                    'monthly_data' => $this->appointmentModel->getAppointmentGrowth('month'),
+                    // Using consolidated status method
+                    'status_distribution' => $this->appointmentModel->getStatusStats(['format' => 'chart'])
                 ],
                 'services' => [
                     'stats' => $this->serviceModel->getStats(),
                     'popular' => $this->serviceModel->getPopularServices(10)
                 ],
                 'revenue' => [
-                    'today' => $this->appointmentModel->getRevenue('today'),
-                    'week' => $this->appointmentModel->getRevenue('week'),
-                    'month' => $this->appointmentModel->getRevenue('month')
+                    // Using getRealRevenue instead of deprecated getRevenue
+                    'today' => $this->appointmentModel->getRealRevenue('today'),
+                    'week' => $this->appointmentModel->getRealRevenue('week'),
+                    'month' => $this->appointmentModel->getRealRevenue('month')
                 ]
             ];
 

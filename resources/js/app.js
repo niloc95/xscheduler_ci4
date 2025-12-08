@@ -110,6 +110,8 @@ function initializeComponents() {
     // Initialize charts and dashboard widgets
     if (typeof Charts !== 'undefined') {
         Charts.initAllCharts();
+        Charts.setupDarkModeListener();
+        Charts.initChartFilters();
     }
 
     // Initialize custom scheduler

@@ -68,11 +68,14 @@ class Settings extends BaseController
     {
         try {
             $service = new LocalizationSettingsService();
+            $calendarService = new CalendarConfigService();
             
             $data = [
                 'timezone' => $service->getTimezone(),
                 'timeFormat' => $service->getTimeFormat(),
                 'is12Hour' => $service->isTwelveHour(),
+                'firstDayOfWeek' => $calendarService->getFirstDayOfWeek(),
+                'first_day_of_week' => $calendarService->getFirstDayOfWeek(), // snake_case for compatibility
                 'context' => $service->getContext(),
             ];
             
@@ -147,27 +150,44 @@ class Settings extends BaseController
             
             // Format for frontend - convert numeric weekday to day names
             $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            $formatted = [];
             
-            foreach ($hours as $row) {
-                $dayName = $dayNames[(int)$row['weekday']] ?? 'unknown';
-                $formatted[$dayName] = [
-                    'isWorkingDay' => !empty($row['start_time']) && !empty($row['end_time']),
-                    'startTime' => $row['start_time'] ?? '09:00:00',
-                    'endTime' => $row['end_time'] ?? '17:00:00',
-                    'breaks' => !empty($row['breaks_json']) ? json_decode($row['breaks_json'], true) : [],
+            // First, initialize all days as non-working (closed)
+            $formatted = [];
+            foreach ($dayNames as $day) {
+                $formatted[$day] = [
+                    'isWorkingDay' => false,
+                    'startTime' => '09:00:00',
+                    'endTime' => '17:00:00',
+                    'breaks' => [],
                 ];
             }
             
-            // If still empty, return default business hours
-            if (empty($formatted)) {
-                foreach ($dayNames as $day) {
-                    $formatted[$day] = [
-                        'isWorkingDay' => in_array($day, ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
-                        'startTime' => '09:00:00',
-                        'endTime' => '17:00:00',
-                        'breaks' => [],
+            // Then override with actual working days from database
+            foreach ($hours as $row) {
+                $dayName = $dayNames[(int)$row['weekday']] ?? null;
+                if ($dayName) {
+                    $formatted[$dayName] = [
+                        'isWorkingDay' => !empty($row['start_time']) && !empty($row['end_time']),
+                        'startTime' => $row['start_time'] ?? '09:00:00',
+                        'endTime' => $row['end_time'] ?? '17:00:00',
+                        'breaks' => !empty($row['breaks_json']) ? json_decode($row['breaks_json'], true) : [],
                     ];
+                }
+            }
+            
+            // If NO hours were found at all, use default Mon-Fri schedule
+            $hasAnyWorkingDays = false;
+            foreach ($formatted as $day => $config) {
+                if ($config['isWorkingDay']) {
+                    $hasAnyWorkingDays = true;
+                    break;
+                }
+            }
+            
+            if (!$hasAnyWorkingDays) {
+                // Default: Monday-Friday working, Sat-Sun closed
+                foreach (['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as $day) {
+                    $formatted[$day]['isWorkingDay'] = true;
                 }
             }
             

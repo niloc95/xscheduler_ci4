@@ -178,19 +178,12 @@ class AppointmentModel extends BaseModel
 
     /**
      * Calculate revenue trend month-over-month
+     * Uses getRealRevenue() for actual service prices
      */
     public function getRevenueTrend(): array
     {
-        $currentRevenue = $this->getRevenue('month');
-        
-        // Previous month revenue
-        $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
-        $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
-        $prevCount = $this->where('status', 'completed')
-                          ->where('start_time >=', $prevMonthStart)
-                          ->where('start_time <=', $prevMonthEnd)
-                          ->countAllResults();
-        $prevRevenue = $prevCount * 50; // Same calculation as getRevenue
+        $currentRevenue = (int)$this->getRealRevenue('month');
+        $prevRevenue = (int)$this->getRealRevenue('last_month');
 
         return $this->calculateTrendPercentage($currentRevenue, $prevRevenue);
     }
@@ -243,7 +236,7 @@ class AppointmentModel extends BaseModel
                 a.service_id,
                 a.status,
                 a.updated_at,
-                COALESCE(c.name, 'Unknown Customer') as customer_name,
+                COALESCE(CONCAT(c.first_name, ' ', c.last_name), 'Unknown Customer') as customer_name,
                 COALESCE(s.name, 'Unknown Service') as service_name
             FROM {$tableName} a
             LEFT JOIN xs_customers c ON a.customer_id = c.id
@@ -258,57 +251,132 @@ class AppointmentModel extends BaseModel
     /**
      * Chart data helpers
      */
+    /**
+     * Get chart data for appointment counts by period
+     * @deprecated Use getAppointmentGrowth($period) instead - it's more comprehensive
+     */
     public function getChartData(string $period = 'week'): array
     {
-        $data = [];
+        // DEPRECATED: Use getAppointmentGrowth() for new code
+        // Note: 'month' in old method showed 4 weeks, getAppointmentGrowth('month') does same
+        return $this->getAppointmentGrowth($period);
+    }
+
+    /**
+     * CONSOLIDATED: Get appointment status distribution
+     * 
+     * This is the single source of truth for status distribution data.
+     * Returns counts, labels, and colors for all statuses.
+     * 
+     * @param string $format Output format: 'full' (default), 'chart', 'simple'
+     *   - 'full': Returns ['statuses' => [...], 'labels' => [...], 'data' => [...], 'colors' => [...]]
+     *   - 'chart': Returns ['labels' => [...], 'data' => [...], 'colors' => [...]] (for pie charts)
+     *   - 'simple': Returns ['status' => count, ...] (simple key-value pairs)
+     * @return array Status distribution in requested format
+     */
+    public function getStatusCounts(string $format = 'full'): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                CASE 
+                    WHEN status = '' OR status IS NULL THEN 'unknown'
+                    ELSE status
+                END as status,
+                COUNT(*) as count
+            FROM {$tableName}
+            GROUP BY status
+            ORDER BY count DESC
+        ");
+        
+        $results = $query->getResultArray();
+        
+        // Standard status colors
+        $statusColors = [
+            'confirmed' => '#34a853',  // Green
+            'pending'   => '#fbbc04',  // Yellow
+            'completed' => '#1a73e8',  // Blue
+            'cancelled' => '#ea4335',  // Red
+            'no-show'   => '#9aa0a6',  // Gray
+            'unknown'   => '#5f6368'   // Dark gray
+        ];
+        
+        // Build unified data structure
+        $statuses = [];
         $labels = [];
-        if ($period === 'week') {
-            for ($i = 6; $i >= 0; $i--) {
-                $dayStart = date('Y-m-d 00:00:00', strtotime("-{$i} days"));
-                $dayEnd   = date('Y-m-d 23:59:59', strtotime("-{$i} days"));
-                $count = $this->where('start_time >=', $dayStart)
-                              ->where('start_time <=', $dayEnd)
-                              ->countAllResults(false);
-                $labels[] = date('M j', strtotime($dayStart));
-                $data[] = $count;
-            }
-        } elseif ($period === 'month') {
-            for ($i = 3; $i >= 0; $i--) {
-                $startDate = date('Y-m-d 00:00:00', strtotime("-{$i} weeks monday"));
-                $endDate   = date('Y-m-d 23:59:59', strtotime("-{$i} weeks sunday"));
-                $count = $this->where('start_time >=', $startDate)
-                              ->where('start_time <=', $endDate)
-                              ->countAllResults(false);
-                $labels[] = 'Week ' . (4 - $i);
-                $data[] = $count;
-            }
+        $data = [];
+        $colors = [];
+        
+        foreach ($results as $row) {
+            $status = $row['status'];
+            $count = (int)$row['count'];
+            $color = $statusColors[$status] ?? '#5f6368';
+            
+            $statuses[$status] = [
+                'count' => $count,
+                'color' => $color,
+                'label' => ucfirst($status)
+            ];
+            $labels[] = ucfirst($status);
+            $data[] = $count;
+            $colors[] = $color;
         }
-        return ['labels' => $labels, 'data' => $data];
+        
+        // Handle empty results
+        if (empty($labels)) {
+            $labels = ['No Data'];
+            $data = [0];
+            $colors = ['#9aa0a6'];
+        }
+        
+        // Return in requested format
+        switch ($format) {
+            case 'simple':
+                $simple = [];
+                foreach ($statuses as $status => $info) {
+                    $simple[$status] = $info['count'];
+                }
+                return $simple;
+                
+            case 'chart':
+                return ['labels' => $labels, 'data' => $data, 'colors' => $colors];
+                
+            case 'full':
+            default:
+                return [
+                    'statuses' => $statuses,
+                    'labels' => $labels,
+                    'data' => $data,
+                    'colors' => $colors
+                ];
+        }
     }
 
     /**
      * Status distribution for pie chart
+     * @deprecated Use getStatusCounts('chart') instead
      */
     public function getStatusDistribution(): array
     {
-        $statuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
-        $data = [];
-        $labels = [];
-        foreach ($statuses as $status) {
-            $count = $this->where('status', $status)->countAllResults(false);
-            if ($count > 0) {
-                $labels[] = ucfirst($status);
-                $data[] = $count;
-            }
-        }
-        return ['labels' => $labels, 'data' => $data];
+        // DEPRECATED: Use getStatusCounts('chart') for new code
+        $result = $this->getStatusCounts('chart');
+        // Return without colors for backward compatibility
+        return ['labels' => $result['labels'], 'data' => $result['data']];
     }
 
     /**
-     * Calculate revenue from completed appointments (placeholder)
+     * Calculate revenue from completed appointments
+     * 
+     * @deprecated Use getRealRevenue() instead - this method uses placeholder prices
+     * @param string $period 'month', 'week', or 'today'
+     * @return int Estimated revenue (placeholder calculation)
      */
     public function getRevenue(string $period = 'month'): int
     {
+        // DEPRECATED: This uses placeholder pricing ($50 per appointment)
+        // Use getRealRevenue() for actual service prices
         $completed = $this->where('status', 'completed');
         if ($period === 'month') {
             $completed->where('start_time >=', date('Y-m-01 00:00:00'))
@@ -321,7 +389,468 @@ class AppointmentModel extends BaseModel
                       ->where('start_time <=', date('Y-m-d 23:59:59'));
         }
         $count = $completed->countAllResults();
-        return $count * 50; // placeholder average revenue
+        return $count * 50; // DEPRECATED: placeholder average revenue
+    }
+
+    /**
+     * Get real revenue by joining with services table for actual prices
+     * This is the preferred method for revenue calculations.
+     * 
+     * @param string $period 'month', 'week', 'today', or 'last_month'
+     * @return float Actual revenue from service prices
+     */
+    public function getRealRevenue(string $period = 'month'): float
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $periodCondition = '';
+        if ($period === 'month') {
+            $periodCondition = "AND a.start_time >= '" . date('Y-m-01 00:00:00') . "' AND a.start_time <= '" . date('Y-m-t 23:59:59') . "'";
+        } elseif ($period === 'week') {
+            $periodCondition = "AND a.start_time >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "' AND a.start_time <= '" . date('Y-m-d 23:59:59', strtotime('sunday this week')) . "'";
+        } elseif ($period === 'today') {
+            $periodCondition = "AND a.start_time >= '" . date('Y-m-d 00:00:00') . "' AND a.start_time <= '" . date('Y-m-d 23:59:59') . "'";
+        } elseif ($period === 'last_month') {
+            $periodCondition = "AND a.start_time >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND a.start_time <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'";
+        }
+        
+        $query = $db->query("
+            SELECT COALESCE(SUM(s.price), 0) as total_revenue
+            FROM {$tableName} a
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            WHERE a.status = 'completed' {$periodCondition}
+        ");
+        
+        $result = $query->getRow();
+        return (float)($result->total_revenue ?? 0);
+    }
+
+    /**
+     * Get daily revenue data for charts
+     */
+    public function getDailyRevenue(int $days = 30): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        $data = [];
+        
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-{$i} days"));
+            $dayStart = $date . ' 00:00:00';
+            $dayEnd = $date . ' 23:59:59';
+            
+            $query = $db->query("
+                SELECT COALESCE(SUM(s.price), 0) as revenue
+                FROM {$tableName} a
+                LEFT JOIN xs_services s ON a.service_id = s.id
+                WHERE a.status = 'completed'
+                AND a.start_time >= '{$dayStart}'
+                AND a.start_time <= '{$dayEnd}'
+            ");
+            
+            $result = $query->getRow();
+            $data[] = [
+                'date' => $date,
+                'revenue' => (float)($result->revenue ?? 0)
+            ];
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Get monthly revenue data for charts
+     */
+    public function getMonthlyRevenue(int $months = 12): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        $data = [];
+        
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthStart = date('Y-m-01 00:00:00', strtotime("-{$i} months"));
+            $monthEnd = date('Y-m-t 23:59:59', strtotime("-{$i} months"));
+            $monthLabel = date('M', strtotime("-{$i} months"));
+            
+            $query = $db->query("
+                SELECT COALESCE(SUM(s.price), 0) as revenue
+                FROM {$tableName} a
+                LEFT JOIN xs_services s ON a.service_id = s.id
+                WHERE a.status = 'completed'
+                AND a.start_time >= '{$monthStart}'
+                AND a.start_time <= '{$monthEnd}'
+            ");
+            
+            $result = $query->getRow();
+            $data[] = [
+                'month' => $monthLabel,
+                'revenue' => (float)($result->revenue ?? 0)
+            ];
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Get appointments grouped by status
+     * @deprecated Use getStatusCounts('simple') instead
+     */
+    public function getByStatus(): array
+    {
+        // DEPRECATED: Use getStatusCounts('simple') for new code
+        return $this->getStatusCounts('simple');
+    }
+
+    /**
+     * Get appointments by service with revenue
+     */
+    public function getByService(int $limit = 10): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                s.name as service,
+                COUNT(a.id) as count,
+                COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) as revenue
+            FROM {$tableName} a
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            WHERE s.name IS NOT NULL
+            GROUP BY s.id, s.name
+            ORDER BY count DESC
+            LIMIT {$limit}
+        ");
+        
+        return $query->getResultArray();
+    }
+
+    /**
+     * Get appointments by time slot
+     */
+    public function getByTimeSlot(): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                DATE_FORMAT(start_time, '%l:00 %p') as time_slot,
+                HOUR(start_time) as hour,
+                COUNT(*) as count
+            FROM {$tableName}
+            GROUP BY hour, time_slot
+            ORDER BY hour
+        ");
+        
+        $results = $query->getResultArray();
+        $formatted = [];
+        
+        foreach ($results as $row) {
+            $formatted[$row['time_slot']] = (int)$row['count'];
+        }
+        
+        return $formatted;
+    }
+
+    /**
+     * Get average booking value
+     */
+    public function getAverageBookingValue(): float
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT AVG(s.price) as avg_value
+            FROM {$tableName} a
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            WHERE a.status = 'completed' AND s.price > 0
+        ");
+        
+        $result = $query->getRow();
+        return (float)($result->avg_value ?? 0);
+    }
+
+    /**
+     * Get completion rate
+     */
+    public function getCompletionRate(): float
+    {
+        $total = $this->countAllResults(false);
+        if ($total === 0) return 0;
+        
+        $completed = $this->where('status', 'completed')->countAllResults(false);
+        return round(($completed / $total) * 100, 1);
+    }
+
+    /**
+     * Get appointment growth data based on period (rolling window centered on today)
+     * Shows both recent past and upcoming appointments for scheduling context
+     * @param string $period - 'day', 'week', 'month', 'year'
+     */
+    public function getAppointmentGrowth(string $period = 'month'): array
+    {
+        $labels = [];
+        $data = [];
+        
+        switch ($period) {
+            case 'day':
+                // Today: Show hours from 6am to 9pm (business hours focus)
+                for ($hour = 6; $hour <= 21; $hour++) {
+                    $hourStart = date('Y-m-d') . ' ' . sprintf('%02d:00:00', $hour);
+                    $hourEnd = date('Y-m-d') . ' ' . sprintf('%02d:59:59', $hour);
+                    
+                    $count = $this->where('start_time >=', $hourStart)
+                                  ->where('start_time <=', $hourEnd)
+                                  ->countAllResults(false);
+                    
+                    $labels[] = date('ga', strtotime($hourStart)); // e.g., "9am"
+                    $data[] = $count;
+                }
+                break;
+                
+            case 'week':
+                // Current week: Monday to Sunday
+                $monday = date('Y-m-d', strtotime('monday this week'));
+                for ($i = 0; $i < 7; $i++) {
+                    $dayStart = date('Y-m-d 00:00:00', strtotime("$monday +{$i} days"));
+                    $dayEnd = date('Y-m-d 23:59:59', strtotime("$monday +{$i} days"));
+                    
+                    $count = $this->where('start_time >=', $dayStart)
+                                  ->where('start_time <=', $dayEnd)
+                                  ->countAllResults(false);
+                    
+                    $dayLabel = date('D', strtotime("$monday +{$i} days"));
+                    // Mark today
+                    if (date('Y-m-d', strtotime("$monday +{$i} days")) === date('Y-m-d')) {
+                        $dayLabel .= '*';
+                    }
+                    $labels[] = $dayLabel;
+                    $data[] = $count;
+                }
+                break;
+                
+            case 'year':
+                // 12 months: 6 past + current + 5 future
+                for ($i = -6; $i <= 5; $i++) {
+                    if ($i < 0) {
+                        $monthStart = date('Y-m-01 00:00:00', strtotime("{$i} months"));
+                        $monthEnd = date('Y-m-t 23:59:59', strtotime("{$i} months"));
+                    } elseif ($i == 0) {
+                        $monthStart = date('Y-m-01 00:00:00');
+                        $monthEnd = date('Y-m-t 23:59:59');
+                    } else {
+                        $monthStart = date('Y-m-01 00:00:00', strtotime("+{$i} months"));
+                        $monthEnd = date('Y-m-t 23:59:59', strtotime("+{$i} months"));
+                    }
+                    
+                    $count = $this->where('start_time >=', $monthStart)
+                                  ->where('start_time <=', $monthEnd)
+                                  ->countAllResults(false);
+                    
+                    $monthLabel = date('M', strtotime($monthStart));
+                    // Mark current month
+                    if (date('Y-m', strtotime($monthStart)) === date('Y-m')) {
+                        $monthLabel .= '*';
+                    }
+                    $labels[] = $monthLabel;
+                    $data[] = $count;
+                }
+                break;
+                
+            case 'month':
+            default:
+                // 4 weeks: 2 past + current + 1 future
+                $today = strtotime('today');
+                $startOfCurrentWeek = strtotime('monday this week');
+                
+                for ($i = -2; $i <= 1; $i++) {
+                    $weekStart = date('Y-m-d 00:00:00', strtotime("monday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
+                    $weekEnd = date('Y-m-d 23:59:59', strtotime("sunday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
+                    
+                    $count = $this->where('start_time >=', $weekStart)
+                                  ->where('start_time <=', $weekEnd)
+                                  ->countAllResults(false);
+                    
+                    $weekNum = $i + 3; // Week 1, 2, 3, 4
+                    $weekLabel = 'Week ' . $weekNum;
+                    if ($i == 0) {
+                        $weekLabel .= '*'; // Mark current week
+                    }
+                    $labels[] = $weekLabel;
+                    $data[] = $count;
+                }
+                break;
+        }
+        
+        return ['labels' => $labels, 'data' => $data];
+    }
+
+    /**
+     * Get services by provider for a specific time period (rolling window)
+     * @param string $period - 'day', 'week', 'month', 'year'
+     */
+    public function getProviderServicesByPeriod(string $period = 'month'): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        // Calculate date range based on period (rolling window centered on today)
+        switch ($period) {
+            case 'day':
+                $startDate = date('Y-m-d 00:00:00');
+                $endDate = date('Y-m-d 23:59:59');
+                break;
+            case 'week':
+                $startDate = date('Y-m-d 00:00:00', strtotime('monday this week'));
+                $endDate = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+                break;
+            case 'year':
+                $startDate = date('Y-m-d 00:00:00', strtotime('-6 months'));
+                $endDate = date('Y-m-d 23:59:59', strtotime('+5 months'));
+                break;
+            case 'month':
+            default:
+                $startDate = date('Y-m-d 00:00:00', strtotime('-2 weeks'));
+                $endDate = date('Y-m-d 23:59:59', strtotime('+1 week'));
+                break;
+        }
+        
+        $query = $db->query("
+            SELECT 
+                u.name as provider_name,
+                COUNT(a.id) as total_appointments
+            FROM {$tableName} a
+            LEFT JOIN xs_users u ON a.provider_id = u.id
+            WHERE u.name IS NOT NULL 
+              AND a.start_time >= '{$startDate}'
+              AND a.start_time <= '{$endDate}'
+            GROUP BY a.provider_id, u.name
+            ORDER BY total_appointments DESC
+            LIMIT 10
+        ");
+        
+        $results = $query->getResultArray();
+        
+        $labels = [];
+        $data = [];
+        
+        foreach ($results as $row) {
+            $labels[] = $row['provider_name'];
+            $data[] = (int)$row['total_appointments'];
+        }
+        
+        if (empty($labels)) {
+            return ['labels' => ['No Data'], 'data' => [0]];
+        }
+        
+        return ['labels' => $labels, 'data' => $data];
+    }
+
+    /**
+     * Get appointment status distribution with colors
+     * @deprecated Use getStatusStats(['format' => 'chart', 'includeColors' => true]) instead
+     */
+    public function getStatusDistributionWithColors(): array
+    {
+        // DEPRECATED: Use getStatusStats() for new code
+        return $this->getStatusStats([
+            'format' => 'chart',
+            'includeColors' => true
+        ]);
+    }
+
+    /**
+     * Get monthly appointment counts for chart (appointment growth)
+     * @deprecated Use getAppointmentGrowth('year') instead - it shows 12 months centered on current
+     * Note: This method is not currently used anywhere in the codebase
+     */
+    public function getMonthlyAppointments(int $months = 6): array
+    {
+        // DEPRECATED: Use getAppointmentGrowth('year') for new code
+        // This legacy method only looks at past months
+        $labels = [];
+        $data = [];
+        
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthStart = date('Y-m-01 00:00:00', strtotime("-{$i} months"));
+            $monthEnd = date('Y-m-t 23:59:59', strtotime("-{$i} months"));
+            $monthLabel = date('M', strtotime("-{$i} months"));
+            
+            $count = $this->where('start_time >=', $monthStart)
+                          ->where('start_time <=', $monthEnd)
+                          ->countAllResults(false);
+            
+            $labels[] = $monthLabel;
+            $data[] = $count;
+        }
+        
+        return ['labels' => $labels, 'data' => $data];
+    }
+
+    /**
+     * Get services by provider (appointment counts per provider per service)
+     */
+    public function getServicesByProvider(int $limit = 10): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                u.name as provider_name,
+                s.name as service_name,
+                COUNT(a.id) as appointment_count
+            FROM {$tableName} a
+            LEFT JOIN xs_users u ON a.provider_id = u.id
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            WHERE u.name IS NOT NULL AND s.name IS NOT NULL
+            GROUP BY a.provider_id, a.service_id, u.name, s.name
+            ORDER BY appointment_count DESC
+            LIMIT {$limit}
+        ");
+        
+        return $query->getResultArray();
+    }
+
+    /**
+     * Get provider appointment summary for chart
+     */
+    public function getProviderServiceSummary(): array
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        
+        $query = $db->query("
+            SELECT 
+                u.name as provider_name,
+                COUNT(a.id) as total_appointments
+            FROM {$tableName} a
+            LEFT JOIN xs_users u ON a.provider_id = u.id
+            WHERE u.name IS NOT NULL
+            GROUP BY a.provider_id, u.name
+            ORDER BY total_appointments DESC
+            LIMIT 10
+        ");
+        
+        $results = $query->getResultArray();
+        
+        $labels = [];
+        $data = [];
+        
+        foreach ($results as $row) {
+            $labels[] = $row['provider_name'];
+            $data[] = (int)$row['total_appointments'];
+        }
+        
+        // If no data, return placeholder
+        if (empty($labels)) {
+            return ['labels' => ['No Data'], 'data' => [0]];
+        }
+        
+        return ['labels' => $labels, 'data' => $data];
     }
 }
 

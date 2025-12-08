@@ -153,7 +153,8 @@ export class SchedulerCore {
                 end = range.end;
             }
 
-            const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}`;
+            // Request a large batch of appointments for calendar views (up to 1000)
+            const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}&length=1000`;
             console.log('🔄 Loading appointments from:', url);
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load appointments');

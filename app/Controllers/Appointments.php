@@ -257,6 +257,50 @@ class Appointments extends BaseController
             'timezone' => $clientTimezone
         ]);
         log_message('info', '[Appointments::store] Will store in database as UTC');
+        
+        // ===== BUSINESS HOURS VALIDATION =====
+        // Check if the appointment is on a working day and within business hours
+        $dayOfWeekName = strtolower($startDateTime->format('l'));
+        $dayMapping = [
+            'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3,
+            'thursday' => 4, 'friday' => 5, 'saturday' => 6
+        ];
+        $weekdayNum = $dayMapping[$dayOfWeekName] ?? 0;
+        
+        $db = \Config\Database::connect();
+        $businessHours = $db->table('business_hours')
+            ->where('weekday', $weekdayNum)
+            ->get()
+            ->getRowArray();
+        
+        if (!$businessHours) {
+            log_message('warning', '[Appointments::store] Attempted booking on closed day: ' . ucfirst($dayOfWeekName));
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.');
+        }
+        
+        // Check if time is within business hours
+        $requestedTime = $startDateTime->format('H:i:s');
+        $requestedEndTime = $endDateTime->format('H:i:s');
+        
+        if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {
+            $startFormatted = date('g:i A', strtotime($businessHours['start_time']));
+            $endFormatted = date('g:i A', strtotime($businessHours['end_time']));
+            log_message('warning', '[Appointments::store] Attempted booking outside business hours: ' . $requestedTime);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time.");
+        }
+        
+        if ($requestedEndTime > $businessHours['end_time']) {
+            log_message('warning', '[Appointments::store] Appointment would extend past business hours');
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'This appointment would extend past our closing time. Please choose an earlier time slot.');
+        }
+        
+        log_message('info', '[Appointments::store] ✅ Business hours validation passed');
         log_message('info', '[Appointments::store] =============================================');
 
         // Handle customer - either use existing or create new

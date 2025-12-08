@@ -316,24 +316,55 @@ export class SettingsManager {
 
     /**
      * Get business hours for a specific day
+     * @param {number} dayOfWeek - 0=Sunday, 1=Monday, etc.
      */
     getBusinessHoursForDay(dayOfWeek) {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = dayNames[dayOfWeek];
         
-        return this.settings.businessHours?.schedule?.[dayName] || {
-            enabled: false,
-            start: '09:00',
-            end: '17:00'
+        // API returns data directly under day names (not nested under 'schedule')
+        const dayHours = this.settings.businessHours?.[dayName] || 
+                        this.settings.businessHours?.schedule?.[dayName];
+        
+        if (!dayHours) {
+            return {
+                enabled: false,
+                isWorkingDay: false,
+                start: '09:00',
+                end: '17:00'
+            };
+        }
+        
+        // Normalize the response - API uses 'isWorkingDay', legacy uses 'enabled'
+        return {
+            enabled: dayHours.isWorkingDay ?? dayHours.enabled ?? false,
+            isWorkingDay: dayHours.isWorkingDay ?? dayHours.enabled ?? false,
+            start: dayHours.startTime || dayHours.start || '09:00',
+            end: dayHours.endTime || dayHours.end || '17:00',
+            breaks: dayHours.breaks || []
         };
     }
 
     /**
      * Check if a specific day is a working day
+     * @param {number} dayOfWeek - 0=Sunday, 1=Monday, etc.
      */
     isWorkingDay(dayOfWeek) {
         const hours = this.getBusinessHoursForDay(dayOfWeek);
-        return hours.enabled;
+        return hours.enabled || hours.isWorkingDay;
+    }
+
+    /**
+     * Check if a DateTime falls on a working day
+     * @param {DateTime} dateTime - Luxon DateTime object
+     */
+    isWorkingDateTime(dateTime) {
+        if (!(dateTime instanceof DateTime)) {
+            dateTime = DateTime.fromISO(dateTime, { zone: this.getTimezone() });
+        }
+        // Luxon weekday: 1=Mon, 7=Sun. Convert to 0=Sun format
+        const dayOfWeek = dateTime.weekday % 7;
+        return this.isWorkingDay(dayOfWeek);
     }
 
     /**
@@ -344,9 +375,11 @@ export class SettingsManager {
             dateTime = DateTime.fromISO(dateTime, { zone: this.getTimezone() });
         }
         
-        const dayHours = this.getBusinessHoursForDay(dateTime.weekday % 7);
+        // Luxon weekday: 1=Mon, 7=Sun. Convert to 0=Sun format
+        const dayOfWeek = dateTime.weekday % 7;
+        const dayHours = this.getBusinessHoursForDay(dayOfWeek);
         
-        if (!dayHours.enabled) return false;
+        if (!dayHours.enabled && !dayHours.isWorkingDay) return false;
         
         const [startHour, startMin] = dayHours.start.split(':').map(Number);
         const [endHour, endMin] = dayHours.end.split(':').map(Number);

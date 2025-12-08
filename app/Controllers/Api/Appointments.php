@@ -26,8 +26,9 @@ class Appointments extends BaseController
             $serviceId = $this->request->getGet('serviceId');
             
             // Pagination parameters
+            // For calendar views, allow up to 1000 per page to load all appointments
             $page = max(1, (int)($this->request->getGet('page') ?? 1));
-            $length = min(100, max(1, (int)($this->request->getGet('length') ?? 50)));
+            $length = min(1000, max(1, (int)($this->request->getGet('length') ?? 50)));
             $offset = ($page - 1) * $length;
             
             // Sort parameters (default: start_time ASC)
@@ -125,8 +126,7 @@ class Appointments extends BaseController
                     'email' => $appointment['customer_email'] ?? null,
                     'phone' => $appointment['customer_phone'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
-                    'start_time' => $startIso,
-                    'end_time' => $endIso,
+                    // Note: start_time/end_time removed - use 'start'/'end' instead (ISO 8601)
                 ];
             }, $appointments);
             
@@ -335,16 +335,24 @@ class Appointments extends BaseController
             $conflicts = $builder->get()->getResultArray();
             
             // Check business hours
-            $dayOfWeek = strtolower($startDateTime->format('l'));
+            // Convert day name to weekday number (0=Sunday, 1=Monday, etc.)
+            $dayOfWeekName = strtolower($startDateTime->format('l'));
+            $dayMapping = [
+                'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3,
+                'thursday' => 4, 'friday' => 5, 'saturday' => 6
+            ];
+            $weekdayNum = $dayMapping[$dayOfWeekName] ?? 0;
+            
+            // Query business_hours table - uses 'weekday' column (0-6)
+            // If no row exists for this weekday, business is closed on that day
             $businessHours = $db->table('business_hours')
-                ->where('day_of_week', $dayOfWeek)
-                ->where('is_working_day', 1)
+                ->where('weekday', $weekdayNum)
                 ->get()
                 ->getRowArray();
             
             $businessHoursViolation = null;
             if (!$businessHours) {
-                $businessHoursViolation = 'Business is closed on ' . ucfirst($dayOfWeek);
+                $businessHoursViolation = 'Business is closed on ' . ucfirst($dayOfWeekName);
             } else {
                 $requestedTime = $startDateTime->format('H:i:s');
                 if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {

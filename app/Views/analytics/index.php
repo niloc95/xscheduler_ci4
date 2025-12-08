@@ -154,12 +154,13 @@
                         <div class="flex items-center">
                             <span class="text-sm font-semibold text-gray-900 dark:text-white mr-3"><?= $count ?></span>
                             <div class="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <?php $totalAppointments = array_sum($appointments['by_status']); ?>
                                 <div class="h-2 rounded-full
                                     <?php if ($status === 'completed'): ?>bg-green-500
                                     <?php elseif ($status === 'pending'): ?>bg-amber-500
                                     <?php elseif ($status === 'cancelled'): ?>bg-red-500
                                     <?php else: ?>bg-gray-500<?php endif; ?>"
-                                    style="width: <?= ($count / array_sum($appointments['by_status'])) * 100 ?>%"></div>
+                                    style="width: <?= $totalAppointments > 0 ? ($count / $totalAppointments) * 100 : 0 ?>%"></div>
                             </div>
                         </div>
                     </div>
