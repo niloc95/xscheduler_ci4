@@ -37,8 +37,9 @@ export class DragDropManager {
             });
         });
 
-        // Make time slots drop targets
-        const dropTargets = container.querySelectorAll('[data-date], [data-date][data-time], .time-slot');
+        // Make time slots and provider lanes drop targets
+        // Include both top-level cells with [data-date] and provider lanes within them
+        const dropTargets = container.querySelectorAll('[data-date][data-time], [data-provider-lane], .time-slot, .scheduler-day-cell');
         dropTargets.forEach(slot => {
             // Drag over
             slot.addEventListener('dragover', (e) => {
@@ -106,9 +107,23 @@ export class DragDropManager {
     async handleDrop(e, slot) {
         if (!this.draggedAppointment) return;
 
-        // Get target date and time
-        const targetDate = slot.dataset.date;
-        const targetTime = slot.dataset.time || slot.dataset.hour ? `${slot.dataset.hour}:00` : null;
+        // Get target date and time - check parent elements for provider lane drops
+        let targetDate = slot.dataset.date;
+        let targetTime = slot.dataset.time;
+        
+        // If dropped on a provider lane, get date/time from parent cell
+        if (!targetDate && slot.dataset.providerLane) {
+            const parentCell = slot.closest('[data-date]');
+            if (parentCell) {
+                targetDate = parentCell.dataset.date;
+                targetTime = parentCell.dataset.time;
+            }
+        }
+        
+        // Fallback to hour data attribute if time is not set
+        if (!targetTime && slot.dataset.hour) {
+            targetTime = `${slot.dataset.hour}:00`;
+        }
 
         if (!targetDate) {
             console.error('❌ Drop target has no date');

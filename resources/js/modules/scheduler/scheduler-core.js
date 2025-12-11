@@ -213,14 +213,36 @@ export class SchedulerCore {
     }
 
     getFilteredAppointments() {
+        console.log('📊 getFilteredAppointments called with activeFilters:', this.activeFilters);
+        console.log('📊 visibleProviders:', Array.from(this.visibleProviders));
+        
         // Convert appointment providerId to number for comparison
         const filtered = this.appointments.filter(apt => {
             const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
-            const isVisible = this.visibleProviders.has(providerId);
+            const serviceId = typeof apt.serviceId === 'string' ? parseInt(apt.serviceId, 10) : apt.serviceId;
             
-            console.log(`   Appointment ${apt.id}: providerId=${apt.providerId} (type: ${typeof apt.providerId}), converted=${providerId}, visible=${isVisible}`);
+            // Provider filter (via visibleProviders set)
+            if (!this.visibleProviders.has(providerId)) {
+                console.log(`   Apt ${apt.id}: FILTERED OUT by provider (apt.providerId=${providerId}, not in visibleProviders)`);
+                return false;
+            }
             
-            return isVisible;
+            // Status filter
+            if (this.activeFilters?.status && apt.status !== this.activeFilters.status) {
+                console.log(`   Apt ${apt.id}: FILTERED OUT by status (apt.status=${apt.status}, filter=${this.activeFilters.status})`);
+                return false;
+            }
+            
+            // Service filter
+            if (this.activeFilters?.serviceId) {
+                if (serviceId !== this.activeFilters.serviceId) {
+                    console.log(`   Apt ${apt.id}: FILTERED OUT by service (apt.serviceId=${serviceId}, filter=${this.activeFilters.serviceId})`);
+                    return false;
+                }
+            }
+            
+            console.log(`   Apt ${apt.id}: INCLUDED (provider=${providerId}, status=${apt.status}, service=${serviceId})`);
+            return true;
         });
         
         console.log(`📊 Filter result: ${filtered.length} of ${this.appointments.length} appointments visible`);
@@ -235,6 +257,48 @@ export class SchedulerCore {
         }
         this.render();
     }
+    
+    /**
+     * Set filters for status, provider, and service
+     * This is the unified filter mechanism used by the Advanced Filter Panel
+     */
+    async setFilters({ status = '', providerId = '', serviceId = '' }) {
+        console.log('📊 setFilters called with:', { status, providerId, serviceId });
+        
+        // Store filter values
+        this.activeFilters = {
+            status: status || null,
+            providerId: providerId ? parseInt(providerId, 10) : null,
+            serviceId: serviceId ? parseInt(serviceId, 10) : null
+        };
+        
+        console.log('📊 activeFilters set to:', this.activeFilters);
+        
+        // Update visible providers based on filter
+        if (providerId) {
+            // If a specific provider is selected, only show that provider
+            this.visibleProviders.clear();
+            this.visibleProviders.add(parseInt(providerId, 10));
+            console.log('📊 visibleProviders set to single provider:', parseInt(providerId, 10));
+        } else {
+            // If no provider filter, show all providers
+            this.visibleProviders.clear();
+            this.providers.forEach(p => {
+                const id = typeof p.id === 'string' ? parseInt(p.id, 10) : p.id;
+                this.visibleProviders.add(id);
+            });
+            console.log('📊 visibleProviders set to all providers:', Array.from(this.visibleProviders));
+        }
+        
+        // Re-render with new filters
+        this.render();
+        
+        return true;
+    }
+    
+    /**
+     * Get filtered appointments based on all active filters (status, provider, service)
+     */
 
     async changeView(viewName) {
         if (!['day', 'week', 'month'].includes(viewName)) {

@@ -570,8 +570,13 @@ function setupAdvancedFilterPanel(scheduler) {
             const providerId = providerSelect?.value || '';
             const serviceId = serviceSelect?.value || '';
             
+            console.log('🔍 Applying filters:', { status, providerId, serviceId });
+            
             try {
                 await scheduler.setFilters({ status, providerId, serviceId });
+                
+                // Re-render provider legend to reflect filter state
+                renderProviderLegend(scheduler);
                 
                 // Show success feedback
                 applyBtn.textContent = 'Applied!';
@@ -596,8 +601,14 @@ function setupAdvancedFilterPanel(scheduler) {
             if (providerSelect) providerSelect.value = '';
             if (serviceSelect) serviceSelect.value = '';
             
+            console.log('🔍 Clearing filters');
+            
             try {
                 await scheduler.setFilters({ status: '', providerId: '', serviceId: '' });
+                
+                // Re-render provider legend to reflect cleared state
+                renderProviderLegend(scheduler);
+                
                 updateFilterIndicator(toggleBtn, false);
             } catch (error) {
                 console.error('Failed to clear filters:', error);

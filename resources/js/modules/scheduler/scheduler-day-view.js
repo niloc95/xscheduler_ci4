@@ -45,6 +45,11 @@ export class DayView {
         const dayAppointments = appointments.filter(apt => 
             apt.startDateTime.hasSame(currentDate, 'day')
         ).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        
+        // Get visible providers for lane layout
+        const visibleProviders = providers.filter(p => 
+            this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
+        );
 
         // Render HTML - matching Week View structure exactly
         container.innerHTML = `
@@ -123,6 +128,11 @@ export class DayView {
     renderTimeSlot(slot, index, dayAppointments, providers, data, isBlocked, isNonWorkingDay) {
         const slotAppointments = this.getAppointmentsForSlot(dayAppointments, slot);
         
+        // Get visible providers for lane layout
+        const visibleProviders = providers.filter(p => 
+            this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
+        );
+        
         // Determine cell styling - matching Week View exactly
         let cellClass = 'hover:bg-gray-50 dark:hover:bg-gray-700';
         if (isBlocked) {
@@ -130,6 +140,10 @@ export class DayView {
         } else if (isNonWorkingDay) {
             cellClass = 'bg-gray-50 dark:bg-gray-800';
         }
+        
+        // Group appointments by provider for side-by-side display
+        const appointmentsByProvider = this.groupAppointmentsByProvider(slotAppointments, visibleProviders);
+        const hasAppointments = slotAppointments.length > 0;
         
         return `
             <div class="grid grid-cols-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[60px]"
@@ -139,14 +153,44 @@ export class DayView {
                     ${slot.display}
                 </div>
                 
-                <!-- Appointments Column - matching Week View -->
-                <div class="relative px-2 py-1 ${cellClass} transition-colors"
+                <!-- Appointments Column with Provider Lanes -->
+                <div class="${cellClass} transition-colors"
                      data-date="${this.currentDate.toISODate()}"
                      data-time="${slot.time}">
-                    ${slotAppointments.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
+                    ${hasAppointments ? `
+                        <div class="flex h-full min-h-[60px]">
+                            ${visibleProviders.map((provider, idx) => {
+                                const providerApts = appointmentsByProvider[provider.id] || [];
+                                const isLast = idx === visibleProviders.length - 1;
+                                return `
+                                    <div class="flex-1 min-w-0 px-0.5 py-1 ${!isLast ? 'border-r border-gray-100 dark:border-gray-700/50' : ''}"
+                                         data-provider-lane="${provider.id}">
+                                        ${providerApts.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : `<div class="h-full min-h-[60px] px-2 py-1"></div>`}
                 </div>
             </div>
         `;
+    }
+    
+    /**
+     * Group appointments by provider ID for side-by-side lane display
+     */
+    groupAppointmentsByProvider(appointments, providers) {
+        const grouped = {};
+        providers.forEach(p => {
+            grouped[p.id] = [];
+        });
+        appointments.forEach(apt => {
+            const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
+            if (grouped[providerId]) {
+                grouped[providerId].push(apt);
+            }
+        });
+        return grouped;
     }
 
     renderAppointmentBlock(appointment, providers, slot) {
@@ -162,18 +206,15 @@ export class DayView {
         const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const time = appointment.startDateTime.toFormat(timeFormat);
 
-        // Matching Week View appointment block style exactly
+        // Use relative positioning for side-by-side provider lanes (matching Week View)
         return `
-            <div class="appointment-block absolute inset-x-2 p-2 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs z-10 border-l-4"
-                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
+            <div class="appointment-block p-1.5 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-3 mb-0.5"
+                 style="background-color: ${statusColors.bg}; border-left: 3px solid ${providerColor}; color: ${statusColors.text};"
                  data-appointment-id="${appointment.id}"
-                 title="${customerName} - ${serviceName} at ${time} - ${appointment.status}">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};" title="${provider?.name || 'Provider'}"></span>
-                    <div class="font-semibold truncate">${time}</div>
-                </div>
-                <div class="truncate">${this.escapeHtml(customerName)}</div>
-                <div class="text-xs opacity-80 truncate">${this.escapeHtml(serviceName)}</div>
+                 draggable="true"
+                 title="${this.escapeHtml(provider?.name || 'Provider')}: ${customerName} - ${serviceName} at ${time} (${appointment.status})">
+                <div class="font-semibold truncate text-[10px]">${time}</div>
+                <div class="truncate text-[10px]">${this.escapeHtml(customerName)}</div>
             </div>
         `;
     }

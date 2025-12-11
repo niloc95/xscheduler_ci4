@@ -53,6 +53,26 @@ class Appointments extends BaseController
             ->orderBy('name', 'ASC')
             ->findAll();
         
+        // Get ALL providers for filter dropdown (including those without colors)
+        $allProviders = $this->userModel
+            ->where('role', 'provider')
+            ->where('is_active', true)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
+        // Get ALL services for filter dropdown
+        $allServices = $this->serviceModel
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
+        // Get current filter values from request
+        $currentFilters = [
+            'status' => $this->request->getGet('status') ?? '',
+            'provider_id' => $this->request->getGet('provider_id') ?? '',
+            'service_id' => $this->request->getGet('service_id') ?? '',
+        ];
+        
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
             'current_page' => 'appointments',
@@ -60,7 +80,10 @@ class Appointments extends BaseController
             'user_role' => $currentRole,
             'user' => $currentUser,
             'stats' => $this->getAppointmentStats($currentRole, $currentUserId),
-            'activeProviders' => $activeProviders
+            'activeProviders' => $activeProviders,
+            'allProviders' => $allProviders,
+            'allServices' => $allServices,
+            'currentFilters' => $currentFilters
         ];
 
         return view('appointments/index', $data);
@@ -139,7 +162,7 @@ class Appointments extends BaseController
             'localization' => $localizationContext,
         ];
 
-        return view('appointments/create', $data);
+        return view('appointments/form', $data);
     }
 
     /**
@@ -512,7 +535,7 @@ class Appointments extends BaseController
             'localization' => $localizationService->getContext(),
         ];
 
-        return view('appointments/edit', $data);
+        return view('appointments/form', $data);
     }
 
     /**
