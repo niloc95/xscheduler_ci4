@@ -188,8 +188,8 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
                 </button>
             </div>
 
-            <!-- Provider Legend (will be populated by JavaScript) -->
-            <div id="provider-legend" class="flex items-center gap-2 flex-wrap">
+            <!-- Provider Legend (will be populated by JavaScript) - Hidden on mobile -->
+            <div id="provider-legend" class="hidden md:flex items-center gap-2 flex-wrap">
                 <!-- Dynamically populated -->
             </div>
         </div>

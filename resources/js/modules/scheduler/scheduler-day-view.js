@@ -81,13 +81,13 @@ export class DayView {
                         <div class="md:sticky md:top-4">
                             ${this.renderMiniCalendar()}
                             
-                            <!-- Add Event Button -->
-                            <button type="button" 
-                                    id="day-view-add-event-btn"
-                                    class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
+                            <!-- Add Event Button - Links to appointments/create like main New Appointment button -->
+                            <a href="/appointments/create?date=${this.currentDate.toISODate()}"
+                               id="day-view-add-event-btn"
+                               class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-lg">add</span>
                                 Add Appointment
-                            </button>
+                            </a>
                             
                             <!-- Day Summary Card -->
                             ${this.renderDaySummary(dayAppointments)}
@@ -461,27 +461,8 @@ export class DayView {
             });
         });
         
-        // Add event button
-        const addBtn = container.querySelector('#day-view-add-event-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                // Dispatch custom event to open appointment creation modal
-                const event = new CustomEvent('scheduler:create-appointment', {
-                    detail: {
-                        date: this.currentDate.toISODate(),
-                        dateTime: this.currentDate.toISO()
-                    }
-                });
-                document.dispatchEvent(event);
-                
-                // Also try the global appointment modal if it exists
-                if (window.openAppointmentModal) {
-                    window.openAppointmentModal({
-                        date: this.currentDate.toISODate()
-                    });
-                }
-            });
-        }
+        // Add event button is now an <a> link, no JS handler needed
+        // It navigates to /appointments/create?date=YYYY-MM-DD
     }
 
     /**
