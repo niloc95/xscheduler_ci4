@@ -40,13 +40,13 @@ export class DayView {
             apt.startDateTime.hasSame(currentDate, 'day')
         ).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
 
-        // Render the two-panel layout
+        // Render the two-panel layout - Right panel first in DOM for proper layout
         container.innerHTML = `
             <div class="scheduler-day-view bg-white dark:bg-gray-800 rounded-lg">
-                <div class="flex flex-col lg:flex-row gap-6 p-6">
+                <div class="flex flex-col-reverse md:flex-row gap-6 p-6">
                     
-                    <!-- Left Panel: Appointments List -->
-                    <div class="flex-1 min-w-0">
+                    <!-- Left Panel: Appointments List (appears second in mobile, first in desktop) -->
+                    <div class="flex-1 min-w-0 order-2 md:order-1">
                         <div class="mb-6">
                             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
                                 ${currentDate.toFormat('EEEE')}'s Appointments
@@ -67,8 +67,8 @@ export class DayView {
                             </div>
                         ` : ''}
                         
-                        <!-- Appointments List -->
-                        <div class="space-y-1" id="day-view-appointments-list">
+                        <!-- Appointments List with scrollable area -->
+                        <div class="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto" id="day-view-appointments-list">
                             ${dayAppointments.length > 0 ? 
                                 dayAppointments.map((apt, idx) => this.renderAppointmentRow(apt, idx === dayAppointments.length - 1)).join('') :
                                 this.renderEmptyState(isBlocked, isNonWorkingDay)
@@ -76,9 +76,9 @@ export class DayView {
                         </div>
                     </div>
                     
-                    <!-- Right Panel: Mini Calendar -->
-                    <div class="lg:w-80 flex-shrink-0">
-                        <div class="sticky top-4">
+                    <!-- Right Panel: Mini Calendar (appears first in mobile, second in desktop) -->
+                    <div class="w-full md:w-80 flex-shrink-0 order-1 md:order-2">
+                        <div class="md:sticky md:top-4">
                             ${this.renderMiniCalendar()}
                             
                             <!-- Add Event Button -->

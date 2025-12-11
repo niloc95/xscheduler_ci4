@@ -314,10 +314,10 @@ import{C as Ze}from"./charts.js";import{g as qn,n as Un,b as _n,f as Rn,s as Zn,
             `}
         `,this.attachWeeklySectionListeners(i,r)}attachWeeklySectionListeners(e,t){e.querySelectorAll("[data-appointment-id]").forEach(s=>{s.addEventListener("click",r=>{r.preventDefault(),r.stopPropagation();const i=parseInt(s.dataset.appointmentId,10),a=t.appointments.find(o=>o.id===i);a&&t.onAppointmentClick&&t.onAppointmentClick(a)})})}}class da{constructor(e){this.scheduler=e}render(e,t){const{currentDate:s,appointments:r,providers:i,config:a,settings:o}=t;this.settings=o,this.currentDate=s,this.appointments=r,this.providers=i,this.config=a,this.data=t;const l=(a==null?void 0:a.blockedPeriods)||[],d=this.isDateBlocked(s,l),c=d?this.getBlockedPeriodInfo(s,l):null,m=o!=null&&o.isWorkingDay?!o.isWorkingDay(s.weekday%7):!1,f=r.filter(h=>h.startDateTime.hasSame(s,"day")).sort((h,y)=>h.startDateTime.toMillis()-y.startDateTime.toMillis());e.innerHTML=`
             <div class="scheduler-day-view bg-white dark:bg-gray-800 rounded-lg">
-                <div class="flex flex-col lg:flex-row gap-6 p-6">
+                <div class="flex flex-col-reverse md:flex-row gap-6 p-6">
                     
-                    <!-- Left Panel: Appointments List -->
-                    <div class="flex-1 min-w-0">
+                    <!-- Left Panel: Appointments List (appears second in mobile, first in desktop) -->
+                    <div class="flex-1 min-w-0 order-2 md:order-1">
                         <div class="mb-6">
                             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
                                 ${s.toFormat("EEEE")}'s Appointments
@@ -338,15 +338,15 @@ import{C as Ze}from"./charts.js";import{g as qn,n as Un,b as _n,f as Rn,s as Zn,
                             </div>
                         `:""}
                         
-                        <!-- Appointments List -->
-                        <div class="space-y-1" id="day-view-appointments-list">
+                        <!-- Appointments List with scrollable area -->
+                        <div class="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto" id="day-view-appointments-list">
                             ${f.length>0?f.map((h,y)=>this.renderAppointmentRow(h,y===f.length-1)).join(""):this.renderEmptyState(d,m)}
                         </div>
                     </div>
                     
-                    <!-- Right Panel: Mini Calendar -->
-                    <div class="lg:w-80 flex-shrink-0">
-                        <div class="sticky top-4">
+                    <!-- Right Panel: Mini Calendar (appears first in mobile, second in desktop) -->
+                    <div class="w-full md:w-80 flex-shrink-0 order-1 md:order-2">
+                        <div class="md:sticky md:top-4">
                             ${this.renderMiniCalendar()}
                             
                             <!-- Add Event Button -->
