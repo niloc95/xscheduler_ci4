@@ -99,8 +99,8 @@ export class MonthView {
                     ${this.renderDayHeaders(config, settings)}
                 </div>
 
-                <!-- Calendar Grid -->
-                <div class="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Calendar Grid - using grid-rows-6 for consistent row sizing -->
+                <div class="grid grid-cols-7 grid-rows-6 divide-x divide-y divide-gray-200 dark:divide-gray-700 border-b border-gray-200 dark:border-gray-700">
                     ${weeks.map(week => week.map(day => 
                         this.renderDayCell(day, monthStart.month, settings)
                     ).join('')).join('')}
@@ -155,6 +155,7 @@ export class MonthView {
         const cellClasses = [
             'scheduler-day-cell',
             'min-h-[100px]',
+            'h-full',  // Ensure cell fills grid row height
             'p-2',
             'relative',
             'overflow-hidden',
@@ -162,8 +163,10 @@ export class MonthView {
             'hover:bg-gray-50',
             'dark:hover:bg-gray-700/50',
             'transition-colors',
+            'bg-white',
+            'dark:bg-gray-800',
             isToday ? 'today' : '',
-            !isCurrentMonth ? 'other-month' : '',
+            !isCurrentMonth ? 'other-month bg-gray-50 dark:bg-gray-800/50' : '',
             isPast ? 'past' : '',
             !isWorkingDay ? 'non-working-day' : '',
             isBlocked ? 'bg-red-50 dark:bg-red-900/10' : '',

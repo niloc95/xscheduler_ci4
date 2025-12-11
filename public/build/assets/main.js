@@ -20,8 +20,8 @@ import{C as Re}from"./charts.js";import{g as qn,n as Un,b as _n,f as Rn,s as Zn,
                     ${this.renderDayHeaders(a,o)}
                 </div>
 
-                <!-- Calendar Grid -->
-                <div class="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Calendar Grid - using grid-rows-6 for consistent row sizing -->
+                <div class="grid grid-cols-7 grid-rows-6 divide-x divide-y divide-gray-200 dark:divide-gray-700 border-b border-gray-200 dark:border-gray-700">
                     ${b.map(G=>G.map(V=>this.renderDayCell(V,l.month,o)).join("")).join("")}
                 </div>
                 
@@ -43,7 +43,7 @@ import{C as Re}from"./charts.js";import{g as qn,n as Un,b as _n,f as Rn,s as Zn,
                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">${a}</span>
             </div>
         `).join("")}renderDayCell(e,t,s){const r=e.hasSame(p.now(),"day"),i=e.month===t,a=e<p.now().startOf("day"),o=this.getAppointmentsForDay(e),l=s!=null&&s.isWorkingDay?s.isWorkingDay(e):!0,d=this.isDateBlocked(e),u=d?this.getBlockedPeriodInfo(e):null,m=this.selectedDate&&e.hasSame(this.selectedDate,"day");return`
-            <div class="${["scheduler-day-cell","min-h-[100px]","p-2","relative","overflow-hidden","cursor-pointer","hover:bg-gray-50","dark:hover:bg-gray-700/50","transition-colors",r?"today":"",i?"":"other-month",a?"past":"",l?"":"non-working-day",d?"bg-red-50 dark:bg-red-900/10":"",m?"ring-2 ring-blue-500 ring-inset bg-blue-50 dark:bg-blue-900/20":""].filter(Boolean).join(" ")}" data-date="${e.toISODate()}" data-click-create="day" data-select-day="${e.toISODate()}">
+            <div class="${["scheduler-day-cell","min-h-[100px]","h-full","p-2","relative","overflow-hidden","cursor-pointer","hover:bg-gray-50","dark:hover:bg-gray-700/50","transition-colors","bg-white","dark:bg-gray-800",r?"today":"",i?"":"other-month bg-gray-50 dark:bg-gray-800/50",a?"past":"",l?"":"non-working-day",d?"bg-red-50 dark:bg-red-900/10":"",m?"ring-2 ring-blue-500 ring-inset bg-blue-50 dark:bg-blue-900/20":""].filter(Boolean).join(" ")}" data-date="${e.toISODate()}" data-click-create="day" data-select-day="${e.toISODate()}">
                 <div class="day-number text-sm font-medium mb-1 ${i?d?"text-red-600 dark:text-red-400":"text-gray-900 dark:text-white":"text-gray-400 dark:text-gray-600"}">
                     ${e.day}
                     ${d?'<span class="text-xs ml-1">🚫</span>':""}
