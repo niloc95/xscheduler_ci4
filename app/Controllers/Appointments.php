@@ -61,8 +61,9 @@ class Appointments extends BaseController
             ->findAll();
         
         // Get ALL services for filter dropdown
+        // Note: xs_services table uses 'active' column, not 'is_active'
         $allServices = $this->serviceModel
-            ->where('is_active', 1)
+            ->where('active', 1)
             ->orderBy('name', 'ASC')
             ->findAll();
         
