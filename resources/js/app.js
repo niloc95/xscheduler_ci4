@@ -540,8 +540,53 @@ function setupAdvancedFilterPanel(scheduler) {
     const providerSelect = document.getElementById('filter-provider');
     const serviceSelect = document.getElementById('filter-service');
     
+    // Store all services for "All Providers" view
+    const allServicesOptions = serviceSelect ? serviceSelect.innerHTML : '';
+    
     if (!toggleBtn || !filterPanel) {
         return; // Panel elements not present
+    }
+    
+    // Dynamic service loading when provider changes
+    if (providerSelect && serviceSelect) {
+        providerSelect.addEventListener('change', async () => {
+            const providerId = providerSelect.value;
+            
+            if (!providerId) {
+                // No provider selected - show all services
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.disabled = false;
+                return;
+            }
+            
+            // Show loading state
+            serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+            serviceSelect.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/v1/providers/${providerId}/services`);
+                if (!response.ok) throw new Error('Failed to load services');
+                
+                const result = await response.json();
+                const services = result.data || [];
+                
+                // Rebuild service dropdown with provider-specific services
+                let optionsHtml = '<option value="">All Services</option>';
+                services.forEach(service => {
+                    optionsHtml += `<option value="${service.id}">${service.name}</option>`;
+                });
+                
+                serviceSelect.innerHTML = optionsHtml;
+                serviceSelect.disabled = false;
+                
+                console.log(`📋 Loaded ${services.length} services for provider ${providerId}`);
+            } catch (error) {
+                console.error('Failed to load provider services:', error);
+                // Fallback to all services on error
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.disabled = false;
+            }
+        });
     }
     
     // Toggle panel visibility
@@ -599,7 +644,12 @@ function setupAdvancedFilterPanel(scheduler) {
             // Reset all dropdowns
             if (statusSelect) statusSelect.value = '';
             if (providerSelect) providerSelect.value = '';
-            if (serviceSelect) serviceSelect.value = '';
+            if (serviceSelect) {
+                // Restore all services when clearing filters
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.value = '';
+                serviceSelect.disabled = false;
+            }
             
             console.log('🔍 Clearing filters');
             
