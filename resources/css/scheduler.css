@@ -172,9 +172,52 @@
     animation: fadeIn 0.3s ease-out;
 }
 
+/* Week View Grid Container - horizontal scroll support */
+.scheduler-week-view .week-grid-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.scheduler-week-view .week-grid-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.scheduler-week-view .week-grid-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scheduler-week-view .week-grid-container::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 4px;
+}
+
+.dark .scheduler-week-view .week-grid-container::-webkit-scrollbar-thumb {
+    background-color: rgba(107, 114, 128, 0.5);
+}
+
+/* Week View Provider Legend Row */
+.scheduler-week-view .week-provider-legend {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+}
+
+/* Week View Provider Lanes */
+.scheduler-week-view .provider-lane {
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* Week View Time Rows */
+.scheduler-week-view .week-time-row {
+    min-height: 60px;
+}
+
 /* P0-5 FIX: Week view appointment blocks - solid background, no transparency */
 .scheduler-week-view .appointment-block {
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     border-left: 3px solid currentColor;
     /* Ensure solid background - no transparency */
     opacity: 1 !important;
@@ -182,13 +225,46 @@
     /* Prevent any inherited transparency */
     isolation: isolate;
     /* Ensure proper stacking */
-    position: static;
+    position: relative;
+    /* Make cards fill available width */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .scheduler-week-view .appointment-block:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
     z-index: 20;
+}
+
+/* Responsive adjustments for Week View */
+@media (max-width: 1024px) {
+    .scheduler-week-view .appointment-block {
+        padding: 0.25rem;
+    }
+    
+    .scheduler-week-view .appointment-block .text-\[10px\] {
+        font-size: 9px;
+    }
+    
+    .scheduler-week-view .appointment-block .text-\[9px\] {
+        font-size: 8px;
+    }
+    
+    .scheduler-week-view .appointment-block .text-\[8px\] {
+        font-size: 7px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* On mobile, show a simplified card layout */
+    .scheduler-week-view .provider-lane {
+        min-width: 60px;
+    }
+    
+    .scheduler-week-view .week-provider-legend {
+        display: none;
+    }
 }
 
 /* Day View */

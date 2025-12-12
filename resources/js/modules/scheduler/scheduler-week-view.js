@@ -1,319 +1,579 @@
 /**
- * Custom Scheduler - Week View
+ * Custom Scheduler - Week View (50/50 Split Layout)
  * 
- * Renders a weekly calendar with time slots (hourly grid).
- * Displays appointments as positioned blocks in time slots with drag-and-drop support.
+ * Modern split-view layout:
+ * - Left panel (50%): Mini calendar + Appointment summary list
+ * - Right panel (50%): Time Slot Availability Engine
+ * 
+ * No traditional calendar grid - replaced with availability-focused design.
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { generateSlotsWithAvailability, findOverlappingAppointments, getProviderAvailabilityForSlot } from '/resources/js/utils/scheduling-utils.js';
 
 export class WeekView {
     constructor(scheduler) {
         this.scheduler = scheduler;
+        this.selectedDate = null; // Currently selected date for slot view
     }
 
     render(container, data) {
         const { currentDate, appointments, providers, config, settings } = data;
         
+        // Store for use in other methods
+        this.settings = settings;
+        this.currentDate = currentDate;
+        this.appointments = appointments;
+        this.providers = providers;
+        this.config = config;
+        this.data = data;
+        this.container = container;
+        
+        // Initialize selected date to current date
+        this.selectedDate = this.selectedDate || currentDate;
+        
         // Get first day of week from settings (0=Sunday, 1=Monday, etc.)
         const firstDayOfWeek = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 0;
         
         // Calculate week start based on firstDayOfWeek setting
-        // Luxon's startOf('week') uses ISO weeks (Monday=1), we need to adjust
-        const currentWeekday = currentDate.weekday; // 1=Mon, 7=Sun in Luxon
-        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek; // Convert to Luxon (Sun=7)
+        const currentWeekday = currentDate.weekday;
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
         
-        // Calculate days to subtract to get to the start of the week
         let daysToSubtract = currentWeekday - luxonFirstDay;
         if (daysToSubtract < 0) daysToSubtract += 7;
         
         const weekStart = currentDate.minus({ days: daysToSubtract }).startOf('day');
         const weekEnd = weekStart.plus({ days: 6 });
         
-        // Store settings for use in other methods
-        this.settings = settings;
+        // Store week boundaries
+        this.weekStart = weekStart;
+        this.weekEnd = weekEnd;
         
         // Generate array of 7 days for the week
         const days = [];
         for (let i = 0; i < 7; i++) {
             days.push(weekStart.plus({ days: i }));
         }
+        this.days = days;
         
         // Get blocked periods from config
-        const blockedPeriods = config?.blockedPeriods || [];
+        this.blockedPeriods = config?.blockedPeriods || [];
         
-        // Use slotMinTime and slotMaxTime from calendar config (reads from business.work_start/work_end settings)
-        const startTime = config?.slotMinTime || '08:00';
-        const endTime = config?.slotMaxTime || '17:00';
-        
-        const businessHours = {
-            startTime: startTime,
-            endTime: endTime
+        // Business hours from settings
+        this.businessHours = {
+            startTime: config?.slotMinTime || '08:00',
+            endTime: config?.slotMaxTime || '17:00'
         };
         
-        const timeSlots = this.generateTimeSlots(businessHours);
-
-        // Group appointments by day
-        const appointmentsByDay = this.groupAppointmentsByDay(appointments, weekStart);
+        // Slot duration in minutes (default 30)
+        // Config may pass "00:30:00" format or just 30
+        let slotDur = config?.slotDuration || 30;
+        if (typeof slotDur === 'string' && slotDur.includes(':')) {
+            // Parse "00:30:00" or "00:30" format to minutes
+            const parts = slotDur.split(':');
+            slotDur = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+        this.slotDuration = parseInt(slotDur, 10) || 30;
         
-        // Get visible providers for lane layout
-        const visibleProviders = providers.filter(p => 
+        // Get visible providers
+        this.visibleProviders = providers.filter(p => 
             this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
         );
+        
+        // Filter week appointments
+        const weekAppointments = appointments.filter(apt => {
+            return apt.startDateTime >= weekStart && apt.startDateTime <= weekEnd.endOf('day');
+        });
+        this.weekAppointments = weekAppointments;
 
-        // Render HTML
+        // Render the 50/50 split layout
         container.innerHTML = `
-            <div class="scheduler-week-view bg-white dark:bg-gray-800">
-                <!-- Calendar Grid -->
-                <div class="overflow-x-auto">
-                    <div class="inline-block min-w-full">
-                        <!-- Day Headers -->
-                        <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-                            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700">
-                                <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">Time</span>
-                            </div>
-                            ${days.map(day => this.renderDayHeader(day, blockedPeriods)).join('')}
+            <div class="scheduler-week-view bg-white dark:bg-gray-800 rounded-lg">
+                <!-- 50/50 Split Layout: responsive grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+                    
+                    <!-- LEFT PANEL: Mini Calendar + Appointment Summary -->
+                    <div class="week-left-panel border-r-0 md:border-r border-gray-200 dark:border-gray-700 p-4 md:p-6 order-1">
+                        
+                        <!-- Week Header -->
+                        <div class="mb-4">
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Week of ${weekStart.toFormat('MMMM d')}
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                ${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}
+                            </p>
                         </div>
-
-                        <!-- Time Grid -->
-                        <div class="relative">
-                            ${timeSlots.map((slot, index) => this.renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods)).join('')}
+                        
+                        <!-- Mini Calendar -->
+                        ${this.renderMiniCalendar()}
+                        
+                        <!-- Quick Stats -->
+                        <div class="mt-4 grid grid-cols-3 gap-3">
+                            ${this.renderQuickStats(weekAppointments)}
+                        </div>
+                        
+                        <!-- Appointment Summary List -->
+                        <div class="mt-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                                    Appointments for ${this.selectedDate.toFormat('EEE, MMM d')}
+                                </h3>
+                                <span class="text-xs text-gray-500 dark:text-gray-400" id="appointment-count">
+                                    ${this.getAppointmentsForDate(this.selectedDate).length} appointments
+                                </span>
+                            </div>
+                            <div id="appointment-summary-list" class="space-y-2 max-h-[300px] overflow-y-auto">
+                                ${this.renderAppointmentSummaryList(this.selectedDate)}
+                            </div>
+                        </div>
+                        
+                        <!-- Add Appointment Button -->
+                        <a href="/appointments/create?date=${this.selectedDate.toISODate()}"
+                           id="week-view-add-btn"
+                           class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">add</span>
+                            Add Appointment
+                        </a>
+                    </div>
+                    
+                    <!-- RIGHT PANEL: Time Slot Availability Engine -->
+                    <div class="week-right-panel p-4 md:p-6 order-2 bg-gray-50 dark:bg-gray-800/50">
+                        
+                        <!-- Slot Engine Header -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Available Time Slots
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400" id="slot-engine-date">
+                                    ${this.selectedDate.toFormat('EEEE, MMMM d, yyyy')}
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-500 dark:text-gray-400" id="provider-count-label">
+                                    ${this.visibleProviders.length} provider${this.visibleProviders.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Provider Filter Pills -->
+                        <div class="flex flex-wrap gap-2 mb-4" id="provider-filter-pills">
+                            ${this.renderProviderFilterPills()}
+                        </div>
+                        
+                        <!-- Time Slot List -->
+                        <div id="time-slot-engine" class="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto pr-2">
+                            ${this.renderTimeSlotEngine(this.selectedDate)}
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700"></span>
+                                    <span>Available</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700"></span>
+                                    <span>Partially Booked</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-3 h-3 rounded bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700"></span>
+                                    <span>Fully Booked</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-3 h-3 rounded bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"></span>
+                                    <span>Blocked</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         `;
 
-        // Add event listeners
+        // Attach event listeners
         this.attachEventListeners(container, data);
         
-        // Render daily appointments section for the week
+        // Render the weekly schedule section below
         this.renderWeeklyAppointmentsSection(days, appointments, providers, data);
     }
-
-    renderDayHeader(day, blockedPeriods) {
-        const isToday = day.hasSame(DateTime.now(), 'day');
-        const isBlocked = this.isDateBlocked(day, blockedPeriods);
-        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, blockedPeriods) : null;
+    
+    /**
+     * Render mini calendar with week highlight
+     */
+    renderMiniCalendar() {
+        const displayMonth = this.currentDate.startOf('month');
+        const firstDayOfWeek = this.settings?.getFirstDayOfWeek?.() || 0;
         
-        // Check if this is a non-working day from business hours settings
-        const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
+        // Calculate grid start
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
+        const monthStartWeekday = displayMonth.weekday;
+        let daysBack = monthStartWeekday - luxonFirstDay;
+        if (daysBack < 0) daysBack += 7;
+        const gridStart = displayMonth.minus({ days: daysBack });
         
-        // Determine background class based on blocked/non-working status
-        // Use subtle background colors without opacity to avoid graying out content
-        let bgClass = '';
-        if (isBlocked) {
-            bgClass = 'bg-red-100 dark:bg-red-900/20';
-        } else if (isNonWorkingDay) {
-            bgClass = 'bg-gray-50 dark:bg-gray-800';
+        // Generate 6 weeks of days
+        const calDays = [];
+        let current = gridStart;
+        for (let i = 0; i < 42; i++) {
+            calDays.push(current);
+            current = current.plus({ days: 1 });
         }
         
-        return `
-            <div class="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${bgClass}">
-                <div class="${isToday ? 'text-blue-600 dark:text-blue-400 font-bold' : isBlocked ? 'text-red-600 dark:text-red-400' : isNonWorkingDay ? 'text-gray-500 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}">
-                    <div class="text-xs font-medium">${day.toFormat('ccc')}</div>
-                    <div class="text-lg ${isToday ? 'flex items-center justify-center w-8 h-8 mx-auto mt-1 rounded-full bg-blue-600 text-white' : 'mt-1'}">
-                        ${day.day}
-                    </div>
-                    ${isBlocked ? `<div class="text-[10px] text-red-600 dark:text-red-400 mt-1 font-medium">🚫 Blocked</div>` : ''}
-                </div>
-            </div>
-        `;
-    }
-
-    renderTimeSlot(slot, index, days, appointmentsByDay, providers, data, blockedPeriods) {
-        // Get visible providers for lane layout
-        const visibleProviders = providers.filter(p => 
-            this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
-        );
+        // Day headers
+        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        const rotatedDays = [...dayNames.slice(firstDayOfWeek), ...dayNames.slice(0, firstDayOfWeek)];
+        
+        // Get appointments count per day
+        const appointmentCounts = {};
+        this.appointments.forEach(apt => {
+            const dateKey = apt.startDateTime.toISODate();
+            appointmentCounts[dateKey] = (appointmentCounts[dateKey] || 0) + 1;
+        });
         
         return `
-            <div class="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700 last:border-b-0 min-h-[60px]"
-                 data-time-slot="${slot.time}">
-                <!-- Time Label -->
-                <div class="px-4 py-2 text-right border-r border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
-                    ${slot.display}
+            <div class="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4">
+                <!-- Month Navigation -->
+                <div class="flex items-center justify-between mb-3">
+                    <button type="button" 
+                            class="mini-cal-nav p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            data-direction="prev">
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-sm">chevron_left</span>
+                    </button>
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                        ${this.currentDate.toFormat('MMMM yyyy')}
+                    </span>
+                    <button type="button"
+                            class="mini-cal-nav p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            data-direction="next">
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-sm">chevron_right</span>
+                    </button>
                 </div>
                 
-                <!-- Day Columns -->
-                ${days.map(day => {
-                    const dateKey = day.toISODate();
-                    const slotAppointments = this.getAppointmentsForSlot(appointmentsByDay[dateKey] || [], slot);
-                    const isBlocked = this.isDateBlocked(day, blockedPeriods);
-                    const isNonWorkingDay = this.settings?.isWorkingDay ? !this.settings.isWorkingDay(day.weekday % 7) : false;
-                    
-                    // Determine cell styling based on status
-                    let cellClass = 'hover:bg-gray-50 dark:hover:bg-gray-700';
-                    if (isBlocked) {
-                        cellClass = 'bg-red-100 dark:bg-red-900/20';
-                    } else if (isNonWorkingDay) {
-                        cellClass = 'bg-gray-50 dark:bg-gray-800';
-                    }
-                    
-                    // Group appointments by provider for side-by-side display
-                    const appointmentsByProvider = this.groupAppointmentsByProvider(slotAppointments, visibleProviders);
-                    const hasAppointments = slotAppointments.length > 0;
-                    
-                    return `
-                        <div class="border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${cellClass} transition-colors"
-                             data-date="${dateKey}"
-                             data-time="${slot.time}"
-                             data-non-working="${isNonWorkingDay}">
-                            ${hasAppointments ? `
-                                <div class="flex h-full min-h-[60px]">
-                                    ${visibleProviders.map((provider, idx) => {
-                                        const providerApts = appointmentsByProvider[provider.id] || [];
-                                        const isLast = idx === visibleProviders.length - 1;
-                                        return `
-                                            <div class="flex-1 min-w-0 px-0.5 py-1 ${!isLast ? 'border-r border-gray-100 dark:border-gray-700/50' : ''}"
-                                                 data-provider-lane="${provider.id}">
-                                                ${providerApts.map(apt => this.renderAppointmentBlock(apt, providers, slot)).join('')}
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            ` : `<div class="h-full min-h-[60px] px-2 py-1"></div>`}
+                <!-- Day Headers -->
+                <div class="grid grid-cols-7 mb-1">
+                    ${rotatedDays.map(day => `
+                        <div class="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 py-1">
+                            ${day}
                         </div>
-                    `;
-                }).join('')}
+                    `).join('')}
+                </div>
+                
+                <!-- Days Grid -->
+                <div class="grid grid-cols-7 gap-0.5">
+                    ${calDays.map(day => {
+                        const isToday = day.hasSame(DateTime.now(), 'day');
+                        const isSelected = day.hasSame(this.selectedDate, 'day');
+                        const isInCurrentWeek = day >= this.weekStart && day <= this.weekEnd;
+                        const isCurrentMonth = day.month === this.currentDate.month;
+                        const dateKey = day.toISODate();
+                        const hasAppointments = appointmentCounts[dateKey] > 0;
+                        const count = appointmentCounts[dateKey] || 0;
+                        
+                        let classes = 'mini-cal-day relative w-7 h-7 flex items-center justify-center text-xs rounded transition-colors cursor-pointer ';
+                        
+                        if (isSelected) {
+                            classes += 'bg-blue-600 text-white font-bold ';
+                        } else if (isToday) {
+                            classes += 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold ';
+                        } else if (isInCurrentWeek) {
+                            classes += 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ';
+                        } else if (isCurrentMonth) {
+                            classes += 'text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600 ';
+                        } else {
+                            classes += 'text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 ';
+                        }
+                        
+                        return `
+                            <button type="button" 
+                                    class="${classes}"
+                                    data-date="${day.toISODate()}"
+                                    title="${day.toFormat('MMMM d, yyyy')}${count > 0 ? ` - ${count} appointment${count > 1 ? 's' : ''}` : ''}">
+                                ${day.day}
+                                ${hasAppointments && !isSelected ? `
+                                    <span class="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-500"></span>
+                                ` : ''}
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
             </div>
         `;
     }
     
     /**
-     * Group appointments by provider ID for side-by-side lane display
+     * Render quick stats cards
      */
-    groupAppointmentsByProvider(appointments, providers) {
-        const grouped = {};
-        providers.forEach(p => {
-            grouped[p.id] = [];
-        });
-        appointments.forEach(apt => {
-            const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
-            if (grouped[providerId]) {
-                grouped[providerId].push(apt);
-            }
-        });
-        return grouped;
-    }
-
-    renderAppointmentBlock(appointment, providers, slot) {
-        const provider = providers.find(p => p.id === appointment.providerId);
-        const darkMode = isDarkMode();
-        const statusColors = getStatusColors(appointment.status, darkMode);
-        const providerColor = getProviderColor(provider);
+    renderQuickStats(weekAppointments) {
+        const total = weekAppointments.length;
+        const confirmed = weekAppointments.filter(a => a.status === 'confirmed').length;
+        const pending = weekAppointments.filter(a => a.status === 'pending').length;
         
-        const customerName = appointment.name || appointment.title || 'Unknown';
-        const serviceName = appointment.serviceName || 'Appointment';
-        
-        // Format time based on settings
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const time = appointment.startDateTime.toFormat(timeFormat);
-
-        // Use relative positioning for side-by-side provider lanes
         return `
-            <div class="appointment-block p-1.5 rounded shadow-sm cursor-pointer hover:shadow-md transition-all text-xs border-l-3 mb-0.5"
-                 style="background-color: ${statusColors.bg}; border-left: 3px solid ${providerColor}; color: ${statusColors.text};"
-                 data-appointment-id="${appointment.id}"
-                 draggable="true"
-                 title="${this.escapeHtml(provider?.name || 'Provider')}: ${customerName} - ${serviceName} at ${time} (${appointment.status})">
-                <div class="font-semibold truncate text-[10px]">${time}</div>
-                <div class="truncate text-[10px]">${this.escapeHtml(customerName)}</div>
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${total}</div>
+                <div class="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-wide">Total</div>
+            </div>
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-green-600 dark:text-green-400">${confirmed}</div>
+                <div class="text-[10px] text-green-600 dark:text-green-400 uppercase tracking-wide">Confirmed</div>
+            </div>
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${pending}</div>
+                <div class="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">Pending</div>
             </div>
         `;
     }
-
-    generateTimeSlots(businessHours) {
-        const slots = [];
+    
+    /**
+     * Render appointment summary list for selected date
+     */
+    renderAppointmentSummaryList(date) {
+        const dayAppointments = this.getAppointmentsForDate(date);
         
-        // Handle both 'HH:MM:SS' and 'HH:MM' formats
-        const parseTime = (timeStr) => {
-            if (!timeStr) return 9; // Default to 9 AM
-            const parts = timeStr.split(':');
-            return parseInt(parts[0], 10);
-        };
-        
-        const startHour = parseTime(businessHours.startTime);
-        const endHour = parseTime(businessHours.endTime);
-        
-        for (let hour = startHour; hour <= endHour; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00`;
-            const display = this.formatTime(hour);
-            slots.push({ time, display, hour });
+        if (dayAppointments.length === 0) {
+            return `
+                <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <span class="material-symbols-outlined text-3xl mb-2 block">event_available</span>
+                    <p class="text-sm">No appointments scheduled</p>
+                </div>
+            `;
         }
         
+        // Sort by time
+        dayAppointments.sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+        
+        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+        
+        return dayAppointments.map(apt => {
+            const provider = this.providers.find(p => p.id === apt.providerId);
+            const statusColors = getStatusColors(apt.status, isDarkMode());
+            const providerColor = getProviderColor(provider);
+            const time = apt.startDateTime.toFormat(timeFormat);
+            const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
+            const serviceName = apt.serviceName || 'Service';
+            
+            return `
+                <div class="appointment-summary-item flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
+                     data-appointment-id="${apt.id}"
+                     style="border-left: 3px solid ${providerColor};">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                             style="background-color: ${providerColor};">
+                            ${provider?.name?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-sm text-gray-900 dark:text-white truncate">${this.escapeHtml(customerName)}</span>
+                            <span class="px-1.5 py-0.5 text-[10px] font-medium rounded"
+                                  style="background-color: ${statusColors.bg}; color: ${statusColors.text};">
+                                ${apt.status}
+                            </span>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            <span class="font-medium">${time}</span> • ${this.escapeHtml(serviceName)}
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined text-gray-400 text-lg">chevron_right</span>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    /**
+     * Render provider filter pills
+     */
+    renderProviderFilterPills() {
+        // Use all providers if visibleProviders is empty
+        const providersToShow = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
+        
+        if (providersToShow.length === 0) {
+            return `<span class="text-xs text-gray-500 dark:text-gray-400">No providers available</span>`;
+        }
+        
+        return providersToShow.map(provider => {
+            const color = getProviderColor(provider);
+            return `
+                <button type="button"
+                        class="provider-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2"
+                        style="background-color: ${color}20; border-color: ${color}; color: ${color};"
+                        data-provider-id="${provider.id}"
+                        data-active="true">
+                    <span class="w-2 h-2 rounded-full" style="background-color: ${color};"></span>
+                    ${this.escapeHtml(provider.name)}
+                </button>
+            `;
+        }).join('');
+    }
+    
+    /**
+     * Render time slot availability engine
+     */
+    renderTimeSlotEngine(date) {
+        const slots = this.generateAvailabilitySlots(date);
+        
+        // Use all providers if visibleProviders is empty
+        const providersToShow = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
+        
+        if (slots.length === 0) {
+            return `
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <span class="material-symbols-outlined text-5xl mb-3 block">event_busy</span>
+                    <p class="text-sm font-medium">No available time slots</p>
+                    <p class="text-xs mt-1">This day may be blocked or outside business hours</p>
+                </div>
+            `;
+        }
+        
+        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+        
+        return slots.map(slot => {
+            const availableCount = slot.availableProviders.length;
+            const bookedCount = slot.bookedProviders.length;
+            const totalProviders = providersToShow.length;
+            const isFullyBooked = availableCount === 0;
+            const isPartiallyBooked = bookedCount > 0 && availableCount > 0;
+            const isBlocked = slot.isBlocked;
+            
+            // Determine slot styling
+            let slotBgClass = 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30';
+            let statusText = `${availableCount} provider${availableCount !== 1 ? 's' : ''} available`;
+            let statusIcon = 'check_circle';
+            let statusColor = 'text-green-600 dark:text-green-400';
+            
+            if (isBlocked) {
+                slotBgClass = 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60';
+                statusText = 'Blocked';
+                statusIcon = 'block';
+                statusColor = 'text-gray-500 dark:text-gray-400';
+            } else if (isFullyBooked) {
+                slotBgClass = 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 cursor-not-allowed';
+                statusText = 'Fully booked';
+                statusIcon = 'event_busy';
+                statusColor = 'text-red-600 dark:text-red-400';
+            } else if (isPartiallyBooked) {
+                slotBgClass = 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30';
+                statusText = `${availableCount} of ${totalProviders} available`;
+                statusIcon = 'schedule';
+                statusColor = 'text-yellow-600 dark:text-yellow-400';
+            }
+            
+            const formattedTime = DateTime.fromFormat(slot.time, 'HH:mm').toFormat(timeFormat);
+            
+            return `
+                <div class="time-slot-item flex items-center gap-4 p-3 rounded-lg border ${slotBgClass} transition-all cursor-pointer"
+                     data-slot-time="${slot.time}"
+                     data-date="${date.toISODate()}"
+                     ${isBlocked || isFullyBooked ? 'data-disabled="true"' : ''}>
+                    
+                    <!-- Time -->
+                    <div class="flex-shrink-0 w-20">
+                        <span class="text-lg font-bold text-gray-900 dark:text-white">${formattedTime}</span>
+                    </div>
+                    
+                    <!-- Provider Availability Indicators -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap gap-1.5 mb-1">
+                            ${providersToShow.map(provider => {
+                                const isBooked = slot.bookedProviders.some(bp => bp.id === provider.id);
+                                const color = getProviderColor(provider);
+                                const initial = provider.name?.charAt(0)?.toUpperCase() || '?';
+                                
+                                return `
+                                    <div class="relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold transition-all ${isBooked ? 'ring-2 ring-red-400 opacity-50' : ''}"
+                                         style="background-color: ${isBooked ? '#9CA3AF' : color}; color: white;"
+                                         title="${this.escapeHtml(provider.name)} - ${isBooked ? 'Booked' : 'Available'}">
+                                        ${initial}
+                                        ${isBooked ? '<span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>' : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="flex items-center gap-1 ${statusColor}">
+                            <span class="material-symbols-outlined text-sm">${statusIcon}</span>
+                            <span class="text-xs font-medium">${statusText}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Book Button - passes available provider IDs for smarter form pre-filling -->
+                    ${!isBlocked && !isFullyBooked ? `
+                        <a href="/appointments/create?date=${date.toISODate()}&time=${slot.time}&available_providers=${slot.availableProviders.map(p => p.id).join(',')}"
+                           class="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                           data-slot-time="${slot.time}"
+                           data-slot-date="${date.toISODate()}"
+                           data-available-providers="${slot.availableProviders.map(p => p.id).join(',')}">
+                            Book
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    /**
+     * Generate availability slots for a specific date
+     * Uses centralized scheduling utilities for consistent overlap detection
+     */
+    generateAvailabilitySlots(date) {
+        console.log('🔧 generateAvailabilitySlots called for date:', date.toISODate());
+        console.log('🔧 Business hours:', this.businessHours);
+        console.log('🔧 Slot duration:', this.slotDuration);
+        console.log('🔧 Providers available:', this.providers?.length);
+        console.log('🔧 Visible providers:', this.visibleProviders?.length);
+        
+        // Check if date is blocked
+        const isDateBlocked = this.isDateBlocked(date, this.blockedPeriods);
+        console.log('🔧 Is date blocked:', isDateBlocked);
+        
+        if (isDateBlocked) {
+            return []; // Return empty - date is blocked
+        }
+        
+        // Check if it's a non-working day
+        // Luxon weekday: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+        // Default: Mon-Fri (1-5) are working days, Sat-Sun (6-7) are not
+        const luxonWeekday = date.weekday;
+        const isWeekend = luxonWeekday === 6 || luxonWeekday === 7;
+        
+        console.log('🔧 Day check - luxonWeekday:', luxonWeekday, 'isWeekend:', isWeekend);
+        
+        if (isWeekend) {
+            console.log('🔧 Returning empty - weekend day');
+            return []; // Return empty - weekend
+        }
+        
+        // Use all providers if visibleProviders is empty
+        const providersToUse = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
+        console.log('🔧 Providers to use:', providersToUse?.length, providersToUse?.map(p => p.name));
+        
+        if (!providersToUse || providersToUse.length === 0) {
+            console.warn('🔧 No providers to use, returning empty slots');
+            return [];
+        }
+        
+        // Use centralized slot generation with proper overlap detection
+        // This correctly handles appointments that SPAN multiple slots
+        const slots = generateSlotsWithAvailability({
+            date,
+            businessHours: this.businessHours,
+            slotDuration: this.slotDuration,
+            appointments: this.appointments,
+            providers: providersToUse
+        });
+        
+        console.log('🔧 Generated', slots.length, 'slots with proper overlap detection');
         return slots;
     }
-
-    formatTime(hour) {
-        // Get time format from settings (default to 12h if not available)
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() || '12h';
-        
-        if (timeFormat === '24h') {
-            // 24-hour format: 09:00, 13:00, etc.
-            return `${hour.toString().padStart(2, '0')}:00`;
-        } else {
-            // 12-hour format with AM/PM
-            if (hour === 0) return '12:00 AM';
-            if (hour === 12) return '12:00 PM';
-            if (hour < 12) return `${hour}:00 AM`;
-            return `${hour - 12}:00 PM`;
-        }
-    }
-
-    groupAppointmentsByDay(appointments, weekStart) {
-        const grouped = {};
-        
-        // Initialize all days
-        for (let i = 0; i < 7; i++) {
-            const dateKey = weekStart.plus({ days: i }).toISODate();
-            grouped[dateKey] = [];
-        }
-        
-        // Group appointments
-        appointments.forEach(apt => {
-            const dateKey = apt.startDateTime.toISODate();
-            if (grouped[dateKey]) {
-                grouped[dateKey].push(apt);
-            }
-        });
-
-        return grouped;
-    }
-
-    getAppointmentsForSlot(dayAppointments, slot) {
-        return dayAppointments.filter(apt => {
-            const aptHour = apt.startDateTime.hour;
-            return aptHour === slot.hour;
-        });
-    }
-
-    attachEventListeners(container, data) {
-        // Appointment click handlers
-        container.querySelectorAll('.appointment-block').forEach(el => {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const aptId = parseInt(el.dataset.appointmentId, 10);
-                const appointment = data.appointments.find(a => a.id === aptId);
-                if (appointment && data.onAppointmentClick) {
-                    data.onAppointmentClick(appointment);
-                }
-            });
-        });
-
-        // Removed: Click-to-create modal functionality
-        // Time slots no longer open creation modal
-    }
-
-    getContrastColor(hexColor) {
-        const hex = hexColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        return luminance > 0.5 ? '#000000' : '#FFFFFF';
+    
+    /**
+     * Get appointments for a specific date
+     */
+    getAppointmentsForDate(date) {
+        return this.appointments.filter(apt => apt.startDateTime.hasSame(date, 'day'));
     }
 
     /**
@@ -330,20 +590,186 @@ export class WeekView {
             return checkDate >= start && checkDate <= end;
         });
     }
-
+    
     /**
-     * Get blocked period information for a date
+     * Attach event listeners for the new 50/50 split layout
      */
-    getBlockedPeriodInfo(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return null;
-        
-        const checkDate = date.toISODate();
-        
-        const period = blockedPeriods.find(p => {
-            return checkDate >= p.start && checkDate <= p.end;
+    attachEventListeners(container, data) {
+        // Mini calendar day clicks - update selected date
+        container.querySelectorAll('.mini-cal-day').forEach(el => {
+            el.addEventListener('click', () => {
+                const dateStr = el.dataset.date;
+                if (dateStr) {
+                    this.selectedDate = DateTime.fromISO(dateStr);
+                    this.updateSelectedDate();
+                }
+            });
         });
         
-        return period || null;
+        // Mini calendar navigation
+        container.querySelectorAll('.mini-cal-nav').forEach(el => {
+            el.addEventListener('click', () => {
+                const direction = el.dataset.direction;
+                if (this.scheduler) {
+                    if (direction === 'prev') {
+                        this.scheduler.navigateToDate(this.currentDate.minus({ weeks: 1 }));
+                    } else {
+                        this.scheduler.navigateToDate(this.currentDate.plus({ weeks: 1 }));
+                    }
+                }
+            });
+        });
+        
+        // Appointment summary item clicks
+        container.querySelectorAll('.appointment-summary-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const aptId = parseInt(el.dataset.appointmentId, 10);
+                const appointment = data.appointments.find(a => a.id === aptId);
+                if (appointment && data.onAppointmentClick) {
+                    data.onAppointmentClick(appointment);
+                }
+            });
+        });
+        
+        // Time slot clicks (for available slots)
+        container.querySelectorAll('.time-slot-item:not([data-disabled])').forEach(el => {
+            el.addEventListener('click', (e) => {
+                // Don't trigger if clicking the Book button
+                if (e.target.tagName === 'A') return;
+                
+                const time = el.dataset.slotTime;
+                const date = el.dataset.date;
+                // Could open a quick booking modal here
+                console.log('Selected slot:', time, 'on', date);
+            });
+        });
+        
+        // Provider filter pills
+        container.querySelectorAll('.provider-pill').forEach(el => {
+            el.addEventListener('click', () => {
+                const providerId = parseInt(el.dataset.providerId, 10);
+                const isActive = el.dataset.active === 'true';
+                
+                // Toggle visibility
+                if (isActive) {
+                    this.scheduler.visibleProviders.delete(providerId);
+                    el.dataset.active = 'false';
+                    el.style.opacity = '0.4';
+                } else {
+                    this.scheduler.visibleProviders.add(providerId);
+                    el.dataset.active = 'true';
+                    el.style.opacity = '1';
+                }
+                
+                // Update visible providers list
+                this.visibleProviders = this.providers.filter(p => 
+                    this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
+                );
+                
+                // Update both the slot engine AND the appointment summary
+                this.updateTimeSlotEngine();
+                this.updateAppointmentSummary();
+            });
+        });
+    }
+    
+    /**
+     * Update the appointment summary list (called when providers are toggled)
+     */
+    updateAppointmentSummary() {
+        const summaryList = this.container.querySelector('#appointment-summary-list');
+        if (summaryList) {
+            summaryList.innerHTML = this.renderAppointmentSummaryList(this.selectedDate);
+            // Re-attach appointment click handlers
+            summaryList.querySelectorAll('.appointment-summary-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const aptId = parseInt(el.dataset.appointmentId, 10);
+                    const appointment = this.data.appointments.find(a => a.id === aptId);
+                    if (appointment && this.data.onAppointmentClick) {
+                        this.data.onAppointmentClick(appointment);
+                    }
+                });
+            });
+        }
+        
+        // Update appointment count
+        const countEl = this.container.querySelector('#appointment-count');
+        if (countEl) {
+            const count = this.getAppointmentsForDate(this.selectedDate).length;
+            countEl.textContent = `${count} appointment${count !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    /**
+     * Update selected date and refresh UI
+     */
+    updateSelectedDate() {
+        // Update appointment summary list
+        this.updateAppointmentSummary();
+        
+        // Update the header in left panel
+        const headerEl = this.container.querySelector('.week-left-panel h3');
+        if (headerEl) {
+            headerEl.textContent = `Appointments for ${this.selectedDate.toFormat('EEE, MMM d')}`;
+        }
+        
+        // Update time slot engine
+        this.updateTimeSlotEngine();
+        
+        // Update add button link
+        const addBtn = this.container.querySelector('#week-view-add-btn');
+        if (addBtn) {
+            addBtn.href = `/appointments/create?date=${this.selectedDate.toISODate()}`;
+        }
+        
+        // Update mini calendar selection
+        this.container.querySelectorAll('.mini-cal-day').forEach(el => {
+            const elDate = el.dataset.date;
+            if (elDate === this.selectedDate.toISODate()) {
+                el.classList.add('bg-blue-600', 'text-white', 'font-bold');
+                el.classList.remove('bg-blue-50', 'dark:bg-blue-900/20', 'text-blue-700', 'dark:text-blue-300', 'bg-blue-100', 'dark:bg-blue-900/40', 'text-blue-600', 'dark:text-blue-400');
+            } else {
+                el.classList.remove('bg-blue-600', 'text-white');
+            }
+        });
+    }
+    
+    /**
+     * Update time slot engine
+     */
+    updateTimeSlotEngine() {
+        // Update visible providers
+        this.visibleProviders = this.providers.filter(p => 
+            this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
+        );
+        
+        // Update slot engine header date
+        const dateEl = this.container.querySelector('#slot-engine-date');
+        if (dateEl) {
+            dateEl.textContent = this.selectedDate.toFormat('EEEE, MMMM d, yyyy');
+        }
+        
+        // Update provider count label
+        const countLabel = this.container.querySelector('#provider-count-label');
+        if (countLabel) {
+            countLabel.textContent = `${this.visibleProviders.length} provider${this.visibleProviders.length !== 1 ? 's' : ''}`;
+        }
+        
+        // Re-render time slots
+        const slotEngine = this.container.querySelector('#time-slot-engine');
+        if (slotEngine) {
+            slotEngine.innerHTML = this.renderTimeSlotEngine(this.selectedDate);
+            
+            // Re-attach slot click handlers
+            slotEngine.querySelectorAll('.time-slot-item:not([data-disabled])').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'A') return;
+                    const time = el.dataset.slotTime;
+                    const date = el.dataset.date;
+                    console.log('Selected slot:', time, 'on', date);
+                });
+            });
+        }
     }
 
     escapeHtml(text) {
@@ -415,7 +841,8 @@ export class WeekView {
                             const weekAppointments = Object.values(appointmentsByProvider[provider.id]).flat();
                             
                             return `
-                                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all"
+                                     data-provider-id="${provider.id}">
                                     <!-- Provider Header -->
                                     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
                                          style="border-left: 4px solid ${color};">

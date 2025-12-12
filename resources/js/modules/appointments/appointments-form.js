@@ -55,6 +55,10 @@ export async function initAppointmentForm() {
     const endTimeDisplay = createEndTimeDisplay();
     timeInput.parentNode.appendChild(endTimeDisplay);
 
+    // Create slot suggestions container
+    const slotSuggestions = createSlotSuggestions();
+    timeInput.parentNode.appendChild(slotSuggestions);
+
     // Event: Provider selection changes → Load their services
     providerSelect.addEventListener('change', async function() {
         const providerId = this.value;
@@ -75,6 +79,7 @@ export async function initAppointmentForm() {
         // Clear previous selection and recheck availability
         formState.service_id = null;
         clearAvailabilityCheck();
+        clearSlotSuggestions(slotSuggestions);
     });
 
     // Event: Service selection changes → Update duration and check availability
@@ -91,12 +96,14 @@ export async function initAppointmentForm() {
         }
 
         checkAvailability(formState, availabilityFeedback);
+        fetchAndRenderSlots(formState, slotSuggestions);
     });
 
     // Event: Date changes → Check availability
     dateInput.addEventListener('change', function() {
         formState.date = this.value;
         checkAvailability(formState, availabilityFeedback);
+        fetchAndRenderSlots(formState, slotSuggestions);
     });
 
     // Event: Time changes → Update end time and check availability
@@ -375,6 +382,100 @@ function clearAvailabilityCheck(feedbackElement) {
     }
 }
 
+/**
+ * Fetch available slots for the selected provider/service/date and render quick-pick buttons
+ */
+async function fetchAndRenderSlots(formState, slotContainer) {
+    // Need provider, service, date
+    if (!formState.provider_id || !formState.service_id || !formState.date) {
+        clearSlotSuggestions(slotContainer);
+        return;
+    }
+
+    // Show loading state
+    if (slotContainer) {
+        slotContainer.innerHTML = '<div class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading available time slots...</div>';
+        slotContainer.classList.remove('hidden');
+    }
+
+    try {
+        const params = new URLSearchParams({
+            provider_id: formState.provider_id,
+            service_id: formState.service_id,
+            date: formState.date,
+            timezone: getBrowserTimezone()
+        });
+
+        const response = await fetch(`/api/availability/slots?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        const slots = result.data?.slots || [];
+
+        // Render slot buttons
+        renderSlotSuggestions(slotContainer, slots, formState);
+
+    } catch (error) {
+        console.error('Error fetching available slots:', error);
+        if (slotContainer) {
+            slotContainer.innerHTML = '<div class="mt-2 text-sm text-red-600 dark:text-red-400">Unable to load available time slots.</div>';
+            slotContainer.classList.remove('hidden');
+        }
+    }
+}
+
+function renderSlotSuggestions(slotContainer, slots, formState) {
+    if (!slotContainer) return;
+
+    if (!slots.length) {
+        slotContainer.innerHTML = '<div class="mt-2 text-sm text-gray-500 dark:text-gray-400">No available time slots for this day.</div>';
+        slotContainer.classList.remove('hidden');
+        return;
+    }
+
+    // Build buttons
+    slotContainer.innerHTML = `
+        <div class="mt-2 text-sm text-gray-700 dark:text-gray-300 font-medium">Available time slots</div>
+        <div class="mt-2 flex flex-wrap gap-2" role="list">
+            ${slots.map(slot => {
+                const start = slot.start || slot.startTime?.slice(11, 16);
+                const end = slot.end || slot.endTime?.slice(11, 16);
+                return `<button type="button" class="slot-btn px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 hover:border-blue-500 hover:text-blue-700 dark:hover:text-blue-300" data-slot-start="${start}" title="${start} - ${end}">${start}</button>`;
+            }).join('')}
+        </div>
+    `;
+    slotContainer.classList.remove('hidden');
+
+    // Wire buttons
+    slotContainer.querySelectorAll('.slot-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const start = btn.dataset.slotStart;
+            const timeInput = document.getElementById('appointment_time');
+            if (timeInput) {
+                timeInput.value = start;
+                // Update form state and trigger checks
+                formState.time = start;
+                timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+}
+
+function clearSlotSuggestions(slotContainer) {
+    if (slotContainer) {
+        slotContainer.innerHTML = '';
+        slotContainer.classList.add('hidden');
+    }
+}
+
 function syncClientTimezoneFields(form) {
     const timezoneField = form?.querySelector('#client_timezone');
     const offsetField = form?.querySelector('#client_offset');
@@ -463,5 +564,15 @@ function createAvailabilityFeedback() {
 function createEndTimeDisplay() {
     const div = document.createElement('div');
     div.className = 'mt-2 text-sm text-gray-600 dark:text-gray-400 hidden';
+    return div;
+}
+
+/**
+ * Create slot suggestions container
+ */
+function createSlotSuggestions() {
+    const div = document.createElement('div');
+    div.className = 'mt-2 text-sm hidden';
+    div.setAttribute('aria-live', 'polite');
     return div;
 }

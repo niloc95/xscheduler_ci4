@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { checkForConflicts } from '/resources/js/utils/scheduling-utils.js';
 
 export class DragDropManager {
     constructor(scheduler) {
@@ -218,22 +219,19 @@ export class DragDropManager {
             }
         }
 
-        // Check for conflicts (excluding the current appointment)
-        const conflicts = this.scheduler.appointments.filter(apt => {
-            if (apt.id === this.draggedAppointment.id) return false;
-            if (apt.providerId !== this.draggedAppointment.providerId) return false;
+        // Use centralized conflict detection for consistent overlap logic
+        const conflictCheck = checkForConflicts(
+            this.scheduler.appointments,
+            newStart,
+            newEnd,
+            this.draggedAppointment.providerId,
+            this.draggedAppointment.id // Exclude current appointment from conflict check
+        );
 
-            const aptStart = apt.startDateTime;
-            const aptEnd = apt.endDateTime;
-
-            // Check for overlap
-            return (newStart < aptEnd && newEnd > aptStart);
-        });
-
-        if (conflicts.length > 0) {
+        if (conflictCheck.hasConflict) {
             return {
                 valid: false,
-                message: 'This time slot conflicts with another appointment for this provider'
+                message: conflictCheck.message
             };
         }
 

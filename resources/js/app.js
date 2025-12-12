@@ -54,6 +54,7 @@ function navigateToCreateAppointment(slotInfo) {
 
 /**
  * Pre-fill appointment form with URL parameters
+ * Supports: date, time, provider_id, available_providers (from scheduler slot booking)
  */
 function prefillAppointmentForm() {
     // Only run on create appointment page
@@ -65,6 +66,7 @@ function prefillAppointmentForm() {
     const date = urlParams.get('date');
     const time = urlParams.get('time');
     const providerId = urlParams.get('provider_id');
+    const availableProviders = urlParams.get('available_providers'); // Comma-separated IDs from scheduler
     
     // Pre-fill date field
     if (date) {
@@ -96,6 +98,37 @@ function prefillAppointmentForm() {
             
             // Trigger change event to load services
             providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+    
+    // If available_providers is specified (from scheduler slot), filter provider dropdown
+    // and auto-select the first available provider if no specific provider was chosen
+    if (availableProviders && !providerId) {
+        const availableIds = availableProviders.split(',').map(id => parseInt(id.trim(), 10));
+        const providerSelect = document.getElementById('provider_id');
+        
+        if (providerSelect && availableIds.length > 0) {
+            // Mark unavailable providers in the dropdown (optional visual indicator)
+            Array.from(providerSelect.options).forEach(option => {
+                if (option.value && !availableIds.includes(parseInt(option.value, 10))) {
+                    // Add visual indicator that this provider is busy at this time
+                    if (!option.text.includes('(busy)')) {
+                        option.text += ' (busy at this time)';
+                        option.classList.add('text-gray-400');
+                    }
+                }
+            });
+            
+            // Auto-select the first available provider
+            const firstAvailable = availableIds[0];
+            if (firstAvailable) {
+                providerSelect.value = firstAvailable.toString();
+                
+                // Trigger change event to load services
+                providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('[prefillAppointmentForm] Auto-selected available provider:', firstAvailable);
+            }
         }
     }
 }
