@@ -54,6 +54,7 @@ function navigateToCreateAppointment(slotInfo) {
 
 /**
  * Pre-fill appointment form with URL parameters
+ * Supports: date, time, provider_id, available_providers (from scheduler slot booking)
  */
 function prefillAppointmentForm() {
     // Only run on create appointment page
@@ -65,6 +66,7 @@ function prefillAppointmentForm() {
     const date = urlParams.get('date');
     const time = urlParams.get('time');
     const providerId = urlParams.get('provider_id');
+    const availableProviders = urlParams.get('available_providers'); // Comma-separated IDs from scheduler
     
     // Pre-fill date field
     if (date) {
@@ -96,6 +98,37 @@ function prefillAppointmentForm() {
             
             // Trigger change event to load services
             providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+    
+    // If available_providers is specified (from scheduler slot), filter provider dropdown
+    // and auto-select the first available provider if no specific provider was chosen
+    if (availableProviders && !providerId) {
+        const availableIds = availableProviders.split(',').map(id => parseInt(id.trim(), 10));
+        const providerSelect = document.getElementById('provider_id');
+        
+        if (providerSelect && availableIds.length > 0) {
+            // Mark unavailable providers in the dropdown (optional visual indicator)
+            Array.from(providerSelect.options).forEach(option => {
+                if (option.value && !availableIds.includes(parseInt(option.value, 10))) {
+                    // Add visual indicator that this provider is busy at this time
+                    if (!option.text.includes('(busy)')) {
+                        option.text += ' (busy at this time)';
+                        option.classList.add('text-gray-400');
+                    }
+                }
+            });
+            
+            // Auto-select the first available provider
+            const firstAvailable = availableIds[0];
+            if (firstAvailable) {
+                providerSelect.value = firstAvailable.toString();
+                
+                // Trigger change event to load services
+                providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('[prefillAppointmentForm] Auto-selected available provider:', firstAvailable);
+            }
         }
     }
 }
@@ -540,8 +573,53 @@ function setupAdvancedFilterPanel(scheduler) {
     const providerSelect = document.getElementById('filter-provider');
     const serviceSelect = document.getElementById('filter-service');
     
+    // Store all services for "All Providers" view
+    const allServicesOptions = serviceSelect ? serviceSelect.innerHTML : '';
+    
     if (!toggleBtn || !filterPanel) {
         return; // Panel elements not present
+    }
+    
+    // Dynamic service loading when provider changes
+    if (providerSelect && serviceSelect) {
+        providerSelect.addEventListener('change', async () => {
+            const providerId = providerSelect.value;
+            
+            if (!providerId) {
+                // No provider selected - show all services
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.disabled = false;
+                return;
+            }
+            
+            // Show loading state
+            serviceSelect.innerHTML = '<option value="">Loading services...</option>';
+            serviceSelect.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/v1/providers/${providerId}/services`);
+                if (!response.ok) throw new Error('Failed to load services');
+                
+                const result = await response.json();
+                const services = result.data || [];
+                
+                // Rebuild service dropdown with provider-specific services
+                let optionsHtml = '<option value="">All Services</option>';
+                services.forEach(service => {
+                    optionsHtml += `<option value="${service.id}">${service.name}</option>`;
+                });
+                
+                serviceSelect.innerHTML = optionsHtml;
+                serviceSelect.disabled = false;
+                
+                console.log(`📋 Loaded ${services.length} services for provider ${providerId}`);
+            } catch (error) {
+                console.error('Failed to load provider services:', error);
+                // Fallback to all services on error
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.disabled = false;
+            }
+        });
     }
     
     // Toggle panel visibility
@@ -570,8 +648,13 @@ function setupAdvancedFilterPanel(scheduler) {
             const providerId = providerSelect?.value || '';
             const serviceId = serviceSelect?.value || '';
             
+            console.log('🔍 Applying filters:', { status, providerId, serviceId });
+            
             try {
                 await scheduler.setFilters({ status, providerId, serviceId });
+                
+                // Re-render provider legend to reflect filter state
+                renderProviderLegend(scheduler);
                 
                 // Show success feedback
                 applyBtn.textContent = 'Applied!';
@@ -594,10 +677,21 @@ function setupAdvancedFilterPanel(scheduler) {
             // Reset all dropdowns
             if (statusSelect) statusSelect.value = '';
             if (providerSelect) providerSelect.value = '';
-            if (serviceSelect) serviceSelect.value = '';
+            if (serviceSelect) {
+                // Restore all services when clearing filters
+                serviceSelect.innerHTML = allServicesOptions;
+                serviceSelect.value = '';
+                serviceSelect.disabled = false;
+            }
+            
+            console.log('🔍 Clearing filters');
             
             try {
                 await scheduler.setFilters({ status: '', providerId: '', serviceId: '' });
+                
+                // Re-render provider legend to reflect cleared state
+                renderProviderLegend(scheduler);
+                
                 updateFilterIndicator(toggleBtn, false);
             } catch (error) {
                 console.error('Failed to clear filters:', error);
