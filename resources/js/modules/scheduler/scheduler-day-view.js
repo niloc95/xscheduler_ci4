@@ -11,6 +11,20 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
 
+function getBaseUrl() {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    if (!raw) return '';
+    return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+}
+
 export class DayView {
     constructor(scheduler) {
         this.scheduler = scheduler;
@@ -82,7 +96,7 @@ export class DayView {
                             ${this.renderMiniCalendar()}
                             
                             <!-- Add Event Button - Links to appointments/create like main New Appointment button -->
-                            <a href="/appointments/create?date=${this.currentDate.toISODate()}"
+                            <a href="${withBaseUrl(`/appointments/create?date=${this.currentDate.toISODate()}`)}"
                                id="day-view-add-event-btn"
                                class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-lg">add</span>

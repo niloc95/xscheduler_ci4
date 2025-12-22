@@ -1,4 +1,18 @@
-import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '/resources/js/utils/timezone-helper.js';
+import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '../../utils/timezone-helper.js';
+
+function getBaseUrl() {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    if (!raw) return '';
+    return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+}
 
 /**
  * Appointments Booking Form Module
@@ -177,7 +191,7 @@ export async function initAppointmentForm() {
                     }
                     
                     // Redirect to appointments page so calendar can refresh
-                    window.location.href = '/appointments';
+                    window.location.href = withBaseUrl('/appointments');
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
@@ -191,7 +205,7 @@ export async function initAppointmentForm() {
                         window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
                     }
                 }
-                window.location.href = '/appointments';
+                window.location.href = withBaseUrl('/appointments');
             }
             
         } catch (error) {
@@ -217,7 +231,7 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
         serviceSelect.classList.add('bg-gray-100', 'dark:bg-gray-800');
         serviceSelect.innerHTML = '<option value="">🔄 Loading services...</option>';
 
-        const response = await fetch(`/api/v1/providers/${providerId}/services`, {
+        const response = await fetch(withBaseUrl(`/api/v1/providers/${providerId}/services`), {
             method: 'GET',
             headers: {
                 ...attachTimezoneHeaders(),
@@ -291,7 +305,7 @@ async function checkAvailability(formState, feedbackElement) {
         const endTime = endDate.toISOString().slice(0, 19).replace('T', ' ');
         
         // Use the correct availability API endpoint
-        const response = await fetch('/api/availability/check', {
+        const response = await fetch(withBaseUrl('/api/availability/check'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -406,7 +420,7 @@ async function fetchAndRenderSlots(formState, slotContainer) {
             timezone: getBrowserTimezone()
         });
 
-        const response = await fetch(`/api/availability/slots?${params.toString()}`, {
+        const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'

@@ -18,7 +18,7 @@ try {
         echo "First record:\n";
         print_r($results[0]);
     }
-    
+
     echo "\nTesting getActiveDay method...\n";
     $result = $model->getActiveDay(2, 'sunday');
     print_r($result);

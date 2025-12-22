@@ -426,7 +426,7 @@
     <!-- Page Scripts -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-            const BASE_URL = window.__BASE_URL__ || '';
+            const BASE_URL = (window.__BASE_URL__ || '').replace(/\/+$/, '');
             let refreshInterval = null;
             const REFRESH_INTERVAL_MS = 60000; // 60 seconds
 

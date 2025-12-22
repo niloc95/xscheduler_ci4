@@ -18,6 +18,20 @@
 
 import { DateTime } from 'luxon';
 
+function getBaseUrl() {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    if (!raw) return '';
+    return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+}
+
 export class AppointmentDetailsModal {
     constructor(scheduler) {
         this.scheduler = scheduler;
@@ -403,7 +417,7 @@ export class AppointmentDetailsModal {
         saveBtn.textContent = 'Saving...';
         
         try {
-            const response = await fetch(`/api/appointments/${appointment.id}/status`, {
+            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/status`), {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -477,7 +491,7 @@ export class AppointmentDetailsModal {
         this.close();
         // Navigate to edit page using hash for security
         const identifier = appointment.hash || appointment.id;
-        window.location.href = `/appointments/edit/${identifier}`;
+        window.location.href = withBaseUrl(`/appointments/edit/${identifier}`);
     }
     
     /**
@@ -490,7 +504,7 @@ export class AppointmentDetailsModal {
         if (!confirmed) return;
         
         try {
-            const response = await fetch(`/api/appointments/${appointment.id}/status`, {
+            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/status`), {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

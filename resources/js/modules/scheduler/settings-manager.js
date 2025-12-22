@@ -8,6 +8,19 @@
 import { DateTime } from 'luxon';
 import { logger } from './logger.js';
 
+const getBaseUrl = () => {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    return (raw || '').replace(/\/+$/, '');
+};
+
+const withBaseUrl = (path) => {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+};
+
 export class SettingsManager {
     constructor() {
         this.settings = {
@@ -66,7 +79,7 @@ export class SettingsManager {
 
     async loadLocalizationSettings() {
         try {
-            const response = await fetch('/api/v1/settings/localization');
+            const response = await fetch(`${getBaseUrl()}/api/v1/settings/localization`);
             if (!response.ok) throw new Error('Failed to load localization settings');
             
             const data = await response.json();
@@ -218,7 +231,7 @@ export class SettingsManager {
 
     async loadBookingSettings() {
         try {
-            const response = await fetch('/api/v1/settings/booking');
+            const response = await fetch(`${getBaseUrl()}/api/v1/settings/booking`);
             if (!response.ok) throw new Error('Failed to load booking settings');
             
             const data = await response.json();
@@ -314,7 +327,7 @@ export class SettingsManager {
 
     async loadBusinessHours() {
         try {
-            const response = await fetch('/api/v1/settings/business-hours');
+            const response = await fetch(`${getBaseUrl()}/api/v1/settings/business-hours`);
             if (!response.ok) throw new Error('Failed to load business hours');
             
             const data = await response.json();
@@ -448,7 +461,7 @@ export class SettingsManager {
 
     async loadProviderSchedule(providerId) {
         try {
-            const response = await fetch(`/api/providers/${providerId}/schedule`);
+            const response = await fetch(withBaseUrl(`/api/providers/${providerId}/schedule`));
             if (!response.ok) throw new Error('Failed to load provider schedule');
             
             const data = await response.json();

@@ -252,7 +252,8 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
         $routes->post('providers/(\d+)/profile-image', 'Api\\V1\\Providers::uploadProfileImage/$1');
         // Settings API (authenticated)
         $routes->get('settings', 'Api\\V1\\Settings::index');
-        $routes->put('settings', 'Api\\V1\\Settings::update');
+        // Some production hosts/WAFs block PUT requests; accept POST as well.
+        $routes->match(['put', 'post'], 'settings', 'Api\\V1\\Settings::update');
         $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
     });
 });

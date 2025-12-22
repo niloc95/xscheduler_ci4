@@ -3,6 +3,7 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Log\Handlers\ErrorlogHandler;
 use CodeIgniter\Log\Handlers\FileHandler;
 
 class Logger extends BaseConfig
@@ -48,6 +49,15 @@ class Logger extends BaseConfig
             $this->threshold = (int) $envT;
         } else {
             $this->threshold = (ENVIRONMENT === 'production') ? 4 : 9;
+        }
+
+        // Production-only hardening: if file logging is blocked by permissions
+        // or restrictive hosting, send logs to PHP's error_log as a fallback.
+        if (ENVIRONMENT === 'production' && !isset($this->handlers[ErrorlogHandler::class])) {
+            $this->handlers[ErrorlogHandler::class] = [
+                'handles' => ['critical', 'alert', 'emergency', 'debug', 'error', 'info', 'notice', 'warning'],
+                'messageType' => ErrorlogHandler::TYPE_OS,
+            ];
         }
     }
 

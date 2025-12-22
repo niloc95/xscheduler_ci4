@@ -14,6 +14,17 @@ import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
 
+function getBaseUrl() {
+    return String(window.__BASE_URL__ || '').replace(/\/+$/, '');
+}
+
+function withBaseUrl(urlPath) {
+    const baseUrl = getBaseUrl();
+    if (!baseUrl) return urlPath;
+    const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
+    return `${baseUrl}${normalizedPath}`;
+}
+
 export class SchedulerCore {
     constructor(containerId, options = {}) {
         this.containerId = containerId; // Store the ID for future reference
@@ -51,28 +62,38 @@ export class SchedulerCore {
         this.options = options;
     }
 
+    isDebugEnabled() {
+        return !!(this.options?.debug || window.appConfig?.debug);
+    }
+
+    debugLog(...args) {
+        if (this.isDebugEnabled()) {
+            console.log(...args);
+        }
+    }
+
     async init() {
         try {
-            console.log('🚀 Initializing Custom Scheduler...');
+            this.debugLog('🚀 Initializing Custom Scheduler...');
             
             // Initialize settings manager first
-            console.log('⚙️  Loading settings...');
+            this.debugLog('⚙️  Loading settings...');
             await this.settingsManager.init();
-            console.log('✅ Settings loaded');
+            this.debugLog('✅ Settings loaded');
             
             // Update timezone from settings
             this.options.timezone = this.settingsManager.getTimezone();
             this.currentDate = this.currentDate.setZone(this.options.timezone);
-            console.log(`🌍 Timezone: ${this.options.timezone}`);
+            this.debugLog(`🌍 Timezone: ${this.options.timezone}`);
             
             // Load initial data
-            console.log('📊 Loading data...');
+            this.debugLog('📊 Loading data...');
             await Promise.all([
                 this.loadCalendarConfig(),
                 this.loadProviders(),
                 this.loadAppointments()
             ]);
-            console.log('✅ Data loaded');
+            this.debugLog('✅ Data loaded');
 
             // Set all providers visible by default
             // Convert provider IDs to numbers for consistent type matching
@@ -81,27 +102,27 @@ export class SchedulerCore {
                 this.visibleProviders.add(providerId);
             });
 
-            console.log('✅ Visible providers initialized:', Array.from(this.visibleProviders));
+            this.debugLog('✅ Visible providers initialized:', Array.from(this.visibleProviders));
 
             // Set initial visibility of daily appointments section
             this.toggleDailyAppointmentsSection();
 
             // Render the initial view
-            console.log('🎨 Rendering view...');
+            this.debugLog('🎨 Rendering view...');
             this.render();
 
-            console.log('✅ Custom Scheduler initialized successfully');
-            console.log('📋 Summary:');
-            console.log(`   - Providers: ${this.providers.length}`);
-            console.log(`   - Appointments: ${this.appointments.length}`);
-            console.log(`   - View: ${this.currentView}`);
-            console.log(`   - Timezone: ${this.options.timezone}`);
+            this.debugLog('✅ Custom Scheduler initialized successfully');
+            this.debugLog('📋 Summary:');
+            this.debugLog(`   - Providers: ${this.providers.length}`);
+            this.debugLog(`   - Appointments: ${this.appointments.length}`);
+            this.debugLog(`   - View: ${this.currentView}`);
+            this.debugLog(`   - Timezone: ${this.options.timezone}`);
             
             if (this.appointments.length === 0) {
-                console.log('💡 To see appointments, implement these backend endpoints:');
-                console.log('   1. GET /api/appointments?start=YYYY-MM-DD&end=YYYY-MM-DD');
-                console.log('   2. GET /api/providers?includeColors=true');
-                console.log('   3. GET /api/v1/settings/* (optional, has fallbacks)');
+                this.debugLog('💡 To see appointments, implement these backend endpoints:');
+                this.debugLog('   1. GET /api/appointments?start=YYYY-MM-DD&end=YYYY-MM-DD');
+                this.debugLog('   2. GET /api/providers?includeColors=true');
+                this.debugLog('   3. GET /api/v1/settings/* (optional, has fallbacks)');
             }
         } catch (error) {
             console.error('❌ Failed to initialize scheduler:', error);
@@ -112,11 +133,11 @@ export class SchedulerCore {
 
     async loadCalendarConfig() {
         try {
-            const response = await fetch('/api/v1/settings/calendarConfig');
+            const response = await fetch(withBaseUrl('/api/v1/settings/calendarConfig'));
             if (!response.ok) throw new Error('Failed to load calendar config');
             const data = await response.json();
             this.calendarConfig = data.data || data;
-            console.log('📅 Calendar config loaded:', this.calendarConfig);
+            this.debugLog('📅 Calendar config loaded:', this.calendarConfig);
         } catch (error) {
             console.error('Failed to load calendar config:', error);
             // Use defaults if config fails to load
@@ -133,11 +154,11 @@ export class SchedulerCore {
 
     async loadProviders() {
         try {
-            const response = await fetch('/api/providers?includeColors=true');
+            const response = await fetch(withBaseUrl('/api/providers?includeColors=true'));
             if (!response.ok) throw new Error('Failed to load providers');
             const data = await response.json();
             this.providers = data.data || data || [];
-            console.log('👥 Providers loaded:', this.providers.length);
+            this.debugLog('👥 Providers loaded:', this.providers.length);
         } catch (error) {
             console.error('Failed to load providers:', error);
             this.providers = [];
@@ -155,13 +176,13 @@ export class SchedulerCore {
 
             // Request a large batch of appointments for calendar views (up to 1000)
             const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}&length=1000`;
-            console.log('🔄 Loading appointments from:', url);
+            this.debugLog('🔄 Loading appointments from:', url);
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to load appointments');
             const data = await response.json();
-            console.log('📥 Raw API response:', data);
+            this.debugLog('📥 Raw API response:', data);
             this.appointments = data.data || data || [];
-            console.log('📦 Extracted appointments array:', this.appointments);
+            this.debugLog('📦 Extracted appointments array:', this.appointments);
             
             // Parse dates with timezone awareness and ensure IDs are numbers
             this.appointments = this.appointments.map(apt => ({
@@ -174,8 +195,8 @@ export class SchedulerCore {
                 endDateTime: DateTime.fromISO(apt.end, { zone: this.options.timezone })
             }));
 
-            console.log('📅 Appointments loaded:', this.appointments.length);
-            console.log('📋 Appointment details:', this.appointments);
+            this.debugLog('📅 Appointments loaded:', this.appointments.length);
+            this.debugLog('📋 Appointment details:', this.appointments);
             return this.appointments;
         } catch (error) {
             console.error('❌ Failed to load appointments:', error);
@@ -213,8 +234,8 @@ export class SchedulerCore {
     }
 
     getFilteredAppointments() {
-        console.log('📊 getFilteredAppointments called with activeFilters:', this.activeFilters);
-        console.log('📊 visibleProviders:', Array.from(this.visibleProviders));
+        this.debugLog('📊 getFilteredAppointments called with activeFilters:', this.activeFilters);
+        this.debugLog('📊 visibleProviders:', Array.from(this.visibleProviders));
         
         // Convert appointment providerId to number for comparison
         const filtered = this.appointments.filter(apt => {
@@ -223,29 +244,29 @@ export class SchedulerCore {
             
             // Provider filter (via visibleProviders set)
             if (!this.visibleProviders.has(providerId)) {
-                console.log(`   Apt ${apt.id}: FILTERED OUT by provider (apt.providerId=${providerId}, not in visibleProviders)`);
+                this.debugLog(`   Apt ${apt.id}: FILTERED OUT by provider (apt.providerId=${providerId}, not in visibleProviders)`);
                 return false;
             }
             
             // Status filter
             if (this.activeFilters?.status && apt.status !== this.activeFilters.status) {
-                console.log(`   Apt ${apt.id}: FILTERED OUT by status (apt.status=${apt.status}, filter=${this.activeFilters.status})`);
+                this.debugLog(`   Apt ${apt.id}: FILTERED OUT by status (apt.status=${apt.status}, filter=${this.activeFilters.status})`);
                 return false;
             }
             
             // Service filter
             if (this.activeFilters?.serviceId) {
                 if (serviceId !== this.activeFilters.serviceId) {
-                    console.log(`   Apt ${apt.id}: FILTERED OUT by service (apt.serviceId=${serviceId}, filter=${this.activeFilters.serviceId})`);
+                    this.debugLog(`   Apt ${apt.id}: FILTERED OUT by service (apt.serviceId=${serviceId}, filter=${this.activeFilters.serviceId})`);
                     return false;
                 }
             }
             
-            console.log(`   Apt ${apt.id}: INCLUDED (provider=${providerId}, status=${apt.status}, service=${serviceId})`);
+            this.debugLog(`   Apt ${apt.id}: INCLUDED (provider=${providerId}, status=${apt.status}, service=${serviceId})`);
             return true;
         });
         
-        console.log(`📊 Filter result: ${filtered.length} of ${this.appointments.length} appointments visible`);
+        this.debugLog(`📊 Filter result: ${filtered.length} of ${this.appointments.length} appointments visible`);
         return filtered;
     }
 
@@ -263,7 +284,7 @@ export class SchedulerCore {
      * This is the unified filter mechanism used by the Advanced Filter Panel
      */
     async setFilters({ status = '', providerId = '', serviceId = '' }) {
-        console.log('📊 setFilters called with:', { status, providerId, serviceId });
+        this.debugLog('📊 setFilters called with:', { status, providerId, serviceId });
         
         // Store filter values
         this.activeFilters = {
@@ -272,14 +293,14 @@ export class SchedulerCore {
             serviceId: serviceId ? parseInt(serviceId, 10) : null
         };
         
-        console.log('📊 activeFilters set to:', this.activeFilters);
+        this.debugLog('📊 activeFilters set to:', this.activeFilters);
         
         // Update visible providers based on filter
         if (providerId) {
             // If a specific provider is selected, only show that provider
             this.visibleProviders.clear();
             this.visibleProviders.add(parseInt(providerId, 10));
-            console.log('📊 visibleProviders set to single provider:', parseInt(providerId, 10));
+            this.debugLog('📊 visibleProviders set to single provider:', parseInt(providerId, 10));
         } else {
             // If no provider filter, show all providers
             this.visibleProviders.clear();
@@ -287,7 +308,7 @@ export class SchedulerCore {
                 const id = typeof p.id === 'string' ? parseInt(p.id, 10) : p.id;
                 this.visibleProviders.add(id);
             });
-            console.log('📊 visibleProviders set to all providers:', Array.from(this.visibleProviders));
+            this.debugLog('📊 visibleProviders set to all providers:', Array.from(this.visibleProviders));
         }
         
         // Re-render with new filters
@@ -376,10 +397,10 @@ export class SchedulerCore {
         }
 
         const filteredAppointments = this.getFilteredAppointments();
-        console.log('🎨 Rendering view:', this.currentView);
-        console.log('🔍 Filtered appointments for display:', filteredAppointments.length);
-        console.log('👥 Visible providers:', Array.from(this.visibleProviders));
-        console.log('📋 All appointments:', this.appointments.length);
+        this.debugLog('🎨 Rendering view:', this.currentView);
+        this.debugLog('🔍 Filtered appointments for display:', filteredAppointments.length);
+        this.debugLog('👥 Visible providers:', Array.from(this.visibleProviders));
+        this.debugLog('📋 All appointments:', this.appointments.length);
 
         // Update date display in toolbar
         this.updateDateDisplay();
@@ -418,14 +439,14 @@ export class SchedulerCore {
     }
 
     handleAppointmentClick(appointment) {
-        console.log('[SchedulerCore] handleAppointmentClick called with:', appointment);
-        console.log('[SchedulerCore] appointmentDetailsModal exists:', !!this.appointmentDetailsModal);
+        this.debugLog('[SchedulerCore] handleAppointmentClick called with:', appointment);
+        this.debugLog('[SchedulerCore] appointmentDetailsModal exists:', !!this.appointmentDetailsModal);
         
         if (this.options.onAppointmentClick) {
-            console.log('[SchedulerCore] Using custom onAppointmentClick');
+            this.debugLog('[SchedulerCore] Using custom onAppointmentClick');
             this.options.onAppointmentClick(appointment);
         } else {
-            console.log('[SchedulerCore] Opening modal with appointmentDetailsModal.open()');
+            this.debugLog('[SchedulerCore] Opening modal with appointmentDetailsModal.open()');
             // Open appointment details modal
             this.appointmentDetailsModal.open(appointment);
         }

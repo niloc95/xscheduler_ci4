@@ -9,6 +9,8 @@ class SettingModel extends BaseModel
     protected $table = 'xs_settings';
     protected $primaryKey = 'id';
 
+    private static ?bool $hasUpdatedByColumn = null;
+
     protected $allowedFields = [
         'setting_key',
         'setting_value',
@@ -61,7 +63,9 @@ class SettingModel extends BaseModel
             'setting_value' => $this->serializeValue($value, $type),
             'setting_type' => $type,
         ];
-        if ($updatedBy !== null) {
+
+        // Production safety: some environments may not have the `updated_by` column yet.
+        if ($updatedBy !== null && $this->hasUpdatedByColumn()) {
             $payload['updated_by'] = $updatedBy;
         }
         $existing = $this->where('setting_key', $key)->first();
@@ -86,9 +90,37 @@ class SettingModel extends BaseModel
     private function serializeValue($val, string $type): string
     {
         return match ($type) {
-            'json' => json_encode($val, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'json' => $this->encodeJsonValue($val),
             'bool','boolean' => $val ? 'true' : 'false',
             default => (string) $val,
         };
+    }
+
+    private function hasUpdatedByColumn(): bool
+    {
+        if (self::$hasUpdatedByColumn !== null) {
+            return self::$hasUpdatedByColumn;
+        }
+
+        try {
+            self::$hasUpdatedByColumn = (bool) $this->db->fieldExists('updated_by', $this->table);
+        } catch (\Throwable $e) {
+            self::$hasUpdatedByColumn = false;
+        }
+
+        return self::$hasUpdatedByColumn;
+    }
+
+    private function encodeJsonValue($val): string
+    {
+        $encoded = json_encode($val, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($encoded === false) {
+            log_message('warning', 'SettingModel: json_encode failed for setting value: {msg}', [
+                'msg' => json_last_error_msg(),
+            ]);
+            // Avoid fatal TypeError in production; store a safe placeholder.
+            return 'null';
+        }
+        return $encoded;
     }
 }

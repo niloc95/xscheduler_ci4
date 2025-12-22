@@ -703,6 +703,21 @@
         </div>
         
         <script>
+        (function () {
+            // Gate verbose debug logs behind appConfig.debug
+            window.xsDebugLog = window.xsDebugLog || function (...args) {
+                try {
+                    if (window.appConfig && window.appConfig.debug) {
+                        console.log(...args);
+                    }
+                } catch (_) {
+                    // no-op
+                }
+            };
+        })();
+        </script>
+
+        <script>
         // --- Blocked Periods Structured UI ---
         (function initBlockedPeriodsUI() {
             // Guard against re-initialization
@@ -868,8 +883,8 @@
                     submitBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Saving…</span>';
                     submitBtn.disabled = true;
                     
-                    console.log('🔄 Saving block period to database:', period);
-                    console.log('📋 Full block periods array:', blockPeriods);
+                    xsDebugLog('Saving block period to database:', period);
+                    xsDebugLog('Full block periods array:', blockPeriods);
                     
                     try {
                         // Get CSRF token
@@ -878,7 +893,7 @@
                         
                         // Save to database via API
                         const response = await fetch("<?= base_url('api/v1/settings') ?>", {
-                            method: 'PUT',
+                            method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
@@ -890,14 +905,21 @@
                             })
                         });
                         
-                        console.log('📡 Block period API Response status:', response.status);
+                        xsDebugLog('Block period API Response status:', response.status);
                         
                         if (!response.ok) {
-                            throw new Error(`Save failed (HTTP ${response.status})`);
+                            let errorId = '';
+                            try {
+                                const errJson = await response.json();
+                                errorId = errJson?.error?.error_id || errJson?.error_id || '';
+                            } catch (e) {
+                                // ignore non-JSON errors
+                            }
+                            throw new Error(`Save failed (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`);
                         }
                         
                         const result = await response.json();
-                        console.log('📦 Block period API Response data:', result);
+                        xsDebugLog('Block period API Response data:', result);
                         
                         if (!result?.ok) {
                             throw new Error(result?.message || 'Unable to save block period.');
@@ -913,7 +935,7 @@
                         submitBtn.innerHTML = originalBtnText;
                         submitBtn.disabled = false;
                         
-                        console.log('✅ Block period saved successfully!');
+                        xsDebugLog('Block period saved successfully!');
                         
                         // Show success toast
                         window.XSNotify?.toast?.({
@@ -979,13 +1001,13 @@
                             return;
                         }
                         
-                        console.log('🗑️ Deleting block period at index:', idx);
+                        xsDebugLog('Deleting block period at index:', idx);
                         
                         // Remove from array
                         const deletedPeriod = blockPeriods[idx];
                         blockPeriods.splice(idx, 1);
                         
-                        console.log('📋 Remaining block periods:', blockPeriods);
+                        xsDebugLog('Remaining block periods:', blockPeriods);
                         
                         try {
                             // Get CSRF token
@@ -994,7 +1016,7 @@
                             
                             // Save to database via API
                             const response = await fetch("<?= base_url('api/v1/settings') ?>", {
-                                method: 'PUT',
+                                method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
@@ -1006,14 +1028,21 @@
                                 })
                             });
                             
-                            console.log('📡 Delete block period API Response status:', response.status);
+                            xsDebugLog('Delete block period API Response status:', response.status);
                             
                             if (!response.ok) {
-                                throw new Error(`Delete failed (HTTP ${response.status})`);
+                                let errorId = '';
+                                try {
+                                    const errJson = await response.json();
+                                    errorId = errJson?.error?.error_id || errJson?.error_id || '';
+                                } catch (e) {
+                                    // ignore non-JSON errors
+                                }
+                                throw new Error(`Delete failed (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`);
                             }
                             
                             const result = await response.json();
-                            console.log('📦 Delete block period API Response data:', result);
+                            xsDebugLog('Delete block period API Response data:', result);
                             
                             if (!result?.ok) {
                                 throw new Error(result?.message || 'Unable to delete block period.');
@@ -1022,7 +1051,7 @@
                             // Update hidden input and UI
                             saveBlockPeriods();
                             
-                            console.log('✅ Block period deleted successfully!');
+                            xsDebugLog('Block period deleted successfully!');
                             
                             // Show success toast
                             window.XSNotify?.toast?.({
@@ -1076,13 +1105,13 @@
 </div>
 
         <script>
-        // General tab API integration: load on view and save via PUT to /api/v1/settings
+        // General tab API integration: load on view and save via POST to /api/v1/settings
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Settings: DOMContentLoaded fired, calling initSettingsApi');
+            xsDebugLog('Settings: DOMContentLoaded fired, calling initSettingsApi');
             initSettingsApi();
         });
         document.addEventListener('spa:navigated', () => {
-            console.log('Settings: spa:navigated fired, calling initSettingsApi');
+            xsDebugLog('Settings: spa:navigated fired, calling initSettingsApi');
             initSettingsApi();
         });
 
@@ -1115,7 +1144,7 @@
 
         function initSettingsApi() {
             const root = document.getElementById('spa-content');
-            console.log('Settings: initSettingsApi called, root found:', !!root);
+            xsDebugLog('Settings: initSettingsApi called, root found:', !!root);
             if (!root) return;
 
             // Initialize General Settings Form
@@ -1133,7 +1162,7 @@
 
         function initGeneralSettingsForm() {
             const form = document.getElementById('general-settings-form');
-            console.log('General Form found:', !!form, 'apiWired:', form?.dataset.apiWired);
+            xsDebugLog('General Form found:', !!form, 'apiWired:', form?.dataset.apiWired);
             if (!form || form.dataset.apiWired === 'true') return;
 
             const generalPanel = form.querySelector('#panel-general');
@@ -1144,7 +1173,7 @@
             const logoImg = document.getElementById('company_logo_preview_img');
             const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
 
-            console.log('General Settings: Found elements:', {
+            xsDebugLog('General Settings: Found elements:', {
                 generalPanel: !!generalPanel,
                 saveBtn: !!saveBtn,
                 btnEdit: !!btnEdit,
@@ -1296,9 +1325,9 @@
             });
 
             if (btnEdit) {
-                console.log('General Settings: Attaching Edit button listener');
+                xsDebugLog('General Settings: Attaching Edit button listener');
                 btnEdit.addEventListener('click', () => {
-                    console.log('📝 General Edit clicked');
+                    xsDebugLog('General Edit clicked');
                     editing = true;
                     setLockedState(false);
                     saveBtn?.focus();
@@ -1307,7 +1336,7 @@
 
             if (btnCancel) {
                 btnCancel.addEventListener('click', () => {
-                    console.log('↩️ General Cancel clicked');
+                    xsDebugLog('General Cancel clicked');
                     editing = false;
                     hasChanges = false;
                     applyValues(initialValues);
@@ -1341,7 +1370,7 @@
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 
-                console.log('General form submitted - editing:', editing);
+                xsDebugLog('General form submitted - editing:', editing);
 
                 if (!editing) {
                     window.XSNotify?.toast?.({
@@ -1366,7 +1395,7 @@
                     payload[key] = el.value ?? '';
                 });
 
-                console.log('Saving general settings:', payload);
+                xsDebugLog('Saving general settings:', payload);
 
                 const previousEditingState = editing;
                 setSavingState(true);
@@ -1374,7 +1403,7 @@
 
                 try {
                     const response = await fetch(apiEndpoint, {
-                        method: 'PUT',
+                        method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
@@ -1386,14 +1415,21 @@
 
                     updateCsrfFromResponse(response);
 
-                    console.log('API Response status:', response.status);
+                    xsDebugLog('API Response status:', response.status);
 
                     if (!response.ok) {
-                        throw new Error(`Save failed (HTTP ${response.status})`);
+                        let errorId = '';
+                        try {
+                            const errJson = await response.json();
+                            errorId = errJson?.error?.error_id || errJson?.error_id || '';
+                        } catch (e) {
+                            // ignore non-JSON errors
+                        }
+                        throw new Error(`Save failed (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`);
                     }
 
                     const result = await response.json();
-                    console.log('API Response data:', result);
+                    xsDebugLog('API Response data:', result);
                     
                     if (!result?.ok) {
                         throw new Error(result?.message || 'Unable to save settings.');
@@ -1451,7 +1487,7 @@
                         initialLogoSrc = uploadedLogoUrl;
                     }
 
-                    console.log('✅ General settings saved successfully!');
+                    xsDebugLog('General settings saved successfully!');
                     
                     window.XSNotify?.toast?.({
                         type: 'success',
@@ -1499,7 +1535,7 @@
                 return;
             }
 
-            console.log(`${tabName} Settings: Initializing form`);
+            xsDebugLog(`${tabName} Settings: Initializing form`);
 
             // Track changes
             const formInputs = Array.from(panel.querySelectorAll('input, textarea, select'));
@@ -1527,7 +1563,7 @@
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
-                console.log(`${tabName} form submitted`);
+                xsDebugLog(`${tabName} form submitted`);
 
                 if (!form.reportValidity()) {
                     form.reportValidity();
@@ -1574,7 +1610,7 @@
                     payload[key] = value;
                 });
 
-                console.log(`Saving ${tabName} settings:`, payload);
+                xsDebugLog(`Saving ${tabName} settings:`, payload);
 
                 // Show saving state
                 const originalLabel = saveBtn.innerHTML;
@@ -1583,7 +1619,7 @@
 
                 try {
                     const response = await fetch("<?= base_url('api/v1/settings') ?>", {
-                        method: 'PUT',
+                        method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json',
@@ -1593,14 +1629,21 @@
                         body: JSON.stringify(payload)
                     });
 
-                    console.log(`${tabName} API Response status:`, response.status);
+                    xsDebugLog(`${tabName} API Response status:`, response.status);
 
                     if (!response.ok) {
-                        throw new Error(`Save failed (HTTP ${response.status})`);
+                        let errorId = '';
+                        try {
+                            const errJson = await response.json();
+                            errorId = errJson?.error?.error_id || errJson?.error_id || '';
+                        } catch (e) {
+                            // ignore non-JSON errors
+                        }
+                        throw new Error(`Save failed (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`);
                     }
 
                     const result = await response.json();
-                    console.log(`${tabName} API Response data:`, result);
+                    xsDebugLog(`${tabName} API Response data:`, result);
 
                     if (!result?.ok) {
                         throw new Error(result?.message || 'Unable to save settings.');
@@ -1611,7 +1654,7 @@
                     saveBtn.innerHTML = originalLabel;
                     updateSaveButtonState();
 
-                    console.log(`✅ ${tabName} settings saved successfully!`);
+                    xsDebugLog(`✅ ${tabName} settings saved successfully!`);
 
                     // Dispatch custom event for settings save (useful for time format updates)
                     const changedKeys = Object.keys(payload);
@@ -1696,7 +1739,7 @@
             async function initTimeFormatting() {
                 await timeFormatHandler.init();
                 timeFormatHandler.addFormattedDisplays();
-                console.log('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
+                xsDebugLog('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
             }
             
             // Run on page load

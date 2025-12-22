@@ -12,6 +12,20 @@ import {
   buildCalendarCacheKey,
 } from '../calendar/calendar-utils.js';
 
+function getBaseUrl() {
+  const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+  if (!raw) return '';
+  return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+  const base = getBaseUrl();
+  if (!base) return path;
+  if (!path) return base + '/';
+  if (path.startsWith('/')) return base + path;
+  return base + '/' + path;
+}
+
 /**
  * Initialize the time slots UI
  * @param {Object} options
@@ -108,7 +122,7 @@ export function initTimeSlotsUI(options) {
 
     let response;
     try {
-      response = await fetch(`/api/availability/calendar?${params.toString()}`, {
+      response = await fetch(withBaseUrl(`/api/availability/calendar?${params.toString()}`), {
         headers: {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -197,7 +211,7 @@ export function initTimeSlotsUI(options) {
     }
 
     try {
-      const res = await fetch(`/api/v1/providers/${providerId}/services`);
+      const res = await fetch(withBaseUrl(`/api/v1/providers/${providerId}/services`));
       if (!res.ok) {
         console.error('[time-slots-ui] Service API error:', res.status);
         throw new Error('Failed to load services');
