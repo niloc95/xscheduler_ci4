@@ -257,7 +257,8 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const response = await fetch(`/api/v1/providers/${providerId}/services`, {
+      const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
+      const response = await fetch(`${baseUrl}/api/v1/providers/${providerId}/services`, {
         headers: {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',

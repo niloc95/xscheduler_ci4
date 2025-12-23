@@ -25,7 +25,7 @@ class UserModel extends BaseModel
     // Validation
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
-        'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
+        'email' => 'required|valid_email|is_unique[xs_users.email,id,{id}]',
         'role'  => 'required|in_list[admin,provider,staff,customer]'
     ];
     protected $validationMessages   = [];

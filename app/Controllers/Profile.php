@@ -89,7 +89,7 @@ class Profile extends BaseController
         $rules = [
             'first_name' => 'required|min_length[1]|max_length[100]',
             'last_name' => 'permit_empty|max_length[100]',
-            'email' => "required|valid_email|is_unique[users.email,id,{$userId}]",
+            'email' => "required|valid_email|is_unique[xs_users.email,id,{$userId}]",
             'phone' => 'permit_empty|max_length[20]',
         ];
 

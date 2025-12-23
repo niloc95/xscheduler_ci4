@@ -14,16 +14,27 @@ export class MonthView {
         this.appointmentsByDate = {};
         this.selectedDate = null; // Track selected date for daily view
     }
+
+    debugLog(...args) {
+        if (this.scheduler?.debugLog) {
+            this.scheduler.debugLog(...args);
+            return;
+        }
+
+        if (typeof window !== 'undefined' && window.appConfig?.debug) {
+            console.log(...args);
+        }
+    }
     
     render(container, data) {
         const { currentDate, appointments, providers, config, settings } = data;
         
-        console.log('🗓️ MonthView.render called');
-        console.log('   Current date:', currentDate.toISO());
-        console.log('   Current date zone:', currentDate.zoneName);
-        console.log('   Appointments received:', appointments.length);
+        this.debugLog('🗓️ MonthView.render called');
+        this.debugLog('   Current date:', currentDate.toISO());
+        this.debugLog('   Current date zone:', currentDate.zoneName);
+        this.debugLog('   Appointments received:', appointments.length);
         if (appointments.length > 0) {
-            console.log('   First appointment:', {
+            this.debugLog('   First appointment:', {
                 id: appointments[0].id,
                 start: appointments[0].start,
                 startDateTime: appointments[0].startDateTime?.toISO?.(),
@@ -31,7 +42,7 @@ export class MonthView {
                 dateKey: appointments[0].startDateTime?.toISODate?.()
             });
         }
-        console.log('   Providers:', providers.length);
+        this.debugLog('   Providers:', providers.length);
         
         // Store data for use in other methods
         this.appointments = appointments;
@@ -89,7 +100,7 @@ export class MonthView {
 
         // Group appointments by date
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
-        console.log('📅 Appointments grouped by date:', this.appointmentsByDate);
+        this.debugLog('📅 Appointments grouped by date:', this.appointmentsByDate);
 
         // Render HTML
         container.innerHTML = `
@@ -231,7 +242,7 @@ export class MonthView {
         const dateKey = day.toISODate();
         const appointments = this.appointmentsByDate[dateKey] || [];
         if (appointments.length > 0) {
-            console.log(`📅 Day ${dateKey}: ${appointments.length} appointments found`);
+            this.debugLog(`📅 Day ${dateKey}: ${appointments.length} appointments found`);
         }
         return appointments;
     }
@@ -239,7 +250,7 @@ export class MonthView {
     groupAppointmentsByDate(appointments) {
         const grouped = {};
         
-        console.log(`📊 Grouping ${appointments.length} appointments by date`);
+        this.debugLog(`📊 Grouping ${appointments.length} appointments by date`);
         
         appointments.forEach((apt, idx) => {
             if (!apt.startDateTime || typeof apt.startDateTime.toISODate !== 'function') {
@@ -248,7 +259,7 @@ export class MonthView {
             }
             const dateKey = apt.startDateTime.toISODate();
             if (idx < 3) {
-                console.log(`   Apt ${apt.id}: startDateTime=${apt.startDateTime.toISO()}, dateKey=${dateKey}`);
+                this.debugLog(`   Apt ${apt.id}: startDateTime=${apt.startDateTime.toISO()}, dateKey=${dateKey}`);
             }
             if (!grouped[dateKey]) {
                 grouped[dateKey] = [];
@@ -256,7 +267,7 @@ export class MonthView {
             grouped[dateKey].push(apt);
         });
         
-        console.log(`📅 Grouped into ${Object.keys(grouped).length} unique dates:`, Object.keys(grouped).slice(0, 10));
+        this.debugLog(`📅 Grouped into ${Object.keys(grouped).length} unique dates:`, Object.keys(grouped).slice(0, 10));
 
         // Sort appointments by start time within each day
         Object.keys(grouped).forEach(dateKey => {
@@ -454,11 +465,11 @@ export class MonthView {
     renderDailySection(data) {
         const dailyContainer = document.getElementById('daily-provider-appointments');
         if (!dailyContainer) {
-            console.log('[MonthView] Daily provider appointments container not found');
+            this.debugLog('[MonthView] Daily provider appointments container not found');
             return;
         }
         
-        console.log('[MonthView] Rendering daily section to separate container');
+        this.debugLog('[MonthView] Rendering daily section to separate container');
         dailyContainer.innerHTML = this.renderDailyAppointments();
         
         // Attach event listeners to the daily section
@@ -522,11 +533,11 @@ export class MonthView {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[MonthView] Appointment clicked, prevented default');
+                this.debugLog('[MonthView] Appointment clicked, prevented default');
                 const aptId = parseInt(el.dataset.appointmentId, 10);
                 const appointment = data.appointments.find(a => a.id === aptId);
                 if (appointment && data.onAppointmentClick) {
-                    console.log('[MonthView] Calling onAppointmentClick');
+                    this.debugLog('[MonthView] Calling onAppointmentClick');
                     data.onAppointmentClick(appointment);
                 } else {
                     console.warn('[MonthView] No appointment found or no callback');
@@ -562,7 +573,7 @@ export class MonthView {
                 }
                 
                 const date = el.dataset.selectDay;
-                console.log('Day cell clicked:', date);
+                this.debugLog('Day cell clicked:', date);
                 
                 // Update selected date
                 this.selectedDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });
@@ -710,7 +721,7 @@ export class MonthView {
         const isExpanded = buttonEl.dataset.expanded === 'true';
         const allAppointments = appointmentsContainer.querySelectorAll('.scheduler-appointment');
         
-        console.log('[MonthView] toggleDayExpansion:', { isExpanded, totalAppointments: allAppointments.length });
+        this.debugLog('[MonthView] toggleDayExpansion:', { isExpanded, totalAppointments: allAppointments.length });
         
         if (isExpanded) {
             // Collapse - hide appointments beyond first 2

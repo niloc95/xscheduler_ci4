@@ -19,7 +19,9 @@ class CurrencyFormatter {
         if (this.loaded) return;
         
         try {
-            const response = await fetch('/api/v1/settings/localization');
+            const baseUrl = String(window.__BASE_URL__ || '').replace(/\/+$/, '');
+            const url = baseUrl ? `${baseUrl}/api/v1/settings/localization` : '/api/v1/settings/localization';
+            const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
                 const context = data.data?.context || data.data;

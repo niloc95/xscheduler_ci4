@@ -10,12 +10,37 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
-import { generateSlotsWithAvailability, findOverlappingAppointments, getProviderAvailabilityForSlot } from '/resources/js/utils/scheduling-utils.js';
+import { generateSlotsWithAvailability, findOverlappingAppointments, getProviderAvailabilityForSlot } from '../../utils/scheduling-utils.js';
+
+function getBaseUrl() {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    if (!raw) return '';
+    return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+}
 
 export class WeekView {
     constructor(scheduler) {
         this.scheduler = scheduler;
         this.selectedDate = null; // Currently selected date for slot view
+    }
+
+    debugLog(...args) {
+        if (this.scheduler?.debugLog) {
+            this.scheduler.debugLog(...args);
+            return;
+        }
+
+        if (typeof window !== 'undefined' && window.appConfig?.debug) {
+            console.log(...args);
+        }
     }
 
     render(container, data) {
@@ -130,7 +155,7 @@ export class WeekView {
                         </div>
                         
                         <!-- Add Appointment Button -->
-                        <a href="/appointments/create?date=${this.selectedDate.toISODate()}"
+                        <a href="${withBaseUrl(`/appointments/create?date=${this.selectedDate.toISODate()}`)}"
                            id="week-view-add-btn"
                            class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-lg">add</span>
@@ -501,7 +526,7 @@ export class WeekView {
                     
                     <!-- Book Button - passes available provider IDs for smarter form pre-filling -->
                     ${!isBlocked && !isFullyBooked ? `
-                        <a href="/appointments/create?date=${date.toISODate()}&time=${slot.time}&available_providers=${slot.availableProviders.map(p => p.id).join(',')}"
+                        <a href="${withBaseUrl(`/appointments/create?date=${date.toISODate()}&time=${slot.time}&available_providers=${slot.availableProviders.map(p => p.id).join(',')}`)}"
                            class="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                            data-slot-time="${slot.time}"
                            data-slot-date="${date.toISODate()}"
@@ -519,15 +544,15 @@ export class WeekView {
      * Uses centralized scheduling utilities for consistent overlap detection
      */
     generateAvailabilitySlots(date) {
-        console.log('🔧 generateAvailabilitySlots called for date:', date.toISODate());
-        console.log('🔧 Business hours:', this.businessHours);
-        console.log('🔧 Slot duration:', this.slotDuration);
-        console.log('🔧 Providers available:', this.providers?.length);
-        console.log('🔧 Visible providers:', this.visibleProviders?.length);
+        this.debugLog('🔧 generateAvailabilitySlots called for date:', date.toISODate());
+        this.debugLog('🔧 Business hours:', this.businessHours);
+        this.debugLog('🔧 Slot duration:', this.slotDuration);
+        this.debugLog('🔧 Providers available:', this.providers?.length);
+        this.debugLog('🔧 Visible providers:', this.visibleProviders?.length);
         
         // Check if date is blocked
         const isDateBlocked = this.isDateBlocked(date, this.blockedPeriods);
-        console.log('🔧 Is date blocked:', isDateBlocked);
+        this.debugLog('🔧 Is date blocked:', isDateBlocked);
         
         if (isDateBlocked) {
             return []; // Return empty - date is blocked
@@ -539,16 +564,16 @@ export class WeekView {
         const luxonWeekday = date.weekday;
         const isWeekend = luxonWeekday === 6 || luxonWeekday === 7;
         
-        console.log('🔧 Day check - luxonWeekday:', luxonWeekday, 'isWeekend:', isWeekend);
+        this.debugLog('🔧 Day check - luxonWeekday:', luxonWeekday, 'isWeekend:', isWeekend);
         
         if (isWeekend) {
-            console.log('🔧 Returning empty - weekend day');
+            this.debugLog('🔧 Returning empty - weekend day');
             return []; // Return empty - weekend
         }
         
         // Use all providers if visibleProviders is empty
         const providersToUse = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
-        console.log('🔧 Providers to use:', providersToUse?.length, providersToUse?.map(p => p.name));
+        this.debugLog('🔧 Providers to use:', providersToUse?.length, providersToUse?.map(p => p.name));
         
         if (!providersToUse || providersToUse.length === 0) {
             console.warn('🔧 No providers to use, returning empty slots');
@@ -565,7 +590,7 @@ export class WeekView {
             providers: providersToUse
         });
         
-        console.log('🔧 Generated', slots.length, 'slots with proper overlap detection');
+        this.debugLog('🔧 Generated', slots.length, 'slots with proper overlap detection');
         return slots;
     }
     
@@ -640,7 +665,7 @@ export class WeekView {
                 const time = el.dataset.slotTime;
                 const date = el.dataset.date;
                 // Could open a quick booking modal here
-                console.log('Selected slot:', time, 'on', date);
+                this.debugLog('Selected slot:', time, 'on', date);
             });
         });
         
@@ -719,7 +744,7 @@ export class WeekView {
         // Update add button link
         const addBtn = this.container.querySelector('#week-view-add-btn');
         if (addBtn) {
-            addBtn.href = `/appointments/create?date=${this.selectedDate.toISODate()}`;
+            addBtn.href = withBaseUrl(`/appointments/create?date=${this.selectedDate.toISODate()}`);
         }
         
         // Update mini calendar selection
@@ -766,7 +791,7 @@ export class WeekView {
                     if (e.target.tagName === 'A') return;
                     const time = el.dataset.slotTime;
                     const date = el.dataset.date;
-                    console.log('Selected slot:', time, 'on', date);
+                    this.debugLog('Selected slot:', time, 'on', date);
                 });
             });
         }

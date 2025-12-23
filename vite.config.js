@@ -11,6 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: true,
     rollupOptions: {
+      preserveEntrySignatures: 'strict',
       input: {
         main: path.resolve(process.cwd(), 'resources/js/app.js'),
         style: path.resolve(process.cwd(), 'resources/scss/app-consolidated.scss'),

@@ -441,11 +441,10 @@ ServerSignature Off
     Header always set X-XSS-Protection "1; mode=block"
 </IfModule>
 
-# Enable error logging for debugging (remove in production)
+# PHP error handling (safe defaults for production)
 <IfModule mod_php.c>
-    php_flag display_errors On
+    php_flag display_errors Off
     php_flag log_errors On
-    php_value error_log ../writable/logs/error.log
 </IfModule>
 
 # Cache static assets
@@ -477,7 +476,7 @@ ServerSignature Off
 </Files>`;
 
 fs.writeFileSync(path.join(packageDir, 'public/.htaccess'), htaccessContent);
-console.log('✅ Created public/.htaccess with debugging enabled');
+console.log('✅ Created public/.htaccess');
 
 // Create root .htaccess for security
 const rootHtaccessContent = `# Deny access to sensitive directories

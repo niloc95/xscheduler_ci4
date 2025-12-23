@@ -218,25 +218,77 @@ class Settings extends BaseController
     }
 
     /**
-     * PUT /api/v1/settings (bulk upsert)
+     * PUT|POST /api/v1/settings (bulk upsert)
      * Body: { "general.company_name":"Acme", ... }
      */
     public function update()
     {
-        $payload = $this->request->getJSON(true) ?? [];
-        if (!is_array($payload)) {
-            return $this->failValidationErrors('Invalid JSON payload');
-        }
-        $userId = session()->get('user_id');
-        $count = 0;
-        foreach ($payload as $key => $value) {
-            // Infer type: JSON if array/object; boolean if true/false; else string
-            $type = is_array($value) ? 'json' : (is_bool($value) ? 'bool' : 'string');
-            if ($this->model->upsert($key, $value, $type, $userId)) {
-                $count++;
+        try {
+            $payload = $this->request->getJSON(true) ?? [];
+            if (!is_array($payload)) {
+                return $this->failValidationErrors('Invalid JSON payload');
             }
+
+            $userId = session()->get('user_id');
+            $count = 0;
+
+            foreach ($payload as $key => $value) {
+                // Infer type: JSON if array/object; boolean if true/false; else string
+                $type = is_array($value) ? 'json' : (is_bool($value) ? 'bool' : 'string');
+                if ($this->model->upsert($key, $value, $type, $userId)) {
+                    $count++;
+                }
+            }
+
+            return $this->response->setJSON(['ok' => true, 'updated' => $count]);
+        } catch (\Throwable $e) {
+            $errorId = null;
+            try {
+                $errorId = bin2hex(random_bytes(8));
+            } catch (\Throwable $ignored) {
+                $errorId = uniqid('settings_', true);
+            }
+
+            log_message('error', 'Settings update failed: {msg}', [
+                'msg' => $e->getMessage(),
+            ]);
+
+            // Fallback for restrictive hosting: always emit something to PHP's error log.
+            // This is especially important when writable/logs is not writeable.
+            try {
+                error_log('[XSCHEDULR][' . $errorId . '] Settings update failed: ' . $e->getMessage());
+            } catch (\Throwable $ignored) {
+                // no-op
+            }
+
+            // Add extra context for production-only failures.
+            try {
+                log_message('error', 'Settings update context: method={method} path={path} user_id={user_id}', [
+                    'method' => (string) $this->request->getMethod(),
+                    'path' => (string) $this->request->getPath(),
+                    'user_id' => (string) (session()->get('user_id') ?? ''),
+                ]);
+
+                try {
+                    error_log('[XSCHEDULR][' . $errorId . '] context method=' . (string) $this->request->getMethod() . ' path=' . (string) $this->request->getPath() . ' user_id=' . (string) (session()->get('user_id') ?? ''));
+                } catch (\Throwable $ignored) {
+                    // no-op
+                }
+            } catch (\Throwable $ignored) {
+                // no-op
+            }
+
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON([
+                    'ok' => false,
+                    'error' => [
+                        'code' => 'settings_update_failed',
+                        'message' => 'Failed to save settings',
+                        'error_id' => $errorId,
+                    ],
+                ]);
         }
-        return $this->response->setJSON(['ok' => true, 'updated' => $count]);
     }
 
     /**

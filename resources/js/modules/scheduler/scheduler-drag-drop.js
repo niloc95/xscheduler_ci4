@@ -6,7 +6,21 @@
  */
 
 import { DateTime } from 'luxon';
-import { checkForConflicts } from '/resources/js/utils/scheduling-utils.js';
+import { checkForConflicts } from '../../utils/scheduling-utils.js';
+
+function getBaseUrl() {
+    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
+    if (!raw) return '';
+    return String(raw).replace(/\/+$/, '');
+}
+
+function withBaseUrl(path) {
+    const base = getBaseUrl();
+    if (!base) return path;
+    if (!path) return base + '/';
+    if (path.startsWith('/')) return base + path;
+    return base + '/' + path;
+}
 
 export class DragDropManager {
     constructor(scheduler) {
@@ -256,7 +270,7 @@ export class DragDropManager {
             // Show loading indicator
             this.showLoading();
 
-            const response = await fetch(`/api/appointments/${appointmentId}`, {
+            const response = await fetch(withBaseUrl(`/api/appointments/${appointmentId}`), {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

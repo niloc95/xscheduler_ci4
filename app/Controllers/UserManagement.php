@@ -138,7 +138,7 @@ class UserManagement extends BaseController
         // Validation rules
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
-            'email' => 'required|valid_email|is_unique[users.email]',
+            'email' => 'required|valid_email|is_unique[xs_users.email]',
             'role' => 'required|in_list[admin,provider,staff]',
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
@@ -205,12 +205,13 @@ class UserManagement extends BaseController
             // Auto-assignment only when provider creates staff (NOT when admin creates staff)
             if ($currentUser['role'] === 'provider' && $role === 'staff') {
                 log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
-                $this->providerStaffModel->insert([
-                    'provider_id' => $currentUserId,
-                    'staff_id' => $userId,
-                    'assigned_by' => $currentUserId,
-                    'assigned_at' => date('Y-m-d H:i:s')
-                ]);
+                $assigned = $this->providerStaffModel->assignStaff((int) $currentUserId, (int) $userId, (int) $currentUserId, 'active');
+
+                if (!$assigned) {
+                    log_message('error', '[UserManagement::store] Staff created but failed to auto-assign to provider. provider_id=' . $currentUserId . ' staff_id=' . $userId . ' errors=' . json_encode($this->providerStaffModel->errors()));
+                    return redirect()->to('/user-management/edit/' . $userId)
+                        ->with('error', 'User created, but assignment to provider failed. Please contact support or try assigning again.');
+                }
                 
                 // Audit log for auto-assignment
                 $this->auditModel->log(
@@ -361,7 +362,7 @@ class UserManagement extends BaseController
         // Validation rules
         $rules = [
             'name' => 'required|min_length[2]|max_length[255]',
-            'email' => "required|valid_email|is_unique[users.email,id,{$userId}]",
+            'email' => "required|valid_email|is_unique[xs_users.email,id,{$userId}]",
             'phone' => 'permit_empty|max_length[20]',
         ];
 

@@ -245,6 +245,13 @@ function initStatusFilterControls() {
 
 let statsRefreshAbortController = null;
 
+function getBaseUrl() {
+    if (typeof window === 'undefined') {
+        return '';
+    }
+    return (window.__BASE_URL__ || '').replace(/\/+$/, '');
+}
+
 function getActiveStatusFilter() {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
         return '';
@@ -286,7 +293,7 @@ async function refreshAppointmentStats() {
 
     try {
         const activeStatus = getActiveStatusFilter();
-        const url = new URL('/api/dashboard/appointment-stats', window.location.origin);
+        const url = new URL(`${getBaseUrl()}/api/dashboard/appointment-stats`);
         if (activeStatus) {
             url.searchParams.set('status', activeStatus);
         }
@@ -411,7 +418,7 @@ async function initScheduler() {
             initialView: 'month',
             initialDate: initialDate,
             timezone: window.appTimezone || 'America/New_York',
-            apiBaseUrl: '/api/appointments',
+            apiBaseUrl: `${getBaseUrl()}/api/appointments`,
             statusFilter: activeStatusFilter || null,
             onAppointmentClick: handleAppointmentClick
         });
@@ -597,7 +604,7 @@ function setupAdvancedFilterPanel(scheduler) {
             serviceSelect.disabled = true;
             
             try {
-                const response = await fetch(`/api/v1/providers/${providerId}/services`);
+                const response = await fetch(`${getBaseUrl()}/api/v1/providers/${providerId}/services`);
                 if (!response.ok) throw new Error('Failed to load services');
                 
                 const result = await response.json();

@@ -18,7 +18,8 @@ export class TimeFormatHandler {
         if (this.initialized) return;
         
         try {
-            const response = await fetch('/api/v1/settings');
+            const baseUrl = (window.__BASE_URL__ || '').replace(/\/+$/, '');
+            const response = await fetch(`${baseUrl}/api/v1/settings`);
             if (!response.ok) throw new Error('Failed to fetch settings');
             
             const settings = await response.json();
@@ -224,3 +225,8 @@ if (document.readyState === 'loading') {
 }
 
 export default timeFormatHandler;
+
+// Re-apply formatting after SPA navigation.
+document.addEventListener('spa:navigated', () => {
+    timeFormatHandler.addFormattedDisplays();
+});

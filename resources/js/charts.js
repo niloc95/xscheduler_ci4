@@ -20,7 +20,7 @@ const DEBOUNCE_DELAY = 300;
 let currentPeriod = 'month';
 
 // Get base URL for API calls
-const getBaseUrl = () => window.__BASE_URL__ || '';
+const getBaseUrl = () => (window.__BASE_URL__ || '').replace(/\/+$/, '');
 
 // Dark mode detection
 const isDarkMode = () => document.documentElement.classList.contains('dark');

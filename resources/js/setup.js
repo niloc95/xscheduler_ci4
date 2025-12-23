@@ -306,7 +306,8 @@ class SetupWizard {
             const contentType = response.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) {
                 // Likely HTML due to redirect; navigate to the final URL or login
-                window.location.href = response.url || '/auth/login';
+                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
+                window.location.href = response.url || `${baseUrl}/auth/login`;
                 return;
             }
 
@@ -317,7 +318,8 @@ class SetupWizard {
                 await this.delay(500);
                 this.updateProgress(100, 'Setup complete! Redirecting...');
                 await this.delay(600);
-                window.location.href = result.redirect || '/auth/login';
+                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
+                window.location.href = result.redirect || `${baseUrl}/auth/login`;
             } else {
                 this.hideLoadingOverlay();
                 this.showFormErrors(result.errors || { general: [result.message] });
@@ -326,7 +328,8 @@ class SetupWizard {
             this.hideLoadingOverlay();
             // If the request ended up as a non-JSON redirect, just go to login
             if (error?.name === 'SyntaxError') {
-                window.location.href = '/auth/login';
+                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
+                window.location.href = `${baseUrl}/auth/login`;
                 return;
             }
             this.showFormErrors({ general: ['Setup failed. Please try again.'] });
