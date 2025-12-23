@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\SettingModel;
+use App\Services\NotificationPhase1;
 
 class Settings extends BaseController
 {
@@ -79,8 +80,13 @@ class Settings extends BaseController
             'integrations.api_integrations',
             'integrations.ldap_enabled',
             'integrations.ldap_host',
-            'integrations.ldap_dn'
+            'integrations.ldap_dn',
+            'notifications.default_language'
         ]);
+
+        $notificationPhase1 = new NotificationPhase1();
+        $notificationRules = $notificationPhase1->getRules(NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $integrationStatus = $notificationPhase1->getIntegrationStatus(NotificationPhase1::BUSINESS_ID_DEFAULT);
         
         $data = [
             'user' => session()->get('user') ?? [
@@ -89,9 +95,88 @@ class Settings extends BaseController
                 'email' => 'admin@webschedulr.com',
             ],
             'settings' => $settings, // Pass settings to view
+            'notificationRules' => $notificationRules,
+            'notificationIntegrationStatus' => $integrationStatus,
+            'notificationEvents' => NotificationPhase1::EVENTS,
         ];
 
         return view('settings', $data);
+    }
+
+    public function saveNotifications()
+    {
+        if (strtoupper($this->request->getMethod()) !== 'POST') {
+            return redirect()->to(base_url('settings'));
+        }
+
+        $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+        $userId = session()->get('user_id');
+
+        $rulesInput = $this->request->getPost('rules') ?? [];
+        $reminderOffsetMinutes = $this->request->getPost('reminder_offset_minutes');
+        $reminderOffsetMinutes = is_numeric($reminderOffsetMinutes) ? (int) $reminderOffsetMinutes : null;
+        if ($reminderOffsetMinutes !== null) {
+            $reminderOffsetMinutes = max(0, min(43200, $reminderOffsetMinutes)); // cap at 30 days
+        }
+
+        $defaultLang = (string) ($this->request->getPost('notification_default_language') ?? '');
+        $defaultLang = trim($defaultLang);
+        if ($defaultLang === '') {
+            $defaultLang = (string) ($this->request->getPost('language') ?? 'English');
+        }
+
+        $settingModel = new SettingModel();
+        $settingModel->upsert('notifications.default_language', $defaultLang, 'string', $userId);
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        $ruleModel = new \App\Models\BusinessNotificationRuleModel();
+
+        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+            foreach (NotificationPhase1::CHANNELS as $channel) {
+                // Phase 1: WhatsApp is visible but not operationally enabled.
+                $enabled = 0;
+                if ($channel !== 'whatsapp') {
+                    $enabled = isset($rulesInput[$eventType][$channel]) ? 1 : 0;
+                }
+
+                $offset = null;
+                if ($eventType === 'appointment_reminder') {
+                    $offset = $reminderOffsetMinutes;
+                }
+
+                $existing = $ruleModel
+                    ->where('business_id', $businessId)
+                    ->where('event_type', $eventType)
+                    ->where('channel', $channel)
+                    ->first();
+
+                $payload = [
+                    'business_id' => $businessId,
+                    'event_type' => $eventType,
+                    'channel' => $channel,
+                    'is_enabled' => $enabled,
+                    'reminder_offset_minutes' => $offset,
+                ];
+
+                if (!empty($existing['id'])) {
+                    $ruleModel->update((int) $existing['id'], $payload);
+                } else {
+                    $ruleModel->insert($payload);
+                }
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return redirect()->to(base_url('settings'))
+                ->with('error', 'Failed to save notification rules. Please try again.');
+        }
+
+        return redirect()->to(base_url('settings'))
+            ->with('success', 'Notification rules saved. (Phase 1: sending is not yet enabled)');
     }
 
     public function save()

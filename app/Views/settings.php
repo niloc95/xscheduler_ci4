@@ -30,6 +30,7 @@
                 <button class="tab-btn" data-tab="business">Business hours</button>
                 <button class="tab-btn" data-tab="legal">Legal Contents</button>
                 <button class="tab-btn" data-tab="integrations">Integrations</button>
+                <button class="tab-btn" data-tab="notifications">Notifications</button>
                 <button class="tab-btn" data-tab="database">Database</button>
             </nav>
         </div>
@@ -546,6 +547,136 @@
                     </button>
                 </div>
             </section>
+            </form>
+
+            <!-- Notifications Settings Form (Phase 1: Rules only, no sending) -->
+            <form id="notifications-settings-form" method="POST" action="<?= base_url('settings/notifications') ?>" class="mt-4 space-y-6" data-tab-form="notifications">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form_source" value="notification_rules_phase1">
+                <section id="panel-notifications" class="tab-panel hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 dark:text-gray-100">Notifications (Phase 1)</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure which events should trigger notifications. Sending will be enabled in later phases.</p>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">Rules only</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-field">
+                            <label class="form-label">Default Notification Language</label>
+                            <?php $notifLang = $settings['notifications.default_language'] ?? ($settings['localization.language'] ?? 'English'); ?>
+                            <select name="notification_default_language" class="form-input">
+                                <option value="English" <?= $notifLang === 'English' ? 'selected' : '' ?>>English</option>
+                                <option value="Portuguese-BR" <?= $notifLang === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
+                                <option value="Spanish" <?= $notifLang === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
+                            </select>
+                            <p class="form-help">Used as the default language when templates are introduced.</p>
+                        </div>
+
+                        <div class="form-field">
+                            <label class="form-label">Reminder Offset (minutes)</label>
+                            <?php
+                                $defaultOffset = null;
+                                if (!empty($notificationRules['appointment_reminder']['email']['reminder_offset_minutes'])) {
+                                    $defaultOffset = (int) $notificationRules['appointment_reminder']['email']['reminder_offset_minutes'];
+                                } elseif (!empty($notificationRules['appointment_reminder']['sms']['reminder_offset_minutes'])) {
+                                    $defaultOffset = (int) $notificationRules['appointment_reminder']['sms']['reminder_offset_minutes'];
+                                }
+                            ?>
+                            <input type="number" min="0" max="43200" name="reminder_offset_minutes" class="form-input" value="<?= esc($defaultOffset ?? 60) ?>" />
+                            <p class="form-help">Applies to “Appointment Reminder” across channels (Phase 1).</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Event → Channel Matrix</h4>
+                        <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Event</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Email</th>
+                                        <th class="px-4 py-3 text-center font-semibold">SMS</th>
+                                        <th class="px-4 py-3 text-center font-semibold">WhatsApp</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <?php
+                                        $events = $notificationEvents ?? [
+                                            'appointment_confirmed' => 'Appointment Confirmed',
+                                            'appointment_reminder'  => 'Appointment Reminder',
+                                            'appointment_cancelled' => 'Appointment Cancelled',
+                                        ];
+                                        $integrationStatus = $notificationIntegrationStatus ?? [];
+
+                                        $labelFor = function(string $eventType, string $channel): string {
+                                            return 'rule_' . preg_replace('/[^a-z0-9_]+/i', '_', $eventType . '_' . $channel);
+                                        };
+
+                                        $preview = function(string $eventType, string $channel) {
+                                            try {
+                                                $svc = new \App\Services\NotificationPhase1();
+                                                return $svc->buildPreview($eventType, $channel);
+                                            } catch (\Throwable $e) {
+                                                return '';
+                                            }
+                                        };
+                                    ?>
+
+                                    <?php foreach ($events as $eventType => $eventLabel): ?>
+                                        <?php
+                                            $emailEnabled = (int) ($notificationRules[$eventType]['email']['is_enabled'] ?? 0) === 1;
+                                            $smsEnabled = (int) ($notificationRules[$eventType]['sms']['is_enabled'] ?? 0) === 1;
+                                            $waEnabled = false;
+
+                                            $emailConfigured = (bool) ($integrationStatus['email']['configured'] ?? false);
+                                            $smsConfigured = (bool) ($integrationStatus['sms']['configured'] ?? false);
+                                        ?>
+                                        <tr class="bg-white dark:bg-gray-800">
+                                            <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
+                                                <div class="font-medium"><?= esc($eventLabel) ?></div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    <div><span class="font-semibold">Email preview:</span> <?= esc($preview($eventType, 'email')) ?></div>
+                                                    <div class="mt-1"><span class="font-semibold">SMS preview:</span> <?= esc($preview($eventType, 'sms')) ?></div>
+                                                    <div class="mt-1"><span class="font-semibold">WhatsApp preview:</span> <?= esc($preview($eventType, 'whatsapp')) ?></div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                <label class="inline-flex items-center justify-center">
+                                                    <input id="<?= esc($labelFor($eventType, 'email')) ?>" type="checkbox" name="rules[<?= esc($eventType) ?>][email]" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= $emailEnabled ? 'checked' : '' ?> />
+                                                </label>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    <?= $emailConfigured ? 'Configured' : 'Not configured' ?>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                <label class="inline-flex items-center justify-center">
+                                                    <input id="<?= esc($labelFor($eventType, 'sms')) ?>" type="checkbox" name="rules[<?= esc($eventType) ?>][sms]" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= $smsEnabled ? 'checked' : '' ?> />
+                                                </label>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    <?= $smsConfigured ? 'Configured' : 'Not configured' ?>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                <label class="inline-flex items-center justify-center">
+                                                    <input id="<?= esc($labelFor($eventType, 'whatsapp')) ?>" type="checkbox" name="rules[<?= esc($eventType) ?>][whatsapp]" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= $waEnabled ? 'checked' : '' ?> disabled />
+                                                </label>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Coming soon</div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <button id="save-notifications-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                            Save Notification Rules
+                        </button>
+                    </div>
+                </section>
             </form>
 
             <!-- Database Settings Panel -->
