@@ -3,6 +3,10 @@
 namespace App\Controllers;
 
 use App\Models\SettingModel;
+use App\Models\NotificationDeliveryLogModel;
+use App\Services\NotificationEmailService;
+use App\Services\NotificationSmsService;
+use App\Services\NotificationWhatsAppService;
 use App\Services\NotificationPhase1;
 
 class Settings extends BaseController
@@ -87,6 +91,25 @@ class Settings extends BaseController
         $notificationPhase1 = new NotificationPhase1();
         $notificationRules = $notificationPhase1->getRules(NotificationPhase1::BUSINESS_ID_DEFAULT);
         $integrationStatus = $notificationPhase1->getIntegrationStatus(NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $emailIntegration = (new NotificationEmailService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $smsIntegration = (new NotificationSmsService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $waIntegration = (new NotificationWhatsAppService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+
+        $waSvc = new NotificationWhatsAppService();
+        $waTemplates = [];
+        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+            $waTemplates[$eventType] = $waSvc->getActiveTemplate(NotificationPhase1::BUSINESS_ID_DEFAULT, $eventType) ?? [
+                'template_name' => '',
+                'locale' => 'en_US',
+            ];
+        }
+
+        $deliveryLogModel = new NotificationDeliveryLogModel();
+        $deliveryLogs = $deliveryLogModel
+            ->where('business_id', NotificationPhase1::BUSINESS_ID_DEFAULT)
+            ->orderBy('created_at', 'DESC')
+            ->limit(50)
+            ->findAll();
         
         $data = [
             'user' => session()->get('user') ?? [
@@ -97,7 +120,12 @@ class Settings extends BaseController
             'settings' => $settings, // Pass settings to view
             'notificationRules' => $notificationRules,
             'notificationIntegrationStatus' => $integrationStatus,
+            'notificationEmailIntegration' => $emailIntegration,
+            'notificationSmsIntegration' => $smsIntegration,
+            'notificationWhatsAppIntegration' => $waIntegration,
+            'notificationWhatsAppTemplates' => $waTemplates,
             'notificationEvents' => NotificationPhase1::EVENTS,
+            'notificationDeliveryLogs' => $deliveryLogs,
         ];
 
         return view('settings', $data);
@@ -111,6 +139,9 @@ class Settings extends BaseController
 
         $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
         $userId = session()->get('user_id');
+
+        $intent = (string) ($this->request->getPost('intent') ?? 'save');
+        $intent = trim($intent) === '' ? 'save' : trim($intent);
 
         $rulesInput = $this->request->getPost('rules') ?? [];
         $reminderOffsetMinutes = $this->request->getPost('reminder_offset_minutes');
@@ -128,6 +159,99 @@ class Settings extends BaseController
         $settingModel = new SettingModel();
         $settingModel->upsert('notifications.default_language', $defaultLang, 'string', $userId);
 
+        // Phase 2: Email (SMTP) integration
+        $emailInput = [
+            'provider_name' => $this->request->getPost('email_provider_name'),
+            'is_active' => $this->request->getPost('email_is_active') ? true : false,
+            'host' => $this->request->getPost('smtp_host'),
+            'port' => $this->request->getPost('smtp_port'),
+            'crypto' => $this->request->getPost('smtp_crypto'),
+            'username' => $this->request->getPost('smtp_user'),
+            'password' => $this->request->getPost('smtp_pass'),
+            'from_email' => $this->request->getPost('smtp_from_email'),
+            'from_name' => $this->request->getPost('smtp_from_name'),
+        ];
+
+        $emailSvc = new NotificationEmailService();
+        $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
+        if (!($emailSave['ok'] ?? false)) {
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+        }
+
+        // Phase 3: SMS integration
+        $smsInput = [
+            'provider' => $this->request->getPost('sms_provider'),
+            'is_active' => $this->request->getPost('sms_is_active') ? true : false,
+            'clickatell_api_key' => $this->request->getPost('clickatell_api_key'),
+            'clickatell_from' => $this->request->getPost('clickatell_from'),
+            'twilio_account_sid' => $this->request->getPost('twilio_account_sid'),
+            'twilio_auth_token' => $this->request->getPost('twilio_auth_token'),
+            'twilio_from_number' => $this->request->getPost('twilio_from_number'),
+        ];
+        $smsSvc = new NotificationSmsService();
+        $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
+        if (!($smsSave['ok'] ?? false)) {
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+        }
+
+        // Phase 4: WhatsApp (Meta Cloud API) integration + templates
+        $waInput = [
+            'is_active' => $this->request->getPost('whatsapp_is_active') ? true : false,
+            'phone_number_id' => $this->request->getPost('whatsapp_phone_number_id'),
+            'waba_id' => $this->request->getPost('whatsapp_waba_id'),
+            'access_token' => $this->request->getPost('whatsapp_access_token'),
+        ];
+        $waSvc = new NotificationWhatsAppService();
+        $waSave = $waSvc->saveIntegration($businessId, $waInput);
+        if (!($waSave['ok'] ?? false)) {
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+        }
+
+        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+            $tplName = $this->request->getPost('whatsapp_template_' . $eventType);
+            $tplLocale = $this->request->getPost('whatsapp_locale_' . $eventType);
+            $waSvc->saveTemplate($businessId, $eventType, is_string($tplName) ? $tplName : null, is_string($tplLocale) ? $tplLocale : null);
+        }
+
+        if ($intent === 'test_email') {
+            $toEmail = (string) ($this->request->getPost('test_email_to') ?? '');
+            $result = $emailSvc->sendTestEmail($businessId, $toEmail);
+            if ($result['ok'] ?? false) {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'Test email sent successfully.');
+            }
+
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($result['error'] ?? 'Test email failed.'));
+        }
+
+        if ($intent === 'test_sms') {
+            $toPhone = (string) ($this->request->getPost('test_sms_to') ?? '');
+            $result = $smsSvc->sendTestSms($businessId, $toPhone);
+            if ($result['ok'] ?? false) {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'Test SMS sent successfully.');
+            }
+
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($result['error'] ?? 'Test SMS failed.'));
+        }
+
+        if ($intent === 'test_whatsapp') {
+            $toPhone = (string) ($this->request->getPost('test_whatsapp_to') ?? '');
+            $result = $waSvc->sendTestMessage($businessId, $toPhone);
+            if ($result['ok'] ?? false) {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'Test WhatsApp message sent successfully.');
+            }
+
+            return redirect()->to(base_url('settings'))
+                ->with('error', (string) ($result['error'] ?? 'Test WhatsApp message failed.'));
+        }
+
         $db = \Config\Database::connect();
         $db->transStart();
 
@@ -135,11 +259,7 @@ class Settings extends BaseController
 
         foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
             foreach (NotificationPhase1::CHANNELS as $channel) {
-                // Phase 1: WhatsApp is visible but not operationally enabled.
-                $enabled = 0;
-                if ($channel !== 'whatsapp') {
-                    $enabled = isset($rulesInput[$eventType][$channel]) ? 1 : 0;
-                }
+                $enabled = isset($rulesInput[$eventType][$channel]) ? 1 : 0;
 
                 $offset = null;
                 if ($eventType === 'appointment_reminder') {
@@ -176,7 +296,7 @@ class Settings extends BaseController
         }
 
         return redirect()->to(base_url('settings'))
-            ->with('success', 'Notification rules saved. (Phase 1: sending is not yet enabled)');
+            ->with('success', 'Notification settings saved.');
     }
 
     public function save()

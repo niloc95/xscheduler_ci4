@@ -540,6 +540,22 @@ class Appointments extends BaseController
                     ]
                 ]);
             }
+
+            // Phase 5: enqueue notifications on status changes (dispatch via cron)
+            try {
+                $queue = new \App\Services\NotificationQueueService();
+                $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+                if ($newStatus === 'confirmed') {
+                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $id);
+                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $id);
+                }
+                if ($newStatus === 'cancelled') {
+                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_cancelled', (int) $id);
+                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_cancelled', (int) $id);
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
+            }
             
             return $response->setJSON([
                 'data' => [
@@ -611,6 +627,18 @@ class Appointments extends BaseController
             
             try {
                 $res = $svc->createAppointment($payload);
+
+                // Phase 5: enqueue confirmation notifications
+                try {
+                    if (!empty($res['appointmentId'])) {
+                        $queue = new \App\Services\NotificationQueueService();
+                        $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+                        $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $res['appointmentId']);
+                        $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $res['appointmentId']);
+                    }
+                } catch (\Throwable $e) {
+                    log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) ($res['appointmentId'] ?? 0), 'msg' => $e->getMessage()]);
+                }
                 
                 return $response->setStatusCode(201)->setJSON([
                     'data' => $res,
@@ -741,6 +769,16 @@ class Appointments extends BaseController
                 return $response->setStatusCode(500)->setJSON([
                     'error' => ['message' => 'Delete failed']
                 ]);
+            }
+
+            // Phase 5: enqueue cancellation notifications
+            try {
+                $queue = new \App\Services\NotificationQueueService();
+                $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+                $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_cancelled', (int) $id);
+                $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_cancelled', (int) $id);
+            } catch (\Throwable $e) {
+                log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
             }
             
             return $response->setJSON([

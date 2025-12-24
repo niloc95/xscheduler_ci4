@@ -95,6 +95,16 @@ class SchedulingService
         ]);
 
         log_message('info', '[SchedulingService::createAppointment] Created appointment #' . $id . ' for provider ' . $providerId . ' at ' . $startTimeLocal);
+
+        // Phase 5: enqueue notifications (dispatch handled by cron via notifications:dispatch-queue)
+        try {
+            $queue = new NotificationQueueService();
+            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+            $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $id);
+            $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $id);
+        } catch (\Throwable $e) {
+            log_message('error', '[SchedulingService::createAppointment] Notification enqueue failed: {msg}', ['msg' => $e->getMessage()]);
+        }
         
         return ['appointmentId' => $id];
     }

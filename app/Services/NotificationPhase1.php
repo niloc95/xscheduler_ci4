@@ -62,6 +62,7 @@ class NotificationPhase1
                 'is_active' => false,
                 'provider_name' => null,
                 'health_status' => 'unknown',
+                'last_tested_at' => null,
             ];
         }
 
@@ -71,10 +72,11 @@ class NotificationPhase1
                 continue;
             }
             $status[$channel] = [
-                'configured' => !empty($row['encrypted_config']) || !empty($row['provider_name']),
+                'configured' => !empty($row['encrypted_config']),
                 'is_active' => (bool) ($row['is_active'] ?? false),
                 'provider_name' => $row['provider_name'] ?? null,
                 'health_status' => $row['health_status'] ?? 'unknown',
+                'last_tested_at' => $row['last_tested_at'] ?? null,
             ];
         }
 
