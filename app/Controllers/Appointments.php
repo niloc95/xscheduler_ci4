@@ -404,6 +404,16 @@ class Appointments extends BaseController
         
         log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
 
+        // Phase 5: enqueue notifications (dispatch handled by cron via notifications:dispatch-queue)
+        try {
+            (new \App\Services\NotificationQueueService())
+                ->enqueueAppointmentEvent(\App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT, 'email', 'appointment_confirmed', (int) $appointmentId);
+            (new \App\Services\NotificationQueueService())
+                ->enqueueAppointmentEvent(\App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT, 'whatsapp', 'appointment_confirmed', (int) $appointmentId);
+        } catch (\Throwable $e) {
+            log_message('error', '[Appointments::store] Notification enqueue failed: {msg}', ['msg' => $e->getMessage()]);
+        }
+
         // Success - redirect to appointments list or view
         return redirect()->to('/appointments')
             ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
@@ -684,6 +694,18 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::update] Appointment data to save: ' . json_encode($appointmentData));
 
         $updated = $this->appointmentModel->update($appointmentId, $appointmentData);
+
+        // If the appointment time changed, reset reminder_sent so reminders can re-send.
+        try {
+            (new \App\Services\AppointmentNotificationService())
+                ->resetReminderSentIfTimeChanged(
+                    (int) $appointmentId,
+                    (string) ($existingAppointment['start_time'] ?? ''),
+                    (string) ($startTimeUtc ?? '')
+                );
+        } catch (\Throwable $e) {
+            log_message('error', '[Appointments::update] Failed resetting reminder flag: {msg}', ['msg' => $e->getMessage()]);
+        }
 
         if (!$updated) {
             return redirect()->back()

@@ -30,6 +30,7 @@ class AppointmentModel extends BaseModel
         'start_time',
         'end_time',
         'status',
+        'reminder_sent',
         'notes',
         'hash',
         'public_token',

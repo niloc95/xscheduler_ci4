@@ -53,6 +53,9 @@ writable/uploads/*
 
 writable/debugbar/*
 
+writable/exports/*
+!writable/exports/index.html
+
 php_errors.log
 
 #-------------------------

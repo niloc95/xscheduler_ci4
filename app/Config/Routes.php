@@ -272,6 +272,7 @@ $routes->group('api/database-backup', ['filter' => 'setup'], function($routes) {
 $routes->group('', ['filter' => 'setup'], function($routes) {
     $routes->get('settings', 'Settings::index', ['filter' => 'role:admin']);
     $routes->post('settings', 'Settings::save', ['filter' => 'role:admin']);
+    $routes->post('settings/notifications', 'Settings::saveNotifications', ['filter' => 'role:admin']);
 });
 
 // Public assets (serve files from public/assets)
