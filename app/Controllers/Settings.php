@@ -184,6 +184,7 @@ class Settings extends BaseController
         $intent = trim($intent) === '' ? 'save' : trim($intent);
 
         $rulesInput = $this->request->getPost('rules') ?? [];
+        
         $reminderOffsetMinutes = $this->request->getPost('reminder_offset_minutes');
         $reminderOffsetMinutes = is_numeric($reminderOffsetMinutes) ? (int) $reminderOffsetMinutes : null;
         if ($reminderOffsetMinutes !== null) {
@@ -204,6 +205,10 @@ class Settings extends BaseController
         $saveSms = in_array($intent, ['save', 'save_sms', 'test_sms'], true);
         $saveWhatsApp = in_array($intent, ['save', 'save_whatsapp', 'test_whatsapp'], true);
         $saveRules = ($intent === 'save');
+        
+        // For the main "Save" button, we don't want to fail the entire save 
+        // if integrations have incomplete data. Only block on specific intents.
+        $strictIntegrationErrors = ($intent !== 'save');
 
         // Phase 2: Email (SMTP) integration
         $emailSvc = new NotificationEmailService();
@@ -222,8 +227,12 @@ class Settings extends BaseController
 
             $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
             if (!($emailSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings') . '#notifications')
-                    ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+                }
+                // For main "Save", just log the issue but continue
+                log_message('debug', 'Email integration save skipped: ' . ($emailSave['error'] ?? 'unknown'));
             }
 
             if ($intent === 'save_email') {
@@ -246,8 +255,11 @@ class Settings extends BaseController
             ];
             $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
             if (!($smsSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings') . '#notifications')
-                    ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+                }
+                log_message('debug', 'SMS integration save skipped: ' . ($smsSave['error'] ?? 'unknown'));
             }
 
             if ($intent === 'save_sms') {
@@ -271,8 +283,11 @@ class Settings extends BaseController
             ];
             $waSave = $waSvc->saveIntegration($businessId, $waInput);
             if (!($waSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings') . '#notifications')
-                    ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+                }
+                log_message('debug', 'WhatsApp integration save skipped: ' . ($waSave['error'] ?? 'unknown'));
             }
 
             // Only save templates for Meta Cloud provider

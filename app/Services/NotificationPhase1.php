@@ -12,9 +12,10 @@ class NotificationPhase1
     public const CHANNELS = ['email', 'sms', 'whatsapp'];
 
     public const EVENTS = [
-        'appointment_confirmed' => 'Appointment Confirmed',
-        'appointment_reminder'  => 'Appointment Reminder',
-        'appointment_cancelled' => 'Appointment Cancelled',
+        'appointment_confirmed'  => 'Appointment Confirmed',
+        'appointment_reminder'   => 'Appointment Reminder',
+        'appointment_cancelled'  => 'Appointment Cancelled',
+        'appointment_rescheduled' => 'Appointment Rescheduled',
     ];
 
     public function getRules(int $businessId = self::BUSINESS_ID_DEFAULT): array
