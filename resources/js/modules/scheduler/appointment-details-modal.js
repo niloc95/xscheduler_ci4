@@ -151,14 +151,13 @@ export class AppointmentDetailsModal {
                                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
                                 <div class="flex items-center gap-2">
                                     <div class="relative">
-                                        <select id="detail-status-select" class="appearance-none text-xs font-medium rounded-full pl-3 pr-8 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                        <select id="detail-status-select" class="text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer bg-none" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 height=%2218%22 viewBox=%220 -960 960 960%22 width=%2218%22 fill=%22%236b7280%22%3E%3Cpath d=%22M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
                                             <option value="pending">Pending</option>
                                             <option value="confirmed">Confirmed</option>
                                             <option value="completed">Completed</option>
                                             <option value="cancelled">Cancelled</option>
                                             <option value="no-show">No Show</option>
                                         </select>
-                                        <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-sm pointer-events-none">expand_more</span>
                                     </div>
                                     <button type="button" id="btn-save-status" class="hidden px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
                                         Save
@@ -444,7 +443,7 @@ export class AppointmentDetailsModal {
         };
         
         const colorClass = statusColors[status] || statusColors.pending;
-        selectElement.className = `appearance-none text-xs font-medium rounded-full pl-3 pr-8 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
+        selectElement.className = `text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
     }
     
     /**
