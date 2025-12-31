@@ -724,6 +724,18 @@ class Appointments extends BaseController
                     'error' => ['message' => 'Update failed']
                 ]);
             }
+
+            // Enqueue rescheduled notification if time was changed
+            if (!empty($update['start_time']) || !empty($update['end_time'])) {
+                try {
+                    $queue = new \App\Services\NotificationQueueService();
+                    $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_rescheduled', (int) $id);
+                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_rescheduled', (int) $id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Notification enqueue failed for rescheduled appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
+                }
+            }
             
             return $response->setJSON([
                 'data' => ['ok' => true],
