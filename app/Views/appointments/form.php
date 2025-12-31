@@ -239,7 +239,7 @@ $pageSubtitle = $isEditMode
                         <div id="customer_search_spinner" class="hidden text-center py-2">
                             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                         </div>
-                        <div id="selected_customer_display" class="hidden flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div id="selected_customer_display" class="hidden items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <div class="flex items-center gap-3">
                                 <div id="selected_customer_avatar" class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold text-sm">U</div>
                                 <div>
