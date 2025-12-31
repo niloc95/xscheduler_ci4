@@ -79,6 +79,10 @@ class Settings extends BaseController
             'legal.cookie_notice',
             'legal.terms',
             'legal.privacy',
+            'legal.cancellation_policy',
+            'legal.rescheduling_policy',
+            'legal.terms_url',
+            'legal.privacy_url',
             'integrations.webhook_url',
             'integrations.analytics',
             'integrations.api_integrations',
@@ -111,6 +115,9 @@ class Settings extends BaseController
             ->limit(50)
             ->findAll();
         
+        // Load message templates from settings
+        $messageTemplates = $this->loadMessageTemplates();
+        
         $data = [
             'user' => session()->get('user') ?? [
                 'name' => 'System Administrator',
@@ -126,9 +133,42 @@ class Settings extends BaseController
             'notificationWhatsAppTemplates' => $waTemplates,
             'notificationEvents' => NotificationPhase1::EVENTS,
             'notificationDeliveryLogs' => $deliveryLogs,
+            'notificationMessageTemplates' => $messageTemplates,
         ];
 
         return view('settings', $data);
+    }
+
+    /**
+     * Load message templates from settings
+     *
+     * @return array Templates indexed by event_type and channel
+     */
+    private function loadMessageTemplates(): array
+    {
+        $settingModel = new SettingModel();
+        $templateSettings = $settingModel->getByPrefix('notification_template.');
+        
+        $templates = [];
+        foreach ($templateSettings as $key => $value) {
+            // Key format: notification_template.{event_type}.{channel}
+            $parts = explode('.', $key);
+            if (count($parts) === 3) {
+                $eventType = $parts[1];
+                $channel = $parts[2];
+                
+                if (is_string($value)) {
+                    $decoded = json_decode($value, true);
+                    if (is_array($decoded)) {
+                        $templates[$eventType][$channel] = $decoded;
+                    }
+                } elseif (is_array($value)) {
+                    $templates[$eventType][$channel] = $value;
+                }
+            }
+        }
+        
+        return $templates;
     }
 
     public function saveNotifications()
@@ -338,8 +378,57 @@ class Settings extends BaseController
             }
         }
 
+        // Handle message templates saving
+        $saveTemplates = in_array($intent, ['save', 'save_templates'], true);
+        if ($saveTemplates) {
+            $templatesInput = $this->request->getPost('templates') ?? [];
+            if (!empty($templatesInput) && is_array($templatesInput)) {
+                $this->saveMessageTemplates($businessId, $templatesInput);
+            }
+            
+            if ($intent === 'save_templates') {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'Message templates saved successfully.');
+            }
+        }
+
         return redirect()->to(base_url('settings'))
             ->with('success', 'Notification settings saved.');
+    }
+
+    /**
+     * Save message templates to the database
+     *
+     * @param int $businessId
+     * @param array $templates Array of templates indexed by event_type and channel
+     */
+    private function saveMessageTemplates(int $businessId, array $templates): void
+    {
+        $settingModel = new SettingModel();
+        $userId = session()->get('user_id');
+
+        foreach ($templates as $eventType => $channels) {
+            if (!is_array($channels)) {
+                continue;
+            }
+            foreach ($channels as $channel => $template) {
+                if (!is_array($template)) {
+                    continue;
+                }
+
+                $subject = isset($template['subject']) ? trim((string) $template['subject']) : null;
+                $body = isset($template['body']) ? trim((string) $template['body']) : '';
+
+                // Store as JSON in settings
+                $key = "notification_template.{$eventType}.{$channel}";
+                $value = json_encode([
+                    'subject' => $subject,
+                    'body' => $body,
+                ], JSON_UNESCAPED_UNICODE);
+
+                $settingModel->upsert($key, $value, 'json', $userId);
+            }
+        }
     }
 
     public function save()
@@ -430,6 +519,10 @@ class Settings extends BaseController
             'legal.cookie_notice' => 'cookie_notice',
             'legal.terms'         => 'terms',
             'legal.privacy'       => 'privacy',
+            'legal.cancellation_policy' => 'cancellation_policy',
+            'legal.rescheduling_policy' => 'rescheduling_policy',
+            'legal.terms_url'     => 'terms_url',
+            'legal.privacy_url'   => 'privacy_url',
             'integrations.webhook_url'  => 'webhook_url',
             'integrations.analytics'    => 'analytics',
             'integrations.api_integrations' => 'api_integrations',

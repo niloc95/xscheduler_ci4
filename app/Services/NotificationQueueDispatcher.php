@@ -257,39 +257,28 @@ class NotificationQueueDispatcher
             return ['ok' => false, 'error' => 'Missing/invalid customer email.'];
         }
 
+        // Prepare data for template rendering
         $customerName = trim((string) ($appt['customer_first_name'] ?? '') . ' ' . (string) ($appt['customer_last_name'] ?? ''));
         if ($customerName === '') {
             $customerName = 'Customer';
         }
-        $providerName = (string) ($appt['provider_name'] ?? 'Provider');
-        $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        $start = (string) ($appt['start_time'] ?? '');
 
-        $subjectMap = [
-            'appointment_confirmed' => 'Appointment Confirmed',
-            'appointment_reminder' => 'Appointment Reminder',
-            'appointment_cancelled' => 'Appointment Cancelled',
+        $templateData = [
+            'customer_name' => $customerName,
+            'customer_email' => $to,
+            'customer_phone' => $appt['customer_phone'] ?? '',
+            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
+            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime' => (string) ($appt['start_time'] ?? ''),
         ];
-        $subject = $subjectMap[$eventType] ?? 'Appointment Update';
 
-        $lines = [];
-        $lines[] = "Hi {$customerName},";
-        $lines[] = '';
-        if ($eventType === 'appointment_cancelled') {
-            $lines[] = 'Your appointment has been cancelled.';
-        } elseif ($eventType === 'appointment_reminder') {
-            $lines[] = 'This is a reminder for your upcoming appointment.';
-        } else {
-            $lines[] = 'Your appointment is confirmed.';
-        }
-        $lines[] = '';
-        $lines[] = "Provider: {$providerName}";
-        $lines[] = "Service: {$serviceName}";
-        $lines[] = "When: {$start}";
-        $lines[] = '';
-        $lines[] = '— WebSchedulr';
+        // Render template with placeholders
+        $templateSvc = new NotificationTemplateService();
+        $rendered = $templateSvc->render($eventType, 'email', $templateData);
 
-        $body = implode("\n", $lines);
+        $subject = $rendered['subject'] ?: 'Appointment Update';
+        $body = $rendered['body'] ?: "Your appointment has been updated.\n\n— WebSchedulr";
+
         $svc = new NotificationEmailService();
         return $svc->sendEmail($businessId, $to, $subject, $body);
     }
@@ -301,11 +290,30 @@ class NotificationQueueDispatcher
             return ['ok' => false, 'error' => 'Missing/invalid customer phone (+E.164).'];
         }
 
-        $providerName = (string) ($appt['provider_name'] ?? 'Provider');
-        $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        $start = (string) ($appt['start_time'] ?? '');
+        // Prepare data for template rendering
+        $customerName = trim((string) ($appt['customer_first_name'] ?? '') . ' ' . (string) ($appt['customer_last_name'] ?? ''));
+        if ($customerName === '') {
+            $customerName = 'Customer';
+        }
 
-        $message = trim("WebSchedulr Reminder: {$serviceName} with {$providerName} at {$start}.");
+        $templateData = [
+            'customer_name' => $customerName,
+            'customer_phone' => $to,
+            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
+            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime' => (string) ($appt['start_time'] ?? ''),
+        ];
+
+        // Render template with placeholders
+        $templateSvc = new NotificationTemplateService();
+        $rendered = $templateSvc->render('appointment_reminder', 'sms', $templateData);
+
+        $message = $rendered['body'] ?: "Reminder: {$templateData['service_name']} with {$templateData['provider_name']}";
+
+        // Ensure SMS doesn't exceed character limit
+        if (strlen($message) > 248) {
+            $message = substr($message, 0, 245) . '...';
+        }
 
         $svc = new NotificationSmsService();
         return $svc->sendSms($businessId, $to, $message);
@@ -322,13 +330,27 @@ class NotificationQueueDispatcher
         if ($customerName === '') {
             $customerName = 'Customer';
         }
-        $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        $providerName = (string) ($appt['provider_name'] ?? 'Provider');
-        $start = (string) ($appt['start_time'] ?? '');
 
-        $params = [$customerName, $serviceName, $providerName, $start];
+        // Prepare data for template rendering
+        $templateData = [
+            'customer_name' => $customerName,
+            'customer_phone' => $to,
+            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
+            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime' => (string) ($appt['start_time'] ?? ''),
+        ];
+
+        // Render template with placeholders
+        $templateSvc = new NotificationTemplateService();
+        $rendered = $templateSvc->render($eventType, 'whatsapp', $templateData);
+
+        $message = $rendered['body'] ?: "Your appointment has been updated.";
+
+        // For Meta Cloud API, we still need the params array; for other providers, use rendered message
+        $params = [$customerName, $templateData['service_name'], $templateData['provider_name'], $templateData['start_datetime']];
+        
         $svc = new NotificationWhatsAppService();
-        return $svc->sendTemplateMessage($businessId, $to, $eventType, $params);
+        return $svc->sendTemplateMessage($businessId, $to, $eventType, $params, $message);
     }
 
     private function markReminderSentIfSupported(int $appointmentId): void
