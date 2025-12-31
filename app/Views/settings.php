@@ -16,13 +16,36 @@
             </div>
         <?php endif; ?>
         <?php if (session()->getFlashdata('success')): ?>
-            <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-                <?php if (session()->getFlashdata('success_html')): ?>
-                    <?= session()->getFlashdata('success') ?>
-                <?php else: ?>
-                    <?= esc(session()->getFlashdata('success')) ?>
-                <?php endif; ?>
+            <div id="success-alert" class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 flex items-center justify-between">
+                <span>
+                    <?php if (session()->getFlashdata('success_html')): ?>
+                        <?= session()->getFlashdata('success') ?>
+                    <?php else: ?>
+                        <?= esc(session()->getFlashdata('success')) ?>
+                    <?php endif; ?>
+                </span>
+                <button type="button" onclick="document.getElementById('success-alert').remove()" class="ml-4 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
+                    <span class="material-symbols-rounded text-lg">close</span>
+                </button>
             </div>
+            <?php if (session()->getFlashdata('success_html')): ?>
+            <script>
+                // Auto-dismiss WhatsApp link alert when link is clicked
+                document.addEventListener('DOMContentLoaded', function() {
+                    const alert = document.getElementById('success-alert');
+                    if (alert) {
+                        const link = alert.querySelector('a[target="_blank"]');
+                        if (link) {
+                            link.addEventListener('click', function() {
+                                setTimeout(function() {
+                                    alert.remove();
+                                }, 500);
+                            });
+                        }
+                    }
+                });
+            </script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <!-- Tabs -->
