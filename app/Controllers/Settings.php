@@ -222,12 +222,12 @@ class Settings extends BaseController
 
             $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
             if (!($emailSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
             }
 
             if ($intent === 'save_email') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Email settings saved successfully.');
             }
         }
@@ -246,12 +246,12 @@ class Settings extends BaseController
             ];
             $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
             if (!($smsSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
             }
 
             if ($intent === 'save_sms') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'SMS settings saved successfully.');
             }
         }
@@ -271,7 +271,7 @@ class Settings extends BaseController
             ];
             $waSave = $waSvc->saveIntegration($businessId, $waInput);
             if (!($waSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
             }
 
@@ -285,7 +285,7 @@ class Settings extends BaseController
             }
 
             if ($intent === 'save_whatsapp') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'WhatsApp settings saved successfully.');
             }
         }
@@ -294,11 +294,11 @@ class Settings extends BaseController
             $toEmail = (string) ($this->request->getPost('test_email_to') ?? '');
             $result = $emailSvc->sendTestEmail($businessId, $toEmail);
             if ($result['ok'] ?? false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test email sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test email failed.'));
         }
 
@@ -306,11 +306,11 @@ class Settings extends BaseController
             $toPhone = (string) ($this->request->getPost('test_sms_to') ?? '');
             $result = $smsSvc->sendTestSms($businessId, $toPhone);
             if ($result['ok'] ?? false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test SMS sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test SMS failed.'));
         }
 
@@ -320,15 +320,15 @@ class Settings extends BaseController
             if ($result['ok'] ?? false) {
                 // For Link Generator, show the link in a special success message
                 if (($result['method'] ?? '') === 'link' && !empty($result['link'])) {
-                    return redirect()->to(base_url('settings'))
+                    return redirect()->to(base_url('settings') . '#notifications')
                         ->with('success', 'WhatsApp Link ready! <a href="' . esc($result['link']) . '" target="_blank" class="underline font-semibold">Click here to open WhatsApp</a>')
                         ->with('success_html', true);
                 }
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test WhatsApp message sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test WhatsApp message failed.'));
         }
 
@@ -373,7 +373,7 @@ class Settings extends BaseController
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('error', 'Failed to save notification rules. Please try again.');
             }
         }
@@ -387,12 +387,12 @@ class Settings extends BaseController
             }
             
             if ($intent === 'save_templates') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Message templates saved successfully.');
             }
         }
 
-        return redirect()->to(base_url('settings'))
+        return redirect()->to(base_url('settings') . '#notifications')
             ->with('success', 'Notification settings saved.');
     }
 
