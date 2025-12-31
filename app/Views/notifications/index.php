@@ -5,7 +5,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Notifications" data-page-subtitle="Stay updated with your latest activity">
+<div class="main-content" data-page-title="Notifications" data-page-subtitle="Stay updated with your notification activity">
     <!-- Page Header -->
     <div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -19,7 +19,7 @@
                           Mark All Read
                      </a>
                      <?php endif; ?>
-                <a href="<?= base_url('/notifications/settings') ?>" 
+                <a href="<?= base_url('/settings#notifications') ?>" 
                          class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
                           <span class="material-symbols-rounded mr-2 text-base align-middle">settings</span>
                     Settings
@@ -147,9 +147,30 @@
                             
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between">
-                                    <h4 class="text-sm font-medium text-gray-900 dark:text-white <?= !$notification['read'] ? 'font-semibold' : '' ?>">
-                                        <?= esc($notification['title']) ?>
-                                    </h4>
+                                    <div class="flex items-center space-x-2">
+                                        <h4 class="text-sm font-medium text-gray-900 dark:text-white <?= !$notification['read'] ? 'font-semibold' : '' ?>">
+                                            <?= esc($notification['title']) ?>
+                                        </h4>
+                                        <?php if (!empty($notification['channel']) && $notification['channel'] !== 'system'): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                                <?php if ($notification['channel'] === 'email'): ?>bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                                <?php elseif ($notification['channel'] === 'sms'): ?>bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                <?php elseif ($notification['channel'] === 'whatsapp'): ?>bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200
+                                                <?php else: ?>bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200<?php endif; ?>">
+                                                <?= strtoupper(esc($notification['channel'])) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($notification['status']) && $notification['status'] !== 'info'): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                                <?php if ($notification['status'] === 'success'): ?>bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                <?php elseif ($notification['status'] === 'failed'): ?>bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                                <?php elseif ($notification['status'] === 'queued'): ?>bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                                <?php elseif ($notification['status'] === 'cancelled'): ?>bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200
+                                                <?php else: ?>bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200<?php endif; ?>">
+                                                <?= ucfirst(esc($notification['status'])) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                     <div class="flex items-center space-x-2">
                                         <?php if (!$notification['read']): ?>
                                             <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -168,10 +189,12 @@
                                             Mark as read
                                         </a>
                                     <?php endif; ?>
-                                    <button class="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                                            onclick="deleteNotification(<?= $notification['id'] ?>)">
-                                        Delete
-                                    </button>
+                                    <?php if (strpos($notification['id'], 'queue_') === 0): ?>
+                                        <button class="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                                                onclick="deleteNotification('<?= esc($notification['id']) ?>')">
+                                            Cancel
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -181,8 +204,12 @@
         <?php else: ?>
             <div class="p-12 text-center">
                 <span class="material-symbols-rounded w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4 text-5xl block">notifications_off</span>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications</h3>
-                <p class="text-gray-600 dark:text-gray-400">You're all caught up! No new notifications to show.</p>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications yet</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Notifications will appear here when appointments are confirmed, reminded, cancelled, or rescheduled.</p>
+                <a href="<?= base_url('/settings#notifications') ?>" class="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
+                    <span class="material-symbols-rounded mr-1 text-base">settings</span>
+                    Configure notification settings
+                </a>
             </div>
         <?php endif; ?>
     </div>
@@ -190,7 +217,8 @@
 
 <script>
 function deleteNotification(notificationId) {
-    if (confirm('Are you sure you want to delete this notification?')) {
+    const action = notificationId.startsWith('queue_') ? 'cancel this pending notification' : 'delete this notification';
+    if (confirm('Are you sure you want to ' + action + '?')) {
         window.location.href = `<?= base_url('/notifications/delete/') ?>${notificationId}`;
     }
 }
