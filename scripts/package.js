@@ -182,12 +182,14 @@ essentialFiles.forEach(({ src, dest }) => {
                         /^database\/.*\.db$/i,
                         /^logs\/.*\.log$/i,
                         /^debugbar\/.*\.json$/i,
+                        /^backups\/.*$/i,
+                        /^exports\/.*$/i,
                         'upload-debug.log'
                     ];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
                     
                     // Ensure empty directories exist with proper structure
-                    const cleanDirectories = ['logs', 'debugbar', 'cache', 'session', 'uploads'];
+                    const cleanDirectories = ['logs', 'debugbar', 'cache', 'session', 'uploads', 'backups', 'exports'];
                     cleanDirectories.forEach(dir => {
                         const dirPath = path.join(destination, dir);
                         if (!fs.existsSync(dirPath)) {
@@ -362,6 +364,23 @@ if (fs.existsSync(appConfigPath)) {
     console.log('✅ Updated App.php for production deployment with robust URL detection');
 } else {
     console.warn('⚠️  App.php not found in deployment package');
+}
+
+// Update Encryption.php with hardcoded key for production (shared hosting has no .env)
+const encryptionConfigPath = path.join(packageDir, 'app/Config/Encryption.php');
+if (fs.existsSync(encryptionConfigPath)) {
+    let encryptionContent = fs.readFileSync(encryptionConfigPath, 'utf8');
+    
+    // Replace empty key with production key
+    encryptionContent = encryptionContent.replace(
+        /public string \$key = '';/,
+        "public string $key = 'hex2bin:1855b839cb66c22db53da5b916c798c83d1a1faff813cd32179f223639d8aa9a';"
+    );
+    
+    fs.writeFileSync(encryptionConfigPath, encryptionContent);
+    console.log('✅ Updated Encryption.php with production encryption key');
+} else {
+    console.warn('⚠️  Encryption.php not found in deployment package');
 }
 
 // Copy .env.example to .env in deployment (for setup wizard to use)

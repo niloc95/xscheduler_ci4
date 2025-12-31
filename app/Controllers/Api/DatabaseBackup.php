@@ -416,6 +416,14 @@ class DatabaseBackup extends BaseController
      */
     protected function backupMySQL(array $config, string $outputPath): string|false
     {
+        if (!$this->isFunctionEnabled('system')) {
+            throw new \RuntimeException('Database backup requires system command execution, but `system()` is disabled on this server.');
+        }
+
+        if (!$this->commandExists('mysqldump')) {
+            throw new \RuntimeException('Database backup requires `mysqldump`, but it was not found on this server.');
+        }
+
         $host = escapeshellarg($config['hostname']);
         $user = escapeshellarg($config['username']);
         $pass = $config['password'];
@@ -463,6 +471,14 @@ class DatabaseBackup extends BaseController
      */
     protected function backupSQLite(array $config, string $outputPath): string|false
     {
+        if (!$this->isFunctionEnabled('system')) {
+            throw new \RuntimeException('Database backup requires system command execution, but `system()` is disabled on this server.');
+        }
+
+        if (!$this->commandExists('sqlite3')) {
+            throw new \RuntimeException('SQLite backup requires `sqlite3`, but it was not found on this server.');
+        }
+
         $dbPath = $config['database'];
         
         if (!file_exists($dbPath)) {
@@ -487,9 +503,62 @@ class DatabaseBackup extends BaseController
      */
     protected function commandExists(string $command): bool
     {
-        $which = PHP_OS_FAMILY === 'Windows' ? 'where' : 'which';
-        $result = shell_exec("{$which} {$command} 2>/dev/null");
-        return !empty($result);
+        if ($command === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $command)) {
+            return false;
+        }
+
+        // Prefer a pure-PHP lookup to avoid shell_exec/which, which may be disabled in production.
+        $path = (string) getenv('PATH');
+        $paths = $path !== '' ? array_filter(explode(PATH_SEPARATOR, $path)) : [];
+
+        if (!$paths) {
+            // Fallbacks for environments where PHP doesn't expose PATH.
+            $paths = [
+                '/usr/local/bin',
+                '/usr/bin',
+                '/bin',
+                '/opt/homebrew/bin',
+                '/opt/local/bin',
+                '/usr/sbin',
+                '/sbin',
+            ];
+        }
+
+        // Windows: respect PATHEXT
+        $extensions = [''];
+        if (PHP_OS_FAMILY === 'Windows') {
+            $pathext = (string) getenv('PATHEXT');
+            $extensions = $pathext !== '' ? array_filter(array_map('trim', explode(';', $pathext))) : ['.EXE', '.BAT', '.CMD', '.COM'];
+        }
+
+        foreach ($paths as $dir) {
+            foreach ($extensions as $ext) {
+                $candidate = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $command . $ext;
+                if (@is_file($candidate) && @is_executable($candidate)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a PHP function is available and not disabled via php.ini.
+     */
+    protected function isFunctionEnabled(string $functionName): bool
+    {
+        if ($functionName === '' || !function_exists($functionName)) {
+            return false;
+        }
+
+        $disabled = (string) ini_get('disable_functions');
+        if ($disabled === '') {
+            return true;
+        }
+
+        $disabledList = array_filter(array_map('trim', explode(',', $disabled)));
+        return !in_array($functionName, $disabledList, true);
     }
 
     /**

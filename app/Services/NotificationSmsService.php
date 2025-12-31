@@ -14,6 +14,10 @@ class NotificationSmsService
      * Returns a safe-to-render subset of the stored SMS integration.
      * Secrets are never returned.
      */
+    /**
+     * Returns a safe-to-render subset of the stored SMS integration.
+     * Secrets are never returned. decrypt_error is set if key mismatch.
+     */
     public function getPublicIntegration(int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT): array
     {
         $integration = $this->getIntegrationRow($businessId);
@@ -29,10 +33,13 @@ class NotificationSmsService
                     'twilio_account_sid' => '',
                     'twilio_from_number' => '',
                 ],
+                'decrypt_error' => null,
             ];
         }
 
-        $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
+        $decrypted = $this->decryptConfig($integration['encrypted_config'] ?? null, true);
+        $config = $decrypted['data'] ?? [];
+        $decryptError = $decrypted['error'] ?? null;
 
         return [
             'provider' => (string) ($integration['provider_name'] ?? 'clickatell'),
@@ -43,6 +50,7 @@ class NotificationSmsService
                 'twilio_account_sid' => (string) ($config['twilio_account_sid'] ?? ''),
                 'twilio_from_number' => (string) ($config['twilio_from_number'] ?? ''),
             ],
+            'decrypt_error' => $decryptError,
         ];
     }
 
@@ -306,6 +314,19 @@ class NotificationSmsService
         return ['ok' => true];
     }
 
+    /**
+     * Get full config including secrets (for internal use by WhatsApp Twilio provider)
+     * WARNING: Contains sensitive data - never expose to frontend
+     */
+    public function getFullConfig(int $businessId): array
+    {
+        $integration = $this->getIntegrationRow($businessId);
+        if (!$integration || empty($integration['encrypted_config'])) {
+            return [];
+        }
+        return $this->decryptConfig($integration['encrypted_config']);
+    }
+
     private function getIntegrationRow(int $businessId): ?array
     {
         $model = new BusinessIntegrationModel();
@@ -324,23 +345,37 @@ class NotificationSmsService
         if ($json === false) {
             throw new \RuntimeException('Failed to encode SMS config');
         }
-        return (string) $encrypter->encrypt($json);
+        // Base64 encode the binary encrypted data for safe storage in TEXT column
+        return base64_encode((string) $encrypter->encrypt($json));
     }
 
-    private function decryptConfig($encrypted): array
+    /**
+     * Decrypt config, returning ['data' => array, 'error' => string|null].
+     */
+    private function decryptConfig($encrypted, bool $returnError = false): array
     {
         if (!is_string($encrypted) || trim($encrypted) === '') {
-            return [];
+            return $returnError ? ['data' => [], 'error' => null] : [];
         }
 
         try {
             $encrypter = service('encrypter');
-            $json = $encrypter->decrypt($encrypted);
-            $decoded = json_decode((string) $json, true);
-            return is_array($decoded) ? $decoded : [];
+            // Base64 decode before decrypting
+            $decoded = base64_decode($encrypted, true);
+            if ($decoded === false) {
+                throw new \RuntimeException('Failed to base64 decode encrypted config');
+            }
+            $json = $encrypter->decrypt($decoded);
+            $data = json_decode((string) $json, true);
+            $result = is_array($data) ? $data : [];
+            return $returnError ? ['data' => $result, 'error' => null] : $result;
         } catch (\Throwable $e) {
             log_message('error', 'NotificationSmsService: decrypt failed: {msg}', ['msg' => $e->getMessage()]);
-            return [];
+            $errMsg = 'encryption_key_mismatch';
+            if (stripos($e->getMessage(), 'authentication failed') !== false) {
+                $errMsg = 'encryption_key_mismatch';
+            }
+            return $returnError ? ['data' => [], 'error' => $errMsg] : [];
         }
     }
 
