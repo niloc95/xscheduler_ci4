@@ -72,6 +72,7 @@ class NotificationEmailService
     /**
      * Returns a safe-to-render subset of the stored email integration.
      * Password is never returned.
+     * If decryption fails (key mismatch), returns 'decrypt_error' => 'encryption_key_mismatch'.
      */
     public function getPublicIntegration(int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT): array
     {
@@ -88,14 +89,19 @@ class NotificationEmailService
                     'from_email' => '',
                     'from_name' => '',
                 ],
+                'decrypt_error' => null,
             ];
         }
 
-        $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
+        $decrypted = $this->decryptConfig($integration['encrypted_config'] ?? null, true);
+        $config = $decrypted['data'] ?? [];
+        $decryptError = $decrypted['error'] ?? null;
 
         return [
             'provider_name' => (string) ($integration['provider_name'] ?? ''),
             'is_active' => (bool) ($integration['is_active'] ?? false),
+            'health_status' => (string) ($integration['health_status'] ?? 'unknown'),
+            'last_tested_at' => (string) ($integration['last_tested_at'] ?? ''),
             'config' => [
                 'host' => (string) ($config['host'] ?? ''),
                 'port' => (int) ($config['port'] ?? 587),
@@ -104,6 +110,7 @@ class NotificationEmailService
                 'from_email' => (string) ($config['from_email'] ?? ''),
                 'from_name' => (string) ($config['from_name'] ?? ''),
             ],
+            'decrypt_error' => $decryptError,
         ];
     }
 
@@ -178,6 +185,7 @@ class NotificationEmailService
 
         try {
             $encryptedConfig = $this->encryptConfig($configToStore);
+            log_message('debug', 'NotificationEmailService: encrypted config length: {len}', ['len' => strlen($encryptedConfig)]);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationEmailService: encrypt failed: {msg}', ['msg' => $e->getMessage()]);
             return ['ok' => false, 'error' => 'Encryption is not configured correctly. Please set an application encryption key.'];
@@ -194,10 +202,23 @@ class NotificationEmailService
             'is_active' => $isActive ? 1 : 0,
         ];
 
+        log_message('debug', 'NotificationEmailService: saving payload with config length: {len}, existing: {existing}', [
+            'len' => strlen($encryptedConfig),
+            'existing' => $existing['id'] ?? 'new',
+        ]);
+
         if (!empty($existing['id'])) {
-            $model->update((int) $existing['id'], $payload);
+            $result = $model->update((int) $existing['id'], $payload);
+            log_message('debug', 'NotificationEmailService: update result: {result}, errors: {errors}', [
+                'result' => $result ? 'true' : 'false',
+                'errors' => json_encode($model->errors()),
+            ]);
         } else {
-            $model->insert($payload);
+            $result = $model->insert($payload);
+            log_message('debug', 'NotificationEmailService: insert result: {result}, errors: {errors}', [
+                'result' => $result ? 'true' : 'false',
+                'errors' => json_encode($model->errors()),
+            ]);
         }
 
         return ['ok' => true, 'cleared' => false];
@@ -288,23 +309,38 @@ class NotificationEmailService
         if ($json === false) {
             throw new \RuntimeException('Failed to encode SMTP config');
         }
-        return (string) $encrypter->encrypt($json);
+        // Base64 encode the binary encrypted data for safe storage in TEXT column
+        return base64_encode((string) $encrypter->encrypt($json));
     }
 
-    private function decryptConfig($encrypted): array
+    /**
+     * Decrypt config, returning ['data' => array, 'error' => string|null].
+     * Use decryptConfigSafe() for backward-compatible array-only return.
+     */
+    private function decryptConfig($encrypted, bool $returnError = false): array
     {
         if (!is_string($encrypted) || trim($encrypted) === '') {
-            return [];
+            return $returnError ? ['data' => [], 'error' => null] : [];
         }
 
         try {
             $encrypter = service('encrypter');
-            $json = $encrypter->decrypt($encrypted);
-            $decoded = json_decode((string) $json, true);
-            return is_array($decoded) ? $decoded : [];
+            // Base64 decode before decrypting
+            $decoded = base64_decode($encrypted, true);
+            if ($decoded === false) {
+                throw new \RuntimeException('Failed to base64 decode encrypted config');
+            }
+            $json = $encrypter->decrypt($decoded);
+            $data = json_decode((string) $json, true);
+            $result = is_array($data) ? $data : [];
+            return $returnError ? ['data' => $data, 'error' => null] : $data;
         } catch (\Throwable $e) {
             log_message('error', 'NotificationEmailService: decrypt failed: {msg}', ['msg' => $e->getMessage()]);
-            return [];
+            $errMsg = 'encryption_key_mismatch';
+            if (stripos($e->getMessage(), 'authentication failed') !== false) {
+                $errMsg = 'encryption_key_mismatch';
+            }
+            return $returnError ? ['data' => [], 'error' => $errMsg] : [];
         }
     }
 

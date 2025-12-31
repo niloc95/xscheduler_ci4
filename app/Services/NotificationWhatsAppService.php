@@ -5,50 +5,176 @@ namespace App\Services;
 use App\Models\BusinessIntegrationModel;
 use App\Models\MessageTemplateModel;
 
+/**
+ * WhatsApp Notification Service with Multiple Provider Support
+ * 
+ * Providers:
+ * - link_generator: Zero-config wa.me links (opens WhatsApp with pre-filled message)
+ * - twilio: Twilio WhatsApp API (uses same credentials as SMS)
+ * - meta_cloud: Meta Cloud API (requires Business verification + templates)
+ */
 class NotificationWhatsAppService
 {
     public const CHANNEL = 'whatsapp';
 
-    public const PROVIDER = 'meta_cloud';
+    /**
+     * Available WhatsApp providers in order of complexity
+     * link_generator = simplest (zero config, manual send)
+     * twilio = moderate (API credentials, automated)
+     * meta_cloud = advanced (Business verification, templates required)
+     */
+    public const PROVIDERS = ['link_generator', 'twilio', 'meta_cloud'];
+
+    public const PROVIDER_LABELS = [
+        'link_generator' => 'WhatsApp Link Generator (Simplest)',
+        'twilio' => 'Twilio WhatsApp (Automated)',
+        'meta_cloud' => 'Meta Cloud API (Advanced)',
+    ];
 
     /**
      * Returns a safe-to-render subset of the stored WhatsApp integration.
-     * Secrets are never returned.
+     * Secrets are never returned. decrypt_error is set if key mismatch.
      */
     public function getPublicIntegration(int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT): array
     {
         $integration = $this->getIntegrationRow($businessId);
         if (!$integration) {
             return [
-                'provider_name' => self::PROVIDER,
+                'provider' => 'link_generator',
+                'provider_name' => 'link_generator',
                 'is_active' => false,
                 'config' => [
+                    // Meta Cloud
                     'phone_number_id' => '',
                     'waba_id' => '',
+                    // Twilio (shares credentials from SMS, but needs whatsapp_from)
+                    'twilio_whatsapp_from' => '',
                 ],
+                'decrypt_error' => null,
             ];
         }
 
-        $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
+        $decrypted = $this->decryptConfig($integration['encrypted_config'] ?? null, true);
+        $config = $decrypted['data'] ?? [];
+        $decryptError = $decrypted['error'] ?? null;
+
+        $provider = (string) ($config['provider'] ?? $integration['provider_name'] ?? 'link_generator');
+        if (!in_array($provider, self::PROVIDERS, true)) {
+            $provider = 'link_generator';
+        }
 
         return [
-            'provider_name' => (string) ($integration['provider_name'] ?? self::PROVIDER),
+            'provider' => $provider,
+            'provider_name' => $provider,
             'is_active' => (bool) ($integration['is_active'] ?? false),
             'config' => [
+                // Meta Cloud (never expose access_token)
                 'phone_number_id' => (string) ($config['phone_number_id'] ?? ''),
                 'waba_id' => (string) ($config['waba_id'] ?? ''),
+                // Twilio WhatsApp
+                'twilio_whatsapp_from' => (string) ($config['twilio_whatsapp_from'] ?? ''),
             ],
+            'decrypt_error' => $decryptError,
         ];
     }
 
     /**
-     * Save WhatsApp Meta Cloud configuration into xs_business_integrations (encrypted_config).
-     * If access_token is omitted, it is preserved from previous config if present.
+     * Save WhatsApp configuration into xs_business_integrations (encrypted_config).
+     * Supports multiple providers with different credential requirements.
      */
     public function saveIntegration(int $businessId, array $input): array
     {
+        $provider = trim((string) ($input['provider'] ?? 'link_generator'));
+        if (!in_array($provider, self::PROVIDERS, true)) {
+            $provider = 'link_generator';
+        }
+
         $isActive = (bool) ($input['is_active'] ?? false);
 
+        // Link Generator needs no credentials - always succeeds
+        if ($provider === 'link_generator') {
+            return $this->saveLinkGeneratorConfig($businessId, $isActive);
+        }
+
+        // Twilio WhatsApp
+        if ($provider === 'twilio') {
+            return $this->saveTwilioConfig($businessId, $input, $isActive);
+        }
+
+        // Meta Cloud API
+        return $this->saveMetaCloudConfig($businessId, $input, $isActive);
+    }
+
+    /**
+     * Save Link Generator config (no credentials needed)
+     */
+    private function saveLinkGeneratorConfig(int $businessId, bool $isActive): array
+    {
+        $configToStore = [
+            'provider' => 'link_generator',
+        ];
+
+        try {
+            $encryptedConfig = $this->encryptConfig($configToStore);
+        } catch (\Throwable $e) {
+            log_message('error', 'NotificationWhatsAppService: encrypt failed: {msg}', ['msg' => $e->getMessage()]);
+            return ['ok' => false, 'error' => 'Encryption is not configured correctly.'];
+        }
+
+        return $this->persistIntegration($businessId, 'link_generator', $encryptedConfig, $isActive);
+    }
+
+    /**
+     * Save Twilio WhatsApp config
+     * Uses the same SID/Token from SMS settings, just needs WhatsApp-specific from number
+     */
+    private function saveTwilioConfig(int $businessId, array $input, bool $isActive): array
+    {
+        $twilioFrom = trim((string) ($input['twilio_whatsapp_from'] ?? ''));
+        
+        // Twilio WhatsApp from must be in format: whatsapp:+15551234567
+        if ($twilioFrom !== '' && strpos($twilioFrom, 'whatsapp:') !== 0) {
+            // Auto-prefix if not present
+            if ($this->isValidE164($twilioFrom)) {
+                $twilioFrom = 'whatsapp:' . $twilioFrom;
+            } else {
+                return ['ok' => false, 'error' => 'Twilio WhatsApp From number must be a valid +E.164 phone number.'];
+            }
+        }
+
+        // Check if Twilio SMS credentials exist
+        $smsService = new NotificationSmsService();
+        $smsIntegration = $smsService->getPublicIntegration($businessId);
+        $hasTwilioCreds = !empty($smsIntegration['config']['twilio_account_sid'] ?? '');
+        
+        if (!$hasTwilioCreds && $isActive) {
+            return ['ok' => false, 'error' => 'Please configure Twilio SMS credentials first (Account SID & Auth Token in SMS settings).'];
+        }
+
+        if ($twilioFrom === '' && $isActive) {
+            return ['ok' => false, 'error' => 'Twilio WhatsApp From number is required.'];
+        }
+
+        $configToStore = [
+            'provider' => 'twilio',
+            'twilio_whatsapp_from' => $twilioFrom,
+        ];
+
+        try {
+            $encryptedConfig = $this->encryptConfig($configToStore);
+        } catch (\Throwable $e) {
+            log_message('error', 'NotificationWhatsAppService: encrypt failed: {msg}', ['msg' => $e->getMessage()]);
+            return ['ok' => false, 'error' => 'Encryption is not configured correctly.'];
+        }
+
+        return $this->persistIntegration($businessId, 'twilio', $encryptedConfig, $isActive);
+    }
+
+    /**
+     * Save Meta Cloud API config
+     */
+    private function saveMetaCloudConfig(int $businessId, array $input, bool $isActive): array
+    {
         $phoneNumberId = trim((string) ($input['phone_number_id'] ?? ''));
         $wabaId = trim((string) ($input['waba_id'] ?? ''));
         $accessToken = (string) ($input['access_token'] ?? '');
@@ -61,6 +187,7 @@ class NotificationWhatsAppService
         if ($phoneNumberId === '' || !ctype_digit($phoneNumberId)) {
             return ['ok' => false, 'error' => 'WhatsApp Phone Number ID is required and must be numeric.'];
         }
+        
         if ($accessToken === '') {
             // Preserve existing token
             $existing = $this->getIntegrationRow($businessId);
@@ -73,7 +200,7 @@ class NotificationWhatsAppService
         }
 
         $configToStore = [
-            'provider' => self::PROVIDER,
+            'provider' => 'meta_cloud',
             'phone_number_id' => $phoneNumberId,
             'waba_id' => $wabaId,
             'access_token' => $accessToken,
@@ -83,16 +210,24 @@ class NotificationWhatsAppService
             $encryptedConfig = $this->encryptConfig($configToStore);
         } catch (\Throwable $e) {
             log_message('error', 'NotificationWhatsAppService: encrypt failed: {msg}', ['msg' => $e->getMessage()]);
-            return ['ok' => false, 'error' => 'Encryption is not configured correctly. Please set an application encryption key.'];
+            return ['ok' => false, 'error' => 'Encryption is not configured correctly.'];
         }
 
+        return $this->persistIntegration($businessId, 'meta_cloud', $encryptedConfig, $isActive);
+    }
+
+    /**
+     * Persist integration to database
+     */
+    private function persistIntegration(int $businessId, string $provider, string $encryptedConfig, bool $isActive): array
+    {
         $model = new BusinessIntegrationModel();
         $existing = $this->getIntegrationRow($businessId);
 
         $payload = [
             'business_id' => $businessId,
             'channel' => self::CHANNEL,
-            'provider_name' => self::PROVIDER,
+            'provider_name' => $provider,
             'encrypted_config' => $encryptedConfig,
             'is_active' => $isActive ? 1 : 0,
         ];
@@ -108,6 +243,7 @@ class NotificationWhatsAppService
 
     /**
      * Store a WhatsApp template reference for an event (Meta template name + locale).
+     * Only used for Meta Cloud API provider.
      */
     public function saveTemplate(int $businessId, string $eventType, ?string $templateName, ?string $locale): array
     {
@@ -122,7 +258,6 @@ class NotificationWhatsAppService
             return ['ok' => false, 'error' => 'Missing event type.'];
         }
 
-        // Allow clearing
         $isActive = $templateName !== '';
 
         $model = new MessageTemplateModel();
@@ -136,7 +271,7 @@ class NotificationWhatsAppService
             'business_id' => $businessId,
             'event_type' => $eventType,
             'channel' => self::CHANNEL,
-            'provider' => self::PROVIDER,
+            'provider' => 'meta_cloud',
             'provider_template_id' => $templateName !== '' ? $templateName : null,
             'locale' => $locale,
             'subject' => null,
@@ -179,11 +314,13 @@ class NotificationWhatsAppService
     }
 
     /**
-     * Template-only enforcement: only sends WhatsApp template messages.
-     *
-     * @param array<int, string> $bodyParameters text params in template order
+     * Send WhatsApp message using the configured provider
+     * 
+     * For Link Generator: Returns a wa.me link (no actual send)
+     * For Twilio: Sends via Twilio WhatsApp API
+     * For Meta Cloud: Sends via Meta Cloud API template messages
      */
-    public function sendTemplateMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = []): array
+    public function sendMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = [], array $appointment = [], array $business = []): array
     {
         $toPhone = trim($toPhone);
         if (!$this->isValidE164($toPhone)) {
@@ -191,6 +328,15 @@ class NotificationWhatsAppService
         }
 
         $integration = $this->getIntegrationRow($businessId);
+        $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
+        $provider = (string) ($config['provider'] ?? $integration['provider_name'] ?? 'link_generator');
+
+        // For Link Generator, always return a link (doesn't need to be active)
+        if ($provider === 'link_generator') {
+            return $this->generateWhatsAppLink($toPhone, $eventType, $appointment, $business);
+        }
+
+        // For API-based providers, check if configured and active
         if (!$integration || empty($integration['encrypted_config'])) {
             return ['ok' => false, 'error' => 'WhatsApp integration is not configured.'];
         }
@@ -198,7 +344,127 @@ class NotificationWhatsAppService
             return ['ok' => false, 'error' => 'WhatsApp integration is not active.'];
         }
 
-        $config = $this->decryptConfig($integration['encrypted_config']);
+        if ($provider === 'twilio') {
+            return $this->sendTwilioWhatsApp($businessId, $config, $toPhone, $eventType, $bodyParameters, $appointment, $business);
+        }
+
+        return $this->sendMetaCloudWhatsApp($businessId, $config, $toPhone, $eventType, $bodyParameters);
+    }
+
+    /**
+     * Generate a WhatsApp link (wa.me) with pre-filled message
+     * This doesn't actually send - it creates a link the user can click to open WhatsApp
+     */
+    private function generateWhatsAppLink(string $toPhone, string $eventType, array $appointment = [], array $business = []): array
+    {
+        helper('whatsapp');
+        
+        $link = whatsapp_generate_link_for_event($eventType, $toPhone, $appointment, [], [], $business);
+        
+        return [
+            'ok' => true,
+            'method' => 'link',
+            'link' => $link,
+            'message' => 'Click the link to send WhatsApp message',
+        ];
+    }
+
+    /**
+     * Send WhatsApp message via Twilio
+     * Uses the Twilio credentials from SMS settings
+     */
+    private function sendTwilioWhatsApp(int $businessId, array $config, string $toPhone, string $eventType, array $bodyParameters, array $appointment, array $business): array
+    {
+        // Get Twilio credentials from SMS integration
+        $smsService = new NotificationSmsService();
+        $smsIntegration = $smsService->getFullConfig($businessId);
+        
+        if (empty($smsIntegration['twilio_account_sid']) || empty($smsIntegration['twilio_auth_token'])) {
+            return ['ok' => false, 'error' => 'Twilio SMS credentials not configured. Please set up Twilio in SMS settings first.'];
+        }
+
+        $twilioFrom = (string) ($config['twilio_whatsapp_from'] ?? '');
+        if ($twilioFrom === '') {
+            return ['ok' => false, 'error' => 'Twilio WhatsApp From number not configured.'];
+        }
+
+        // Build message from event type
+        helper('whatsapp');
+        $message = '';
+        switch ($eventType) {
+            case 'appointment_confirmed':
+            case 'appointment_created':
+                $message = whatsapp_appointment_confirmed_message($appointment, [], [], $business);
+                break;
+            case 'appointment_reminder':
+                $message = whatsapp_appointment_reminder_message($appointment, [], [], $business);
+                break;
+            case 'appointment_cancelled':
+                $message = whatsapp_appointment_cancelled_message($appointment, [], [], $business);
+                break;
+            case 'appointment_rescheduled':
+                $message = whatsapp_appointment_rescheduled_message($appointment, [], [], [], $business);
+                break;
+            default:
+                // Use body parameters for custom messages
+                $message = implode("\n", $bodyParameters);
+                if ($message === '') {
+                    $message = 'Message from ' . ($business['business_name'] ?? 'WebSchedulr');
+                }
+        }
+
+        // Twilio WhatsApp requires whatsapp: prefix on numbers
+        $to = 'whatsapp:' . $toPhone;
+        $from = $twilioFrom;
+        if (strpos($from, 'whatsapp:') !== 0) {
+            $from = 'whatsapp:' . $from;
+        }
+
+        $sid = $smsIntegration['twilio_account_sid'];
+        $token = $smsIntegration['twilio_auth_token'];
+
+        $url = 'https://api.twilio.com/2010-04-01/Accounts/' . rawurlencode($sid) . '/Messages.json';
+        $post = http_build_query([
+            'To' => $to,
+            'From' => $from,
+            'Body' => $message,
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+        curl_setopt($ch, CURLOPT_USERPWD, $sid . ':' . $token);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/x-www-form-urlencoded',
+        ]);
+
+        $resp = curl_exec($ch);
+        $errNo = curl_errno($ch);
+        $err = curl_error($ch);
+        $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($errNo) {
+            log_message('error', 'Twilio WhatsApp curl error: {err}', ['err' => $err]);
+            return ['ok' => false, 'error' => 'WhatsApp request failed.'];
+        }
+
+        if ($http < 200 || $http >= 300) {
+            log_message('error', 'Twilio WhatsApp HTTP {code}: {resp}', ['code' => $http, 'resp' => (string) $resp]);
+            $decoded = json_decode((string) $resp, true);
+            $errorMsg = $decoded['message'] ?? 'WhatsApp request was rejected.';
+            return ['ok' => false, 'error' => $errorMsg];
+        }
+
+        return ['ok' => true, 'method' => 'twilio'];
+    }
+
+    /**
+     * Send WhatsApp message via Meta Cloud API (template-based)
+     */
+    private function sendMetaCloudWhatsApp(int $businessId, array $config, string $toPhone, string $eventType, array $bodyParameters): array
+    {
         $phoneNumberId = (string) ($config['phone_number_id'] ?? '');
         $accessToken = (string) ($config['access_token'] ?? '');
 
@@ -264,11 +530,20 @@ class NotificationWhatsAppService
             return ['ok' => false, 'error' => 'WhatsApp request was rejected.'];
         }
 
-        return ['ok' => true];
+        return ['ok' => true, 'method' => 'meta_cloud'];
     }
 
     /**
-     * Sends a test WhatsApp message using the appointment_confirmed template.
+     * Legacy method - Template-only enforcement for Meta Cloud API
+     * @deprecated Use sendMessage() instead
+     */
+    public function sendTemplateMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = []): array
+    {
+        return $this->sendMessage($businessId, $toPhone, $eventType, $bodyParameters);
+    }
+
+    /**
+     * Sends a test WhatsApp message using the configured provider
      */
     public function sendTestMessage(int $businessId, string $toPhone): array
     {
@@ -278,6 +553,29 @@ class NotificationWhatsAppService
         }
 
         $integration = $this->getIntegrationRow($businessId);
+        $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
+        $provider = (string) ($config['provider'] ?? $integration['provider_name'] ?? 'link_generator');
+
+        // For Link Generator, just return the test link
+        if ($provider === 'link_generator') {
+            helper('whatsapp');
+            $testAppointment = [
+                'customer_name' => 'Test Customer',
+                'start_datetime' => date('Y-m-d H:i:s', strtotime('+1 day 10:00')),
+                'service_name' => 'Test Service',
+            ];
+            $business = ['business_name' => 'WebSchedulr Test'];
+            $link = whatsapp_generate_link_for_event('appointment_confirmed', $toPhone, $testAppointment, [], [], $business);
+            
+            return [
+                'ok' => true,
+                'method' => 'link',
+                'link' => $link,
+                'message' => 'WhatsApp Link Generator is ready! Click the link to test.',
+            ];
+        }
+
+        // Check configuration
         if (!$integration || empty($integration['encrypted_config'])) {
             return ['ok' => false, 'error' => 'WhatsApp integration is not configured yet.'];
         }
@@ -286,10 +584,18 @@ class NotificationWhatsAppService
         $model = new BusinessIntegrationModel();
 
         try {
-            $send = $this->sendTemplateMessage($businessId, $toPhone, 'appointment_confirmed', ['Test', 'Service', 'Provider', $now]);
+            $testAppointment = [
+                'customer_name' => 'Test Customer',
+                'start_datetime' => $now,
+                'service_name' => 'Test Service',
+            ];
+            $business = ['business_name' => 'WebSchedulr'];
+
+            $send = $this->sendMessage($businessId, $toPhone, 'appointment_confirmed', ['Test', 'Service', 'Provider', $now], $testAppointment, $business);
+            
             if ($send['ok'] ?? false) {
                 $this->updateHealth($model, $integration, 'healthy', $now);
-                return ['ok' => true];
+                return $send;
             }
 
             $this->updateHealth($model, $integration, 'unhealthy', $now);
@@ -299,6 +605,15 @@ class NotificationWhatsAppService
             $this->updateHealth($model, $integration, 'unhealthy', $now);
             return ['ok' => false, 'error' => 'WhatsApp test failed due to a server error.'];
         }
+    }
+
+    /**
+     * Get a WhatsApp link for an appointment (for Link Generator provider or fallback)
+     */
+    public function getAppointmentWhatsAppLink(int $businessId, string $eventType, string $toPhone, array $appointment, array $provider = [], array $service = [], array $business = []): string
+    {
+        helper('whatsapp');
+        return whatsapp_generate_link_for_event($eventType, $toPhone, $appointment, $provider, $service, $business);
     }
 
     private function getIntegrationRow(int $businessId): ?array
@@ -319,23 +634,37 @@ class NotificationWhatsAppService
         if ($json === false) {
             throw new \RuntimeException('Failed to encode WhatsApp config');
         }
-        return (string) $encrypter->encrypt($json);
+        // Base64 encode the binary encrypted data for safe storage in TEXT column
+        return base64_encode((string) $encrypter->encrypt($json));
     }
 
-    private function decryptConfig($encrypted): array
+    /**
+     * Decrypt config, returning ['data' => array, 'error' => string|null].
+     */
+    private function decryptConfig($encrypted, bool $returnError = false): array
     {
         if (!is_string($encrypted) || trim($encrypted) === '') {
-            return [];
+            return $returnError ? ['data' => [], 'error' => null] : [];
         }
 
         try {
             $encrypter = service('encrypter');
-            $json = $encrypter->decrypt($encrypted);
-            $decoded = json_decode((string) $json, true);
-            return is_array($decoded) ? $decoded : [];
+            // Base64 decode before decrypting
+            $decoded = base64_decode($encrypted, true);
+            if ($decoded === false) {
+                throw new \RuntimeException('Failed to base64 decode encrypted config');
+            }
+            $json = $encrypter->decrypt($decoded);
+            $data = json_decode((string) $json, true);
+            $result = is_array($data) ? $data : [];
+            return $returnError ? ['data' => $result, 'error' => null] : $result;
         } catch (\Throwable $e) {
             log_message('error', 'NotificationWhatsAppService: decrypt failed: {msg}', ['msg' => $e->getMessage()]);
-            return [];
+            $errMsg = 'encryption_key_mismatch';
+            if (stripos($e->getMessage(), 'authentication failed') !== false) {
+                $errMsg = 'encryption_key_mismatch';
+            }
+            return $returnError ? ['data' => [], 'error' => $errMsg] : [];
         }
     }
 

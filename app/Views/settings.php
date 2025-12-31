@@ -17,7 +17,11 @@
         <?php endif; ?>
         <?php if (session()->getFlashdata('success')): ?>
             <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-                <?= esc(session()->getFlashdata('success')) ?>
+                <?php if (session()->getFlashdata('success_html')): ?>
+                    <?= session()->getFlashdata('success') ?>
+                <?php else: ?>
+                    <?= esc(session()->getFlashdata('success')) ?>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -601,8 +605,10 @@
                                 'from_email' => '',
                                 'from_name' => '',
                             ],
+                            'decrypt_error' => null,
                         ];
                         $emailCfg = $emailIntegration['config'] ?? [];
+                        $emailDecryptError = $emailIntegration['decrypt_error'] ?? null;
                         $allIntegrationStatus = $notificationIntegrationStatus ?? [];
                         $emailStatus = $allIntegrationStatus['email'] ?? [];
                         $emailHealth = (string) ($emailStatus['health_status'] ?? 'unknown');
@@ -617,21 +623,27 @@
                                 'twilio_account_sid' => '',
                                 'twilio_from_number' => '',
                             ],
+                            'decrypt_error' => null,
                         ];
                         $smsCfg = $smsIntegration['config'] ?? [];
+                        $smsDecryptError = $smsIntegration['decrypt_error'] ?? null;
                         $smsStatus = $allIntegrationStatus['sms'] ?? [];
                         $smsHealth = (string) ($smsStatus['health_status'] ?? 'unknown');
                         $smsLastTested = $smsStatus['last_tested_at'] ?? null;
 
                         $waIntegration = $notificationWhatsAppIntegration ?? [
-                            'provider_name' => 'meta_cloud',
+                            'provider' => 'link_generator',
+                            'provider_name' => 'link_generator',
                             'is_active' => false,
                             'config' => [
                                 'phone_number_id' => '',
                                 'waba_id' => '',
+                                'twilio_whatsapp_from' => '',
                             ],
+                            'decrypt_error' => null,
                         ];
                         $waCfg = $waIntegration['config'] ?? [];
+                        $waDecryptError = $waIntegration['decrypt_error'] ?? null;
                         $waStatus = $allIntegrationStatus['whatsapp'] ?? [];
                         $waHealth = (string) ($waStatus['health_status'] ?? 'unknown');
                         $waLastTested = $waStatus['last_tested_at'] ?? null;
@@ -650,6 +662,21 @@
                                 <div class="text-xs text-gray-500 dark:text-gray-400">Last tested: <span class="font-semibold"><?= esc($emailLastTested ?: 'Never') ?></span></div>
                             </div>
                         </div>
+
+                        <?php if ($emailDecryptError === 'encryption_key_mismatch'): ?>
+                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
+                                <div>
+                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
+                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                        Previously saved credentials cannot be decrypted because the server's encryption key has changed.
+                                        Please re-enter your SMTP credentials and save to restore email functionality.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div class="form-field">
@@ -721,13 +748,21 @@
                                 </button>
                             </div>
                         </div>
+
+                        <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="submit" name="intent" value="save_email" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                                <span class="material-symbols-outlined text-base">save</span>
+                                Save Email Settings
+                            </button>
+                        </div>
                     </div>
 
                     <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+                        <?php $waProvider = (string) ($waIntegration['provider'] ?? 'link_generator'); ?>
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">WhatsApp Integration (Phase 4)</h4>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Meta Cloud API template messages only. Credentials are stored encrypted.</p>
+                                <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">WhatsApp Integration</h4>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Send appointment notifications via WhatsApp. Choose your preferred method below.</p>
                             </div>
                             <div class="text-right">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">Health: <span class="font-semibold"><?= esc(ucfirst($waHealth)) ?></span></div>
@@ -735,77 +770,192 @@
                             </div>
                         </div>
 
+                        <?php if ($waDecryptError === 'encryption_key_mismatch'): ?>
+                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
+                                <div>
+                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
+                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                        Previously saved WhatsApp credentials cannot be decrypted. Please re-enter your credentials.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Provider Selection -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div class="form-field">
-                                <label class="form-label">Enable WhatsApp Sending (Phase 4 readiness)</label>
+                                <label class="form-label">WhatsApp Provider</label>
+                                <select name="whatsapp_provider" id="whatsapp_provider" class="form-input">
+                                    <option value="link_generator" <?= $waProvider === 'link_generator' ? 'selected' : '' ?>>📱 Link Generator (Simplest - No Setup)</option>
+                                    <option value="twilio" <?= $waProvider === 'twilio' ? 'selected' : '' ?>>⚡ Twilio WhatsApp (Automated)</option>
+                                    <option value="meta_cloud" <?= $waProvider === 'meta_cloud' ? 'selected' : '' ?>>🏢 Meta Cloud API (Enterprise)</option>
+                                </select>
+                                <p class="form-help">Link Generator = manual send via click. Twilio/Meta = fully automated.</p>
+                            </div>
+
+                            <div class="form-field">
+                                <label class="form-label">Enable WhatsApp</label>
                                 <label class="inline-flex items-center gap-2 mt-2">
                                     <input type="checkbox" name="whatsapp_is_active" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= !empty($waIntegration['is_active']) ? 'checked' : '' ?> />
                                     <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
                                 </label>
-                                <p class="form-help">Reminders will be sent only when both the rule and integration are enabled.</p>
-                            </div>
-
-                            <div class="form-field">
-                                <label class="form-label">Phone Number ID</label>
-                                <input name="whatsapp_phone_number_id" class="form-input" placeholder="(numeric)" value="<?= esc((string) ($waCfg['phone_number_id'] ?? '')) ?>" />
-                            </div>
-
-                            <div class="form-field">
-                                <label class="form-label">WABA ID (optional)</label>
-                                <input name="whatsapp_waba_id" class="form-input" placeholder="(optional)" value="<?= esc((string) ($waCfg['waba_id'] ?? '')) ?>" />
-                            </div>
-
-                            <div class="form-field">
-                                <label class="form-label">Access Token</label>
-                                <input type="password" name="whatsapp_access_token" class="form-input" placeholder="(leave blank to keep existing)" value="" autocomplete="new-password" />
-                                <p class="form-help">Token is never shown. Leave blank to keep existing stored token.</p>
+                                <p class="form-help">Enable to show WhatsApp buttons and send notifications.</p>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <!-- Link Generator Info (shown when link_generator selected) -->
+                        <div id="wa_link_generator_section" class="mt-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700" style="<?= $waProvider !== 'link_generator' ? 'display:none;' : '' ?>">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
+                                <div>
+                                    <p class="text-sm font-medium text-green-800 dark:text-green-200">Zero Configuration Required!</p>
+                                    <p class="text-xs text-green-700 dark:text-green-300 mt-1">
+                                        Link Generator creates clickable WhatsApp links with pre-filled messages. When you click "Send WhatsApp" on an appointment, 
+                                        it opens WhatsApp on your phone/desktop with the message ready to send. Perfect for small businesses!
+                                    </p>
+                                    <ul class="text-xs text-green-700 dark:text-green-300 mt-2 list-disc list-inside">
+                                        <li>No API keys or accounts needed</li>
+                                        <li>Works with your personal WhatsApp</li>
+                                        <li>Pre-filled professional messages</li>
+                                        <li>One click to send confirmations/reminders</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Twilio WhatsApp Settings (shown when twilio selected) -->
+                        <div id="wa_twilio_section" class="mt-4" style="<?= $waProvider !== 'twilio' ? 'display:none;' : '' ?>">
+                            <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 mb-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl">info</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Twilio WhatsApp</p>
+                                        <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                            Uses your Twilio SMS credentials (configured above). You need a Twilio WhatsApp-enabled number.
+                                            <a href="https://www.twilio.com/docs/whatsapp" target="_blank" class="underline">Learn more →</a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-field">
+                                    <label class="form-label">Twilio WhatsApp From Number</label>
+                                    <input name="twilio_whatsapp_from" class="form-input" placeholder="+14155238886 or whatsapp:+14155238886" value="<?= esc((string) ($waCfg['twilio_whatsapp_from'] ?? '')) ?>" />
+                                    <p class="form-help">Your Twilio WhatsApp-enabled number. The whatsapp: prefix is added automatically.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Meta Cloud API Settings (shown when meta_cloud selected) -->
+                        <div id="wa_meta_section" class="mt-4" style="<?= $waProvider !== 'meta_cloud' ? 'display:none;' : '' ?>">
+                            <div class="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 mb-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-xl">business</span>
+                                    <div>
+                                        <p class="text-sm font-medium text-purple-800 dark:text-purple-200">Meta Cloud API (Enterprise)</p>
+                                        <p class="text-xs text-purple-700 dark:text-purple-300 mt-1">
+                                            Requires Meta Business verification and pre-approved message templates.
+                                            <a href="https://developers.facebook.com/docs/whatsapp/cloud-api" target="_blank" class="underline">Setup guide →</a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-field">
+                                    <label class="form-label">Phone Number ID</label>
+                                    <input name="whatsapp_phone_number_id" class="form-input" placeholder="(numeric)" value="<?= esc((string) ($waCfg['phone_number_id'] ?? '')) ?>" />
+                                </div>
+                                <div class="form-field">
+                                    <label class="form-label">WABA ID (optional)</label>
+                                    <input name="whatsapp_waba_id" class="form-input" placeholder="(optional)" value="<?= esc((string) ($waCfg['waba_id'] ?? '')) ?>" />
+                                </div>
+                                <div class="form-field md:col-span-2">
+                                    <label class="form-label">Access Token</label>
+                                    <input type="password" name="whatsapp_access_token" class="form-input" placeholder="(leave blank to keep existing)" value="" autocomplete="new-password" />
+                                    <p class="form-help">Token is never shown. Leave blank to keep existing stored token.</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                                <h5 class="text-sm font-medium text-gray-800 dark:text-gray-200">Template References</h5>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Provide approved Meta template name + locale per event.</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                    <?php foreach (($notificationEvents ?? []) as $eventType => $eventLabel): ?>
+                                        <?php $tpl = ($waTplMap[$eventType] ?? ['template_name' => '', 'locale' => 'en_US']); ?>
+                                        <div class="form-field">
+                                            <label class="form-label"><?= esc($eventLabel) ?> Template Name</label>
+                                            <input name="whatsapp_template_<?= esc($eventType) ?>" class="form-input" placeholder="meta_template_name" value="<?= esc((string) ($tpl['template_name'] ?? '')) ?>" />
+                                        </div>
+                                        <div class="form-field">
+                                            <label class="form-label"><?= esc($eventLabel) ?> Locale</label>
+                                            <input name="whatsapp_locale_<?= esc($eventType) ?>" class="form-input" placeholder="en_US" value="<?= esc((string) ($tpl['locale'] ?? 'en_US')) ?>" />
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <div class="form-field">
                                 <label class="form-label">Test Recipient Phone (+E.164)</label>
                                 <input name="test_whatsapp_to" class="form-input" placeholder="+15551234567" value="" />
-                                <p class="form-help">Sends a single template test message using the appointment_confirmed template.</p>
+                                <p class="form-help">Test the WhatsApp integration with this phone number.</p>
                             </div>
 
                             <div class="flex items-end justify-end gap-3">
                                 <button type="submit" name="intent" value="test_whatsapp" class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-secondary)">
-                                    Send Test WhatsApp
+                                    Test WhatsApp
                                 </button>
                             </div>
                         </div>
 
-                        <div class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                            <h5 class="text-sm font-medium text-gray-800 dark:text-gray-200">Template References</h5>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Provide approved Meta template name + locale per event.</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                                <?php foreach (($notificationEvents ?? []) as $eventType => $eventLabel): ?>
-                                    <?php $tpl = ($waTplMap[$eventType] ?? ['template_name' => '', 'locale' => 'en_US']); ?>
-                                    <div class="form-field">
-                                        <label class="form-label"><?= esc($eventLabel) ?> Template Name</label>
-                                        <input name="whatsapp_template_<?= esc($eventType) ?>" class="form-input" placeholder="meta_template_name" value="<?= esc((string) ($tpl['template_name'] ?? '')) ?>" />
-                                    </div>
-                                    <div class="form-field">
-                                        <label class="form-label"><?= esc($eventLabel) ?> Locale</label>
-                                        <input name="whatsapp_locale_<?= esc($eventType) ?>" class="form-input" placeholder="en_US" value="<?= esc((string) ($tpl['locale'] ?? 'en_US')) ?>" />
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                        <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="submit" name="intent" value="save_whatsapp" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                                <span class="material-symbols-outlined text-base">save</span>
+                                Save WhatsApp Settings
+                            </button>
                         </div>
-                    </div>
 
-                    <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">SMS Integration (Phase 3)</h4>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Credentials are stored encrypted. Use “Send Test SMS” to verify connectivity.</p>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-gray-500 dark:text-gray-400">Health: <span class="font-semibold"><?= esc(ucfirst($smsHealth)) ?></span></div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">Last tested: <span class="font-semibold"><?= esc($smsLastTested ?: 'Never') ?></span></div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const providerSelect = document.getElementById('whatsapp_provider');
+                            const sections = {
+                                link_generator: document.getElementById('wa_link_generator_section'),
+                                twilio: document.getElementById('wa_twilio_section'),
+                                meta_cloud: document.getElementById('wa_meta_section')
+                            };
+                            
+                            function updateSections() {
+                                const selected = providerSelect.value;
+                                Object.keys(sections).forEach(key => {
+                                    if (sections[key]) {
+                                        sections[key].style.display = key === selected ? '' : 'none';
+                                    }
+                                });
+                            }
+                            
+                            providerSelect.addEventListener('change', updateSections);
+                        });
+                        </script>
+
+                        <?php if ($smsDecryptError === 'encryption_key_mismatch'): ?>
+                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
+                                <div>
+                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
+                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                        Previously saved SMS credentials cannot be decrypted because the server's encryption key has changed.
+                                        Please re-enter your credentials and save to restore SMS functionality.
+                                    </p>
+                                </div>
                             </div>
                         </div>
+                        <?php endif; ?>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div class="form-field">
@@ -867,6 +1017,13 @@
                                     Send Test SMS
                                 </button>
                             </div>
+                        </div>
+
+                        <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="submit" name="intent" value="save_sms" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                                <span class="material-symbols-outlined text-base">save</span>
+                                Save SMS Settings
+                            </button>
                         </div>
                     </div>
 
@@ -2313,6 +2470,8 @@
                             </p>
                         </div>
                         <a href="${API_BASE}/download/${encodeURIComponent(lastBackup.filename)}" 
+                           data-no-spa="true"
+                           download="${escapeHtml(lastBackup.filename)}"
                            class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm inline-flex items-center gap-1">
                             <span class="material-symbols-outlined text-base">download</span>
                             Download
@@ -2444,6 +2603,8 @@
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <a href="${API_BASE}/download/${encodeURIComponent(backup.filename)}" 
+                                                              data-no-spa="true"
+                                                              download="${escapeHtml(backup.filename)}"
                                                class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
                                                title="Download">
                                                 <span class="material-symbols-outlined text-xl">download</span>

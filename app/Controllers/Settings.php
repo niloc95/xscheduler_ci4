@@ -159,61 +159,95 @@ class Settings extends BaseController
         $settingModel = new SettingModel();
         $settingModel->upsert('notifications.default_language', $defaultLang, 'string', $userId);
 
-        // Phase 2: Email (SMTP) integration
-        $emailInput = [
-            'provider_name' => $this->request->getPost('email_provider_name'),
-            'is_active' => $this->request->getPost('email_is_active') ? true : false,
-            'host' => $this->request->getPost('smtp_host'),
-            'port' => $this->request->getPost('smtp_port'),
-            'crypto' => $this->request->getPost('smtp_crypto'),
-            'username' => $this->request->getPost('smtp_user'),
-            'password' => $this->request->getPost('smtp_pass'),
-            'from_email' => $this->request->getPost('smtp_from_email'),
-            'from_name' => $this->request->getPost('smtp_from_name'),
-        ];
+        // Determine which services to save based on intent
+        $saveEmail = in_array($intent, ['save', 'save_email', 'test_email'], true);
+        $saveSms = in_array($intent, ['save', 'save_sms', 'test_sms'], true);
+        $saveWhatsApp = in_array($intent, ['save', 'save_whatsapp', 'test_whatsapp'], true);
+        $saveRules = ($intent === 'save');
 
+        // Phase 2: Email (SMTP) integration
         $emailSvc = new NotificationEmailService();
-        $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
-        if (!($emailSave['ok'] ?? false)) {
-            return redirect()->to(base_url('settings'))
-                ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+        if ($saveEmail) {
+            $emailInput = [
+                'provider_name' => $this->request->getPost('email_provider_name'),
+                'is_active' => $this->request->getPost('email_is_active') ? true : false,
+                'host' => $this->request->getPost('smtp_host'),
+                'port' => $this->request->getPost('smtp_port'),
+                'crypto' => $this->request->getPost('smtp_crypto'),
+                'username' => $this->request->getPost('smtp_user'),
+                'password' => $this->request->getPost('smtp_pass'),
+                'from_email' => $this->request->getPost('smtp_from_email'),
+                'from_name' => $this->request->getPost('smtp_from_name'),
+            ];
+
+            $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
+            if (!($emailSave['ok'] ?? false)) {
+                return redirect()->to(base_url('settings'))
+                    ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+            }
+
+            if ($intent === 'save_email') {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'Email settings saved successfully.');
+            }
         }
 
         // Phase 3: SMS integration
-        $smsInput = [
-            'provider' => $this->request->getPost('sms_provider'),
-            'is_active' => $this->request->getPost('sms_is_active') ? true : false,
-            'clickatell_api_key' => $this->request->getPost('clickatell_api_key'),
-            'clickatell_from' => $this->request->getPost('clickatell_from'),
-            'twilio_account_sid' => $this->request->getPost('twilio_account_sid'),
-            'twilio_auth_token' => $this->request->getPost('twilio_auth_token'),
-            'twilio_from_number' => $this->request->getPost('twilio_from_number'),
-        ];
         $smsSvc = new NotificationSmsService();
-        $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
-        if (!($smsSave['ok'] ?? false)) {
-            return redirect()->to(base_url('settings'))
-                ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+        if ($saveSms) {
+            $smsInput = [
+                'provider' => $this->request->getPost('sms_provider'),
+                'is_active' => $this->request->getPost('sms_is_active') ? true : false,
+                'clickatell_api_key' => $this->request->getPost('clickatell_api_key'),
+                'clickatell_from' => $this->request->getPost('clickatell_from'),
+                'twilio_account_sid' => $this->request->getPost('twilio_account_sid'),
+                'twilio_auth_token' => $this->request->getPost('twilio_auth_token'),
+                'twilio_from_number' => $this->request->getPost('twilio_from_number'),
+            ];
+            $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
+            if (!($smsSave['ok'] ?? false)) {
+                return redirect()->to(base_url('settings'))
+                    ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+            }
+
+            if ($intent === 'save_sms') {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'SMS settings saved successfully.');
+            }
         }
 
-        // Phase 4: WhatsApp (Meta Cloud API) integration + templates
-        $waInput = [
-            'is_active' => $this->request->getPost('whatsapp_is_active') ? true : false,
-            'phone_number_id' => $this->request->getPost('whatsapp_phone_number_id'),
-            'waba_id' => $this->request->getPost('whatsapp_waba_id'),
-            'access_token' => $this->request->getPost('whatsapp_access_token'),
-        ];
+        // Phase 4: WhatsApp (Multi-provider) integration + templates
         $waSvc = new NotificationWhatsAppService();
-        $waSave = $waSvc->saveIntegration($businessId, $waInput);
-        if (!($waSave['ok'] ?? false)) {
-            return redirect()->to(base_url('settings'))
-                ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
-        }
+        if ($saveWhatsApp) {
+            $waInput = [
+                'provider' => $this->request->getPost('whatsapp_provider') ?: 'link_generator',
+                'is_active' => $this->request->getPost('whatsapp_is_active') ? true : false,
+                // Twilio WhatsApp
+                'twilio_whatsapp_from' => $this->request->getPost('twilio_whatsapp_from'),
+                // Meta Cloud API
+                'phone_number_id' => $this->request->getPost('whatsapp_phone_number_id'),
+                'waba_id' => $this->request->getPost('whatsapp_waba_id'),
+                'access_token' => $this->request->getPost('whatsapp_access_token'),
+            ];
+            $waSave = $waSvc->saveIntegration($businessId, $waInput);
+            if (!($waSave['ok'] ?? false)) {
+                return redirect()->to(base_url('settings'))
+                    ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+            }
 
-        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
-            $tplName = $this->request->getPost('whatsapp_template_' . $eventType);
-            $tplLocale = $this->request->getPost('whatsapp_locale_' . $eventType);
-            $waSvc->saveTemplate($businessId, $eventType, is_string($tplName) ? $tplName : null, is_string($tplLocale) ? $tplLocale : null);
+            // Only save templates for Meta Cloud provider
+            if (($waInput['provider'] ?? '') === 'meta_cloud') {
+                foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+                    $tplName = $this->request->getPost('whatsapp_template_' . $eventType);
+                    $tplLocale = $this->request->getPost('whatsapp_locale_' . $eventType);
+                    $waSvc->saveTemplate($businessId, $eventType, is_string($tplName) ? $tplName : null, is_string($tplLocale) ? $tplLocale : null);
+                }
+            }
+
+            if ($intent === 'save_whatsapp') {
+                return redirect()->to(base_url('settings'))
+                    ->with('success', 'WhatsApp settings saved successfully.');
+            }
         }
 
         if ($intent === 'test_email') {
@@ -244,6 +278,12 @@ class Settings extends BaseController
             $toPhone = (string) ($this->request->getPost('test_whatsapp_to') ?? '');
             $result = $waSvc->sendTestMessage($businessId, $toPhone);
             if ($result['ok'] ?? false) {
+                // For Link Generator, show the link in a special success message
+                if (($result['method'] ?? '') === 'link' && !empty($result['link'])) {
+                    return redirect()->to(base_url('settings'))
+                        ->with('success', 'WhatsApp Link ready! <a href="' . esc($result['link']) . '" target="_blank" class="underline font-semibold">Click here to open WhatsApp</a>')
+                        ->with('success_html', true);
+                }
                 return redirect()->to(base_url('settings'))
                     ->with('success', 'Test WhatsApp message sent successfully.');
             }
@@ -252,47 +292,50 @@ class Settings extends BaseController
                 ->with('error', (string) ($result['error'] ?? 'Test WhatsApp message failed.'));
         }
 
-        $db = \Config\Database::connect();
-        $db->transStart();
+        // Only save rules matrix when using the main "Save Notification Settings" button
+        if ($saveRules) {
+            $db = \Config\Database::connect();
+            $db->transStart();
 
-        $ruleModel = new \App\Models\BusinessNotificationRuleModel();
+            $ruleModel = new \App\Models\BusinessNotificationRuleModel();
 
-        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
-            foreach (NotificationPhase1::CHANNELS as $channel) {
-                $enabled = isset($rulesInput[$eventType][$channel]) ? 1 : 0;
+            foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+                foreach (NotificationPhase1::CHANNELS as $channel) {
+                    $enabled = isset($rulesInput[$eventType][$channel]) ? 1 : 0;
 
-                $offset = null;
-                if ($eventType === 'appointment_reminder') {
-                    $offset = $reminderOffsetMinutes;
-                }
+                    $offset = null;
+                    if ($eventType === 'appointment_reminder') {
+                        $offset = $reminderOffsetMinutes;
+                    }
 
-                $existing = $ruleModel
-                    ->where('business_id', $businessId)
-                    ->where('event_type', $eventType)
-                    ->where('channel', $channel)
-                    ->first();
+                    $existing = $ruleModel
+                        ->where('business_id', $businessId)
+                        ->where('event_type', $eventType)
+                        ->where('channel', $channel)
+                        ->first();
 
-                $payload = [
-                    'business_id' => $businessId,
-                    'event_type' => $eventType,
-                    'channel' => $channel,
-                    'is_enabled' => $enabled,
-                    'reminder_offset_minutes' => $offset,
-                ];
+                    $payload = [
+                        'business_id' => $businessId,
+                        'event_type' => $eventType,
+                        'channel' => $channel,
+                        'is_enabled' => $enabled,
+                        'reminder_offset_minutes' => $offset,
+                    ];
 
-                if (!empty($existing['id'])) {
-                    $ruleModel->update((int) $existing['id'], $payload);
-                } else {
-                    $ruleModel->insert($payload);
+                    if (!empty($existing['id'])) {
+                        $ruleModel->update((int) $existing['id'], $payload);
+                    } else {
+                        $ruleModel->insert($payload);
+                    }
                 }
             }
-        }
 
-        $db->transComplete();
+            $db->transComplete();
 
-        if ($db->transStatus() === false) {
-            return redirect()->to(base_url('settings'))
-                ->with('error', 'Failed to save notification rules. Please try again.');
+            if ($db->transStatus() === false) {
+                return redirect()->to(base_url('settings'))
+                    ->with('error', 'Failed to save notification rules. Please try again.');
+            }
         }
 
         return redirect()->to(base_url('settings'))
