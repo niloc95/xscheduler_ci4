@@ -202,6 +202,16 @@ class PublicBookingService
             throw new PublicBookingException('Unable to reschedule appointment. Please try again later.');
         }
 
+        // Enqueue rescheduled notification
+        try {
+            $queue = new NotificationQueueService();
+            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+            $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_rescheduled', (int) $appointment['id']);
+            $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_rescheduled', (int) $appointment['id']);
+        } catch (Throwable $e) {
+            log_message('error', '[PublicBookingService::reschedule] Notification enqueue failed: ' . $e->getMessage());
+        }
+
         $updated = $this->appointments->find((int) $appointment['id']);
         return $this->formatPublicAppointment($updated, $newToken);
     }

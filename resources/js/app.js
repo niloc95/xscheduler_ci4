@@ -126,8 +126,6 @@ function prefillAppointmentForm() {
                 
                 // Trigger change event to load services
                 providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                console.log('[prefillAppointmentForm] Auto-selected available provider:', firstAvailable);
             }
         }
     }
@@ -618,8 +616,6 @@ function setupAdvancedFilterPanel(scheduler) {
                 
                 serviceSelect.innerHTML = optionsHtml;
                 serviceSelect.disabled = false;
-                
-                console.log(`📋 Loaded ${services.length} services for provider ${providerId}`);
             } catch (error) {
                 console.error('Failed to load provider services:', error);
                 // Fallback to all services on error
@@ -655,8 +651,6 @@ function setupAdvancedFilterPanel(scheduler) {
             const providerId = providerSelect?.value || '';
             const serviceId = serviceSelect?.value || '';
             
-            console.log('🔍 Applying filters:', { status, providerId, serviceId });
-            
             try {
                 await scheduler.setFilters({ status, providerId, serviceId });
                 
@@ -690,8 +684,6 @@ function setupAdvancedFilterPanel(scheduler) {
                 serviceSelect.value = '';
                 serviceSelect.disabled = false;
             }
-            
-            console.log('🔍 Clearing filters');
             
             try {
                 await scheduler.setFilters({ status: '', providerId: '', serviceId: '' });

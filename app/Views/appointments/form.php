@@ -533,8 +533,13 @@ $pageSubtitle = $isEditMode
 </div>
 
 <script>
-// Unified form initialization
-document.addEventListener('DOMContentLoaded', function() {
+// Unified form initialization - wrapped for SPA compatibility
+function initAppointmentForm() {
+    // Prevent double initialization
+    const form = document.querySelector('form[action*="appointments"]');
+    if (!form || form.dataset.initialized === 'true') return;
+    form.dataset.initialized = 'true';
+    
     const isEditMode = <?= $isEditMode ? 'true' : 'false' ?>;
     
     // Populate timezone fields
@@ -902,6 +907,14 @@ document.addEventListener('DOMContentLoaded', function() {
         div.textContent = text || '';
         return div.innerHTML;
     }
-});
+}
+
+// Register for both initial load and SPA navigation
+if (typeof xsRegisterViewInit === 'function') {
+    xsRegisterViewInit(initAppointmentForm);
+} else {
+    // Fallback if SPA module not loaded
+    document.addEventListener('DOMContentLoaded', initAppointmentForm);
+}
 </script>
 <?= $this->endSection() ?>

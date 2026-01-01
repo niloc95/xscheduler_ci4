@@ -85,7 +85,9 @@ class AddUpdatedByToSettings extends MigrationBase
             try {
                 $settings = $this->db->prefixTable('settings');
                 $this->db->query("ALTER TABLE {$settings} DROP FOREIGN KEY fk_settings_updated_by");
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                // Foreign key may not exist, safe to ignore
+            }
         }
         if ($this->db->fieldExists('updated_by', 'settings')) {
             $this->forge->dropColumn('settings', 'updated_by');

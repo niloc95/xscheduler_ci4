@@ -129,11 +129,9 @@ function initCustomerSearch() {
     
     // Prevent duplicate initialization
     if (searchInput.dataset.searchInitialized === 'true') {
-        console.log('Customer search already initialized');
         return;
     }
     searchInput.dataset.searchInitialized = 'true';
-    console.log('Initializing customer search');
     
     let searchTimeout = null;
 
@@ -144,10 +142,8 @@ function initCustomerSearch() {
             if (spinner) spinner.classList.remove('hidden');
 
             const url = `<?= base_url('customer-management/search') ?>?q=${encodeURIComponent(query)}`;
-            console.log('Searching:', url);
             
             const response = await fetch(url);
-            console.log('Response status:', response.status);
             
             if (!response.ok) {
                 throw new Error(`Search failed: ${response.status}`);
@@ -162,16 +158,13 @@ function initCustomerSearch() {
                 // First try parsing as-is
                 data = JSON.parse(text);
             } catch (e) {
-                console.log('Initial parse failed, trying extraction...');
-                
                 // Strategy 1: Look for JSON object pattern with success field
                 const jsonMatch = text.match(/\{["']success["']:\s*(?:true|false)[\s\S]*?\}(?=\s*<|$)/);
                 if (jsonMatch) {
                     try {
                         data = JSON.parse(jsonMatch[0]);
-                        console.log('Extracted JSON successfully');
                     } catch (e2) {
-                        console.error('Strategy 1 failed');
+                        // Strategy 1 failed
                     }
                 }
                 
@@ -189,21 +182,18 @@ function initCustomerSearch() {
                         if (depth === 0) {
                             try {
                                 data = JSON.parse(text.substring(i + 1, lastBrace + 1));
-                                console.log('Extracted JSON using depth strategy');
                             } catch (e3) {
-                                console.error('Strategy 2 failed');
+                                // Strategy 2 failed
                             }
                         }
                     }
                 }
                 
                 if (!data) {
-                    console.error('Could not extract JSON from response:', text.substring(0, 500));
+                    console.error('Customer search: Could not extract JSON from response');
                     throw new Error('Invalid JSON response');
                 }
             }
-            
-            console.log('Search results:', data);
             
             if (data.success) {
                 updateTable(data.customers);

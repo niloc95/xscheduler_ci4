@@ -218,6 +218,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1');
     $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
     $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
 

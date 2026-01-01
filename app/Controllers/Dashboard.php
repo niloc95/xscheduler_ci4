@@ -482,24 +482,11 @@ class Dashboard extends BaseController
      */
     public function search()
     {
-        // Completely bypass CI4's response system
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-        
-        // Disable the debug toolbar entirely
-        if (defined('CI_DEBUG') && CI_DEBUG) {
-            ini_set('display_errors', '0');
-        }
-        
-        header('Content-Type: application/json; charset=UTF-8');
-        header('X-Content-Type-Options: nosniff');
-        
         $currentUserId = (int) (session()->get('user_id') ?? 0);
         if (!$currentUserId) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Unauthorized', 'success' => false]);
-            exit(0);
+            return $this->response
+                ->setStatusCode(401)
+                ->setJSON(['error' => 'Unauthorized', 'success' => false]);
         }
 
         $q = trim((string) $this->request->getGet('q'));
@@ -533,7 +520,7 @@ class Dashboard extends BaseController
                 $appointments = $appointmentsQuery->findAll();
             }
 
-            echo json_encode([
+            return $this->response->setJSON([
                 'success' => true,
                 'customers' => $customers,
                 'appointments' => $appointments,
@@ -543,15 +530,14 @@ class Dashboard extends BaseController
                     'total' => count($customers) + count($appointments)
                 ]
             ]);
-            exit(0);
         } catch (\Exception $e) {
             log_message('error', '[Dashboard::search] Error: ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'error' => 'Search failed: ' . $e->getMessage()
-            ]);
-            exit(0);
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON([
+                    'success' => false,
+                    'error' => 'Search failed: ' . $e->getMessage()
+                ]);
         }
     }
 }

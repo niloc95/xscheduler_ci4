@@ -319,8 +319,16 @@ class NotificationWhatsAppService
      * For Link Generator: Returns a wa.me link (no actual send)
      * For Twilio: Sends via Twilio WhatsApp API
      * For Meta Cloud: Sends via Meta Cloud API template messages
+     * 
+     * @param int $businessId Business ID
+     * @param string $toPhone Recipient phone in E.164 format
+     * @param string $eventType Event type (appointment_confirmed, etc.)
+     * @param array $bodyParameters Parameters for Meta Cloud templates
+     * @param array $appointment Appointment data for link generator / fallback
+     * @param array $business Business data for link generator / fallback
+     * @param string|null $renderedMessage Pre-rendered message from NotificationTemplateService (for Twilio/Link Generator)
      */
-    public function sendMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = [], array $appointment = [], array $business = []): array
+    public function sendMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = [], array $appointment = [], array $business = [], ?string $renderedMessage = null): array
     {
         $toPhone = trim($toPhone);
         if (!$this->isValidE164($toPhone)) {
@@ -333,7 +341,7 @@ class NotificationWhatsAppService
 
         // For Link Generator, always return a link (doesn't need to be active)
         if ($provider === 'link_generator') {
-            return $this->generateWhatsAppLink($toPhone, $eventType, $appointment, $business);
+            return $this->generateWhatsAppLink($toPhone, $eventType, $appointment, $business, $renderedMessage);
         }
 
         // For API-based providers, check if configured and active
@@ -345,7 +353,7 @@ class NotificationWhatsAppService
         }
 
         if ($provider === 'twilio') {
-            return $this->sendTwilioWhatsApp($businessId, $config, $toPhone, $eventType, $bodyParameters, $appointment, $business);
+            return $this->sendTwilioWhatsApp($businessId, $config, $toPhone, $eventType, $bodyParameters, $appointment, $business, $renderedMessage);
         }
 
         return $this->sendMetaCloudWhatsApp($businessId, $config, $toPhone, $eventType, $bodyParameters);
@@ -355,11 +363,16 @@ class NotificationWhatsAppService
      * Generate a WhatsApp link (wa.me) with pre-filled message
      * This doesn't actually send - it creates a link the user can click to open WhatsApp
      */
-    private function generateWhatsAppLink(string $toPhone, string $eventType, array $appointment = [], array $business = []): array
+    private function generateWhatsAppLink(string $toPhone, string $eventType, array $appointment = [], array $business = [], ?string $renderedMessage = null): array
     {
         helper('whatsapp');
         
-        $link = whatsapp_generate_link_for_event($eventType, $toPhone, $appointment, [], [], $business);
+        // Use pre-rendered message from templates if available
+        if ($renderedMessage !== null && $renderedMessage !== '') {
+            $link = whatsapp_link($toPhone, $renderedMessage);
+        } else {
+            $link = whatsapp_generate_link_for_event($eventType, $toPhone, $appointment, [], [], $business);
+        }
         
         return [
             'ok' => true,
@@ -372,8 +385,17 @@ class NotificationWhatsAppService
     /**
      * Send WhatsApp message via Twilio
      * Uses the Twilio credentials from SMS settings
+     * 
+     * @param int $businessId Business ID
+     * @param array $config WhatsApp integration config
+     * @param string $toPhone Recipient phone
+     * @param string $eventType Event type
+     * @param array $bodyParameters Template parameters (for fallback)
+     * @param array $appointment Appointment data (for fallback)
+     * @param array $business Business data (for fallback)
+     * @param string|null $renderedMessage Pre-rendered message from NotificationTemplateService
      */
-    private function sendTwilioWhatsApp(int $businessId, array $config, string $toPhone, string $eventType, array $bodyParameters, array $appointment, array $business): array
+    private function sendTwilioWhatsApp(int $businessId, array $config, string $toPhone, string $eventType, array $bodyParameters, array $appointment, array $business, ?string $renderedMessage = null): array
     {
         // Get Twilio credentials from SMS integration
         $smsService = new NotificationSmsService();
@@ -388,29 +410,34 @@ class NotificationWhatsAppService
             return ['ok' => false, 'error' => 'Twilio WhatsApp From number not configured.'];
         }
 
-        // Build message from event type
-        helper('whatsapp');
+        // Use pre-rendered message from templates if available
         $message = '';
-        switch ($eventType) {
-            case 'appointment_confirmed':
-            case 'appointment_created':
-                $message = whatsapp_appointment_confirmed_message($appointment, [], [], $business);
-                break;
-            case 'appointment_reminder':
-                $message = whatsapp_appointment_reminder_message($appointment, [], [], $business);
-                break;
-            case 'appointment_cancelled':
-                $message = whatsapp_appointment_cancelled_message($appointment, [], [], $business);
-                break;
-            case 'appointment_rescheduled':
-                $message = whatsapp_appointment_rescheduled_message($appointment, [], [], [], $business);
-                break;
-            default:
-                // Use body parameters for custom messages
-                $message = implode("\n", $bodyParameters);
-                if ($message === '') {
-                    $message = 'Message from ' . ($business['business_name'] ?? 'WebSchedulr');
-                }
+        if ($renderedMessage !== null && $renderedMessage !== '') {
+            $message = $renderedMessage;
+        } else {
+            // Fallback: Build message from event type using helper functions
+            helper('whatsapp');
+            switch ($eventType) {
+                case 'appointment_confirmed':
+                case 'appointment_created':
+                    $message = whatsapp_appointment_confirmed_message($appointment, [], [], $business);
+                    break;
+                case 'appointment_reminder':
+                    $message = whatsapp_appointment_reminder_message($appointment, [], [], $business);
+                    break;
+                case 'appointment_cancelled':
+                    $message = whatsapp_appointment_cancelled_message($appointment, [], [], $business);
+                    break;
+                case 'appointment_rescheduled':
+                    $message = whatsapp_appointment_rescheduled_message($appointment, [], [], [], $business);
+                    break;
+                default:
+                    // Use body parameters for custom messages
+                    $message = implode("\n", $bodyParameters);
+                    if ($message === '') {
+                        $message = 'Message from ' . ($business['business_name'] ?? 'WebSchedulr');
+                    }
+            }
         }
 
         // Twilio WhatsApp requires whatsapp: prefix on numbers
@@ -536,10 +563,16 @@ class NotificationWhatsAppService
     /**
      * Legacy method - Template-only enforcement for Meta Cloud API
      * @deprecated Use sendMessage() instead
+     * 
+     * @param int $businessId Business ID
+     * @param string $toPhone Recipient phone
+     * @param string $eventType Event type
+     * @param array $bodyParameters Parameters for Meta Cloud templates
+     * @param string|null $renderedMessage Pre-rendered message from NotificationTemplateService
      */
-    public function sendTemplateMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = []): array
+    public function sendTemplateMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = [], ?string $renderedMessage = null): array
     {
-        return $this->sendMessage($businessId, $toPhone, $eventType, $bodyParameters);
+        return $this->sendMessage($businessId, $toPhone, $eventType, $bodyParameters, [], [], $renderedMessage);
     }
 
     /**
@@ -556,16 +589,23 @@ class NotificationWhatsAppService
         $config = $this->decryptConfig($integration['encrypted_config'] ?? null);
         $provider = (string) ($config['provider'] ?? $integration['provider_name'] ?? 'link_generator');
 
-        // For Link Generator, just return the test link
+        // Prepare test appointment data
+        $testAppointment = [
+            'customer_name' => 'Test Customer',
+            'start_datetime' => date('Y-m-d H:i:s', strtotime('+1 day 10:00')),
+            'service_name' => 'Test Service',
+            'provider_name' => 'Test Provider',
+        ];
+
+        // Render message using NotificationTemplateService (includes legal placeholders)
+        $templateSvc = new NotificationTemplateService();
+        $rendered = $templateSvc->render('appointment_confirmed', 'whatsapp', $testAppointment);
+        $message = $rendered['body'] ?? '';
+
+        // For Link Generator, return the test link with rendered message
         if ($provider === 'link_generator') {
             helper('whatsapp');
-            $testAppointment = [
-                'customer_name' => 'Test Customer',
-                'start_datetime' => date('Y-m-d H:i:s', strtotime('+1 day 10:00')),
-                'service_name' => 'Test Service',
-            ];
-            $business = ['business_name' => 'WebSchedulr Test'];
-            $link = whatsapp_generate_link_for_event('appointment_confirmed', $toPhone, $testAppointment, [], [], $business);
+            $link = whatsapp_link($toPhone, $message);
             
             return [
                 'ok' => true,
@@ -584,14 +624,10 @@ class NotificationWhatsAppService
         $model = new BusinessIntegrationModel();
 
         try {
-            $testAppointment = [
-                'customer_name' => 'Test Customer',
-                'start_datetime' => $now,
-                'service_name' => 'Test Service',
-            ];
             $business = ['business_name' => 'WebSchedulr'];
 
-            $send = $this->sendMessage($businessId, $toPhone, 'appointment_confirmed', ['Test', 'Service', 'Provider', $now], $testAppointment, $business);
+            // Use rendered message from template service
+            $send = $this->sendMessage($businessId, $toPhone, 'appointment_confirmed', ['Test', 'Service', 'Provider', $now], $testAppointment, $business, $message);
             
             if ($send['ok'] ?? false) {
                 $this->updateHealth($model, $integration, 'healthy', $now);
@@ -609,10 +645,28 @@ class NotificationWhatsAppService
 
     /**
      * Get a WhatsApp link for an appointment (for Link Generator provider or fallback)
+     * Now uses NotificationTemplateService to render message with legal placeholders
      */
     public function getAppointmentWhatsAppLink(int $businessId, string $eventType, string $toPhone, array $appointment, array $provider = [], array $service = [], array $business = []): string
     {
         helper('whatsapp');
+        
+        // Merge provider and service data into appointment for template rendering
+        $templateData = array_merge($appointment, [
+            'provider_name' => $provider['name'] ?? $appointment['provider_name'] ?? '',
+            'service_name' => $service['name'] ?? $appointment['service_name'] ?? '',
+        ]);
+        
+        // Render message using NotificationTemplateService (includes legal placeholders)
+        $templateSvc = new NotificationTemplateService();
+        $rendered = $templateSvc->render($eventType, 'whatsapp', $templateData);
+        $message = $rendered['body'] ?? '';
+        
+        if ($message !== '') {
+            return whatsapp_link($toPhone, $message);
+        }
+        
+        // Fallback to helper function if template rendering fails
         return whatsapp_generate_link_for_event($eventType, $toPhone, $appointment, $provider, $service, $business);
     }
 

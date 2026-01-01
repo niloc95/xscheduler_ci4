@@ -64,7 +64,9 @@ if (!function_exists('setting_url')) {
             if ($row && !empty($row['data'])) {
                 return base_url('assets/db/' . rawurlencode($key));
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            // Silently fall back to file-based lookup
+        }
 
         $path = setting($key, $default);
         if (!$path || !is_string($path)) {

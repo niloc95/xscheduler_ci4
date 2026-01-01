@@ -16,13 +16,36 @@
             </div>
         <?php endif; ?>
         <?php if (session()->getFlashdata('success')): ?>
-            <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-                <?php if (session()->getFlashdata('success_html')): ?>
-                    <?= session()->getFlashdata('success') ?>
-                <?php else: ?>
-                    <?= esc(session()->getFlashdata('success')) ?>
-                <?php endif; ?>
+            <div id="success-alert" class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 flex items-center justify-between">
+                <span>
+                    <?php if (session()->getFlashdata('success_html')): ?>
+                        <?= session()->getFlashdata('success') ?>
+                    <?php else: ?>
+                        <?= esc(session()->getFlashdata('success')) ?>
+                    <?php endif; ?>
+                </span>
+                <button type="button" onclick="document.getElementById('success-alert').remove()" class="ml-4 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
+                    <span class="material-symbols-rounded text-lg">close</span>
+                </button>
             </div>
+            <?php if (session()->getFlashdata('success_html')): ?>
+            <script>
+                // Auto-dismiss WhatsApp link alert when link is clicked
+                document.addEventListener('DOMContentLoaded', function() {
+                    const alert = document.getElementById('success-alert');
+                    if (alert) {
+                        const link = alert.querySelector('a[target="_blank"]');
+                        if (link) {
+                            link.addEventListener('click', function() {
+                                setTimeout(function() {
+                                    alert.remove();
+                                }, 500);
+                            });
+                        }
+                    }
+                });
+            </script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <!-- Tabs -->
@@ -489,10 +512,32 @@
                     <div class="form-field">
                         <label class="form-label">Terms & Conditions</label>
                         <textarea name="terms" rows="6" class="form-input" placeholder="Enter your terms and conditions here..."><?= esc($settings['legal.terms'] ?? '') ?></textarea>
+                        <p class="form-help">Use placeholder <code>{terms_link}</code> in notification templates to include this.</p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Privacy Policy</label>
                         <textarea name="privacy" rows="6" class="form-input" placeholder="Enter your privacy policy here..."><?= esc($settings['legal.privacy'] ?? '') ?></textarea>
+                        <p class="form-help">Use placeholder <code>{privacy_link}</code> in notification templates to include this.</p>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Cancellation Policy</label>
+                        <textarea name="cancellation_policy" rows="4" class="form-input" placeholder="E.g., Cancellations must be made at least 24 hours in advance..."><?= esc($settings['legal.cancellation_policy'] ?? '') ?></textarea>
+                        <p class="form-help">Use placeholder <code>{cancellation_policy}</code> in notification templates to include this.</p>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Rescheduling Policy</label>
+                        <textarea name="rescheduling_policy" rows="4" class="form-input" placeholder="E.g., You may reschedule your appointment up to 12 hours before..."><?= esc($settings['legal.rescheduling_policy'] ?? '') ?></textarea>
+                        <p class="form-help">Use placeholder <code>{rescheduling_policy}</code> in notification templates to include this.</p>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Terms & Conditions URL (Optional)</label>
+                        <input type="url" name="terms_url" class="form-input" placeholder="https://yourdomain.com/terms" value="<?= esc($settings['legal.terms_url'] ?? '') ?>" />
+                        <p class="form-help">If set, <code>{terms_link}</code> will use this URL instead of showing full text.</p>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Privacy Policy URL (Optional)</label>
+                        <input type="url" name="privacy_url" class="form-input" placeholder="https://yourdomain.com/privacy" value="<?= esc($settings['legal.privacy_url'] ?? '') ?>" />
+                        <p class="form-help">If set, <code>{privacy_link}</code> will use this URL instead of showing full text.</p>
                     </div>
                 </div>
                 
@@ -1183,6 +1228,226 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Message Templates Section -->
+                    <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+                        <div class="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">Message Templates</h4>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Customize notification messages for each event type and channel. Use placeholders like <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{customer_name}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{service_name}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{appointment_date}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{appointment_time}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{provider_name}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{business_name}</code>.
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Legal placeholders: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{cancellation_policy}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{rescheduling_policy}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{terms_link}</code>, <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{privacy_link}</code>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <?php
+                            // Get existing templates from database or use defaults
+                            $messageTemplates = $notificationMessageTemplates ?? [];
+                            
+                            // Default templates for each event/channel combination
+                            $defaultTemplates = [
+                                'appointment_confirmed' => [
+                                    'email' => [
+                                        'subject' => 'Appointment Confirmed - {service_name}',
+                                        'body' => "Hi {customer_name},\n\nYour appointment has been confirmed!\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
+                                    ],
+                                    'sms' => [
+                                        'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. {business_name}"
+                                    ],
+                                    'whatsapp' => [
+                                        'body' => "✅ *Appointment Confirmed*\n\nHi {customer_name}!\n\nYour appointment has been confirmed:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nThank you for booking with {business_name}!\n\n_Reply to this message if you need to make any changes._"
+                                    ]
+                                ],
+                                'appointment_reminder' => [
+                                    'email' => [
+                                        'subject' => 'Reminder: Your Appointment Tomorrow - {service_name}',
+                                        'body' => "Hi {customer_name},\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nWe look forward to seeing you!\n\n{business_name}"
+                                    ],
+                                    'sms' => [
+                                        'body' => "⏰ Reminder: {service_name} on {appointment_date} at {appointment_time}. {business_name}"
+                                    ],
+                                    'whatsapp' => [
+                                        'body' => "⏰ *Appointment Reminder*\n\nHi {customer_name}!\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nWe look forward to seeing you!\n\n_{business_name}_"
+                                    ]
+                                ],
+                                'appointment_cancelled' => [
+                                    'email' => [
+                                        'subject' => 'Appointment Cancelled - {service_name}',
+                                        'body' => "Hi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n\nWe hope to see you again soon! To reschedule, please contact us or book online.\n\n{business_name}"
+                                    ],
+                                    'sms' => [
+                                        'body' => "❌ Appt cancelled: {service_name} on {appointment_date}. Contact us to reschedule. {business_name}"
+                                    ],
+                                    'whatsapp' => [
+                                        'body' => "❌ *Appointment Cancelled*\n\nHi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n\nWe hope to see you again soon!\n\nTo reschedule, please contact us or book online.\n\n_{business_name}_"
+                                    ]
+                                ],
+                                'appointment_rescheduled' => [
+                                    'email' => [
+                                        'subject' => 'Appointment Rescheduled - {service_name}',
+                                        'body' => "Hi {customer_name},\n\nYour appointment has been rescheduled to:\n\n📅 New Date: {appointment_date}\n🕐 New Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nPlease let us know if this doesn't work for you.\n\n{business_name}"
+                                    ],
+                                    'sms' => [
+                                        'body' => "📅 Appt rescheduled: {service_name} now {appointment_date} at {appointment_time}. {business_name}"
+                                    ],
+                                    'whatsapp' => [
+                                        'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_name}!\n\nYour appointment has been rescheduled to:\n\n📅 *New Date:* {appointment_date}\n🕐 *New Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nPlease let us know if this doesn't work for you.\n\n_{business_name}_"
+                                    ]
+                                ],
+                            ];
+                            
+                            // Merge stored templates with defaults
+                            foreach ($defaultTemplates as $eventType => $channels) {
+                                foreach ($channels as $channel => $defaults) {
+                                    $storedSubject = $messageTemplates[$eventType][$channel]['subject'] ?? null;
+                                    $storedBody = $messageTemplates[$eventType][$channel]['body'] ?? null;
+                                    $defaultTemplates[$eventType][$channel]['subject'] = $storedSubject ?? ($defaults['subject'] ?? '');
+                                    $defaultTemplates[$eventType][$channel]['body'] = $storedBody ?? ($defaults['body'] ?? '');
+                                }
+                            }
+                            
+                            $channelLabels = [
+                                'email' => ['icon' => 'email', 'label' => 'Email'],
+                                'sms' => ['icon' => 'sms', 'label' => 'SMS (248 chars max)'],
+                                'whatsapp' => ['icon' => 'chat', 'label' => 'WhatsApp']
+                            ];
+                        ?>
+
+                        <!-- Template Tabs by Event Type -->
+                        <div class="border-b border-gray-200 dark:border-gray-700 mb-4">
+                            <nav class="-mb-px flex space-x-4 overflow-x-auto" aria-label="Template tabs">
+                                <?php $first = true; foreach (array_keys($defaultTemplates) as $eventType): ?>
+                                    <button type="button" 
+                                            class="template-tab-btn whitespace-nowrap py-2 px-3 border-b-2 font-medium text-sm <?= $first ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' ?>"
+                                            data-template-tab="<?= esc($eventType) ?>">
+                                        <?= esc(ucwords(str_replace('_', ' ', $eventType))) ?>
+                                    </button>
+                                <?php $first = false; endforeach; ?>
+                            </nav>
+                        </div>
+
+                        <!-- Template Content Panels -->
+                        <?php $first = true; foreach ($defaultTemplates as $eventType => $channels): ?>
+                            <div class="template-panel <?= $first ? '' : 'hidden' ?>" data-template-panel="<?= esc($eventType) ?>">
+                                <div class="space-y-4">
+                                    <?php foreach ($channels as $channel => $template): ?>
+                                        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span class="material-symbols-outlined text-gray-500 dark:text-gray-400"><?= esc($channelLabels[$channel]['icon']) ?></span>
+                                                <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= esc($channelLabels[$channel]['label']) ?></h5>
+                                            </div>
+                                            
+                                            <?php if ($channel === 'email'): ?>
+                                                <div class="form-field mb-3">
+                                                    <label class="form-label text-xs">Subject</label>
+                                                    <input type="text" 
+                                                           name="templates[<?= esc($eventType) ?>][<?= esc($channel) ?>][subject]" 
+                                                           class="form-input text-sm"
+                                                           value="<?= esc($template['subject'] ?? '') ?>"
+                                                           placeholder="Email subject line..." />
+                                                </div>
+                                            <?php endif; ?>
+                                            
+                                            <div class="form-field">
+                                                <label class="form-label text-xs">Message Body</label>
+                                                <textarea name="templates[<?= esc($eventType) ?>][<?= esc($channel) ?>][body]" 
+                                                          rows="<?= $channel === 'sms' ? '2' : '6' ?>" 
+                                                          class="form-input text-sm font-mono <?= $channel === 'sms' ? 'sms-template-textarea' : '' ?>"
+                                                          data-channel="<?= esc($channel) ?>"
+                                                          <?php if ($channel === 'sms'): ?>data-maxlength="248"<?php endif; ?>
+                                                          placeholder="<?= $channel === 'sms' ? 'SMS message (keep under 248 characters)...' : 'Message body...' ?>"><?= esc($template['body'] ?? '') ?></textarea>
+                                                <?php if ($channel === 'sms'): ?>
+                                                    <div class="flex justify-between items-center mt-1">
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400">Keep SMS messages concise. Max 248 characters recommended.</p>
+                                                        <span class="sms-char-counter text-xs font-medium" data-for="templates[<?= esc($eventType) ?>][sms][body]">
+                                                            <span class="char-count">0</span>/248
+                                                        </span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php $first = false; endforeach; ?>
+
+                        <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="button" id="reset-templates-btn" class="px-4 py-2 mr-3 rounded-lg text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                Reset to Defaults
+                            </button>
+                            <button type="submit" name="intent" value="save_templates" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                                <span class="material-symbols-outlined text-base">save</span>
+                                Save Templates
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Template Tabs JavaScript -->
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Template tab switching
+                        const templateTabs = document.querySelectorAll('.template-tab-btn');
+                        const templatePanels = document.querySelectorAll('.template-panel');
+                        
+                        templateTabs.forEach(tab => {
+                            tab.addEventListener('click', function() {
+                                const targetPanel = this.dataset.templateTab;
+                                
+                                // Update tab styles
+                                templateTabs.forEach(t => {
+                                    t.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                                    t.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                                });
+                                this.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                                this.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                                
+                                // Show/hide panels
+                                templatePanels.forEach(panel => {
+                                    if (panel.dataset.templatePanel === targetPanel) {
+                                        panel.classList.remove('hidden');
+                                    } else {
+                                        panel.classList.add('hidden');
+                                    }
+                                });
+                            });
+                        });
+                        
+                        // SMS character counter
+                        const smsTextareas = document.querySelectorAll('.sms-template-textarea');
+                        smsTextareas.forEach(textarea => {
+                            const counterSpan = document.querySelector(`.sms-char-counter[data-for="${textarea.name}"] .char-count`);
+                            if (counterSpan) {
+                                const updateCounter = () => {
+                                    const len = textarea.value.length;
+                                    counterSpan.textContent = len;
+                                    if (len > 248) {
+                                        counterSpan.parentElement.classList.add('text-red-600', 'dark:text-red-400');
+                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400');
+                                    } else if (len > 200) {
+                                        counterSpan.parentElement.classList.add('text-yellow-600', 'dark:text-yellow-400');
+                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400', 'text-red-600', 'dark:text-red-400');
+                                    } else {
+                                        counterSpan.parentElement.classList.add('text-gray-600', 'dark:text-gray-400');
+                                        counterSpan.parentElement.classList.remove('text-red-600', 'dark:text-red-400', 'text-yellow-600', 'dark:text-yellow-400');
+                                    }
+                                };
+                                textarea.addEventListener('input', updateCounter);
+                                updateCounter(); // Initial count
+                            }
+                        });
+                        
+                        // Reset templates button
+                        document.getElementById('reset-templates-btn')?.addEventListener('click', function() {
+                            if (confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
+                                // Reload page to get defaults
+                                window.location.reload();
+                            }
+                        });
+                    });
+                    </script>
 
                     <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button id="save-notifications-btn" type="submit" name="intent" value="save" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">

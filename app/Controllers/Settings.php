@@ -79,6 +79,10 @@ class Settings extends BaseController
             'legal.cookie_notice',
             'legal.terms',
             'legal.privacy',
+            'legal.cancellation_policy',
+            'legal.rescheduling_policy',
+            'legal.terms_url',
+            'legal.privacy_url',
             'integrations.webhook_url',
             'integrations.analytics',
             'integrations.api_integrations',
@@ -111,6 +115,9 @@ class Settings extends BaseController
             ->limit(50)
             ->findAll();
         
+        // Load message templates from settings
+        $messageTemplates = $this->loadMessageTemplates();
+        
         $data = [
             'user' => session()->get('user') ?? [
                 'name' => 'System Administrator',
@@ -126,9 +133,42 @@ class Settings extends BaseController
             'notificationWhatsAppTemplates' => $waTemplates,
             'notificationEvents' => NotificationPhase1::EVENTS,
             'notificationDeliveryLogs' => $deliveryLogs,
+            'notificationMessageTemplates' => $messageTemplates,
         ];
 
         return view('settings', $data);
+    }
+
+    /**
+     * Load message templates from settings
+     *
+     * @return array Templates indexed by event_type and channel
+     */
+    private function loadMessageTemplates(): array
+    {
+        $settingModel = new SettingModel();
+        $templateSettings = $settingModel->getByPrefix('notification_template.');
+        
+        $templates = [];
+        foreach ($templateSettings as $key => $value) {
+            // Key format: notification_template.{event_type}.{channel}
+            $parts = explode('.', $key);
+            if (count($parts) === 3) {
+                $eventType = $parts[1];
+                $channel = $parts[2];
+                
+                if (is_string($value)) {
+                    $decoded = json_decode($value, true);
+                    if (is_array($decoded)) {
+                        $templates[$eventType][$channel] = $decoded;
+                    }
+                } elseif (is_array($value)) {
+                    $templates[$eventType][$channel] = $value;
+                }
+            }
+        }
+        
+        return $templates;
     }
 
     public function saveNotifications()
@@ -144,6 +184,7 @@ class Settings extends BaseController
         $intent = trim($intent) === '' ? 'save' : trim($intent);
 
         $rulesInput = $this->request->getPost('rules') ?? [];
+        
         $reminderOffsetMinutes = $this->request->getPost('reminder_offset_minutes');
         $reminderOffsetMinutes = is_numeric($reminderOffsetMinutes) ? (int) $reminderOffsetMinutes : null;
         if ($reminderOffsetMinutes !== null) {
@@ -164,6 +205,10 @@ class Settings extends BaseController
         $saveSms = in_array($intent, ['save', 'save_sms', 'test_sms'], true);
         $saveWhatsApp = in_array($intent, ['save', 'save_whatsapp', 'test_whatsapp'], true);
         $saveRules = ($intent === 'save');
+        
+        // For the main "Save" button, we don't want to fail the entire save 
+        // if integrations have incomplete data. Only block on specific intents.
+        $strictIntegrationErrors = ($intent !== 'save');
 
         // Phase 2: Email (SMTP) integration
         $emailSvc = new NotificationEmailService();
@@ -182,12 +227,16 @@ class Settings extends BaseController
 
             $emailSave = $emailSvc->saveIntegration($businessId, $emailInput);
             if (!($emailSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
-                    ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($emailSave['error'] ?? 'Failed to save email integration settings.'));
+                }
+                // For main "Save", just log the issue but continue
+                log_message('debug', 'Email integration save skipped: ' . ($emailSave['error'] ?? 'unknown'));
             }
 
             if ($intent === 'save_email') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Email settings saved successfully.');
             }
         }
@@ -206,12 +255,15 @@ class Settings extends BaseController
             ];
             $smsSave = $smsSvc->saveIntegration($businessId, $smsInput);
             if (!($smsSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
-                    ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($smsSave['error'] ?? 'Failed to save SMS integration settings.'));
+                }
+                log_message('debug', 'SMS integration save skipped: ' . ($smsSave['error'] ?? 'unknown'));
             }
 
             if ($intent === 'save_sms') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'SMS settings saved successfully.');
             }
         }
@@ -231,8 +283,11 @@ class Settings extends BaseController
             ];
             $waSave = $waSvc->saveIntegration($businessId, $waInput);
             if (!($waSave['ok'] ?? false)) {
-                return redirect()->to(base_url('settings'))
-                    ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+                if ($strictIntegrationErrors) {
+                    return redirect()->to(base_url('settings') . '#notifications')
+                        ->with('error', (string) ($waSave['error'] ?? 'Failed to save WhatsApp integration settings.'));
+                }
+                log_message('debug', 'WhatsApp integration save skipped: ' . ($waSave['error'] ?? 'unknown'));
             }
 
             // Only save templates for Meta Cloud provider
@@ -245,7 +300,7 @@ class Settings extends BaseController
             }
 
             if ($intent === 'save_whatsapp') {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'WhatsApp settings saved successfully.');
             }
         }
@@ -254,11 +309,11 @@ class Settings extends BaseController
             $toEmail = (string) ($this->request->getPost('test_email_to') ?? '');
             $result = $emailSvc->sendTestEmail($businessId, $toEmail);
             if ($result['ok'] ?? false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test email sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test email failed.'));
         }
 
@@ -266,11 +321,11 @@ class Settings extends BaseController
             $toPhone = (string) ($this->request->getPost('test_sms_to') ?? '');
             $result = $smsSvc->sendTestSms($businessId, $toPhone);
             if ($result['ok'] ?? false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test SMS sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test SMS failed.'));
         }
 
@@ -280,15 +335,15 @@ class Settings extends BaseController
             if ($result['ok'] ?? false) {
                 // For Link Generator, show the link in a special success message
                 if (($result['method'] ?? '') === 'link' && !empty($result['link'])) {
-                    return redirect()->to(base_url('settings'))
+                    return redirect()->to(base_url('settings') . '#notifications')
                         ->with('success', 'WhatsApp Link ready! <a href="' . esc($result['link']) . '" target="_blank" class="underline font-semibold">Click here to open WhatsApp</a>')
                         ->with('success_html', true);
                 }
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('success', 'Test WhatsApp message sent successfully.');
             }
 
-            return redirect()->to(base_url('settings'))
+            return redirect()->to(base_url('settings') . '#notifications')
                 ->with('error', (string) ($result['error'] ?? 'Test WhatsApp message failed.'));
         }
 
@@ -333,13 +388,62 @@ class Settings extends BaseController
             $db->transComplete();
 
             if ($db->transStatus() === false) {
-                return redirect()->to(base_url('settings'))
+                return redirect()->to(base_url('settings') . '#notifications')
                     ->with('error', 'Failed to save notification rules. Please try again.');
             }
         }
 
-        return redirect()->to(base_url('settings'))
+        // Handle message templates saving
+        $saveTemplates = in_array($intent, ['save', 'save_templates'], true);
+        if ($saveTemplates) {
+            $templatesInput = $this->request->getPost('templates') ?? [];
+            if (!empty($templatesInput) && is_array($templatesInput)) {
+                $this->saveMessageTemplates($businessId, $templatesInput);
+            }
+            
+            if ($intent === 'save_templates') {
+                return redirect()->to(base_url('settings') . '#notifications')
+                    ->with('success', 'Message templates saved successfully.');
+            }
+        }
+
+        return redirect()->to(base_url('settings') . '#notifications')
             ->with('success', 'Notification settings saved.');
+    }
+
+    /**
+     * Save message templates to the database
+     *
+     * @param int $businessId
+     * @param array $templates Array of templates indexed by event_type and channel
+     */
+    private function saveMessageTemplates(int $businessId, array $templates): void
+    {
+        $settingModel = new SettingModel();
+        $userId = session()->get('user_id');
+
+        foreach ($templates as $eventType => $channels) {
+            if (!is_array($channels)) {
+                continue;
+            }
+            foreach ($channels as $channel => $template) {
+                if (!is_array($template)) {
+                    continue;
+                }
+
+                $subject = isset($template['subject']) ? trim((string) $template['subject']) : null;
+                $body = isset($template['body']) ? trim((string) $template['body']) : '';
+
+                // Store as JSON in settings
+                $key = "notification_template.{$eventType}.{$channel}";
+                $value = json_encode([
+                    'subject' => $subject,
+                    'body' => $body,
+                ], JSON_UNESCAPED_UNICODE);
+
+                $settingModel->upsert($key, $value, 'json', $userId);
+            }
+        }
     }
 
     public function save()
@@ -430,6 +534,10 @@ class Settings extends BaseController
             'legal.cookie_notice' => 'cookie_notice',
             'legal.terms'         => 'terms',
             'legal.privacy'       => 'privacy',
+            'legal.cancellation_policy' => 'cancellation_policy',
+            'legal.rescheduling_policy' => 'rescheduling_policy',
+            'legal.terms_url'     => 'terms_url',
+            'legal.privacy_url'   => 'privacy_url',
             'integrations.webhook_url'  => 'webhook_url',
             'integrations.analytics'    => 'analytics',
             'integrations.api_integrations' => 'api_integrations',
@@ -603,7 +711,10 @@ class Settings extends BaseController
                                 $this->resizeImageInPlace($absolute, $realMime, $newW, $newH);
                             }
                         }
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+                        // Image resize failed, continue with original size
+                        log_message('debug', 'Logo image resize skipped: ' . $e->getMessage());
+                    }
 
                     // 1) File-based path under public assets
                     $relative = 'assets/settings/' . $safeName;

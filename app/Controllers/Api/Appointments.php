@@ -724,6 +724,18 @@ class Appointments extends BaseController
                     'error' => ['message' => 'Update failed']
                 ]);
             }
+
+            // Enqueue rescheduled notification if time was changed
+            if (!empty($update['start_time']) || !empty($update['end_time'])) {
+                try {
+                    $queue = new \App\Services\NotificationQueueService();
+                    $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_rescheduled', (int) $id);
+                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_rescheduled', (int) $id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Notification enqueue failed for rescheduled appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
+                }
+            }
             
             return $response->setJSON([
                 'data' => ['ok' => true],
@@ -884,5 +896,149 @@ class Appointments extends BaseController
         
         $row = $builder->get()->getRowArray();
         return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Send a manual notification for an appointment
+     * POST /api/appointments/:id/notify
+     * Body: { channel: 'email'|'sms'|'whatsapp', event_type?: string }
+     */
+    public function notify($id = null)
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        if (!$id) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => ['message' => 'Invalid appointment ID']
+            ]);
+        }
+        
+        $model = new AppointmentModel();
+        $appointment = $model->find($id);
+        
+        if (!$appointment) {
+            return $response->setStatusCode(404)->setJSON([
+                'error' => ['message' => 'Appointment not found']
+            ]);
+        }
+        
+        $json = $this->request->getJSON(true) ?? [];
+        $channel = strtolower(trim($json['channel'] ?? ''));
+        $eventType = trim($json['event_type'] ?? '');
+        
+        $validChannels = ['email', 'sms', 'whatsapp'];
+        if (!in_array($channel, $validChannels)) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => ['message' => 'Invalid channel. Must be one of: email, sms, whatsapp']
+            ]);
+        }
+        
+        // Auto-determine event type based on appointment status if not provided
+        if ($eventType === '') {
+            $status = $appointment['status'] ?? 'pending';
+            $eventTypeMap = [
+                'confirmed' => 'appointment_confirmed',
+                'pending' => 'appointment_confirmed',
+                'cancelled' => 'appointment_cancelled',
+                'completed' => 'appointment_confirmed',
+                'booked' => 'appointment_confirmed',
+            ];
+            $eventType = $eventTypeMap[$status] ?? 'appointment_confirmed';
+        }
+        
+        try {
+            $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+            
+            // Use direct sending for immediate feedback instead of queue
+            if ($channel === 'email') {
+                $svc = new \App\Services\AppointmentNotificationService();
+                $sent = $svc->sendEventEmail($eventType, (int) $id, $businessId);
+                
+                if (!$sent) {
+                    return $response->setStatusCode(400)->setJSON([
+                        'error' => ['message' => 'Email not sent. Check if email is enabled for this event type and SMTP is configured.']
+                    ]);
+                }
+                
+                return $response->setJSON([
+                    'data' => [
+                        'ok' => true,
+                        'channel' => $channel,
+                        'event_type' => $eventType,
+                        'message' => 'Email notification sent successfully'
+                    ]
+                ]);
+            } elseif ($channel === 'sms') {
+                // SMS implementation via NotificationSmsService
+                $smsSvc = new \App\Services\NotificationSmsService();
+                $templateSvc = new \App\Services\NotificationTemplateService();
+                
+                // Get appointment context
+                $builder = $model->builder();
+                $appt = $builder
+                    ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.phone as customer_phone, s.name as service_name, u.name as provider_name')
+                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
+                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
+                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
+                    ->where('xs_appointments.id', $id)
+                    ->get()
+                    ->getFirstRow('array');
+                
+                if (!$appt || empty($appt['customer_phone'])) {
+                    return $response->setStatusCode(400)->setJSON([
+                        'error' => ['message' => 'SMS not sent. Customer phone number not available.']
+                    ]);
+                }
+                
+                // Render template and send
+                $message = $templateSvc->renderForAppointment($businessId, 'sms', $eventType, (int) $id);
+                if (!$message) {
+                    $message = "Your appointment on " . ($appt['start_time'] ?? 'TBD') . " is " . ($appt['status'] ?? 'confirmed') . ".";
+                }
+                
+                $result = $smsSvc->sendSms($businessId, $appt['customer_phone'], $message);
+                
+                if (!($result['ok'] ?? false)) {
+                    return $response->setStatusCode(400)->setJSON([
+                        'error' => ['message' => 'SMS not sent: ' . ($result['error'] ?? 'Unknown error')]
+                    ]);
+                }
+                
+                return $response->setJSON([
+                    'data' => [
+                        'ok' => true,
+                        'channel' => $channel,
+                        'event_type' => $eventType,
+                        'message' => 'SMS notification sent successfully'
+                    ]
+                ]);
+            } elseif ($channel === 'whatsapp') {
+                // WhatsApp - enqueue since it may need Link Generator flow
+                $queue = new \App\Services\NotificationQueueService();
+                $queue->enqueueAppointmentEvent($businessId, 'whatsapp', $eventType, (int) $id);
+                
+                return $response->setJSON([
+                    'data' => [
+                        'ok' => true,
+                        'channel' => $channel,
+                        'event_type' => $eventType,
+                        'message' => 'WhatsApp notification queued for delivery'
+                    ]
+                ]);
+            }
+            
+        } catch (\Throwable $e) {
+            log_message('error', 'Manual notification failed for appointment {id}: {msg}', [
+                'id' => (int) $id,
+                'msg' => $e->getMessage()
+            ]);
+            
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to send notification',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
     }
 }

@@ -47,6 +47,10 @@ const SPA = (() => {
     const showTab = (name) => {
       tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
       panels.forEach(p => p.classList.toggle('hidden', p.id !== `panel-${name}`));
+      // Update URL hash without scrolling
+      if (history.replaceState) {
+        history.replaceState(null, null, '#' + name);
+      }
     };
 
     tabs.forEach(btn => {
@@ -58,8 +62,10 @@ const SPA = (() => {
       });
     });
 
-    // Initialize first active or first tab
-    const active = tabs.find(t => t.classList.contains('active')) || tabs[0];
+    // Check URL hash for tab to show, otherwise use first active or first tab
+    const hashTab = window.location.hash ? window.location.hash.substring(1) : null;
+    const tabFromHash = hashTab ? tabs.find(t => t.dataset.tab === hashTab) : null;
+    const active = tabFromHash || tabs.find(t => t.classList.contains('active')) || tabs[0];
     if (active) showTab(active.dataset.tab);
     tablist.dataset.tabsInitialized = 'true';
   };
