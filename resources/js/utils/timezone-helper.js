@@ -202,6 +202,7 @@ export function nowLocal(format = 'YYYY-MM-DD HH:mm:ss') {
  * Create a debug logger for timezone debugging
  * 
  * Logs detailed timezone information and event times for debugging purposes.
+ * Only outputs when appConfig.debug is true or in development mode.
  * 
  * @returns {Object} Debug object with utility methods
  * 
@@ -214,11 +215,17 @@ export function createTimezoneDebugger() {
   const timezone = getBrowserTimezone();
   const offset = getTimezoneOffset();
   
+  // Check if debug mode is enabled
+  const isDebug = () => 
+    typeof window !== 'undefined' && 
+    (window.appConfig?.debug || process.env.NODE_ENV === 'development');
+  
   return {
     timezone,
     offset,
     
     logInfo() {
+      if (!isDebug()) return;
       console.group('%c[TIMEZONE DEBUG]', 'color: blue; font-weight: bold; font-size: 14px');
       console.log('Browser Timezone:', this.timezone);
       console.log('UTC Offset:', this.offset, 'minutes');
@@ -229,6 +236,7 @@ export function createTimezoneDebugger() {
     },
     
     logEvent(event) {
+      if (!isDebug()) return;
       console.group(`%c[TIMEZONE DEBUG] Event: ${event.title || event.id}`, 'color: green; font-weight: bold');
       console.log('Event ID:', event.id);
       console.log('Start (UTC):', event.startStr || event.start);
@@ -242,6 +250,7 @@ export function createTimezoneDebugger() {
     },
     
     logTime(utcTime) {
+      if (!isDebug()) return;
       const local = fromUTC(utcTime);
       console.group(`%c[TIMEZONE DEBUG] Time Conversion`, 'color: orange; font-weight: bold');
       console.log('UTC:', utcTime);
@@ -251,6 +260,7 @@ export function createTimezoneDebugger() {
     },
     
     compare(localTime, expectedLocal) {
+      if (!isDebug()) return;
       console.group(`%c[TIMEZONE DEBUG] Time Mismatch Check`, 'color: red; font-weight: bold');
       console.log('Expected (Local):', expectedLocal);
       console.log('Actual (Local):', localTime);

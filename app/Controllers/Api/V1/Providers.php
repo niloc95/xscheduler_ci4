@@ -274,7 +274,10 @@ class Providers extends BaseApiController
                 $newW = 600; $newH = max(1, (int) round($newW * $ratio));
                 $this->resizeImageInPlace($absolute, $realMime, $newW, $newH);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            // Image resize failed, continue with original size
+            log_message('debug', 'Provider image resize skipped: ' . $e->getMessage());
+        }
 
         $relative = 'assets/providers/' . $safeName;
         $userModel->update($id, ['profile_image' => $relative]);

@@ -643,11 +643,9 @@
             
             // Prevent duplicate initialization
             if (searchInput.dataset.searchInitialized === 'true') {
-                console.log('Header search already initialized');
                 return;
             }
             searchInput.dataset.searchInitialized = 'true';
-            console.log('Initializing header search');
             
             let searchTimeout = null;
 
@@ -686,16 +684,14 @@
                         data = JSON.parse(text);
                     } catch (e) {
                         // Try multiple strategies to extract JSON from HTML-wrapped response
-                        console.log('Initial parse failed, trying extraction...');
                         
                         // Strategy 1: Look for JSON object pattern
                         const jsonMatch = text.match(/\{["']success["']:\s*(?:true|false)[\s\S]*?\}(?=\s*<|$)/);
                         if (jsonMatch) {
                             try {
                                 data = JSON.parse(jsonMatch[0]);
-                                console.log('Extracted JSON successfully');
                             } catch (e2) {
-                                console.error('Strategy 1 failed');
+                                // Strategy 1 failed
                             }
                         }
                         
@@ -714,17 +710,15 @@
                                 if (depth === 0) {
                                     try {
                                         data = JSON.parse(text.substring(i + 1, lastBrace + 1));
-                                        console.log('Extracted JSON using depth strategy');
                                     } catch (e3) {
-                                        console.error('Strategy 2 failed');
+                                        // Strategy 2 failed
                                     }
                                 }
                             }
                         }
                         
                         if (!data) {
-                            console.error('Could not extract JSON from response');
-                            console.log('Response preview:', text.substring(0, 1000));
+                            console.error('Header search: Could not extract JSON from response');
                             throw new Error('Invalid JSON response');
                         }
                     }

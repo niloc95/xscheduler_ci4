@@ -280,16 +280,11 @@ class CustomerManagement extends BaseController
      */
     public function ajaxSearch()
     {
-        // Bypass CI4's output system completely for JSON response
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-        
         $currentUserId = (int) (session()->get('user_id') ?? 0);
         if (!$currentUserId) {
-            header('HTTP/1.1 401 Unauthorized');
-            header('Content-Type: application/json; charset=UTF-8');
-            die(json_encode(['error' => 'Unauthorized', 'success' => false]));
+            return $this->response
+                ->setStatusCode(401)
+                ->setJSON(['error' => 'Unauthorized', 'success' => false]);
         }
 
         $q = trim((string) $this->request->getGet('q'));
@@ -301,20 +296,19 @@ class CustomerManagement extends BaseController
                 $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
             }
 
-            header('Content-Type: application/json; charset=UTF-8');
-            die(json_encode([
+            return $this->response->setJSON([
                 'success' => true,
                 'customers' => $customers,
                 'count' => count($customers)
-            ]));
+            ]);
         } catch (\Exception $e) {
             log_message('error', '[CustomerManagement::ajaxSearch] Error: ' . $e->getMessage());
-            header('HTTP/1.1 500 Internal Server Error');
-            header('Content-Type: application/json; charset=UTF-8');
-            die(json_encode([
-                'success' => false,
-                'error' => 'Search failed: ' . $e->getMessage()
-            ]));
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON([
+                    'success' => false,
+                    'error' => 'Search failed: ' . $e->getMessage()
+                ]);
         }
     }
 

@@ -131,26 +131,18 @@
     e.preventDefault();
     const fd = new FormData(form);
     
-    // Debug: Log form data
-    console.log('Form data being sent:');
-    for (let [key, value] of fd.entries()) {
-      console.log(`${key}: ${value}`);
-    }
-    
     const res = await fetch('/services/update/' + serviceId, {
       method: 'POST',
       headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       body: fd
     }).catch(err => {
-      console.error('Fetch error:', err);
+      console.error('Service update fetch error:', err);
       return { ok: false, status: 0 };
     });
     
-    console.log('Response status:', res.status);
-    
     if (!res.ok) {
       const errorText = await res.text().catch(() => 'Failed to read error response');
-      console.error('Response error:', errorText);
+      console.error('Service update error:', res.status, errorText);
       resultTitle.textContent = 'Update failed';
       resultMessage.textContent = `HTTP ${res.status}: ${errorText}`;
       show(resultModal);
@@ -158,11 +150,9 @@
     }
     
     const data = await res.json().catch(err => {
-      console.error('JSON parse error:', err);
+      console.error('Service update JSON parse error:', err);
       return null;
     });
-    
-    console.log('Response data:', data);
     
     if (data && data.success) {
       resultTitle.textContent = 'Service updated successfully';

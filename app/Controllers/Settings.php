@@ -711,7 +711,10 @@ class Settings extends BaseController
                                 $this->resizeImageInPlace($absolute, $realMime, $newW, $newH);
                             }
                         }
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+                        // Image resize failed, continue with original size
+                        log_message('debug', 'Logo image resize skipped: ' . $e->getMessage());
+                    }
 
                     // 1) File-based path under public assets
                     $relative = 'assets/settings/' . $safeName;
