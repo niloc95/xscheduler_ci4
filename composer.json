@@ -1,14 +1,9 @@
 {
-    "name": "codeigniter4/appstarter",
-    "description": "CodeIgniter4 starter app",
-    "license": "MIT",
+    "name": "niloc95/xscheduler_ci4",
+    "description": "WebSchedulr - Online Appointment Scheduler (CodeIgniter 4)",
+    "license": "proprietary",
     "type": "project",
-    "homepage": "https://codeigniter.com",
-    "support": {
-        "forum": "https://forum.codeigniter.com/",
-        "source": "https://github.com/codeigniter4/CodeIgniter4",
-        "slack": "https://codeigniterchat.slack.com"
-    },
+    "homepage": "https://webschedulr.co.za",
     "require": {
         "php": "^8.1",
         "codeigniter4/framework": "^4.0"

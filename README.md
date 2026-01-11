@@ -4,7 +4,7 @@
  * @package     @webSchedulr - Online Appointments
  * @author      N N.Cara <nilo.cara@frontend.co.za>
  * @copyright   Copyright (c) Nilo Cara
- * @license     https://opensource.org/licenses/GPL-3.0 - GPLv3
+ * @license     Proprietary Commercial License (see LICENSE-PROPRIETARY)
  * @link        https://webschedulr.co.za
  * @since       v1.0.0
  * ---------------------------------------------------------------------------- */
@@ -27,7 +27,7 @@ A modern, zero-configuration scheduling application built with CodeIgniter 4 and
 ## 🏗️ Architecture
 
 ### Tech Stack
-- **Backend**: CodeIgniter 4 (PHP 7.4+)
+- **Backend**: CodeIgniter 4 (PHP 8.1+)
 - **Frontend**: Tailwind CSS + CoreUI Components
 - **Build System**: Vite 6.3.5 with SCSS/PostCSS
 - **Asset Management**: Optimized compilation and packaging
