@@ -1,0 +1,15 @@
+# Default owners for everything
+* @niloc95
+
+# High-risk / core application areas
+/app/Controllers/ @niloc95
+/app/Services/ @niloc95
+/app/Config/ @niloc95
+/app/Database/ @niloc95
+/resources/js/ @niloc95
+/.github/workflows/ @niloc95
+
+# Root-level build/config files
+/composer.json @niloc95
+/package.json @niloc95
+/vite.config.js @niloc95
