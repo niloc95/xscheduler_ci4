@@ -1,52 +1,82 @@
-/* ----------------------------------------------------------------------------
- * @webSchedulr - Online Appointment Scheduler
- *
- * @package     @webSchedulr - Online Appointments
- * @author      N N.Cara <nilo.cara@frontend.co.za>
- * @copyright   Copyright (c) Nilo Cara
- * @license     Proprietary Commercial License (see LICENSE-PROPRIETARY)
- * @link        https://webschedulr.co.za
- * @since       v1.0.0
- * ---------------------------------------------------------------------------- */
+# xScheduler CI4 - Professional Appointment Scheduling System
 
-# @webSchedulr - Online Appointment Scheduler
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CodeIgniter](https://img.shields.io/badge/CodeIgniter-4.x-red.svg)](https://codeigniter.com/)
+[![PHP](https://img.shields.io/badge/PHP-8.1+-purple.svg)](https://www.php.net/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.17-38bdf8.svg)](https://tailwindcss.com/)
 
-A modern, zero-configuration scheduling application built with CodeIgniter 4 and Tailwind CSS, designed for deployment to any standard hosting provider without server configuration requirements.
+A modern, full-featured appointment scheduling application built with CodeIgniter 4 and Tailwind CSS. Designed for service-based businesses including salons, clinics, consultancies, and any organization that needs professional appointment management.
 
-## 🚀 Features
+## ✨ Key Features
 
-- **Modern Design System**: Tailwind CSS 3.4.17 with custom component library
-- **Zero-Config Deployment**: Deploy to any hosting provider instantly
-- **Responsive Design**: Mobile-first approach with CoreUI components
-- **Reusable Components**: Standardized UI components with PHP helpers
-- **Developer Friendly**: Comprehensive style guide and documentation
-- **Production Ready**: Optimized build system with Vite
-- **Security Enhanced**: IP protection, security headers, and proprietary licensing
-- **Role-Based Access**: Complete user management with role-based permissions
+### 📅 **Appointment Management**
+- **Interactive Calendar**: Day/Week/Month views with FullCalendar integration
+- **Real-time Availability**: Automatic slot calculation based on business hours
+- **Smart Booking**: Conflict detection and timezone-aware scheduling
+- **Multi-provider Support**: Provider-specific calendars with color coding
+- **Customer Management**: Customer database with booking history
+- **Status Tracking**: Pending, Confirmed, Completed, Cancelled, No-show
 
-## 🏗️ Architecture
+### 🔔 **Notifications System**
+- **Multi-channel Delivery**: Email, SMS, and WhatsApp notifications
+- **Event Types**: Confirmations, reminders, cancellations, and reschedules
+- **Template System**: Customizable message templates with placeholders
+- **Queued Processing**: Background job processing for reliable delivery
+- **Smart Reminders**: Automated appointment reminders with configurable timing
 
-### Tech Stack
+### 👥 **User Management**
+- **Role-Based Access Control**: Admin, Provider, Staff, and Customer roles
+- **Granular Permissions**: Fine-grained access control per role
+- **Staff Assignment**: Provider-specific staff management
+- **Secure Authentication**: CodeIgniter 4 authentication with CSRF protection
+
+### 🎨 **Modern UI/UX**
+- **Responsive Design**: Mobile-first approach with adaptive layouts
+- **Dark Mode**: System-wide dark mode support
+- **Material Design**: Material Icons and modern component library
+- **Accessible**: WCAG-compliant interface elements
+- **Real-time Updates**: Live calendar and availability updates
+
+### ⚙️ **Configuration & Setup**
+- **Setup Wizard**: Guided initial setup with database and admin configuration
+- **Settings Management**: Comprehensive settings system for all aspects
+- **Localization**: Multi-language support with customizable text
+- **Business Hours**: Flexible working hours and time slot configuration
+- **Service Management**: Service catalog with durations and pricing
+
+### 📊 **Analytics & Reporting**
+- **Dashboard**: Real-time stats and appointment metrics
+- **Revenue Tracking**: Revenue calculations by period
+- **Appointment Statistics**: Status distribution and trends
+- **Provider Analytics**: Provider-specific performance metrics
+- **Activity Logs**: Recent activity tracking and audit trail
+
+## 🏗️ Technical Stack
+
 - **Backend**: CodeIgniter 4 (PHP 8.1+)
-- **Frontend**: Tailwind CSS + CoreUI Components
-- **Build System**: Vite 6.3.5 with SCSS/PostCSS
-- **Asset Management**: Optimized compilation and packaging
-- **Deployment**: Standalone packages for shared hosting
+- **Frontend**: Tailwind CSS 3.4, Material Design Icons
+- **JavaScript**: Modern ES6+ with Vite build system
+- **Database**: MySQL 5.7+ / MariaDB 10.3+
+- **Calendar**: FullCalendar v6
+- **Notifications**: Queue-based email/SMS/WhatsApp system
+- **Authentication**: Built-in CI4 authentication with role-based access
 
-### Design System
-- **Component Library**: Custom SCSS components with `@layer` directive
-- **PHP Helpers**: `ui_button()`, `ui_card()`, `ui_alert()` functions
-- **View Components**: Reusable layout templates and partials
-- **Style Guide**: Live documentation at `/styleguide`
+## 📦 Installation
 
-## 📦 Quick Start
+### System Requirements
 
-### Development Setup
+- PHP 8.1 or higher
+- MySQL 5.7+ or MariaDB 10.3+
+- Composer 2.x
+- Node.js 18+ and npm
+- Apache with mod_rewrite (or Nginx)
+
+### Quick Start
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/webschedulr-ci4.git
-   cd webschedulr-ci4
+   git clone https://github.com/niloc95/xscheduler_ci4.git
+   cd xscheduler_ci4
    ```
 
 2. **Install dependencies**
@@ -60,343 +90,415 @@ A modern, zero-configuration scheduling application built with CodeIgniter 4 and
 
 3. **Configure environment**
    ```bash
+   # Copy environment file
    cp .env.example .env
-   # Edit .env with your database credentials
+   
+   # Edit .env with your configuration:
+   # - Database credentials
+   # - Base URL
+   # - Email settings (for notifications)
    ```
 
-4. **Build assets and start development**
+4. **Initialize database**
    ```bash
-   # Build frontend assets
+   # Run migrations
+   php spark migrate -n App
+   ```
+
+5. **Build frontend assets**
+   ```bash
+   # Production build
    npm run build
-   
-   # Start development server
+   ```
+
+6. **Start development server**
+   ```bash
    php spark serve
    ```
 
-5. **Access the application**
-   - Main app: `http://localhost:8080`
-   - Setup wizard: `http://localhost:8080/setup`
-   - Style guide: `http://localhost:8080/styleguide`
-   - Tailwind test: `http://localhost:8080/tw`
+7. **Access the setup wizard**
+   - Navigate to `http://localhost:8080/setup`
+   - Complete the setup wizard to create admin account
+   - Configure business settings, services, and providers
 
 ### Development Commands
 
 ```bash
-# Watch and compile assets during development
+# Development mode with hot reload
 npm run dev
 
-# Build optimized assets for production
+# Production build
 npm run build
-
-# Create deployment package
-npm run package
 
 # Preview production build
 npm run preview
+
+# Run database migrations
+php spark migrate -n App
+
+# Start local server
+php spark serve
+
+# Process notification queue (in production, set up as cron job)
+php spark notifications:dispatch-queue
 ```
 
 ## 🌐 Deployment
 
-### Zero-Configuration Deployment
+### Production Deployment
 
-@webSchedulr is designed for hassle-free deployment to any hosting provider:
-
-1. **Build deployment package**
+1. **Build for production**
    ```bash
-   npm run build  # This creates the webschedulr-deploy folder
+   npm run build
    ```
 
-2. **Upload to hosting provider**
-   - Upload entire contents of `webschedulr-deploy/` folder
-   - Point domain/subdomain to the `public/` directory
+2. **Upload to server**
+   - Upload all files to your hosting provider
+   - Point domain to the `public/` directory
+   - Ensure `writable/` directory has write permissions (755)
 
 3. **Configure environment**
-   - Update `.env` file with production database credentials
-   - Set `writable/` folder permissions to 755
+   ```bash
+   # Update .env for production
+   CI_ENVIRONMENT = production
+   app.baseURL = 'https://yourdomain.com'
+   
+   # Set database credentials
+   database.default.hostname = your_host
+   database.default.database = your_database
+   database.default.username = your_user
+   database.default.password = your_password
+   ```
 
-4. **You're live!** - Zero server configuration needed
+4. **Run migrations**
+   ```bash
+   php spark migrate -n App
+   ```
 
-### Hosting Compatibility
+5. **Set up cron job** (for notifications)
+   ```bash
+   # Add to crontab (runs every minute)
+   * * * * * cd /path/to/project && php spark notifications:dispatch-queue >> /dev/null 2>&1
+   ```
 
-✅ **Shared Hosting**: GoDaddy, Bluehost, HostGator, cPanel hosting  
+### Hosting Requirements
+
+✅ **Shared Hosting**: cPanel, Plesk-based hosting  
 ✅ **VPS/Cloud**: DigitalOcean, AWS, Linode, Vultr  
-✅ **Managed Hosting**: Cloudways, WP Engine, SiteGround  
-✅ **Subdomain/Subfolder**: Flexible deployment paths  
+✅ **Managed Platforms**: Cloudways, Laravel Forge
 
-**Requirements**: PHP 7.4+, Apache with mod_rewrite (or Nginx equivalent)
-
-### Deployment Options
-
-#### Subdomain Deployment
-```
-subdomain.yourdomain.com/
-├── app/
-├── system/
-├── public/          ← Point subdomain here
-└── writable/
-```
-
-#### Subfolder Deployment
-```
-yourdomain.com/scheduler/
-├── app/
-├── system/
-├── public/          ← Point folder here
-└── writable/
-```
-
-## 🎨 Design System
-
-### Component Usage
-
-#### Buttons
-```php
-<?= ui_button('Primary Action', '/action', 'primary') ?>
-<?= ui_button('Secondary Action', '/cancel', 'secondary') ?>
-```
-
-#### Cards
-```php
-<?= ui_card(
-    'Card Title',
-    '<p>Card content goes here</p>',
-    '<p>Optional footer</p>'
-) ?>
-```
-
-#### Alerts
-```php
-<?= ui_alert('Success message', 'success', 'Well done!') ?>
-<?= ui_alert('Important info', 'info', 'Notice') ?>
-<?= ui_alert('Warning message', 'warning', 'Attention') ?>
-<?= ui_alert('Error message', 'error', 'Oops!') ?>
-```
-
-#### Layout Components
-```php
-<?= $this->extend('components/layout') ?>
-<?= $this->section('content') ?>
-<div class="content-wrapper">
-    <div class="content-main">
-        <!-- Your content here -->
-    </div>
-</div>
-<?= $this->endSection() ?>
-```
-
-### CSS Component Classes
-
-```css
-/* Layout */
-.page-container     /* Container with responsive padding */
-.content-wrapper    /* Centering wrapper */
-.content-main       /* Main content area with max-width */
-
-/* Components */
-.btn-primary        /* Primary button styling */
-.btn-secondary      /* Secondary button styling */
-.card               /* Card container */
-.card-header        /* Card header with title */
-.card-body          /* Card content area */
-.alert              /* Base alert styling */
-.alert-info         /* Info alert variant */
-.form-input         /* Standardized form inputs */
-
-/* Scheduler States */
-.time-slot-available    /* Available time slots */
-.time-slot-selected     /* User-selected slots */
-.time-slot-booked      /* Unavailable slots */
-.time-slot-past        /* Past time slots */
-```
+**Minimum Requirements**:
+- PHP 8.1+ with required extensions (intl, mbstring, json, mysqlnd)
+- MySQL 5.7+ or MariaDB 10.3+
+- Apache with mod_rewrite or Nginx
+- SSL certificate (recommended for production)
 
 ## 📁 Project Structure
 
 ```
-WebSchedulr_ci4/
-├── app/                          # CodeIgniter 4 application
-│   ├── Controllers/              # Request handlers
-│   │   ├── BaseController.php    # Base with UI helper loading
-│   │   ├── Setup.php            # Setup wizard
-│   │   └── Styleguide.php       # Design system docs
-│   ├── Helpers/                 # Custom helper functions
-│   │   └── ui_helper.php        # UI component helpers
-│   └── Views/                   # Template files
-│       ├── components/          # Reusable view components
-│       ├── styleguide/          # Design system documentation
-│       └── *.php               # Page templates
-├── resources/                   # Frontend assets
-│   ├── js/app.js               # Main JavaScript
-│   └── scss/
-│       ├── app.scss            # Main SCSS file
-│       └── components.scss     # Component definitions
-├── public/                     # Web-accessible files
-│   ├── build/assets/           # Compiled assets
-│   └── index.php              # Application entry point
-├── scripts/package.js          # Deployment packaging
-├── vite.config.js             # Build configuration
-├── tailwind.config.js         # Tailwind configuration
-└── mastercontext.md           # Complete project documentation
+xscheduler_ci4/
+├── app/
+│   ├── Controllers/          # Request handlers
+│   │   ├── Appointments.php  # Appointment management
+│   │   ├── Scheduler.php     # Booking API endpoints
+│   │   ├── Dashboard.php     # Analytics dashboard
+│   │   ├── Settings.php      # System configuration
+│   │   └── Api/              # RESTful API controllers
+│   ├── Models/               # Database models
+│   │   ├── AppointmentModel.php
+│   │   ├── UserModel.php
+│   │   ├── ServiceModel.php
+│   │   └── CustomerModel.php
+│   ├── Services/             # Business logic
+│   │   ├── SchedulingService.php
+│   │   ├── AvailabilityService.php
+│   │   ├── NotificationQueueService.php
+│   │   └── BookingSettingsService.php
+│   ├── Views/                # Templates
+│   │   ├── appointments/     # Appointment views
+│   │   ├── dashboard/        # Dashboard views
+│   │   └── components/       # Reusable components
+│   ├── Database/
+│   │   └── Migrations/       # Database migrations
+│   └── Config/               # Application configuration
+├── resources/
+│   ├── js/                   # JavaScript source
+│   │   ├── app.js           # Main application
+│   │   └── modules/          # Feature modules
+│   ├── css/                  # Stylesheets
+│   └── scss/                 # SCSS source
+├── public/                   # Web-accessible files
+│   ├── index.php            # Application entry point
+│   └── build/               # Compiled assets
+├── writable/                 # Logs, cache, uploads
+├── tests/                    # Test files
+├── docs/                     # Documentation
+├── composer.json             # PHP dependencies
+├── package.json              # Node dependencies
+└── vite.config.js           # Build configuration
 ```
 
-## 🛠️ Development Guidelines
+## 🚀 Usage Guide
 
-### Adding New Components
+### For Administrators
 
-1. **Define SCSS component**
-   ```scss
-   // resources/scss/components.scss
-   @layer components {
-     .my-component {
-       @apply bg-white rounded-lg shadow-sm border;
-     }
-   }
-   ```
+1. **Initial Setup**
+   - Complete the setup wizard at `/setup`
+   - Configure business information and settings
+   - Set up business hours and time slots
+   - Create services and assign prices/durations
 
-2. **Create PHP helper**
-   ```php
-   // app/Helpers/ui_helper.php
-   function ui_my_component($content) {
-       return "<div class=\"my-component\">{$content}</div>";
-   }
-   ```
+2. **Manage Providers**
+   - Add provider accounts (staff members)
+   - Assign services to providers
+   - Set provider-specific working hours
+   - Configure provider permissions
 
-3. **Document in style guide**
-   ```php
-   // app/Views/styleguide/components.php
-   // Add usage examples and documentation
-   ```
+3. **Configure Notifications**
+   - Set up email/SMS/WhatsApp templates
+   - Configure reminder timing
+   - Customize message content
+   - Test notification delivery
 
-### Code Standards
+4. **Monitor System**
+   - View dashboard analytics
+   - Review appointment statistics
+   - Monitor system activity
+   - Export reports
 
-- **PHP**: Follow CodeIgniter 4 coding standards
-- **CSS**: Use Tailwind utilities, custom components for reuse
-- **JavaScript**: Modern ES6+, event-driven architecture
-- **Naming**: PascalCase controllers, camelCase methods, kebab-case CSS
+### For Providers/Staff
 
-## 🔒 Security Features
+1. **View Schedule**
+   - Access calendar at `/appointments`
+   - Switch between day/week/month views
+   - View appointment details by clicking events
+   - Filter by provider or service
 
-- **CSRF Protection**: Enabled by default in CodeIgniter 4
-- **XSS Filtering**: Built-in input sanitization
-- **Secure Headers**: Security headers in .htaccess
-- **Input Validation**: Form validation framework
-- **Safe Deployment**: Sensitive files outside web root
+2. **Manage Appointments**
+   - Create new appointments
+   - Confirm pending bookings
+   - Reschedule or cancel appointments
+   - Add appointment notes
+   - Update appointment status
+
+3. **Customer Management**
+   - Search existing customers
+   - View customer booking history
+   - Update customer information
+
+### For Customers (Public Booking)
+
+1. **Book Appointment**
+   - Navigate to public booking page
+   - Select provider and service
+   - Choose available date and time
+   - Enter contact information
+   - Confirm booking
+
+2. **Manage Booking**
+   - Look up booking using email/phone
+   - Reschedule appointment
+   - Cancel if needed
+
+## 🔧 Configuration
+
+### Key Settings
+
+Edit `.env` for core configuration:
+
+```ini
+# Environment
+CI_ENVIRONMENT = production
+
+# Base URL
+app.baseURL = 'https://yourdomain.com'
+
+# Database
+database.default.hostname = localhost
+database.default.database = xscheduler
+database.default.username = your_user
+database.default.password = your_password
+
+# Timezone
+app.timezone = 'America/New_York'
+
+# Email (for notifications)
+email.fromEmail = noreply@yourdomain.com
+email.fromName = 'xScheduler'
+email.SMTPHost = smtp.example.com
+email.SMTPUser = your_smtp_user
+email.SMTPPass = your_smtp_password
+```
+
+### Application Settings
+
+Configure via admin panel at `/settings`:
+
+- **Business Hours**: Operating hours and time slots
+- **Booking Rules**: Advance booking, max slots, cancellation policies
+- **Notifications**: Email/SMS/WhatsApp templates
+- **Localization**: Language and regional formats
+- **Services**: Service catalog with pricing
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow our fork-based workflow:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Commit your changes**: `git commit -m 'Add amazing feature'`
+4. **Push to the branch**: `git push origin feature/amazing-feature`
+5. **Open a Pull Request** to the `main` branch
+
+### Contribution Guidelines
+
+- Follow CodeIgniter 4 coding standards
+- Write clear, descriptive commit messages
+- Add tests for new features
+- Update documentation as needed
+- Keep PRs focused on single features
+- All PRs require approval before merging
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+## 🔒 Security
+
+### Reporting Security Issues
+
+Please **do not** open public issues for security vulnerabilities.
+
+Report security concerns privately to: **info@webschedulr.co.za**
+
+See [SECURITY.md](SECURITY.md) for our security policy and response process.
+
+### Security Features
+
+- ✅ CSRF protection enabled by default
+- ✅ XSS filtering on all inputs
+- ✅ SQL injection prevention via query builder
+- ✅ Secure password hashing (bcrypt)
+- ✅ Role-based access control
+- ✅ Session security best practices
+- ✅ HTTPS recommended for production
+
 
 ## 📚 Documentation
 
-- **Master Context**: Complete project overview in `mastercontext.md`
-- **Style Guide**: Live documentation at `/styleguide`
-- **Deployment Guide**: Instructions in `DEPLOY-README.md`
-- **API Documentation**: Controller and helper function docs
+Comprehensive documentation is available in the `/docs` directory:
+
+### Core Documentation
+- **[Requirements](docs/REQUIREMENTS.md)** - System requirements and specifications
+- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
+- **[Security Policy](SECURITY.md)** - Security practices and reporting
+
+### Architecture & Development
+- **[Scheduling System](docs/SCHEDULING_SYSTEM.md)** - Complete scheduling architecture
+- **[Calendar Implementation](docs/development/calendar_implementation.md)** - Calendar integration guide
+- **[Database Wiring](docs/CALENDAR_DATABASE_WIRING_INVESTIGATION.md)** - Database architecture
+
+### Configuration
+- **[Settings Implementation](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Settings system
+- **[Localization](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language setup
+
+### Features
+- **[Appointment System](docs/APPOINTMENT_CREATE_EDIT_MODAL_INVESTIGATION.md)** - Appointment features
+- **[Notifications](docs/NOTIFICATIONS_IMPLEMENTATION_CHECKLIST.md)** - Notification system
+- **[User Management](docs/user-management/)** - Role-based access control
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Build Errors**
-```bash
-# Module not found
-npm install
+**Calendar Not Loading**
+- Check browser console for JavaScript errors
+- Verify FullCalendar assets are built: `npm run build`
+- Ensure API endpoints are accessible: `/api/v1/appointments`
 
-# Tailwind classes not working
-# Check tailwind.config.js content paths
+**Notifications Not Sending**
+- Verify email configuration in `.env`
+- Check notification queue: `php spark notifications:dispatch-queue`
+- Review logs in `writable/logs/`
 
-# SCSS compilation errors
-# Verify @import paths in app.scss
-```
+**Database Connection Errors**
+- Verify database credentials in `.env`
+- Ensure database exists and is accessible
+- Run migrations: `php spark migrate -n App`
 
-**Deployment Issues**
-```bash
-# 404 errors - Check .htaccess and mod_rewrite
-# Assets not loading - Verify baseURL in App.php
-# Permission errors - Set writable/ to 755
-```
+**Permission Errors**
+- Set `writable/` directory to 755: `chmod -R 755 writable/`
+- Ensure web server has write access to `writable/`
 
-**Development Issues**
-```bash
-# Routes not working - Check Routes.php syntax
-# Helper functions undefined - Verify BaseController helper loading
-# Views not rendering - Check extend/section syntax
-```
+**Assets Not Loading**
+- Clear CodeIgniter cache: `php spark cache:clear`
+- Rebuild assets: `npm run build`
+- Check `app.baseURL` in `.env` matches your domain
+
+### Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues)
+- **Discussions**: Use GitHub Discussions for questions
+- **Email**: info@webschedulr.co.za
 
 ## 📈 Roadmap
 
-### Current Status ✅
-- [x] CodeIgniter 4 foundation
-- [x] Tailwind CSS design system
-- [x] Component library and helpers
-- [x] Zero-config deployment
-- [x] Style guide documentation
+### ✅ Completed Features
+- [x] User authentication and role-based access
+- [x] Appointment booking and management
+- [x] Interactive calendar (day/week/month views)
+- [x] Provider and service management
+- [x] Multi-channel notifications (Email/SMS/WhatsApp)
+- [x] Real-time availability checking
+- [x] Customer management
+- [x] Dashboard analytics
+- [x] Settings configuration system
+- [x] Setup wizard
+- [x] Dark mode support
+- [x] Responsive mobile design
 
-### In Progress 🔄
-- [ ] Scheduler components
-- [ ] Time slot management
-- [ ] Calendar views
-- [ ] Appointment booking
+### 🚧 In Development
+- [ ] Payment integration (Stripe, PayPal)
+- [ ] Advanced reporting and exports
+- [ ] Calendar sync (Google Calendar, Outlook)
+- [ ] Recurring appointments
+- [ ] Waiting list management
+- [ ] Multi-location support
 
-### Planned Features 📋
-- [ ] Database schema
-- [ ] User authentication
-- [ ] Email notifications
-- [ ] Calendar integrations
-- [ ] Multi-timezone support
+### 📋 Planned Features
+- [ ] Customer self-service portal
+- [ ] Video consultation integration
+- [ ] Mobile app (iOS/Android)
+- [ ] Advanced analytics and insights
+- [ ] Inventory management
+- [ ] Package/membership support
+- [ ] Marketing automation
+- [ ] API documentation (OpenAPI/Swagger)
 
-## 🤝 Contributing
+## 🙏 Acknowledgments
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+Built with these excellent open-source projects:
 
-## � Documentation
+- [CodeIgniter 4](https://codeigniter.com/) - PHP framework
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- [FullCalendar](https://fullcalendar.io/) - Calendar component
+- [Material Design Icons](https://fonts.google.com/icons) - Icon set
+- [Vite](https://vitejs.dev/) - Build tool
 
-Comprehensive documentation is organized in the `/docs` directory:
+## 📄 License
 
-### 🏗️ Architecture
-- **[Master Context](docs/architecture/mastercontext.md)** - Complete technical overview
-- **[Role-Based System](docs/architecture/ROLE_BASED_SYSTEM.md)** - User permissions and access control
-- **[Implementation Plan](docs/architecture/IMPLEMENTATION-PLAN.md)** - Development roadmap
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### 🔧 Configuration  
-- **[Settings Implementation](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Settings system guide
-- **[Contact Fields](docs/configuration/SETTINGS_CONTACT_FIELDS.md)** - Contact information setup
-- **[Localization Updates](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language support
-
-### 🚀 Deployment
-- **[Merge Summary](docs/deployment/MERGE_SUMMARY.md)** - Branch consolidation history
-- **[Production Guide](docs/deployment/PRODUCTION_FIX_GUIDE.md)** - Production deployment steps
-- **[ZIP Deployment](docs/deployment/ZIP-DEPLOYMENT-SUMMARY.md)** - Package deployment method
-
-### 🛡️ Security
-- **[Implementation Guide](docs/security/SECURITY_IMPLEMENTATION_GUIDE.md)** - Security setup instructions
-- **[Security Status](docs/security/SECURITY_STATUS.md)** - Current security measures
-- **[Compliance](docs/compliance/)** - Security compliance documentation
-
-### 🔧 Technical
-- **[SPA Settings Fix](docs/technical/SPA_SETTINGS_FIX.md)** - Single-page app configuration
-- **[Commands Reference](docs/technical/command.md)** - CLI commands and usage
-- **[Icon Display Fix](docs/technical/ICON-DISPLAY-FIX.md)** - UI icon troubleshooting
-
-### 📋 Project Files
-- **[Requirements](docs/REQUIREMENTS.md)** - System requirements and specifications
-- **[Setup Workflow](docs/SETUP-WORKFLOW-COMPLETE.md)** - Complete setup guide
-- **[Notes](docs/Notes.md)** - Development notes and changelog
-
-## �📄 License
-
-This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
+## 📞 Contact & Support
 
 - **Website**: [https://webschedulr.co.za](https://webschedulr.co.za)
-- **Documentation**: See `mastercontext.md` for complete technical details
-- **Style Guide**: Visit `/styleguide` in your local installation
-- **Support**: Contact [nilo.cara@frontend.co.za](mailto:nilo.cara@frontend.co.za)
+- **Email**: info@webschedulr.co.za
+- **GitHub**: [@niloc95](https://github.com/niloc95)
+- **Repository**: [github.com/niloc95/xscheduler_ci4](https://github.com/niloc95/xscheduler_ci4)
 
 ---
 
-**Made with ❤️ by Nilo Cara**  
-*Building modern, accessible web applications*
+**Made with ❤️ for service-based businesses worldwide**
+
+*Building modern, accessible appointment scheduling solutions*
 
 
 
