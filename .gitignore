@@ -62,6 +62,12 @@ writable/backups/*
 php_errors.log
 
 #-------------------------
+# Project-Specific Files
+#-------------------------
+notes
+notes/
+
+#-------------------------
 # Node.js / NPM
 #-------------------------
 node_modules/
