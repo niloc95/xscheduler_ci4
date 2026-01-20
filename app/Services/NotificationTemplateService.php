@@ -39,6 +39,10 @@ class NotificationTemplateService
         '{terms_link}' => 'Terms & Conditions link or text',
         '{privacy_link}' => 'Privacy policy link or text',
         '{booking_url}' => 'Online booking URL',
+        // Location placeholders
+        '{location_name}' => 'Appointment location name',
+        '{location_address}' => 'Appointment location address',
+        '{location_contact}' => 'Appointment location contact number',
     ];
 
     /**
@@ -272,6 +276,10 @@ class NotificationTemplateService
             '{terms_link}' => $termsLink,
             '{privacy_link}' => $privacyLink,
             '{booking_url}' => $data['booking_url'] ?? base_url('booking'),
+            // Location placeholders (from appointment snapshot)
+            '{location_name}' => $data['location_name'] ?? '',
+            '{location_address}' => $data['location_address'] ?? '',
+            '{location_contact}' => $data['location_contact'] ?? '',
         ];
     }
 

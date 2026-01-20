@@ -25,6 +25,10 @@ class AppointmentModel extends BaseModel
         'customer_id',
         'service_id',
         'provider_id',
+        'location_id',
+        'location_name',
+        'location_address',
+        'location_contact',
         'appointment_date',
         'appointment_time',
         'start_time',
@@ -38,6 +42,9 @@ class AppointmentModel extends BaseModel
     ];
 
     protected $beforeInsert = ['generateHash'];
+    protected $afterInsert = ['invalidateDashboardCache'];
+    protected $afterUpdate = ['invalidateDashboardCache'];
+    protected $afterDelete = ['invalidateDashboardCache'];
 
     protected $validationRules = [
         'customer_id' => 'required|is_natural_no_zero',
@@ -60,6 +67,53 @@ class AppointmentModel extends BaseModel
             $encryptionKey = config('Encryption')->key ?? 'default-secret-key';
             $data['data']['hash'] = hash('sha256', 'appointment_' . uniqid('', true) . $encryptionKey . time());
         }
+        return $data;
+    }
+
+    /**
+     * Invalidate dashboard cache after appointment changes
+     * 
+     * Called automatically after insert, update, or delete operations.
+     * Invalidates both admin cache and provider-specific cache.
+     * 
+     * @param array $data Data containing appointment info
+     * @return array Unmodified data
+     */
+    protected function invalidateDashboardCache(array $data): array
+    {
+        try {
+            // Get provider ID from the data
+            $providerId = null;
+            
+            // For insert/update operations
+            if (isset($data['data']['provider_id'])) {
+                $providerId = $data['data']['provider_id'];
+            }
+            // For delete operations, try to get from ID
+            elseif (isset($data['id'])) {
+                $appointment = $this->find($data['id']);
+                if ($appointment) {
+                    $providerId = $appointment['provider_id'] ?? null;
+                }
+            }
+            
+            // Invalidate admin cache (global)
+            cache()->delete('dashboard_metrics_admin');
+            
+            // Invalidate provider-specific cache
+            if ($providerId !== null) {
+                cache()->delete("dashboard_metrics_{$providerId}");
+            }
+            
+            // Log cache invalidation in debug mode
+            if (ENVIRONMENT === 'development') {
+                log_message('debug', "Dashboard cache invalidated for provider: " . ($providerId ?? 'admin'));
+            }
+        } catch (\Exception $e) {
+            // Don't fail the operation if cache invalidation fails
+            log_message('error', 'Failed to invalidate dashboard cache: ' . $e->getMessage());
+        }
+        
         return $data;
     }
 

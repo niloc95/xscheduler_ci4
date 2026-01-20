@@ -6,6 +6,8 @@ use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
+use App\Services\DashboardService;
+use App\Services\AuthorizationService;
 
 class Dashboard extends BaseController
 {
@@ -13,6 +15,8 @@ class Dashboard extends BaseController
     protected $serviceModel;
     protected $appointmentModel;
     protected $customerModel;
+    protected $dashboardService;
+    protected $authService;
 
     public function __construct()
     {
@@ -20,6 +24,8 @@ class Dashboard extends BaseController
         $this->serviceModel = new ServiceModel();
         $this->appointmentModel = new AppointmentModel();
         $this->customerModel = new CustomerModel();
+        $this->dashboardService = new DashboardService();
+        $this->authService = new AuthorizationService();
     }
 
     /**
@@ -39,95 +45,85 @@ class Dashboard extends BaseController
         }
 
         try {
-            // Get current user (from session or fallback to first admin user)
+            // Get current user from session
             $currentUser = session()->get('user');
+            $userId = session()->get('user_id');
             
-            // If no user in session, get the first admin user from database
-            if (!$currentUser) {
-                $adminUser = $this->userModel->getFirstAdmin();
-                if ($adminUser) {
-                    $currentUser = [
-                        'name' => $adminUser['name'],
-                        'role' => $adminUser['role'],
-                        'email' => $adminUser['email']
-                    ];
-                } else {
-                    // Fallback if no admin user exists
-                    $currentUser = [
-                        'name' => 'System Administrator',
-                        'role' => 'admin',
-                        'email' => 'admin@webschedulr.com'
-                    ];
-                }
+            // If no user in session or missing required data, redirect to login
+            if (!$currentUser || !$userId || !session()->get('isLoggedIn')) {
+                session()->destroy();
+                return redirect()->to('/login')->with('error', 'Please log in to access the dashboard.');
             }
 
-            // Get real statistics from database
+            // Extract user info for authorization
+            $userRole = $this->authService->getUserRole($currentUser);
+            $providerId = $this->authService->getProviderId($currentUser);
+
+            // Enforce dashboard access
+            $this->authService->enforce(
+                $this->authService->canViewDashboardMetrics($userRole),
+                'You do not have permission to view the dashboard'
+            );
+
+            // Get provider scope for data filtering
+            $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+
+            // Get dashboard context
+            $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
+
+            // Get today's metrics (with caching)
+            $metrics = $this->dashboardService->getCachedMetrics($providerScope);
+
+            // Get today's schedule
+            $schedule = $this->dashboardService->getTodaySchedule($providerScope);
+
+            // Get alerts
+            $alerts = $this->dashboardService->getAlerts($providerScope);
+
+            // Get upcoming appointments
+            $upcoming = $this->dashboardService->getUpcomingAppointments($providerScope);
+
+            // Get provider availability
+            $availability = $this->dashboardService->getProviderAvailability($providerScope);
+
+            // Get booking status (admin only)
+            $bookingStatus = null;
+            if ($this->authService->canViewBookingStatus($userRole)) {
+                $bookingStatus = $this->dashboardService->getBookingStatus();
+            }
+
+            // Legacy stats for backward compatibility with existing views
             $userStats = $this->userModel->getStats();
             $appointmentStats = $this->appointmentModel->getStats();
             $serviceStats = $this->serviceModel->getStats();
-
-            // Calculate trends for dashboard cards
-            $userTrend = $this->userModel->getTrend();
-            $appointmentTrend = $this->appointmentModel->getTrend();
-            $pendingTrend = $this->appointmentModel->getPendingTrend();
-            $revenueTrend = $this->appointmentModel->getRevenueTrend();
-
-            // Calculate revenue
             $monthlyRevenue = $this->appointmentModel->getRevenue('month');
             $weeklyRevenue = $this->appointmentModel->getRevenue('week');
 
-            // Get recent activities (appointments)
-            $recentActivities = $this->appointmentModel->getRecentActivity();
-
-            // Format recent activities for display
-            $formattedActivities = [];
-            foreach ($recentActivities as $activity) {
-                $action = '';
-                $status_class = 'active';
-                
-                switch ($activity['status']) {
-                    case 'booked':
-                        $action = 'Scheduled appointment for ' . $activity['service_name'];
-                        $status_class = 'active';
-                        break;
-                    case 'completed':
-                        $action = 'Completed appointment for ' . $activity['service_name'];
-                        $status_class = 'active';
-                        break;
-                    case 'cancelled':
-                        $action = 'Cancelled appointment for ' . $activity['service_name'];
-                        $status_class = 'cancelled';
-                        break;
-                    case 'rescheduled':
-                        $action = 'Rescheduled appointment for ' . $activity['service_name'];
-                        $status_class = 'pending';
-                        break;
-                }
-
-                $formattedActivities[] = [
-                    'user_name' => $activity['customer_name'],
-                    'activity' => $action,
-                    'status' => $status_class,
-                    'date' => date('Y-m-d', strtotime($activity['updated_at']))
-                ];
-            }
-
+            // Build view data
             $data = [
                 'user' => $currentUser,
+                'context' => $context,
+                'metrics' => $metrics,
+                'schedule' => $schedule,
+                'alerts' => $alerts,
+                'upcoming' => $upcoming,
+                'availability' => $availability,
+                'booking_status' => $bookingStatus,
+                'provider_scope' => $providerScope,
+                
+                // Legacy data for backward compatibility
                 'stats' => [
                     'total_users' => $userStats['total'],
-                    'active_sessions' => $appointmentStats['upcoming'], // Using upcoming appointments as active sessions
-                    'pending_tasks' => $appointmentStats['today'], // Today's appointments as pending tasks
+                    'active_sessions' => $appointmentStats['upcoming'],
+                    'pending_tasks' => $appointmentStats['today'],
                     'revenue' => round($monthlyRevenue, 2)
                 ],
-                // Trend data for dashboard cards (real month-over-month calculations)
                 'trends' => [
-                    'users' => $userTrend,
-                    'appointments' => $appointmentTrend,
-                    'pending' => $pendingTrend,
-                    'revenue' => $revenueTrend
+                    'users' => $this->userModel->getTrend(),
+                    'appointments' => $this->appointmentModel->getTrend(),
+                    'pending' => $this->appointmentModel->getPendingTrend(),
+                    'revenue' => $this->appointmentModel->getRevenueTrend()
                 ],
-                // Provide services list for embedded scheduler section
                 'servicesList' => $this->serviceModel->orderBy('name', 'ASC')->findAll(),
                 'detailed_stats' => [
                     'users' => $userStats,
@@ -139,14 +135,37 @@ class Dashboard extends BaseController
                         'today' => $this->appointmentModel->getRevenue('today')
                     ]
                 ],
-                'recent_activities' => $formattedActivities
+                'recent_activities' => $this->formatRecentActivities(
+                    $this->appointmentModel->getRecentActivity()
+                )
             ];
 
-            // Use the populated dashboard view (dashboard.php); dashboard_fixed.php is empty in this branch.
-            return view('dashboard', $data);
+            // Use the new landing view (use 'dashboard' for backward compatibility with existing view)
+            // To switch to new landing view, change to: return view('dashboard/landing', $data);
+            return view('dashboard/landing', $data);
+            
+        } catch (\RuntimeException $e) {
+            // Authorization error - show error page instead of redirecting to avoid loops
+            log_message('warning', 'Dashboard Authorization Error: ' . $e->getMessage() . ' | User: ' . json_encode(session()->get('user')) . ' | Role: ' . ($this->authService->getUserRole(session()->get('user'))));
+            
+            // Don't redirect to login if user is already logged in (causes loop)
+            // Instead return a 403 response with error details
+            return $this->response->setStatusCode(403)->setBody(
+                '<h1>Access Denied</h1>' .
+                '<p>' . esc($e->getMessage()) . '</p>' .
+                '<p>Your role: ' . esc($this->authService->getUserRole(session()->get('user'))) . '</p>' .
+                '<p>User data: ' . esc(json_encode(session()->get('user'))) . '</p>' .
+                '<p><a href="/logout">Logout</a> | <a href="/">Home</a></p>'
+            );
+            
         } catch (\Exception $e) {
-            // If there's an error, return a simple message with database fallback
-            log_message('error', 'Dashboard Error: ' . $e->getMessage());
+            // If there's an error, log with full context and return fallback
+            log_message('error', 'Dashboard Error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
+            
+            // In development, show detailed error
+            if (ENVIRONMENT === 'development') {
+                throw $e;
+            }
             
             // Fallback to mock data if database is not available
             $fallbackData = [
@@ -155,6 +174,23 @@ class Dashboard extends BaseController
                     'role' => 'admin',
                     'email' => 'admin@webschedulr.com'
                 ],
+                'context' => [
+                    'business_name' => 'WebSchedulr',
+                    'current_date' => date('Y-m-d'),
+                    'timezone' => 'UTC',
+                    'user_role' => 'admin'
+                ],
+                'metrics' => [
+                    'total' => 0,
+                    'upcoming' => 0,
+                    'pending' => 0,
+                    'cancelled' => 0
+                ],
+                'schedule' => [],
+                'alerts' => [],
+                'upcoming' => [],
+                'availability' => [],
+                'booking_status' => null,
                 'stats' => [
                     'total_users' => 0,
                     'active_sessions' => 0,
@@ -162,10 +198,10 @@ class Dashboard extends BaseController
                     'revenue' => 0
                 ],
                 'trends' => [
-                    'users' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
-                    'appointments' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
-                    'pending' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0],
-                    'revenue' => ['percentage' => 0, 'direction' => 'neutral', 'current' => 0, 'previous' => 0]
+                    'users' => ['percentage' => 0, 'direction' => 'neutral'],
+                    'appointments' => ['percentage' => 0, 'direction' => 'neutral'],
+                    'pending' => ['percentage' => 0, 'direction' => 'neutral'],
+                    'revenue' => ['percentage' => 0, 'direction' => 'neutral']
                 ],
                 'recent_activities' => [],
                 'servicesList' => []
@@ -173,6 +209,47 @@ class Dashboard extends BaseController
             
             return view('dashboard', $fallbackData);
         }
+    }
+
+    /**
+     * Format recent activities for display
+     */
+    private function formatRecentActivities(array $activities): array
+    {
+        $formatted = [];
+        
+        foreach ($activities as $activity) {
+            $action = '';
+            $status_class = 'active';
+            
+            switch ($activity['status']) {
+                case 'booked':
+                    $action = 'Scheduled appointment for ' . $activity['service_name'];
+                    $status_class = 'active';
+                    break;
+                case 'completed':
+                    $action = 'Completed appointment for ' . $activity['service_name'];
+                    $status_class = 'active';
+                    break;
+                case 'cancelled':
+                    $action = 'Cancelled appointment for ' . $activity['service_name'];
+                    $status_class = 'cancelled';
+                    break;
+                case 'rescheduled':
+                    $action = 'Rescheduled appointment for ' . $activity['service_name'];
+                    $status_class = 'pending';
+                    break;
+            }
+
+            $formatted[] = [
+                'user_name' => $activity['customer_name'],
+                'activity' => $action,
+                'status' => $status_class,
+                'date' => date('Y-m-d', strtotime($activity['updated_at']))
+            ];
+        }
+
+        return $formatted;
     }
 
     public function api()
@@ -201,6 +278,67 @@ class Dashboard extends BaseController
             ];
             
             return $this->response->setJSON($stats);
+        }
+    }
+
+    /**
+     * API endpoint for dashboard metrics
+     * Used by landing view for real-time updates
+     */
+    public function apiMetrics()
+    {
+        // Set JSON header
+        $this->response->setHeader('Content-Type', 'application/json');
+        
+        try {
+            // Get current user from session
+            $currentUser = session()->get('user');
+            if (!$currentUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'success' => false,
+                    'error' => 'Unauthorized',
+                    'message' => 'Please log in to access dashboard metrics'
+                ]);
+            }
+
+            // Get user info
+            $userRole = $this->authService->getUserRole($currentUser);
+            $providerId = $this->authService->getProviderId($currentUser);
+            
+            // Check authorization
+            if (!$this->authService->canViewDashboardMetrics($userRole)) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'success' => false,
+                    'error' => 'Forbidden',
+                    'message' => 'You do not have permission to view dashboard metrics'
+                ]);
+            }
+            
+            $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+
+            // Get fresh metrics (bypass cache for API calls)
+            $metrics = $this->dashboardService->getTodayMetrics($providerScope);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $metrics,
+                'timestamp' => time()
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Dashboard API Metrics Error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
+            
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'error' => 'Internal Server Error',
+                'message' => ENVIRONMENT === 'development' ? $e->getMessage() : 'Failed to fetch metrics',
+                'data' => [
+                    'total' => 0,
+                    'upcoming' => 0,
+                    'pending' => 0,
+                    'cancelled' => 0
+                ]
+            ]);
         }
     }
 

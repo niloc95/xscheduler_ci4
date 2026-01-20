@@ -22,7 +22,7 @@ class AppFlow extends BaseController
         }
 
         // User is not logged in - go to login
-        return redirect()->to('/auth/login');
+        return redirect()->to('/login');
     }
 
     /**

@@ -117,14 +117,13 @@
                                 </h1>
                                 <p id="headerSubtitle" class="hidden sm:block text-gray-600 dark:text-gray-400 transition-colors duration-200">
                                     <?php 
-                                    $currentUser = session()->get('user');
-                                    $currentRole = $currentUser['role'] ?? 'User';
+                                    $currentRole = session()->get('user')['role'] ?? 'User';
                                     $displayRole = ucfirst($currentRole);
                                     if ($currentRole === 'admin') $displayRole = 'Administrator';
                                     elseif ($currentRole === 'provider') $displayRole = 'Service Provider';
                                     elseif ($currentRole === 'staff') $displayRole = 'Staff Member';
                                     ?>
-                                    Welcome back, <span class="font-medium"><?= isset($currentUser) ? esc($currentUser['name']) : 'User' ?></span> • <span class="text-blue-600 dark:text-blue-400 font-medium"><?= $displayRole ?></span>
+                                    <span class="text-blue-600 dark:text-blue-400 font-medium"><?= $displayRole ?></span>
                                 </p>
                             </div>
                         </div>

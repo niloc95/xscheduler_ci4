@@ -13,6 +13,10 @@ $routes->get('setup', 'Setup::index');
 $routes->post('setup/process', 'Setup::process');
 $routes->post('setup/test-connection', 'Setup::testConnection');
 
+// Standalone login route (commonly referenced)
+$routes->get('login', 'Auth::login', ['filter' => 'setup']);
+$routes->post('login', 'Auth::attemptLogin', ['filter' => 'setup']);
+
 // Authentication Routes (require setup to be completed)
 $routes->group('auth', function($routes) {
     $routes->get('login', 'Auth::login', ['filter' => 'setup']);
@@ -28,6 +32,7 @@ $routes->group('auth', function($routes) {
 $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Dashboard::index', ['filter' => 'auth']);
     $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
+    $routes->get('api/metrics', 'Dashboard::apiMetrics', ['filter' => 'auth']); // New landing view metrics endpoint
     $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
     $routes->get('search', 'Dashboard::search', ['filter' => 'auth']);
@@ -173,9 +178,9 @@ $routes->group('public/booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
     $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
     $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
-    $routes->post('', 'PublicSite\BookingController::store', ['filter' => 'public_rate_limit|csrf']);
+    $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit', 'csrf']]);
     $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
-    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => 'public_rate_limit|csrf']);
+    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => ['public_rate_limit', 'csrf']]);
 });
 
 // Public customer portal - My Appointments (no auth, uses customer hash)
@@ -228,6 +233,17 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->get('availability/summary', 'Api\\Availability::summary');
     $routes->get('availability/calendar', 'Api\\Availability::calendar');
     $routes->get('availability/next-available', 'Api\\Availability::nextAvailable');
+
+    // Locations API - Provider multi-location support
+    $routes->get('locations', 'Api\\Locations::index');
+    $routes->get('locations/for-date', 'Api\\Locations::forDate');
+    $routes->get('locations/available-dates', 'Api\\Locations::availableDates');
+    $routes->get('locations/(:num)', 'Api\\Locations::show/$1');
+    $routes->post('locations', 'Api\\Locations::create');
+    $routes->put('locations/(:num)', 'Api\\Locations::update/$1');
+    $routes->patch('locations/(:num)', 'Api\\Locations::update/$1');
+    $routes->delete('locations/(:num)', 'Api\\Locations::delete/$1');
+    $routes->post('locations/(:num)/set-primary', 'Api\\Locations::setPrimary/$1');
 
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {

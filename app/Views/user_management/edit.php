@@ -157,6 +157,16 @@
 						<?= $this->include('user_management/components/provider_schedule') ?>
 					</div>
 
+					<!-- Provider Locations Section -->
+					<div id="providerLocationsWrapper" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
+						<?php if (($user['role'] ?? '') === 'provider'): ?>
+							<?= $this->include('user_management/components/provider_locations', [
+								'providerId' => $user['id'] ?? null,
+								'locations' => $providerLocations ?? [],
+							]) ?>
+						<?php endif; ?>
+					</div>
+
 						<?php if (($user['role'] ?? '') === 'provider'): ?>
 							<?= $this->include('user_management/components/provider_staff', [
 								'assignedStaff' => $assignedStaff ?? [],

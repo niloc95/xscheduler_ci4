@@ -310,6 +310,13 @@ class UserManagement extends BaseController
             }
         }
 
+        // Load provider locations if user is a provider
+        $providerLocations = [];
+        if (($user['role'] ?? '') === 'provider') {
+            $locationModel = new \App\Models\LocationModel();
+            $providerLocations = $locationModel->getProviderLocationsWithDays($user['id']);
+        }
+
         $data = [
             'title' => 'Edit User - WebSchedulr',
             'currentUser' => $currentUser,
@@ -328,6 +335,7 @@ class UserManagement extends BaseController
             'assignedProviders' => $assignedProviders,
             'availableProviders' => $availableProviders,
             'canManageAssignments' => $canManageAssignments,
+            'providerLocations' => $providerLocations,
             'localizationContext' => $this->localization->getContext(),
             'timeFormatExample' => $this->localization->getFormatExample(),
         ];

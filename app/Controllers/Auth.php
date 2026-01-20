@@ -27,9 +27,15 @@ class Auth extends BaseController
             return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
         }
 
-        // If user is already logged in, redirect to dashboard
-        if (session()->get('user_id')) {
+        // Check for properly authenticated user
+        if (session()->get('isLoggedIn') === true && session()->get('user_id')) {
             return redirect()->to('/dashboard');
+        }
+
+        // Clear corrupt session data (has user data but not properly logged in)
+        if (!session()->get('isLoggedIn') && (session()->get('user_id') || session()->get('user'))) {
+            session()->remove('user_id');
+            session()->remove('user');
         }
 
         $data = [

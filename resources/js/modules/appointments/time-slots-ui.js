@@ -72,6 +72,16 @@ export function initTimeSlotsUI(options) {
     return;
   }
 
+  // Read URL parameters for prefilling
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlProviderId = urlParams.get('provider_id');
+  const urlDate = urlParams.get('date');
+  const urlTime = urlParams.get('time');
+  
+  // Track if this is the initial load to avoid clearing URL-populated values
+  let isInitialProviderChange = true;
+  let isInitialServiceChange = true;
+
   const el = {
     grid: document.getElementById(gridId),
     loading: document.getElementById(loadingId),
@@ -386,7 +396,13 @@ export function initTimeSlotsUI(options) {
   providerSelect.addEventListener('change', async () => {
     await loadServices(providerSelect.value);
     timeInput.value = '';
-    dateInput.value = ''; // Clear date when provider changes
+    
+    // Only clear date if not initial load with URL parameters
+    if (!isInitialProviderChange || !urlDate) {
+      dateInput.value = '';
+    }
+    isInitialProviderChange = false;
+    
     hideAllStates();
     el.prompt?.classList.remove('hidden');
     if (serviceSelect.value) {
@@ -396,7 +412,13 @@ export function initTimeSlotsUI(options) {
 
   serviceSelect.addEventListener('change', () => {
     timeInput.value = '';
-    dateInput.value = ''; // Clear date when service changes
+    
+    // Only clear date if not initial load with URL parameters
+    if (!isInitialServiceChange || !urlDate) {
+      dateInput.value = '';
+    }
+    isInitialServiceChange = false;
+    
     loadSlots(true);
   });
 
@@ -407,6 +429,16 @@ export function initTimeSlotsUI(options) {
 
   // Initial boot
   (async () => {
+    // Pre-fill from URL parameters first
+    if (urlProviderId && !providerSelect.value) {
+      providerSelect.value = urlProviderId;
+    }
+    if (urlDate && !dateInput.value) {
+      dateInput.value = urlDate;
+    }
+    // Store the initial time to select after slots load
+    const initialTimeToSelect = urlTime || initialTime;
+    
     // If provider is already chosen, load services and respect preselect
     if (providerSelect.value) {
       await loadServices(providerSelect.value);
@@ -414,8 +446,20 @@ export function initTimeSlotsUI(options) {
       // After loading services, check if we should load slots
       // Small delay to allow DOM to update with service selection
       setTimeout(() => {
+        // Reset the initial change flags after first load
+        isInitialProviderChange = false;
+        isInitialServiceChange = false;
+        
         if (serviceSelect.value) {
-          loadSlots(true);
+          loadSlots(true).then(() => {
+            // Try to select the time from URL after slots are loaded
+            if (initialTimeToSelect && el.grid) {
+              const matchingBtn = el.grid.querySelector(`[data-time="${initialTimeToSelect}"]`);
+              if (matchingBtn) {
+                matchingBtn.click();
+              }
+            }
+          });
         }
       }, 100);
     } else {

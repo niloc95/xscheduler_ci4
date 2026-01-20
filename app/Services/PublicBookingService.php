@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\PublicBookingException;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
+use App\Models\LocationModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
 use App\Models\UserModel;
@@ -23,6 +24,7 @@ class PublicBookingService
     private UserModel $users;
     private LocalizationSettingsService $localization;
     private SettingModel $settings;
+    private LocationModel $locations;
 
     public function __construct(
         ?BookingSettingsService $bookingSettings = null,
@@ -33,6 +35,7 @@ class PublicBookingService
         ?UserModel $users = null,
         ?LocalizationSettingsService $localization = null,
         ?SettingModel $settings = null,
+        ?LocationModel $locations = null,
     ) {
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->availability = $availability ?? new AvailabilityService();
@@ -42,6 +45,7 @@ class PublicBookingService
         $this->users = $users ?? new UserModel();
         $this->localization = $localization ?? new LocalizationSettingsService();
         $this->settings = $settings ?? new SettingModel();
+        $this->locations = $locations ?? new LocationModel();
     }
 
     public function buildViewContext(): array
@@ -141,6 +145,18 @@ class PublicBookingService
         $customerId = $this->storeCustomer($payload);
         $token = $this->generateToken();
 
+        // Get location snapshot if location_id provided
+        $locationSnapshot = [
+            'location_id' => null,
+            'location_name' => null,
+            'location_address' => null,
+            'location_contact' => null,
+        ];
+        
+        if (!empty($payload['location_id'])) {
+            $locationSnapshot = $this->locations->getLocationSnapshot((int) $payload['location_id']);
+        }
+
         $appointmentPayload = [
             'customer_id' => $customerId,
             'provider_id' => $provider['id'],
@@ -152,6 +168,11 @@ class PublicBookingService
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
             'public_token' => $token,
             'public_token_expires_at' => null,
+            // Location snapshot
+            'location_id' => $locationSnapshot['location_id'],
+            'location_name' => $locationSnapshot['location_name'],
+            'location_address' => $locationSnapshot['location_address'],
+            'location_contact' => $locationSnapshot['location_contact'],
         ];
 
         $appointmentId = $this->appointments->insert($appointmentPayload, true);
@@ -219,11 +240,29 @@ class PublicBookingService
     private function listProviders(): array
     {
         $rows = $this->users->where('role', 'provider')->where('is_active', true)->orderBy('name', 'ASC')->findAll();
-        return array_map(static function (array $row): array {
+        return array_map(function (array $row): array {
+            $providerId = (int) $row['id'];
+            $locations = $this->locations->getProviderLocationsWithDays($providerId);
+            
+            // Check if provider has locations configured
+            $hasLocations = !empty($locations);
+            
             return [
-                'id' => (int) $row['id'],
+                'id' => $providerId,
                 'name' => $row['name'] ?? 'Provider',
                 'color' => $row['color'] ?? '#3B82F6',
+                'has_locations' => $hasLocations,
+                'locations' => array_map(static function (array $loc): array {
+                    return [
+                        'id' => (int) $loc['id'],
+                        'name' => $loc['name'],
+                        // Address and contact only shown after selection
+                        'address' => $loc['address'],
+                        'contact_number' => $loc['contact_number'],
+                        'is_primary' => (bool) ($loc['is_primary'] ?? false),
+                        'days' => $loc['days'] ?? [],
+                    ];
+                }, $locations),
             ];
         }, $rows);
     }
