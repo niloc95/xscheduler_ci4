@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Services\CustomerAppointmentService;
 use App\Models\CustomerModel;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -17,7 +16,7 @@ use CodeIgniter\HTTP\ResponseInterface;
  * - GET /api/customers/{id}/appointments/stats - Appointment statistics
  * - GET /api/customers/{id}/autofill - Autofill data for booking
  */
-class CustomerAppointments extends BaseController
+class CustomerAppointments extends BaseApiController
 {
     protected CustomerAppointmentService $service;
     protected CustomerModel $customers;

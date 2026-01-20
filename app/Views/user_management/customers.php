@@ -11,7 +11,7 @@
  * Related: app/Views/customer_management/ handles CRUD operations for customer records
  */
 ?>
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'user-management']) ?>
@@ -21,7 +21,7 @@
 
 <?= $this->section('content') ?>
 <div class="main-content" data-page-title="Customer Interaction" data-page-subtitle="Manage and assist customers with bookings">
-    <?= $this->include('components/flash_messages') ?>
+    <?= $this->include('components/ui/flash-messages') ?>
 
     <div class="card card-spacious">
         <div class="card-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

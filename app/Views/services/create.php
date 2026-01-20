@@ -2,7 +2,7 @@
 
 // Create Service form view
 ?>
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>

@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\LocationModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -12,7 +11,7 @@ use CodeIgniter\HTTP\ResponseInterface;
  * Handles CRUD operations for provider locations.
  * Used by both admin interface and public booking flow.
  */
-class Locations extends BaseController
+class Locations extends BaseApiController
 {
     protected LocationModel $locationModel;
 

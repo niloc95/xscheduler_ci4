@@ -41,8 +41,23 @@ class Appointments extends BaseController
         $currentUserId = session()->get('user_id');
         $currentRole = current_user_role();
 
-        // Mock appointment data - in real implementation, this would come from AppointmentModel
-        $appointments = $this->getMockAppointments($currentRole, $currentUserId);
+        // Build context for role-based filtering
+        $context = [];
+        if ($currentRole === 'provider') {
+            $context['provider_id'] = $currentUserId;
+        } elseif ($currentRole === 'staff') {
+            // Staff sees appointments for providers they're assigned to
+            $providerStaffModel = new \App\Models\ProviderStaffModel();
+            $assignedProviders = $providerStaffModel->getProvidersForStaff($currentUserId);
+            if (!empty($assignedProviders)) {
+                $context['provider_ids'] = array_column($assignedProviders, 'provider_id');
+            }
+        }
+        // Admin sees all appointments (no context filter)
+        
+        // Get real appointments from database
+        $appointmentModel = new \App\Models\AppointmentModel();
+        $appointments = $appointmentModel->getDashboardAppointments(null, $context, 100);
         
         // Get active providers with colors for legend
         $activeProviders = $this->userModel
@@ -74,13 +89,16 @@ class Appointments extends BaseController
             'service_id' => $this->request->getGet('service_id') ?? '',
         ];
         
+        // Get real stats from database
+        $stats = $appointmentModel->getStats($context);
+        
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
             'current_page' => 'appointments',
             'appointments' => $appointments,
             'user_role' => $currentRole,
             'user' => $currentUser,
-            'stats' => $this->getAppointmentStats($currentRole, $currentUserId),
+            'stats' => $stats,
             'activeProviders' => $activeProviders,
             'allProviders' => $allProviders,
             'allServices' => $allServices,
@@ -718,113 +736,5 @@ class Appointments extends BaseController
         // Success
         return redirect()->to('/appointments')
             ->with('success', 'Appointment updated successfully!');
-    }
-
-    /**
-     * Get mock appointment data based on role
-     */
-    private function getMockAppointments($role, $userId)
-    {
-        $baseAppointments = [
-            [
-                'id' => 1,
-                'customer_name' => 'John Smith',
-                'customer_email' => 'john@example.com',
-                'service' => 'Hair Cut',
-                'provider' => 'Sarah Johnson',
-                'date' => '2025-09-05',
-                'time' => '10:00',
-                'duration' => 60,
-                'status' => 'confirmed',
-                'notes' => 'Regular trim'
-            ],
-            [
-                'id' => 2,
-                'customer_name' => 'Emma Davis',
-                'customer_email' => 'emma@example.com',
-                'service' => 'Color Treatment',
-                'provider' => 'Sarah Johnson',
-                'date' => '2025-09-05',
-                'time' => '14:30',
-                'duration' => 120,
-                'status' => 'pending',
-                'notes' => 'Full highlights'
-            ],
-            [
-                'id' => 3,
-                'customer_name' => 'Mike Wilson',
-                'customer_email' => 'mike@example.com',
-                'service' => 'Beard Trim',
-                'provider' => 'Alex Brown',
-                'date' => '2025-09-06',
-                'time' => '11:30',
-                'duration' => 30,
-                'status' => 'completed',
-                'notes' => ''
-            ]
-        ];
-
-        // Filter based on role
-        if ($role === 'customer') {
-            $userEmail = session()->get('user')['email'];
-            return array_filter($baseAppointments, function($apt) use ($userEmail) {
-                return $apt['customer_email'] === $userEmail;
-            });
-        }
-
-        return $baseAppointments;
-    }
-
-    /**
-     * Get mock appointment by ID
-     */
-    private function getMockAppointment($id)
-    {
-        $appointments = $this->getMockAppointments('admin', null);
-        foreach ($appointments as $appointment) {
-            if ($appointment['id'] == $id) {
-                return $appointment;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Get appointment statistics
-     */
-    private function getAppointmentStats($role, $userId)
-    {
-        return [
-            'total' => 24,
-            'today' => 3,
-            'pending' => 5,
-            'completed' => 18,
-            'cancelled' => 1
-        ];
-    }
-
-    /**
-     * Get mock services
-     */
-    private function getMockServices()
-    {
-        return [
-            ['id' => 1, 'name' => 'Hair Cut', 'duration' => 60, 'price' => 35.00],
-            ['id' => 2, 'name' => 'Color Treatment', 'duration' => 120, 'price' => 85.00],
-            ['id' => 3, 'name' => 'Beard Trim', 'duration' => 30, 'price' => 20.00],
-            ['id' => 4, 'name' => 'Hair Wash & Style', 'duration' => 45, 'price' => 25.00]
-        ];
-    }
-
-    /**
-     * Get mock providers
-     */
-    private function getMockProviders()
-    {
-        return [
-            ['id' => 1, 'name' => 'Sarah Johnson', 'speciality' => 'Hair Styling'],
-            ['id' => 2, 'name' => 'Alex Brown', 'speciality' => 'Barber Services'],
-            ['id' => 3, 'name' => 'Maria Garcia', 'speciality' => 'Color Specialist']
-        ];
     }
 }

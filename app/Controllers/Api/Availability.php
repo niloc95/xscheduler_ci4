@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Services\AvailabilityService;
 use App\Services\LocalizationSettingsService;
 
@@ -12,7 +11,7 @@ use App\Services\LocalizationSettingsService;
  * Provides endpoints for checking provider availability and
  * fetching available time slots based on all scheduling constraints.
  */
-class Availability extends BaseController
+class Availability extends BaseApiController
 {
     private AvailabilityService $availabilityService;
     private LocalizationSettingsService $localizationService;

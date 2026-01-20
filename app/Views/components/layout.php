@@ -230,6 +230,14 @@
                 <main class="pt-0" style="padding-top: 24px;">
                     <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: calc(var(--xs-header-offset, 0px) + 24px);">
                         <?= $this->renderSection('content') ?>
+                        
+                        <?php 
+                        // View-specific scripts (inside spa-content for SPA re-execution)
+                        $extraJs = $this->renderSection('extra_js');
+                        $scriptsSection = $this->renderSection('scripts');
+                        if (!empty($extraJs)) echo $extraJs;
+                        if (!empty($scriptsSection)) echo $scriptsSection;
+                        ?>
                     </div>
                 </main>
 
@@ -908,13 +916,5 @@
             }
         }
     </script>
-    
-    <?php
-    // Allow child views to inject custom JavaScript
-    $extraJs = $this->renderSection('extra_js');
-    if (!empty($extraJs)) {
-        echo $extraJs;
-    }
-    ?>
 </body>
 </html>

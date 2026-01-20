@@ -7,6 +7,7 @@ import { initAppointmentForm } from './modules/appointments/appointments-form.js
 import Charts from './charts.js';
 
 import { attachTimezoneHeaders } from './utils/timezone-helper.js';
+import { getBaseUrl } from './utils/url-helpers.js';
 
 // Import custom scheduler components
 import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
@@ -242,13 +243,6 @@ function initStatusFilterControls() {
 }
 
 let statsRefreshAbortController = null;
-
-function getBaseUrl() {
-    if (typeof window === 'undefined') {
-        return '';
-    }
-    return (window.__BASE_URL__ || '').replace(/\/+$/, '');
-}
 
 function getActiveStatusFilter() {
     if (typeof window === 'undefined' || typeof document === 'undefined') {

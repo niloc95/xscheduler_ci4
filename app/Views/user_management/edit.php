@@ -10,7 +10,7 @@
  * Related: index.php (list users), create.php (new users)
  */
 ?>
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
 	<?= $this->include('components/unified-sidebar', ['current_page' => 'user-management']) ?>
@@ -22,7 +22,7 @@
 <div class="main-content" data-page-title="Edit User" data-page-subtitle="Update user account information">
 
 	<!-- Flash Messages -->
-	<?= $this->include('components/flash_messages') ?>
+	<?= $this->include('components/ui/flash-messages') ?>
 
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 		<!-- User Form -->

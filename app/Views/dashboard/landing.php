@@ -34,7 +34,7 @@ $totalProviders = count($availability);
 $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ?? '') === 'working'));
 ?>
 
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('head') ?>
 <style>
@@ -314,7 +314,13 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <?= $this->section('scripts') ?>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Dashboard metrics refresh - SPA compatible
+(function() {
+    // Prevent duplicate initialization
+    const container = document.getElementById('metrics-container');
+    if (!container || container.dataset.refreshInitialized === 'true') return;
+    container.dataset.refreshInitialized = 'true';
+    
     const REFRESH_INTERVAL = 15000;
     const RETRY_DELAY = 10000;
     let refreshTimer = null;
@@ -323,9 +329,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function refreshMetrics() {
         if (document.hidden || isRefreshing) return;
         
+        // Check if we're still on dashboard
+        const metricsEl = document.getElementById('metrics-container');
+        if (!metricsEl) {
+            cleanup();
+            return;
+        }
+        
         isRefreshing = true;
-        const container = document.getElementById('metrics-container');
-        if (container) container.classList.add('loading-pulse');
+        metricsEl.classList.add('loading-pulse');
         
         fetch('<?= base_url('/dashboard/api/metrics') ?>', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -336,13 +348,13 @@ document.addEventListener('DOMContentLoaded', function() {
             updateValue('metric-total', m.total);
             updateValue('metric-pending', m.pending);
             updateValue('metric-confirmed', m.confirmed);
-            if (container) container.classList.remove('loading-pulse');
+            metricsEl.classList.remove('loading-pulse');
             isRefreshing = false;
             scheduleRefresh(REFRESH_INTERVAL);
         })
         .catch(err => {
-            console.error('Refresh failed:', err);
-            if (container) container.classList.remove('loading-pulse');
+            console.error('Dashboard refresh failed:', err);
+            metricsEl.classList.remove('loading-pulse');
             isRefreshing = false;
             scheduleRefresh(RETRY_DELAY);
         });
@@ -360,12 +372,43 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshTimer = setTimeout(refreshMetrics, delay);
     }
     
+    function cleanup() {
+        if (refreshTimer) {
+            clearTimeout(refreshTimer);
+            refreshTimer = null;
+        }
+    }
+    
+    // Handle visibility changes
+    function onVisibilityChange() {
+        if (!document.getElementById('metrics-container')) {
+            cleanup();
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            return;
+        }
+        if (!document.hidden) {
+            refreshMetrics();
+        } else {
+            cleanup();
+        }
+    }
+    
+    // Handle SPA navigation away from dashboard
+    function onSpaNavigated(e) {
+        if (!document.getElementById('metrics-container')) {
+            cleanup();
+            document.removeEventListener('spa:navigated', onSpaNavigated);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        }
+    }
+    
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener('spa:navigated', onSpaNavigated);
+    
+    // Initial fetch + start polling
     refreshMetrics();
     
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden) refreshMetrics();
-        else if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
-    });
-});
+    console.log('[Dashboard] Metrics refresh initialized');
+})();
 </script>
 <?= $this->endSection() ?>

@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\SettingModel;
 use CodeIgniter\API\ResponseTrait;
 
@@ -17,7 +16,7 @@ use CodeIgniter\API\ResponseTrait;
  * - Backups stored outside web root
  * - Audit logging for all operations
  */
-class DatabaseBackup extends BaseController
+class DatabaseBackup extends BaseApiController
 {
     use ResponseTrait;
 

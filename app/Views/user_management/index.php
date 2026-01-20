@@ -9,7 +9,7 @@
 
 <?= $this->section('dashboard_content_top') ?>
     <!-- Flash Messages -->
-    <?= $this->include('components/flash_messages') ?>
+    <?= $this->include('components/ui/flash-messages') ?>
 
     <!-- Role Filter Cards (replicated dashboard layout) -->
     <div class="mb-6">

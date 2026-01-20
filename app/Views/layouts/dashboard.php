@@ -16,7 +16,7 @@
  */
 ?>
 
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('content') ?>
 <?php

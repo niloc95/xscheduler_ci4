@@ -1,4 +1,4 @@
-<?= $this->extend('components/layout') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('header_title') ?>Design System<?= $this->endSection() ?>
 

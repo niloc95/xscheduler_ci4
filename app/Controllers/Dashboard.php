@@ -140,8 +140,8 @@ class Dashboard extends BaseController
                 )
             ];
 
-            // Use the new landing view (use 'dashboard' for backward compatibility with existing view)
-            // To switch to new landing view, change to: return view('dashboard/landing', $data);
+            // Use the refactored landing view with TailAdmin-style components
+            // To revert: change 'landing_refactored' back to 'landing'
             return view('dashboard/landing', $data);
             
         } catch (\RuntimeException $e) {
@@ -394,28 +394,6 @@ class Dashboard extends BaseController
         }
     }
 
-    public function test()
-    {
-        // Simple test endpoint
-        return view('test/welcome_message');
-    }
-
-    public function simple()
-    {
-        // Very basic dashboard without complex assets
-        $data = [
-            'title' => 'WebSchedulr Dashboard',
-            'message' => 'Dashboard is working!',
-            'stats' => [
-                'users' => 150,
-                'sessions' => 45,
-                'tasks' => 23
-            ]
-        ];
-        
-        return view('test/dashboard_test', $data);
-    }
-
     /**
      * Detailed analytics endpoint
      */
@@ -496,120 +474,6 @@ class Dashboard extends BaseController
             return $this->response->setJSON([
                 'database_connected' => false,
                 'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    public function realData()
-    {
-        try {
-            // Get current user (for now using session or default admin)
-            $currentUser = session()->get('user') ?? [
-                'name' => 'System Administrator',
-                'role' => 'admin',
-                'email' => 'admin@webschedulr.com'
-            ];
-
-            // Get real statistics from database
-            $userStats = $this->userModel->getStats();
-            $appointmentStats = $this->appointmentModel->getStats();
-            $serviceStats = $this->serviceModel->getStats();
-
-            // Calculate revenue
-            $monthlyRevenue = $this->appointmentModel->getRevenue('month');
-
-            // Get recent activities (appointments)
-            $recentActivities = $this->appointmentModel->getRecentActivity();
-
-            // Format recent activities for display
-            $formattedActivities = [];
-            foreach ($recentActivities as $activity) {
-                $action = '';
-                $status_class = 'active';
-                
-                switch ($activity['status']) {
-                    case 'booked':
-                        $action = 'Scheduled appointment for ' . $activity['service_name'];
-                        $status_class = 'active';
-                        break;
-                    case 'completed':
-                        $action = 'Completed appointment for ' . $activity['service_name'];
-                        $status_class = 'active';
-                        break;
-                    case 'cancelled':
-                        $action = 'Cancelled appointment for ' . $activity['service_name'];
-                        $status_class = 'cancelled';
-                        break;
-                    case 'rescheduled':
-                        $action = 'Rescheduled appointment for ' . $activity['service_name'];
-                        $status_class = 'pending';
-                        break;
-                }
-
-                $formattedActivities[] = [
-                    'user_name' => $activity['customer_name'],
-                    'activity' => $action,
-                    'status' => $status_class,
-                    'date' => date('Y-m-d', strtotime($activity['updated_at']))
-                ];
-            }
-
-            $data = [
-                'user' => $currentUser,
-                'stats' => [
-                    'total_users' => $userStats['total'],
-                    'active_sessions' => $appointmentStats['upcoming'], // Using upcoming appointments as active sessions
-                    'pending_tasks' => $appointmentStats['today'], // Today's appointments as pending tasks
-                    'revenue' => round($monthlyRevenue, 2)
-                ],
-                'recent_activities' => $formattedActivities
-            ];
-
-            return view('dashboard_real_data', $data);
-        } catch (\Exception $e) {
-            // If there's an error, return a simple message with database fallback
-            log_message('error', 'Dashboard Real Data Error: ' . $e->getMessage());
-            
-            // Fallback to mock data if database is not available
-            $fallbackData = [
-                'user' => [
-                    'name' => 'System Administrator',
-                    'role' => 'admin',
-                    'email' => 'admin@webschedulr.com'
-                ],
-                'stats' => [
-                    'total_users' => 0,
-                    'active_sessions' => 0,
-                    'pending_tasks' => 0,
-                    'revenue' => 0
-                ],
-                'recent_activities' => []
-            ];
-            
-            return view('dashboard_real_data', $fallbackData);
-        }
-    }
-
-    public function test_db()
-    {
-        try {
-            $userCount = $this->userModel->countAll();
-            $serviceCount = $this->serviceModel->countAll();
-            $appointmentCount = $this->appointmentModel->countAll();
-            
-            return $this->response->setJSON([
-                'status' => 'success',
-                'message' => 'Database connection working',
-                'counts' => [
-                    'users' => $userCount,
-                    'services' => $serviceCount,
-                    'appointments' => $appointmentCount
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'status' => 'error',
-                'message' => $e->getMessage()
             ]);
         }
     }

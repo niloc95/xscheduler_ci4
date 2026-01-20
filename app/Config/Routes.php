@@ -64,7 +64,7 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
 // Services Routes (auth required for viewing, admin/provider for management)
 $routes->group('services', function($routes) {
     $routes->get('', 'Services::index');
-    $routes->get('view/(:num)', 'Services::view/$1');
+    // Note: view route removed - use edit instead
     $routes->get('create', 'Services::create');
     $routes->post('store', 'Services::store');
     $routes->get('edit/(:num)', 'Services::edit/$1');
@@ -81,22 +81,21 @@ $routes->group('services', function($routes) {
 });
 
 // Analytics Routes (admin and provider access)
-$routes->group('analytics', function($routes) {
+$routes->group('analytics', ['filter' => 'role:admin,provider'], function($routes) {
     $routes->get('', 'Analytics::index');
-    $routes->get('appointments', 'Analytics::appointments');
     $routes->get('revenue', 'Analytics::revenue');
     $routes->get('customers', 'Analytics::customers');
-    $routes->get('export', 'Analytics::export');
+    // Note: appointments and export routes removed - methods don't exist
 });
 
 // Notifications Routes (auth required)
-$routes->group('notifications', function($routes) {
+$routes->group('notifications', ['filter' => 'auth'], function($routes) {
     $routes->get('', 'Notifications::index');
-    $routes->post('mark-read/(:num)', 'Notifications::markRead/$1');
-    $routes->post('mark-all-read', 'Notifications::markAllRead');
+    $routes->post('mark-read/(:num)', 'Notifications::markAsRead/$1');
+    $routes->post('mark-all-read', 'Notifications::markAllAsRead');
     $routes->post('delete/(:num)', 'Notifications::delete/$1');
     $routes->get('settings', 'Notifications::settings');
-    $routes->post('update-settings', 'Notifications::updateSettings');
+    // Note: update-settings removed - settings page redirects to main settings
 });
 
 // Profile Routes (auth required)
@@ -141,26 +140,21 @@ $routes->group('appointments', ['filter' => 'setup'], function($routes) {
     $routes->get('edit/(:any)', 'Appointments::edit/$1', ['filter' => 'auth']);
     $routes->post('update/(:any)', 'Appointments::update/$1', ['filter' => 'auth']);
     $routes->put('update/(:any)', 'Appointments::update/$1', ['filter' => 'auth']);  // Support PUT method
-    $routes->post('cancel/(:any)', 'Appointments::cancel/$1', ['filter' => 'auth']);
+    // Note: cancel route removed - use API PATCH /api/appointments/:id/status instead
 });
 
 // Help Routes (some require auth)
 $routes->group('help', function($routes) {
     $routes->get('', 'Help::index');
     $routes->get('search', 'Help::search');
-    $routes->get('getting-started', 'Help::gettingStarted');
-    $routes->get('appointments', 'Help::appointments');
-    $routes->get('services', 'Help::services');
-    $routes->get('account-billing', 'Help::accountBilling');
-    $routes->get('contact', 'Help::contact');
-    $routes->post('contact', 'Help::sendContact');
-    $routes->get('chat', 'Help::chat');
-    $routes->get('article/(:segment)', 'Help::article/$1');
-    $routes->get('status', 'Help::status');
-    $routes->get('keyboard-shortcuts', 'Help::keyboardShortcuts');
-    $routes->get('video-tutorials', 'Help::videoTutorials');
-    $routes->get('api-docs', 'Help::apiDocs');
-    $routes->get('community', 'Help::community');
+    $routes->get('faq', 'Help::faq');
+    $routes->get('tutorials', 'Help::tutorials');
+    $routes->get('contact', 'Help::contact', ['filter' => 'auth']);
+    $routes->post('contact', 'Help::submitTicket', ['filter' => 'auth']);
+    $routes->get('article/(:segment)', 'Help::article/$1', ['filter' => 'auth']);
+    $routes->get('category/(:segment)', 'Help::category/$1', ['filter' => 'auth']);
+    // Note: Removed dead routes (getting-started, appointments, services, account-billing,
+    //       chat, status, keyboard-shortcuts, api-docs, community) - methods don't exist
 });
 
 // Scheduler Routes
@@ -196,6 +190,10 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     // Dashboard API endpoint
     $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats');
 
+    // User Management API endpoints (admin/provider only)
+    $routes->get('users', 'UserManagement::apiList', ['filter' => 'role:admin,provider']);
+    $routes->get('user-counts', 'UserManagement::apiCounts', ['filter' => 'role:admin,provider']);
+
     // Legacy simple endpoints
     $routes->get('slots', 'Scheduler::slots');
     $routes->post('book', 'Scheduler::book');
@@ -225,7 +223,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
     $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
-    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
+    // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)
 
     // Availability API - Comprehensive slot availability calculation
     $routes->get('availability/slots', 'Api\\Availability::slots');
@@ -249,7 +247,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->group('v1', function($routes) {
         // Settings endpoints - public for frontend initialization
         $routes->get('settings/calendar-config', 'Api\\V1\\Settings::calendarConfig');
-        $routes->get('settings/calendarConfig', 'Api\\V1\\Settings::calendarConfig'); // Alternative naming
+        // Note: Use kebab-case (calendar-config) consistently
         $routes->get('settings/localization', 'Api\\V1\\Settings::localization');
         $routes->get('settings/booking', 'Api\\V1\\Settings::booking');
         $routes->get('settings/business-hours', 'Api\\V1\\Settings::businessHours');

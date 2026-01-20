@@ -8,6 +8,7 @@ use App\Models\UserModel;
 use App\Models\UserPermissionModel;
 use App\Models\AuditLogModel;
 use App\Services\LocalizationSettingsService;
+use App\Services\ScheduleValidationService;
 
 class UserManagement extends BaseController
 {
@@ -18,6 +19,7 @@ class UserManagement extends BaseController
     protected $providerScheduleModel;
     protected ProviderStaffModel $providerStaffModel;
     protected LocalizationSettingsService $localization;
+    protected ScheduleValidationService $scheduleValidation;
     protected array $scheduleDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
     public function __construct()
@@ -29,6 +31,7 @@ class UserManagement extends BaseController
         $this->providerScheduleModel = new ProviderScheduleModel();
         $this->providerStaffModel = new ProviderStaffModel();
         $this->localization = new LocalizationSettingsService();
+        $this->scheduleValidation = new ScheduleValidationService($this->localization);
     }
 
     /**
@@ -110,7 +113,7 @@ class UserManagement extends BaseController
             'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
             'stats' => $stats,
             'validation' => $this->validator,
-            'providerSchedule' => $this->prepareScheduleForView(old('schedule') ?? []),
+            'providerSchedule' => $this->scheduleValidation->prepareScheduleForView(old('schedule') ?? []),
             'scheduleDays' => $this->scheduleDays,
             'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
             'localizationContext' => $this->localization->getContext(),
@@ -177,7 +180,7 @@ class UserManagement extends BaseController
             $userData['color'] = $this->request->getPost('color') ?: $this->userModel->getAvailableProviderColor();
             log_message('info', 'Assigned color ' . $userData['color'] . ' to new provider');
             
-            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
             if (!empty($scheduleErrors)) {
                 return redirect()->back()->withInput()
                     ->with('error', 'Please fix the highlighted schedule issues.')
@@ -327,7 +330,7 @@ class UserManagement extends BaseController
             'availableRoles' => $availableRoles,
             'providers' => $providers,
             'validation' => $this->validator,
-            'providerSchedule' => $this->prepareScheduleForView($rawSchedule),
+            'providerSchedule' => $this->scheduleValidation->prepareScheduleForView($rawSchedule),
             'scheduleDays' => $this->scheduleDays,
             'scheduleErrors' => session()->getFlashdata('schedule_errors') ?? [],
             'assignedStaff' => $assignedStaff,
@@ -431,7 +434,7 @@ class UserManagement extends BaseController
                 $updateData['color'] = $this->request->getPost('color');
             }
             
-            [$scheduleClean, $scheduleErrors] = $this->validateProviderScheduleInput($scheduleInput);
+            [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
             if (!empty($scheduleErrors)) {
                 return redirect()->back()->withInput()
                     ->with('error', 'Please fix the highlighted schedule issues.')
@@ -581,6 +584,68 @@ class UserManagement extends BaseController
             return redirect()->to('/user-management')
                            ->with('error', 'Failed to delete user. Please try again.');
         }
+    }
+
+    // =========================================================================
+    // API Endpoints for AJAX calls
+    // =========================================================================
+
+    /**
+     * API: Get user counts by role
+     * GET /api/user-counts
+     * 
+     * @return \CodeIgniter\HTTP\ResponseInterface
+     */
+    public function apiCounts()
+    {
+        $currentUserId = session()->get('user_id');
+        if (!$currentUserId) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        }
+
+        $stats = $this->getUserStatsBasedOnRole($currentUserId);
+        
+        return $this->response->setJSON([
+            'counts' => [
+                'total' => (int)($stats['total'] ?? 0),
+                'admins' => (int)($stats['admins'] ?? 0),
+                'providers' => (int)($stats['providers'] ?? 0),
+                'staff' => (int)($stats['staff'] ?? 0),
+            ]
+        ]);
+    }
+
+    /**
+     * API: Get users list with optional role filter
+     * GET /api/users?role=admin|provider|staff
+     * 
+     * @return \CodeIgniter\HTTP\ResponseInterface
+     */
+    public function apiList()
+    {
+        $currentUserId = session()->get('user_id');
+        if (!$currentUserId) {
+            return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
+        }
+
+        $role = $this->request->getGet('role');
+        
+        // Get users based on role permission
+        $users = $this->getUsersBasedOnRole($currentUserId);
+        
+        // Filter by role if specified
+        if ($role && in_array($role, ['admin', 'provider', 'staff'])) {
+            $users = array_filter($users, fn($u) => ($u['role'] ?? '') === $role);
+            $users = array_values($users); // Re-index array
+        }
+        
+        // Enrich with assignments
+        $users = $this->enrichUsersWithAssignments($users);
+        
+        return $this->response->setJSON([
+            'items' => $users,
+            'total' => count($users)
+        ]);
     }
 
     // Helper methods

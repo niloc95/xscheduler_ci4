@@ -2,13 +2,17 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\AppointmentModel;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
 use App\Services\SchedulingService;
 
-class Appointments extends BaseController
+/**
+ * Appointments API Controller
+ * 
+ * Provides endpoints for managing appointments.
+ */
+class Appointments extends BaseApiController
 {
     /**
      * List appointments with pagination, filtering, and date range support
