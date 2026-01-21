@@ -270,3 +270,44 @@ html.dark {
     }
   }
 }
+
+// ===========================
+// Login Page Specific Styles (standalone)
+// ===========================
+// These are for login.php which uses standalone layout (not auth.php layout)
+
+.login-container {
+  min-height: 100vh;
+}
+
+.login-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.dark .login-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+// Brand-colored icon badge (for logo placeholder)
+.brand-icon-badge {
+  background-color: var(--md-sys-color-primary, #003049);
+}
+
+// Brand-colored text
+.text-brand-primary {
+  color: var(--md-sys-color-primary, #003049);
+}
+
+// Link with brand primary color
+.link-brand-primary {
+  color: var(--md-sys-color-primary, #003049);
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+// Object-fit contain utility for images
+.object-contain {
+  object-fit: contain;
+}

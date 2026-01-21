@@ -20,8 +20,7 @@
 <?= $this->section('header_title') ?>Customer Interaction<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Customer Interaction" data-page-subtitle="Manage and assist customers with bookings">
-    <?= $this->include('components/ui/flash-messages') ?>
+<?= $this->include('components/ui/flash-messages') ?>
 
     <div class="card card-spacious">
         <div class="card-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

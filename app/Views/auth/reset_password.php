@@ -24,24 +24,6 @@
     
     <!-- Tailwind CSS -->
     <link href="<?= base_url('/build/assets/style.css') ?>" rel="stylesheet">
-    
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        .login-container {
-            min-height: 100vh;
-        }
-        
-        .login-card {
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        
-        .dark .login-card {
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-    </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
     <div class="login-container flex items-center justify-center p-4">
@@ -56,14 +38,14 @@
                 <div class="flex justify-center mb-4">
                     <?php $logoUrl = setting_url('general.company_logo'); ?>
                     <?php if ($logoUrl): ?>
-                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700" style="object-fit: contain;" />
+                        <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="h-16 w-auto rounded-lg bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 object-contain" />
                     <?php else: ?>
-                        <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
+                        <div class="brand-icon-badge w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-200 bg-md-primary">
                             <span class="material-symbols-outlined text-white text-3xl">password</span>
                         </div>
                     <?php endif; ?>
                 </div>
-                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">Reset Password</h1>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200 text-md-primary">Reset Password</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Enter your new password below</p>
             </div>
 
@@ -122,7 +104,7 @@
                 </div>
 
                 <!-- Submit Button -->
-                <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200" style="background-color: #F77F00;">
+                <button type="submit" class="btn-brand w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200">
                     <span class="material-symbols-outlined mr-2">check_circle</span>
                     Update Password
                 </button>
@@ -131,7 +113,7 @@
             <!-- Back to Login -->
             <div class="mt-8 text-center">
                 <a href="<?= base_url('auth/login') ?>" 
-                   class="inline-flex items-center text-sm hover:text-blue-700 transition-colors" style="color: #003049;">
+                   class="link-brand-primary inline-flex items-center text-sm hover:text-blue-700 transition-colors">
                     <span class="material-symbols-outlined mr-1 text-sm">arrow_back</span>
                     Back to Login
                 </a>

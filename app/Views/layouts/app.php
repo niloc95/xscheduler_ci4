@@ -35,142 +35,7 @@
         })();
     </script>
     
-    <!-- Design System Variables -->
-    <style>
-        :root {
-            /* Spacing Scale (8px base) */
-            --xs-space-1: 0.25rem;  /* 4px */
-            --xs-space-2: 0.5rem;   /* 8px */
-            --xs-space-3: 0.75rem;  /* 12px */
-            --xs-space-4: 1rem;     /* 16px */
-            --xs-space-5: 1.25rem;  /* 20px */
-            --xs-space-6: 1.5rem;   /* 24px */
-            --xs-space-8: 2rem;     /* 32px */
-            --xs-space-10: 2.5rem;  /* 40px */
-            --xs-space-12: 3rem;    /* 48px */
-            
-            /* Border Radius */
-            --xs-radius-sm: 0.375rem;  /* 6px */
-            --xs-radius-md: 0.5rem;    /* 8px */
-            --xs-radius-lg: 0.75rem;   /* 12px */
-            --xs-radius-xl: 1rem;      /* 16px */
-            --xs-radius-2xl: 1.25rem;  /* 20px */
-            
-            /* Shadows */
-            --xs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --xs-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --xs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            --xs-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-            
-            /* Layout */
-            --xs-sidebar-width: 16rem;  /* 256px */
-            --xs-sidebar-gap: 1.5rem;   /* 24px gap between sidebar and content */
-            --xs-header-height: 4.5rem;
-            --xs-content-max-width: 1536px;
-            --xs-content-padding: var(--xs-space-6);
-        }
-        
-        /* 
-         * Fixed Sidebar Layout
-         * The sidebar is position:fixed, so we use margin-left on the main container
-         * to push content to the right of the sidebar on desktop.
-         */
-        
-        /* Sidebar: Fixed position, full height */
-        .xs-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: var(--xs-sidebar-width);
-            height: 100vh;
-            z-index: 50;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-        
-        /* Main container: Offset by sidebar width + gap on desktop */
-        .xs-main-container {
-            min-height: 100vh;
-            transition: margin-left 0.3s ease;
-        }
-        
-        /* Desktop: Push content right of fixed sidebar */
-        @media (min-width: 1024px) {
-            .xs-main-container {
-                margin-left: calc(var(--xs-sidebar-width) + var(--xs-sidebar-gap));
-            }
-        }
-        
-        /* Mobile: No margin, sidebar slides in from left */
-        @media (max-width: 1023px) {
-            .xs-sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                z-index: 60;
-            }
-            .xs-sidebar.open {
-                transform: translateX(0);
-            }
-            .xs-main-container {
-                margin-left: 0;
-            }
-        }
-        
-        /* 
-         * Sticky Header
-         * The header stays fixed at the top of the viewport when scrolling.
-         * On desktop, it has a small top offset for visual breathing room.
-         */
-        .xs-header {
-            position: sticky;
-            top: 0;
-            z-index: 40;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-        
-        @media (min-width: 1024px) {
-            .xs-header {
-                top: 1rem; /* 16px breathing room from top on desktop */
-            }
-        }
-        
-        /* Light mode background */
-        html:not(.dark) body {
-            background-color: #f3f4f6;
-        }
-        
-        /* Dark mode background */
-        html.dark body {
-            background-color: #111827;
-        }
-        
-        /* Loading state animation */
-        .xs-loading {
-            animation: xs-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes xs-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        /* Ensure sidebar overlay covers correctly */
-        .xs-sidebar-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 55;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .xs-sidebar-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-    </style>
-    
-    <!-- Stylesheets -->
+    <!-- Stylesheets (all layout/component styles are now in SCSS) -->
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
     <link rel="stylesheet" href="<?= base_url('build/assets/main.css') ?>">
     
@@ -209,12 +74,13 @@
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebar-overlay" class="xs-sidebar-overlay lg:hidden" onclick="closeSidebar()"></div>
     
+    <!-- Blur overlay for content scrolling in top gap -->
+    <div class="xs-scroll-blur" aria-hidden="true"></div>
+    
     <!-- Main Content Area (margin-left accounts for fixed sidebar on desktop) -->
     <div class="xs-main-container">
-        <div class="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
-            
-            <!-- Sticky Header Bar -->
-            <header class="xs-header bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
+        <!-- Fixed Header Bar (solid opaque, aligned with sidebar) -->
+        <header class="xs-header bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
                 <div class="flex items-center justify-between gap-4">
                     <!-- Left: Mobile Menu + Title -->
                     <div class="flex items-center gap-3 min-w-0">
@@ -315,16 +181,24 @@
                         </div>
                     </div>
                 </header>
+        
+        <!-- Content Area (starts BELOW the fixed header) -->
+        <?php 
+        // Determine layout variant: standard (default) or dashboard
+        $layoutVariant = $this->renderSection('layout_variant') ?: 'standard';
+        $contentClasses = $layoutVariant === 'dashboard' 
+            ? 'xs-content-wrapper xs-content-dashboard' 
+            : 'xs-content-wrapper xs-content-standard';
+        ?>
+        <div class="<?= $contentClasses ?>">
                 
                 <!-- Flash Messages -->
                 <?= $this->include('components/ui/flash-messages') ?>
                 
-                <!-- Page Header (Optional) -->
+                <!-- Page Header (Optional - Use page-header component instead) -->
                 <?php $pageHeader = $this->renderSection('page_header'); ?>
                 <?php if (trim($pageHeader)): ?>
-                <div class="xs-page-header">
                     <?= $pageHeader ?>
-                </div>
                 <?php endif; ?>
                 
                 <!-- Main Content -->

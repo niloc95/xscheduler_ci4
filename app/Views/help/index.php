@@ -5,8 +5,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Help & Support" data-page-subtitle="Find answers to your questions, learn how to use features, and get the support you need">
-    <!-- Quick Search -->
+<!-- Quick Search -->
     <div class="mb-8 max-w-md mx-auto">
         <form action="<?= base_url('/help/search') ?>" method="get" class="relative">
             <input type="text" 

@@ -193,3 +193,96 @@
     border-radius: $border-radius-lg;
   }
 }
+
+// ===========================
+// Dashboard Landing Page Styles
+// ===========================
+
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.metric-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--metric-bg, #f3f4f6);
+
+  .dark & {
+    background: var(--metric-bg-dark, #1f2937);
+  }
+}
+
+// Metric color variants using CSS custom properties
+.metric-mini-blue {
+  --metric-bg: #dbeafe;
+  --metric-bg-dark: #1e3a5f;
+}
+
+.metric-mini-green {
+  --metric-bg: #d1fae5;
+  --metric-bg-dark: #064e3b;
+}
+
+.metric-mini-yellow {
+  --metric-bg: #fef3c7;
+  --metric-bg-dark: #78350f;
+}
+
+.metric-mini-red {
+  --metric-bg: #fee2e2;
+  --metric-bg-dark: #7f1d1d;
+}
+
+.metric-mini-indigo {
+  --metric-bg: #e0e7ff;
+  --metric-bg-dark: #312e81;
+}
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.appt-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+
+  .dark & {
+    border-color: #374151;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 50px 1fr auto;
+    gap: 0.5rem;
+
+    .status-badge {
+      display: none;
+    }
+  }
+}
+
+.loading-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

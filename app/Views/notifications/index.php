@@ -5,9 +5,8 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Notifications" data-page-subtitle="Stay updated with your notification activity">
-    <!-- Page Header -->
-    <div class="mb-6">
+<!-- Page Header -->
+<div class="mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div></div>
             

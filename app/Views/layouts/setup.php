@@ -47,20 +47,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <?php endif; ?>
     
-    <style>
-        :root {
-            /* Setup-specific design tokens */
-            --setup-max-width: 640px;
-        }
-        
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-        }
-        
-        /* Hide elements with x-cloak until Alpine.js initializes */
-        [x-cloak] { display: none !important; }
-    </style>
-    
     <?= $this->renderSection('head') ?>
 </head>
 <body class="min-h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 antialiased">

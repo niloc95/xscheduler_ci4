@@ -9,8 +9,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Create Service" data-page-subtitle="Add a new service offering">
-    <div class="mb-6">
+<div class="mb-6">
         <a href="<?= base_url('/services') ?>" class="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
             <span class="material-symbols-outlined mr-1">arrow_back</span>
             Back to Services

@@ -1,0 +1,102 @@
+// ===========================
+// Modal & Toast Components
+// ===========================
+// Styles for the global modal and toast notification system
+
+@layer components {
+  // Modal Card
+  .xs-modal-card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+    overflow: hidden;
+  }
+
+  html.dark .xs-modal-card {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+  }
+
+  // Modal Title
+  .xs-modal-title-brand {
+    color: var(--md-sys-color-primary);
+  }
+
+  // Primary Button (for modals)
+  .xs-btn-primary {
+    color: #fff;
+    background-color: var(--md-sys-color-secondary);
+
+    &:hover {
+      filter: brightness(0.96);
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.5);
+    }
+  }
+
+  // Toast Notifications
+  .xs-toast {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border;
+    @apply bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700;
+    @apply text-sm text-gray-900 dark:text-gray-100;
+    pointer-events: auto;
+    animation: xs-slide-in 0.3s ease-out;
+
+    &.xs-toast-success {
+      @apply bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200;
+    }
+
+    &.xs-toast-error {
+      @apply bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200;
+    }
+
+    &.xs-toast-warning {
+      @apply bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200;
+    }
+
+    &.xs-toast-info {
+      @apply bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200;
+    }
+  }
+
+  @keyframes xs-slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  // Confirmation Dialog Buttons
+  .xs-modal-btn {
+    @apply px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200;
+
+    &.xs-modal-btn-confirm {
+      @apply text-white;
+      background-color: var(--md-sys-color-secondary, #F77F00);
+
+      &:hover {
+        filter: brightness(0.95);
+      }
+    }
+
+    &.xs-modal-btn-cancel {
+      @apply bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300;
+
+      &:hover {
+        @apply bg-gray-200 dark:bg-gray-600;
+      }
+    }
+
+    &.xs-modal-btn-danger {
+      @apply bg-red-600 text-white;
+
+      &:hover {
+        @apply bg-red-700;
+      }
+    }
+  }
+}

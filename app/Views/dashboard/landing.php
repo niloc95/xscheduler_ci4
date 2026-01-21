@@ -37,45 +37,6 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->extend('layouts/app') ?>
 
 <?= $this->section('head') ?>
-<style>
-    .dashboard-grid { display: grid; gap: 1rem; }
-    @media (min-width: 1024px) {
-        .dashboard-grid { grid-template-columns: 1fr 1fr; }
-    }
-    .metric-mini { 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        background: var(--metric-bg, #f3f4f6);
-    }
-    .dark .metric-mini { background: var(--metric-bg-dark, #1f2937); }
-    .provider-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 0.75rem;
-    }
-    .appt-row {
-        display: grid;
-        grid-template-columns: 60px 1fr auto auto;
-        gap: 0.75rem;
-        align-items: center;
-        padding: 0.75rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    .dark .appt-row { border-color: #374151; }
-    .appt-row:last-child { border-bottom: none; }
-    @media (max-width: 640px) {
-        .appt-row {
-            grid-template-columns: 50px 1fr auto;
-            gap: 0.5rem;
-        }
-        .appt-row .status-badge { display: none; }
-    }
-    .loading-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-</style>
 <?= $this->endSection() ?>
 
 <?= $this->section('sidebar') ?>
@@ -85,7 +46,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content p-4 md:p-6" data-page-title="Dashboard">
+<div data-page-title="Dashboard">
     
     <!-- Header Row: Welcome + Quick Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -111,19 +72,19 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
     
     <!-- Metrics Row: Compact horizontal strip -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" id="metrics-container">
-        <div class="metric-mini" style="--metric-bg: #dbeafe; --metric-bg-dark: #1e3a5f;">
+        <div class="metric-mini metric-mini-blue">
             <span class="text-2xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
             <span class="text-xs text-blue-600 dark:text-blue-400">Today</span>
         </div>
-        <div class="metric-mini" style="--metric-bg: #fef3c7; --metric-bg-dark: #78350f;">
+        <div class="metric-mini metric-mini-yellow">
             <span class="text-2xl font-bold text-amber-700 dark:text-amber-300" id="metric-pending"><?= $pendingCount ?></span>
             <span class="text-xs text-amber-600 dark:text-amber-400">Pending</span>
         </div>
-        <div class="metric-mini" style="--metric-bg: #d1fae5; --metric-bg-dark: #064e3b;">
+        <div class="metric-mini metric-mini-green">
             <span class="text-2xl font-bold text-green-700 dark:text-green-300" id="metric-confirmed"><?= $confirmedCount ?></span>
             <span class="text-xs text-green-600 dark:text-green-400">Confirmed</span>
         </div>
-        <div class="metric-mini" style="--metric-bg: #e0e7ff; --metric-bg-dark: #312e81;">
+        <div class="metric-mini metric-mini-indigo">
             <span class="text-2xl font-bold text-indigo-700 dark:text-indigo-300"><?= $workingProviders ?>/<?= $totalProviders ?></span>
             <span class="text-xs text-indigo-600 dark:text-indigo-400">Providers Active</span>
         </div>

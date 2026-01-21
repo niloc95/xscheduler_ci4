@@ -1,7 +1,10 @@
 <?php
 /**
- * Dashboard layout consolidating common summary, actions, and content regions.
- *
+ * Dashboard Layout
+ * 
+ * Specialized layout for dashboard pages with stats, charts, and dense grids.
+ * Uses xs-content-dashboard variant for wider max-width and tighter spacing.
+ * 
  * Expected child sections:
  * - page_title (optional): Overrides page title attribute.
  * - page_subtitle (optional): Overrides page subtitle attribute.
@@ -17,6 +20,8 @@
 ?>
 
 <?= $this->extend('layouts/app') ?>
+
+<?= $this->section('layout_variant') ?>dashboard<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <?php
@@ -37,11 +42,9 @@
     $contentTop = trim($this->renderSection('dashboard_content_top'));
     $bodyContent = $this->renderSection('dashboard_content');
 ?>
-<div class="main-content"
-     data-page-title="<?= esc($resolvedTitle) ?>"
-     <?= $resolvedSubtitle !== '' ? 'data-page-subtitle="' . esc($resolvedSubtitle) . '"' : '' ?>>
-    <?php if ($introContent !== ''): ?>
-    <div class="mb-6" data-dashboard-intro>
+<!-- Dashboard Intro -->
+<?php if ($introContent !== ''): ?>
+<div class="mb-6" data-dashboard-intro data-page-title="<?= esc($resolvedTitle) ?>" <?= $resolvedSubtitle !== '' ? 'data-page-subtitle="' . esc($resolvedSubtitle) . '"' : '' ?>>
         <?= $introContent ?>
     </div>
     <?php endif; ?>
@@ -86,8 +89,7 @@
     </div>
     <?php endif; ?>
 
-    <div class="space-y-6" data-dashboard-content>
-        <?= $bodyContent ?>
-    </div>
+<div class="space-y-6" data-dashboard-content>
+    <?= $bodyContent ?>
 </div>
 <?= $this->endSection() ?>

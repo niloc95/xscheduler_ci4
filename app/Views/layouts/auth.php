@@ -38,15 +38,6 @@
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     
-    <style>
-        .auth-card {
-            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
-        }
-        .dark .auth-card {
-            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
-        }
-    </style>
-    
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen transition-colors duration-200">

@@ -19,97 +19,7 @@
         })();
     </script>
     
-    <!-- Sidebar positioning fix -->
-    <style>
-        /* 
-         * Fixed Sidebar Layout
-         * Sidebar is position:fixed, main content uses margin-left to offset
-         */
-        @media (min-width: 1024px) {
-            .main-content-container {
-                margin-left: calc(16rem + 1.5rem) !important; /* sidebar width + gap */
-            }
-        }
-        
-        /* Light mode background */
-        html:not(.dark) body {
-            background-color: #f3f4f6 !important;
-        }
-        html:not(.dark) .main-content-container {
-            background-color: #f3f4f6 !important;
-        }
-        
-        /* Sidebar fixed positioning */
-        .unified-sidebar,
-        #main-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 16rem !important;
-            height: 100vh !important;
-            z-index: 50 !important;
-            overflow-y: auto !important;
-        }
-        
-        /* Mobile: sidebar slides in */
-        @media (max-width: 1023px) {
-            .unified-sidebar,
-            #main-sidebar {
-                transform: translateX(-100%) !important;
-                z-index: 60 !important;
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            }
-            
-            .unified-sidebar.open,
-            #main-sidebar.open {
-                transform: translateX(0) !important;
-            }
-            
-            .main-content-container {
-                margin-left: 0 !important;
-            }
-        }
-        
-        /* Sticky header */
-        #stickyHeader,
-        [data-sticky-header] {
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 40 !important;
-            backdrop-filter: blur(8px) !important;
-            -webkit-backdrop-filter: blur(8px) !important;
-        }
-        
-        @media (min-width: 1024px) {
-            #stickyHeader,
-            [data-sticky-header] {
-                top: 1rem !important;
-            }
-        }
-        
-        /* Match sidebar hover effect for header dropdown items */
-        .xs-menu-item {
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 0.75rem; /* 12px to align with sidebar */
-        }
-        .xs-menu-item:hover {
-            background: linear-gradient(135deg, rgba(247, 127, 0, 0.08), rgba(252, 191, 73, 0.06));
-            color: #1f2937; /* gray-800 */
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(247, 127, 0, 0.12);
-        }
-        html.dark .xs-menu-item:hover {
-            color: #f9fafb; /* gray-50 */
-            background: linear-gradient(135deg, rgba(255, 179, 102, 0.1), rgba(255, 209, 102, 0.08));
-        }
-        .xs-menu-item .material-symbols-outlined {
-            transition: transform .2s ease;
-        }
-        .xs-menu-item:hover .material-symbols-outlined {
-            transform: scale(1.05);
-        }
-    </style>
-    
+    <!-- Stylesheets (all layout/component styles are now in SCSS) -->
     <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
     <link rel="stylesheet" href="<?= base_url('build/assets/main.css') ?>">
     
@@ -128,11 +38,14 @@
     <div class="min-h-screen">
     <?= $this->renderSection('sidebar') ?>
 
+    <!-- Blur overlay for content scrolling in top gap -->
+    <div class="xs-scroll-blur" aria-hidden="true"></div>
+
         <div class="ml-0">
             <!-- Unified container to align header and page content -->
-            <div class="main-content-container p-4 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 space-y-4">
-                <!-- Persistent Top Bar Header (sticky + dynamic title) -->
-                <div id="stickyHeader" data-sticky-header class="card card-interactive p-4 sticky top-0 lg:top-4 z-40">
+            <div class="main-content-container bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+                <!-- Fixed Top Bar Header (solid opaque, aligned with sidebar) -->
+                <div id="stickyHeader" data-sticky-header class="card card-interactive p-4 z-40 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <button id="menuToggle" class="lg:hidden mr-2 p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
@@ -253,15 +166,17 @@
                     </div>
                 </div>
 
-                <!-- Page Content (SPA swaps only this area) -->
-                <main class="pt-0" style="padding-top: 24px;">
-                    <div id="spa-content" aria-live="polite" aria-busy="false" style="scroll-margin-top: calc(var(--xs-header-offset, 0px) + 24px);">
-                        <?= $this->renderSection('content') ?>
-                        
-                        <?php 
-                        // View-specific scripts (inside spa-content for SPA re-execution)
-                        $extraJs = $this->renderSection('extra_js');
-                        $scriptsSection = $this->renderSection('scripts');
+                <!-- Content Area (starts BELOW the fixed header) -->
+                <div class="xs-content-area space-y-6">
+                    <!-- Page Content (SPA swaps only this area) -->
+                    <main>
+                        <div id="spa-content" aria-live="polite" aria-busy="false">
+                            <?= $this->renderSection('content') ?>
+                            
+                            <?php 
+                            // View-specific scripts (inside spa-content for SPA re-execution)
+                            $extraJs = $this->renderSection('extra_js');
+                            $scriptsSection = $this->renderSection('scripts');
                         if (!empty($extraJs)) echo $extraJs;
                         if (!empty($scriptsSection)) echo $scriptsSection;
                         ?>
@@ -270,6 +185,7 @@
 
                 <!-- Footer aligned with content container -->
                 <?= $this->include('components/footer') ?>
+                </div> <!-- close xs-content-area -->
             </div>
         </div>
     </div>
@@ -282,21 +198,6 @@
     <?php // Legacy scheduler script removed; scheduler dashboard now owns calendar bootstrapping ?>
     
     <!-- Global Modal & Toast Containers -->
-    <style>
-        /* Match login card visual for modal */
-        .xs-modal-card { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10); overflow: hidden; }
-        html.dark .xs-modal-card { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40); }
-        .xs-modal-title-brand { color: var(--md-sys-color-primary); }
-        .xs-btn-primary {
-            color: #fff;
-            background-color: var(--md-sys-color-secondary);
-        }
-        .xs-btn-primary:hover { filter: brightness(0.96); }
-        .xs-btn-primary:focus { outline: none; box-shadow: 0 0 0 2px rgba(249,115,22,.5); }
-    /* Ensure Material Symbols center perfectly within squared icon badges */
-    .xs-icon-center { display: grid; place-items: center; }
-    .xs-icon-center > .material-symbols-outlined { line-height: 1; display: block; }
-    </style>
     <div id="xs-modal-root" class="fixed inset-0 z-[100] hidden" aria-hidden="true">
         <div class="absolute inset-0 bg-black/40 backdrop-blur-[1px] opacity-0 transition-opacity duration-200" data-xs-modal-overlay></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">

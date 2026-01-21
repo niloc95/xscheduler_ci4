@@ -1,0 +1,156 @@
+// ===========================
+// Setup Page Styles
+// ===========================
+// Styles for the initial setup wizard
+
+:root {
+  --setup-max-width: 640px;
+}
+
+// Alpine.js cloak directive support
+[x-cloak] {
+  display: none !important;
+}
+
+// Setup page container
+.setup-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+// Setup card
+.setup-card {
+  @apply bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden;
+  max-width: var(--setup-max-width);
+  margin: 0 auto;
+}
+
+// Step indicator
+.setup-step-indicator {
+  @apply flex items-center justify-center gap-2;
+  
+  .step {
+    @apply flex items-center gap-2;
+    
+    .step-number {
+      @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium;
+      @apply bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400;
+      
+      &.active {
+        @apply bg-blue-600 text-white;
+      }
+      
+      &.completed {
+        @apply bg-green-600 text-white;
+      }
+    }
+    
+    .step-label {
+      @apply text-sm text-gray-600 dark:text-gray-400 hidden sm:block;
+      
+      &.active {
+        @apply text-gray-900 dark:text-white font-medium;
+      }
+    }
+  }
+  
+  .step-connector {
+    @apply w-8 h-px bg-gray-300 dark:bg-gray-600;
+  }
+}
+
+// Setup form sections
+.setup-form-section {
+  @apply px-6 py-8 sm:px-8;
+  
+  .section-title {
+    @apply text-lg font-semibold text-gray-900 dark:text-white mb-6;
+  }
+  
+  .section-description {
+    @apply text-sm text-gray-600 dark:text-gray-400 mb-6;
+  }
+}
+
+// Setup navigation buttons
+.setup-nav {
+  @apply px-6 py-4 sm:px-8 border-t border-gray-200 dark:border-gray-700;
+  @apply flex justify-between items-center;
+  @apply bg-gray-50 dark:bg-gray-800/50;
+}
+
+// Setup wizard notification animations
+.notification {
+  animation: slideInRight 0.3s ease-out;
+  
+  &.fade-out {
+    animation: slideOutRight 0.3s ease-in;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+// Material shadow for setup elements
+.material-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+// Setup-specific buttons
+.btn-setup-submit {
+  @apply inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200;
+  background-color: var(--md-sys-color-tertiary);
+  
+  &:focus {
+    @apply outline-none ring-2 ring-offset-2 ring-orange-500;
+    
+    .dark & {
+      @apply ring-offset-gray-800;
+    }
+  }
+  
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+// Setup progress indicator
+.setup-progress-bar {
+  @apply h-2 rounded-full transition-all duration-300;
+  background-color: var(--md-sys-color-tertiary);
+}
+
+.setup-spinner {
+  @apply animate-spin rounded-full h-6 w-6 border-b-2;
+  border-color: var(--md-sys-color-primary);
+}
+
+// Setup step circle (active)
+.setup-step-active {
+  @apply w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200;
+  background-color: var(--md-sys-color-primary);
+}

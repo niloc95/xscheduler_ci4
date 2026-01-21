@@ -100,4 +100,61 @@
   .btn-icon.btn-lg {
     @apply w-12 h-12;
   }
+
+  // Brand color button (orange/secondary)
+  .btn-brand {
+    @apply px-6 py-3 text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200;
+    background-color: var(--md-sys-color-secondary, #F77F00);
+    border-color: transparent;
+    
+    &:hover {
+      opacity: 0.9;
+    }
+    
+    &:focus {
+      @apply ring-2 ring-offset-2 ring-orange-500;
+    }
+  }
+
+  html.dark .btn-brand:focus {
+    @apply ring-offset-gray-800;
+  }
+
+  // Danger/destructive button
+  .btn-danger {
+    @apply bg-red-600 text-white border-red-600;
+    
+    &:hover {
+      @apply bg-red-700 border-red-700;
+    }
+  }
+
+  // Submit/action button with Material primary color
+  .btn-submit {
+    @apply px-5 py-2.5 rounded-lg text-white;
+    background-color: var(--md-sys-color-primary, #003049);
+    
+    &:hover {
+      filter: brightness(0.96);
+    }
+    
+    &:disabled {
+      @apply opacity-60 cursor-not-allowed;
+    }
+  }
+
+  // Test action button (secondary color)
+  .btn-test {
+    @apply px-4 py-2 rounded-lg text-white;
+    background-color: var(--md-sys-color-secondary, #F77F00);
+    
+    &:hover {
+      filter: brightness(0.96);
+    }
+  }
+
+  // Full-width button
+  .btn-block {
+    @apply w-full;
+  }
 }

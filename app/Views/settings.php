@@ -7,8 +7,7 @@
 <?= $this->section('header_title') ?>Settings<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Settings" data-page-subtitle="Manage your application configuration">
-    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6" data-page-title="Settings" data-page-subtitle="Manage your application configuration">
 
         <?php if (session()->getFlashdata('error')): ?>
             <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
@@ -116,9 +115,9 @@
                             </div>
                             <div id="company_logo_preview_container" class="mt-2 md:mt-0">
                                 <?php $logoPreview = setting_url('general.company_logo'); if ($logoPreview): ?>
-                                    <img id="company_logo_preview_img" src="<?= esc($logoPreview) ?>" data-src="<?= esc($logoPreview) ?>" alt="Current logo" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1" style="object-fit: contain;" />
+                                    <img id="company_logo_preview_img" src="<?= esc($logoPreview) ?>" data-src="<?= esc($logoPreview) ?>" alt="Current logo" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 object-contain" />
                                 <?php else: ?>
-                                    <img id="company_logo_preview_img" src="" alt="Logo preview" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 hidden" style="object-fit: contain;" />
+                                    <img id="company_logo_preview_img" src="" alt="Logo preview" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 hidden object-contain" />
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -129,7 +128,7 @@
                 
                 <!-- Save Button for General Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-general-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white opacity-60 cursor-not-allowed" style="background-color: var(--md-sys-color-primary)" disabled>
+                    <button id="save-general-btn" type="submit" class="btn-submit opacity-60 cursor-not-allowed" disabled>
                         Save General Settings
                     </button>
                 </div>
@@ -238,7 +237,7 @@
                 
                 <!-- Save Button for Localization Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-localization-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                    <button id="save-localization-btn" type="submit" class="btn-submit">
                         Save Localization Settings
                     </button>
                 </div>
@@ -399,7 +398,7 @@
                 
                 <!-- Save Button for Booking Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-booking-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                    <button id="save-booking-btn" type="submit" class="btn-submit">
                         Save Booking Settings
                     </button>
                 </div>
@@ -492,7 +491,7 @@
                 
                 <!-- Save Button for Business Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-business-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                    <button id="save-business-btn" type="submit" class="btn-submit">
                         Save Business Settings
                     </button>
                 </div>
@@ -543,7 +542,7 @@
                 
                 <!-- Save Button for Legal Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-legal-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                    <button id="save-legal-btn" type="submit" class="btn-submit">
                         Save Legal Settings
                     </button>
                 </div>
@@ -591,7 +590,7 @@
                 
                 <!-- Save Button for Integrations Settings -->
                 <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button id="save-integrations-btn" type="submit" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                    <button id="save-integrations-btn" type="submit" class="btn-submit">
                         Save Integrations Settings
                     </button>
                 </div>
@@ -788,14 +787,14 @@
                             </div>
 
                             <div class="flex items-end justify-end gap-3">
-                                <button type="submit" name="intent" value="test_email" class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-secondary)">
+                                <button type="submit" name="intent" value="test_email" class="btn-test">
                                     Send Test Email
                                 </button>
                             </div>
                         </div>
 
                         <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <button type="submit" name="intent" value="save_email" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                            <button type="submit" name="intent" value="save_email" class="btn-submit inline-flex items-center gap-2">
                                 <span class="material-symbols-outlined text-base">save</span>
                                 Save Email Settings
                             </button>
@@ -952,14 +951,14 @@
                             </div>
 
                             <div class="flex items-end justify-end gap-3">
-                                <button type="submit" name="intent" value="test_whatsapp" class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-secondary)">
+                                <button type="submit" name="intent" value="test_whatsapp" class="btn-test">
                                     Test WhatsApp
                                 </button>
                             </div>
                         </div>
 
                         <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <button type="submit" name="intent" value="save_whatsapp" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                            <button type="submit" name="intent" value="save_whatsapp" class="btn-submit inline-flex items-center gap-2">
                                 <span class="material-symbols-outlined text-base">save</span>
                                 Save WhatsApp Settings
                             </button>
@@ -1058,14 +1057,14 @@
                             </div>
 
                             <div class="flex items-end justify-end gap-3">
-                                <button type="submit" name="intent" value="test_sms" class="px-4 py-2 rounded-lg text-white" style="background-color: var(--md-sys-color-secondary)">
+                                <button type="submit" name="intent" value="test_sms" class="btn-test">
                                     Send Test SMS
                                 </button>
                             </div>
                         </div>
 
                         <div class="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <button type="submit" name="intent" value="save_sms" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                            <button type="submit" name="intent" value="save_sms" class="btn-submit inline-flex items-center gap-2">
                                 <span class="material-symbols-outlined text-base">save</span>
                                 Save SMS Settings
                             </button>
@@ -1378,7 +1377,7 @@
                             <button type="button" id="reset-templates-btn" class="px-4 py-2 mr-3 rounded-lg text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
                                 Reset to Defaults
                             </button>
-                            <button type="submit" name="intent" value="save_templates" class="px-4 py-2 rounded-lg text-white inline-flex items-center gap-2" style="background-color: var(--md-sys-color-primary)">
+                            <button type="submit" name="intent" value="save_templates" class="btn-submit inline-flex items-center gap-2">
                                 <span class="material-symbols-outlined text-base">save</span>
                                 Save Templates
                             </button>
@@ -1450,7 +1449,7 @@
                     </script>
 
                     <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <button id="save-notifications-btn" type="submit" name="intent" value="save" class="px-5 py-2.5 rounded-lg text-white" style="background-color: var(--md-sys-color-primary)">
+                        <button id="save-notifications-btn" type="submit" name="intent" value="save" class="btn-submit">
                             Save Notification Settings
                         </button>
                     </div>

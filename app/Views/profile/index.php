@@ -19,9 +19,8 @@
     $alertError = $flashError ?? null;
     $profileImageUrl = $profileImageUrl ?? null;
 ?>
-<div class="main-content" data-page-title="My Profile" data-page-subtitle="Manage your account information and preferences">
-    <!-- Page Header -->
-    <div class="mb-6"></div>
+<!-- Page Header -->
+<div class="mb-6"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Profile Overview -->
@@ -44,7 +43,7 @@
                                 onclick="document.getElementById('profile-picture-upload').click()">
                             <span class="material-symbols-rounded text-base align-middle">photo_camera</span>
                         </button>
-                        <form id="profile-picture-form" action="<?= base_url('/profile/upload-picture') ?>" method="post" enctype="multipart/form-data" style="display: none;">
+                        <form id="profile-picture-form" action="<?= base_url('/profile/upload-picture') ?>" method="post" enctype="multipart/form-data" class="hidden">
                             <?= csrf_field() ?>
                             <input type="file" id="profile-picture-upload" name="profile_picture" accept="image/*" onchange="this.form.submit()">
                         </form>

@@ -28,6 +28,8 @@
 // Grid system, navigation, page structure
 @import 'layout/grid';
 @import 'layout/navigation';
+@import 'layout/app-layout';
+@import 'layout/unified-content-system';
 
 // =============
 // 4. COMPONENTS
@@ -36,6 +38,7 @@
 @import 'components/buttons';
 @import 'components/cards';
 @import 'components/forms';
+@import 'components/modals';
 @import 'components/status';
 @import 'components/unified-sidebar';
 
@@ -45,6 +48,7 @@
 // Page-specific styles
 @import 'pages/dashboard';
 @import 'pages/auth';
+@import 'pages/setup';
 
 // =============
 // 6. UTILITIES
@@ -70,6 +74,24 @@
   .border-brand-orange { border-color: $brand-orange !important; }
   .border-brand-golden { border-color: $brand-golden !important; }
   
+  // Material Design System Color Utilities (CSS Variables)
+  .text-md-primary { color: var(--md-sys-color-primary); }
+  .text-md-secondary { color: var(--md-sys-color-secondary); }
+  .text-md-tertiary { color: var(--md-sys-color-tertiary); }
+  .text-md-on-surface { color: var(--md-sys-color-on-surface); }
+  .text-md-on-surface-variant { color: var(--md-sys-color-on-surface-variant); }
+  
+  .bg-md-primary { background-color: var(--md-sys-color-primary); }
+  .bg-md-secondary { background-color: var(--md-sys-color-secondary); }
+  .bg-md-tertiary { background-color: var(--md-sys-color-tertiary); }
+  .bg-md-surface { background-color: var(--md-sys-color-surface); }
+  .bg-md-surface-container { background-color: var(--md-sys-color-surface-container); }
+  .bg-md-on-surface { background-color: var(--md-sys-color-on-surface); }
+  
+  .border-md-primary { border-color: var(--md-sys-color-primary); }
+  .border-md-secondary { border-color: var(--md-sys-color-secondary); }
+  .border-md-outline { border-color: var(--md-sys-color-outline); }
+  
   // Shadow Utilities
   .shadow-brand { box-shadow: $shadow-brand !important; }
   .shadow-brand-lg { box-shadow: $shadow-brand-lg !important; }
@@ -92,13 +114,11 @@
 // =============
 // 7. LEGACY COMPATIBILITY
 // =============
-// Maintain backwards compatibility with existing inline styles
+// Maintain backwards compatibility with existing styles
 // These will be gradually removed as we migrate components
 
-// Dashboard legacy support
-.main-content {
-  min-height: 100vh;
-}
+// Note: .main-content margin-top is now handled in layout/_app-layout.scss
+// for proper fixed header offset
 
 // Material Web Components custom properties (consolidated)
 md-filled-button {

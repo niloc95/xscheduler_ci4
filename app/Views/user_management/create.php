@@ -18,10 +18,9 @@
 <?= $this->section('header_title') ?>Create User<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Create User" data-page-subtitle="Add a new user to the system">
 
-    <!-- Flash Messages -->
-    <?= $this->include('components/ui/flash-messages') ?>
+<!-- Flash Messages -->
+<?= $this->include('components/ui/flash-messages') ?>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- User Form -->

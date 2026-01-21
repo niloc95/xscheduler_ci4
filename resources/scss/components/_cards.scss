@@ -7,7 +7,7 @@
 .card {
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
+  border-radius: var(--xs-radius-lg, 1rem);
   box-shadow: vars.$shadow-brand;
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
@@ -110,4 +110,22 @@
 
 .dark .card.card-muted {
   background-color: rgba(17, 24, 39, 0.7);
+}
+
+// Auth Card (login, register, forgot password pages)
+.auth-card {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+}
+
+.dark .auth-card {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
+}
+
+// Metrics/Dashboard Cards
+.metrics-card {
+  @apply transition-all duration-300 rounded-lg shadow-sm;
+  
+  &:hover {
+    @apply shadow-md;
+  }
 }

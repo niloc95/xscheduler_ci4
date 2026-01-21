@@ -51,7 +51,7 @@ $hasHeader = $title || $icon || $headerActions;
 $bodyPadding = $noPadding ? '' : $padding;
 ?>
 
-<div class="xs-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden <?= esc($class) ?>">
+<div class="xs-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden <?= esc($class) ?>">
     <?php if ($hasHeader): ?>
     <div class="xs-card-header px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3 min-w-0">

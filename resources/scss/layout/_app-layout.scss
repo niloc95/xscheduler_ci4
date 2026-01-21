@@ -1,0 +1,343 @@
+// ============================================
+// WebSchedulr Unified App Layout System
+// ============================================
+// Single source of truth for all layout spacing and positioning.
+// Header, Sidebar, and Content share the same spacing variables.
+
+// =============
+// CSS Custom Properties (Layout Design Tokens)
+// =============
+:root {
+  // ─────────────────────────────────────────────
+  // SHARED LAYOUT FRAME SPACING
+  // These values are shared between sidebar and header
+  // ─────────────────────────────────────────────
+  
+  // Mobile: Spacing from viewport edges
+  --xs-frame-inset: 0;              // No inset on mobile (full-width)
+  
+  // Desktop: Spacing from viewport edges (creates the "floating" effect)
+  --xs-frame-inset-desktop: 1rem;   // 16px inset from all edges
+  
+  // ─────────────────────────────────────────────
+  // CONTENT INSET (narrower than header/sidebar frame)
+  // ─────────────────────────────────────────────
+  --xs-content-inset-mobile: 1rem;    // 16px additional inset on mobile
+  --xs-content-inset-desktop: 1.5rem; // 24px additional inset on desktop
+  
+  // ─────────────────────────────────────────────
+  // COMPONENT DIMENSIONS
+  // ─────────────────────────────────────────────
+  --xs-sidebar-width: 16rem;          // 256px
+  --xs-header-height: 4.5rem;         // 72px (adjusts based on content)
+  
+  // ─────────────────────────────────────────────
+  // SPACING SCALE (8px base)
+  // ─────────────────────────────────────────────
+  --xs-space-1: 0.25rem;   // 4px
+  --xs-space-2: 0.5rem;    // 8px
+  --xs-space-3: 0.75rem;   // 12px
+  --xs-space-4: 1rem;      // 16px
+  --xs-space-5: 1.25rem;   // 20px
+  --xs-space-6: 1.5rem;    // 24px
+  --xs-space-8: 2rem;      // 32px
+  --xs-space-10: 2.5rem;   // 40px
+  --xs-space-12: 3rem;     // 48px
+  
+  // ─────────────────────────────────────────────
+  // VISUAL DESIGN TOKENS
+  // ─────────────────────────────────────────────
+  --xs-radius-sm: 0.375rem;   // 6px
+  --xs-radius-md: 0.5rem;     // 8px
+  // Standardize primary UI rounding (sidebar/header/cards) to 1rem
+  --xs-radius-lg: 1rem;       // 16px
+  --xs-radius-xl: 1rem;       // 16px
+  
+  --xs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --xs-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --xs-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+// =============================================================================
+// LAYOUT SHELL - SIDEBAR
+// =============================================================================
+// The sidebar uses the shared frame inset values.
+// On desktop, it's inset from the viewport edges to show rounded corners.
+
+.xs-sidebar,
+.unified-sidebar,
+#main-sidebar {
+  position: fixed;
+  top: var(--xs-frame-inset);
+  left: var(--xs-frame-inset);
+  width: var(--xs-sidebar-width);
+  height: calc(100vh - (var(--xs-frame-inset) * 2));
+  z-index: 50;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: var(--xs-radius-lg);
+}
+
+// Desktop: Apply the desktop frame inset
+@media (min-width: 1024px) {
+  .xs-sidebar,
+  .unified-sidebar,
+  #main-sidebar {
+    top: var(--xs-frame-inset-desktop);
+    left: var(--xs-frame-inset-desktop);
+    height: calc(100vh - (var(--xs-frame-inset-desktop) * 2));
+  }
+}
+
+// Mobile: Full height, slides from left
+@media (max-width: 1023px) {
+  .xs-sidebar,
+  .unified-sidebar,
+  #main-sidebar {
+    top: 0;
+    left: 0;
+    height: 100vh;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 60;
+    
+    &.open {
+      transform: translateX(0);
+    }
+  }
+}
+
+// =============================================================================
+// LAYOUT SHELL - MAIN CONTAINER
+// =============================================================================
+// The main container is offset to the right of the sidebar on desktop.
+
+.xs-main-container,
+.main-content-container {
+  min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+
+// Desktop: Push content to the right of sidebar + its inset + gap
+@media (min-width: 1024px) {
+  .xs-main-container,
+  .main-content-container {
+    // sidebar width + left inset + gap to content
+    margin-left: calc(var(--xs-sidebar-width) + var(--xs-frame-inset-desktop) + var(--xs-content-inset-desktop));
+  }
+}
+
+// Mobile: No margin, full width
+@media (max-width: 1023px) {
+  .xs-main-container,
+  .main-content-container {
+    margin-left: 0;
+  }
+}
+
+// =============================================================================
+// LAYOUT SHELL - HEADER
+// =============================================================================
+// The header shares the SAME frame inset as the sidebar for perfect alignment.
+// On desktop: top matches sidebar top, right edge matches frame inset.
+
+.xs-header,
+#stickyHeader,
+[data-sticky-header] {
+  position: fixed;
+  z-index: 40;
+
+  // Standard shell rounding
+  border-radius: var(--xs-radius-lg);
+  
+  // Match content padding so header/content inner edges line up
+  padding: var(--xs-space-4);
+  
+  // Mobile: Inset from edges using content inset (not frame inset)
+  top: var(--xs-content-inset-mobile);
+  left: var(--xs-content-inset-mobile);
+  right: var(--xs-content-inset-mobile);
+}
+
+@media (min-width: 768px) {
+  .xs-header,
+  #stickyHeader,
+  [data-sticky-header] {
+    padding: var(--xs-space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .xs-header,
+  #stickyHeader,
+  [data-sticky-header] {
+    // Desktop: Top aligns with sidebar top (shared frame inset)
+    top: var(--xs-frame-inset-desktop);
+    
+    // Left: After sidebar + gap
+    left: calc(var(--xs-sidebar-width) + var(--xs-frame-inset-desktop) + var(--xs-content-inset-desktop));
+    
+    // Right: Same as frame inset for visual alignment with sidebar edge
+    right: var(--xs-frame-inset-desktop);
+  }
+}
+
+// =============================================================================
+// LAYOUT SHELL - SCROLL BLUR OVERLAY
+// =============================================================================
+// Blurs content that scrolls into the top gap area.
+
+.xs-scroll-blur {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--xs-content-inset-mobile);
+  z-index: 35;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .xs-scroll-blur {
+    left: calc(var(--xs-sidebar-width) + var(--xs-frame-inset-desktop) + var(--xs-content-inset-desktop));
+    height: var(--xs-frame-inset-desktop);
+  }
+}
+
+// =============================================================================
+// LAYOUT SHELL - CONTENT AREA
+// =============================================================================
+// Content sits BELOW the fixed header and aligns left/right with it.
+// Padding/spacing is controlled by shared CSS variables.
+
+.xs-content-wrapper,
+.xs-content-area {
+  // Vertical: Below header
+  margin-top: calc(var(--xs-content-inset-mobile) + var(--xs-header-height) + var(--xs-content-inset-mobile));
+  
+  // Horizontal: Content inset from viewport edges (mobile)
+  margin-left: var(--xs-content-inset-mobile);
+  margin-right: var(--xs-content-inset-mobile);
+  
+  // Internal padding for content breathing room
+  padding: var(--xs-space-4);
+  padding-bottom: var(--xs-space-8);
+}
+
+@media (min-width: 768px) {
+  .xs-content-wrapper,
+  .xs-content-area {
+    // Tablet: Increase internal padding
+    padding: var(--xs-space-6);
+    padding-bottom: var(--xs-space-8);
+  }
+}
+
+@media (min-width: 1024px) {
+  .xs-content-wrapper,
+  .xs-content-area {
+    // Desktop: Align below header, narrower than header
+    margin-top: calc(var(--xs-frame-inset-desktop) + var(--xs-header-height) + var(--xs-content-inset-desktop));
+    
+    // Left: Already offset by main-content-container margin-left
+    margin-left: 0;
+    
+    // Right: Match header edge for perfect left/right alignment
+    margin-right: var(--xs-frame-inset-desktop);
+  }
+}
+
+// =============================================================================
+// MOBILE SIDEBAR OVERLAY
+// =============================================================================
+
+.xs-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 55;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  
+  &.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// =============================================================================
+// UTILITY CLASSES
+// =============================================================================
+
+// Loading animation
+.xs-loading {
+  animation: xs-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes xs-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+// =============================================================================
+// BODY BACKGROUND
+// =============================================================================
+
+html:not(.dark) body {
+  background-color: #f3f4f6; // gray-100
+}
+
+html.dark body {
+  background-color: #111827; // gray-900
+}
+
+html:not(.dark) .main-content-container {
+  background-color: #f3f4f6;
+}
+
+// =============================================================================
+// MENU ITEM HOVER EFFECTS
+// =============================================================================
+
+.xs-menu-item {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--xs-radius-lg);
+  
+  &:hover {
+    background: linear-gradient(135deg, rgba(247, 127, 0, 0.08), rgba(252, 191, 73, 0.06));
+    color: #1f2937;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(247, 127, 0, 0.12);
+    
+    .material-symbols-outlined {
+      transform: scale(1.05);
+    }
+  }
+  
+  .material-symbols-outlined {
+    transition: transform 0.2s ease;
+  }
+}
+
+html.dark .xs-menu-item:hover {
+  color: #f9fafb;
+  background: linear-gradient(135deg, rgba(255, 179, 102, 0.1), rgba(255, 209, 102, 0.08));
+}
+
+// =============================================================================
+// ICON UTILITY
+// =============================================================================
+
+.xs-icon-center {
+  display: grid;
+  place-items: center;
+  
+  > .material-symbols-outlined {
+    line-height: 1;
+    display: block;
+  }
+}

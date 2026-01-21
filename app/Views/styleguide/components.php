@@ -17,35 +17,35 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Resolved from CSS variables, respects dark mode.</p>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <div class="h-16" style="background-color: var(--md-sys-color-primary)"></div>
+                            <div class="h-16" class="bg-md-primary"></div>
                             <div class="p-3 text-xs">
                                 <div>--md-sys-color-primary</div>
                                 <div class="mt-1 font-mono color-code text-gray-600 dark:text-gray-400" data-var="--md-sys-color-primary">rgb()</div>
                             </div>
                         </div>
                         <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <div class="h-16" style="background-color: var(--md-sys-color-secondary)"></div>
+                            <div class="h-16" class="bg-md-secondary"></div>
                             <div class="p-3 text-xs">
                                 <div>--md-sys-color-secondary</div>
                                 <div class="mt-1 font-mono color-code text-gray-600 dark:text-gray-400" data-var="--md-sys-color-secondary">rgb()</div>
                             </div>
                         </div>
                         <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <div class="h-16" style="background-color: var(--md-sys-color-tertiary)"></div>
+                            <div class="h-16" class="bg-md-tertiary"></div>
                             <div class="p-3 text-xs">
                                 <div>--md-sys-color-tertiary</div>
                                 <div class="mt-1 font-mono color-code text-gray-600 dark:text-gray-400" data-var="--md-sys-color-tertiary">rgb()</div>
                             </div>
                         </div>
                         <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <div class="h-16" style="background-color: var(--md-sys-color-surface)"></div>
+                            <div class="h-16" class="bg-md-surface"></div>
                             <div class="p-3 text-xs">
                                 <div>--md-sys-color-surface</div>
                                 <div class="mt-1 font-mono color-code text-gray-600 dark:text-gray-400" data-var="--md-sys-color-surface">rgb()</div>
                             </div>
                         </div>
                         <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                            <div class="h-16" style="background-color: var(--md-sys-color-on-surface)"></div>
+                            <div class="h-16" class="bg-md-on-surface"></div>
                             <div class="p-3 text-xs">
                                 <div>--md-sys-color-on-surface</div>
                                 <div class="mt-1 font-mono color-code text-gray-600 dark:text-gray-400" data-var="--md-sys-color-on-surface">rgb()</div>

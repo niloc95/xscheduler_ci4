@@ -18,8 +18,7 @@
 <?= $this->section('header_title') ?>Edit Customer<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="main-content" data-page-title="Edit Customer">
-    <?php if (session()->getFlashdata('error')): ?>
+<?php if (session()->getFlashdata('error')): ?>
         <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
             <?= esc(session()->getFlashdata('error')) ?>
         </div>

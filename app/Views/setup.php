@@ -18,46 +18,6 @@ window.appConfig = {
     csrfHeaderName: '<?= csrf_header() ?>'
 };
 </script>
-<style>
-/* Setup-specific styles */
-.notification {
-    animation: slideInRight 0.3s ease-out;
-}
-
-.notification.fade-out {
-    animation: slideOutRight 0.3s ease-in;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-.material-shadow {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.material-shadow:hover {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-</style>
 <script type="module" src="<?= base_url('build/assets/setup.js') ?>"></script>
 <?= $this->endSection() ?>
 
@@ -92,11 +52,11 @@ window.appConfig = {
             <!-- Setup Header -->
             <div class="text-center mb-8">
                 <div class="bg-white dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-brand border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <svg class="w-8 h-8" style="color: var(--md-sys-color-primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-8 h-8 text-md-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
-            </div>                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">Welcome to xScheduler</h1>
+            </div>                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200 text-md-primary">Welcome to xScheduler</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Let's set up your scheduling application in just a few steps</p>
             </div>
 
@@ -105,10 +65,10 @@ window.appConfig = {
                 <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 transition-colors duration-200">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200" style="background-color: var(--md-sys-color-primary);">
+                            <div class="setup-step-active">
                                 <span class="text-white text-sm font-semibold">1</span>
                             </div>
-                            <span class="text-sm font-medium transition-colors duration-200" style="color: var(--md-sys-color-primary);">Initial Configuration</span>
+                            <span class="text-sm font-medium transition-colors duration-200 text-md-primary">Initial Configuration</span>
                         </div>
                         <div class="flex items-center space-x-2 opacity-50">
                             <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center transition-colors duration-200">
@@ -125,8 +85,8 @@ window.appConfig = {
                 
                 <!-- Admin Account Section -->                    <div class="space-y-6">
                         <div class="border-b border-gray-200 dark:border-gray-600 pb-4 transition-colors duration-200">
-                            <h2 class="text-xl font-semibold flex items-center transition-colors duration-200" style="color: var(--md-sys-color-primary);">
-                                <svg class="w-6 h-6 mr-2" style="color: var(--md-sys-color-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <h2 class="text-xl font-semibold flex items-center transition-colors duration-200 text-md-primary">
+                                <svg class="w-6 h-6 mr-2 text-md-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
                                 System Administrator Account
@@ -220,8 +180,8 @@ window.appConfig = {
 
                 <!-- Database Configuration Section -->                        <div class="space-y-6">
                             <div class="border-b border-gray-200 dark:border-gray-600 pb-4 transition-colors duration-200">
-                                <h2 class="text-xl font-semibold flex items-center transition-colors duration-200" style="color: var(--md-sys-color-primary);">
-                                    <svg class="w-6 h-6 mr-2" style="color: var(--md-sys-color-secondary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <h2 class="text-xl font-semibold flex items-center transition-colors duration-200 text-md-primary">
+                                    <svg class="w-6 h-6 mr-2 text-md-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
                                     </svg>
                                     Database Configuration
@@ -237,7 +197,7 @@ window.appConfig = {
                                 <input type="radio" name="database_type" value="mysql" class="sr-only peer" id="db_mysql">
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
-                                        <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200" style="color: var(--md-sys-color-primary);">MySQL Database</h3>
+                                        <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200 text-md-primary">MySQL Database</h3>
                                         <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
                                         </svg>
@@ -256,7 +216,7 @@ window.appConfig = {
                                 <input type="radio" name="database_type" value="sqlite" class="sr-only peer" id="db_sqlite" checked>
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
-                                        <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200" style="color: var(--md-sys-color-primary);">SQLite Database</h3>
+                                        <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200 text-md-primary">SQLite Database</h3>
                                         <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
@@ -274,7 +234,7 @@ window.appConfig = {
 
                     <!-- MySQL Configuration Fields -->                        <div id="mysql_config" class="space-y-4 hidden">
                             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-500 dark:border-blue-400 rounded-lg p-4 transition-colors duration-200">
-                                <h4 class="font-medium mb-3 transition-colors duration-200" style="color: var(--md-sys-color-primary);">MySQL Connection Settings</h4>
+                                <h4 class="font-medium mb-3 transition-colors duration-200 text-md-primary">MySQL Connection Settings</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="mysql_hostname" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-200">
@@ -358,9 +318,9 @@ window.appConfig = {
                     </div>                        <!-- SQLite Configuration Display -->
                         <div id="sqlite_config" class="space-y-4">
                             <div class="bg-green-50 dark:bg-green-900/20 border border-gray-300 dark:border-green-600 rounded-lg p-4 transition-colors duration-200">
-                                <h4 class="font-medium mb-2 transition-colors duration-200" style="color: var(--md-sys-color-primary);">SQLite Auto-Configuration</h4>
+                                <h4 class="font-medium mb-2 transition-colors duration-200 text-md-primary">SQLite Auto-Configuration</h4>
                                 <div class="flex items-start space-x-3">
-                                    <svg class="w-5 h-5 mt-0.5 transition-colors duration-200" fill="currentColor" viewBox="0 0 20 20" style="color: var(--md-sys-color-secondary);">
+                                    <svg class="w-5 h-5 mt-0.5 transition-colors duration-200 text-md-secondary" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                 </svg>                                    <div>
                                         <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200">Database will be automatically created at:</p>
@@ -380,7 +340,7 @@ window.appConfig = {
                 <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200">
                     <div class="flex-1"></div>
                     
-                    <button id="setup_submit_btn" type="submit" class="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 dark:focus:ring-offset-gray-800" style="background-color: var(--md-sys-color-tertiary);">
+                    <button id="setup_submit_btn" type="submit" class="btn-setup-submit">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
@@ -392,12 +352,12 @@ window.appConfig = {
                 <div id="loading_overlay" class="fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 hidden">
                     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 transition-colors duration-200">
                         <div class="flex items-center space-x-3">
-                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 transition-colors duration-200" style="border-color: var(--md-sys-color-primary);"></div>
+                            <div class="setup-spinner"></div>
                             <span class="text-gray-900 dark:text-gray-100 transition-colors duration-200">Processing setup...</span>
                         </div>
                         <div class="mt-4">
                             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 transition-colors duration-200">
-                                <div id="progress_bar" class="h-2 rounded-full transition-all duration-300" style="width: 0%; background-color: var(--md-sys-color-tertiary);"></div>
+                                <div id="progress_bar" class="setup-progress-bar" style="width: 0%;"></div>
                             </div>
                             <p id="progress_text" class="text-sm text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-200">Initializing...</p>
                         </div>

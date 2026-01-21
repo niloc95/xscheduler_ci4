@@ -10,111 +10,154 @@
  * Actions: View list, Create new, Edit existing, Delete customers
  * 
  * Related: app/Views/user_management/customers.php handles booking interactions
+ * 
+ * REFACTORED: Now uses Unified Layout System components
  */
 ?>
-<?= $this->extend('layouts/dashboard') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'customer-management']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('page_title') ?>Customer Management<?= $this->endSection() ?>
-<?= $this->section('page_subtitle') ?>Manage customers and their contact details<?= $this->endSection() ?>
+<?= $this->section('header_title') ?>Customers<?= $this->endSection() ?>
 
-<?= $this->section('dashboard_content_top') ?>
-    <?php if (session()->getFlashdata('success')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-            <?= esc(session()->getFlashdata('success')) ?>
-        </div>
-    <?php endif; ?>
+<?= $this->section('content') ?>
 
-    <?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
-<?= $this->endSection() ?>
+<?php 
+// Page Header Component
+echo view('components/page-header', [
+    'title' => 'Customer Management',
+    'subtitle' => 'View and manage all customer profiles and contact information',
+    'actions' => [
+        '<a href="' . base_url('customer-management/create') . '" class="xs-btn xs-btn-primary">
+            <span class="material-symbols-outlined">person_add</span>
+            New Customer
+        </a>'
+    ]
+]);
+?>
 
-<?= $this->section('dashboard_content') ?>
-    <div class="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-                <h2 class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">Customers</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400">View and manage customers</p>
-            </div>
-            <div class="flex gap-2 w-full md:w-auto">
-                <div class="flex flex-1 md:flex-none gap-2 relative">
-                    <input 
-                        type="search" 
-                        id="customerSearch" 
-                        name="q" 
-                        value="<?= esc($q ?? '') ?>" 
-                        placeholder="Search name or email..." 
-                        autocomplete="off"
-                        class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100" 
-                    />
-                    <div id="searchSpinner" class="hidden absolute right-3 top-3">
-                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <a href="<?= base_url('customer-management/create') ?>" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg inline-flex items-center gap-1"><span class="material-symbols-outlined">person_add</span><span class="hidden sm:inline">New</span></a>
+<?php
+// Search Card
+$searchContent = '
+    <div class="flex flex-col md:flex-row gap-3">
+        <div class="flex-1 relative">
+            <input 
+                type="search" 
+                id="customerSearch" 
+                name="q" 
+                value="' . esc($q ?? '') . '" 
+                placeholder="Search by name or email..." 
+                autocomplete="off"
+                class="xs-form-input w-full"
+            />
+            <div id="searchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
             </div>
         </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600">
-                    <tr>
-                        <th class="px-6 py-4 font-semibold">Customer</th>
-                        <th class="px-6 py-4 font-semibold">Email</th>
-                        <th class="px-6 py-4 font-semibold">Phone</th>
-                        <th class="px-6 py-4 font-semibold">Created</th>
-                        <th class="px-6 py-4 font-semibold">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="customersTableBody">
-                <?php if (!empty($customers)): foreach ($customers as $c): ?>
-                    <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
-                                    <?= strtoupper(substr(($c['first_name'] ?? ($c['name'] ?? 'C')), 0, 1)) ?>
-                                </div>
-                                <div>
-                                    <div class="font-medium"><?= esc($c['name'] ?? trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''))) ?></div>
-                                    <?php if (!empty($c['address'])): ?><div class="text-xs text-gray-500 dark:text-gray-400"><?= esc($c['address']) ?></div><?php endif; ?>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400"><?= esc($c['email'] ?? '—') ?></td>
-                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400"><?= esc($c['phone'] ?? '—') ?></td>
-                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400"><?= !empty($c['created_at']) ? date('M j, Y', strtotime($c['created_at'])) : '—' ?></td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                <a href="<?= base_url('customer-management/history/' . esc($c['hash'] ?? '')) ?>" class="p-1 text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400" title="View History">
-                                    <span class="material-symbols-outlined">history</span>
-                                </a>
-                                <a href="<?= base_url('customer-management/edit/' . esc($c['hash'] ?? '')) ?>" class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" title="Edit Customer">
-                                    <span class="material-symbols-outlined">edit</span>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; else: ?>
-                    <tr>
-                        <td colspan="5" class="px-6 py-6 text-center text-gray-500 dark:text-gray-400">No customers found.</td>
-                    </tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+        <button type="button" class="xs-btn xs-btn-secondary" onclick="alert(\'Filters coming soon\')">
+            <span class="material-symbols-outlined">filter_list</span>
+            Filters
+        </button>
     </div>
+';
+
+echo view('components/card', [
+    'bodyClass' => 'xs-card-body-compact',
+    'content' => $searchContent
+]);
+?>
+
+<?php
+// Main Data Table Card
+ob_start();
+?>
+<div class="overflow-x-auto -mx-6 md:-mx-8">
+    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600">
+            <tr>
+                <th class="px-6 py-4 font-semibold">Customer</th>
+                <th class="px-6 py-4 font-semibold">Email</th>
+                <th class="px-6 py-4 font-semibold">Phone</th>
+                <th class="px-6 py-4 font-semibold">Created</th>
+                <th class="px-6 py-4 font-semibold">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="customersTableBody">
+        <?php if (!empty($customers)): foreach ($customers as $c): ?>
+            <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
+                            <?= strtoupper(substr(($c['first_name'] ?? ($c['name'] ?? 'C')), 0, 1)) ?>
+                        </div>
+                        <div>
+                            <div class="font-medium"><?= esc($c['name'] ?? trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''))) ?></div>
+                            <?php if (!empty($c['address'])): ?><div class="xs-text-small"><?= esc($c['address']) ?></div><?php endif; ?>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4"><?= esc($c['email'] ?? '—') ?></td>
+                <td class="px-6 py-4"><?= esc($c['phone'] ?? '—') ?></td>
+                <td class="px-6 py-4">
+                    <span class="xs-text-small"><?= !empty($c['created_at']) ? date('M j, Y', strtotime($c['created_at'])) : '—' ?></span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="xs-actions-container">
+                        <a href="<?= base_url('customer-management/history/' . esc($c['hash'] ?? '')) ?>" 
+                           class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
+                           title="View History">
+                            <span class="material-symbols-outlined">history</span>
+                        </a>
+                        <a href="<?= base_url('customer-management/edit/' . esc($c['hash'] ?? '')) ?>" 
+                           class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
+                           title="Edit Customer">
+                            <span class="material-symbols-outlined">edit</span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        <?php endforeach; else: ?>
+            <tr>
+                <td colspan="5" class="px-6 py-8 text-center">
+                    <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-4xl">person_off</span>
+                        <p>No customers found</p>
+                    </div>
+                </td>
+            </tr>
+        <?php endif; ?>
+        </tbody>
+    </table>
+</div>
+<?php
+$tableContent = ob_get_clean();
+
+// Calculate total customers count
+$totalCustomers = !empty($customers) ? count($customers) : 0;
+
+echo view('components/card', [
+    'title' => 'All Customers',
+    'subtitle' => number_format($totalCustomers) . ' total customers',
+    'content' => $tableContent,
+    'actions' => [
+        '<button class="xs-btn xs-btn-ghost xs-btn-icon" onclick="location.reload()" title="Refresh">
+            <span class="material-symbols-outlined">refresh</span>
+        </button>',
+        '<button class="xs-btn xs-btn-ghost xs-btn-icon" title="More options">
+            <span class="material-symbols-outlined">more_vert</span>
+        </button>'
+    ]
+]);
+?>
+
 <?= $this->endSection() ?>
 
-<?= $this->section('extra_js') ?>
+<?= $this->section('scripts') ?>
 <script>
 // Initialize search functionality - called on page load AND on SPA navigation
 function initCustomerSearch() {
@@ -214,7 +257,12 @@ function initCustomerSearch() {
         if (customers.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-6 text-center text-gray-500 dark:text-gray-400">No customers found.</td>
+                    <td colspan="5" class="px-6 py-8 text-center">
+                        <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+                            <span class="material-symbols-outlined text-4xl">person_off</span>
+                            <p>No customers found</p>
+                        </div>
+                    </td>
                 </tr>
             `;
             return;
@@ -239,16 +287,21 @@ function initCustomerSearch() {
                             </div>
                             <div>
                                 <div class="font-medium">${escapeHtml(fullName)}</div>
-                                ${address ? `<div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(address)}</div>` : ''}
+                                ${address ? `<div class="xs-text-small">${escapeHtml(address)}</div>` : ''}
                             </div>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(email)}</td>
-                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(phone)}</td>
-                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">${created}</td>
+                    <td class="px-6 py-4">${escapeHtml(email)}</td>
+                    <td class="px-6 py-4">${escapeHtml(phone)}</td>
                     <td class="px-6 py-4">
-                        <div class="flex items-center gap-2">
-                            <a href="<?= base_url('customer-management/edit/') ?>${hash}" class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" title="Edit Customer">
+                        <span class="xs-text-small">${created}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="xs-actions-container">
+                            <a href="<?= base_url('customer-management/history/') ?>${hash}" class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" title="View History">
+                                <span class="material-symbols-outlined">history</span>
+                            </a>
+                            <a href="<?= base_url('customer-management/edit/') ?>${hash}" class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" title="Edit Customer">
                                 <span class="material-symbols-outlined">edit</span>
                             </a>
                         </div>
@@ -265,7 +318,7 @@ function initCustomerSearch() {
         const errorMsg = message || 'Error loading customers. Please try again.';
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-6 text-center text-red-600 dark:text-red-400">
+                <td colspan="5" class="px-6 py-8 text-center text-red-600 dark:text-red-400">
                     ${escapeHtml(errorMsg)}
                 </td>
             </tr>
