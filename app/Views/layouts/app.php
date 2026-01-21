@@ -118,8 +118,7 @@
         
         /* 
          * Sticky Header
-         * The header stays fixed at the top of the viewport when scrolling.
-         * On desktop, it has a small top offset for visual breathing room.
+         * The header stays fixed at the top of the main container when scrolling.
          */
         .xs-header {
             position: sticky;
@@ -127,12 +126,6 @@
             z-index: 40;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-        }
-        
-        @media (min-width: 1024px) {
-            .xs-header {
-                top: 1rem; /* 16px breathing room from top on desktop */
-            }
         }
         
         /* Light mode background */
@@ -211,10 +204,8 @@
     
     <!-- Main Content Area (margin-left accounts for fixed sidebar on desktop) -->
     <div class="xs-main-container">
-        <div class="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
-            
-            <!-- Sticky Header Bar -->
-            <header class="xs-header bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
+        <!-- Sticky Header Bar (outside inner container so sticky works against viewport) -->
+        <header class="xs-header bg-white/95 dark:bg-gray-800/95 shadow-sm border-b border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
                 <div class="flex items-center justify-between gap-4">
                     <!-- Left: Mobile Menu + Title -->
                     <div class="flex items-center gap-3 min-w-0">
@@ -315,6 +306,9 @@
                         </div>
                     </div>
                 </header>
+        
+        <!-- Scrollable Content Area -->
+        <div class="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
                 
                 <!-- Flash Messages -->
                 <?= $this->include('components/ui/flash-messages') ?>
