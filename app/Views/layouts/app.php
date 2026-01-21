@@ -202,7 +202,12 @@
                 <?php endif; ?>
                 
                 <!-- Main Content -->
-                <main id="spa-content" aria-live="polite" aria-busy="false">
+                <?php 
+                    // Capture header_title for SPA to pick up dynamically
+                    $headerTitleSection = trim($this->renderSection('header_title'));
+                    $pageTitle = $headerTitleSection !== '' ? $headerTitleSection : 'Dashboard';
+                ?>
+                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($pageTitle) ?>">
                     <?= $this->renderSection('content') ?>
                     
                     <!-- View-specific scripts (inside spa-content for SPA re-execution) -->
@@ -251,6 +256,31 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
+            // Header title sync function for SPA navigation
+            function syncHeaderTitle() {
+                const headerEl = document.getElementById('header-title');
+                const spaContent = document.getElementById('spa-content');
+                if (!headerEl || !spaContent) return;
+                
+                // Look for data-page-title on spa-content itself or any child element
+                let pageTitle = spaContent.getAttribute('data-page-title');
+                if (!pageTitle) {
+                    const titleEl = spaContent.querySelector('[data-page-title]');
+                    pageTitle = titleEl?.getAttribute('data-page-title');
+                }
+                
+                if (pageTitle) {
+                    headerEl.textContent = pageTitle;
+                    document.title = pageTitle + ' • WebSchedulr';
+                }
+            }
+            
+            // Sync on initial load
+            syncHeaderTitle();
+            
+            // Sync on SPA navigation
+            document.addEventListener('spa:navigated', syncHeaderTitle);
+            
             // User menu toggle
             const userMenuBtn = document.getElementById('user-menu-btn');
             const userMenu = document.getElementById('user-menu');

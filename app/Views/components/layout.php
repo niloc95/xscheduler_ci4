@@ -373,7 +373,7 @@
         // Sync header title/subtitle with current view's declared page attributes, if present
     let XS_DEFAULT_SUBTITLE = null;
         function xsyncHeaderTitle() {
-            const header = document.getElementById('header-title');
+            const header = document.getElementById('headerTitle');
             const sub = document.getElementById('headerSubtitle');
             const container = document.getElementById('spa-content');
             if (!header || !container) return;

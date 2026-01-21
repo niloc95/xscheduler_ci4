@@ -93,7 +93,13 @@ const SPA = (() => {
     // Try to extract only the content inside #spa-content if rendered server-side
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
-    return doc.querySelector('#spa-content')?.innerHTML ?? text;
+    const spaContentEl = doc.querySelector('#spa-content');
+    
+    // Return object with both HTML and page title attribute
+    return {
+      html: spaContentEl?.innerHTML ?? text,
+      pageTitle: spaContentEl?.getAttribute('data-page-title') || null
+    };
   };
 
   const setBusy = (busy) => {
@@ -117,8 +123,16 @@ const SPA = (() => {
         return;
       }
       setBusy(true);
-      const html = await fetchPage(url);
+      const { html, pageTitle } = await fetchPage(url);
       el.innerHTML = html;
+      
+      // Update the data-page-title attribute on spa-content for header sync
+      if (pageTitle) {
+        el.setAttribute('data-page-title', pageTitle);
+      } else {
+        el.removeAttribute('data-page-title');
+      }
+      
       // Execute any inline or external scripts in the newly injected SPA content
       // This allows per-view scripts (e.g., user management role cards) to initialize after SPA navigation.
       const scripts = Array.from(el.querySelectorAll('script'));
