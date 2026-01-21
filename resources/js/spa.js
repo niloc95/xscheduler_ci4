@@ -158,6 +158,106 @@ const SPA = (() => {
     }
   };
 
+  const submitHandler = (e) => {
+    const form = e.target.closest('form');
+    if (!form) return;
+    if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) return;
+    if (form.method.toUpperCase() !== 'POST' && form.method.toUpperCase() !== 'PUT') return;
+    if (!sameOrigin(form.action)) return;
+
+    e.preventDefault();
+    submitForm(form);
+  };
+
+  const submitForm = async (form) => {
+    const el = content();
+    if (!el) return;
+
+    try {
+      setBusy(true);
+      const formData = new FormData(form);
+      const method = form.method.toUpperCase() || 'POST';
+      const action = form.action || window.location.href;
+
+      const res = await fetch(action, {
+        method: method,
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      // Try to parse JSON response
+      let data;
+      try {
+        const text = await res.text();
+        data = JSON.parse(text);
+      } catch (e) {
+        // If not JSON, treat as HTML content and navigate
+        const html = await res.text();
+        el.innerHTML = html;
+        document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url: action } }));
+        if (window.xsViewInitializers) {
+          window.xsViewInitializers.forEach(fn => {
+            try { fn(); } catch (e) { console.error('View initializer error:', e); }
+          });
+        }
+        focusMain(true);
+        return;
+      }
+
+      // Handle JSON response from controller
+      if (data.success) {
+        // Show success message if provided
+        if (data.message) {
+          const flashEvent = new CustomEvent('xs:flash', {
+            detail: { type: 'success', message: data.message }
+          });
+          document.dispatchEvent(flashEvent);
+        }
+
+        // Navigate to redirect URL if provided
+        if (data.redirect) {
+          await navigate(data.redirect);
+        } else {
+          // If no redirect, refresh current page
+          await navigate(window.location.pathname + window.location.search);
+        }
+      } else {
+        // Handle error response
+        const flashEvent = new CustomEvent('xs:flash', {
+          detail: { type: 'error', message: data.message || 'An error occurred' }
+        });
+        document.dispatchEvent(flashEvent);
+
+        // If validation errors, inject them into the form
+        if (data.errors && typeof data.errors === 'object') {
+          Object.entries(data.errors).forEach(([field, errors]) => {
+            const input = form.querySelector(`[name="${field}"]`);
+            if (input) {
+              input.classList.add('border-red-500', 'dark:border-red-400');
+              const errorMsg = Array.isArray(errors) ? errors[0] : errors;
+              const errorEl = document.createElement('p');
+              errorEl.className = 'text-red-500 dark:text-red-400 text-sm mt-1';
+              errorEl.textContent = errorMsg;
+              input.parentElement?.appendChild(errorEl);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Form submission failed:', e);
+      const flashEvent = new CustomEvent('xs:flash', {
+        detail: { type: 'error', message: 'Form submission failed: ' + e.message }
+      });
+      document.dispatchEvent(flashEvent);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const clickHandler = (e) => {
     // Only left-clicks without modifier keys and not already handled
     if (e.defaultPrevented) return;
@@ -193,6 +293,7 @@ const SPA = (() => {
       try { history.scrollRestoration = 'manual'; } catch (_) {}
     }
     document.addEventListener('click', clickHandler);
+    document.addEventListener('submit', submitHandler);
     window.addEventListener('popstate', popstateHandler);
     // On load, mark current history entry as SPA-aware
     history.replaceState({ spa: true }, '', window.location.href);
@@ -200,8 +301,61 @@ const SPA = (() => {
     initTabsInSpaContent();
   };
 
-  return { init, navigate };
+  return { init, navigate, submitForm };
 })();
+
+// Flash message handler - listen for xs:flash events
+document.addEventListener('xs:flash', (e) => {
+  const { type = 'info', message = '' } = e.detail;
+  if (!message) return;
+
+  // Find or create flash messages container
+  let container = document.querySelector('[data-flash-messages]');
+  if (!container) {
+    container = document.createElement('div');
+    container.setAttribute('data-flash-messages', '');
+    const spaContent = document.getElementById('spa-content');
+    if (spaContent) {
+      spaContent.insertAdjacentElement('afterbegin', container);
+    } else {
+      document.body.insertAdjacentElement('afterbegin', container);
+    }
+  }
+
+  // Create message element
+  const alert = document.createElement('div');
+  alert.className = `xs-alert xs-alert-${type} mb-4 p-4 rounded-lg border flex items-start gap-3`;
+  
+  const colors = {
+    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200',
+    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200',
+    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200',
+    warning: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+  };
+  
+  const icons = {
+    success: 'check_circle',
+    error: 'error',
+    info: 'info',
+    warning: 'warning'
+  };
+
+  alert.className += ' ' + (colors[type] || colors.info);
+  alert.innerHTML = `
+    <span class="material-symbols-outlined flex-shrink-0 text-lg">${icons[type] || icons.info}</span>
+    <span class="flex-1">${message}</span>
+    <button type="button" onclick="this.parentElement.remove()" class="flex-shrink-0 text-lg opacity-50 hover:opacity-100">close</button>
+  `;
+
+  container.appendChild(alert);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    alert.style.transition = 'opacity 0.3s ease';
+    alert.style.opacity = '0';
+    setTimeout(() => alert.remove(), 300);
+  }, 5000);
+});
 
 // Initialize on DOM ready
 if (document.readyState === 'loading') {

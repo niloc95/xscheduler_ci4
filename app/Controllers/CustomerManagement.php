@@ -81,6 +81,14 @@ class CustomerManagement extends BaseController
         $rules = $this->bookingSettings->getValidationRules();
 
         if (!$this->validate($rules)) {
+            // Return JSON for SPA or HTML for traditional form
+            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -134,6 +142,15 @@ class CustomerManagement extends BaseController
         $id = $this->customers->insert($payload, false);
         if ($id) {
             log_message('info', '[CustomerManagement] Successfully created customer ID: ' . $id);
+            
+            // Return JSON for SPA or HTML for traditional form
+            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->setJSON([
+                    'success' => true,
+                    'message' => 'Customer created successfully.',
+                    'redirect' => '/customer-management'
+                ]);
+            }
             return redirect()->to('/customer-management')->with('success', 'Customer created successfully.');
         }
         
@@ -144,6 +161,14 @@ class CustomerManagement extends BaseController
         }
         
         log_message('error', '[CustomerManagement] Failed to create customer');
+        
+        // Return JSON for SPA or HTML for traditional form
+        if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->setJSON([
+                'success' => false,
+                'message' => 'Failed to create customer.'
+            ]);
+        }
         return redirect()->back()->withInput()->with('error', 'Failed to create customer.');
     }
 
@@ -191,7 +216,11 @@ class CustomerManagement extends BaseController
         }
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
-            return redirect()->to('/customer-management')->with('error', 'Customer not found.');
+            $errorMsg = 'Customer not found.';
+            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->setJSON(['success' => false, 'message' => $errorMsg]);
+            }
+            return redirect()->to('/customer-management')->with('error', $errorMsg);
         }
 
         $id = $customer['id'];
@@ -200,6 +229,13 @@ class CustomerManagement extends BaseController
         $rules = $this->bookingSettings->getValidationRulesForUpdate($id);
 
         if (!$this->validate($rules)) {
+            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -261,6 +297,15 @@ class CustomerManagement extends BaseController
         // This prevents conflicts with model-level rules (e.g., email required, {id} placeholder issues)
         if ($this->customers->update($id, $payload, false)) {
             log_message('info', '[CustomerManagement] Successfully updated customer ID: ' . $id);
+            
+            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->setJSON([
+                    'success' => true,
+                    'message' => 'Customer updated successfully.',
+                    'redirect' => '/customer-management'
+                ]);
+            }
+            
             log_message('info', '[CustomerManagement] Redirecting to /customer-management');
             return redirect()->to('/customer-management')->with('success', 'Customer updated successfully.');
         }
@@ -272,6 +317,13 @@ class CustomerManagement extends BaseController
         }
         
         log_message('error', '[CustomerManagement] Failed to update customer ID: ' . $id);
+        
+        if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->setJSON([
+                'success' => false,
+                'message' => 'Failed to update customer.'
+            ]);
+        }
         return redirect()->back()->withInput()->with('error', 'Failed to update customer.');
     }
 
