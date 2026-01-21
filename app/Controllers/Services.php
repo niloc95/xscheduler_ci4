@@ -302,8 +302,9 @@ class Services extends BaseController
             $errors = $this->categoryModel->errors();
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
-                    'error' => 'Validation failed',
-                    'details' => $errors,
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $errors,
                 ]);
             }
 
@@ -313,7 +314,13 @@ class Services extends BaseController
         $id = (int)$this->categoryModel->getInsertID();
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'id' => (int)$id, 'name' => $name]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Category created',
+                'redirect' => '/services?tab=categories',
+                'id' => (int)$id,
+                'name' => $name
+            ]);
         }
 
         return redirect()->to('/services?tab=categories')->with('message', 'Category created');
@@ -345,8 +352,9 @@ class Services extends BaseController
             $errors = $this->categoryModel->errors();
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
-                    'error' => 'Validation failed',
-                    'details' => $errors,
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $errors,
                 ]);
             }
 
@@ -354,7 +362,11 @@ class Services extends BaseController
         }
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Category updated',
+                'redirect' => '/services?tab=categories'
+            ]);
         }
 
         return redirect()->to('/services?tab=categories')->with('message', 'Category updated');
@@ -370,7 +382,11 @@ class Services extends BaseController
         $this->categoryModel->deactivate((int)$id);
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Category deactivated',
+                'redirect' => '/services?tab=categories'
+            ]);
         }
 
         return redirect()->to('/services?tab=categories')->with('message', 'Category deactivated');
@@ -386,7 +402,11 @@ class Services extends BaseController
         $this->categoryModel->activate((int)$id);
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Category activated',
+                'redirect' => '/services?tab=categories'
+            ]);
         }
 
         return redirect()->to('/services?tab=categories')->with('message', 'Category activated');
@@ -406,8 +426,9 @@ class Services extends BaseController
             $errors = $this->categoryModel->errors();
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
-                    'error' => 'Unable to delete category',
-                    'details' => $errors,
+                    'success' => false,
+                    'message' => 'Unable to delete category',
+                    'errors' => $errors,
                 ]);
             }
 
@@ -415,7 +436,11 @@ class Services extends BaseController
         }
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Category deleted',
+                'redirect' => '/services?tab=categories'
+            ]);
         }
 
         return redirect()->to('/services?tab=categories')->with('message', 'Category deleted');
@@ -457,8 +482,9 @@ class Services extends BaseController
         if (!$this->serviceModel->insert($serviceData)) {
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
-                    'error' => 'Validation failed',
-                    'details' => $this->serviceModel->errors()
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->serviceModel->errors()
                 ]);
             }
             return redirect()->back()->with('error', 'Validation failed')->withInput();
@@ -472,7 +498,12 @@ class Services extends BaseController
         $this->serviceModel->setProviders($serviceId, (array)$providerIds);
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'id' => $serviceId]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Service created',
+                'redirect' => '/services',
+                'id' => $serviceId
+            ]);
         }
         return redirect()->to('/services')->with('message', 'Service created');
     }
@@ -519,8 +550,9 @@ class Services extends BaseController
             }
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
-                    'error' => 'Validation failed',
-                    'details' => $errors
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $errors
                 ]);
             }
             return redirect()->back()->with('error', 'Validation failed')->withInput();
@@ -543,7 +575,11 @@ class Services extends BaseController
         $this->serviceModel->setProviders((int)$serviceId, (array)$providerIds);
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'id' => (int)$serviceId]);
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Service updated',
+                'redirect' => '/services'
+            ]);
         }
         return redirect()->to('/services')->with('message', 'Service updated');
     }
