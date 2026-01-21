@@ -4,24 +4,29 @@
  */
 
 /**
- * Get the base URL of the application from the <base> tag or window.appBaseUrl
- * Falls back to empty string if neither is available
+ * Get the base URL of the application from window.__BASE_URL__ or the <base> tag
+ * Falls back to window.location.origin if neither is available
  * @returns {string} The base URL without trailing slash
  */
 export function getBaseUrl() {
-    // First check for window.appBaseUrl (set in layouts)
+    // First check for window.__BASE_URL__ (set in layouts)
+    if (typeof window !== 'undefined' && window.__BASE_URL__) {
+        return String(window.__BASE_URL__).replace(/\/+$/, '');
+    }
+    
+    // Fall back to window.appBaseUrl (legacy)
     if (typeof window !== 'undefined' && window.appBaseUrl) {
-        return window.appBaseUrl.replace(/\/$/, '');
+        return String(window.appBaseUrl).replace(/\/+$/, '');
     }
     
     // Fall back to <base> tag
     const base = document.querySelector('base');
     if (base && base.href) {
-        return base.href.replace(/\/$/, '');
+        return base.href.replace(/\/+$/, '');
     }
     
-    // Last resort: empty string (relative URLs)
-    return '';
+    // Last resort: use current origin (ensures valid URL construction)
+    return window.location.origin;
 }
 
 /**
