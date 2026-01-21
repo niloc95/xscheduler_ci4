@@ -21,34 +21,43 @@
     
     <!-- Sidebar positioning fix -->
     <style>
+        /* 
+         * Fixed Sidebar Layout
+         * Sidebar is position:fixed, main content uses margin-left to offset
+         */
         @media (min-width: 1024px) {
-            /* Sidebar offset + gutter (matches SCSS) */
             .main-content-container {
-                margin-left: calc(16rem + 2rem) !important;
+                margin-left: calc(16rem + 1.5rem) !important; /* sidebar width + gap */
             }
         }
-        /* Light mode: slightly darker light gray background */
+        
+        /* Light mode background */
         html:not(.dark) body {
-            background-color: #e5e7eb !important; /* Tailwind gray-200 */
+            background-color: #f3f4f6 !important;
         }
         html:not(.dark) .main-content-container {
-            background-color: #e5e7eb !important;
+            background-color: #f3f4f6 !important;
         }
         
+        /* Sidebar fixed positioning */
         .unified-sidebar,
         #main-sidebar {
             position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
             width: 16rem !important;
+            height: 100vh !important;
             z-index: 50 !important;
+            overflow-y: auto !important;
         }
         
-    @media (max-width: 1023px) {
+        /* Mobile: sidebar slides in */
+        @media (max-width: 1023px) {
             .unified-sidebar,
             #main-sidebar {
                 transform: translateX(-100%) !important;
-        top: 0 !important;
-        left: 0 !important;
-        height: 100vh !important;
+                z-index: 60 !important;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             }
             
             .unified-sidebar.open,
@@ -60,6 +69,24 @@
                 margin-left: 0 !important;
             }
         }
+        
+        /* Sticky header */
+        #stickyHeader,
+        [data-sticky-header] {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 40 !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+        }
+        
+        @media (min-width: 1024px) {
+            #stickyHeader,
+            [data-sticky-header] {
+                top: 1rem !important;
+            }
+        }
+        
         /* Match sidebar hover effect for header dropdown items */
         .xs-menu-item {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);

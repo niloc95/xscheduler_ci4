@@ -63,16 +63,75 @@
             --xs-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             
             /* Layout */
-            --xs-sidebar-width: 16rem;
+            --xs-sidebar-width: 16rem;  /* 256px */
+            --xs-sidebar-gap: 1.5rem;   /* 24px gap between sidebar and content */
             --xs-header-height: 4.5rem;
             --xs-content-max-width: 1536px;
             --xs-content-padding: var(--xs-space-6);
         }
         
-        /* Sidebar offset for desktop */
+        /* 
+         * Fixed Sidebar Layout
+         * The sidebar is position:fixed, so we use margin-left on the main container
+         * to push content to the right of the sidebar on desktop.
+         */
+        
+        /* Sidebar: Fixed position, full height */
+        .xs-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--xs-sidebar-width);
+            height: 100vh;
+            z-index: 50;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        /* Main container: Offset by sidebar width + gap on desktop */
+        .xs-main-container {
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        
+        /* Desktop: Push content right of fixed sidebar */
         @media (min-width: 1024px) {
             .xs-main-container {
-                margin-left: calc(var(--xs-sidebar-width) + var(--xs-space-6));
+                margin-left: calc(var(--xs-sidebar-width) + var(--xs-sidebar-gap));
+            }
+        }
+        
+        /* Mobile: No margin, sidebar slides in from left */
+        @media (max-width: 1023px) {
+            .xs-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 60;
+            }
+            .xs-sidebar.open {
+                transform: translateX(0);
+            }
+            .xs-main-container {
+                margin-left: 0;
+            }
+        }
+        
+        /* 
+         * Sticky Header
+         * The header stays fixed at the top of the viewport when scrolling.
+         * On desktop, it has a small top offset for visual breathing room.
+         */
+        .xs-header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        @media (min-width: 1024px) {
+            .xs-header {
+                top: 1rem; /* 16px breathing room from top on desktop */
             }
         }
         
@@ -86,36 +145,28 @@
             background-color: #111827;
         }
         
-        /* Fixed sidebar positioning */
-        .xs-sidebar {
-            position: fixed;
-            width: var(--xs-sidebar-width);
-            height: 100vh;
-            top: 0;
-            left: 0;
-            z-index: 50;
-        }
-        
-        @media (max-width: 1023px) {
-            .xs-sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease-in-out;
-            }
-            .xs-sidebar.open {
-                transform: translateX(0);
-            }
-            .xs-main-container {
-                margin-left: 0;
-            }
-        }
-        
-        /* Loading state */
+        /* Loading state animation */
         .xs-loading {
             animation: xs-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         @keyframes xs-pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+        
+        /* Ensure sidebar overlay covers correctly */
+        .xs-sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 55;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .xs-sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
     </style>
     
@@ -139,44 +190,42 @@
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen antialiased transition-colors duration-200">
-    <div class="min-h-screen flex">
-        
-        <!-- Sidebar -->
-        <aside class="xs-sidebar" id="main-sidebar">
-            <?php 
-            // Auto-include sidebar if section not provided
-            $sidebarContent = $this->renderSection('sidebar');
-            if (empty(trim($sidebarContent ?? ''))) {
-                // Detect current page from URL for sidebar highlighting
-                $uri = service('uri');
-                $segment = $uri->getSegment(1) ?: 'dashboard';
-                echo $this->include('components/unified-sidebar', ['current_page' => $segment]);
-            } else {
-                echo $sidebarContent;
-            }
-            ?>
-        </aside>
-        
-        <!-- Mobile Sidebar Overlay -->
-        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="document.getElementById('main-sidebar').classList.remove('open'); this.classList.add('hidden');"></div>
-        
-        <!-- Main Content Area -->
-        <div class="xs-main-container flex-1 min-h-screen">
-            <div class="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
-                
-                <!-- Sticky Header Bar -->
-                <header class="xs-header sticky top-0 lg:top-4 z-30 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
-                    <div class="flex items-center justify-between gap-4">
-                        <!-- Left: Mobile Menu + Title -->
-                        <div class="flex items-center gap-3 min-w-0">
-                            <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                <span class="material-symbols-outlined">menu</span>
-                            </button>
-                            <div class="min-w-0">
-                                <h1 id="header-title" class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
-                                    <?= $this->renderSection('header_title') ?: 'Dashboard' ?>
-                                </h1>
-                                <?php 
+    <!-- Sidebar (Fixed position - outside flow) -->
+    <aside class="xs-sidebar" id="main-sidebar">
+        <?php 
+        // Auto-include sidebar if section not provided
+        $sidebarContent = $this->renderSection('sidebar');
+        if (empty(trim($sidebarContent ?? ''))) {
+            // Detect current page from URL for sidebar highlighting
+            $uri = service('uri');
+            $segment = $uri->getSegment(1) ?: 'dashboard';
+            echo $this->include('components/unified-sidebar', ['current_page' => $segment]);
+        } else {
+            echo $sidebarContent;
+        }
+        ?>
+    </aside>
+    
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebar-overlay" class="xs-sidebar-overlay lg:hidden" onclick="closeSidebar()"></div>
+    
+    <!-- Main Content Area (margin-left accounts for fixed sidebar on desktop) -->
+    <div class="xs-main-container">
+        <div class="p-4 lg:p-6 space-y-6 max-w-screen-2xl mx-auto">
+            
+            <!-- Sticky Header Bar -->
+            <header class="xs-header bg-white/95 dark:bg-gray-800/95 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
+                <div class="flex items-center justify-between gap-4">
+                    <!-- Left: Mobile Menu + Title -->
+                    <div class="flex items-center gap-3 min-w-0">
+                        <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" onclick="toggleSidebar()">
+                            <span class="material-symbols-outlined">menu</span>
+                        </button>
+                        <div class="min-w-0">
+                            <h1 id="header-title" class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                                <?= $this->renderSection('header_title') ?: 'Dashboard' ?>
+                            </h1>
+                            <?php 
                                 $userRole = session()->get('user')['role'] ?? 'user';
                                 $roleLabels = [
                                     'admin' => 'Administrator',
@@ -295,7 +344,6 @@
                 </footer>
             </div>
         </div>
-    </div>
     
     <!-- Modal Container -->
     <div id="modal-container">
@@ -313,19 +361,22 @@
     
     <!-- Layout JavaScript -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Mobile menu toggle
-            const menuToggle = document.getElementById('menu-toggle');
+        // Sidebar toggle functions (global for onclick handlers)
+        function toggleSidebar() {
             const sidebar = document.getElementById('main-sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            
-            if (menuToggle && sidebar) {
-                menuToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('open');
-                    overlay?.classList.toggle('hidden');
-                });
-            }
-            
+            sidebar?.classList.toggle('open');
+            overlay?.classList.toggle('active');
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar?.classList.remove('open');
+            overlay?.classList.remove('active');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
             // User menu toggle
             const userMenuBtn = document.getElementById('user-menu-btn');
             const userMenu = document.getElementById('user-menu');
@@ -342,6 +393,13 @@
                     }
                 });
             }
+            
+            // Close sidebar on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
         });
     </script>
 </body>
