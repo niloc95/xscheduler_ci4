@@ -193,6 +193,13 @@ class Auth extends BaseController
 
         if (!$this->validate($rules)) {
             $token = $this->request->getPost('token');
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->to("/auth/reset-password/{$token}")
                            ->withInput()
                            ->with('validation', $this->validator);
@@ -207,6 +214,12 @@ class Auth extends BaseController
                                ->first();
 
         if (!$user) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid or expired reset token.'
+                ]);
+            }
             session()->setFlashdata('error', 'Invalid or expired reset token.');
             return redirect()->to('/auth/login');
         }
@@ -218,6 +231,13 @@ class Auth extends BaseController
             'reset_expires' => null
         ]);
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Your password has been updated successfully. Please login with your new password.',
+                'redirect' => '/auth/login'
+            ]);
+        }
         session()->setFlashdata('success', 'Your password has been updated successfully. Please login with your new password.');
         return redirect()->to('/auth/login');
     }

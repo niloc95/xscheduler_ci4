@@ -94,6 +94,13 @@ class Profile extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->to('/profile')
                 ->withInput()
                 ->with('profile_errors', $this->validator->getErrors())
@@ -121,6 +128,12 @@ class Profile extends BaseController
         ];
 
         if (!$this->userModel->updateUser($userId, $updateData, $userId)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Unable to update profile. Please try again.'
+                ]);
+            }
             return redirect()->to('/profile')
                 ->withInput()
                 ->with('profile_errors', ['general' => 'Unable to update profile at this time.'])
@@ -135,6 +148,13 @@ class Profile extends BaseController
             'profile_image' => $userRecord['profile_image'] ?? null,
         ]);
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Profile updated successfully.',
+                'redirect' => '/profile'
+            ]);
+        }
         return redirect()->to('/profile')
             ->with('success', 'Profile updated successfully.')
             ->with('active_tab', 'profile');
@@ -359,6 +379,13 @@ class Profile extends BaseController
         }
 
         // For now, redirect back to profile
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Privacy settings updated successfully',
+                'redirect' => '/profile'
+            ]);
+        }
         session()->setFlashdata('success', 'Privacy settings updated successfully');
         return redirect()->to('/profile');
     }
@@ -395,6 +422,13 @@ class Profile extends BaseController
         }
 
         // For now, redirect back to profile
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Account settings updated successfully',
+                'redirect' => '/profile'
+            ]);
+        }
         session()->setFlashdata('success', 'Account settings updated successfully');
         return redirect()->to('/profile');
     }
