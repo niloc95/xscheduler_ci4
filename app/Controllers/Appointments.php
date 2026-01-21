@@ -237,6 +237,13 @@ class Appointments extends BaseController
 
         if (!$this->validate($rules)) {
             log_message('error', '[Appointments::store] Validation failed: ' . json_encode($validation->getErrors()));
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validation->getErrors()
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('errors', $validation->getErrors());
@@ -317,6 +324,12 @@ class Appointments extends BaseController
         
         if (!$businessHours) {
             log_message('warning', '[Appointments::store] Attempted booking on closed day: ' . ucfirst($dayOfWeekName));
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.'
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.');
@@ -330,6 +343,12 @@ class Appointments extends BaseController
             $startFormatted = date('g:i A', strtotime($businessHours['start_time']));
             $endFormatted = date('g:i A', strtotime($businessHours['end_time']));
             log_message('warning', '[Appointments::store] Attempted booking outside business hours: ' . $requestedTime);
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time."
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('error', "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time.");
@@ -337,6 +356,12 @@ class Appointments extends BaseController
         
         if ($requestedEndTime > $businessHours['end_time']) {
             log_message('warning', '[Appointments::store] Appointment would extend past business hours');
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'This appointment would extend past our closing time. Please choose an earlier time slot.'
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'This appointment would extend past our closing time. Please choose an earlier time slot.');
@@ -352,6 +377,12 @@ class Appointments extends BaseController
             $customer = $this->customerModel->find($customerId);
             
             if (!$customer) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(400)->setJSON([
+                        'success' => false,
+                        'message' => 'Selected customer not found'
+                    ]);
+                }
                 return redirect()->back()
                     ->withInput()
                     ->with('error', 'Selected customer not found');
@@ -389,6 +420,12 @@ class Appointments extends BaseController
                 $customerId = $this->customerModel->insert($customerData);
                 
                 if (!$customerId) {
+                    if ($this->request->isAJAX()) {
+                        return $this->response->setStatusCode(400)->setJSON([
+                            'success' => false,
+                            'message' => 'Failed to create customer record'
+                        ]);
+                    }
                     return redirect()->back()
                         ->withInput()
                         ->with('error', 'Failed to create customer record');
@@ -415,6 +452,13 @@ class Appointments extends BaseController
         if (!$appointmentId) {
             $errors = $this->appointmentModel->errors();
             log_message('error', '[Appointments::store] Failed to insert appointment. Model errors: ' . json_encode($errors));
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to create appointment. Please try again.',
+                    'errors' => $errors
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create appointment. Please try again.');
@@ -433,6 +477,14 @@ class Appointments extends BaseController
         }
 
         // Success - redirect to appointments list or view
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Appointment booked successfully! Confirmation email will be sent shortly.',
+                'redirect' => '/appointments',
+                'appointmentId' => $appointmentId
+            ]);
+        }
         return redirect()->to('/appointments')
             ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
     }
@@ -621,6 +673,13 @@ class Appointments extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validation->getErrors()
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('errors', $validation->getErrors());
@@ -726,6 +785,12 @@ class Appointments extends BaseController
         }
 
         if (!$updated) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to update appointment. Please try again.'
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to update appointment. Please try again.');
@@ -734,6 +799,13 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::update] Successfully updated appointment #' . $appointmentId);
 
         // Success
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Appointment updated successfully!',
+                'redirect' => '/appointments'
+            ]);
+        }
         return redirect()->to('/appointments')
             ->with('success', 'Appointment updated successfully!');
     }
