@@ -150,6 +150,13 @@ class UserManagement extends BaseController
 
         if (!$this->validate($rules)) {
             log_message('warning', 'Validation failed: ' . json_encode($this->validator->getErrors()));
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -160,6 +167,12 @@ class UserManagement extends BaseController
         // Check if current user can create this role
         if (!$this->canCreateRole($currentUserId, $role)) {
             log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $role);
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'success' => false,
+                    'message' => 'You do not have permission to create users with this role.'
+                ]);
+            }
             return redirect()->back()
                            ->with('error', 'You do not have permission to create users with this role.');
         }
@@ -182,6 +195,13 @@ class UserManagement extends BaseController
             
             [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
             if (!empty($scheduleErrors)) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => 'Please fix the highlighted schedule issues.',
+                        'errors' => $scheduleErrors
+                    ]);
+                }
                 return redirect()->back()->withInput()
                     ->with('error', 'Please fix the highlighted schedule issues.')
                     ->with('schedule_errors', $scheduleErrors);
@@ -212,6 +232,13 @@ class UserManagement extends BaseController
 
                 if (!$assigned) {
                     log_message('error', '[UserManagement::store] Staff created but failed to auto-assign to provider. provider_id=' . $currentUserId . ' staff_id=' . $userId . ' errors=' . json_encode($this->providerStaffModel->errors()));
+                    if ($this->request->isAJAX()) {
+                        return $this->response->setStatusCode(400)->setJSON([
+                            'success' => false,
+                            'message' => 'User created, but assignment to provider failed. Please contact support or try assigning again.',
+                            'userId' => $userId
+                        ]);
+                    }
                     return redirect()->to('/user-management/edit/' . $userId)
                         ->with('error', 'User created, but assignment to provider failed. Please contact support or try assigning again.');
                 }
@@ -231,10 +258,24 @@ class UserManagement extends BaseController
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
             }
 
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'User created successfully. You can now manage assignments and schedules.',
+                    'redirect' => '/user-management/edit/' . $userId,
+                    'userId' => $userId
+                ]);
+            }
             return redirect()->to('/user-management/edit/' . $userId)
                            ->with('success', 'User created successfully. You can now manage assignments and schedules.');
         } else {
             log_message('error', '[UserManagement::store] Failed to create user');
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to create user. Please try again.'
+                ]);
+            }
             return redirect()->back()
                            ->with('error', 'Failed to create user. Please try again.');
         }
@@ -366,6 +407,12 @@ class UserManagement extends BaseController
 
         // Check permission to edit this user
         if (!$this->userModel->canManageUser($currentUserId, $userId)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'success' => false,
+                    'message' => 'You do not have permission to edit this user.'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('error', 'You do not have permission to edit this user.');
         }
@@ -389,6 +436,13 @@ class UserManagement extends BaseController
         }
 
         if (!$this->validate($rules)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
@@ -436,6 +490,13 @@ class UserManagement extends BaseController
             
             [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
             if (!empty($scheduleErrors)) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => 'Please fix the highlighted schedule issues.',
+                        'errors' => $scheduleErrors
+                    ]);
+                }
                 return redirect()->back()->withInput()
                     ->with('error', 'Please fix the highlighted schedule issues.')
                     ->with('schedule_errors', $scheduleErrors);
@@ -493,9 +554,23 @@ class UserManagement extends BaseController
             } else {
                 $this->providerScheduleModel->deleteByProvider($userId);
             }
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'User updated successfully.',
+                    'redirect' => '/user-management'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('success', 'User updated successfully.');
         } else {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to update user. Please try again.'
+                ]);
+            }
             return redirect()->back()
                            ->with('error', 'Failed to update user. Please try again.');
         }
@@ -513,14 +588,33 @@ class UserManagement extends BaseController
         }
 
         if ($currentUserId === $userId) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'You cannot deactivate your own account.'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('error', 'You cannot deactivate your own account.');
         }
 
         if ($this->userModel->deactivateUser($userId, $currentUserId)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'User deactivated successfully.',
+                    'redirect' => '/user-management'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('success', 'User deactivated successfully.');
         } else {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to deactivate user or insufficient permissions.'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('error', 'Failed to deactivate user or insufficient permissions.');
         }
@@ -538,9 +632,22 @@ class UserManagement extends BaseController
         }
 
         if ($this->userModel->update($userId, ['is_active' => true])) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'User activated successfully.',
+                    'redirect' => '/user-management'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('success', 'User activated successfully.');
         } else {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to activate user.'
+                ]);
+            }
             return redirect()->to('/user-management')
                            ->with('error', 'Failed to activate user.');
         }
