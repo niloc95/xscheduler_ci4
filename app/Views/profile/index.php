@@ -4,6 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'profile']) ?>
 <?= $this->endSection() ?>
 
+<?= $this->section('header_title') ?>Profile<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <?php
     $profileErrors = $profile_errors ?? [];

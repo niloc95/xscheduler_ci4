@@ -23,6 +23,16 @@
 
 <?= $this->section('layout_variant') ?>dashboard<?= $this->endSection() ?>
 
+<?php
+// Determine header title from page_title section or fallback to pageTitle variable
+$headerTitle = trim($this->renderSection('page_title'));
+if ($headerTitle === '') {
+    $headerTitle = $pageTitle ?? 'Dashboard';
+}
+?>
+
+<?= $this->section('header_title') ?><?= esc($headerTitle) ?><?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <?php
     $pageTitleSection = trim($this->renderSection('page_title'));

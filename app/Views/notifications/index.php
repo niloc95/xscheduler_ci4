@@ -4,6 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'notifications']) ?>
 <?= $this->endSection() ?>
 
+<?= $this->section('header_title') ?>Notifications<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <!-- Page Header -->
 <div class="mb-6">

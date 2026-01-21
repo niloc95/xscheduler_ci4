@@ -7,6 +7,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>
 <?= $this->endSection() ?>
 
+<?= $this->section('header_title') ?>Edit Service<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <div class="mb-6">
         <a href="<?= base_url('/services') ?>" class="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">

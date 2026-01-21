@@ -4,6 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'help']) ?>
 <?= $this->endSection() ?>
 
+<?= $this->section('header_title') ?>Help & Support<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <!-- Quick Search -->
     <div class="mb-8 max-w-md mx-auto">
