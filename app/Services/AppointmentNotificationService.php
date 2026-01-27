@@ -165,20 +165,8 @@ class AppointmentNotificationService
 
     private function getReminderOffsetMinutes(int $businessId): ?int
     {
-        $model = new BusinessNotificationRuleModel();
-        $row = $model
-            ->where('business_id', $businessId)
-            ->where('event_type', 'appointment_reminder')
-            ->where('channel', 'email')
-            ->first();
-
-        $v = $row['reminder_offset_minutes'] ?? null;
-        if ($v === null || $v === '') {
-            return null;
-        }
-
-        $minutes = (int) $v;
-        return max(0, min(43200, $minutes));
+        helper('notification');
+        return notification_get_reminder_offset_minutes($businessId, 'email');
     }
 
     /**

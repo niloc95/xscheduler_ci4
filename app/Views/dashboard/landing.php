@@ -22,10 +22,7 @@ $schedule = $schedule ?? [];
 $alerts = $alerts ?? [];
 $upcoming = $upcoming ?? [];
 $availability = $availability ?? [];
-$bookingStatus = $booking_status ?? null;
-$userRole = $context['user_role'] ?? 'admin';
 $userName = $context['user_name'] ?? 'User';
-$businessName = $context['business_name'] ?? 'WebSchedulr';
 
 // Calculate additional metrics
 $pendingCount = $metrics['pending'] ?? 0;
@@ -36,9 +33,6 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <?= $this->extend('layouts/app') ?>
 
-<?= $this->section('head') ?>
-<?= $this->endSection() ?>
-
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'dashboard']) ?>
 <?= $this->endSection() ?>
@@ -46,7 +40,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div data-page-title="Dashboard">
+<div>
     
     <!-- Header Row: Welcome + Quick Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">

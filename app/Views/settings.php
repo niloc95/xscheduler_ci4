@@ -7,7 +7,7 @@
 <?= $this->section('header_title') ?>Settings<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6" data-page-title="Settings" data-page-subtitle="Manage your application configuration">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6">
 
         <?php if (session()->getFlashdata('error')): ?>
             <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">

@@ -24,23 +24,19 @@
 <?= $this->section('layout_variant') ?>dashboard<?= $this->endSection() ?>
 
 <?php
-// Determine header title from page_title section or fallback to pageTitle variable
-$headerTitle = trim($this->renderSection('page_title'));
-if ($headerTitle === '') {
-    $headerTitle = $pageTitle ?? 'Dashboard';
-}
+// Capture section values ONCE (renderSection can only be called once per section)
+$pageTitleSection = trim($this->renderSection('page_title'));
+$pageSubtitleSection = trim($this->renderSection('page_subtitle'));
+
+// Determine resolved values with fallbacks
+$resolvedTitle = $pageTitleSection !== '' ? $pageTitleSection : ($pageTitle ?? 'Dashboard');
+$resolvedSubtitle = $pageSubtitleSection !== '' ? $pageSubtitleSection : ($pageSubtitle ?? '');
 ?>
 
-<?= $this->section('header_title') ?><?= esc($headerTitle) ?><?= $this->endSection() ?>
+<?= $this->section('header_title') ?><?= esc($resolvedTitle) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <?php
-    $pageTitleSection = trim($this->renderSection('page_title'));
-    $resolvedTitle = $pageTitleSection !== '' ? $pageTitleSection : ($pageTitle ?? 'Dashboard');
-
-    $pageSubtitleSection = trim($this->renderSection('page_subtitle'));
-    $resolvedSubtitle = $pageSubtitleSection !== '' ? $pageSubtitleSection : ($pageSubtitle ?? '');
-
     $introContent = trim($this->renderSection('dashboard_intro'));
     $statsContent = trim($this->renderSection('dashboard_stats'));
     $statsClassSection = trim($this->renderSection('dashboard_stats_class'));

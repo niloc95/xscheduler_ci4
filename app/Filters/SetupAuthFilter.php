@@ -19,7 +19,7 @@ class SetupAuthFilter implements FilterInterface
     public function before(RequestInterface $request, $arguments = null)
     {
         // First check if setup is completed
-        if (!$this->isSetupCompleted()) {
+        if (!is_setup_completed()) {
             return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
         }
 
@@ -48,14 +48,4 @@ class SetupAuthFilter implements FilterInterface
         // Do nothing
     }
 
-    /**
-     * Check if the application setup has been completed
-     */
-    private function isSetupCompleted(): bool
-    {
-        // Load helper if not already loaded
-        helper('setup');
-        
-        return is_setup_completed();
-    }
 }

@@ -92,29 +92,7 @@ class CalendarConfigService
      */
     public function getFirstDayOfWeek(): int
     {
-        $value = $this->getSetting('localization.first_day');
-        
-        if ($value === null) {
-            return 0; // Default to Sunday
-        }
-
-        // Handle both numeric and string day values
-        if (is_numeric($value)) {
-            return max(0, min(6, (int) $value));
-        }
-
-        // Map day names to numbers
-        $dayMap = [
-            'sunday' => 0,
-            'monday' => 1,
-            'tuesday' => 2,
-            'wednesday' => 3,
-            'thursday' => 4,
-            'friday' => 5,
-            'saturday' => 6,
-        ];
-
-        return $dayMap[strtolower($value)] ?? 0;
+        return $this->localization->getFirstDayOfWeek();
     }
 
     /**

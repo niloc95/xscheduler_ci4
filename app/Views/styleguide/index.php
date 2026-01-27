@@ -3,7 +3,7 @@
 <?= $this->section('header_title') ?>Design System<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="content-wrapper" data-page-title="Design System" data-page-subtitle="A comprehensive guide to our UI components and patterns">
+<div class="content-wrapper">
     <div class="content-main space-y-8">
         
     <!-- Header removed in favor of dynamic page header -->

@@ -199,19 +199,7 @@ class NotificationQueueService
 
     private function getReminderOffsetMinutes(int $businessId, string $channel): ?int
     {
-        $model = new BusinessNotificationRuleModel();
-        $row = $model
-            ->where('business_id', $businessId)
-            ->where('event_type', 'appointment_reminder')
-            ->where('channel', $channel)
-            ->first();
-
-        $v = $row['reminder_offset_minutes'] ?? null;
-        if ($v === null || $v === '') {
-            return null;
-        }
-
-        $minutes = (int) $v;
-        return max(0, min(43200, $minutes));
+        helper('notification');
+        return notification_get_reminder_offset_minutes($businessId, $channel);
     }
 }

@@ -23,7 +23,7 @@ class Auth extends BaseController
     public function login()
     {
         // Check if setup is completed first
-        if (!$this->isSetupCompleted()) {
+        if (!is_setup_completed()) {
             return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
         }
 
@@ -273,12 +273,4 @@ class Auth extends BaseController
         }
     }
 
-    /**
-     * Check if the application setup has been completed
-     */
-    private function isSetupCompleted(): bool
-    {
-        helper('setup');
-        return is_setup_completed();
-    }
 }

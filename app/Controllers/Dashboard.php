@@ -29,18 +29,12 @@ class Dashboard extends BaseController
     }
 
     /**
-     * Check if the application setup has been completed
+     * Dashboard landing page
      */
-    private function isSetupCompleted(): bool
-    {
-        helper('setup');
-        return is_setup_completed();
-    }
-
     public function index()
     {
         // Check if setup is completed first
-        if (!$this->isSetupCompleted()) {
+        if (!is_setup_completed()) {
             return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
         }
 

@@ -304,13 +304,8 @@ class NotificationEmailService
 
     private function encryptConfig(array $config): string
     {
-        $encrypter = service('encrypter');
-        $json = json_encode($config);
-        if ($json === false) {
-            throw new \RuntimeException('Failed to encode SMTP config');
-        }
-        // Base64 encode the binary encrypted data for safe storage in TEXT column
-        return base64_encode((string) $encrypter->encrypt($json));
+        helper('notification');
+        return notification_encrypt_config($config, 'SMTP');
     }
 
     /**
@@ -319,29 +314,8 @@ class NotificationEmailService
      */
     private function decryptConfig($encrypted, bool $returnError = false): array
     {
-        if (!is_string($encrypted) || trim($encrypted) === '') {
-            return $returnError ? ['data' => [], 'error' => null] : [];
-        }
-
-        try {
-            $encrypter = service('encrypter');
-            // Base64 decode before decrypting
-            $decoded = base64_decode($encrypted, true);
-            if ($decoded === false) {
-                throw new \RuntimeException('Failed to base64 decode encrypted config');
-            }
-            $json = $encrypter->decrypt($decoded);
-            $data = json_decode((string) $json, true);
-            $result = is_array($data) ? $data : [];
-            return $returnError ? ['data' => $data, 'error' => null] : $data;
-        } catch (\Throwable $e) {
-            log_message('error', 'NotificationEmailService: decrypt failed: {msg}', ['msg' => $e->getMessage()]);
-            $errMsg = 'encryption_key_mismatch';
-            if (stripos($e->getMessage(), 'authentication failed') !== false) {
-                $errMsg = 'encryption_key_mismatch';
-            }
-            return $returnError ? ['data' => [], 'error' => $errMsg] : [];
-        }
+        helper('notification');
+        return notification_decrypt_config($encrypted, $returnError, 'NotificationEmailService');
     }
 
     private function updateHealth(BusinessIntegrationModel $model, array $integration, string $healthStatus, string $testedAt): void

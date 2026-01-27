@@ -3,7 +3,7 @@
 <?= $this->section('header_title') ?>Components<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="content-wrapper" data-page-title="Components">
+<div class="content-wrapper">
     <div class="content-main space-y-8">
         
         <!-- Design Tokens: Color Codes & Font Sizing -->

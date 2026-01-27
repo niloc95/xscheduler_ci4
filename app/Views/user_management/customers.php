@@ -88,8 +88,13 @@
 (function(){
     function esc(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
     async function reloadCustomers(){/* Placeholder for future dynamic fetch */}
+    function isCustomerInteractionPage() {
+        const spaContent = document.getElementById('spa-content');
+        return spaContent?.getAttribute('data-page-title') === 'Customer Interaction';
+    }
     document.getElementById('customerRefresh')?.addEventListener('click',()=>reloadCustomers());
-    document.addEventListener('spa:navigated',()=>{ if(document.querySelector('[data-page-title="Customer Interaction"]')) reloadCustomers(); });
+    if (isCustomerInteractionPage()) reloadCustomers();
+    document.addEventListener('spa:navigated',()=>{ if(isCustomerInteractionPage()) reloadCustomers(); });
 })();
 </script>
 <?= $this->endSection() ?>

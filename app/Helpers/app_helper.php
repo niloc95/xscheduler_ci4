@@ -1,6 +1,5 @@
 <?php
 // app/Helpers/app_helper.php
-// Consolidated helper functions from settings_helper, permissions_helper, setup_helper
 
 use App\Models\SettingModel;
 
@@ -86,100 +85,6 @@ if (!function_exists('setting_url')) {
     }
 }
 
-// Permissions/roles helpers
-if (!function_exists('current_user_role')) {
-    function current_user_role(): ?string
-    {
-        $user = session()->get('user');
-        return $user['role'] ?? null;
-    }
-}
-if (!function_exists('current_user_id')) {
-    function current_user_id(): ?int
-    {
-        return session()->get('user_id');
-    }
-}
-if (!function_exists('has_role')) {
-    function has_role(string|array $roles): bool
-    {
-        $currentRole = current_user_role();
-        if (!$currentRole) {
-            return false;
-        }
-        if (is_string($roles)) {
-            return $currentRole === $roles;
-        }
-        return in_array($currentRole, $roles);
-    }
-}
-if (!function_exists('has_permission')) {
-    function has_permission(string|array $permissions): bool
-    {
-        $userId = current_user_id();
-        if (!$userId) {
-            return false;
-        }
-        $permissionModel = new \App\Models\UserPermissionModel();
-        if (is_string($permissions)) {
-            return $permissionModel->hasPermission($userId, $permissions);
-        }
-        return $permissionModel->hasAnyPermission($userId, $permissions);
-    }
-}
-if (!function_exists('is_admin')) {
-    function is_admin(): bool
-    {
-        return has_role('admin');
-    }
-}
-if (!function_exists('is_provider')) {
-    function is_provider(): bool
-    {
-        return has_role('provider');
-    }
-}
-if (!function_exists('is_staff')) {
-    function is_staff(): bool
-    {
-        return has_role('staff');
-    }
-}
-if (!function_exists('is_customer')) {
-    function is_customer(): bool
-    {
-        return has_role('customer');
-    }
-}
-if (!function_exists('can_manage_users')) {
-    function can_manage_users(): bool
-    {
-        return has_permission('user_management');
-    }
-}
-if (!function_exists('can_manage_settings')) {
-    function can_manage_settings(): bool
-    {
-        return has_permission('system_settings');
-    }
-}
-if (!function_exists('can_create_role')) {
-    function can_create_role(string $role): bool
-    {
-        switch ($role) {
-            case 'admin':
-                return has_permission('create_admin');
-            case 'provider':
-                return has_permission('create_provider');
-            case 'staff':
-                return has_permission('create_staff');
-            case 'customer':
-                return has_permission('user_management');
-            default:
-                return false;
-        }
-    }
-}
 if (!function_exists('get_role_display_name')) {
     function get_role_display_name(string $role): string
     {
@@ -261,29 +166,5 @@ if (!function_exists('role_icon')) {
             'customer' => 'fas fa-user'
         ];
         return $icons[$role] ?? 'fas fa-user';
-    }
-}
-// Setup helpers
-if (!function_exists('is_setup_completed')) {
-    function is_setup_completed(): bool
-    {
-        $flagPath = WRITEPATH . 'setup_completed.flag';
-        if (!file_exists($flagPath)) {
-            return false;
-        }
-        $envPath = ROOTPATH . '.env';
-        if (!file_exists($envPath)) {
-            return false;
-        }
-        return true;
-    }
-}
-if (!function_exists('ensure_setup_completed')) {
-    function ensure_setup_completed()
-    {
-        if (!is_setup_completed()) {
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
-        }
-        return null;
     }
 }

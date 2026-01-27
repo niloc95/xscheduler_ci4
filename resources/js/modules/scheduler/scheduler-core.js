@@ -133,7 +133,7 @@ export class SchedulerCore {
 
     async loadCalendarConfig() {
         try {
-            const response = await fetch(withBaseUrl('/api/v1/settings/calendarConfig'));
+            const response = await fetch(withBaseUrl('/api/v1/settings/calendar-config'));
             if (!response.ok) throw new Error('Failed to load calendar config');
             const data = await response.json();
             this.calendarConfig = data.data || data;

@@ -10,7 +10,7 @@ class AppFlow extends BaseController
     public function index()
     {
         // Check if setup is completed
-        if (!$this->isSetupCompleted()) {
+        if (!is_setup_completed()) {
             // Setup not completed - redirect to setup
             return redirect()->to('/setup');
         }
@@ -25,12 +25,4 @@ class AppFlow extends BaseController
         return redirect()->to('/login');
     }
 
-    /**
-     * Check if the application setup has been completed
-     */
-    private function isSetupCompleted(): bool
-    {
-        helper('setup');
-        return is_setup_completed();
-    }
 }

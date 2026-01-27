@@ -78,6 +78,11 @@
     <div class="xs-scroll-blur" aria-hidden="true"></div>
     
     <!-- Main Content Area (margin-left accounts for fixed sidebar on desktop) -->
+    <?php
+        // Capture header_title ONCE (renderSection can only be called once per section)
+        $headerTitleSection = trim($this->renderSection('header_title'));
+        $resolvedHeaderTitle = $headerTitleSection !== '' ? $headerTitleSection : 'Dashboard';
+    ?>
     <div class="xs-main-container">
         <!-- Fixed Header Bar (solid opaque, aligned with sidebar) -->
         <header class="xs-header bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
@@ -89,7 +94,7 @@
                         </button>
                         <div class="min-w-0">
                             <h1 id="header-title" class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
-                                <?= $this->renderSection('header_title') ?: 'Dashboard' ?>
+                                <?= esc($resolvedHeaderTitle) ?>
                             </h1>
                             <?php 
                                 $userRole = session()->get('user')['role'] ?? 'user';
@@ -202,12 +207,7 @@
                 <?php endif; ?>
                 
                 <!-- Main Content -->
-                <?php 
-                    // Capture header_title for SPA to pick up dynamically
-                    $headerTitleSection = trim($this->renderSection('header_title'));
-                    $pageTitle = $headerTitleSection !== '' ? $headerTitleSection : 'Dashboard';
-                ?>
-                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($pageTitle) ?>">
+                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($resolvedHeaderTitle) ?>">
                     <?= $this->renderSection('content') ?>
                     
                     <!-- View-specific scripts (inside spa-content for SPA re-execution) -->
@@ -262,14 +262,26 @@
                 const spaContent = document.getElementById('spa-content');
                 if (!headerEl || !spaContent) return;
                 
-                // Look for data-page-title on spa-content itself or any child element
+                // Priority order for finding page title:
+                // 1. data-page-title attribute on #spa-content itself
+                // 2. data-page-title on any child element (e.g., dashboard intro div)
+                // 3. First h1 or h2 heading in the content
                 let pageTitle = spaContent.getAttribute('data-page-title');
+                
                 if (!pageTitle) {
                     const titleEl = spaContent.querySelector('[data-page-title]');
-                    pageTitle = titleEl?.getAttribute('data-page-title');
+                    if (titleEl) pageTitle = titleEl.getAttribute('data-page-title');
                 }
                 
-                if (pageTitle) {
+                // Fallback: look for first prominent heading
+                if (!pageTitle) {
+                    const heading = spaContent.querySelector('h1:not(#header-title), h2.text-xl, h2.text-2xl');
+                    if (heading) {
+                        pageTitle = heading.textContent.trim();
+                    }
+                }
+                
+                if (pageTitle && pageTitle !== headerEl.textContent.trim()) {
                     headerEl.textContent = pageTitle;
                     document.title = pageTitle + ' • WebSchedulr';
                 }
@@ -279,7 +291,10 @@
             syncHeaderTitle();
             
             // Sync on SPA navigation
-            document.addEventListener('spa:navigated', syncHeaderTitle);
+            document.addEventListener('spa:navigated', function() {
+                // Small delay to ensure DOM is updated
+                requestAnimationFrame(() => syncHeaderTitle());
+            });
             
             // User menu toggle
             const userMenuBtn = document.getElementById('user-menu-btn');

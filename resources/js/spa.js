@@ -95,10 +95,18 @@ const SPA = (() => {
     const doc = parser.parseFromString(text, 'text/html');
     const spaContentEl = doc.querySelector('#spa-content');
     
+    // Get page title from multiple sources
+    let pageTitle = spaContentEl?.getAttribute('data-page-title');
+    
+    // Also check for child element with data-page-title (dashboard layout uses this)
+    if (!pageTitle && spaContentEl) {
+      const titleEl = spaContentEl.querySelector('[data-page-title]');
+      pageTitle = titleEl?.getAttribute('data-page-title');
+    }
     // Return object with both HTML and page title attribute
     return {
       html: spaContentEl?.innerHTML ?? text,
-      pageTitle: spaContentEl?.getAttribute('data-page-title') || null
+      pageTitle: pageTitle || null
     };
   };
 
