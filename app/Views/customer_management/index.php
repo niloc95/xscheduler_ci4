@@ -1,4 +1,5 @@
 <?php
+<?php
 /**
  * Customer Management - Index View
  *
@@ -11,7 +12,7 @@
  * 
  * Related: app/Views/user_management/customers.php handles booking interactions
  * 
- * REFACTORED: Now uses Unified Layout System components
+ * REFACTORED: Now uses Global Header System (all page titles in header only)
  */
 ?>
 <?= $this->extend('layouts/app') ?>
@@ -20,23 +21,18 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'customer-management']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('header_title') ?>Customers<?= $this->endSection() ?>
+<?= $this->section('header_title') ?>Customer Management<?= $this->endSection() ?>
+
+<?= $this->section('header_subtitle') ?>View and manage all customer profiles and contact information<?= $this->endSection() ?>
+
+<?= $this->section('header_actions') ?>
+<a href="<?= base_url('customer-management/create') ?>" class="xs-btn xs-btn-primary">
+    <span class="material-symbols-outlined">person_add</span>
+    New Customer
+</a>
+<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-
-<?php 
-// Page Header Component
-echo view('components/page-header', [
-    'title' => 'Customer Management',
-    'subtitle' => 'View and manage all customer profiles and contact information',
-    'actions' => [
-        '<a href="' . base_url('customer-management/create') . '" class="xs-btn xs-btn-primary">
-            <span class="material-symbols-outlined">person_add</span>
-            New Customer
-        </a>'
-    ]
-]);
-?>
 
 <?php
 // Search Card

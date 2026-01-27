@@ -6,8 +6,9 @@
  * Uses xs-content-dashboard variant for wider max-width and tighter spacing.
  * 
  * Expected child sections:
- * - page_title (optional): Overrides page title attribute.
- * - page_subtitle (optional): Overrides page subtitle attribute.
+ * - header_title (optional): Sets global header title. Defaults to "Dashboard".
+ * - header_subtitle (optional): Sets global header subtitle.
+ * - header_actions (optional): Action buttons rendered in global header.
  * - dashboard_intro (optional): Introductory block shown above stats/actions.
  * - dashboard_stats (optional): Stat cards. Wrap content only; grid handled here.
  * - dashboard_stats_class (optional): Custom CSS classes for stats grid wrapper.
@@ -24,33 +25,28 @@
 <?= $this->section('layout_variant') ?>dashboard<?= $this->endSection() ?>
 
 <?php
-// Capture section values ONCE (renderSection can only be called once per section)
-$pageTitleSection = trim($this->renderSection('page_title'));
-$pageSubtitleSection = trim($this->renderSection('page_subtitle'));
+// Capture dashboard-specific sections
+$introContent = trim($this->renderSection('dashboard_intro'));
+$statsContent = trim($this->renderSection('dashboard_stats'));
+$statsClassSection = trim($this->renderSection('dashboard_stats_class'));
+$statsWrapperClass = $statsClassSection !== '' ? $statsClassSection : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
 
-// Determine resolved values with fallbacks
-$resolvedTitle = $pageTitleSection !== '' ? $pageTitleSection : ($pageTitle ?? 'Dashboard');
-$resolvedSubtitle = $pageSubtitleSection !== '' ? $pageSubtitleSection : ($pageSubtitle ?? '');
+$actionsContent = trim($this->renderSection('dashboard_actions'));
+$filtersContent = trim($this->renderSection('dashboard_filters'));
+$tabsContent = trim($this->renderSection('dashboard_tabs'));
+$contentTop = trim($this->renderSection('dashboard_content_top'));
+$bodyContent = $this->renderSection('dashboard_content');
+
+// Set header title (can be overridden by child view via header_title section)
+$headerTitle = trim($this->renderSection('header_title')) ?: ($pageTitle ?? 'Dashboard');
 ?>
 
-<?= $this->section('header_title') ?><?= esc($resolvedTitle) ?><?= $this->endSection() ?>
+<?= $this->section('header_title') ?><?= esc($headerTitle) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<?php
-    $introContent = trim($this->renderSection('dashboard_intro'));
-    $statsContent = trim($this->renderSection('dashboard_stats'));
-    $statsClassSection = trim($this->renderSection('dashboard_stats_class'));
-    $statsWrapperClass = $statsClassSection !== '' ? $statsClassSection : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
-
-    $actionsContent = trim($this->renderSection('dashboard_actions'));
-    $filtersContent = trim($this->renderSection('dashboard_filters'));
-    $tabsContent = trim($this->renderSection('dashboard_tabs'));
-    $contentTop = trim($this->renderSection('dashboard_content_top'));
-    $bodyContent = $this->renderSection('dashboard_content');
-?>
 <!-- Dashboard Intro -->
 <?php if ($introContent !== ''): ?>
-<div class="mb-6" data-dashboard-intro data-page-title="<?= esc($resolvedTitle) ?>" <?= $resolvedSubtitle !== '' ? 'data-page-subtitle="' . esc($resolvedSubtitle) . '"' : '' ?>>
+<div class="mb-6" data-dashboard-intro>
         <?= $introContent ?>
     </div>
     <?php endif; ?>

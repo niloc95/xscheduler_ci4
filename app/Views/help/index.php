@@ -6,6 +6,8 @@
 
 <?= $this->section('header_title') ?>Help & Support<?= $this->endSection() ?>
 
+<?= $this->section('header_subtitle') ?>Find answers and learn how to use WebSchedulr<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <!-- Quick Search -->
     <div class="mb-8 max-w-md mx-auto">

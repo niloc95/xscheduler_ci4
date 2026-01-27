@@ -4,8 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('page_title') ?>Services<?= $this->endSection() ?>
-<?= $this->section('page_subtitle') ?>Browse and manage available services<?= $this->endSection() ?>
+<?= $this->section('header_title') ?>Services<?= $this->endSection() ?>
+<?= $this->section('header_subtitle') ?>Browse and manage available services<?= $this->endSection() ?>
 
 <?php $activeTab = $activeTab ?? 'services'; ?>
 
