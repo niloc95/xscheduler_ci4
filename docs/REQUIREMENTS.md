@@ -1,6 +1,6 @@
 # WebSchedulr — Requirements Specification
 
-_Last updated: July 2025_
+_Last updated: January 28, 2026_
 
 ---
 
@@ -16,11 +16,11 @@ WebSchedulr is a modern online appointment scheduling system for service-based b
 
 **Technology Stack:**
 
-- **Backend:** CodeIgniter 4 (PHP 7.4+)
-- **Frontend:** Tailwind CSS + Material Web Components
-- **Charts:** Chart.js
+- **Backend:** CodeIgniter 4.6.1 (PHP 8.1+)
+- **Frontend:** Tailwind CSS 3.4.17 + Material Web Components
+- **Charts:** Chart.js 4.5.0
 - **Database:** MySQL or SQLite
-- **Build System:** Vite
+- **Build System:** Vite 6.3.5
 
 ---
 

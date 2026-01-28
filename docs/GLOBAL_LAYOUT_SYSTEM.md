@@ -9,7 +9,7 @@ The WebSchedulr application uses a **unified, standardized layout system** that 
 ## Core Principles
 
 ### 1. **Single Source of Truth**
-All layout spacing, sizing, and positioning are controlled by CSS custom properties defined in `_app-layout.scss`. 
+All layout spacing, sizing, and positioning are controlled by CSS custom properties defined in `resources/scss/layout/_app-layout.scss`. 
 
 ### 2. **No Inline Styles**
 ❌ **NEVER** use `style="..."` attributes in view files.

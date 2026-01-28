@@ -16,9 +16,9 @@
 **WebSchedulr** is a modern scheduling application built with CodeIgniter 4, featuring a Material Design dashboard with Tailwind CSS, designed for deployment to standard hosting providers with zero configuration requirements.
 
 ### Core Architecture
-- **Backend**: CodeIgniter 4 (PHP framework)
+- **Backend**: CodeIgniter 4.6.1 (PHP 8.1+ framework)
 - **Frontend**: Tailwind CSS 3.4.17 with Material Design 3.0 components
-- **UI Framework**: Material Web Components (@material/web), CoreUI 5.4.0
+- **UI Framework**: Material Web Components (@material/web 2.4.1), CoreUI 5.4.0
 - **Charts**: Chart.js 4.5.0 for analytics and data visualization
 - **Build System**: Vite 6.3.5 with multi-entry point compilation
 - **Asset Management**: SCSS with PostCSS processing, Material Design tokens
