@@ -224,9 +224,15 @@ class Settings extends BaseController
     public function update()
     {
         try {
-            $payload = $this->request->getJSON(true) ?? [];
-            if (!is_array($payload)) {
-                return $this->failValidationErrors('Invalid JSON payload');
+            // Try to get JSON payload first
+            $payload = $this->request->getJSON(true);
+            
+            // If JSON parsing fails or returns null, try form data
+            if ($payload === null || !is_array($payload)) {
+                $payload = $this->request->getPost();
+                if (!is_array($payload) || empty($payload)) {
+                    return $this->failValidationErrors('Invalid payload - must be JSON or form data');
+                }
             }
 
             $userId = session()->get('user_id');
