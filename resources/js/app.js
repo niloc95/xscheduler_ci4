@@ -21,6 +21,12 @@ import { initStatusFilterControls, emitAppointmentsUpdated } from './modules/fil
 // Import advanced filters
 import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js';
 
+// Import scheduler UI module
+import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
+
+// Import appointment navigation module
+import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
+
 // Import custom scheduler components
 import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
 import { MonthView } from './modules/scheduler/scheduler-month-view.js';
@@ -35,113 +41,6 @@ import '../css/scheduler.css';
 import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
 if (typeof window !== 'undefined') {
     window.initTimeSlotsUI = initTimeSlotsUI;
-}
-
-/**
- * Navigate to create appointment page with pre-filled slot data
- * @param {Object} slotInfo - Selected slot information from calendar
- */
-function navigateToCreateAppointment(slotInfo) {
-    const { start, end, resource } = slotInfo;
-    
-    // Format date and time from the selected slot
-    const startDate = new Date(start);
-    const appointmentDate = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
-    const appointmentTime = startDate.toTimeString().slice(0, 5); // HH:MM
-    
-    // Build URL with query parameters
-    const params = new URLSearchParams({
-        date: appointmentDate,
-        time: appointmentTime
-    });
-    
-    // Add provider ID if available (from resource or event)
-    if (resource) {
-        params.append('provider_id', resource.id);
-    }
-    
-    // Navigate to create page
-    const url = `/appointments/create?${params.toString()}`;
-    window.location.href = url;
-}
-
-/**
- * Pre-fill appointment form with URL parameters
- * Supports: date, time, provider_id, available_providers (from scheduler slot booking)
- */
-function prefillAppointmentForm() {
-    // Only run on create appointment page
-    const form = document.querySelector('form[action*="/appointments/store"]');
-    if (!form) return;
-    
-    // Parse URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const date = urlParams.get('date');
-    const time = urlParams.get('time');
-    const providerId = urlParams.get('provider_id');
-    const availableProviders = urlParams.get('available_providers'); // Comma-separated IDs from scheduler
-    
-    // Pre-fill date field
-    if (date) {
-        const dateInput = document.getElementById('appointment_date');
-        if (dateInput) {
-            dateInput.value = date;
-            
-            // Trigger change event to update form state
-            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-    
-    // Pre-fill time field
-    if (time) {
-        const timeInput = document.getElementById('appointment_time');
-        if (timeInput) {
-            timeInput.value = time;
-            
-            // Trigger change event to update form state
-            timeInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-    
-    // Pre-select provider if specified
-    if (providerId) {
-        const providerSelect = document.getElementById('provider_id');
-        if (providerSelect) {
-            providerSelect.value = providerId;
-            
-            // Trigger change event to load services
-            providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-    
-    // If available_providers is specified (from scheduler slot), filter provider dropdown
-    // and auto-select the first available provider if no specific provider was chosen
-    if (availableProviders && !providerId) {
-        const availableIds = availableProviders.split(',').map(id => parseInt(id.trim(), 10));
-        const providerSelect = document.getElementById('provider_id');
-        
-        if (providerSelect && availableIds.length > 0) {
-            // Mark unavailable providers in the dropdown (optional visual indicator)
-            Array.from(providerSelect.options).forEach(option => {
-                if (option.value && !availableIds.includes(parseInt(option.value, 10))) {
-                    // Add visual indicator that this provider is busy at this time
-                    if (!option.text.includes('(busy)')) {
-                        option.text += ' (busy at this time)';
-                        option.classList.add('text-gray-400');
-                    }
-                }
-            });
-            
-            // Auto-select the first available provider
-            const firstAvailable = availableIds[0];
-            if (firstAvailable) {
-                providerSelect.value = firstAvailable.toString();
-                
-                // Trigger change event to load services
-                providerSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }
-    }
 }
 
 // ============================================
@@ -231,7 +130,7 @@ async function initScheduler() {
         await scheduler.init();
 
         // Wire up toolbar navigation buttons
-        setupSchedulerToolbar(scheduler);
+        setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel });
 
         // Store scheduler instance globally for debugging
         window.scheduler = scheduler;
@@ -263,157 +162,11 @@ async function initScheduler() {
     }
 }
 
-/**
- * Setup toolbar button event handlers
- */
-function setupSchedulerToolbar(scheduler) {
-    // View buttons
-    document.querySelectorAll('[data-calendar-action="day"], [data-calendar-action="week"], [data-calendar-action="month"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const view = btn.dataset.calendarAction;
-            try {
-                await scheduler.changeView(view);
-                
-                // Update active state
-                document.querySelectorAll('[data-calendar-action]').forEach(b => {
-                    if (b.dataset.calendarAction === view) {
-                        b.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
-                        b.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
-                    } else if (['day', 'week', 'month'].includes(b.dataset.calendarAction)) {
-                        b.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
-                        b.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
-                    }
-                });
+// ============================================
+// PAGE INITIALIZATION
+// ============================================
 
-                updateDateDisplay(scheduler);
-            } catch (error) {
-                console.error('Failed to change view:', error);
-            }
-        });
-    });
-
-    // Today button
-    const todayBtn = document.querySelector('[data-calendar-action="today"]');
-    if (todayBtn) {
-        todayBtn.addEventListener('click', async () => {
-            try {
-                await scheduler.navigateToToday();
-                updateDateDisplay(scheduler);
-            } catch (error) {
-                console.error('Failed to navigate to today:', error);
-            }
-        });
-    }
-
-    // Previous button
-    const prevBtn = document.querySelector('[data-calendar-action="prev"]');
-    if (prevBtn) {
-        prevBtn.addEventListener('click', async () => {
-            try {
-                await scheduler.navigatePrev();
-                updateDateDisplay(scheduler);
-            } catch (error) {
-                console.error('Failed to navigate to previous:', error);
-            }
-        });
-    }
-
-    // Next button
-    const nextBtn = document.querySelector('[data-calendar-action="next"]');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', async () => {
-            try {
-                await scheduler.navigateNext();
-                updateDateDisplay(scheduler);
-            } catch (error) {
-                console.error('Failed to navigate to next:', error);
-            }
-        });
-    }
-
-    // Render provider legend
-    renderProviderLegend(scheduler);
-    
-    // Setup advanced filter panel
-    setupAdvancedFilterPanel(scheduler, { renderProviderLegend });
-    
-    // Initial date display update
-    updateDateDisplay(scheduler);
-}
-
-/**
- * Update the date display in the toolbar
- */
-function updateDateDisplay(scheduler) {
-    const displayEl = document.getElementById('scheduler-date-display');
-    if (!displayEl) return;
-
-    const { currentDate, currentView } = scheduler;
-    let displayText = '';
-
-    switch (currentView) {
-        case 'day':
-            displayText = currentDate.toFormat('EEEE, MMMM d, yyyy');
-            break;
-        case 'week':
-            const weekStart = currentDate.startOf('week');
-            const weekEnd = currentDate.endOf('week');
-            displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-            break;
-        case 'month':
-        default:
-            displayText = currentDate.toFormat('MMMM yyyy');
-            break;
-    }
-
-    displayEl.textContent = displayText;
-}
-
-
-/**
- * Render provider legend with color indicators
- */
-function renderProviderLegend(scheduler) {
-    const legendEl = document.getElementById('provider-legend');
-    if (!legendEl || !scheduler.providers || scheduler.providers.length === 0) return;
-
-    legendEl.innerHTML = scheduler.providers.map(provider => {
-        const color = provider.color || '#3B82F6';
-        const isVisible = scheduler.visibleProviders.has(provider.id);
-        
-        return `
-            <button type="button" 
-                    class="provider-legend-item flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
-                        isVisible 
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
-                            : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 opacity-50'
-                    } hover:bg-gray-200 dark:hover:bg-gray-600"
-                    data-provider-id="${provider.id}"
-                    title="Toggle ${provider.name}">
-                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${color};"></span>
-                <span class="truncate max-w-[120px]">${provider.name}</span>
-            </button>
-        `;
-    }).join('');
-
-    // Add click handlers for toggling providers
-    legendEl.querySelectorAll('.provider-legend-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const providerId = parseInt(btn.dataset.providerId);
-            scheduler.toggleProvider(providerId);
-            renderProviderLegend(scheduler); // Re-render to update styles
-        });
-    });
-}
-
-/**
- * Handle appointment click - open details modal
- */
-function handleAppointmentClick(appointment) {
-    // Open the appointment details modal
-    if (window.scheduler?.appointmentDetailsModal) {
-        window.scheduler.appointmentDetailsModal.open(appointment);
-    } else {
-        console.error('[app.js] Appointment details modal not available');
-    }
-}
+// Initialize appointment form on create page
+document.addEventListener('DOMContentLoaded', () => {
+    prefillAppointmentForm();
+});
