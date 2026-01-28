@@ -35,8 +35,11 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('api/metrics', 'Dashboard::apiMetrics', ['filter' => 'auth']); // New landing view metrics endpoint
     $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
-    $routes->get('search', 'Dashboard::search', ['filter' => 'auth']);
+    $routes->get('search', 'Search::dashboard', ['filter' => 'auth']); // Moved to Search controller
 });
+
+// Global Search Route (accessible from anywhere)
+$routes->get('search', 'Search::index', ['filter' => 'auth']);
 
 // User Management Routes (admin and provider access with different permissions)
 $routes->group('user-management', ['filter' => 'setup'], function($routes) {

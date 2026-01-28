@@ -478,62 +478,8 @@ class Dashboard extends BaseController
      */
     public function search()
     {
-        $currentUserId = (int) (session()->get('user_id') ?? 0);
-        if (!$currentUserId) {
-            return $this->response
-                ->setStatusCode(401)
-                ->setJSON(['error' => 'Unauthorized', 'success' => false]);
-        }
-
-        $q = trim((string) $this->request->getGet('q'));
-        
-        try {
-            $customers = [];
-            $appointments = [];
-            
-            if ($q !== '') {
-                // Search customers
-                $customers = $this->customerModel->search(['q' => $q, 'limit' => 10]);
-                
-                // Search appointments - search by customer name, service name, or notes
-                $appointmentsQuery = $this->appointmentModel
-                    ->select('xs_appointments.*, 
-                             CONCAT(xs_customers.first_name, " ", xs_customers.last_name) as customer_name,
-                             xs_customers.email as customer_email,
-                             xs_services.name as service_name')
-                    ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
-                    ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-                    ->groupStart()
-                        ->like('xs_customers.first_name', $q)
-                        ->orLike('xs_customers.last_name', $q)
-                        ->orLike('xs_customers.email', $q)
-                        ->orLike('xs_services.name', $q)
-                        ->orLike('xs_appointments.notes', $q)
-                    ->groupEnd()
-                    ->orderBy('xs_appointments.start_time', 'DESC')
-                    ->limit(10);
-                
-                $appointments = $appointmentsQuery->findAll();
-            }
-
-            return $this->response->setJSON([
-                'success' => true,
-                'customers' => $customers,
-                'appointments' => $appointments,
-                'counts' => [
-                    'customers' => count($customers),
-                    'appointments' => count($appointments),
-                    'total' => count($customers) + count($appointments)
-                ]
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Dashboard::search] Error: ' . $e->getMessage());
-            return $this->response
-                ->setStatusCode(500)
-                ->setJSON([
-                    'success' => false,
-                    'error' => 'Search failed: ' . $e->getMessage()
-                ]);
-        }
+        // Redirect to dedicated Search controller
+        $searchController = new \App\Controllers\Search();
+        return $searchController->dashboard();
     }
 }

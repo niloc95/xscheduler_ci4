@@ -13,7 +13,7 @@
  * @module search/global-search
  */
 
-import { getBaseUrl } from '../utils/url-helpers.js';
+import { getBaseUrl } from '../../utils/url-helpers.js';
 
 /**
  * Escape HTML to prevent XSS
@@ -317,7 +317,20 @@ export function initGlobalSearch() {
             document.getElementById('global-search-wrapper-mobile')
         ].filter(Boolean);
 
-        if (!wrappers.some(wrapper => wrapper.contains(e.target))) {
+        // Check if click was on a search result link
+        const resultLink = e.target.closest('a[href]');
+        const isResultInWrapper = wrappers.some(wrapper => 
+            wrapper && wrapper.querySelector(`#${wrapper.id.replace('wrapper', 'results-content')}`)?.contains(e.target)
+        );
+
+        if (isResultInWrapper && resultLink) {
+            // Clear all search inputs when a result is clicked
+            inputs.forEach(({ input }) => {
+                input.value = '';
+            });
+            hideResults();
+        } else if (!wrappers.some(wrapper => wrapper?.contains(e.target))) {
+            // Hide results when clicking outside
             hideResults();
         }
     });
