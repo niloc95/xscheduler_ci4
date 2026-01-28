@@ -148,13 +148,14 @@
   position: fixed;
   z-index: 40;
 
-  // Standard shell rounding
+  // Standard shell rounding - unified with sidebar and cards
   border-radius: var(--xs-radius-lg);
   
-  // Match content padding so header/content inner edges line up
+  // Header internal padding
+  // This creates space INSIDE the header bar for its content
   padding: var(--xs-space-4);
   
-  // Mobile: Inset from edges using content inset (not frame inset)
+  // Mobile: Inset from edges using content inset
   top: var(--xs-content-inset-mobile);
   left: var(--xs-content-inset-mobile);
   right: var(--xs-content-inset-mobile);
@@ -164,7 +165,7 @@
   .xs-header,
   #stickyHeader,
   [data-sticky-header] {
-    padding: var(--xs-space-6);
+    padding: var(--xs-space-5);  // 20px for tablet/desktop
   }
 }
 
@@ -175,7 +176,8 @@
     // Desktop: Top aligns with sidebar top (shared frame inset)
     top: var(--xs-frame-inset-desktop);
     
-    // Left: After sidebar + gap
+    // Left: After sidebar + frame inset + gap
+    // This matches the xs-main-container margin-left exactly
     left: calc(var(--xs-sidebar-width) + var(--xs-frame-inset-desktop) + var(--xs-content-inset-desktop));
     
     // Right: Same as frame inset for visual alignment with sidebar edge
@@ -210,27 +212,35 @@
 // =============================================================================
 // LAYOUT SHELL - CONTENT AREA
 // =============================================================================
-// Content sits BELOW the fixed header and aligns left/right with it.
-// Padding/spacing is controlled by shared CSS variables.
+// Content sits BELOW the fixed header and aligns LEFT/RIGHT with it exactly.
+// CRITICAL: Uses same horizontal positioning variables as .xs-header to guarantee alignment.
 
 .xs-content-wrapper,
 .xs-content-area {
-  // Vertical: Below header
-  margin-top: calc(var(--xs-content-inset-mobile) + var(--xs-header-height) + var(--xs-content-inset-mobile));
+  // ─────────────────────────────────────────────
+  // VERTICAL POSITIONING (below header)
+  // ─────────────────────────────────────────────
+  // header-top + header-height + gap between header and content
+  margin-top: calc(var(--xs-content-inset-mobile) + var(--xs-header-height) + var(--xs-space-4));
   
-  // Horizontal: Content inset from viewport edges (mobile)
+  // ─────────────────────────────────────────────
+  // HORIZONTAL POSITIONING (MUST match header exactly)
+  // ─────────────────────────────────────────────
+  // Mobile: Same left/right as header
   margin-left: var(--xs-content-inset-mobile);
   margin-right: var(--xs-content-inset-mobile);
   
   // Internal padding for content breathing room
   padding: var(--xs-space-4);
   padding-bottom: var(--xs-space-8);
+  
+  // Minimum height to prevent footer jumping
+  min-height: calc(100vh - var(--xs-header-height) - var(--xs-content-inset-mobile) * 3);
 }
 
 @media (min-width: 768px) {
   .xs-content-wrapper,
   .xs-content-area {
-    // Tablet: Increase internal padding
     padding: var(--xs-space-6);
     padding-bottom: var(--xs-space-8);
   }
@@ -239,14 +249,21 @@
 @media (min-width: 1024px) {
   .xs-content-wrapper,
   .xs-content-area {
-    // Desktop: Align below header, narrower than header
-    margin-top: calc(var(--xs-frame-inset-desktop) + var(--xs-header-height) + var(--xs-content-inset-desktop));
+    // Desktop: Align below header with consistent gap
+    margin-top: calc(var(--xs-frame-inset-desktop) + var(--xs-header-height) + var(--xs-space-4));
     
-    // Left: Already offset by main-content-container margin-left
+    // ─────────────────────────────────────────────
+    // CRITICAL: Match header horizontal positioning exactly
+    // Header uses: left: calc(sidebar + frame-inset + content-inset)
+    //              right: var(--xs-frame-inset-desktop)
+    // Content container already has margin-left from .xs-main-container
+    // So we only need margin-right to match header's right edge
+    // ─────────────────────────────────────────────
     margin-left: 0;
-    
-    // Right: Match header edge for perfect left/right alignment
     margin-right: var(--xs-frame-inset-desktop);
+    
+    // Adequate height
+    min-height: calc(100vh - var(--xs-header-height) - var(--xs-frame-inset-desktop) * 2);
   }
 }
 

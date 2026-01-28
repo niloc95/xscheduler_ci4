@@ -44,7 +44,7 @@ aside.unified-sidebar,
     ) !important;
     backdrop-filter: blur(12px) !important;
     border: 1px solid var(--xs-border, rgba(229,231,235,.8)) !important;
-    border-radius: var(--xs-radius-lg, 0.75rem) !important;
+    border-radius: var(--xs-radius-lg) !important;  /* Unified: 1rem = 16px */
     box-shadow: var(--xs-elevation, 0 10px 20px -5px rgba(0,0,0,0.1), 0 6px 10px -5px rgba(0,0,0,0.08)) !important;
     transform: translateX(0) !important;
     transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1) !important;

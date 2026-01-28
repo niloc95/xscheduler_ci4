@@ -6,8 +6,8 @@
 class UnifiedSidebar {
     constructor() {
         this.sidebar = document.getElementById('main-sidebar');
-        this.backdrop = document.getElementById('mobile-backdrop');
-        this.menuToggle = document.getElementById('menuToggle');
+        this.backdrop = document.getElementById('sidebar-overlay');  // Match layouts/app.php
+        this.menuToggle = document.getElementById('menu-toggle');    // Match layouts/app.php
         this.closeButton = document.getElementById('sidebar-close-btn');
         
         this.isOpen = false;
@@ -125,15 +125,9 @@ class UnifiedSidebar {
             this.sidebar.classList.remove('open');
         }
         
-        // Update backdrop
+        // Update backdrop/overlay (matches .xs-sidebar-overlay in layouts/app.php)
         if (this.backdrop) {
-            if (this.isMobile && this.isOpen) {
-                this.backdrop.classList.remove('hidden');
-                this.backdrop.classList.add('open');
-            } else {
-                this.backdrop.classList.add('hidden');
-                this.backdrop.classList.remove('open');
-            }
+            this.backdrop.classList.toggle('active', this.isMobile && this.isOpen);
         }
         
         // Update ARIA attributes

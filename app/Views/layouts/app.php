@@ -72,7 +72,7 @@
     </aside>
     
     <!-- Mobile Sidebar Overlay -->
-    <div id="sidebar-overlay" class="xs-sidebar-overlay lg:hidden" onclick="closeSidebar()"></div>
+    <div id="sidebar-overlay" class="xs-sidebar-overlay lg:hidden"></div>
     
     <!-- Blur overlay for content scrolling in top gap -->
     <div class="xs-scroll-blur" aria-hidden="true"></div>
@@ -89,7 +89,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <!-- Left: Mobile Menu + Title -->
                     <div class="flex items-center gap-3 min-w-0">
-                        <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" onclick="toggleSidebar()">
+                        <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                             <span class="material-symbols-outlined">menu</span>
                         </button>
                         <div class="min-w-0">
@@ -246,21 +246,6 @@
     
     <!-- Layout JavaScript -->
     <script>
-        // Sidebar toggle functions (global for onclick handlers)
-        function toggleSidebar() {
-            const sidebar = document.getElementById('main-sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar?.classList.toggle('open');
-            overlay?.classList.toggle('active');
-        }
-        
-        function closeSidebar() {
-            const sidebar = document.getElementById('main-sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar?.classList.remove('open');
-            overlay?.classList.remove('active');
-        }
-        
         document.addEventListener('DOMContentLoaded', function() {
             // Header title sync function for SPA navigation
             function syncHeaderTitle() {
