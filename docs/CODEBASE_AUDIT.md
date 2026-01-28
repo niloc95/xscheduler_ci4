@@ -820,11 +820,17 @@ done
 
 | File | Lines | Status | Recommendation |
 |------|-------|--------|-----------------|
-| `app/Controllers/Dashboard.php` | ~600+ | 🔴 Large | Consider splitting |
-| `resources/js/app.js` | 975 | 🔴 Large | Break into modules |
+| `app/Controllers/Dashboard.php` | 504 | ✅ Refactored | Phase 6-7 complete |
+| `resources/js/app.js` | 172 | ✅ Refactored | Phase 1-5 complete (83% reduction) |
+| `app/Controllers/Search.php` | 109 | ✅ New | Extracted from Dashboard.php |
 | `app/Views/layouts/app.php` | ~300 | 🟡 Medium | Monitor |
 | `app/Models/AppointmentModel.php` | ~300+ | 🟡 Medium | Many relationships |
 | `app/Config/Routes.php` | ~300 | 🟡 Medium | Many groups |
+
+**Refactoring Complete (January 28, 2026):**
+- ✅ **app.js**: 1,020 → 172 lines (83% reduction) - 5 modules extracted
+- ✅ **Dashboard.php**: 539 → 504 lines - search extracted, index() decomposed
+- ✅ **Maintainability**: Improved significantly with modular architecture
 
 ---
 
@@ -911,35 +917,48 @@ done
 
 ### Phase 3: Medium-term (1 Month)
 
-#### 3.1 Split Large Controllers
+#### 3.1 Split Large Controllers ✅ COMPLETED
 
-**Target:** `Dashboard.php` (600+ lines)
+**Target:** `Dashboard.php` (600+ lines) → **REFACTORED TO 504 lines**
 
-**Proposed Structure:**
-```
-app/Controllers/Dashboard/
-  ├── DashboardController.php (index, status)
-  ├── SearchController.php (search endpoint)
-  └── MetricsController.php (api, charts)
-```
+**Completed Actions (Phase 6-7, January 28, 2026):**
+- ✅ Created dedicated `Search.php` controller (109 lines)
+- ✅ Moved `formatRecentActivities()` to `DashboardService.php`
+- ✅ Decomposed `index()` method into 3 helper methods:
+  - `ensureValidSession()` - Session validation
+  - `collectDashboardData()` - Data assembly
+  - `buildViewData()` - View data preparation
+- ✅ Reduced complexity while maintaining backward compatibility
 
-Or keep in single file but document each section with dividers.
+**Result:**
+- Dashboard.php: 539 → 504 lines
+- Search functionality: Dedicated controller
+- Maintainability: Significantly improved
 
-#### 3.2 Break Apart `app.js` (975 lines)
+#### 3.2 Break Apart `app.js` (975 lines) ✅ COMPLETED
 
-**Proposed Structure:**
+**Completed Structure (Phase 1-5, January 28, 2026):**
 ```
 resources/js/
   ├── modules/
-  │   ├── global-search.js (initGlobalSearch)
-  │   ├── sidebar.js (sidebar functionality)
-  │   ├── spa.js (SPA routing - separate)
-  │   └── charts.js (separate)
-  ├── app.js (main entry point, imports modules)
-  └── utils/
-      ├── format.js
-      └── helpers.js
+  │   ├── search/
+  │   │   └── global-search.js (325 lines) ✅ Phase 1
+  │   ├── filters/
+  │   │   ├── status-filters.js (281 lines) ✅ Phase 2
+  │   │   └── advanced-filters.js (188 lines) ✅ Phase 3
+  │   ├── scheduler/
+  │   │   └── scheduler-ui.js (157 lines) ✅ Phase 4
+  │   └── appointments/
+  │       └── appointment-navigation.js (128 lines) ✅ Phase 5
+  ├── app.js (172 lines - main entry point) ✅ 83% REDUCTION
+  └── spa.js, charts.js (unchanged)
 ```
+
+**Result:**
+- app.js: 1,020 → 172 lines (83% reduction)
+- 5 new focused modules: 1,079 lines total
+- Clean separation of concerns
+- Easy to test and maintain
 
 #### 3.3 Complete API Documentation
 

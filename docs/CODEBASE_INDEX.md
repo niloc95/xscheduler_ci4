@@ -85,7 +85,8 @@
 
 | Controller | Lines | Purpose | Status |
 |-----------|-------|---------|--------|
-| `Dashboard.php` | ~600 | Dashboard, metrics, **global search** | ✅ Active |
+| `Dashboard.php` | 504 | Dashboard, metrics | ✅ Refactored (Phase 6-7) |
+| `Search.php` | 109 | **Global search** (extracted Phase 1) | ✅ New |
 | `Appointments.php` | ~400 | Appointment CRUD | ✅ Active |
 | `CustomerManagement.php` | ~500 | Customer CRUD, search | ✅ Active |
 | `Services.php` | ~400 | Service management | ✅ Active |
@@ -260,23 +261,51 @@
 
 #### JavaScript Modules (in `resources/js/`)
 
+**Main Entry Point:**
+
 | File | Lines | Purpose | Status |
 |------|-------|---------|--------|
-| `app.js` | 975 | Main app + initGlobalSearch() | ✅ Active |
+| `app.js` | 172 | **Main app entry (83% reduction)** | ✅ Refactored |
 | `spa.js` | ~200 | SPA routing | ✅ Active |
 | `charts.js` | ~500 | Dashboard charts | ✅ Active |
 | `unified-sidebar.js` | ~100 | Sidebar functionality | ✅ Active |
 | `dark-mode.js` | ~50 | Dark mode toggle | ✅ Active |
 | `time-format-handler.js` | ~100 | Time formatting | ✅ Active |
-| `calendar-utils.js` | ~100 | Calendar helpers | ✅ Active |
 | `public-booking.js` | ~400 | Public booking interface | ✅ Active |
 | `setup.js` | ~300 | Setup wizard | ✅ Active |
 | `materialWeb.js` | ~500 | Material Design | ✅ Active |
 | 5+ utility files | ~100 each | Various utilities | ✅ Active |
 
-**Size Analysis:**
-- `app.js` (975 lines) - Should be modularized
-  - *Recommendation:* Break into modules (global-search.js, sidebar.js, etc.)
+**Extracted Modules (New - Phase 1-5 Refactoring):**
+
+| Module | Lines | Purpose | Status |
+|--------|-------|---------|--------|
+| `modules/search/global-search.js` | 325 | Global search (desktop + mobile) | ✅ Phase 1 |
+| `modules/filters/status-filters.js` | 281 | Dashboard status filtering | ✅ Phase 2 |
+| `modules/filters/advanced-filters.js` | 188 | Advanced filter panel UI | ✅ Phase 3 |
+| `modules/scheduler/scheduler-ui.js` | 157 | Scheduler toolbar & navigation | ✅ Phase 4 |
+| `modules/appointments/appointment-navigation.js` | 128 | Appointment form prefilling | ✅ Phase 5 |
+
+**Module Ecosystem (Pre-existing):**
+
+| Module | Lines | Purpose | Status |
+|--------|-------|---------|--------|
+| `modules/scheduler/scheduler-core.js` | ~800 | Core scheduler logic | ✅ Active |
+| `modules/scheduler/scheduler-month-view.js` | ~300 | Month view rendering | ✅ Active |
+| `modules/scheduler/scheduler-week-view.js` | ~600 | Week view rendering | ✅ Active |
+| `modules/scheduler/scheduler-day-view.js` | ~300 | Day view rendering | ✅ Active |
+| `modules/scheduler/scheduler-drag-drop.js` | ~500 | Drag & drop functionality | ✅ Active |
+| `modules/scheduler/appointment-colors.js` | ~300 | Color theming & status | ✅ Active |
+| `modules/scheduler/appointment-details-modal.js` | ~700 | Appointment modal UI | ✅ Active |
+| `modules/appointments/appointments-form.js` | ~800 | Appointment booking form | ✅ Active |
+| `modules/appointments/time-slots-ui.js` | ~400 | Time slot selection UI | ✅ Active |
+| `modules/calendar/calendar-utils.js` | ~200 | Calendar helpers | ✅ Active |
+
+**Refactoring Impact:**
+- **app.js:** 1,020 → 172 lines (83% reduction) ✅
+- **New modules:** 5 extracted modules (1,079 lines total)
+- **Maintainability:** High - Single Responsibility Principle
+- **Testability:** Easy - Isolated, modular functions
 
 #### SCSS/CSS (in `resources/scss/`)
 
