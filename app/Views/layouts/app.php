@@ -97,6 +97,7 @@
                                 <?= esc($resolvedHeaderTitle) ?>
                             </h1>
                             <?php 
+                                $userName = session()->get('user')['name'] ?? 'User';
                                 $userRole = session()->get('user')['role'] ?? 'user';
                                 $roleLabels = [
                                     'admin' => 'Administrator',
@@ -104,11 +105,16 @@
                                     'staff' => 'Staff Member'
                                 ];
                                 $displayRole = $roleLabels[$userRole] ?? ucfirst($userRole);
-                                ?>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                                    <span class="text-blue-600 dark:text-blue-400 font-medium"><?= esc($displayRole) ?></span>
-                                </p>
-                            </div>
+                                $greeting = date('H') < 12 ? 'Good morning' : (date('H') < 17 ? 'Good afternoon' : 'Good evening');
+                            ?>
+                            <p id="header-subtitle" class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                                <span class="font-medium"><?= esc($greeting) ?>, <?= esc($userName) ?></span>
+                                <span class="mx-2">•</span>
+                                <span><?= date('l, F j, Y') ?></span>
+                                <span class="mx-2">•</span>
+                                <span class="text-blue-600 dark:text-blue-400"><?= esc($displayRole) ?></span>
+                            </p>
+                        </div>
                         </div>
                         
                         <!-- Right: Search, Notifications, User Menu -->

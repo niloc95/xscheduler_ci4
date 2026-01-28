@@ -120,6 +120,58 @@ The fixed header must never overlap or hide content during scrolling.
 
 ---
 
+## Global Header System
+
+The global header in `layouts/app.php` provides a **single source of truth** for all header information.
+
+### Header Components
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ☰  Dashboard                                                    🔍  👤  ⚙  │
+│      Good afternoon, John • Wednesday, January 28, 2026 • Administrator    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Element | ID | Description |
+|---------|-----|-------------|
+| **Page Title** | `#header-title` | Dynamic page name (e.g., "Dashboard", "Services") |
+| **Subtitle** | `#header-subtitle` | Greeting + Date + Role |
+
+### Header Elements
+
+1. **Greeting**: `"Good morning/afternoon/evening, [UserName]"`
+   - Time-based: Morning < 12:00, Afternoon < 17:00, Evening after
+   
+2. **Date**: Full format `"Wednesday, January 28, 2026"`
+
+3. **Role**: Color-coded user role badge
+
+### ❌ DON'T Duplicate Headers in Views
+
+Views should **NOT** include their own greeting, date, or page titles in the content area:
+
+```php
+// ❌ WRONG - Don't do this
+<?= $this->section('content') ?>
+<div>
+    <h1>Good afternoon, <?= $userName ?></h1>  <!-- DUPLICATE! -->
+    <p><?= date('l, F j, Y') ?></p>           <!-- DUPLICATE! -->
+</div>
+<?= $this->endSection() ?>
+
+// ✅ CORRECT - Content only, header handles the rest
+<?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+<div>
+    <!-- Quick actions and page content only -->
+</div>
+<?= $this->endSection() ?>
+```
+
+---
+
 ## View Structure Rules
 
 ### 1. All Views Must Extend a Layout
