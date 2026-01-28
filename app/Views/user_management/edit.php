@@ -141,8 +141,8 @@
 								Calendar Color
 							</label>
 							<div class="flex items-center gap-3">
-								<div class="h-10 w-20 rounded border border-gray-300 dark:border-gray-600" 
-									 style="background-color: <?= esc($user['color'] ?? '#3B82F6') ?>;"
+							<div class="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 provider-color-preview" 
+								 data-color="<?= esc($user['color'] ?? '#3B82F6') ?>"
 									 title="Provider calendar color"></div>
 								<span class="text-sm text-gray-600 dark:text-gray-400">
 									Calendar color (only admins can change this)

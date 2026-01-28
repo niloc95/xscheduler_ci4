@@ -299,7 +299,7 @@
                                         <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
                                             <td class="px-6 py-4">
                                                 <div class="flex items-start gap-3">
-                                                    <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200" style="background-color: <?= esc($category['color'] ?? '#3B82F6') ?>"></span>
+                                                    <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" data-color="<?= esc($category['color'] ?? '#3B82F6') ?>"></span>
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-900 dark:text-gray-100"><?= esc($category['name']) ?></p>
                                                         <?php if (!empty($category['description'])): ?>

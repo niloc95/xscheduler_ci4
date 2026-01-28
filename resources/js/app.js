@@ -9,6 +9,9 @@ import Charts from './charts.js';
 import { attachTimezoneHeaders } from './utils/timezone-helper.js';
 import { getBaseUrl } from './utils/url-helpers.js';
 
+// Import dynamic color utility
+import { applyDynamicColors } from './utils/dynamic-colors.js';
+
 // Import custom scheduler components
 import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
 import { MonthView } from './modules/scheduler/scheduler-month-view.js';

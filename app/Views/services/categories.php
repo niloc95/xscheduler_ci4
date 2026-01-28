@@ -86,7 +86,7 @@
             <tr>
               <td class="px-6 py-4">
                 <div class="flex items-start gap-3">
-                  <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200" style="background-color: <?= esc($c['color'] ?? '#3B82F6') ?>"></span>
+                  <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" data-color="<?= esc($c['color'] ?? '#3B82F6') ?>"></span>
                   <div>
                     <div class="text-sm font-semibold text-gray-900 dark:text-gray-100"><?= esc($c['name']) ?></div>
                     <?php if (!empty($c['description'])): ?>

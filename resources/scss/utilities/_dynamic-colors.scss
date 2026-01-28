@@ -1,0 +1,55 @@
+/**
+ * Dynamic Color Utilities
+ * 
+ * Handles dynamic background colors via data attributes instead of inline styles.
+ * This approach maintains separation of concerns while supporting runtime color values.
+ * 
+ * Usage:
+ *   <div class="provider-color-dot" data-color="#3B82F6"></div>
+ *   <div class="category-color-dot" data-color="<?= $color ?>"></div>
+ * 
+ * JavaScript in main.js applies the data-color value to background-color
+ */
+
+// Provider color indicators (small dots in calendars, dashboards)
+.provider-color-dot,
+.category-color-dot {
+  // Fallback color if JS hasn't loaded yet
+  background-color: var(--xs-accent, #3b82f6);
+  transition: background-color 0.2s ease;
+}
+
+// Provider color preview (larger swatches in forms)
+.provider-color-preview {
+  background-color: var(--xs-accent, #3b82f6);
+  transition: background-color 0.2s ease;
+}
+
+// Service category badges with background color
+.service-category-badge {
+  background-color: var(--xs-accent, #3b82f6);
+  color: white;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+// Utility class for any element that needs dynamic background color
+.xs-dynamic-bg {
+  background-color: var(--xs-accent, #3b82f6);
+  transition: background-color 0.2s ease;
+}
+
+// Utility class for dynamic border color
+.xs-dynamic-border {
+  border-color: var(--xs-accent, #3b82f6);
+  transition: border-color 0.2s ease;
+}
+
+// Utility class for dynamic text color
+.xs-dynamic-text {
+  color: var(--xs-accent, #3b82f6);
+  transition: color 0.2s ease;
+}

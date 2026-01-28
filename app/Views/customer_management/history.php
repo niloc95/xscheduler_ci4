@@ -230,7 +230,7 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <?php if (!empty($appt['provider_color'])): ?>
-                                    <span class="w-3 h-3 rounded-full" style="background-color: <?= esc($appt['provider_color']) ?>"></span>
+                                    <span class="w-3 h-3 rounded-full provider-color-dot" data-color="<?= esc($appt['provider_color']) ?>"></span>
                                 <?php endif; ?>
                                 <?= esc($appt['provider_name'] ?? '—') ?>
                             </div>

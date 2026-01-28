@@ -139,7 +139,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     <div class="p-3 rounded-lg border <?= $cfg['bg'] ?> <?= $isWorking ? 'hover:shadow-md transition-shadow' : '' ?>">
                         <!-- Provider Header -->
                         <div class="flex items-center gap-2 mb-2">
-                            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: <?= esc($providerColor) ?>;"></div>
+                            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 provider-color-dot" data-color="<?= esc($providerColor) ?>"></div>
                             <span class="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">
                                 <?= esc($provider['name']) ?>
                             </span>
