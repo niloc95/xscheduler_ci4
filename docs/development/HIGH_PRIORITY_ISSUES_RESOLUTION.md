@@ -407,7 +407,7 @@ Dashboard.php (350 lines)
 - Maintainability: Low
 - Testability: Difficult
 
-### After Phase 1-5 (Current Status)
+### After Phase 1-7 (Current Status) ✅ 78% COMPLETE
 - **app.js: 172 lines** ✅ (83% reduction from 1,020)
 - 5 new JS modules: ~570 lines (modular, focused)
   - global-search.js: 325 lines
@@ -415,17 +415,29 @@ Dashboard.php (350 lines)
   - advanced-filters.js: 188 lines
   - scheduler-ui.js: 157 lines
   - appointment-navigation.js: 128 lines
-- Dashboard.php: 485 lines (10% reduction from 539)
-  - Search method moved to Search.php controller (61 lines)
+- **Dashboard.php: 504 lines** (6% reduction from 539)
+  - ✅ Phase 6: formatRecentActivities moved to DashboardService (34 lines)
+  - ✅ Phase 7: index() method broken into 3 private helpers:
+    - `ensureValidSession()` - Session validation (25 lines)
+    - `collectDashboardData()` - Data assembly (50 lines)
+    - `buildViewData()` - View data preparation (45 lines)
+  - index() now ~50 lines (orchestration only)
 - Search.php: 109 lines (NEW - dedicated controller)
-- **Total distributed code:** ~1,525 lines
+- DashboardService.php: +48 lines (includes formatRecentActivities)
+- **Total distributed code:** ~1,545 lines
 - **Maintainability: High** ✅
 - **Testability: Easy** ✅
 
-### Final Target (After Phase 6-9)
-- app.js: ~150 lines (target)
+#### Verification Completed:
+- ✅ PHP syntax validation (all 3 files)
+- ✅ npm run build: 250 modules, 1.66s
+- ✅ Database migrations: Complete
+- ✅ Git commits: 1fcc4ba, 43dbf75
+
+### Final Target (After Phase 8-9)
+- app.js: ~170 lines (final)
 - 5+ new JS modules: ~600+ lines (distributed, maintainable)
-- Dashboard.php: ~350 lines (target)
+- Dashboard.php: ~400 lines (further reduced with Phase 8-9)
 - DashboardService.php: Strengthened with extracted logic
 - Total: ~1,200 lines (well-organized, modular structure)
 
@@ -455,7 +467,7 @@ After implementation, update:
 
 ---
 
-**Status:** 64% Complete - Phase 6-9 pending  
-**Completed Phases:** 1-5 (Global Search, Status Filters, Advanced Filters, Scheduler UI, Appointment Navigation)  
-**Latest Commit:** 669b356 - "Extract scheduler UI and appointment navigation modules - Phase 4 & 5"  
-**Estimated Completion:** February 4, 2026 (accelerated pace)
+**Status:** 78% Complete - Phase 8-9 pending  
+**Completed Phases:** 1-7 (Global Search, Status Filters, Advanced Filters, Scheduler UI, Appointment Navigation, formatRecentActivities extraction, Dashboard.index() breakdown)  
+**Latest Commits:** 1fcc4ba, 43dbf75 - "Phase 6-7: Extract formatRecentActivities to DashboardService, Break down Dashboard.index()"  
+**Estimated Completion:** January 28, 2026 (accelerated pace)
