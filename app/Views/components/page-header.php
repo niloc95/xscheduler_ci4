@@ -5,19 +5,29 @@
  * Standardized page header with title, subtitle, and actions.
  * DO NOT create custom page headers - use this component.
  * 
+ * This component uses the .xs-page-header class which is styled globally
+ * in _app-layout.scss. Do not add custom spacing classes.
+ * 
  * @param string $title       Page title (H1)
  * @param string $subtitle    Page subtitle/description (optional)
  * @param array  $actions     Array of action buttons/links (optional)
  * @param array  $breadcrumbs Array of breadcrumb items (optional)
+ * @param bool   $showBorder  Show bottom border (default: true)
  */
 
 $title = $title ?? 'Untitled Page';
 $subtitle = $subtitle ?? null;
 $actions = $actions ?? [];
 $breadcrumbs = $breadcrumbs ?? [];
+$showBorder = $showBorder ?? true;
+
+$headerClass = 'xs-page-header';
+if (!$showBorder) {
+    $headerClass .= ' border-none pb-0 mb-4';
+}
 ?>
 
-<div class="xs-page-header">
+<header class="<?= $headerClass ?>">
     <div class="xs-page-header-content">
         <?php if (!empty($breadcrumbs)): ?>
             <nav class="xs-breadcrumbs" aria-label="Breadcrumb">
@@ -25,10 +35,10 @@ $breadcrumbs = $breadcrumbs ?? [];
                     <?php foreach ($breadcrumbs as $index => $crumb): ?>
                         <li class="flex items-center gap-2">
                             <?php if ($index > 0): ?>
-                                <span class="text-gray-400">/</span>
+                                <span class="text-gray-400 dark:text-gray-500">/</span>
                             <?php endif; ?>
                             <?php if (isset($crumb['url'])): ?>
-                                <a href="<?= esc($crumb['url']) ?>" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                <a href="<?= esc($crumb['url']) ?>" class="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                     <?= esc($crumb['label']) ?>
                                 </a>
                             <?php else: ?>
@@ -54,4 +64,4 @@ $breadcrumbs = $breadcrumbs ?? [];
             <?= implode('', $actions) ?>
         </div>
     <?php endif; ?>
-</div>
+</header>

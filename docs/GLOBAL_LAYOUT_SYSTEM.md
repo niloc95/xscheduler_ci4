@@ -24,6 +24,73 @@ Content area edges **MUST** align exactly with the header bar edges.
 ### 5. **No Content Behind Header**
 The fixed header must never overlap or hide content during scrolling.
 
+### 6. **Canonical DOM Structure**
+All views MUST follow the same DOM structure inside `#spa-content`.
+
+---
+
+## Canonical Page Structure
+
+**REQUIRED**: All views must follow this exact structure inside `#spa-content`:
+
+```html
+<main id="spa-content">
+    <!-- Option 1: Page with header + actions + content -->
+    <header class="xs-page-header">...</header>  <!-- optional -->
+    <div class="xs-page-actions">...</div>        <!-- optional -->
+    <div class="xs-page-body">                    <!-- recommended -->
+        <!-- Main content sections -->
+    </div>
+    
+    <!-- Option 2: Simple page (no header) -->
+    <div class="xs-page-actions">...</div>        <!-- optional -->
+    <div class="xs-page-body">
+        <!-- Main content sections -->
+    </div>
+</main>
+```
+
+### ❌ FORBIDDEN Patterns
+
+```php
+// ❌ WRONG - Custom spacing to fix header overlap
+<?= $this->section('content') ?>
+<div class="mt-12">  <!-- NO! -->
+    ...
+</div>
+
+// ❌ WRONG - Custom top-level wrappers
+<?= $this->section('content') ?>
+<div class="my-custom-wrapper pt-8">  <!-- NO! -->
+    ...
+</div>
+
+// ❌ WRONG - Inline margin/padding for layout
+<div style="margin-top: 80px;">  <!-- NO! -->
+```
+
+### ✅ CORRECT Pattern
+
+```php
+<?= $this->section('content') ?>
+<!-- Page Header (optional) -->
+<?= view('components/page-header', [
+    'title' => 'Page Title',
+    'subtitle' => 'Description',
+    'actions' => ['<a href="..." class="xs-btn xs-btn-primary">Action</a>']
+]) ?>
+
+<!-- Page Body -->
+<div class="xs-page-body">
+    <!-- Section 1 -->
+    <div class="xs-card">...</div>
+    
+    <!-- Section 2 -->
+    <div class="xs-card">...</div>
+</div>
+<?= $this->endSection() ?>
+```
+
 ---
 
 ## Layout Structure
@@ -35,13 +102,12 @@ The fixed header must never overlap or hide content during scrolling.
 │                          │                             │
 │  ┌─────────────┐        ├─────────────────────────────┤
 │  │             │        │                             │
-│  │  Nav items  │        │  CONTENT AREA               │
-│  │             │        │  (scrollable)               │
-│  │             │        │                             │
-│  └─────────────┘        │  - Starts below header      │
-│                          │  - Left/right aligned       │
-│                          │  - Standard padding         │
-│                          │                             │
+│  │  Nav items  │        │  #spa-content               │
+│  │             │        │  ├─ .xs-page-header         │
+│  │             │        │  ├─ .xs-page-actions        │
+│  └─────────────┘        │  └─ .xs-page-body           │
+│                          │      ├─ section 1           │
+│                          │      └─ section 2           │
 └─────────────────────────────────────────────────────────┘
 ```
 

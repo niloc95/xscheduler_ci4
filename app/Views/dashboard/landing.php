@@ -40,24 +40,24 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div>
-    
-    <!-- Quick Actions -->
-    <div class="flex justify-end gap-2 mb-4">
-        <a href="<?= base_url('/appointments/create') ?>" 
-           class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-            <span class="material-symbols-outlined text-sm mr-1.5">add</span>
-            New Appointment
-        </a>
-        <a href="<?= base_url('/appointments') ?>" 
-           class="inline-flex items-center px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 transition-colors">
-            <span class="material-symbols-outlined text-sm mr-1.5">calendar_month</span>
-            Calendar
-        </a>
-    </div>
-    
+<!-- Quick Actions -->
+<div class="xs-page-actions">
+    <a href="<?= base_url('/appointments/create') ?>" 
+       class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <span class="material-symbols-outlined text-sm mr-1.5">add</span>
+        New Appointment
+    </a>
+    <a href="<?= base_url('/appointments') ?>" 
+       class="inline-flex items-center px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 transition-colors">
+        <span class="material-symbols-outlined text-sm mr-1.5">calendar_month</span>
+        Calendar
+    </a>
+</div>
+
+<!-- Page Body -->
+<div class="xs-page-body">
     <!-- Metrics Row: Compact horizontal strip -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" id="metrics-container">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="metrics-container">
         <div class="metric-mini metric-mini-blue">
             <span class="text-2xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
             <span class="text-xs text-blue-600 dark:text-blue-400">Today</span>
@@ -254,8 +254,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
             <?php endif; ?>
         </div>
     </div>
-    
-</div>
+</div><!-- /.xs-page-body -->
 
 <?= $this->endSection() ?>
 

@@ -214,6 +214,14 @@
 // =============================================================================
 // Content sits BELOW the fixed header and aligns LEFT/RIGHT with it exactly.
 // CRITICAL: Uses same horizontal positioning variables as .xs-header to guarantee alignment.
+// 
+// ARCHITECTURE:
+// .xs-main-container (margin-left for sidebar)
+//   └─ .xs-content-wrapper (spacing from header, horizontal alignment)
+//       └─ #spa-content (content container - NO PADDING, inherits wrapper spacing)
+//           └─ .xs-page-header (optional)
+//           └─ .xs-page-actions (optional)
+//           └─ .xs-page-body (main content)
 
 .xs-content-wrapper,
 .xs-content-area {
@@ -230,20 +238,12 @@
   margin-left: var(--xs-content-inset-mobile);
   margin-right: var(--xs-content-inset-mobile);
   
-  // Internal padding for content breathing room
-  padding: var(--xs-space-4);
+  // NO internal padding - let child components handle their own spacing
+  padding: 0;
   padding-bottom: var(--xs-space-8);
   
   // Minimum height to prevent footer jumping
   min-height: calc(100vh - var(--xs-header-height) - var(--xs-content-inset-mobile) * 3);
-}
-
-@media (min-width: 768px) {
-  .xs-content-wrapper,
-  .xs-content-area {
-    padding: var(--xs-space-6);
-    padding-bottom: var(--xs-space-8);
-  }
 }
 
 @media (min-width: 1024px) {
@@ -264,6 +264,80 @@
     
     // Adequate height
     min-height: calc(100vh - var(--xs-header-height) - var(--xs-frame-inset-desktop) * 2);
+  }
+}
+
+// =============================================================================
+// SPA CONTENT CONTAINER
+// =============================================================================
+// The #spa-content element contains all view content.
+// It MUST NOT have its own padding - spacing is controlled by children.
+
+#spa-content {
+  // No padding on the container itself
+  padding: 0;
+  
+  // Standard vertical spacing between direct children
+  > * + * {
+    margin-top: var(--xs-space-6);
+  }
+}
+
+// =============================================================================
+// PAGE STRUCTURE COMPONENTS
+// =============================================================================
+// Standard components that MUST be used inside #spa-content.
+// These create the consistent page structure.
+
+// Page Header: Title, subtitle, and actions
+.xs-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xs-space-4);
+  padding-bottom: var(--xs-space-4);
+  border-bottom: 1px solid var(--xs-border, #e5e7eb);
+  margin-bottom: var(--xs-space-6);
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  
+  html.dark & {
+    border-bottom-color: var(--xs-border, #374151);
+  }
+}
+
+.xs-page-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.xs-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xs-space-3);
+  flex-shrink: 0;
+}
+
+// NOTE: .xs-page-title is defined in _unified-content-system.scss
+// to maintain typography scale consistency
+
+// Page Actions: Quick action buttons (when no header needed)
+.xs-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xs-space-3);
+  justify-content: flex-end;
+  margin-bottom: var(--xs-space-4);
+}
+
+// Page Body: Main content area
+.xs-page-body {
+  // Standard spacing between sections
+  > * + * {
+    margin-top: var(--xs-space-6);
   }
 }
 
