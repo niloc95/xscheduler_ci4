@@ -154,7 +154,7 @@ class Dashboard extends BaseController
         $userRole = $this->authService->getUserRole($currentUser);
         $providerId = $this->authService->getProviderId($currentUser);
 
-        // Get provider scope for data filtering
+        // Get provider scope for data filtering (returns ?int)
         $providerScope = $this->authService->getProviderScope($userRole, $providerId);
 
         return [$currentUser, $userRole, $providerId, $providerScope];
@@ -163,31 +163,35 @@ class Dashboard extends BaseController
     /**
      * Collects all dashboard data from services and models
      * 
-     * @param array $providerScope Provider scope for data filtering
+     * @param array|int|null $providerScope Provider scope for data filtering (can be array or int)
      * @param string $userRole Current user's role
      * @return array Dashboard data ready for view
      */
-    private function collectDashboardData(array $providerScope, string $userRole): array
+    private function collectDashboardData($providerScope, string $userRole): array
     {
         // Get dashboard context
         $currentUser = session()->get('user');
         $userId = session()->get('user_id');
-        $context = $this->dashboardService->getDashboardContext($userId, $userRole, $this->authService->getProviderId($currentUser));
+        $providerId = $this->authService->getProviderId($currentUser);
+        $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
+
+        // Extract provider ID from scope (handle both array and int)
+        $scopeProviderId = is_array($providerScope) ? ($providerScope['provider_id'] ?? $providerId) : $providerScope;
 
         // Get today's metrics (with caching)
-        $metrics = $this->dashboardService->getCachedMetrics($providerScope);
+        $metrics = $this->dashboardService->getCachedMetrics($scopeProviderId);
 
         // Get today's schedule
-        $schedule = $this->dashboardService->getTodaySchedule($providerScope);
+        $schedule = $this->dashboardService->getTodaySchedule($scopeProviderId);
 
         // Get alerts
-        $alerts = $this->dashboardService->getAlerts($providerScope);
+        $alerts = $this->dashboardService->getAlerts($scopeProviderId);
 
         // Get upcoming appointments
-        $upcoming = $this->dashboardService->getUpcomingAppointments($providerScope);
+        $upcoming = $this->dashboardService->getUpcomingAppointments($scopeProviderId);
 
         // Get provider availability
-        $availability = $this->dashboardService->getProviderAvailability($providerScope);
+        $availability = $this->dashboardService->getProviderAvailability($scopeProviderId);
 
         // Get booking status (admin only)
         $bookingStatus = null;
