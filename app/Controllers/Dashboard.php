@@ -129,7 +129,7 @@ class Dashboard extends BaseController
                         'today' => $this->appointmentModel->getRevenue('today')
                     ]
                 ],
-                'recent_activities' => $this->formatRecentActivities(
+                'recent_activities' => $this->dashboardService->formatRecentActivities(
                     $this->appointmentModel->getRecentActivity()
                 )
             ];
@@ -206,46 +206,8 @@ class Dashboard extends BaseController
     }
 
     /**
-     * Format recent activities for display
+     * Real-time stats API endpoint for AJAX requests
      */
-    private function formatRecentActivities(array $activities): array
-    {
-        $formatted = [];
-        
-        foreach ($activities as $activity) {
-            $action = '';
-            $status_class = 'active';
-            
-            switch ($activity['status']) {
-                case 'booked':
-                    $action = 'Scheduled appointment for ' . $activity['service_name'];
-                    $status_class = 'active';
-                    break;
-                case 'completed':
-                    $action = 'Completed appointment for ' . $activity['service_name'];
-                    $status_class = 'active';
-                    break;
-                case 'cancelled':
-                    $action = 'Cancelled appointment for ' . $activity['service_name'];
-                    $status_class = 'cancelled';
-                    break;
-                case 'rescheduled':
-                    $action = 'Rescheduled appointment for ' . $activity['service_name'];
-                    $status_class = 'pending';
-                    break;
-            }
-
-            $formatted[] = [
-                'user_name' => $activity['customer_name'],
-                'activity' => $action,
-                'status' => $status_class,
-                'date' => date('Y-m-d', strtotime($activity['updated_at']))
-            ];
-        }
-
-        return $formatted;
-    }
-
     public function api()
     {
         try {
