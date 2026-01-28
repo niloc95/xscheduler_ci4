@@ -39,19 +39,8 @@ class Dashboard extends BaseController
         }
 
         try {
-            // Get current user from session
-            $currentUser = session()->get('user');
-            $userId = session()->get('user_id');
-            
-            // If no user in session or missing required data, redirect to login
-            if (!$currentUser || !$userId || !session()->get('isLoggedIn')) {
-                session()->destroy();
-                return redirect()->to('/login')->with('error', 'Please log in to access the dashboard.');
-            }
-
-            // Extract user info for authorization
-            $userRole = $this->authService->getUserRole($currentUser);
-            $providerId = $this->authService->getProviderId($currentUser);
+            // Validate session and get user info
+            [$currentUser, $userRole, $providerId, $providerScope] = $this->ensureValidSession();
 
             // Enforce dashboard access
             $this->authService->enforce(
@@ -59,80 +48,11 @@ class Dashboard extends BaseController
                 'You do not have permission to view the dashboard'
             );
 
-            // Get provider scope for data filtering
-            $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+            // Collect all dashboard data
+            $dashboardData = $this->collectDashboardData($providerScope, $userRole);
 
-            // Get dashboard context
-            $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
-
-            // Get today's metrics (with caching)
-            $metrics = $this->dashboardService->getCachedMetrics($providerScope);
-
-            // Get today's schedule
-            $schedule = $this->dashboardService->getTodaySchedule($providerScope);
-
-            // Get alerts
-            $alerts = $this->dashboardService->getAlerts($providerScope);
-
-            // Get upcoming appointments
-            $upcoming = $this->dashboardService->getUpcomingAppointments($providerScope);
-
-            // Get provider availability
-            $availability = $this->dashboardService->getProviderAvailability($providerScope);
-
-            // Get booking status (admin only)
-            $bookingStatus = null;
-            if ($this->authService->canViewBookingStatus($userRole)) {
-                $bookingStatus = $this->dashboardService->getBookingStatus();
-            }
-
-            // Legacy stats for backward compatibility with existing views
-            $userStats = $this->userModel->getStats();
-            $appointmentStats = $this->appointmentModel->getStats();
-            $serviceStats = $this->serviceModel->getStats();
-            $monthlyRevenue = $this->appointmentModel->getRevenue('month');
-            $weeklyRevenue = $this->appointmentModel->getRevenue('week');
-
-            // Build view data
-            $data = [
-                'user' => $currentUser,
-                'context' => $context,
-                'metrics' => $metrics,
-                'schedule' => $schedule,
-                'alerts' => $alerts,
-                'upcoming' => $upcoming,
-                'availability' => $availability,
-                'booking_status' => $bookingStatus,
-                'provider_scope' => $providerScope,
-                
-                // Legacy data for backward compatibility
-                'stats' => [
-                    'total_users' => $userStats['total'],
-                    'active_sessions' => $appointmentStats['upcoming'],
-                    'pending_tasks' => $appointmentStats['today'],
-                    'revenue' => round($monthlyRevenue, 2)
-                ],
-                'trends' => [
-                    'users' => $this->userModel->getTrend(),
-                    'appointments' => $this->appointmentModel->getTrend(),
-                    'pending' => $this->appointmentModel->getPendingTrend(),
-                    'revenue' => $this->appointmentModel->getRevenueTrend()
-                ],
-                'servicesList' => $this->serviceModel->orderBy('name', 'ASC')->findAll(),
-                'detailed_stats' => [
-                    'users' => $userStats,
-                    'appointments' => $appointmentStats,
-                    'services' => $serviceStats,
-                    'revenue' => [
-                        'monthly' => $monthlyRevenue,
-                        'weekly' => $weeklyRevenue,
-                        'today' => $this->appointmentModel->getRevenue('today')
-                    ]
-                ],
-                'recent_activities' => $this->dashboardService->formatRecentActivities(
-                    $this->appointmentModel->getRecentActivity()
-                )
-            ];
+            // Build view data with user and dashboard data
+            $data = $this->buildViewData($currentUser, $dashboardData);
 
             // Use the refactored landing view with TailAdmin-style components
             // To revert: change 'landing_refactored' back to 'landing'
@@ -203,6 +123,143 @@ class Dashboard extends BaseController
             
             return view('dashboard', $fallbackData);
         }
+    }
+
+    /**
+     * Validates user session and returns user info for dashboard
+     * 
+     * @return array [currentUser, userRole, providerId, providerScope]
+     * @throws RuntimeException If session is invalid
+     */
+    private function ensureValidSession()
+    {
+        // Get current user from session
+        $currentUser = session()->get('user');
+        $userId = session()->get('user_id');
+        
+        // If no user in session or missing required data, redirect to login
+        if (!$currentUser || !$userId || !session()->get('isLoggedIn')) {
+            session()->destroy();
+            return redirect()->to('/login')->with('error', 'Please log in to access the dashboard.');
+        }
+
+        // Extract user info for authorization
+        $userRole = $this->authService->getUserRole($currentUser);
+        $providerId = $this->authService->getProviderId($currentUser);
+
+        // Get provider scope for data filtering
+        $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+
+        return [$currentUser, $userRole, $providerId, $providerScope];
+    }
+
+    /**
+     * Collects all dashboard data from services and models
+     * 
+     * @param array $providerScope Provider scope for data filtering
+     * @param string $userRole Current user's role
+     * @return array Dashboard data ready for view
+     */
+    private function collectDashboardData(array $providerScope, string $userRole): array
+    {
+        // Get dashboard context
+        $currentUser = session()->get('user');
+        $userId = session()->get('user_id');
+        $context = $this->dashboardService->getDashboardContext($userId, $userRole, $this->authService->getProviderId($currentUser));
+
+        // Get today's metrics (with caching)
+        $metrics = $this->dashboardService->getCachedMetrics($providerScope);
+
+        // Get today's schedule
+        $schedule = $this->dashboardService->getTodaySchedule($providerScope);
+
+        // Get alerts
+        $alerts = $this->dashboardService->getAlerts($providerScope);
+
+        // Get upcoming appointments
+        $upcoming = $this->dashboardService->getUpcomingAppointments($providerScope);
+
+        // Get provider availability
+        $availability = $this->dashboardService->getProviderAvailability($providerScope);
+
+        // Get booking status (admin only)
+        $bookingStatus = null;
+        if ($this->authService->canViewBookingStatus($userRole)) {
+            $bookingStatus = $this->dashboardService->getBookingStatus();
+        }
+
+        // Legacy stats for backward compatibility with existing views
+        $userStats = $this->userModel->getStats();
+        $appointmentStats = $this->appointmentModel->getStats();
+        $serviceStats = $this->serviceModel->getStats();
+        $monthlyRevenue = $this->appointmentModel->getRevenue('month');
+        $weeklyRevenue = $this->appointmentModel->getRevenue('week');
+
+        return [
+            'context' => $context,
+            'metrics' => $metrics,
+            'schedule' => $schedule,
+            'alerts' => $alerts,
+            'upcoming' => $upcoming,
+            'availability' => $availability,
+            'booking_status' => $bookingStatus,
+            'provider_scope' => $providerScope,
+            'userStats' => $userStats,
+            'appointmentStats' => $appointmentStats,
+            'serviceStats' => $serviceStats,
+            'monthlyRevenue' => $monthlyRevenue,
+            'weeklyRevenue' => $weeklyRevenue
+        ];
+    }
+
+    /**
+     * Builds the final view data array from user and dashboard data
+     * 
+     * @param array $currentUser Current user data
+     * @param array $dashboardData Dashboard data from collectDashboardData()
+     * @return array Final data array for view
+     */
+    private function buildViewData(array $currentUser, array $dashboardData): array
+    {
+        return [
+            'user' => $currentUser,
+            'context' => $dashboardData['context'],
+            'metrics' => $dashboardData['metrics'],
+            'schedule' => $dashboardData['schedule'],
+            'alerts' => $dashboardData['alerts'],
+            'upcoming' => $dashboardData['upcoming'],
+            'availability' => $dashboardData['availability'],
+            'booking_status' => $dashboardData['booking_status'],
+            'provider_scope' => $dashboardData['provider_scope'],
+            
+            // Legacy data for backward compatibility
+            'stats' => [
+                'total_users' => $dashboardData['userStats']['total'],
+                'active_sessions' => $dashboardData['appointmentStats']['upcoming'],
+                'pending_tasks' => $dashboardData['appointmentStats']['today'],
+                'revenue' => round($dashboardData['monthlyRevenue'], 2)
+            ],
+            'trends' => [
+                'users' => $this->userModel->getTrend(),
+                'appointments' => $this->appointmentModel->getTrend(),
+                'pending' => $this->appointmentModel->getPendingTrend(),
+                'revenue' => $this->appointmentModel->getRevenueTrend()
+            ],
+            'servicesList' => $this->serviceModel->orderBy('name', 'ASC')->findAll(),
+            'detailed_stats' => [
+                'users' => $dashboardData['userStats'],
+                'appointments' => $dashboardData['appointmentStats'],
+                'services' => $dashboardData['serviceStats'],
+                'revenue' => [
+                    'monthly' => $dashboardData['monthlyRevenue'],
+                    'weekly' => $dashboardData['weeklyRevenue'],
+                    'today' => $this->appointmentModel->getRevenue('today')
+                ]
+            ],
+            'recent_activities' => $this->dashboardService->formatRecentActivities(
+                $this->appointmentModel->getRecentActivity()
+            )
+        ];
     }
 
     /**
