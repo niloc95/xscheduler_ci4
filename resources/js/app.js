@@ -342,6 +342,250 @@ function emitAppointmentsUpdated(detail = {}) {
     window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
 }
 
+// =============================================================================
+// GLOBAL HEADER SEARCH
+// =============================================================================
+
+function initGlobalSearch() {
+    const searchInput = document.getElementById('global-search');
+    const searchResults = document.getElementById('global-search-results');
+    const resultsContent = document.getElementById('global-search-results-content');
+
+    const searchInputMobile = document.getElementById('global-search-mobile');
+    const searchResultsMobile = document.getElementById('global-search-results-mobile');
+    const resultsContentMobile = document.getElementById('global-search-results-content-mobile');
+
+    const inputs = [
+        { input: searchInput, results: searchResults, content: resultsContent },
+        { input: searchInputMobile, results: searchResultsMobile, content: resultsContentMobile }
+    ].filter(item => item.input && item.results && item.content);
+
+    if (inputs.length === 0) return;
+
+    inputs.forEach(({ input }) => {
+        if (input.dataset.searchInitialized === 'true') return;
+        input.dataset.searchInitialized = 'true';
+    });
+
+    let searchTimeout = null;
+    let activeController = null;
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDateTime(value) {
+        if (!value) return 'Unknown time';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    }
+
+    function hideResults() {
+        inputs.forEach(({ results }) => {
+            results.classList.add('hidden');
+        });
+    }
+
+    function showResults(targetResults) {
+        if (targetResults) {
+            targetResults.classList.remove('hidden');
+        }
+    }
+
+    function renderResults(container, data, query) {
+        if (!container) return;
+        const customers = data.customers || [];
+        const appointments = data.appointments || [];
+
+        if (customers.length === 0 && appointments.length === 0) {
+            container.innerHTML = `
+                <div class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                    No results for "${escapeHtml(query)}"
+                </div>
+            `;
+            return;
+        }
+
+        const baseUrl = getBaseUrl();
+        let html = '';
+
+        if (customers.length > 0) {
+            html += `
+                <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Customers</div>
+            `;
+            customers.forEach(customer => {
+                const name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || customer.name || 'Customer';
+                const email = customer.email || 'No email';
+                const hash = customer.hash || customer.id;
+                const url = `${baseUrl}/customer-management/history/${hash}`;
+
+                html += `
+                    <a href="${url}" class="block px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${escapeHtml(name)}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(email)}</div>
+                    </a>
+                `;
+            });
+        }
+
+        if (appointments.length > 0) {
+            html += `
+                <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Appointments</div>
+            `;
+            appointments.forEach(appt => {
+                const customerName = appt.customer_name || 'Unknown customer';
+                const serviceName = appt.service_name || 'Appointment';
+                const startTime = formatDateTime(appt.start_time);
+                const hash = appt.hash || appt.id;
+                const url = `${baseUrl}/appointments/edit/${hash}`;
+
+                html += `
+                    <a href="${url}" class="block px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${escapeHtml(customerName)}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">${escapeHtml(serviceName)} • ${escapeHtml(startTime)}</div>
+                    </a>
+                `;
+            });
+        }
+
+        container.innerHTML = html;
+    }
+
+    async function performSearch(query, target) {
+        const { results, content } = target;
+        if (!results || !content) return;
+
+        if (!query || query.trim().length < 2) {
+            hideResults();
+            return;
+        }
+
+        if (activeController) {
+            activeController.abort();
+        }
+
+        activeController = new AbortController();
+
+        try {
+            const baseUrl = getBaseUrl();
+            const response = await fetch(`${baseUrl}/dashboard/search?q=${encodeURIComponent(query.trim())}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                signal: activeController.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status}`);
+            }
+
+            // Get response as text first (in case debug toolbar is present)
+            const text = await response.text();
+            
+            // Try to extract JSON from response (handles debug toolbar contamination)
+            let data;
+            try {
+                // First try parsing as-is
+                data = JSON.parse(text);
+            } catch (e) {
+                // Strategy 1: Look for JSON object pattern with success field
+                const jsonMatch = text.match(/\{["']success["']:\s*(?:true|false)[\s\S]*?\}(?=\s*<|$)/);
+                if (jsonMatch) {
+                    try {
+                        data = JSON.parse(jsonMatch[0]);
+                    } catch (e2) {
+                        // Strategy 1 failed
+                    }
+                }
+                
+                // Strategy 2: Find last complete JSON object
+                if (!data) {
+                    const lastBrace = text.lastIndexOf('}');
+                    if (lastBrace > 0) {
+                        let depth = 1;
+                        let i = lastBrace - 1;
+                        while (i >= 0 && depth > 0) {
+                            if (text[i] === '}') depth++;
+                            if (text[i] === '{') depth--;
+                            i--;
+                        }
+                        if (depth === 0) {
+                            try {
+                                data = JSON.parse(text.substring(i + 1, lastBrace + 1));
+                            } catch (e3) {
+                                // Strategy 2 failed
+                            }
+                        }
+                    }
+                }
+                
+                if (!data) {
+                    console.error('Global search: Could not extract JSON from response');
+                    throw new Error('Invalid JSON response');
+                }
+            }
+
+            if (!data || data.success === false) {
+                throw new Error(data?.error || 'Search failed');
+            }
+
+            renderResults(content, data, query);
+            showResults(results);
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            console.error('Global search error:', error);
+            content.innerHTML = `
+                <div class="px-3 py-3 text-sm text-red-600 dark:text-red-400">
+                    Search failed. Try again.
+                </div>
+            `;
+            showResults(results);
+        }
+    }
+
+    function bindInput(target) {
+        const { input } = target;
+        if (!input) return;
+
+        input.addEventListener('input', (e) => {
+            const query = e.target.value;
+            if (searchTimeout) clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => performSearch(query, target), 300);
+        });
+
+        input.addEventListener('focus', (e) => {
+            const query = e.target.value;
+            if (query && query.trim().length >= 2) {
+                performSearch(query, target);
+            }
+        });
+    }
+
+    inputs.forEach(bindInput);
+
+    document.addEventListener('click', (e) => {
+        const wrappers = [
+            document.getElementById('global-search-wrapper'),
+            document.getElementById('global-search-wrapper-mobile')
+        ].filter(Boolean);
+
+        if (!wrappers.some(wrapper => wrapper.contains(e.target))) {
+            hideResults();
+        }
+    });
+}
+
 // ⚠️ DEPRECATED: Calendar initialization removed
 // Custom scheduler placeholder will be implemented
 
@@ -362,6 +606,9 @@ function initializeComponents() {
 
     // Wire up dashboard filters
     initStatusFilterControls();
+
+    // Initialize global header search
+    initGlobalSearch();
     
     // Initialize appointment booking form if present
     initAppointmentForm();

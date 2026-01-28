@@ -123,13 +123,18 @@
                             <?= $this->include('components/dark-mode-toggle') ?>
                             
                             <!-- Global Search (Desktop) -->
-                            <div class="hidden md:block relative">
+                            <div class="hidden md:block relative" id="global-search-wrapper">
                                 <input type="search" 
                                        id="global-search" 
                                        placeholder="Search..." 
                                        class="w-64 lg:w-80 h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                        autocomplete="off">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                                <div id="global-search-results" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+                                    <div id="global-search-results-content" class="p-2">
+                                        <!-- Results will be injected here -->
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Notifications -->
@@ -181,7 +186,7 @@
                     </div>
                     
                     <!-- Mobile Search -->
-                    <div class="mt-3 md:hidden">
+                    <div class="mt-3 md:hidden" id="global-search-wrapper-mobile">
                         <div class="relative">
                             <input type="search" 
                                    id="global-search-mobile" 
@@ -189,6 +194,11 @@
                                    class="w-full h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
                                    autocomplete="off">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                            <div id="global-search-results-mobile" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">
+                                <div id="global-search-results-content-mobile" class="p-2">
+                                    <!-- Results will be injected here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -247,6 +257,28 @@
     <!-- Layout JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Keep CSS header height token in sync with actual header size
+            const headerEl = document.querySelector('.xs-header');
+
+            function syncHeaderHeight() {
+                if (!headerEl) return;
+                const height = headerEl.offsetHeight;
+                if (height > 0) {
+                    document.documentElement.style.setProperty('--xs-header-height', `${height}px`);
+                }
+            }
+
+            // Initial sync
+            syncHeaderHeight();
+
+            // Keep in sync on resize/content changes
+            window.addEventListener('resize', syncHeaderHeight);
+
+            if (window.ResizeObserver && headerEl) {
+                const headerObserver = new ResizeObserver(() => syncHeaderHeight());
+                headerObserver.observe(headerEl);
+            }
+
             // Header title sync function for SPA navigation
             function syncHeaderTitle() {
                 const headerEl = document.getElementById('header-title');
