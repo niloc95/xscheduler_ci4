@@ -6,13 +6,22 @@ This documentation provides comprehensive guides for installation, development, 
 
 ---
 
+## 🎯 Start Here: Comprehensive Codebase Audit
+
+**New to the project? Start with the comprehensive audit documentation:**
+
+1. **[Audit README](./AUDIT_README.md)** - Overview of the codebase audit and documentation structure
+2. **[Codebase Index](./CODEBASE_INDEX.md)** - Quick reference index of all major files and their purposes
+3. **[Codebase Audit](./CODEBASE_AUDIT.md)** - Comprehensive analysis of MVC components, routes, and assets
+4. **[Audit Summary](./AUDIT_SUMMARY.md)** - Executive summary with actionable recommendations
+
 ## 🚀 Quick Start
 
-**New to the project?** Start here:
+**Getting started with development:**
 
 1. **[Installation & Setup](./development/setup-workflow.md)** - Get started with installation and configuration
 2. **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
-3. **[Architecture Overview](./architecture/mastercontext.md)** - Complete system architecture
+3. **[Layout System](./GLOBAL_LAYOUT_SYSTEM.md)** - Global layout and UI components
 4. **[Scheduling System](./SCHEDULING_SYSTEM.md)** - Core scheduling functionality
 
 ---
@@ -36,9 +45,10 @@ Core system architecture, design patterns, and technical overview.
 Development guides, implementation details, and feature documentation.
 
 - **[Setup & Installation](./development/setup-workflow.md)** - Project setup, database migrations, environment configuration
-- **[Calendar Implementation](./development/calendar_implementation.md)** - Calendar system with FullCalendar integration
+- **[Unified Layout System](./development/UNIFIED_LAYOUT_SYSTEM.md)** - Comprehensive layout and UI system guide
+- **[Layout Quick Reference](./development/LAYOUT_QUICK_REFERENCE.md)** - Quick reference for layout patterns
+- **[Dashboard Landing View](./development/DASHBOARD_LANDING_VIEW_IMPLEMENTATION.md)** - Dashboard implementation guide
 - **[Provider System Guide](./development/provider_system_guide.md)** - Provider setup, staff assignments, service bindings
-- **[Project Phases](./development/phase-1-api.md)** - Development milestones and deliverables
 - **[Dynamic Customer Fields](./development/dynamic-customer-fields.md)** - Custom customer field configuration
 - **[Schedule Views](./development/schedule-view.md)** - Schedule view implementation
 - **[Provider UX](./development/provider-ux.md)** - Provider user experience design
@@ -172,21 +182,32 @@ For information about documentation organization and consolidation history, see 
 - **Setup** → [Setup & Installation Guide](./development/setup-workflow.md)
 
 ### By Role
-- **Developers** → Development + Architecture sections
+- **Developers** → Start with [AUDIT_README.md](./AUDIT_README.md), then Development + Architecture sections
 - **DevOps/SysAdmin** → Deployment + Configuration sections
-- **QA Engineers** → Testing + Troubleshooting sections
-- **Product Managers** → Features + Architecture overview
+- **QA Engineers** → Testing + [CODEBASE_AUDIT.md](./CODEBASE_AUDIT.md) for test coverage
+- **Product Managers** → [AUDIT_SUMMARY.md](./AUDIT_SUMMARY.md) + Features overview
+
+---
+
+## 📦 Archive
+
+Historical documentation has been moved to [_archive/](./_archive/) including:
+- Old development phase summaries (PHASE1-3)
+- Superseded project summaries
+- Outdated implementation guides
+
+See [_archive/README.md](./_archive/README.md) for details.
 
 ---
 
 ## 📊 Documentation Statistics
 
-- **Total Documents:** 32+ comprehensive guides
-- **Total Pages:** ~50 pages of organized documentation
-- **Last Updated:** October 24, 2025
-- **Coverage Areas:** 10 major categories
+- **Active Documents:** 62 comprehensive guides (15 archived)
+- **New Audit Docs:** 6 comprehensive analysis documents
+- **Last Major Update:** January 28, 2025 (Comprehensive Codebase Audit)
+- **Coverage Areas:** 10 major categories + audit documentation
 - **Code Examples:** 100+ with syntax highlighting
-- **Status:** ✅ Fully Organized & Indexed
+- **Status:** ✅ Cleaned & Organized
 
 ---
 
@@ -204,7 +225,7 @@ All documentation meets these standards:
 
 ---
 
-**Last Updated:** October 24, 2025  
-**Documentation Status:** ✅ Fully Organized & Indexed  
-**Branch:** calendar (consolidated)  
+**Last Updated:** January 28, 2025  
+**Documentation Status:** ✅ Cleaned & Organized  
+**Branch:** docs  
 **Ready for:** Production deployment and team review
