@@ -40,7 +40,14 @@ class Dashboard extends BaseController
 
         try {
             // Validate session and get user info
-            [$currentUser, $userRole, $providerId, $providerScope] = $this->ensureValidSession();
+            $sessionResult = $this->ensureValidSession();
+            
+            // If ensureValidSession returns a redirect, return it immediately
+            if ($sessionResult instanceof \CodeIgniter\HTTP\RedirectResponse) {
+                return $sessionResult;
+            }
+            
+            [$currentUser, $userRole, $providerId, $providerScope] = $sessionResult;
 
             // Enforce dashboard access
             $this->authService->enforce(
