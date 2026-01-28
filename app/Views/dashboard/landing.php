@@ -39,26 +39,31 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
 
-<?= $this->section('header_subtitle') ?>Good <?= date('H') < 12 ? 'morning' : (date('H') < 17 ? 'afternoon' : 'evening') ?>, <?= esc($userName) ?>. <?= date('l, F j, Y') ?><?= $this->endSection() ?>
-
-<?= $this->section('header_actions') ?>
-    
-<div class="inline-flex items-center gap-2">
-    <a href="<?= base_url('/appointments/create') ?>" 
-       class="xs-btn xs-btn-primary">
-        <span class="material-symbols-outlined">add</span>
-        New Appointment
-    </a>
-    <a href="<?= base_url('/appointments') ?>" 
-       class="xs-btn xs-btn-secondary">
-        <span class="material-symbols-outlined">calendar_month</span>
-        Calendar
-    </a>
-</div>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <div>
+    
+    <!-- Header Row: Welcome + Quick Actions -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+                Good <?= date('H') < 12 ? 'morning' : (date('H') < 17 ? 'afternoon' : 'evening') ?>, <?= esc($userName) ?>
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400"><?= date('l, F j, Y') ?></p>
+        </div>
+        <div class="flex gap-2">
+            <a href="<?= base_url('/appointments/create') ?>" 
+               class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-sm mr-1.5">add</span>
+                New Appointment
+            </a>
+            <a href="<?= base_url('/appointments') ?>" 
+               class="inline-flex items-center px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 transition-colors">
+                <span class="material-symbols-outlined text-sm mr-1.5">calendar_month</span>
+                Calendar
+            </a>
+        </div>
+    </div>
+    
     <!-- Metrics Row: Compact horizontal strip -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" id="metrics-container">
         <div class="metric-mini metric-mini-blue">

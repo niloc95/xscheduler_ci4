@@ -6,8 +6,6 @@
 
 <?= $this->section('header_title') ?>Profile<?= $this->endSection() ?>
 
-<?= $this->section('header_subtitle') ?><?= esc($user_role) ?> Account<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <?php
     $profileErrors = $profile_errors ?? [];
@@ -23,6 +21,8 @@
     $alertError = $flashError ?? null;
     $profileImageUrl = $profileImageUrl ?? null;
 ?>
+<!-- Page Header -->
+<div class="mb-6"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Profile Overview -->

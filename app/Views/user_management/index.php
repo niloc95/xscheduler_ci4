@@ -4,8 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'user-management']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('header_title') ?>User Management<?= $this->endSection() ?>
-<?= $this->section('header_subtitle') ?>Manage system users and their permissions<?= $this->endSection() ?>
+<?= $this->section('page_title') ?>User Management<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Manage system users and their permissions<?= $this->endSection() ?>
 
 <?= $this->section('dashboard_content_top') ?>
     <!-- Flash Messages -->

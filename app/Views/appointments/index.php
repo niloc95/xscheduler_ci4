@@ -51,8 +51,8 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
 <?= $this->endSection() ?>
 
 <?php // Page title and subtitle: dynamic based on user role ?>
-<?= $this->section('header_title') ?><?= esc($title) ?><?= $this->endSection() ?>
-<?= $this->section('header_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
+<?= $this->section('page_title') ?><?= esc($title) ?><?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?><?= $user_role === 'customer' ? 'View and manage your upcoming and past appointments' : 'Manage appointments for your business' ?><?= $this->endSection() ?>
 
 <?php // Action button handled with filters; no standalone actions block ?>
 <?= $this->section('dashboard_actions') ?><?= $this->endSection() ?>

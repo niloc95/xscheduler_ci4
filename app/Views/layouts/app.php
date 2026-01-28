@@ -2,25 +2,17 @@
 /**
  * Main Authenticated App Layout
  * 
- * Master layout for all authenticated pages with global header system.
- * Provides consistent header, sidebar, and content structure.
+ * TailAdmin-style master layout for all authenticated pages.
+ * Provides consistent structure across Dashboard, Calendar, Customers, Users, etc.
  * 
  * Sections available to child views:
  * - title: Browser tab title
  * - head: Additional <head> content (styles, meta)
- * - sidebar: Sidebar content (auto-includes unified-sidebar if not provided)
- * - header_title: Page title (H1) - displayed in global header (REQUIRED)
- * - header_subtitle: Page subtitle/description (optional) - displayed in global header
- * - header_actions: Action buttons for the header (optional)
- * - header_breadcrumbs: Breadcrumb trail array (optional)
- * - content: Main page content (REQUIRED)
- * - layout_variant: "standard" or "dashboard" for content width/spacing (default: "standard")
+ * - sidebar: Sidebar content (typically unified-sidebar include)
+ * - page_header: Page header with title, subtitle, actions (use xs-page-header component)
+ * - content: Main page content
  * - scripts: Additional JavaScript at end of body
  * - modals: Modal dialogs container
- * 
- * IMPORTANT: Do NOT use page-header component in views anymore.
- * All page titles/subtitles must be set via header_* sections.
- * The global-header component is automatically included from the layout.
  * 
  * @package WebSchedulr
  * @since 2.0.0
@@ -87,20 +79,113 @@
     
     <!-- Main Content Area (margin-left accounts for fixed sidebar on desktop) -->
     <?php
-        // Capture page header data from view sections
-        $headerTitle = trim($this->renderSection('header_title')) ?: 'Dashboard';
-        $headerSubtitle = trim($this->renderSection('header_subtitle')) ?: '';
-        $headerActions = trim($this->renderSection('header_actions')) ?: '';
-        $headerBreadcrumbs = $headerBreadcrumbs ?? [];
+        // Capture header_title ONCE (renderSection can only be called once per section)
+        $headerTitleSection = trim($this->renderSection('header_title'));
+        $resolvedHeaderTitle = $headerTitleSection !== '' ? $headerTitleSection : 'Dashboard';
     ?>
     <div class="xs-main-container">
-        <!-- Global Header (moved here for consistency across all pages) -->
-        <?= $this->include('components/global-header', [
-            'title' => $headerTitle,
-            'subtitle' => $headerSubtitle,
-            'actions' => !empty($headerActions) ? [$headerActions] : [],
-            'breadcrumbs' => $headerBreadcrumbs,
-        ]) ?>
+        <!-- Fixed Header Bar (solid opaque, aligned with sidebar) -->
+        <header class="xs-header bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
+                <div class="flex items-center justify-between gap-4">
+                    <!-- Left: Mobile Menu + Title -->
+                    <div class="flex items-center gap-3 min-w-0">
+                        <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" onclick="toggleSidebar()">
+                            <span class="material-symbols-outlined">menu</span>
+                        </button>
+                        <div class="min-w-0">
+                            <h1 id="header-title" class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
+                                <?= esc($resolvedHeaderTitle) ?>
+                            </h1>
+                            <?php 
+                                $userRole = session()->get('user')['role'] ?? 'user';
+                                $roleLabels = [
+                                    'admin' => 'Administrator',
+                                    'provider' => 'Service Provider',
+                                    'staff' => 'Staff Member'
+                                ];
+                                $displayRole = $roleLabels[$userRole] ?? ucfirst($userRole);
+                                ?>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                                    <span class="text-blue-600 dark:text-blue-400 font-medium"><?= esc($displayRole) ?></span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Right: Search, Notifications, User Menu -->
+                        <div class="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+                            <!-- Dark Mode Toggle -->
+                            <?= $this->include('components/dark-mode-toggle') ?>
+                            
+                            <!-- Global Search (Desktop) -->
+                            <div class="hidden md:block relative">
+                                <input type="search" 
+                                       id="global-search" 
+                                       placeholder="Search..." 
+                                       class="w-64 lg:w-80 h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       autocomplete="off">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                            </div>
+                            
+                            <!-- Notifications -->
+                            <button type="button" class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
+                                <span class="material-symbols-outlined">notifications</span>
+                            </button>
+                            
+                            <!-- User Menu -->
+                            <?php $user = session()->get('user'); ?>
+                            <div class="relative" id="user-menu-wrapper">
+                                <button id="user-menu-btn" type="button" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
+                                        <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
+                                    </div>
+                                    <div class="hidden lg:block text-left">
+                                        <p class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= esc($user['name'] ?? 'User') ?></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400"><?= esc($displayRole) ?></p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-gray-400 hidden lg:block">expand_more</span>
+                                </button>
+                                
+                                <!-- Dropdown -->
+                                <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-white"><?= esc($user['name'] ?? 'User') ?></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?= esc($user['email'] ?? '') ?></p>
+                                    </div>
+                                    <div class="py-1">
+                                        <a href="<?= base_url('profile') ?>" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span class="material-symbols-outlined text-lg">person</span>
+                                            Profile
+                                        </a>
+                                        <?php if ($userRole === 'admin'): ?>
+                                        <a href="<?= base_url('settings') ?>" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span class="material-symbols-outlined text-lg">settings</span>
+                                            Settings
+                                        </a>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="border-t border-gray-200 dark:border-gray-700">
+                                        <a href="<?= base_url('auth/logout') ?>" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span class="material-symbols-outlined text-lg">logout</span>
+                                            Sign out
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile Search -->
+                    <div class="mt-3 md:hidden">
+                        <div class="relative">
+                            <input type="search" 
+                                   id="global-search-mobile" 
+                                   placeholder="Search..." 
+                                   class="w-full h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
+                                   autocomplete="off">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                        </div>
+                    </div>
+                </header>
         
         <!-- Content Area (starts BELOW the fixed header) -->
         <?php 
@@ -115,8 +200,14 @@
                 <!-- Flash Messages -->
                 <?= $this->include('components/ui/flash-messages') ?>
                 
-                <!-- Main Content (page-header component MUST NOT be used here anymore) -->
-                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($headerTitle) ?>">
+                <!-- Page Header (Optional - Use page-header component instead) -->
+                <?php $pageHeader = $this->renderSection('page_header'); ?>
+                <?php if (trim($pageHeader)): ?>
+                    <?= $pageHeader ?>
+                <?php endif; ?>
+                
+                <!-- Main Content -->
+                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($resolvedHeaderTitle) ?>">
                     <?= $this->renderSection('content') ?>
                     
                     <!-- View-specific scripts (inside spa-content for SPA re-execution) -->

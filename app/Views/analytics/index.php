@@ -4,8 +4,8 @@
     <?= $this->include('components/unified-sidebar', ['current_page' => 'analytics']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('header_title') ?>Analytics<?= $this->endSection() ?>
-<?= $this->section('header_subtitle') ?>Monitor your business performance and insights<?= $this->endSection() ?>
+<?= $this->section('page_title') ?>Analytics<?= $this->endSection() ?>
+<?= $this->section('page_subtitle') ?>Monitor your business performance and insights<?= $this->endSection() ?>
 
 <?= $this->section('dashboard_actions') ?>
     <select id="timeframe" class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">

@@ -6,22 +6,28 @@
 
 <?= $this->section('header_title') ?>Notifications<?= $this->endSection() ?>
 
-<?= $this->section('header_actions') ?>
-     <?php if ($unread_count > 0): ?>
-     <a href="<?= base_url('/notifications/mark-all-read') ?>" 
-         class="xs-btn xs-btn-secondary">
-          <span class="material-symbols-rounded">done_all</span>
-          Mark All Read
-     </a>
-     <?php endif; ?>
-    <a href="<?= base_url('/settings#notifications') ?>" 
-         class="xs-btn xs-btn-primary">
-          <span class="material-symbols-rounded">settings</span>
-        Settings
-    </a>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
+<!-- Page Header -->
+<div class="mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div></div>
+            
+            <div class="mt-4 sm:mt-0 flex space-x-3">
+                     <?php if ($unread_count > 0): ?>
+                     <a href="<?= base_url('/notifications/mark-all-read') ?>" 
+                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
+                          <span class="material-symbols-rounded mr-2 text-base align-middle">done_all</span>
+                          Mark All Read
+                     </a>
+                     <?php endif; ?>
+                <a href="<?= base_url('/settings#notifications') ?>" 
+                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+                          <span class="material-symbols-rounded mr-2 text-base align-middle">settings</span>
+                    Settings
+                </a>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
