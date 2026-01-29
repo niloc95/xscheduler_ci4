@@ -179,24 +179,9 @@ class Appointments extends BaseApiController
         
         try {
             $model = new AppointmentModel();
-            $builder = $model->builder();
             
-            // Select appointment with all related data
-            $builder->select('xs_appointments.*, 
-                             CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
-                             c.email as customer_email,
-                             c.phone as customer_phone,
-                             s.name as service_name,
-                             s.duration_min as duration,
-                             s.price as price,
-                             u.name as provider_name,
-                             u.color as provider_color')
-                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
-                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
-                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
-                    ->where('xs_appointments.id', (int)$id);
-            
-            $appointment = $builder->get()->getRowArray();
+            // Use centralized method to eliminate duplicate JOIN query
+            $appointment = $model->getWithRelations((int)$id);
             
             if (!$appointment) {
                 return $response->setStatusCode(404)->setJSON([
@@ -206,7 +191,7 @@ class Appointments extends BaseApiController
                 ]);
             }
             
-            // Format response
+            // Format response with consistent field aliases (service_duration, not duration)
             $data = [
                 'id' => $appointment['id'],
                 'customer_id' => $appointment['customer_id'],
@@ -222,8 +207,8 @@ class Appointments extends BaseApiController
                 'end_time' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
                 'start' => $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
                 'end' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
-                'duration' => $appointment['duration'],
-                'price' => $appointment['price'],
+                'service_duration' => $appointment['service_duration'], // Standardized field name
+                'service_price' => $appointment['service_price'],
                 'status' => $appointment['status'],
                 'notes' => $appointment['notes'] ?? '',
                 'location' => $appointment['location'] ?? '',
@@ -249,6 +234,8 @@ class Appointments extends BaseApiController
     /**
      * Check appointment availability
      * POST /api/appointments/check-availability
+     * 
+     * Refactored to use AvailabilityService for consistent validation
      */
     public function checkAvailability()
     {
@@ -305,133 +292,44 @@ class Appointments extends BaseApiController
             $endDateTime = clone $startDateTime;
             $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
 
-            $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone);
-            $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone);
+            $startTimeLocal = $startDateTime->format('Y-m-d H:i:s');
+            $endTimeLocal = $endDateTime->format('Y-m-d H:i:s');
             
-            // Check for overlapping appointments
-            $model = new AppointmentModel();
-            $builder = $model->builder();
-            $builder->where('provider_id', (int)$providerId)
-                    ->where('status !=', 'cancelled')
-                    ->groupStart()
-                        // New appointment starts during existing appointment
-                        ->groupStart()
-                            ->where('start_time <=', $startTimeUtc)
-                            ->where('end_time >', $startTimeUtc)
-                        ->groupEnd()
-                        // New appointment ends during existing appointment
-                        ->orGroupStart()
-                            ->where('start_time <', $endTimeUtc)
-                            ->where('end_time >=', $endTimeUtc)
-                        ->groupEnd()
-                        // New appointment completely contains existing appointment
-                        ->orGroupStart()
-                            ->where('start_time >=', $startTimeUtc)
-                            ->where('end_time <=', $endTimeUtc)
-                        ->groupEnd()
-                    ->groupEnd();
+            // Use AvailabilityService for consistent availability checking
+            $availabilityService = new \App\Services\AvailabilityService();
+            $availabilityCheck = $availabilityService->isSlotAvailable(
+                (int)$providerId,
+                $startTimeLocal,
+                $endTimeLocal,
+                $timezone,
+                $appointmentId
+            );
             
-            // If editing, exclude current appointment
-            if ($appointmentId) {
-                $builder->where('id !=', (int)$appointmentId);
-            }
+            // Convert to UTC for response
+            $startTimeUtc = TimezoneService::toUTC($startTimeLocal, $timezone);
+            $endTimeUtc = TimezoneService::toUTC($endTimeLocal, $timezone);
             
-            $conflicts = $builder->get()->getResultArray();
-            
-            // Check business hours
-            // Convert day name to weekday number (0=Sunday, 1=Monday, etc.)
-            $dayOfWeekName = strtolower($startDateTime->format('l'));
-            $dayMapping = [
-                'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3,
-                'thursday' => 4, 'friday' => 5, 'saturday' => 6
-            ];
-            $weekdayNum = $dayMapping[$dayOfWeekName] ?? 0;
-            
-            // Query business_hours table - uses 'weekday' column (0-6)
-            // If no row exists for this weekday, business is closed on that day
-            $businessHours = $db->table('business_hours')
-                ->where('weekday', $weekdayNum)
-                ->get()
-                ->getRowArray();
-            
-            $businessHoursViolation = null;
-            if (!$businessHours) {
-                $businessHoursViolation = 'Business is closed on ' . ucfirst($dayOfWeekName);
-            } else {
-                $requestedTime = $startDateTime->format('H:i:s');
-                if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {
-                    $businessHoursViolation = 'Requested time is outside business hours (' . 
-                        date('g:i A', strtotime($businessHours['start_time'])) . ' - ' . 
-                        date('g:i A', strtotime($businessHours['end_time'])) . ')';
-                }
-                
-                // Check if end time exceeds business hours
-                $requestedEndTime = $endDateTime->format('H:i:s');
-                if ($requestedEndTime > $businessHours['end_time']) {
-                    $businessHoursViolation = 'Appointment would extend past business hours';
-                }
-            }
-            
-            // Check blocked times
-            $blockedTimes = $db->table('blocked_times')
-                ->where('provider_id', (int)$providerId)
-                ->groupStart()
-                    // Blocked time overlaps with appointment start
-                    ->groupStart()
-                        ->where('start_time <=', $startTimeUtc)
-                        ->where('end_time >', $startTimeUtc)
-                    ->groupEnd()
-                    // Blocked time overlaps with appointment end
-                    ->orGroupStart()
-                        ->where('start_time <', $endTimeUtc)
-                        ->where('end_time >=', $endTimeUtc)
-                    ->groupEnd()
-                    // Appointment completely contains blocked time
-                    ->orGroupStart()
-                        ->where('start_time >=', $startTimeUtc)
-                        ->where('end_time <=', $endTimeUtc)
-                    ->groupEnd()
-                ->groupEnd()
-                ->get()
-                ->getResultArray();
-            
-            // Determine availability
-            $available = (count($conflicts) === 0 && !$businessHoursViolation && count($blockedTimes) === 0);
-            
-            // Build response
+            // Build response in expected format
             $result = [
-                'available' => $available,
+                'available' => $availabilityCheck['available'],
                 'requestedSlot' => [
                     'provider_id' => (int)$providerId,
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
-                    'start_time_local' => $startDateTime->format('Y-m-d H:i:s'),
-                    'end_time_local' => $endDateTime->format('Y-m-d H:i:s'),
+                    'start_time_local' => $startTimeLocal,
+                    'end_time_local' => $endTimeLocal,
                     'start_time_utc' => $startTimeUtc,
                     'end_time_utc' => $endTimeUtc,
                     'timezone' => $timezone,
                 ],
-                'conflicts' => [],
-                'businessHoursViolation' => $businessHoursViolation,
-                'blockedTimeConflicts' => count($blockedTimes),
+                'conflicts' => $availabilityCheck['conflicts'] ?? [],
+                'reason' => $availabilityCheck['reason'] ?? null,
             ];
             
-            // Add conflict details
-            if (count($conflicts) > 0) {
-                foreach ($conflicts as $conflict) {
-                    $result['conflicts'][] = [
-                        'id' => $conflict['id'],
-                        'start_time' => $this->formatUtc($conflict['start_time'] ?? null) ?? ($conflict['start_time'] ?? null),
-                        'end_time' => $this->formatUtc($conflict['end_time'] ?? null) ?? ($conflict['end_time'] ?? null),
-                        'status' => $conflict['status'],
-                    ];
-                }
-            }
-            
             // Suggest next available slot if not available
-            if (!$available) {
-                // Find next available time slot (simplified - just suggest 30 min later)
+            if (!$availabilityCheck['available']) {
+                // Simple suggestion: 30 minutes later
                 $nextSlot = clone $startDateTime;
                 $nextSlot->modify('+30 minutes');
                 $result['suggestedNextSlot'] = [

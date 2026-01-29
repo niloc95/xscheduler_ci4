@@ -211,6 +211,87 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Get appointment with all related data (customer, service, provider)
+     * Centralizes JOIN query to eliminate duplication across controllers
+     * 
+     * @param int $id Appointment ID
+     * @return array|null Appointment with relations or null if not found
+     */
+    public function getWithRelations(int $id): ?array
+    {
+        $result = $this->builder()
+            ->select('xs_appointments.*, 
+                     CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                     c.email as customer_email,
+                     c.phone as customer_phone,
+                     s.name as service_name,
+                     s.duration_min as service_duration,
+                     s.price as service_price,
+                     u.name as provider_name,
+                     u.color as provider_color')
+            ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
+            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
+            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
+            ->where('xs_appointments.id', $id)
+            ->get()
+            ->getRowArray();
+        
+        return $result ?: null;
+    }
+
+    /**
+     * Get multiple appointments with relations, with optional filtering
+     * Supports pagination, date ranges, and status filtering
+     * 
+     * @param array $filters Optional filters (start, end, provider_id, service_id, status)
+     * @param int|null $limit Maximum results to return
+     * @param int $offset Offset for pagination
+     * @return array Appointments with relations
+     */
+    public function getManyWithRelations(array $filters = [], ?int $limit = null, int $offset = 0): array
+    {
+        $builder = $this->builder()
+            ->select('xs_appointments.*, 
+                     CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
+                     c.email as customer_email,
+                     c.phone as customer_phone,
+                     s.name as service_name,
+                     s.duration_min as service_duration,
+                     s.price as service_price,
+                     u.name as provider_name,
+                     u.color as provider_color')
+            ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
+            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
+            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left');
+
+        // Apply filters
+        if (!empty($filters['start'])) {
+            $builder->where('xs_appointments.start_time >=', $filters['start']);
+        }
+        if (!empty($filters['end'])) {
+            $builder->where('xs_appointments.start_time <=', $filters['end']);
+        }
+        if (!empty($filters['provider_id'])) {
+            $builder->where('xs_appointments.provider_id', (int)$filters['provider_id']);
+        }
+        if (!empty($filters['service_id'])) {
+            $builder->where('xs_appointments.service_id', (int)$filters['service_id']);
+        }
+        if (!empty($filters['status'])) {
+            $builder->where('xs_appointments.status', $filters['status']);
+        }
+
+        // Apply pagination
+        if ($limit !== null) {
+            $builder->limit($limit, $offset);
+        }
+
+        $builder->orderBy('xs_appointments.start_time', 'ASC');
+
+        return $builder->get()->getResultArray();
+    }
+
+    /**
      * Fetch appointments for dashboard widgets with optional status filter.
      */
     public function getDashboardAppointments(?string $status = null, array $context = [], int $limit = 50): array

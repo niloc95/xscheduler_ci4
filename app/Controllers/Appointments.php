@@ -308,63 +308,21 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::store] Will store in database as UTC');
         
         // ===== BUSINESS HOURS VALIDATION =====
-        // Check if the appointment is on a working day and within business hours
-        $dayOfWeekName = strtolower($startDateTime->format('l'));
-        $dayMapping = [
-            'sunday' => 0, 'monday' => 1, 'tuesday' => 2, 'wednesday' => 3,
-            'thursday' => 4, 'friday' => 5, 'saturday' => 6
-        ];
-        $weekdayNum = $dayMapping[$dayOfWeekName] ?? 0;
+        // Use BusinessHoursService for consistent validation
+        $businessHoursService = new \App\Services\BusinessHoursService();
+        $validation = $businessHoursService->validateAppointmentTime($startDateTime, $endDateTime);
         
-        $db = \Config\Database::connect();
-        $businessHours = $db->table('business_hours')
-            ->where('weekday', $weekdayNum)
-            ->get()
-            ->getRowArray();
-        
-        if (!$businessHours) {
-            log_message('warning', '[Appointments::store] Attempted booking on closed day: ' . ucfirst($dayOfWeekName));
+        if (!$validation['valid']) {
+            log_message('warning', '[Appointments::store] Business hours validation failed: ' . $validation['reason']);
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(400)->setJSON([
                     'success' => false,
-                    'message' => 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.'
+                    'message' => $validation['reason']
                 ]);
             }
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Sorry, we are closed on ' . ucfirst($dayOfWeekName) . '. Please choose another day.');
-        }
-        
-        // Check if time is within business hours
-        $requestedTime = $startDateTime->format('H:i:s');
-        $requestedEndTime = $endDateTime->format('H:i:s');
-        
-        if ($requestedTime < $businessHours['start_time'] || $requestedTime >= $businessHours['end_time']) {
-            $startFormatted = date('g:i A', strtotime($businessHours['start_time']));
-            $endFormatted = date('g:i A', strtotime($businessHours['end_time']));
-            log_message('warning', '[Appointments::store] Attempted booking outside business hours: ' . $requestedTime);
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'success' => false,
-                    'message' => "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time."
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('error', "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time.");
-        }
-        
-        if ($requestedEndTime > $businessHours['end_time']) {
-            log_message('warning', '[Appointments::store] Appointment would extend past business hours');
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'success' => false,
-                    'message' => 'This appointment would extend past our closing time. Please choose an earlier time slot.'
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'This appointment would extend past our closing time. Please choose an earlier time slot.');
+                ->with('error', $validation['reason']);
         }
         
         log_message('info', '[Appointments::store] ✅ Business hours validation passed');
