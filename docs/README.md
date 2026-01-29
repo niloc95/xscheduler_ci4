@@ -2,18 +2,24 @@
 
 **Welcome to the xScheduler CI4 documentation hub.**
 
-This documentation provides comprehensive guides for installation, development, configuration, deployment, and system architecture.
+⚠️ **IMPORTANT UPDATE (Jan 29, 2026):** Comprehensive audit completed. See **Quick Reference Guide** for fast onboarding.
 
 ---
 
-## 🎯 Start Here: Comprehensive Codebase Audit
+## 🎯 Start Here: January 2026 Comprehensive Codebase Audit
 
-**New to the project? Start with the comprehensive audit documentation:**
+**New to the project? Start with the latest comprehensive audit documentation:**
 
-1. **[Audit README](./AUDIT_README.md)** - Overview of the codebase audit and documentation structure
-2. **[Codebase Index](./CODEBASE_INDEX.md)** - Quick reference index of all major files and their purposes
-3. **[Codebase Audit](./CODEBASE_AUDIT.md)** - Comprehensive analysis of MVC components, routes, and assets
-4. **[Audit Summary](./AUDIT_SUMMARY.md)** - Executive summary with actionable recommendations
+### Core Audit Documents (Recommended Reading Order)
+1. **[Quick Reference Guide](./QUICK_REFERENCE.md)** ⭐ *START HERE* - Fast lookup for file locations, common tasks, and debugging (10 min)
+2. **[Audit Executive Summary](./AUDIT_EXECUTIVE_SUMMARY.md)** - High-level overview, critical findings, action items (15 min)
+3. **[Comprehensive Codebase Audit](./COMPREHENSIVE_CODEBASE_AUDIT.md)** - Deep technical analysis of all 1,466 files (40 min reference)
+
+### Legacy Documentation (For Reference Only)
+- [Audit README](./AUDIT_README.md) - Older overview document (deprecated, see above)
+- [Codebase Index](./CODEBASE_INDEX.md) - Older file index (deprecated, see Quick Reference Guide)
+- [Codebase Audit](./CODEBASE_AUDIT.md) - Older detailed audit (deprecated, see Comprehensive Audit)
+- [Audit Summary](./AUDIT_SUMMARY.md) - Older summary (deprecated, see Executive Summary)
 
 ## 🚀 Quick Start
 
