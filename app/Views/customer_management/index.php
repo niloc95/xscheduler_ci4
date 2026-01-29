@@ -24,20 +24,6 @@
 
 <?= $this->section('content') ?>
 
-<?php 
-// Page Header Component
-echo view('components/page-header', [
-    'title' => 'Customer Management',
-    'subtitle' => 'View and manage all customer profiles and contact information',
-    'actions' => [
-        '<a href="' . base_url('customer-management/create') . '" class="xs-btn xs-btn-primary">
-            <span class="material-symbols-outlined">person_add</span>
-            New Customer
-        </a>'
-    ]
-]);
-?>
-
 <?php
 // Search Card
 $searchContent = '
@@ -76,7 +62,7 @@ echo view('components/card', [
 // Main Data Table Card
 ob_start();
 ?>
-<div class="overflow-x-auto -mx-6 md:-mx-8">
+<div class="overflow-x-auto">
     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
         <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600">
             <tr>
@@ -141,15 +127,14 @@ $tableContent = ob_get_clean();
 $totalCustomers = !empty($customers) ? count($customers) : 0;
 
 echo view('components/card', [
-    'title' => 'All Customers',
-    'subtitle' => number_format($totalCustomers) . ' total customers',
     'content' => $tableContent,
     'actions' => [
+        '<a href="' . base_url('customer-management/create') . '" class="xs-btn xs-btn-primary">
+            <span class="material-symbols-outlined">person_add</span>
+            New Customer
+        </a>',
         '<button class="xs-btn xs-btn-ghost xs-btn-icon" onclick="location.reload()" title="Refresh">
             <span class="material-symbols-outlined">refresh</span>
-        </button>',
-        '<button class="xs-btn xs-btn-ghost xs-btn-icon" title="More options">
-            <span class="material-symbols-outlined">more_vert</span>
         </button>'
     ]
 ]);
