@@ -124,11 +124,11 @@ th {
 /* Form Elements Base Styling */
 input, button, textarea, select {
   font: inherit;
-  color: inherit;
 }
 
 input, textarea, select {
-  color-scheme: light dark;
+  color: var(--xs-text-primary);
+  caret-color: var(--xs-text-primary);
 }
 
 /* Focus Styles */

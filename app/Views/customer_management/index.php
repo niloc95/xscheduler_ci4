@@ -24,39 +24,44 @@
 
 <?= $this->section('content') ?>
 
-<?php
-// Search Card
-$searchContent = '
-    <div class="flex flex-col md:flex-row gap-3">
-        <div class="flex-1 relative">
-            <input 
-                type="search" 
-                id="customerSearch" 
-                name="q" 
-                value="' . esc($q ?? '') . '" 
-                placeholder="Search by name or email..." 
-                autocomplete="off"
-                class="xs-form-input w-full"
-            />
-            <div id="searchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
-                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </div>
-        <button type="button" class="xs-btn xs-btn-secondary" onclick="alert(\'Filters coming soon\')">
-            <span class="material-symbols-outlined">filter_list</span>
-            Filters
-        </button>
+<!-- Search Bar and Stats Section -->
+<div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <!-- Stat Card: Total Customers -->
+    <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+        <?= ui_dashboard_stat_card('Total Customers', $totalCustomers ?? 0, ['valueId' => 'totalCustomersCount']); ?>
     </div>
-';
 
-echo view('components/card', [
-    'bodyClass' => 'xs-card-body-compact',
-    'content' => $searchContent
-]);
-?>
+    <!-- Search Bar and Action Button -->
+    <div class="flex flex-col gap-3 items-stretch lg:flex-1 lg:items-end w-full lg:w-auto">
+        <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+            <!-- Search Input -->
+            <div class="relative w-full sm:w-64 lg:w-80">
+                <input 
+                    type="search" 
+                    id="customerSearch" 
+                    name="q" 
+                    value="<?= esc($q ?? '') ?>" 
+                    placeholder="Search by name or email..." 
+                    autocomplete="off"
+                    class="w-full h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                <div id="searchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- New Customer Button -->
+            <a href="<?= base_url('customer-management/create') ?>" class="xs-btn xs-btn-primary whitespace-nowrap">
+                <span class="material-symbols-outlined">person_add</span>
+                New Customer
+            </a>
+        </div>
+    </div>
+</div>
 
 <?php
 // Main Data Table Card
@@ -123,20 +128,9 @@ ob_start();
 <?php
 $tableContent = ob_get_clean();
 
-// Calculate total customers count
-$totalCustomers = !empty($customers) ? count($customers) : 0;
-
 echo view('components/card', [
-    'content' => $tableContent,
-    'actions' => [
-        '<a href="' . base_url('customer-management/create') . '" class="xs-btn xs-btn-primary">
-            <span class="material-symbols-outlined">person_add</span>
-            New Customer
-        </a>',
-        '<button class="xs-btn xs-btn-ghost xs-btn-icon" onclick="location.reload()" title="Refresh">
-            <span class="material-symbols-outlined">refresh</span>
-        </button>'
-    ]
+    'title' => null,
+    'content' => $tableContent
 ]);
 ?>
 

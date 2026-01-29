@@ -37,11 +37,15 @@ class CustomerManagement extends BaseController
             $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
         }
 
+        // Get total customer count
+        $totalCustomers = $this->customers->countAllResults();
+
         $data = [
             'title' => 'Customer Management - WebSchedulr',
             'customers' => $customers,
             'currentUser' => session()->get('user'),
             'q' => $q,
+            'totalCustomers' => $totalCustomers,
         ];
 
         return view('customer_management/index', $data);

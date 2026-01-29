@@ -566,6 +566,7 @@
     border: 1px solid var(--xs-border);
     border-radius: var(--xs-radius-md, 0.5rem);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    caret-color: var(--xs-text-primary);
 
     &:focus {
       outline: none;

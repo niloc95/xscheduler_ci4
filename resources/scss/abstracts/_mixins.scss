@@ -81,6 +81,7 @@
   border: 1px solid var(--xs-border);
   border-radius: $border-radius-lg;
   transition: border-color $transition-normal, box-shadow $transition-normal;
+  caret-color: var(--xs-text-primary);
   
   &:focus {
     outline: none;
