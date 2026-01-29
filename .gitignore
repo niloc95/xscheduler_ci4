@@ -221,6 +221,7 @@ tests/_support/_generated/
 #-------------------------
 # Deployment package (created by npm run package)
 webschedulr-deploy/
+webschedulr-deploy*.zip
 
 # Deployment scripts output
 deploy.log
