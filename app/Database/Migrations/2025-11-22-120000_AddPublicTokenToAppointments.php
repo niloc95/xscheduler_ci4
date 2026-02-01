@@ -14,13 +14,11 @@ class AddPublicTokenToAppointments extends Migration
                     'type'       => 'CHAR',
                     'constraint' => 36,
                     'null'       => true,
-                    'after'      => 'hash',
                     'comment'    => 'Public confirmation token (GUID)',
                 ],
                 'public_token_expires_at' => [
                     'type'    => 'DATETIME',
                     'null'    => true,
-                    'after'   => 'public_token',
                     'comment' => 'Optional expiry for public token',
                 ],
             ]);

@@ -221,8 +221,9 @@ export class MonthView {
         const providerColor = getProviderColor(provider);
         
         // Use settings to format time - shorter format for month view
-        const time = appointment.startDateTime.toFormat('h:mm');
-        const ampm = appointment.startDateTime.toFormat('a').toLowerCase();
+        const is24Hour = this.settings?.getTimeFormat?.() === '24h';
+        const time = appointment.startDateTime.toFormat(is24Hour ? 'HH:mm' : 'h:mm');
+        const ampm = is24Hour ? '' : appointment.startDateTime.toFormat('a').toLowerCase();
         const title = appointment.title || appointment.customerName || 'Appointment';
         const hiddenClass = isHidden ? 'hidden' : '';
 

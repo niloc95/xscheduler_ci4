@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPOINTMENT MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/AppointmentModel.php
+ * @description Data model for appointments - the core entity of the scheduling
+ *              system. Handles CRUD, statistics, and complex queries.
+ * 
+ * DATABASE TABLE: xs_appointments
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - user_id         : Booking user (deprecated, use customer_id)
+ * - customer_id     : Customer who booked (FK to xs_customers)
+ * - service_id      : Service booked (FK to xs_services)
+ * - provider_id     : Service provider (FK to xs_users)
+ * - location_id     : Location if applicable (FK to xs_locations)
+ * - start_time      : Appointment start (datetime)
+ * - end_time        : Appointment end (datetime)
+ * - status          : pending, confirmed, completed, cancelled, no-show
+ * - notes           : Customer/staff notes
+ * - hash            : Unique identifier for public URLs
+ * - public_token    : Token for customer self-service
+ * - reminder_sent   : Whether reminder was sent (0/1)
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getStats()           : Dashboard statistics
+ * - getUpcoming()        : Future appointments list
+ * - getByDateRange()     : Appointments within date range
+ * - getByProvider()      : Provider's appointments
+ * - getByCustomer()      : Customer's appointment history
+ * - checkConflicts()     : Check for scheduling conflicts
+ * - generateHash()       : Create unique public identifier
+ * 
+ * MODEL CALLBACKS:
+ * -----------------------------------------------------------------------------
+ * - beforeInsert: generateHash (creates unique appointment hash)
+ * - afterInsert:  invalidateDashboardCache
+ * - afterUpdate:  invalidateDashboardCache
+ * - afterDelete:  invalidateDashboardCache
+ * 
+ * @see         app/Controllers/Api/Appointments.php for API layer
+ * @see         app/Services/SchedulingService.php for business logic
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

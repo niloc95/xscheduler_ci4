@@ -1,5 +1,68 @@
 <?php
 
+/**
+ * =============================================================================
+ * VITE HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/vite_helper.php
+ * @description Helper functions for integrating Vite-built assets into
+ *              CodeIgniter views.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Load in views or layouts that need Vite assets:
+ *     helper('vite');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * vite_asset($entry)
+ *   Get full asset info (file URL + CSS URLs) for an entry point
+ *   Returns: ['file' => '...', 'css' => ['...']]
+ * 
+ * vite_js($entry)
+ *   Get the JavaScript file URL for an entry point
+ *   Example: vite_js('resources/js/app.js') => '/build/assets/app-abc123.js'
+ * 
+ * vite_css($entry)
+ *   Get array of CSS file URLs for an entry point
+ *   Example: vite_css('resources/js/app.js') => ['/build/assets/app-def456.css']
+ * 
+ * BUILD REQUIREMENTS:
+ * -----------------------------------------------------------------------------
+ * Run 'npm run build' before using these functions.
+ * Functions read from: public/build/.vite/manifest.json
+ * 
+ * MANIFEST STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * The Vite manifest maps entry points to built file names:
+ *     {
+ *       "resources/js/app.js": {
+ *         "file": "assets/app-abc123.js",
+ *         "css": ["assets/app-def456.css"]
+ *       }
+ *     }
+ * 
+ * USAGE IN VIEWS:
+ * -----------------------------------------------------------------------------
+ *     <?php helper('vite'); ?>
+ *     
+ *     <!-- JavaScript -->
+ *     <script type="module" src="<?= vite_js('resources/js/app.js') ?>"></script>
+ *     
+ *     <!-- CSS -->
+ *     <?php foreach (vite_css('resources/js/app.js') as $css): ?>
+ *         <link rel="stylesheet" href="<?= $css ?>">
+ *     <?php endforeach; ?>
+ * 
+ * @see         vite.config.js for build configuration
+ * @see         app/Views/layouts/*.php for usage
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('vite_asset')) {
     function vite_asset(string $entry): array
     {

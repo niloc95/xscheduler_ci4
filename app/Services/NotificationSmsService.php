@@ -1,5 +1,73 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION SMS SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationSmsService.php
+ * @description Handles sending SMS notifications using configured providers.
+ *              Supports multiple SMS gateway providers.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides SMS delivery capability for appointment notifications:
+ * - Confirmations
+ * - Reminders
+ * - Cancellations
+ * - Reschedules
+ * 
+ * SUPPORTED PROVIDERS:
+ * -----------------------------------------------------------------------------
+ * - Clickatell : African-focused SMS gateway
+ * - Twilio     : Global SMS/voice provider
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * sendSms($businessId, $toPhone, $message)
+ *   Send SMS using configured provider
+ *   Returns: ['ok' => bool, 'error' => string|null]
+ * 
+ * getPublicIntegration($businessId)
+ *   Get sanitized integration info (without auth tokens)
+ * 
+ * configureIntegration($businessId, $provider, $config)
+ *   Save provider configuration (encrypted)
+ * 
+ * testSms($businessId, $testPhone)
+ *   Send test SMS to verify configuration
+ * 
+ * CLICKATELL CONFIG:
+ * -----------------------------------------------------------------------------
+ * - clickatell_api_key : API key from Clickatell dashboard
+ * - clickatell_from    : Sender ID or phone number
+ * 
+ * TWILIO CONFIG:
+ * -----------------------------------------------------------------------------
+ * - twilio_account_sid : Twilio account SID
+ * - twilio_auth_token  : Twilio auth token (encrypted)
+ * - twilio_from_number : Twilio phone number
+ * 
+ * PHONE NUMBER FORMAT:
+ * -----------------------------------------------------------------------------
+ * Phone numbers should be in E.164 format:
+ * - +27821234567 (South Africa)
+ * - +15551234567 (USA)
+ * Numbers are sanitized before sending.
+ * 
+ * ENCRYPTION:
+ * -----------------------------------------------------------------------------
+ * API keys and auth tokens are encrypted before storage.
+ * Decrypted on-demand for sending.
+ * 
+ * @see         app/Helpers/notification_helper.php for encryption
+ * @see         app/Models/BusinessIntegrationModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;

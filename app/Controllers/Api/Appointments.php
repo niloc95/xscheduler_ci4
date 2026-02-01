@@ -1,5 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPOINTMENTS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/Appointments.php
+ * @description RESTful API for appointment CRUD operations, status updates,
+ *              and appointment-related actions like rescheduling.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET    /api/appointments              : List appointments (filtered, paginated)
+ * POST   /api/appointments              : Create new appointment
+ * GET    /api/appointments/:id          : Get appointment details
+ * PUT    /api/appointments/:id          : Update appointment
+ * PATCH  /api/appointments/:id          : Partial update
+ * DELETE /api/appointments/:id          : Cancel/delete appointment
+ * PATCH  /api/appointments/:id/status   : Update status only
+ * PATCH  /api/appointments/:id/notes    : Update notes only
+ * POST   /api/appointments/:id/reschedule : Reschedule appointment
+ * 
+ * QUERY PARAMETERS (GET /api/appointments):
+ * -----------------------------------------------------------------------------
+ * - start       : Start date (Y-m-d) for date range filter
+ * - end         : End date (Y-m-d) for date range filter
+ * - providerId  : Filter by provider ID
+ * - serviceId   : Filter by service ID
+ * - status      : Filter by status (pending, confirmed, completed, cancelled)
+ * - page        : Page number (default: 1)
+ * - length      : Items per page (default: 50, max: 1000 for calendar views)
+ * - sort        : Sort field:direction (e.g., start_time:asc)
+ * 
+ * REQUEST BODY (POST/PUT):
+ * -----------------------------------------------------------------------------
+ * {
+ *   "provider_id": 2,
+ *   "service_id": 1,
+ *   "customer_id": 5,        // or customer object for new customer
+ *   "start_time": "2025-01-15 09:00:00",
+ *   "end_time": "2025-01-15 10:00:00",
+ *   "notes": "Special requests...",
+ *   "status": "confirmed"
+ * }
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * Success: { "data": { appointment }, "meta": { pagination } }
+ * Error:   { "error": { "message": "...", "code": "..." } }
+ * 
+ * @see         app/Models/AppointmentModel.php for data layer
+ * @see         app/Services/SchedulingService.php for business logic
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Models\AppointmentModel;
@@ -292,22 +350,22 @@ class Appointments extends BaseApiController
             $endDateTime = clone $startDateTime;
             $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
 
-            $startTimeLocal = $startDateTime->format('Y-m-d H:i:s');
-            $endTimeLocal = $endDateTime->format('Y-m-d H:i:s');
+            $startLocal = $startDateTime->format('Y-m-d H:i:s');
+            $endLocal = $endDateTime->format('Y-m-d H:i:s');
             
             // Use AvailabilityService for consistent availability checking
             $availabilityService = new \App\Services\AvailabilityService();
             $availabilityCheck = $availabilityService->isSlotAvailable(
                 (int)$providerId,
-                $startTimeLocal,
-                $endTimeLocal,
+                $startLocal,
+                $endLocal,
                 $timezone,
                 $appointmentId
             );
             
             // Convert to UTC for response
-            $startTimeUtc = TimezoneService::toUTC($startTimeLocal, $timezone);
-            $endTimeUtc = TimezoneService::toUTC($endTimeLocal, $timezone);
+            $startUtc = TimezoneService::toUTC($startLocal, $timezone);
+            $endUtc = TimezoneService::toUTC($endLocal, $timezone);
             
             // Build response in expected format
             $result = [
@@ -317,10 +375,10 @@ class Appointments extends BaseApiController
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
-                    'start_time_local' => $startTimeLocal,
-                    'end_time_local' => $endTimeLocal,
-                    'start_time_utc' => $startTimeUtc,
-                    'end_time_utc' => $endTimeUtc,
+                    'start_time_local' => $startLocal,
+                    'end_time_local' => $endLocal,
+                    'start_time_utc' => $startUtc,
+                    'end_time_utc' => $endUtc,
                     'timezone' => $timezone,
                 ],
                 'conflicts' => $availabilityCheck['conflicts'] ?? [],
@@ -472,6 +530,93 @@ class Appointments extends BaseApiController
             return $response->setStatusCode(500)->setJSON([
                 'error' => [
                     'message' => 'Failed to update appointment status',
+                    'details' => $e->getMessage()
+                ]
+            ]);
+        }
+    }
+
+    /**
+     * Update appointment notes
+     * PATCH /api/appointments/{id}/notes
+     * Body: { notes: string }
+     * 
+     * Quick endpoint for updating just the notes field.
+     * 
+     * @param int|null $id Appointment ID
+     * @return ResponseInterface JSON response with success/error
+     */
+    public function updateNotes($id = null)
+    {
+        $response = $this->response->setHeader('Content-Type', 'application/json');
+        
+        if (!$id) {
+            return $response->setStatusCode(400)->setJSON([
+                'error' => [
+                    'message' => 'Appointment ID is required'
+                ]
+            ]);
+        }
+        
+        try {
+            // Get JSON input
+            $json = $this->request->getJSON(true);
+            $newNotes = $json['notes'] ?? '';
+            
+            // Update appointment
+            $model = new AppointmentModel();
+            $appointment = $model->find($id);
+            
+            if (!$appointment) {
+                log_message('error', "Appointment not found: ID={$id}");
+                return $response->setStatusCode(404)->setJSON([
+                    'error' => [
+                        'message' => 'Appointment not found'
+                    ]
+                ]);
+            }
+            
+            log_message('info', "Updating appointment notes: ID={$id}");
+            
+            $updateData = [
+                'notes' => $newNotes,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $updated = $model->update($id, $updateData);
+            
+            if ($model->errors()) {
+                log_message('error', "Model validation errors: " . json_encode($model->errors()));
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => 'Validation failed',
+                        'validation_errors' => $model->errors()
+                    ]
+                ]);
+            }
+            
+            if (!$updated) {
+                log_message('error', "Failed to update appointment notes: ID={$id}");
+                return $response->setStatusCode(500)->setJSON([
+                    'error' => [
+                        'message' => 'Failed to update appointment notes'
+                    ]
+                ]);
+            }
+            
+            return $response->setJSON([
+                'data' => [
+                    'id' => $id,
+                    'notes' => $newNotes,
+                    'updated_at' => $updateData['updated_at']
+                ],
+                'message' => 'Appointment notes updated successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return $response->setStatusCode(500)->setJSON([
+                'error' => [
+                    'message' => 'Failed to update appointment notes',
                     'details' => $e->getMessage()
                 ]
             ]);

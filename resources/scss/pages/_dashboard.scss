@@ -259,9 +259,18 @@
   align-items: center;
   padding: 0.75rem;
   border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: #f9fafb; // gray-50
+  }
 
   .dark & {
     border-color: #374151;
+
+    &:hover {
+      background-color: #374151; // gray-700
+    }
   }
 
   &:last-child {

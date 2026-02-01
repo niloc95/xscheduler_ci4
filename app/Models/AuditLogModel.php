@@ -1,5 +1,64 @@
 <?php
 
+/**
+ * =============================================================================
+ * AUDIT LOG MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/AuditLogModel.php
+ * @description Data model for security audit trail. Records significant
+ *              system events for compliance and debugging.
+ * 
+ * DATABASE TABLE: audit_logs
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - user_id         : User who performed action (FK to xs_users)
+ * - action          : Action type (see ACTION TYPES below)
+ * - target_type     : Entity type affected (user, appointment, setting)
+ * - target_id       : ID of affected entity
+ * - old_value       : Previous value (JSON)
+ * - new_value       : New value (JSON)
+ * - ip_address      : Client IP address
+ * - user_agent      : Browser user agent string
+ * - created_at      : When event occurred
+ * 
+ * ACTION TYPES:
+ * -----------------------------------------------------------------------------
+ * - user_login        : Successful login
+ * - user_logout       : User logged out
+ * - login_failed      : Failed login attempt
+ * - user_created      : New user created
+ * - user_updated      : User details changed
+ * - password_changed  : Password was changed
+ * - role_changed      : User role modified
+ * - backup_created    : Database backup created
+ * - backup_restored   : Backup was restored
+ * - setting_changed   : System setting modified
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - log(action, userId, ...)  : Create audit entry
+ * - getByUser(userId)         : Get user's audit trail
+ * - getByTarget(type, id)     : Get events for entity
+ * - getRecent(limit)          : Get recent events
+ * 
+ * COMPLIANCE:
+ * -----------------------------------------------------------------------------
+ * Used for:
+ * - Security incident investigation
+ * - GDPR compliance (track data access)
+ * - Change tracking and accountability
+ * 
+ * @see         app/Controllers/Api/DatabaseBackup.php for backup logging
+ * @see         app/Controllers/Auth.php for login logging
+ * @package     App\Models
+ * @extends     CodeIgniter\Model
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use CodeIgniter\Model;

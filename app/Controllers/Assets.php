@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * ASSETS CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Assets.php
+ * @description Serves dynamic and uploaded assets with proper MIME types,
+ *              caching headers, and security measures.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /assets/settings-db/:key      : Serve file from database (SettingFileModel)
+ * GET  /assets/settings/:filename    : Serve file from public/assets/settings/
+ * GET  /assets/provider/:filename    : Serve provider-specific assets
+ * GET  /assets/avatars/:filename     : Serve user avatar images
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralized asset serving with:
+ * - Database-stored files (logos, branding assets)
+ * - File-based assets (uploaded images, documents)
+ * - Proper MIME type detection
+ * - Cache headers for performance
+ * - Path traversal prevention (security)
+ * 
+ * ASSET TYPES:
+ * -----------------------------------------------------------------------------
+ * - settings-db: Stored in xs_setting_files table (logo, favicon)
+ * - settings: Static files in public/assets/settings/
+ * - provider: Provider profile images
+ * - avatars: User profile pictures
+ * 
+ * SECURITY:
+ * -----------------------------------------------------------------------------
+ * - basename() to prevent directory traversal
+ * - Validates file existence before serving
+ * - Sets appropriate Content-Type headers
+ * 
+ * CACHING:
+ * -----------------------------------------------------------------------------
+ * - 24-hour cache (max-age=86400) for all assets
+ * - Inline content disposition for images
+ * 
+ * @see         app/Models/SettingFileModel.php for database assets
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 class Assets extends BaseController

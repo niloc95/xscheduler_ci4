@@ -1,5 +1,78 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION WHATSAPP SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationWhatsAppService.php
+ * @description Handles sending WhatsApp notifications with multiple provider
+ *              support ranging from zero-config to enterprise solutions.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides WhatsApp notification delivery with flexible provider options:
+ * - Link Generator: Zero-config solution for small businesses
+ * - Twilio: Moderate complexity, uses Twilio WhatsApp API
+ * - Meta Cloud: Enterprise solution with template requirements
+ * 
+ * PROVIDERS (by complexity):
+ * -----------------------------------------------------------------------------
+ * 1. link_generator (Simplest)
+ *    - Zero configuration required
+ *    - Generates wa.me links with pre-filled messages
+ *    - Staff clicks link to open WhatsApp and send manually
+ *    - No API costs
+ * 
+ * 2. twilio (Moderate)
+ *    - Requires Twilio account with WhatsApp enabled
+ *    - Uses same auth as Twilio SMS
+ *    - Fully automated sending
+ *    - Sandbox or production number required
+ * 
+ * 3. meta_cloud (Advanced)
+ *    - Requires Meta Business verification
+ *    - Requires pre-approved message templates
+ *    - Full WhatsApp Business API features
+ *    - Template-based messaging only
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * sendWhatsApp($businessId, $toPhone, $message, $templateData)
+ *   Send WhatsApp message via configured provider
+ *   Returns: ['ok' => bool, 'error' => string|null]
+ * 
+ * getPublicIntegration($businessId)
+ *   Get sanitized integration info (without tokens)
+ * 
+ * configureIntegration($businessId, $provider, $config)
+ *   Save provider configuration (encrypted)
+ * 
+ * generateLink($phone, $message)
+ *   Generate wa.me link for link_generator provider
+ * 
+ * CONFIG BY PROVIDER:
+ * -----------------------------------------------------------------------------
+ * link_generator:
+ *   (No config needed)
+ * 
+ * twilio:
+ *   - twilio_whatsapp_from : WhatsApp-enabled Twilio number
+ *   (Auth from SMS config)
+ * 
+ * meta_cloud:
+ *   - phone_number_id : Meta phone number ID
+ *   - waba_id         : WhatsApp Business Account ID
+ *   - access_token    : Meta API access token
+ * 
+ * @see         app/Helpers/whatsapp_helper.php for link generation
+ * @see         app/Models/MessageTemplateModel.php for Meta templates
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;

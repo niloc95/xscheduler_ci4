@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * AUTHENTICATION FILTER
+ * =============================================================================
+ * 
+ * @file        app/Filters/AuthFilter.php
+ * @description HTTP middleware for session-based authentication. Validates
+ *              that users are logged in before accessing protected routes.
+ * 
+ * FILTER ALIAS: 'auth'
+ * 
+ * ROUTES PROTECTED:
+ * -----------------------------------------------------------------------------
+ * Applied to all routes requiring authentication:
+ * - /dashboard/*
+ * - /appointments/*
+ * - /settings/*
+ * - /user-management/*
+ * - /profile/*
+ * - etc.
+ * 
+ * BEHAVIOR:
+ * -----------------------------------------------------------------------------
+ * Before Request:
+ * 1. Check session for 'isLoggedIn' flag
+ * 2. If not logged in: redirect to /auth/login
+ * 3. Optionally check roles/permissions if arguments provided
+ * 4. If authenticated: continue to controller
+ * 
+ * USAGE IN ROUTES:
+ * -----------------------------------------------------------------------------
+ *     $routes->get('/dashboard', 'Dashboard::index', ['filter' => 'auth']);
+ *     $routes->group('admin', ['filter' => 'auth'], function($routes) {
+ *         $routes->get('users', 'UserManagement::index');
+ *     });
+ * 
+ * SESSION DATA CHECKED:
+ * -----------------------------------------------------------------------------
+ * - isLoggedIn : boolean flag set on successful login
+ * - user_id    : ID of authenticated user
+ * - user       : Array with user details (name, email, role)
+ * 
+ * @see         app/Config/Filters.php for filter configuration
+ * @see         app/Controllers/Auth.php for login handling
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Filters;
 
 use App\Models\UserPermissionModel;

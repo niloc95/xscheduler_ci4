@@ -3,13 +3,13 @@
  * Customer Management - Index View
  *
  * Admin-focused CRUD interface for managing customer records in the database.
- * This is NOT for appointment interactions (see user_management/customers.php for that).
+ * This is NOT for appointment interactions (see user-management/customers.php for that).
  * 
  * Purpose: Create, Read, Update, Delete customer profiles and contact information
  * Access: Admin role only
  * Actions: View list, Create new, Edit existing, Delete customers
  * 
- * Related: app/Views/user_management/customers.php handles booking interactions
+ * Related: app/Views/user-management/customers.php handles booking interactions
  * 
  * REFACTORED: Now uses Unified Layout System components
  */

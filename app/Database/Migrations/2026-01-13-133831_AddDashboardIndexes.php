@@ -46,17 +46,29 @@ class AddDashboardIndexes extends Migration
     {
         $db = \Config\Database::connect();
         
-        // Drop indexes in reverse order
+        // Drop indexes in reverse order (SQLite-compatible)
         if ($this->indexExists('xs_appointments', 'idx_status_start')) {
-            $db->query('DROP INDEX idx_status_start ON xs_appointments');
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query('DROP INDEX idx_status_start');
+            } else {
+                $db->query('DROP INDEX idx_status_start ON xs_appointments');
+            }
         }
         
         if ($this->indexExists('xs_appointments', 'idx_start_end_time')) {
-            $db->query('DROP INDEX idx_start_end_time ON xs_appointments');
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query('DROP INDEX idx_start_end_time');
+            } else {
+                $db->query('DROP INDEX idx_start_end_time ON xs_appointments');
+            }
         }
         
         if ($this->indexExists('xs_appointments', 'idx_provider_start_status')) {
-            $db->query('DROP INDEX idx_provider_start_status ON xs_appointments');
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query('DROP INDEX idx_provider_start_status');
+            } else {
+                $db->query('DROP INDEX idx_provider_start_status ON xs_appointments');
+            }
         }
     }
     

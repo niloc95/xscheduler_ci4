@@ -32,14 +32,22 @@ class UpdateUsersAndAppointmentsSplit extends MigrationBase
         }
 
         if (!$haveStatus) {
-            $db->query("ALTER TABLE `{$usersTable}` ADD `status` ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active' AFTER `role`");
+            $db->query("ALTER TABLE `{$usersTable}` ADD `status` ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active'");
         }
 
         if (!$haveLastLogin) {
-            $db->query("ALTER TABLE `{$usersTable}` ADD `last_login` DATETIME NULL AFTER `status`");
+            $db->query("ALTER TABLE `{$usersTable}` ADD `last_login` DATETIME NULL");
         }
 
-        $db->query("ALTER TABLE `{$usersTable}` MODIFY `role` ENUM('admin','provider','receptionist') NOT NULL DEFAULT 'provider'");
+        // Use Forge modifyColumn for cross-database compatibility (works with SQLite and MySQL)
+        $this->forge->modifyColumn('users', [
+            'role' => [
+                'type' => 'ENUM',
+                'constraint' => ['admin', 'provider', 'receptionist'],
+                'default' => 'provider',
+                'null' => false,
+            ],
+        ]);
 
         $hasCustomerUsers = $db->query("SELECT COUNT(*) AS c FROM `{$usersTable}` WHERE role = 'customer'")->getFirstRow();
 
@@ -77,7 +85,7 @@ SQL;
             }
 
             if (!$haveCustomerId) {
-                $db->query("ALTER TABLE `{$appointmentsTable}` ADD `customer_id` INT(11) UNSIGNED NULL AFTER `provider_id`");
+                $db->query("ALTER TABLE `{$appointmentsTable}` ADD `customer_id` INT(11) UNSIGNED NULL");
 
                 if ($hasCustomerUsers && (int) $hasCustomerUsers->c > 0) {
                     $updateSql = <<<SQL
@@ -148,7 +156,7 @@ SQL;
         }
 
         if (!$haveUserId) {
-            $db->query("ALTER TABLE `{$appointmentsTable}` ADD `user_id` INT(11) UNSIGNED NULL AFTER `provider_id`");
+            $db->query("ALTER TABLE `{$appointmentsTable}` ADD `user_id` INT(11) UNSIGNED NULL");
         }
 
         if ($haveCustomerId && $db->tableExists('customers')) {

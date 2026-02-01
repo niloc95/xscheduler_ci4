@@ -16,7 +16,7 @@ import { applyDynamicColors } from './utils/dynamic-colors.js';
 import { initGlobalSearch } from './modules/search/global-search.js';
 
 // Import status filters
-import { initStatusFilterControls, emitAppointmentsUpdated } from './modules/filters/status-filters.js';
+import { initStatusFilterControls, emitAppointmentsUpdated, refreshAppointmentStats } from './modules/filters/status-filters.js';
 
 // Import advanced filters
 import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js';
@@ -98,12 +98,23 @@ if (typeof window !== 'undefined') {
 /**
  * Initialize custom scheduler
  */
+let schedulerInitAttempts = 0;
+const MAX_SCHEDULER_INIT_ATTEMPTS = 10;
+
 async function initScheduler() {
     const schedulerContainer = document.getElementById('appointments-inline-calendar');
     
     if (!schedulerContainer) {
+        // SPA navigation may not have injected the appointments view yet
+        if (window.location.pathname.includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
+            schedulerInitAttempts += 1;
+            setTimeout(() => initScheduler(), 200);
+        }
         return;
     }
+
+    // Reset attempts once container is found
+    schedulerInitAttempts = 0;
 
     try {
         // Destroy existing scheduler instance if it exists
@@ -135,6 +146,12 @@ async function initScheduler() {
         // Store scheduler instance globally for debugging
         window.scheduler = scheduler;
         window.dispatchEvent(new CustomEvent('scheduler:ready', { detail: { scheduler } }));
+
+        // If URL includes ?open=..., open the appointment after scheduler is ready
+        const openParam = new URLSearchParams(window.location.search).get('open');
+        if (openParam && typeof scheduler.openAppointmentById === 'function') {
+            scheduler.openAppointmentById(openParam, true);
+        }
 
         // Check if we need to refresh (e.g., after creating an appointment)
         const urlParams = new URLSearchParams(window.location.search);

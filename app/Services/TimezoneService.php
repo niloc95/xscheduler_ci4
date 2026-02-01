@@ -1,5 +1,71 @@
 <?php
 
+/**
+ * =============================================================================
+ * TIMEZONE SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/TimezoneService.php
+ * @description Handles timezone conversions for consistent appointment storage
+ *              and display across different user timezones.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides consistent timezone handling for:
+ * - Converting user local times to UTC for storage
+ * - Converting UTC times to user local times for display
+ * - Validating timezone identifiers
+ * - Detecting user timezone from browser/session
+ * 
+ * STORAGE STRATEGY:
+ * -----------------------------------------------------------------------------
+ * All datetimes are stored in UTC in the database.
+ * User timezone is stored in session and used for display conversion.
+ * This ensures consistent comparison and scheduling logic.
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * toUTC($localTime, $timezone)
+ *   Convert local time to UTC for database storage
+ *   Example: '2025-10-24 10:30:00' NYC -> '2025-10-24 14:30:00' UTC
+ * 
+ * toLocal($utcTime, $timezone)
+ *   Convert UTC time to local timezone for display
+ *   Example: '2025-10-24 14:30:00' UTC -> '2025-10-24 10:30:00' NYC
+ * 
+ * getSessionTimezone()
+ *   Get user's timezone from session or app default
+ * 
+ * setSessionTimezone($timezone)
+ *   Store user's timezone in session
+ * 
+ * isValidTimezone($timezone)
+ *   Check if timezone identifier is valid IANA timezone
+ * 
+ * getAllTimezones()
+ *   Get list of all valid timezone identifiers
+ * 
+ * TIMEZONE FORMATS:
+ * -----------------------------------------------------------------------------
+ * Uses IANA timezone identifiers:
+ * - 'America/New_York'
+ * - 'Europe/London'
+ * - 'Africa/Johannesburg'
+ * - 'Asia/Tokyo'
+ * 
+ * ERROR HANDLING:
+ * -----------------------------------------------------------------------------
+ * Invalid timezones fall back to configured default (usually Africa/Johannesburg).
+ * Conversion errors are logged and original value returned.
+ * 
+ * @see         app/Services/LocalizationSettingsService.php
+ * @see         app/Filters/TimezoneDetection.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use DateTime;

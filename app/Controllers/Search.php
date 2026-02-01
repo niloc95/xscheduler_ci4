@@ -1,18 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * GLOBAL SEARCH CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Search.php
+ * @description Unified search endpoint for finding customers, appointments,
+ *              and services across the entire application.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /search                       : Global search (JSON response)
+ * GET  /search/customers             : Search customers only
+ * GET  /search/appointments          : Search appointments only
+ * GET  /search/services              : Search services only
+ * 
+ * QUERY PARAMETERS:
+ * -----------------------------------------------------------------------------
+ * - q : Search query string (minimum 2 characters)
+ * - type : Filter by entity type (customer, appointment, service)
+ * - limit : Maximum results to return (default: 10)
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides quick search functionality for the top navigation search bar:
+ * - Searches customers by name, email, phone
+ * - Searches appointments by customer name, service, notes
+ * - Returns combined results with relevance scoring
+ * - Supports typeahead/autocomplete functionality
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * Returns JSON with categorized results:
+ * {
+ *   "customers": [...],
+ *   "appointments": [...],
+ *   "total": 15
+ * }
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Requires authentication
+ * - Results filtered by user role and permissions
+ * 
+ * @see         resources/js/components/global-search.js for frontend
+ * @see         app/Models/CustomerModel::search() for customer search
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
 use App\Models\AppointmentModel;
 
-/**
- * Search Controller
- * 
- * Handles global search functionality across customers and appointments.
- * Extracted from Dashboard controller for better separation of concerns.
- * 
- * @package App\Controllers
- */
 class Search extends BaseController
 {
     protected $customerModel;

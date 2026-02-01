@@ -1,10 +1,64 @@
 <?php
 
 /**
- * WhatsApp Link Helper Functions
+ * =============================================================================
+ * WHATSAPP HELPER
+ * =============================================================================
  * 
- * Generates wa.me links for zero-configuration WhatsApp messaging.
- * Perfect for small businesses who want WhatsApp without API complexity.
+ * @file        app/Helpers/whatsapp_helper.php
+ * @description Helper functions for generating WhatsApp wa.me links.
+ *              Enables zero-configuration WhatsApp messaging without API setup.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Load manually where needed:
+ *     helper('whatsapp');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * whatsapp_link($phone, $message)
+ *   Generate a wa.me link with pre-filled message
+ *   Example: whatsapp_link('+27123456789', 'Hello!')
+ *            => 'https://wa.me/27123456789?text=Hello%21'
+ * 
+ * whatsapp_appointment_confirmed_message($appointment, $provider, $service, $business)
+ *   Generate appointment confirmation message
+ * 
+ * whatsapp_appointment_reminder_message($appointment, $provider, $service, $business)
+ *   Generate appointment reminder message
+ * 
+ * whatsapp_appointment_cancelled_message($appointment, $provider, $service, $business)
+ *   Generate cancellation notification message
+ * 
+ * whatsapp_appointment_rescheduled_message($appointment, $provider, $service, $business)
+ *   Generate reschedule notification message
+ * 
+ * PHONE NUMBER FORMAT:
+ * -----------------------------------------------------------------------------
+ * - Accepts: +27123456789, 27123456789, 0123456789
+ * - Strips: spaces, dashes, parentheses
+ * - Output: Pure digits for wa.me URL
+ * 
+ * MESSAGE TEMPLATES:
+ * -----------------------------------------------------------------------------
+ * All message functions return formatted text with:
+ * - Business name and greeting
+ * - Appointment details (date, time, service)
+ * - Provider name (if applicable)
+ * - Location details (if applicable)
+ * - Action prompts
+ * 
+ * ZERO-CONFIG APPROACH:
+ * -----------------------------------------------------------------------------
+ * These links open WhatsApp without any API keys or configuration.
+ * The user clicks the link and WhatsApp opens with pre-filled message.
+ * Perfect for small businesses without API budget.
+ * 
+ * @see         app/Services/NotificationWhatsAppService.php for API-based approach
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
  */
 
 if (!function_exists('whatsapp_link')) {

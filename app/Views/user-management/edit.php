@@ -153,13 +153,13 @@
 
 
 					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
-						<?= $this->include('user_management/components/provider_schedule') ?>
+						<?= $this->include('user-management/components/provider-schedule') ?>
 					</div>
 
 					<!-- Provider Locations Section -->
 					<div id="providerLocationsWrapper" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
 						<?php if (($user['role'] ?? '') === 'provider'): ?>
-							<?= $this->include('user_management/components/provider_locations', [
+							<?= $this->include('user-management/components/provider-locations', [
 								'providerId' => $user['id'] ?? null,
 								'locations' => $providerLocations ?? [],
 							]) ?>
@@ -167,14 +167,14 @@
 					</div>
 
 						<?php if (($user['role'] ?? '') === 'provider'): ?>
-							<?= $this->include('user_management/components/provider_staff', [
+							<?= $this->include('user-management/components/provider-staff', [
 								'assignedStaff' => $assignedStaff ?? [],
 								'availableStaff' => $availableStaff ?? [],
 								'canManageAssignments' => $canManageAssignments ?? false,
 								'providerId' => $user['id'] ?? null,
 							]) ?>
 						<?php elseif ($user['role'] === 'staff'): ?>
-							<?= $this->include('user_management/components/staff_providers', [
+							<?= $this->include('user-management/components/staff-providers', [
 								'assignedProviders' => $assignedProviders ?? [],
 								'availableProviders' => $availableProviders ?? [],
 								'canManageAssignments' => $canManageAssignments ?? false,

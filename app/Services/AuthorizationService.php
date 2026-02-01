@@ -1,5 +1,52 @@
 <?php
 
+/**
+ * =============================================================================
+ * AUTHORIZATION SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/AuthorizationService.php
+ * @description Centralized RBAC (Role-Based Access Control) service for
+ *              checking user permissions across the application.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Server-side permission enforcement:
+ * - Check if user can perform specific actions
+ * - Scope data access based on user role
+ * - Validate resource ownership
+ * - Provide consistent authorization logic
+ * 
+ * ROLE HIERARCHY:
+ * -----------------------------------------------------------------------------
+ * admin    : Full system access, no restrictions
+ * provider : Access own data, schedules, staff
+ * staff    : Limited access, assigned by provider
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - canViewDashboard(role)        : Check dashboard access
+ * - canManageUsers(role)          : Check user management access
+ * - canManageAppointment(role, apptProviderId, userId)
+ * - canViewCalendar(role, calendarProviderId, userId)
+ * - canAccessProvider(role, targetProviderId, userId)
+ * - isOwnerOrAdmin(role, resourceUserId, currentUserId)
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     $authService = new AuthorizationService();
+ *     if (!$authService->canManageAppointment($role, $appt['provider_id'], $userId)) {
+ *         throw new \Exception('Access denied');
+ *     }
+ * 
+ * @see         app/Filters/RoleFilter.php for route-level protection
+ * @see         app/Helpers/permissions_helper.php for helper functions
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 /**

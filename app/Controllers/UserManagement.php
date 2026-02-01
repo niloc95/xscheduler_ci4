@@ -1,5 +1,65 @@
 <?php
 
+/**
+ * =============================================================================
+ * USER MANAGEMENT CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/UserManagement.php
+ * @description Comprehensive user administration including creating, editing,
+ *              and managing users, their roles, schedules, and staff assignments.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /user-management              : List all users
+ * GET  /user-management/create       : Show user creation form
+ * POST /user-management/store        : Create new user
+ * GET  /user-management/edit/:id     : Show edit form for user
+ * POST /user-management/update/:id   : Update existing user
+ * POST /user-management/delete/:id   : Soft delete user
+ * GET  /user-management/schedule/:id : View/edit provider schedule
+ * POST /user-management/schedule/:id : Save provider schedule
+ * GET  /user-management/staff/:id    : Manage provider's staff assignments
+ * 
+ * USER ROLES:
+ * -----------------------------------------------------------------------------
+ * - admin    : Full system access, can manage all users
+ * - provider : Service provider, has own schedule and can have staff
+ * - staff    : Assigned to provider(s), limited access
+ * - customer : End user, books appointments (managed separately)
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Central administration for system users:
+ * - User CRUD with role assignment
+ * - Provider working hours and availability
+ * - Staff-to-provider assignments
+ * - Permission management
+ * - Audit logging of changes
+ * 
+ * PROVIDER SCHEDULES:
+ * -----------------------------------------------------------------------------
+ * Providers have configurable weekly schedules:
+ * - Working days (Mon-Sun)
+ * - Start and end times per day
+ * - Break periods
+ * - Schedule validation against appointments
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Admin: Can manage all users and roles
+ * - Provider: Can manage own staff assignments only
+ * 
+ * @see         app/Views/user-management/ for view templates
+ * @see         app/Models/UserModel.php for user data
+ * @see         app/Models/ProviderScheduleModel.php for schedules
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\ProviderScheduleModel;
@@ -60,7 +120,7 @@ class UserManagement extends BaseController
             'canCreateStaff' => $this->permissionModel->hasPermission($currentUserId, 'create_staff'),
         ];
 
-        return view('user_management/index', $data);
+        return view('user-management/index', $data);
     }
 
     /**
@@ -120,7 +180,7 @@ class UserManagement extends BaseController
             'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
-        return view('user_management/create', $data);
+        return view('user-management/create', $data);
     }
 
     /**
@@ -384,7 +444,7 @@ class UserManagement extends BaseController
             'timeFormatExample' => $this->localization->getFormatExample(),
         ];
 
-        return view('user_management/edit', $data);
+        return view('user-management/edit', $data);
     }
 
     /**

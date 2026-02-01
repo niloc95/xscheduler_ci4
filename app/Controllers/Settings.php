@@ -1,5 +1,64 @@
 <?php
 
+/**
+ * =============================================================================
+ * SETTINGS CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Settings.php
+ * @description Admin settings controller for configuring all aspects of the
+ *              WebSchedulr application including business info, localization,
+ *              booking fields, notifications, and integrations.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /settings                : Main settings page with tabbed interface
+ * POST /settings/save           : Save all settings (AJAX)
+ * POST /settings/test-email     : Test email configuration
+ * POST /settings/test-sms       : Test SMS configuration
+ * POST /settings/test-whatsapp  : Test WhatsApp configuration
+ * GET  /settings/notification-logs : View delivery history
+ * 
+ * SETTINGS CATEGORIES (Tabs):
+ * -----------------------------------------------------------------------------
+ * 1. General      : Company name, contact info, business address
+ * 2. Localization : Timezone, time format (12h/24h), currency, language
+ * 3. Booking      : Customer form fields (required/optional), validation
+ * 4. Calendar     : Work hours, slot duration, buffer time, advance booking
+ * 5. Notifications: Email/SMS/WhatsApp templates and triggers
+ * 6. Integrations : Third-party API keys (Twilio, Meta WhatsApp, etc.)
+ * 7. Security     : Password policies, session settings
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides administrators with a centralized interface to configure:
+ * - Business identity and branding
+ * - Localization and regional preferences
+ * - Booking rules and customer data collection
+ * - Notification channels and message templates
+ * - External service integrations
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * Restricted to admin role only via 'role:admin' filter.
+ * 
+ * DEPENDENCIES:
+ * -----------------------------------------------------------------------------
+ * - SettingModel                   : Key-value settings storage
+ * - NotificationEmailService       : Email testing
+ * - NotificationSmsService         : SMS testing
+ * - NotificationWhatsAppService    : WhatsApp testing
+ * - NotificationDeliveryLogModel   : Delivery history
+ * 
+ * @see         app/Views/settings/index.php for view template
+ * @see         app/Models/SettingModel.php for settings storage
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\SettingModel;

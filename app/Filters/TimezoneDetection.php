@@ -1,5 +1,58 @@
 <?php
 
+/**
+ * =============================================================================
+ * TIMEZONE DETECTION FILTER
+ * =============================================================================
+ * 
+ * @file        app/Filters/TimezoneDetection.php
+ * @description HTTP middleware for capturing client timezone from request
+ *              headers and storing in session for server-side conversions.
+ * 
+ * FILTER ALIAS: 'timezone'
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Enables accurate timezone handling:
+ * - Capture client timezone from headers
+ * - Store in session for backend use
+ * - Enable consistent UTC/local conversions
+ * 
+ * DETECTION SOURCES:
+ * -----------------------------------------------------------------------------
+ * Headers (set by JavaScript):
+ * - X-Client-Timezone: 'America/New_York'
+ * - X-Client-Offset: '-300' (minutes from UTC)
+ * 
+ * POST data (fallback):
+ * - client_timezone
+ * - client_offset
+ * 
+ * SESSION STORAGE:
+ * -----------------------------------------------------------------------------
+ * Stores detected timezone in session:
+ * - client_timezone: IANA timezone string
+ * - client_offset: UTC offset in minutes
+ * 
+ * FRONTEND INTEGRATION:
+ * -----------------------------------------------------------------------------
+ * JavaScript should set headers on AJAX requests:
+ *     fetch('/api/appointments', {
+ *         headers: {
+ *             'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+ *             'X-Client-Offset': new Date().getTimezoneOffset()
+ *         }
+ *     });
+ * 
+ * @see         app/Services/TimezoneService.php for conversions
+ * @see         resources/js/utils/timezone.js for frontend
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Filters;
 
 use App\Services\LocalizationSettingsService;

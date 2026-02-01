@@ -1,5 +1,70 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION QUEUE DISPATCHER
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationQueueDispatcher.php
+ * @description Processes queued notifications and dispatches them via the
+ *              appropriate channel (email, SMS, WhatsApp).
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Background worker service that:
+ * - Claims queued notifications for processing
+ * - Validates appointment still exists
+ * - Checks opt-out status
+ * - Routes to correct channel service
+ * - Handles retries on failure
+ * - Logs delivery attempts
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * dispatch($businessId, $limit)
+ *   Process queued notifications
+ *   Returns: ['claimed'=>int,'sent'=>int,'failed'=>int,'cancelled'=>int,'skipped'=>int]
+ * 
+ * DISPATCH FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Claim batch of queued notifications (with lock token)
+ * 2. For each notification:
+ *    a. Validate appointment still exists
+ *    b. Check if recipient opted out
+ *    c. Build message from template
+ *    d. Send via channel service
+ *    e. Update queue status (sent/failed)
+ *    f. Log delivery attempt
+ * 3. Release stale locks (>15 min old)
+ * 
+ * LOCKING MECHANISM:
+ * -----------------------------------------------------------------------------
+ * Uses optimistic locking with random tokens:
+ * - lock_token: Random hex string
+ * - locked_at: Timestamp when claimed
+ * Prevents duplicate processing in multi-worker scenarios.
+ * Stale locks (>15 min) are auto-released.
+ * 
+ * RETRY HANDLING:
+ * -----------------------------------------------------------------------------
+ * - Max 3 attempts per notification
+ * - Exponential backoff between retries
+ * - Final failure marks as 'failed'
+ * 
+ * CHANNELS:
+ * -----------------------------------------------------------------------------
+ * - email    : Uses NotificationEmailService
+ * - sms      : Uses NotificationSmsService
+ * - whatsapp : Uses NotificationWhatsAppService
+ * 
+ * @see         app/Commands/DispatchNotificationQueue.php
+ * @see         app/Models/NotificationQueueModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;

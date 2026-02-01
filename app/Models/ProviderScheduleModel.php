@@ -1,5 +1,54 @@
 <?php
 
+/**
+ * =============================================================================
+ * PROVIDER SCHEDULE MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/ProviderScheduleModel.php
+ * @description Data model for provider working hours. Each provider has
+ *              7 records (one per day) defining their availability.
+ * 
+ * DATABASE TABLE: xs_provider_schedules
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - provider_id     : FK to xs_users (provider)
+ * - day_of_week     : monday, tuesday, wednesday, etc.
+ * - start_time      : Working start time (HH:MM:SS)
+ * - end_time        : Working end time (HH:MM:SS)
+ * - break_start     : Break start time (optional)
+ * - break_end       : Break end time (optional)
+ * - is_active       : Is this day a working day (0/1)
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * SCHEDULE STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * Each provider has 7 records (Mon-Sun). Example:
+ * 
+ * | day_of_week | start_time | end_time | is_active |
+ * |-------------|------------|----------|------------|
+ * | monday      | 09:00:00   | 17:00:00 | 1          |
+ * | tuesday     | 09:00:00   | 17:00:00 | 1          |
+ * | sunday      | 00:00:00   | 00:00:00 | 0          |
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getByProvider(id)      : Get provider's full weekly schedule
+ * - getWorkingDays(id)     : Get only active working days
+ * - isWorkingDay(id, day)  : Check if provider works on day
+ * - getAvailability(id, date) : Check availability for date
+ * 
+ * @see         app/Controllers/ProviderSchedule.php for API
+ * @see         app/Services/AvailabilityService.php for calculations
+ * @package     App\Models
+ * @extends     CodeIgniter\Model
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use CodeIgniter\Model;

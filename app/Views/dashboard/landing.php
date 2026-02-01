@@ -210,7 +210,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                         // Use hash for URL, fallback to id
                         $appointmentUrl = base_url('/appointments/view/' . ($appt['hash'] ?? $appt['id']));
                         ?>
-                        <div class="appt-row hover:bg-gray-50 dark:hover:bg-gray-750">
+                        <div class="appt-row">
                             <!-- Time -->
                             <div class="text-xs font-medium text-gray-900 dark:text-white">
                                 <?= esc($appt['start_time']) ?>
@@ -235,6 +235,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                             
                             <!-- Action -->
                             <a href="<?= esc($appointmentUrl) ?>" 
+                               data-no-spa="true"
                                class="flex items-center justify-center w-7 h-7 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                title="View appointment">
                                 <span class="material-symbols-outlined text-base">chevron_right</span>

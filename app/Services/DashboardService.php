@@ -1,5 +1,53 @@
 <?php
 
+/**
+ * =============================================================================
+ * DASHBOARD SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/DashboardService.php
+ * @description Business logic service for dashboard data aggregation.
+ *              Provides role-scoped statistics, metrics, and calendar data.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralizes all dashboard data logic:
+ * - Appointment statistics (today, upcoming, completed)
+ * - Calendar events for week/month views
+ * - Revenue metrics and projections
+ * - Provider/staff performance data
+ * - Customer activity summaries
+ * 
+ * ROLE-BASED SCOPING:
+ * -----------------------------------------------------------------------------
+ * - Admin: Sees all data across all providers
+ * - Provider: Sees only own data and assigned staff
+ * - Staff: Sees only own assigned appointments
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getDashboardData()      : Full dashboard payload
+ * - getTodayAppointments()  : Today's appointment list
+ * - getUpcomingAppointments(): Future appointments
+ * - getAppointmentStats()   : KPI statistics
+ * - getCalendarEvents()     : Events for calendar views
+ * - getRevenueStats()       : Revenue summary
+ * 
+ * CACHING:
+ * -----------------------------------------------------------------------------
+ * Dashboard data is cached and invalidated when:
+ * - Appointments are created/updated/deleted
+ * - Schedule changes occur
+ * - Settings are modified
+ * 
+ * @see         app/Controllers/Dashboard.php for view controller
+ * @see         app/Controllers/Api/Dashboard.php for API
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;
@@ -176,8 +224,8 @@ class DashboardService
             $schedule[$providerName][] = [
                 'id' => $appt['id'],
                 'hash' => $appt['hash'] ?? null,
-                'start_time' => date('H:i', strtotime($appt['start_time'])),
-                'end_time' => date('H:i', strtotime($appt['end_time'])),
+                'start_time' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['start_time']))),
+                'end_time' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['end_time']))),
                 'customer_name' => trim(($appt['first_name'] ?? '') . ' ' . ($appt['last_name'] ?? '')),
                 'service_name' => $appt['service_name'] ?? '',
                 'status' => $appt['status'],

@@ -1,5 +1,53 @@
 <?php
 
+/**
+ * =============================================================================
+ * ANALYTICS CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Analytics.php
+ * @description Business intelligence and reporting dashboard with charts,
+ *              metrics, and exportable data for appointments, revenue, and trends.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /analytics                    : Main analytics dashboard
+ * GET  /analytics/appointments       : Appointment statistics and trends
+ * GET  /analytics/revenue            : Revenue reports and projections
+ * GET  /analytics/services           : Service popularity analysis
+ * GET  /analytics/export             : Export data to CSV/PDF
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides comprehensive business analytics:
+ * - Appointment volume over time (daily/weekly/monthly)
+ * - Revenue tracking and forecasting
+ * - Service popularity rankings
+ * - Provider performance metrics
+ * - Customer acquisition and retention rates
+ * - Peak hours and booking patterns
+ * 
+ * DATA VISUALIZATIONS:
+ * -----------------------------------------------------------------------------
+ * - Line charts: Trends over time
+ * - Bar charts: Comparisons (services, providers)
+ * - Pie charts: Distribution (services, statuses)
+ * - KPI cards: Key metrics summary
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Admin: Full access to all analytics
+ * - Provider: Access to own metrics only
+ * 
+ * @see         app/Views/analytics/ for dashboard templates
+ * @see         resources/js/analytics.js for chart rendering
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;

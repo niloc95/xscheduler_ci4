@@ -1,354 +1,746 @@
-# xScheduler CI4 - Professional Appointment Scheduling System
+# WebSchedulr - Professional Appointment Scheduling System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CodeIgniter](https://img.shields.io/badge/CodeIgniter-4.x-red.svg)](https://codeigniter.com/)
+[![CodeIgniter](https://img.shields.io/badge/CodeIgniter-4.6.1-red.svg)](https://codeigniter.com/)
 [![PHP](https://img.shields.io/badge/PHP-8.1+-purple.svg)](https://www.php.net/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.17-38bdf8.svg)](https://tailwindcss.com/)
+[![Material Design](https://img.shields.io/badge/Material-Design%203.0-6750A4.svg)](https://m3.material.io/)
 
-A modern, full-featured appointment scheduling application built with CodeIgniter 4 and Tailwind CSS. Designed for service-based businesses including salons, clinics, consultancies, and any organization that needs professional appointment management.
+A modern, enterprise-ready appointment scheduling application built with CodeIgniter 4 and Material Design 3. Designed for service-based businesses including salons, clinics, consultancies, and any organization that needs professional appointment management.
+
+## 📑 Table of Contents
+
+- [Key Features](#-key-features)
+- [Technology Stack](#-technology-stack)
+- [System Requirements](#-system-requirements)
+- [Quick Start](#-quick-start)
+- [Installation Guide](#-installation-guide)
+- [Configuration](#-configuration)
+- [User Roles & Permissions](#-user-roles--permissions)
+- [API Reference](#-api-reference)
+- [Project Structure](#-project-structure)
+- [Development](#-development)
+- [Deployment](#-deployment)
+- [Security](#-security)
+- [Documentation](#-documentation)
+- [Troubleshooting](#-troubleshooting)
+- [Roadmap](#-roadmap)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
 
 ## ✨ Key Features
 
-### 📅 **Appointment Management**
-- **Interactive Calendar**: Day/Week/Month views with FullCalendar integration
-- **Real-time Availability**: Automatic slot calculation based on business hours
-- **Smart Booking**: Conflict detection and timezone-aware scheduling
-- **Multi-provider Support**: Provider-specific calendars with color coding
-- **Customer Management**: Customer database with booking history
-- **Status Tracking**: Pending, Confirmed, Completed, Cancelled, No-show
+### 📅 Intelligent Scheduling System
+- **Pre-populated Availability**: 60-day lookahead with instant slot display
+- **Real-time Conflict Detection**: Automatic validation against existing bookings
+- **Timezone-Aware**: Full timezone support with automatic conversions
+- **Smart Buffer Time**: Configurable gaps between appointments (0/15/30 min)
+- **Business Hours Validation**: Respects provider schedules and breaks
+- **Multi-Provider Support**: Provider-specific calendars with color coding
 
-### 🔔 **Notifications System**
-- **Multi-channel Delivery**: Email, SMS, and WhatsApp notifications
-- **Event Types**: Confirmations, reminders, cancellations, and reschedules
-- **Template System**: Customizable message templates with placeholders
-- **Queued Processing**: Background job processing for reliable delivery
+### 🗓️ Interactive Calendar
+- **Day/Week/Month Views**: Custom-built scheduler with drag-and-drop
+- **Provider Filtering**: View by individual or all providers
+- **Status Color Coding**: Visual distinction for appointment states
+- **Quick Actions**: Click appointments to view, edit, or update status
+- **Responsive Design**: Works seamlessly on mobile devices
+
+### 🔔 Multi-Channel Notifications
+- **Email Notifications**: SMTP-based with customizable templates
+- **SMS Integration**: Clickatell and Twilio support
+- **WhatsApp Business**: Meta Cloud API integration with template enforcement
+- **Event Types**: Confirmations, reminders, cancellations, reschedules
+- **Queue Processing**: Background job processing for reliable delivery
 - **Smart Reminders**: Automated appointment reminders with configurable timing
 
-### 👥 **User Management**
-- **Role-Based Access Control**: Admin, Provider, Staff, and Customer roles
-- **Granular Permissions**: Fine-grained access control per role
-- **Staff Assignment**: Provider-specific staff management
-- **Secure Authentication**: CodeIgniter 4 authentication with CSRF protection
+### 👥 Role-Based Access Control
+- **Four User Roles**: Admin, Provider, Staff, Customer
+- **Granular Permissions**: Fine-grained access per role
+- **Provider Hierarchy**: Staff assigned to specific providers
+- **Secure Authentication**: CSRF protection, session security
 
-### 🎨 **Modern UI/UX**
-- **Responsive Design**: Mobile-first approach with adaptive layouts
-- **Dark Mode**: System-wide dark mode support
-- **Material Design**: Material Icons and modern component library
-- **Accessible**: WCAG-compliant interface elements
-- **Real-time Updates**: Live calendar and availability updates
+### 🎨 Modern UI/UX
+- **Material Design 3.0**: Consistent, accessible component library
+- **Dark Mode**: System-wide theme support with smooth transitions
+- **Responsive Layout**: Mobile-first adaptive design
+- **SPA Navigation**: Smooth page transitions without full reloads
+- **WCAG Compliant**: Accessible interface elements
 
-### ⚙️ **Configuration & Setup**
-- **Setup Wizard**: Guided initial setup with database and admin configuration
-- **Settings Management**: Comprehensive settings system for all aspects
-- **Localization**: Multi-language support with customizable text
-- **Business Hours**: Flexible working hours and time slot configuration
-- **Service Management**: Service catalog with durations and pricing
+### ⚙️ Comprehensive Configuration
+- **Setup Wizard**: Guided initial configuration
+- **Business Settings**: Hours, time slots, booking rules
+- **Service Catalog**: Durations, pricing, provider assignments
+- **Localization**: Multi-language and regional format support
+- **Custom Fields**: Configurable customer data fields
 
-### 📊 **Analytics & Reporting**
-- **Dashboard**: Real-time stats and appointment metrics
-- **Revenue Tracking**: Revenue calculations by period
+### 📊 Analytics & Reporting
+- **Real-time Dashboard**: Today's metrics and alerts
+- **Provider Analytics**: Performance tracking per provider
 - **Appointment Statistics**: Status distribution and trends
-- **Provider Analytics**: Provider-specific performance metrics
-- **Activity Logs**: Recent activity tracking and audit trail
+- **Activity Logs**: Audit trail for compliance
 
-## 🏗️ Technical Stack
+### 🔒 Security Features
+- **Hash-Based URLs**: Non-enumerable appointment/customer links
+- **CSRF Protection**: All forms protected
+- **XSS Prevention**: Input sanitization throughout
+- **SQL Injection Prevention**: Query builder with parameterized queries
+- **Session Security**: Secure cookie handling, IP binding
 
-- **Backend**: CodeIgniter 4 (PHP 8.1+)
-- **Frontend**: Tailwind CSS 3.4, Material Design Icons
-- **JavaScript**: Modern ES6+ with Vite build system
-- **Database**: MySQL 5.7+ / MariaDB 10.3+
-- **Calendar**: FullCalendar v6
-- **Notifications**: Queue-based email/SMS/WhatsApp system
-- **Authentication**: Built-in CI4 authentication with role-based access
+---
 
-## 📦 Installation
+## 🏗️ Technology Stack
 
-### System Requirements
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Backend** | CodeIgniter 4 | 4.6.1 |
+| **Language** | PHP | 8.1+ |
+| **Database** | MySQL / MariaDB | 5.7+ / 10.3+ |
+| **CSS Framework** | Tailwind CSS | 3.4.17 |
+| **Design System** | Material Design | 3.0 |
+| **Charts** | Chart.js | 4.5.0 |
+| **Build Tool** | Vite | 6.3.5 |
+| **Icons** | Material Symbols | Latest |
 
+---
+
+## 💻 System Requirements
+
+### Server Requirements
 - PHP 8.1 or higher
 - MySQL 5.7+ or MariaDB 10.3+
+- Apache with mod_rewrite OR Nginx
 - Composer 2.x
 - Node.js 18+ and npm
-- Apache with mod_rewrite (or Nginx)
 
-### Quick Start
+### Required PHP Extensions
+- `intl` - Internationalization
+- `mbstring` - Multibyte string handling
+- `json` - JSON encoding/decoding
+- `mysqlnd` - MySQL native driver
+- `curl` - For notifications
+- `openssl` - Encryption support
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/niloc95/xscheduler_ci4.git
-   cd xscheduler_ci4
-   ```
+### Recommended
+- SSL certificate (required for production)
+- 256MB+ PHP memory limit
+- Redis/Memcached (optional, for caching)
 
-2. **Install dependencies**
-   ```bash
-   # PHP dependencies
-   composer install
-   
-   # Node.js dependencies
-   npm install
-   ```
+---
 
-3. **Configure environment**
-   ```bash
-   # Copy environment file
-   cp .env.example .env
-   
-   # Edit .env with your configuration:
-   # - Database credentials
-   # - Base URL
-   # - Email settings (for notifications)
-   ```
-
-4. **Initialize database**
-   ```bash
-   # Run migrations
-   php spark migrate -n App
-   ```
-
-5. **Build frontend assets**
-   ```bash
-   # Production build
-   npm run build
-   ```
-
-6. **Start development server**
-   ```bash
-   php spark serve
-   ```
-
-7. **Access the setup wizard**
-   - Navigate to `http://localhost:8080/setup`
-   - Complete the setup wizard to create admin account
-   - Configure business settings, services, and providers
-
-### Development Commands
+## 🚀 Quick Start
 
 ```bash
-# Development mode with hot reload
-npm run dev
+# 1. Clone the repository
+git clone https://github.com/niloc95/xscheduler_ci4.git
+cd xscheduler_ci4
 
-# Production build
-npm run build
+# 2. Install dependencies
+composer install
+npm install
 
-# Preview production build
-npm run preview
+# 3. Configure environment
+cp .env.example .env
+php spark key:generate
 
-# Run database migrations
+# 4. Edit .env with your database credentials
+# database.default.hostname = localhost
+# database.default.database = webschedulr
+# database.default.username = your_user
+# database.default.password = your_password
+
+# 5. Run migrations
 php spark migrate -n App
 
-# Start local server
+# 6. Build frontend assets
+npm run build
+
+# 7. Start development server
 php spark serve
 
-# Process notification queue (in production, set up as cron job)
-php spark notifications:dispatch-queue
+# 8. Access setup wizard at http://localhost:8080/setup
 ```
 
-## 🌐 Deployment
+---
 
-### Production Deployment
+## 📦 Installation Guide
 
-1. **Build for production**
-   ```bash
-   npm run build
-   ```
+### Step 1: Server Preparation
 
-2. **Upload to server**
-   - Upload all files to your hosting provider
-   - Point domain to the `public/` directory
-   - Ensure `writable/` directory has write permissions (755)
+**For Apache:**
+```apache
+<VirtualHost *:80>
+    ServerName yourdomain.com
+    DocumentRoot /path/to/xscheduler_ci4/public
+    
+    <Directory /path/to/xscheduler_ci4/public>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
 
-3. **Configure environment**
-   ```bash
-   # Update .env for production
-   CI_ENVIRONMENT = production
-   app.baseURL = 'https://yourdomain.com'
-   
-   # Set database credentials
-   database.default.hostname = your_host
-   database.default.database = your_database
-   database.default.username = your_user
-   database.default.password = your_password
-   ```
+**For Nginx:**
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    root /path/to/xscheduler_ci4/public;
+    index index.php;
 
-4. **Run migrations**
-   ```bash
-   php spark migrate -n App
-   ```
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
 
-5. **Set up cron job** (for notifications)
-   ```bash
-   # Add to crontab (runs every minute)
-   * * * * * cd /path/to/project && php spark notifications:dispatch-queue >> /dev/null 2>&1
-   ```
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+}
+```
 
-### Hosting Requirements
+### Step 2: Database Setup
 
-✅ **Shared Hosting**: cPanel, Plesk-based hosting  
-✅ **VPS/Cloud**: DigitalOcean, AWS, Linode, Vultr  
-✅ **Managed Platforms**: Cloudways, Laravel Forge
+```sql
+-- Create database
+CREATE DATABASE webschedulr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-**Minimum Requirements**:
-- PHP 8.1+ with required extensions (intl, mbstring, json, mysqlnd)
-- MySQL 5.7+ or MariaDB 10.3+
-- Apache with mod_rewrite or Nginx
-- SSL certificate (recommended for production)
+-- Create user (optional)
+CREATE USER 'webschedulr'@'localhost' IDENTIFIED BY 'secure_password';
+GRANT ALL PRIVILEGES ON webschedulr.* TO 'webschedulr'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### Step 3: Application Setup
+
+```bash
+# Install PHP dependencies
+composer install --no-dev --optimize-autoloader
+
+# Install Node dependencies and build
+npm ci
+npm run build
+
+# Set permissions
+chmod -R 755 writable/
+chown -R www-data:www-data writable/
+
+# Run migrations
+php spark migrate -n App
+```
+
+### Step 4: Complete Setup Wizard
+
+Navigate to `https://yourdomain.com/setup` and complete:
+1. Database verification
+2. Admin account creation
+3. Business information
+4. Business hours configuration
+5. Initial service setup
+
+---
+
+## ⚙️ Configuration
+
+### Environment Configuration (.env)
+
+```ini
+#--------------------------------------------------------------------
+# ENVIRONMENT
+#--------------------------------------------------------------------
+CI_ENVIRONMENT = production
+
+#--------------------------------------------------------------------
+# APP
+#--------------------------------------------------------------------
+app.baseURL = 'https://yourdomain.com'
+app.timezone = 'Africa/Johannesburg'
+app.forceGlobalSecureRequests = true
+
+#--------------------------------------------------------------------
+# DATABASE
+#--------------------------------------------------------------------
+database.default.hostname = localhost
+database.default.database = webschedulr
+database.default.username = db_user
+database.default.password = db_password
+database.default.DBDriver = MySQLi
+database.default.DBPrefix = xs_
+database.default.port = 3306
+
+#--------------------------------------------------------------------
+# SESSION
+#--------------------------------------------------------------------
+session.driver = 'CodeIgniter\Session\Handlers\FileHandler'
+session.savePath = 'writable/session'
+session.matchIP = true
+session.timeToUpdate = 300
+session.regenerateDestroy = true
+
+#--------------------------------------------------------------------
+# EMAIL (SMTP)
+#--------------------------------------------------------------------
+email.fromEmail = 'noreply@yourdomain.com'
+email.fromName = 'WebSchedulr'
+email.protocol = smtp
+email.SMTPHost = smtp.example.com
+email.SMTPUser = smtp_user
+email.SMTPPass = smtp_password
+email.SMTPPort = 587
+email.SMTPCrypto = tls
+
+#--------------------------------------------------------------------
+# SECURITY
+#--------------------------------------------------------------------
+security.CSRFProtection = true
+security.CSRFTokenName = 'csrf_token'
+security.CSRFCookieName = 'csrf_cookie'
+security.CSRFExpire = 7200
+security.CSRFRegenerate = true
+security.CSRFSameSite = 'Strict'
+```
+
+### Application Settings (Admin Panel)
+
+Access via `/settings` after login:
+
+| Setting | Description |
+|---------|-------------|
+| **Business Hours** | Operating hours per day of week |
+| **Time Slot Duration** | Default appointment slot length |
+| **Buffer Time** | Gap between appointments |
+| **Advance Booking** | How far ahead customers can book |
+| **Cancellation Policy** | Minimum notice for cancellations |
+| **Notification Templates** | Email/SMS/WhatsApp message content |
+
+---
+
+## 👥 User Roles & Permissions
+
+### Role Hierarchy
+
+```
+Administrator (admin)
+├── Full system access
+├── User management (all roles)
+├── System settings
+├── Global analytics
+└── All provider data
+
+Provider
+├── Own calendar management
+├── Own appointment handling
+├── Staff management (assigned)
+├── Own analytics
+└── Cannot modify system settings
+
+Staff
+├── Assigned provider's calendar
+├── Own appointments only
+├── Limited to assigned scope
+└── No user management
+
+Customer
+├── Book appointments
+├── View own history
+├── Profile management
+└── No administrative access
+```
+
+### Permission Matrix
+
+| Feature | Admin | Provider | Staff | Customer |
+|---------|:-----:|:--------:|:-----:|:--------:|
+| System Settings | ✅ | ❌ | ❌ | ❌ |
+| User Management | ✅ | Own Staff | ❌ | ❌ |
+| All Appointments | ✅ | Own | Assigned | Own |
+| Create Appointments | ✅ | ✅ | ✅ | ✅ |
+| Cancel Any Appointment | ✅ | Own | Assigned | Own |
+| Services Management | ✅ | Own | ❌ | ❌ |
+| Analytics | Global | Own | ❌ | ❌ |
+| Notification Rules | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+## 🔌 API Reference
+
+### Base URL
+```
+Production: https://yourdomain.com/api/v1
+Development: http://localhost:8080/api/v1
+```
+
+### Authentication
+All API endpoints require authentication via session or Bearer token.
+
+### Core Endpoints
+
+#### Availability
+
+```http
+GET /api/availability/calendar
+```
+Get 60-day pre-computed availability calendar.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `provider_id` | int | Yes | Provider ID |
+| `service_id` | int | Yes | Service ID |
+| `start_date` | date | No | Start date (default: today) |
+| `days` | int | No | Window size (default: 60) |
+
+**Response:**
+```json
+{
+  "ok": true,
+  "data": {
+    "availableDates": ["2026-01-30", "2026-01-31"],
+    "slotsByDate": {
+      "2026-01-30": [
+        {"start": "2026-01-30T09:00:00+02:00", "startFormatted": "09:00", "available": true}
+      ]
+    },
+    "timezone": "Africa/Johannesburg"
+  }
+}
+```
+
+#### Appointments
+
+```http
+GET /api/appointments
+POST /api/appointments
+GET /api/appointments/{id}
+PUT /api/appointments/{id}
+PATCH /api/appointments/{id}/status
+DELETE /api/appointments/{id}
+```
+
+#### Providers
+
+```http
+GET /api/providers
+GET /api/providers/{id}
+GET /api/providers/{id}/services
+```
+
+#### Services
+
+```http
+GET /api/services
+GET /api/services/{id}
+```
+
+For complete API documentation, see [docs/openapi.yml](docs/openapi.yml).
+
+---
 
 ## 📁 Project Structure
 
 ```
 xscheduler_ci4/
 ├── app/
-│   ├── Controllers/          # Request handlers
-│   │   ├── Appointments.php  # Appointment management
-│   │   ├── Scheduler.php     # Booking API endpoints
-│   │   ├── Dashboard.php     # Analytics dashboard
-│   │   ├── Settings.php      # System configuration
-│   │   └── Api/              # RESTful API controllers
-│   ├── Models/               # Database models
-│   │   ├── AppointmentModel.php
-│   │   ├── UserModel.php
-│   │   ├── ServiceModel.php
-│   │   └── CustomerModel.php
-│   ├── Services/             # Business logic
-│   │   ├── SchedulingService.php
-│   │   ├── AvailabilityService.php
-│   │   ├── NotificationQueueService.php
-│   │   └── BookingSettingsService.php
-│   ├── Views/                # Templates
-│   │   ├── appointments/     # Appointment views
-│   │   ├── dashboard/        # Dashboard views
-│   │   └── components/       # Reusable components
+│   ├── Commands/               # CLI commands (notifications, reminders)
+│   ├── Config/                 # Application configuration
+│   ├── Controllers/            # Request handlers
+│   │   ├── Api/               # RESTful API controllers
+│   │   ├── Appointments.php   # Appointment management
+│   │   ├── Dashboard.php      # Analytics dashboard
+│   │   └── Settings.php       # System configuration
 │   ├── Database/
-│   │   └── Migrations/       # Database migrations
-│   └── Config/               # Application configuration
+│   │   └── Migrations/        # Database migrations (50+)
+│   ├── Filters/               # Request filters (auth, roles)
+│   ├── Helpers/               # Utility functions
+│   ├── Libraries/             # Custom libraries
+│   ├── Models/                # Database models
+│   │   ├── AppointmentModel.php
+│   │   ├── CustomerModel.php
+│   │   ├── ServiceModel.php
+│   │   └── UserModel.php
+│   ├── Services/              # Business logic
+│   │   ├── AvailabilityService.php
+│   │   ├── BusinessHoursService.php
+│   │   ├── NotificationQueueService.php
+│   │   └── SchedulingService.php
+│   └── Views/                 # Templates
+│       ├── appointments/      # Appointment views
+│       ├── components/        # Reusable UI components
+│       ├── dashboard/         # Dashboard views
+│       └── layouts/           # Page layouts
+├── docs/                      # Documentation (60+ files)
+│   ├── architecture/          # System architecture
+│   ├── configuration/         # Config guides
+│   ├── development/           # Developer guides
+│   ├── security/              # Security documentation
+│   └── SCHEDULING_SYSTEM.md   # Core scheduling docs
+├── public/                    # Web root
+│   ├── index.php             # Application entry
+│   └── build/                # Compiled assets
 ├── resources/
-│   ├── js/                   # JavaScript source
-│   │   ├── app.js           # Main application
-│   │   └── modules/          # Feature modules
-│   ├── css/                  # Stylesheets
+│   ├── css/                  # Source stylesheets
+│   ├── js/                   # JavaScript modules
+│   │   ├── modules/
+│   │   │   ├── scheduler/    # Calendar components
+│   │   │   ├── appointments/ # Booking logic
+│   │   │   └── filters/      # UI filters
+│   │   └── app.js           # Main entry
 │   └── scss/                 # SCSS source
-├── public/                   # Web-accessible files
-│   ├── index.php            # Application entry point
-│   └── build/               # Compiled assets
-├── writable/                 # Logs, cache, uploads
-├── tests/                    # Test files
-├── docs/                     # Documentation
+├── tests/                    # Test suites
+│   ├── unit/                 # Unit tests
+│   └── integration/          # Integration tests
+├── writable/                 # Runtime files (logs, cache)
 ├── composer.json             # PHP dependencies
 ├── package.json              # Node dependencies
+├── tailwind.config.js        # Tailwind configuration
 └── vite.config.js           # Build configuration
 ```
 
-## 🚀 Usage Guide
+---
 
-### For Administrators
+## 🛠️ Development
 
-1. **Initial Setup**
-   - Complete the setup wizard at `/setup`
-   - Configure business information and settings
-   - Set up business hours and time slots
-   - Create services and assign prices/durations
+### Development Server
 
-2. **Manage Providers**
-   - Add provider accounts (staff members)
-   - Assign services to providers
-   - Set provider-specific working hours
-   - Configure provider permissions
+```bash
+# Terminal 1: PHP server
+php spark serve
 
-3. **Configure Notifications**
-   - Set up email/SMS/WhatsApp templates
-   - Configure reminder timing
-   - Customize message content
-   - Test notification delivery
+# Terminal 2: Vite dev server (hot reload)
+npm run dev
 
-4. **Monitor System**
-   - View dashboard analytics
-   - Review appointment statistics
-   - Monitor system activity
-   - Export reports
-
-### For Providers/Staff
-
-1. **View Schedule**
-   - Access calendar at `/appointments`
-   - Switch between day/week/month views
-   - View appointment details by clicking events
-   - Filter by provider or service
-
-2. **Manage Appointments**
-   - Create new appointments
-   - Confirm pending bookings
-   - Reschedule or cancel appointments
-   - Add appointment notes
-   - Update appointment status
-
-3. **Customer Management**
-   - Search existing customers
-   - View customer booking history
-   - Update customer information
-
-### For Customers (Public Booking)
-
-1. **Book Appointment**
-   - Navigate to public booking page
-   - Select provider and service
-   - Choose available date and time
-   - Enter contact information
-   - Confirm booking
-
-2. **Manage Booking**
-   - Look up booking using email/phone
-   - Reschedule appointment
-   - Cancel if needed
-
-## 🔧 Configuration
-
-### Key Settings
-
-Edit `.env` for core configuration:
-
-```ini
-# Environment
-CI_ENVIRONMENT = production
-
-# Base URL
-app.baseURL = 'https://yourdomain.com'
-
-# Database
-database.default.hostname = localhost
-database.default.database = xscheduler
-database.default.username = your_user
-database.default.password = your_password
-
-# Timezone
-app.timezone = 'America/New_York'
-
-# Email (for notifications)
-email.fromEmail = noreply@yourdomain.com
-email.fromName = 'xScheduler'
-email.SMTPHost = smtp.example.com
-email.SMTPUser = your_smtp_user
-email.SMTPPass = your_smtp_password
+# Terminal 3: Watch logs (optional)
+tail -f writable/logs/log-$(date +%Y-%m-%d).log
 ```
 
-### Application Settings
+### Available Commands
 
-Configure via admin panel at `/settings`:
+```bash
+# Development
+npm run dev              # Start Vite dev server
+npm run build            # Production build
+npm run preview          # Preview production build
 
-- **Business Hours**: Operating hours and time slots
-- **Booking Rules**: Advance booking, max slots, cancellation policies
-- **Notifications**: Email/SMS/WhatsApp templates
-- **Localization**: Language and regional formats
-- **Services**: Service catalog with pricing
+# Database
+php spark migrate -n App           # Run migrations
+php spark migrate:rollback -n App  # Rollback last migration
+php spark db:seed                  # Run seeders
+
+# Notifications
+php spark notifications:dispatch-queue  # Process notification queue
+php spark reminders:send               # Send appointment reminders
+
+# Cache
+php spark cache:clear    # Clear all caches
+
+# Testing
+./vendor/bin/phpunit tests/unit/           # Unit tests
+./vendor/bin/phpunit tests/integration/    # Integration tests
+```
+
+### Code Standards
+
+- Follow [CodeIgniter 4 Style Guide](https://codeigniter.com/user_guide/general/styleguide.html)
+- Use PSR-12 coding standards
+- Document all public methods with PHPDoc
+- Write tests for new features
+
+---
+
+## 🚀 Deployment
+
+### Production Checklist
+
+- [ ] Set `CI_ENVIRONMENT = production`
+- [ ] Configure `app.baseURL` correctly
+- [ ] Enable `app.forceGlobalSecureRequests = true`
+- [ ] Set strong database password
+- [ ] Configure email settings
+- [ ] Run `npm run build`
+- [ ] Set `writable/` permissions to 755
+- [ ] Configure SSL certificate
+- [ ] Set up cron job for notifications
+
+### Cron Job Setup
+
+```bash
+# Process notification queue (every minute)
+* * * * * cd /path/to/project && php spark notifications:dispatch-queue >> /dev/null 2>&1
+
+# Send reminders (every 5 minutes)
+*/5 * * * * cd /path/to/project && php spark reminders:send >> /dev/null 2>&1
+```
+
+### Hosting Compatibility
+
+✅ **Shared Hosting**: cPanel, Plesk (requires PHP 8.1+)  
+✅ **VPS/Cloud**: DigitalOcean, AWS, Linode, Vultr  
+✅ **Managed Platforms**: Cloudways, Laravel Forge  
+✅ **Containers**: Docker (Dockerfile included)
+
+---
+
+## 🔒 Security
+
+### Security Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| CSRF Protection | ✅ | All forms protected with tokens |
+| XSS Prevention | ✅ | Input/output sanitization |
+| SQL Injection | ✅ | Parameterized queries throughout |
+| Password Hashing | ✅ | bcrypt with cost factor 12 |
+| Hash-Based URLs | ✅ | Non-enumerable resource URLs |
+| Session Security | ✅ | IP binding, regeneration, secure cookies |
+| Role-Based Access | ✅ | Server-side authorization |
+
+### Reporting Security Issues
+
+**Do not** open public issues for security vulnerabilities.
+
+Report security concerns privately to: **info@webschedulr.co.za**
+
+See [SECURITY.md](SECURITY.md) for our full security policy.
+
+---
+
+## 📚 Documentation
+
+### Core Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Requirements](docs/REQUIREMENTS.md) | System specifications |
+| [Scheduling System](docs/SCHEDULING_SYSTEM.md) | Core scheduling architecture |
+| [Role-Based System](docs/architecture/ROLE_BASED_SYSTEM.md) | Permission system |
+| [API Specification](docs/openapi.yml) | OpenAPI 3.0 spec |
+
+### Configuration Guides
+
+| Document | Description |
+|----------|-------------|
+| [Environment Guide](docs/configuration/ENV-CONFIGURATION-GUIDE.md) | .env configuration |
+| [Localization](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md) | Multi-language setup |
+| [Settings](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md) | Application settings |
+
+### Development Guides
+
+| Document | Description |
+|----------|-------------|
+| [Unified Layout](docs/development/UNIFIED_LAYOUT_SYSTEM.md) | UI component system |
+| [Dashboard](docs/development/DASHBOARD_LANDING_VIEW_IMPLEMENTATION.md) | Dashboard architecture |
+| [Dark Mode](docs/dark-mode/DARK_MODE_IMPLEMENTATION.md) | Theme system |
+| [Provider System](docs/development/provider_system_guide.md) | Provider management |
+
+### Security Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Security Guide](docs/security/SECURITY_IMPLEMENTATION_GUIDE.md) | Security best practices |
+| [Hash URLs](docs/security/HASH_BASED_URL_IMPLEMENTATION.md) | URL security |
+| [Encryption](docs/security/ENCRYPTION-STATUS-ASSESSMENT.md) | Data encryption |
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Calendar Not Loading
+```bash
+# Check browser console for errors
+# Rebuild assets
+npm run build
+# Clear cache
+php spark cache:clear
+```
+
+#### Notifications Not Sending
+```bash
+# Verify SMTP settings in .env
+# Check queue
+php spark notifications:dispatch-queue
+# Review logs
+tail -f writable/logs/log-*.log
+```
+
+#### Database Connection Errors
+```bash
+# Verify credentials in .env
+# Test connection
+php spark db:table users
+# Run pending migrations
+php spark migrate -n App
+```
+
+#### Permission Errors
+```bash
+# Set correct permissions
+chmod -R 755 writable/
+chown -R www-data:www-data writable/
+```
+
+#### Assets Not Loading
+```bash
+# Clear caches
+php spark cache:clear
+# Rebuild assets
+npm run build
+# Verify baseURL in .env
+```
+
+### Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/niloc95/xscheduler_ci4/discussions)
+- **Email**: info@webschedulr.co.za
+
+---
+
+## 📈 Roadmap
+
+### ✅ Completed (v1.0)
+- [x] User authentication & role-based access
+- [x] Appointment booking & management
+- [x] Interactive calendar (day/week/month)
+- [x] Multi-provider support
+- [x] Multi-channel notifications (Email/SMS/WhatsApp)
+- [x] Real-time availability checking
+- [x] Customer management
+- [x] Dashboard analytics
+- [x] Dark mode support
+- [x] Hash-based URL security
+- [x] Setup wizard
+- [x] Pre-populated availability system
+
+### 🚧 In Development (v1.1)
+- [ ] Payment integration (Stripe, PayPal)
+- [ ] Advanced reporting & CSV exports
+- [ ] Calendar sync (Google Calendar, Outlook)
+- [ ] Recurring appointments
+- [ ] Waiting list management
+
+### 📋 Planned (v2.0)
+- [ ] Multi-location support
+- [ ] Customer self-service portal
+- [ ] Video consultation integration
+- [ ] Mobile app (iOS/Android)
+- [ ] Package & membership support
+- [ ] Marketing automation
+- [ ] Inventory management
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow our fork-based workflow:
+We welcome contributions! Please follow our workflow:
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request** to the `main` branch
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** your changes: `git commit -m 'Add amazing feature'`
+4. **Push** to the branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request to `main`
 
 ### Contribution Guidelines
 
@@ -357,121 +749,16 @@ We welcome contributions! Please follow our fork-based workflow:
 - Add tests for new features
 - Update documentation as needed
 - Keep PRs focused on single features
-- All PRs require approval before merging
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-## 🔒 Security
+---
 
-### Reporting Security Issues
+## 📄 License
 
-Please **do not** open public issues for security vulnerabilities.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Report security concerns privately to: **info@webschedulr.co.za**
-
-See [SECURITY.md](SECURITY.md) for our security policy and response process.
-
-### Security Features
-
-- ✅ CSRF protection enabled by default
-- ✅ XSS filtering on all inputs
-- ✅ SQL injection prevention via query builder
-- ✅ Secure password hashing (bcrypt)
-- ✅ Role-based access control
-- ✅ Session security best practices
-- ✅ HTTPS recommended for production
-
-
-## 📚 Documentation
-
-Comprehensive documentation is available in the `/docs` directory:
-
-### Core Documentation
-- **[Requirements](docs/REQUIREMENTS.md)** - System requirements and specifications
-- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
-- **[Security Policy](SECURITY.md)** - Security practices and reporting
-
-### Architecture & Development
-- **[Scheduling System](docs/SCHEDULING_SYSTEM.md)** - Complete scheduling architecture
-- **[Calendar Implementation](docs/development/calendar_implementation.md)** - Calendar integration guide
-- **[Database Wiring](docs/CALENDAR_DATABASE_WIRING_INVESTIGATION.md)** - Database architecture
-
-### Configuration
-- **[Settings Implementation](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Settings system
-- **[Localization](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language setup
-
-### Features
-- **[Appointment System](docs/APPOINTMENT_CREATE_EDIT_MODAL_INVESTIGATION.md)** - Appointment features
-- **[Notifications](docs/NOTIFICATIONS_IMPLEMENTATION_CHECKLIST.md)** - Notification system
-- **[User Management](docs/user-management/)** - Role-based access control
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Calendar Not Loading**
-- Check browser console for JavaScript errors
-- Verify FullCalendar assets are built: `npm run build`
-- Ensure API endpoints are accessible: `/api/v1/appointments`
-
-**Notifications Not Sending**
-- Verify email configuration in `.env`
-- Check notification queue: `php spark notifications:dispatch-queue`
-- Review logs in `writable/logs/`
-
-**Database Connection Errors**
-- Verify database credentials in `.env`
-- Ensure database exists and is accessible
-- Run migrations: `php spark migrate -n App`
-
-**Permission Errors**
-- Set `writable/` directory to 755: `chmod -R 755 writable/`
-- Ensure web server has write access to `writable/`
-
-**Assets Not Loading**
-- Clear CodeIgniter cache: `php spark cache:clear`
-- Rebuild assets: `npm run build`
-- Check `app.baseURL` in `.env` matches your domain
-
-### Getting Help
-
-- **Issues**: [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues)
-- **Discussions**: Use GitHub Discussions for questions
-- **Email**: info@webschedulr.co.za
-
-## 📈 Roadmap
-
-### ✅ Completed Features
-- [x] User authentication and role-based access
-- [x] Appointment booking and management
-- [x] Interactive calendar (day/week/month views)
-- [x] Provider and service management
-- [x] Multi-channel notifications (Email/SMS/WhatsApp)
-- [x] Real-time availability checking
-- [x] Customer management
-- [x] Dashboard analytics
-- [x] Settings configuration system
-- [x] Setup wizard
-- [x] Dark mode support
-- [x] Responsive mobile design
-
-### 🚧 In Development
-- [ ] Payment integration (Stripe, PayPal)
-- [ ] Advanced reporting and exports
-- [ ] Calendar sync (Google Calendar, Outlook)
-- [ ] Recurring appointments
-- [ ] Waiting list management
-- [ ] Multi-location support
-
-### 📋 Planned Features
-- [ ] Customer self-service portal
-- [ ] Video consultation integration
-- [ ] Mobile app (iOS/Android)
-- [ ] Advanced analytics and insights
-- [ ] Inventory management
-- [ ] Package/membership support
-- [ ] Marketing automation
-- [ ] API documentation (OpenAPI/Swagger)
+---
 
 ## 🙏 Acknowledgments
 
@@ -479,26 +766,31 @@ Built with these excellent open-source projects:
 
 - [CodeIgniter 4](https://codeigniter.com/) - PHP framework
 - [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-- [FullCalendar](https://fullcalendar.io/) - Calendar component
-- [Material Design Icons](https://fonts.google.com/icons) - Icon set
+- [Material Design](https://m3.material.io/) - Design system
+- [Chart.js](https://www.chartjs.org/) - Charts library
 - [Vite](https://vitejs.dev/) - Build tool
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Contact & Support
-
-- **Website**: [https://webschedulr.co.za](https://webschedulr.co.za)
-- **Email**: info@webschedulr.co.za
-- **GitHub**: [@niloc95](https://github.com/niloc95)
-- **Repository**: [github.com/niloc95/xscheduler_ci4](https://github.com/niloc95/xscheduler_ci4)
+- [Luxon](https://moment.github.io/luxon/) - Date/time library
 
 ---
 
+## 📞 Contact & Support
+
+| Channel | Link |
+|---------|------|
+| **Website** | [webschedulr.co.za](https://webschedulr.co.za) |
+| **Email** | info@webschedulr.co.za |
+| **GitHub** | [@niloc95](https://github.com/niloc95) |
+| **Repository** | [github.com/niloc95/xscheduler_ci4](https://github.com/niloc95/xscheduler_ci4) |
+
+---
+
+<div align="center">
+
 **Made with ❤️ for service-based businesses worldwide**
 
-*Building modern, accessible appointment scheduling solutions*
+*Modern, accessible appointment scheduling for everyone*
+
+</div>
 
 
 

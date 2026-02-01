@@ -1,5 +1,58 @@
 <?php
 
+/**
+ * =============================================================================
+ * SETTINGS HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/settings_helper.php
+ * @description Global helper functions for accessing application settings.
+ *              Provides a simplified interface to the SettingModel.
+ * 
+ * NOTE: This file is nearly identical to app_helper.php. Both are maintained
+ * for backward compatibility. Prefer using app_helper.php for new code.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('settings');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * setting($key, $default)
+ *   Get a setting value by key with caching
+ *   Example: setting('Localization.currency', 'ZAR')
+ * 
+ * settings_by_prefix($prefix)
+ *   Get all settings matching a prefix
+ *   Example: settings_by_prefix('email.') => ['email.host' => '...', ...]
+ * 
+ * setting_url($key, $default)
+ *   Build URL for writable-stored asset path from settings
+ *   Supports both file-stored and database-stored assets
+ * 
+ * provider_image_url($path)
+ *   Build URL for provider profile images
+ * 
+ * get_setting($key, $default)  [deprecated]
+ *   Legacy wrapper for setting()
+ * 
+ * DB-STORED FILES:
+ * -----------------------------------------------------------------------------
+ * Settings may store file data directly in database (SettingFileModel).
+ * The setting_url() function handles both storage methods:
+ * 1. File path in settings -> Direct URL to writable folder
+ * 2. DB-stored file -> Stream URL via assets controller
+ * 
+ * @see         app/Models/SettingModel.php
+ * @see         app/Models/SettingFileModel.php for DB-stored files
+ * @see         app/Helpers/app_helper.php (preferred duplicate)
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 use App\Models\SettingModel;
 
 if (!function_exists('setting')) {

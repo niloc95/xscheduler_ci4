@@ -111,6 +111,9 @@ export class SchedulerCore {
             this.debugLog('🎨 Rendering view...');
             this.render();
 
+            // Check for appointment in URL (query param or hash)
+            this.checkUrlForAppointment();
+
             this.debugLog('✅ Custom Scheduler initialized successfully');
             this.debugLog('📋 Summary:');
             this.debugLog(`   - Providers: ${this.providers.length}`);
@@ -543,4 +546,92 @@ export class SchedulerCore {
         displayElement.textContent = displayText;
     }
     
+    /**
+     * Check URL for appointment ID (query param or hash) and open modal if found
+     * Supports formats: ?open={id}, ?open={hash}, #appointment-{id}, #appointment-{hash}
+     */
+    checkUrlForAppointment() {
+        // First check query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const openParam = urlParams.get('open');
+        
+        if (openParam) {
+            console.log('🔗 Found "open" parameter:', openParam);
+            this.openAppointmentById(openParam, true);
+            return;
+        }
+        
+        // Fall back to hash check
+        const hash = window.location.hash;
+        console.log('🔍 Checking URL hash:', hash);
+        
+        if (!hash || !hash.startsWith('#appointment-')) {
+            console.log('⏭️  No appointment in URL');
+            return;
+        }
+
+        // Extract appointment identifier from hash
+        const appointmentIdentifier = hash.substring('#appointment-'.length);
+        console.log('🔗 Found appointment in hash:', appointmentIdentifier);
+        this.openAppointmentById(appointmentIdentifier, false);
+    }
+    
+    /**
+     * Open an appointment by ID or hash
+     * @param {string} identifier - Appointment ID or hash
+     * @param {boolean} clearQueryParam - Whether to clear query param from URL
+     */
+    openAppointmentById(identifier, clearQueryParam = false) {
+        console.log('🔍 Looking for appointment:', identifier);
+        console.log('📋 Available appointments:', this.appointments.length);
+        console.log('📊 Appointments data:', this.appointments.map(a => ({ id: a.id, hash: a.hash })));
+
+        // Try to find the appointment by ID or hash
+        const appointment = this.appointments.find(apt => {
+            const matchById = apt.id && apt.id.toString() === identifier;
+            const matchByHash = apt.hash && apt.hash === identifier;
+            if (matchById || matchByHash) {
+                console.log('✅ Found matching appointment:', apt);
+            }
+            return matchById || matchByHash;
+        });
+
+        if (appointment) {
+            console.log('✅ Opening appointment from URL:', appointment);
+            
+            if (!this.appointmentDetailsModal) {
+                console.error('❌ Appointment details modal not initialized!');
+                return;
+            }
+            
+            // Delay to ensure modal is fully initialized
+            setTimeout(() => {
+                try {
+                    this.appointmentDetailsModal.open(appointment);
+                    
+                    // Clean up URL
+                    if (clearQueryParam) {
+                        // Remove 'open' query parameter
+                        const url = new URL(window.location);
+                        url.searchParams.delete('open');
+                        window.history.replaceState(null, null, url.pathname + (url.search || ''));
+                    } else {
+                        // Clear hash
+                        window.history.replaceState(null, null, window.location.pathname + window.location.search);
+                    }
+                    
+                    console.log('✅ Modal opened and URL cleaned');
+                } catch (error) {
+                    console.error('❌ Error opening modal:', error);
+                }
+            }, 300);
+        } else {
+            console.warn('⚠️  Appointment not found for identifier:', identifier);
+            console.log('Available IDs:', this.appointments.map(a => a.id));
+            console.log('Available hashes:', this.appointments.map(a => a.hash));
+        }
+    }
 }
+
+export { CustomScheduler };
+

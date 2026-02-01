@@ -1,5 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * CUSTOMER APPOINTMENT SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/CustomerAppointmentService.php
+ * @description Provides comprehensive appointment history and management for
+ *              customers including history, filtering, and autofill.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralizes customer appointment operations for:
+ * - Customer dashboard
+ * - Appointment history API
+ * - Customer autofill for booking
+ * - Appointment statistics
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * getHistory($customerId, $filters, $page, $perPage)
+ *   Get paginated appointment history with rich filtering
+ *   Filters: status, provider_id, service_id, date_from, date_to, search
+ * 
+ * getUpcoming($customerId, $limit)
+ *   Get upcoming confirmed appointments
+ * 
+ * getPast($customerId, $page, $perPage)
+ *   Get past appointments (completed, cancelled, no-show)
+ * 
+ * getStats($customerId)
+ *   Get appointment statistics:
+ *   - Total appointments
+ *   - Completed count
+ *   - Cancelled count
+ *   - No-show count
+ *   - Total spent
+ * 
+ * getAutofillData($customerId)
+ *   Get customer data for booking form autofill
+ *   Includes: name, email, phone, last provider, last service
+ * 
+ * FILTER OPTIONS:
+ * -----------------------------------------------------------------------------
+ * - status      : Filter by status (scheduled, completed, cancelled, etc.)
+ * - provider_id : Filter by specific provider
+ * - service_id  : Filter by specific service
+ * - date_from   : Filter appointments from date
+ * - date_to     : Filter appointments until date
+ * - search      : Search in service name, provider name
+ * 
+ * @see         app/Controllers/Api/CustomerAppointments.php
+ * @see         app/Controllers/CustomerManagement.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;

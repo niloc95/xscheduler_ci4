@@ -138,12 +138,13 @@ export class AppointmentDetailsModal {
                             </div>
                             
                             <!-- Notes Section -->
-                            <div id="detail-notes-wrapper" class="hidden">
+                            <div id="detail-notes-wrapper">
                                 <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
                                     <span class="material-symbols-outlined text-sm">note</span>
                                     Notes
                                 </h4>
-                                <p id="detail-notes" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700 rounded-lg p-2"></p>
+                                <textarea id="detail-notes" rows="3" placeholder="Add notes about this appointment..." class="w-full text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
+                                <button type="button" id="btn-save-notes" class="hidden mt-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm">Save Notes</button>
                             </div>
                             
                             <!-- Status Management -->
@@ -196,8 +197,8 @@ export class AppointmentDetailsModal {
                                     Cancel
                                 </button>
                                 <button type="button" id="btn-edit-appointment" class="btn btn-primary">
-                                    <span class="material-symbols-outlined text-base">edit</span>
-                                    Edit
+                                    <span class="material-symbols-outlined text-base">edit_calendar</span>
+                                    Reschedule
                                 </button>
                             </div>
                         </div>
@@ -291,6 +292,26 @@ export class AppointmentDetailsModal {
         saveStatusBtn.addEventListener('click', async () => {
             if (this.currentAppointment) {
                 await this.handleStatusChange(this.currentAppointment, statusSelect.value);
+            }
+        });
+        
+        // Notes change handler
+        const notesTextarea = this.modal.querySelector('#detail-notes');
+        const saveNotesBtn = this.modal.querySelector('#btn-save-notes');
+        
+        notesTextarea.addEventListener('input', () => {
+            // Show save button when notes change
+            if (notesTextarea.value !== this.originalNotes) {
+                saveNotesBtn.classList.remove('hidden');
+            } else {
+                saveNotesBtn.classList.add('hidden');
+            }
+        });
+        
+        // Save notes button
+        saveNotesBtn.addEventListener('click', async () => {
+            if (this.currentAppointment) {
+                await this.handleNotesChange(this.currentAppointment, notesTextarea.value);
             }
         });
     }
@@ -391,7 +412,10 @@ export class AppointmentDetailsModal {
             // Service
             this.modal.querySelector('#detail-service-name').textContent = appointment.serviceName || 'Service';
             if (appointment.servicePrice) {
-                this.modal.querySelector('#detail-service-price').textContent = `$${parseFloat(appointment.servicePrice).toFixed(2)}`;
+                // Use settings manager for currency formatting
+                const formattedPrice = this.scheduler.settingsManager?.formatCurrency(appointment.servicePrice) 
+                    || `${parseFloat(appointment.servicePrice).toFixed(2)}`;
+                this.modal.querySelector('#detail-service-price').textContent = formattedPrice;
             } else {
                 this.modal.querySelector('#detail-service-price').textContent = '';
             }
@@ -401,13 +425,12 @@ export class AppointmentDetailsModal {
             this.modal.querySelector('#detail-provider-color').style.backgroundColor = providerColor;
             this.modal.querySelector('#detail-provider-name').textContent = appointment.providerName || 'Provider';
             
-            // Notes
-            if (appointment.notes && appointment.notes.trim()) {
-                this.modal.querySelector('#detail-notes').textContent = appointment.notes;
-                this.modal.querySelector('#detail-notes-wrapper').classList.remove('hidden');
-            } else {
-                this.modal.querySelector('#detail-notes-wrapper').classList.add('hidden');
-            }
+            // Notes - set textarea value and track changes
+            const notesTextarea = this.modal.querySelector('#detail-notes');
+            const saveNotesBtn = this.modal.querySelector('#btn-save-notes');
+            notesTextarea.value = appointment.notes || '';
+            this.originalNotes = appointment.notes || '';
+            saveNotesBtn.classList.add('hidden');
             
             // Status select
             const statusSelect = this.modal.querySelector('#detail-status-select');
@@ -527,6 +550,63 @@ export class AppointmentDetailsModal {
     }
     
     /**
+     * Handle notes change
+     */
+    async handleNotesChange(appointment, newNotes) {
+        const saveBtn = this.modal.querySelector('#btn-save-notes');
+        const notesTextarea = this.modal.querySelector('#detail-notes');
+        
+        // Show loading state
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        try {
+            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/notes`), {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notes: newNotes
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Failed to update notes');
+            }
+            
+            // Update current appointment notes
+            appointment.notes = newNotes;
+            this.currentAppointment.notes = newNotes;
+            this.originalNotes = newNotes;
+            
+            // Show success message
+            if (this.scheduler.dragDropManager) {
+                this.scheduler.dragDropManager.showToast('Notes updated successfully', 'success');
+            }
+            
+            // Hide save button
+            saveBtn.classList.add('hidden');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Notes';
+            
+        } catch (error) {
+            console.error('Error updating notes:', error);
+            
+            // Reset save button
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Notes';
+            
+            if (this.scheduler.dragDropManager) {
+                this.scheduler.dragDropManager.showToast(error.message || 'Failed to update notes', 'error');
+            } else {
+                alert(error.message || 'Failed to update notes. Please try again.');
+            }
+        }
+    }
+    
+    /**
      * Handle edit action
      */
     handleEdit(appointment) {
@@ -541,7 +621,8 @@ export class AppointmentDetailsModal {
      */
     async handleCancel(appointment) {
         const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
-        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.name || appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy h:mm a')}`);
+        const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
+        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.name || appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}`);
         
         if (!confirmed) return;
         
@@ -618,10 +699,11 @@ export class AppointmentDetailsModal {
         const serviceName = appointment.service_name || appointment.serviceName || appointment.service || 'your service';
         const providerName = appointment.provider_name || appointment.providerName || '';
         
-        // Format date/time
+        // Format date/time using localization settings
         const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
         const dateStr = startDateTime.toFormat('EEEE, MMMM d, yyyy');
-        const timeStr = startDateTime.toFormat('h:mm a');
+        const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
+        const timeStr = startDateTime.toFormat(timeFormat);
         
         // Get business name from settings if available
         const businessName = window.__BUSINESS_NAME__ || 'our business';

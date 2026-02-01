@@ -22,27 +22,23 @@ class AddLocationToAppointments extends MigrationBase
                 'constraint' => 11,
                 'unsigned'   => true,
                 'null'       => true,
-                'after'      => 'provider_id',
                 'comment'    => 'FK to xs_locations (nullable for legacy appointments)',
             ],
             'location_name' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 255,
                 'null'       => true,
-                'after'      => 'location_id',
                 'comment'    => 'Snapshot: Friendly location name at booking time',
             ],
             'location_address' => [
                 'type'    => 'TEXT',
                 'null'    => true,
-                'after'   => 'location_name',
                 'comment' => 'Snapshot: Full address at booking time',
             ],
             'location_contact' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 50,
                 'null'       => true,
-                'after'      => 'location_address',
                 'comment'    => 'Snapshot: Contact number at booking time',
             ],
         ];

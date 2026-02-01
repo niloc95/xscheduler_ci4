@@ -25,7 +25,8 @@ class AddActiveToCategories extends MigrationBase
 
     public function down()
     {
-        if ($this->db->fieldExists('active', 'categories')) {
+        // Only attempt to drop column if both table and column exist
+        if ($this->db->tableExists('categories') && $this->db->fieldExists('active', 'categories')) {
             $this->forge->dropColumn('categories', 'active');
         }
     }

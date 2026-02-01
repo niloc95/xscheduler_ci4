@@ -1,5 +1,77 @@
 <?php
 
+/**
+ * =============================================================================
+ * SCHEDULE VALIDATION SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/ScheduleValidationService.php
+ * @description Centralized validation for provider schedules, business hours,
+ *              and time slots. Extracted from controllers for reuse.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides consistent validation for:
+ * - Provider weekly schedule input
+ * - Business hours configuration
+ * - Time slot formatting and validation
+ * - Break time validation within schedules
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * validateProviderSchedule($input)
+ *   Validate raw schedule form input
+ *   Returns: [$cleanData, $errors] tuple
+ * 
+ * normaliseTimeString($time)
+ *   Convert various time formats to HH:mm:ss
+ *   Handles: "9:00", "09:00", "9am", "9:00 AM"
+ * 
+ * validateTimeRange($startTime, $endTime)
+ *   Ensure start time is before end time
+ * 
+ * validateBreakWithinHours($start, $end, $breakStart, $breakEnd)
+ *   Ensure break falls within working hours
+ * 
+ * SCHEDULE DAYS:
+ * -----------------------------------------------------------------------------
+ * - monday
+ * - tuesday
+ * - wednesday
+ * - thursday
+ * - friday
+ * - saturday
+ * - sunday
+ * 
+ * INPUT FORMAT:
+ * -----------------------------------------------------------------------------
+ *     [
+ *         'monday' => [
+ *             'is_active' => true,
+ *             'start_time' => '09:00',
+ *             'end_time' => '17:00',
+ *             'break_start' => '12:00',
+ *             'break_end' => '13:00'
+ *         ],
+ *         // ... other days
+ *     ]
+ * 
+ * ERROR MESSAGES:
+ * -----------------------------------------------------------------------------
+ * Returns user-friendly error messages:
+ * - "End time must be after start time"
+ * - "Break must fall within working hours"
+ * - "Invalid time format"
+ * 
+ * @see         app/Controllers/UserManagement.php for usage
+ * @see         app/Models/ProviderScheduleModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @since       2.0.0
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 /**

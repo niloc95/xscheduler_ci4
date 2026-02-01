@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * V1 PROVIDERS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/V1/Providers.php
+ * @description API for listing and retrieving provider (service provider)
+ *              information used by booking flows and calendars.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/v1/providers              : List all providers
+ * GET  /api/v1/providers/:id          : Get provider details
+ * GET  /api/v1/providers/:id/services : Get provider's services
+ * GET  /api/v1/providers/:id/schedule : Get provider's schedule
+ * 
+ * QUERY PARAMETERS (GET /api/v1/providers):
+ * -----------------------------------------------------------------------------
+ * - page          : Page number for pagination
+ * - length        : Items per page
+ * - sort          : Sort field and direction (name:asc)
+ * - includeColors : Include provider color codes (true/false)
+ * - active        : Filter by active status
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "data": {
+ *     "items": [
+ *       {
+ *         "id": 2,
+ *         "name": "Dr. Smith",
+ *         "email": "smith@example.com",
+ *         "phone": "+27 21 555 1234",
+ *         "active": true,
+ *         "profile_image": "/assets/avatars/2.jpg",
+ *         "color": "#3B82F6"
+ *       }
+ *     ],
+ *     "total": 5,
+ *     "page": 1,
+ *     "length": 20
+ *   }
+ * }
+ * 
+ * @see         app/Models/UserModel.php for provider data
+ * @see         resources/js/modules/provider-selector.js for frontend
+ * @package     App\Controllers\Api\V1
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api\V1;
 use App\Models\UserModel;
 

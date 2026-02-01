@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * API AUTHENTICATION FILTER
+ * =============================================================================
+ * 
+ * @file        app/Filters/ApiAuthFilter.php
+ * @description HTTP middleware for API endpoint authentication. Supports both
+ *              session-based and Bearer token authentication.
+ * 
+ * FILTER ALIAS: 'api_auth'
+ * 
+ * ROUTES PROTECTED:
+ * -----------------------------------------------------------------------------
+ * Applied to all /api/* routes requiring authentication.
+ * 
+ * AUTHENTICATION METHODS:
+ * -----------------------------------------------------------------------------
+ * 1. Session Auth (same-origin):
+ *    - Checks for active session with isLoggedIn=true
+ *    - Used by internal UI making AJAX calls
+ *    - No Authorization header needed
+ * 
+ * 2. Bearer Token:
+ *    - Authorization: Bearer <token>
+ *    - Token validated against configured API key
+ *    - Used by external integrations
+ * 
+ * BEHAVIOR:
+ * -----------------------------------------------------------------------------
+ * Before Request:
+ * 1. Check for active session (same-origin requests)
+ * 2. If no session, check for Bearer token
+ * 3. Validate token against Api config
+ * 4. If valid: continue to controller
+ * 5. If invalid: return 401 JSON response
+ * 
+ * RESPONSE ON FAILURE:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "error": {
+ *     "message": "Unauthorized",
+ *     "code": "AUTH_REQUIRED"
+ *   }
+ * }
+ * 
+ * @see         app/Config/Api.php for API configuration
+ * @see         app/Config/Filters.php for filter setup
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Filters;
 
 use App\Config\Api as ApiConfig;

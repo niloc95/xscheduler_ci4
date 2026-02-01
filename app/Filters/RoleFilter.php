@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * ROLE FILTER
+ * =============================================================================
+ * 
+ * @file        app/Filters/RoleFilter.php
+ * @description HTTP middleware for role-based access control. Checks user
+ *              roles and permissions before allowing route access.
+ * 
+ * FILTER ALIAS: 'role'
+ * 
+ * USAGE IN ROUTES:
+ * -----------------------------------------------------------------------------
+ * Single role:
+ *     ['filter' => 'role:admin']
+ * 
+ * Multiple roles (OR):
+ *     ['filter' => 'role:admin,provider']
+ * 
+ * Permission check:
+ *     ['filter' => 'role:permission:manage_users']
+ * 
+ * BEHAVIOR:
+ * -----------------------------------------------------------------------------
+ * Before Request:
+ * 1. Verify user is authenticated (session check)
+ * 2. Get user's role from session
+ * 3. Check if role matches required roles
+ * 4. Or check specific permission if 'permission:' prefix used
+ * 5. If unauthorized: return 403 or redirect with error
+ * 
+ * EXAMPLES:
+ * -----------------------------------------------------------------------------
+ *     // Admin only
+ *     $routes->get('/admin/users', 'UserManagement::index',
+ *         ['filter' => 'role:admin']);
+ * 
+ *     // Admin or provider
+ *     $routes->get('/calendar', 'Calendar::index',
+ *         ['filter' => 'role:admin,provider']);
+ * 
+ *     // Specific permission
+ *     $routes->post('/backup', 'Backup::create',
+ *         ['filter' => 'role:permission:backup_restore']);
+ * 
+ * @see         app/Config/Filters.php for filter configuration
+ * @see         app/Models/UserPermissionModel.php for permission definitions
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Filters;
 
 use App\Models\UserPermissionModel;

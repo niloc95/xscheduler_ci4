@@ -1,5 +1,52 @@
 <?php
 
+/**
+ * =============================================================================
+ * DATABASE CONFIGURATION
+ * =============================================================================
+ * 
+ * @file        app/Config/Database.php
+ * @description Database connection settings for WebSchedulr. Supports MySQL/MariaDB
+ *              with configurable connection pooling, character sets, and failover.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Defines database connection parameters including hostname, credentials, driver,
+ * and connection options. Supports multiple connection groups for different
+ * environments (development, testing, production).
+ * 
+ * CONNECTION GROUPS:
+ * -----------------------------------------------------------------------------
+ * - default    : Primary database connection used by models
+ * - tests      : Separate database for PHPUnit testing (optional)
+ * 
+ * ENVIRONMENT VARIABLES (.env):
+ * -----------------------------------------------------------------------------
+ * - database.default.hostname  : Database server address
+ * - database.default.database  : Database name
+ * - database.default.username  : Database user
+ * - database.default.password  : Database password
+ * - database.default.DBDriver  : Driver (MySQLi, Postgre, SQLite3)
+ * - database.default.DBPrefix  : Table prefix (default: xs_)
+ * 
+ * TABLE PREFIX:
+ * -----------------------------------------------------------------------------
+ * All WebSchedulr tables use 'xs_' prefix by default:
+ * - xs_users, xs_appointments, xs_customers, xs_services, etc.
+ * 
+ * CHARACTER SET:
+ * -----------------------------------------------------------------------------
+ * Uses utf8mb4 for full Unicode support including emojis.
+ * 
+ * @see         app/Database/Migrations/ for table schemas
+ * @see         .env.example for connection examples
+ * @package     Config
+ * @extends     CodeIgniter\Database\Config
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace Config;
 
 use CodeIgniter\Database\Config;

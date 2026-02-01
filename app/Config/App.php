@@ -1,5 +1,45 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPLICATION CONFIGURATION
+ * =============================================================================
+ * 
+ * @file        app/Config/App.php
+ * @description Core application settings for WebSchedulr. Controls base URL,
+ *              index file, URI protocols, default locale, timezone, and
+ *              character encoding settings.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * This file configures the fundamental behavior of the CodeIgniter 4 application
+ * including how URLs are generated, what timezone the server operates in, and
+ * various security-related settings like CSRF protection and allowed hosts.
+ * 
+ * KEY SETTINGS:
+ * -----------------------------------------------------------------------------
+ * - $baseURL          : Root URL of the application (set via .env in production)
+ * - $indexPage        : Front controller file (empty if using URL rewriting)
+ * - $appTimezone      : Server timezone for date/time operations
+ * - $supportedLocales : Languages supported by the application
+ * - $defaultLocale    : Fallback language when no match found
+ * 
+ * ENVIRONMENT VARIABLES:
+ * -----------------------------------------------------------------------------
+ * Most settings can be overridden in .env file:
+ * - app.baseURL       : Production domain URL
+ * - app.timezone      : Server timezone (e.g., 'Africa/Johannesburg')
+ * - app.forceGlobalSecureRequests : Enable HTTPS enforcement
+ * 
+ * @see         .env.example for environment variable examples
+ * @see         app/Config/Constants.php for application constants
+ * @package     Config
+ * @extends     CodeIgniter\Config\BaseConfig
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace Config;
 
 use CodeIgniter\Config\BaseConfig;

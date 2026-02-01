@@ -1,5 +1,65 @@
 <?php
 
+/**
+ * =============================================================================
+ * USER PERMISSION MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/UserPermissionModel.php
+ * @description Permission management for role-based access control (RBAC).
+ *              Defines and checks user permissions based on roles.
+ * 
+ * DATABASE TABLE: xs_users (permissions stored as JSON in permissions column)
+ * 
+ * ROLE HIERARCHY:
+ * -----------------------------------------------------------------------------
+ * admin > provider > staff > (customer)
+ * 
+ * ADMIN PERMISSIONS:
+ * -----------------------------------------------------------------------------
+ * - system_settings      : Configure system settings
+ * - user_management      : Manage all users
+ * - create_admin         : Create admin accounts
+ * - create_provider      : Create provider accounts
+ * - create_staff         : Create staff accounts
+ * - manage_services      : Manage services/categories
+ * - view_all_appointments: See all appointments
+ * - manage_all_calendars : Edit any calendar
+ * - system_analytics     : View analytics
+ * - backup_restore       : Database backup/restore
+ * 
+ * PROVIDER PERMISSIONS:
+ * -----------------------------------------------------------------------------
+ * - manage_own_calendar  : Edit own schedule
+ * - create_staff         : Create staff for self
+ * - manage_own_staff     : Manage assigned staff
+ * - manage_services      : Manage services offered
+ * - view_own_appointments: See own appointments
+ * - view_staff_calendars : See assigned staff calendars
+ * 
+ * STAFF PERMISSIONS:
+ * -----------------------------------------------------------------------------
+ * - view_own_calendar    : View own assignments
+ * - view_own_appointments: View own appointments
+ * - book_appointments    : Create appointments
+ * - view_assigned_providers: See provider info
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - hasPermission(userId, permission) : Check single permission
+ * - getPermissions(userId)            : Get all user permissions
+ * - getRolePermissions(role)          : Get role's default permissions
+ * - can(permission)                   : Helper for current user
+ * 
+ * @see         app/Helpers/permissions_helper.php for helper functions
+ * @see         app/Filters/RoleFilter.php for route protection
+ * @package     App\Models
+ * @extends     CodeIgniter\Model
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use CodeIgniter\Model;

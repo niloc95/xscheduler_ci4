@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * PERMISSIONS HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/permissions_helper.php
+ * @description Global helper functions for checking user roles and permissions.
+ *              Provides convenient access to authorization checks in views.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('permissions');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * current_user_role()          : Get current user's role string
+ * current_user_id()            : Get current user's ID
+ * has_role($roles)             : Check if user has specific role(s)
+ * has_permission($perms)       : Check if user has permission(s)
+ * is_admin()                   : Check if user is admin
+ * is_provider()                : Check if user is provider
+ * is_staff()                   : Check if user is staff
+ * can_access_user($targetId)   : Check if can access user's data
+ * can_manage_appointment($appt): Check if can manage appointment
+ * 
+ * USAGE IN VIEWS:
+ * -----------------------------------------------------------------------------
+ *     <?php if (has_role('admin')): ?>
+ *         <a href="/admin">Admin Panel</a>
+ *     <?php endif; ?>
+ * 
+ *     <?php if (has_permission('manage_users')): ?>
+ *         <button>Add User</button>
+ *     <?php endif; ?>
+ * 
+ * USAGE IN CONTROLLERS:
+ * -----------------------------------------------------------------------------
+ *     helper('permissions');
+ *     if (!has_role(['admin', 'provider'])) {
+ *         return redirect()->to('/dashboard');
+ *     }
+ * 
+ * @see         app/Models/UserPermissionModel.php for permission definitions
+ * @see         app/Services/AuthorizationService.php for complex checks
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('current_user_role')) {
     /**
      * Get current user's role

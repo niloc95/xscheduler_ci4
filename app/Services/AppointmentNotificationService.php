@@ -1,5 +1,70 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPOINTMENT NOTIFICATION SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/AppointmentNotificationService.php
+ * @description High-level service for sending appointment-related notifications.
+ *              Orchestrates email, SMS, and WhatsApp notifications for events.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides a simple interface for sending appointment notifications across
+ * multiple channels (email, SMS, WhatsApp) based on business notification rules.
+ * 
+ * NOTIFICATION EVENTS:
+ * -----------------------------------------------------------------------------
+ * - appointment_confirmed  : New appointment booked
+ * - appointment_cancelled  : Appointment cancelled
+ * - appointment_rescheduled: Appointment time changed
+ * - appointment_reminder   : Upcoming appointment reminder
+ * - appointment_no_show    : Customer didn't show up
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * sendEventEmail($eventType, $appointmentId, $businessId)
+ *   Send email notification for an appointment event
+ * 
+ * sendDueReminderEmails($businessId)
+ *   Process and send all due reminder emails
+ *   Returns: ['scanned' => int, 'sent' => int, 'skipped' => int]
+ * 
+ * sendEventSms($eventType, $appointmentId, $businessId)
+ *   Send SMS notification for an appointment event
+ * 
+ * sendDueReminderSms($businessId)
+ *   Process and send all due SMS reminders
+ * 
+ * sendEventWhatsApp($eventType, $appointmentId, $businessId)
+ *   Send WhatsApp notification for an appointment event
+ * 
+ * NOTIFICATION FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Check if channel enabled for event (business rules)
+ * 2. Get channel integration config
+ * 3. Load appointment context (customer, service, provider)
+ * 4. Build message from template
+ * 5. Send via appropriate channel service
+ * 6. Update appointment flags (e.g., reminder_sent)
+ * 
+ * REMINDER PROCESSING:
+ * -----------------------------------------------------------------------------
+ * Called by scheduled commands to process reminders:
+ * - Gets offset minutes from business rules
+ * - Finds appointments due for reminder
+ * - Sends notifications and marks as sent
+ * 
+ * @see         app/Services/NotificationEmailService.php
+ * @see         app/Services/NotificationSmsService.php
+ * @see         app/Commands/SendAppointmentReminders.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;

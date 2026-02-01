@@ -1,5 +1,62 @@
 <?php
 
+/**
+ * =============================================================================
+ * CUSTOMER APPOINTMENTS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/CustomerAppointments.php
+ * @description API for customer-specific appointment data including history,
+ *              upcoming bookings, statistics, and autofill data.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/customers/:id/appointments          : All appointments for customer
+ * GET  /api/customers/:id/appointments/upcoming : Future appointments only
+ * GET  /api/customers/:id/appointments/history  : Past appointments only
+ * GET  /api/customers/:id/appointments/stats    : Appointment statistics
+ * GET  /api/customers/:id/autofill              : Autofill data for booking
+ * 
+ * QUERY PARAMETERS:
+ * -----------------------------------------------------------------------------
+ * - page         : Page number (default: 1)
+ * - per_page     : Items per page (default: 20, max: 100)
+ * - status       : Filter by status (pending, confirmed, completed, cancelled)
+ * - provider_id  : Filter by provider
+ * - service_id   : Filter by service
+ * - date_from    : Start date (YYYY-MM-DD)
+ * - date_to      : End date (YYYY-MM-DD)
+ * - type         : upcoming or past
+ * 
+ * STATS RESPONSE:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "total_appointments": 45,
+ *   "completed": 40,
+ *   "cancelled": 3,
+ *   "no_shows": 2,
+ *   "total_spent": 1250.00,
+ *   "favorite_service": "Haircut",
+ *   "favorite_provider": "John Doe"
+ * }
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Supports customer management features:
+ * - Customer profile appointment history tab
+ * - Rebooking from past appointments
+ * - Customer analytics and lifetime value
+ * - Autofill for faster booking
+ * 
+ * @see         app/Services/CustomerAppointmentService.php for business logic
+ * @see         app/Models/CustomerModel.php for customer data
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Services\CustomerAppointmentService;

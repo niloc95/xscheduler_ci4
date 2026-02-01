@@ -87,7 +87,7 @@ class CustomerPortalController extends BaseController
             'hash' => $hash,
         ];
 
-        return view('public/my_appointments', ['context' => $context]);
+        return view('public/my-appointments', ['context' => $context]);
     }
 
     /**

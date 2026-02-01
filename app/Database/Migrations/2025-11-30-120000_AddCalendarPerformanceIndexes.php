@@ -24,11 +24,18 @@ class AddCalendarPerformanceIndexes extends Migration
         $db = \Config\Database::connect();
         $tableName = 'xs_appointments';
         
-        // Get existing indexes
-        $query = $db->query("SHOW INDEX FROM {$tableName}");
+        // Get existing indexes (cross-database compatible)
         $existingIndexes = [];
-        foreach ($query->getResultArray() as $row) {
-            $existingIndexes[] = $row['Key_name'];
+        if ($db->DBDriver === 'SQLite3') {
+            $query = $db->query("PRAGMA index_list({$tableName})");
+            foreach ($query->getResultArray() as $row) {
+                $existingIndexes[] = $row['name'];
+            }
+        } else {
+            $query = $db->query("SHOW INDEX FROM {$tableName}");
+            foreach ($query->getResultArray() as $row) {
+                $existingIndexes[] = $row['Key_name'];
+            }
         }
         
         // Index for futureOnly queries: WHERE start_time >= TODAY
@@ -61,24 +68,43 @@ class AddCalendarPerformanceIndexes extends Migration
         $db = \Config\Database::connect();
         $tableName = 'xs_appointments';
         
-        // Get existing indexes
-        $query = $db->query("SHOW INDEX FROM {$tableName}");
+        // Get existing indexes (cross-database compatible)
         $existingIndexes = [];
-        foreach ($query->getResultArray() as $row) {
-            $existingIndexes[] = $row['Key_name'];
+        if ($db->DBDriver === 'SQLite3') {
+            $query = $db->query("PRAGMA index_list({$tableName})");
+            foreach ($query->getResultArray() as $row) {
+                $existingIndexes[] = $row['name'];
+            }
+        } else {
+            $query = $db->query("SHOW INDEX FROM {$tableName}");
+            foreach ($query->getResultArray() as $row) {
+                $existingIndexes[] = $row['Key_name'];
+            }
         }
         
         // Drop indexes if they exist
         if (in_array('idx_appts_start_time', $existingIndexes)) {
-            $db->query("DROP INDEX idx_appts_start_time ON {$tableName}");
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query("DROP INDEX idx_appts_start_time");
+            } else {
+                $db->query("DROP INDEX idx_appts_start_time ON {$tableName}");
+            }
         }
         
         if (in_array('idx_appts_start_provider', $existingIndexes)) {
-            $db->query("DROP INDEX idx_appts_start_provider ON {$tableName}");
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query("DROP INDEX idx_appts_start_provider");
+            } else {
+                $db->query("DROP INDEX idx_appts_start_provider ON {$tableName}");
+            }
         }
         
         if (in_array('idx_appts_start_status', $existingIndexes)) {
-            $db->query("DROP INDEX idx_appts_start_status ON {$tableName}");
+            if ($db->DBDriver === 'SQLite3') {
+                $db->query("DROP INDEX idx_appts_start_status");
+            } else {
+                $db->query("DROP INDEX idx_appts_start_status ON {$tableName}");
+            }
         }
         
         log_message('info', '[Migration] Calendar performance indexes removed');

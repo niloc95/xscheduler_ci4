@@ -1,5 +1,60 @@
 <?php
 
+/**
+ * =============================================================================
+ * SETTING MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/SettingModel.php
+ * @description Data model for application settings stored as key-value pairs.
+ *              Supports typed values and prefix-based organization.
+ * 
+ * DATABASE TABLE: xs_settings
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - setting_key     : Unique setting identifier (e.g., 'general.business_name')
+ * - setting_value   : Value stored as text
+ * - setting_type    : Value type (string, integer, boolean, json)
+ * - updated_by      : User ID who last updated (optional)
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * SETTING KEY PREFIXES:
+ * -----------------------------------------------------------------------------
+ * - general.*       : Business info, contact details
+ * - localization.*  : Timezone, date format, currency
+ * - booking.*       : Booking rules, slot duration, buffer time
+ * - calendar.*      : Calendar display settings
+ * - notifications.* : Email, SMS, WhatsApp config
+ * - branding.*      : Logo, colors, theme
+ * - security.*      : Security-related settings
+ * - database.*      : Database/backup settings
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getByKeys(array)    : Get multiple settings at once
+ * - getByPrefix(string) : Get all settings with prefix
+ * - getValue(key)       : Get single setting value
+ * - setValue(key, val)  : Set single setting
+ * - castValue()         : Cast value to correct type
+ * 
+ * VALUE TYPES:
+ * -----------------------------------------------------------------------------
+ * - string  : Plain text
+ * - integer : Numeric value
+ * - boolean : true/false (stored as 1/0)
+ * - json    : JSON object/array
+ * 
+ * @see         app/Controllers/Settings.php for admin UI
+ * @see         app/Services/LocalizationSettingsService.php
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

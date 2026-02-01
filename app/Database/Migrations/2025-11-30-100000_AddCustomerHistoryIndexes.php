@@ -48,7 +48,13 @@ class AddCustomerHistoryIndexes extends MigrationBase
     private function createIndexIfMissing(string $table, string $indexName, array $columns): void
     {
         $db = $this->db;
-        $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        
+        // Cross-database compatible index check
+        if ($db->DBDriver === 'SQLite3') {
+            $exists = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name=?", [$indexName])->getFirstRow();
+        } else {
+            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        }
 
         if ($exists) {
             return;
@@ -61,12 +67,22 @@ class AddCustomerHistoryIndexes extends MigrationBase
     private function dropIndexIfExists(string $table, string $indexName): void
     {
         $db = $this->db;
-        $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        
+        // Cross-database compatible index check
+        if ($db->DBDriver === 'SQLite3') {
+            $exists = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name=?", [$indexName])->getFirstRow();
+        } else {
+            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        }
 
         if (!$exists) {
             return;
         }
 
-        $db->query("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
+        if ($db->DBDriver === 'SQLite3') {
+            $db->query("DROP INDEX `{$indexName}`");
+        } else {
+            $db->query("ALTER TABLE `{$table}` DROP INDEX `{$indexName}`");
+        }
     }
 }

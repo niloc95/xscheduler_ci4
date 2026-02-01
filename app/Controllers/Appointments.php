@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPOINTMENTS CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Appointments.php
+ * @description Handles all appointment management operations for authenticated
+ *              users including listing, creating, editing, viewing, and
+ *              status management of appointments.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /appointments              : List all appointments (filtered by role)
+ * GET  /appointments/create       : Show appointment creation form
+ * POST /appointments/store        : Create new appointment
+ * GET  /appointments/edit/:hash   : Show edit form for appointment
+ * POST /appointments/update/:hash : Update existing appointment
+ * GET  /appointments/view/:hash   : View appointment details (redirects to calendar)
+ * POST /appointments/delete/:hash : Soft delete appointment
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides the primary interface for appointment management:
+ * - CRUD operations for appointments
+ * - Hash-based URLs for security (non-enumerable IDs)
+ * - Role-based filtering (admins see all, providers see own)
+ * - Integration with calendar/scheduler views
+ * 
+ * SECURITY:
+ * -----------------------------------------------------------------------------
+ * - Uses hash identifiers instead of numeric IDs in URLs
+ * - Role-based access control for all operations
+ * - CSRF protection on all POST requests
+ * - Provider can only access their own appointments
+ * 
+ * DEPENDENCIES:
+ * -----------------------------------------------------------------------------
+ * - AppointmentModel       : Database operations for appointments
+ * - CustomerModel          : Customer lookup and management
+ * - UserModel              : Provider information
+ * - ServiceModel           : Service details and duration
+ * - BookingSettingsService : Booking rules and validation
+ * - LocalizationSettingsService : Date/time formatting
+ * - TimezoneService        : Timezone conversion
+ * 
+ * @see         app/Views/appointments/ for view templates
+ * @see         app/Controllers/Api/Appointments.php for API endpoints
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;
@@ -119,9 +173,13 @@ class Appointments extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        // Redirect to appointments index
-        // Viewing is now handled by the JavaScript modal in the calendar
-        return redirect()->to('/appointments')->with('message', 'Please click the appointment in the calendar to view details.');
+        if (!$appointmentId) {
+            return redirect()->to('/appointments')->with('error', 'Appointment not found.');
+        }
+
+        // Redirect to appointments page with query parameter to open modal
+        // The JavaScript will detect this and open the appointment modal
+        return redirect()->to('/appointments?open=' . $appointmentId);
     }
 
     /**
@@ -251,200 +309,61 @@ class Appointments extends BaseController
 
         log_message('info', '[Appointments::store] Validation passed');
 
-        // Get form data
-        $providerId = $this->request->getPost('provider_id');
-        $serviceId = $this->request->getPost('service_id');
-        $appointmentDate = $this->request->getPost('appointment_date');
-        $appointmentTime = $this->request->getPost('appointment_time');
-        
-        // Get service to calculate end time
-        $service = $this->serviceModel->find($serviceId);
-        if (!$service) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Invalid service selected');
-        }
-
-        // Determine client timezone context
-        $clientTimezone = $this->resolveClientTimezone();
-
-        // Construct local start DateTime in client timezone
-        $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
-        
-        log_message('info', '[Appointments::store] ========== APPOINTMENT CREATION ==========');
-        log_message('info', '[Appointments::store] Input from form:', [
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'date' => $appointmentDate,
-            'time' => $appointmentTime,
-            'duration' => $service['duration_min'] . ' minutes'
-        ]);
-        log_message('info', '[Appointments::store] Client timezone: ' . $clientTimezone);
-        log_message('info', '[Appointments::store] Local datetime: ' . $startTimeLocal);
-        
-        try {
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
-        } catch (\Exception $e) {
-            log_message('error', '[Appointments::store] Failed to create DateTime with timezone ' . $clientTimezone . ': ' . $e->getMessage());
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
-            $clientTimezone = 'UTC';
-        }
-
-        // Calculate local end time based on service duration
-        $endDateTime = clone $startDateTime;
-        $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
-
-        // Convert to UTC for storage
-        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        
-        log_message('info', '[Appointments::store] Timezone conversion:', [
-            'local_start' => $startDateTime->format('Y-m-d H:i:s'),
-            'local_end' => $endDateTime->format('Y-m-d H:i:s'),
-            'utc_start' => $startTimeUtc,
-            'utc_end' => $endTimeUtc,
-            'timezone' => $clientTimezone
-        ]);
-        log_message('info', '[Appointments::store] Will store in database as UTC');
-        
-        // ===== BUSINESS HOURS VALIDATION =====
-        // Use BusinessHoursService for consistent validation
-        $businessHoursService = new \App\Services\BusinessHoursService();
-        $validation = $businessHoursService->validateAppointmentTime($startDateTime, $endDateTime);
-        
-        if (!$validation['valid']) {
-            log_message('warning', '[Appointments::store] Business hours validation failed: ' . $validation['reason']);
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'success' => false,
-                    'message' => $validation['reason']
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('error', $validation['reason']);
-        }
-        
-        log_message('info', '[Appointments::store] ✅ Business hours validation passed');
-        log_message('info', '[Appointments::store] =============================================');
-
-        // Handle customer - either use existing or create new
-        if ($customerId) {
-            // Customer selected from search
-            log_message('info', '[Appointments::store] Using existing customer ID: ' . $customerId);
-            $customer = $this->customerModel->find($customerId);
-            
-            if (!$customer) {
-                if ($this->request->isAJAX()) {
-                    return $this->response->setStatusCode(400)->setJSON([
-                        'success' => false,
-                        'message' => 'Selected customer not found'
-                    ]);
-                }
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Selected customer not found');
-            }
-        } else {
-            // Check if customer exists by email or create new one
-            $customerEmail = $this->request->getPost('customer_email');
-            $customer = $this->customerModel->where('email', $customerEmail)->first();
-
-            if (!$customer) {
-                // Create new customer
-                $customerData = [
-                    'first_name' => $this->request->getPost('customer_first_name'),
-                    'last_name' => $this->request->getPost('customer_last_name'),
-                    'email' => $customerEmail,
-                    'phone' => $this->request->getPost('customer_phone'),
-                    'address' => $this->request->getPost('customer_address'),
-                    'notes' => $this->request->getPost('notes')
-                ];
-
-                // Handle custom fields if provided
-                $customFieldsData = [];
-                for ($i = 1; $i <= 6; $i++) {
-                    $fieldValue = $this->request->getPost("custom_field_{$i}");
-                    if ($fieldValue !== null && $fieldValue !== '') {
-                        // Use consistent field naming: 'custom_field_1' not 'field_1'
-                        // This matches CustomerManagement controller and BookingSettingsService
-                        $customFieldsData["custom_field_{$i}"] = $fieldValue;
-                    }
-                }
-                if (!empty($customFieldsData)) {
-                    $customerData['custom_fields'] = json_encode($customFieldsData);
-                }
-
-                $customerId = $this->customerModel->insert($customerData);
-                
-                if (!$customerId) {
-                    if ($this->request->isAJAX()) {
-                        return $this->response->setStatusCode(400)->setJSON([
-                            'success' => false,
-                            'message' => 'Failed to create customer record'
-                        ]);
-                    }
-                    return redirect()->back()
-                        ->withInput()
-                        ->with('error', 'Failed to create customer record');
-                }
-            } else {
-                $customerId = $customer['id'];
-            }
-        }
-
-        // Create appointment
-        $appointmentData = [
+        // Prepare booking data from form
+        $bookingData = [
+            'provider_id' => $this->request->getPost('provider_id'),
+            'service_id' => $this->request->getPost('service_id'),
+            'appointment_date' => $this->request->getPost('appointment_date'),
+            'appointment_time' => $this->request->getPost('appointment_time'),
             'customer_id' => $customerId,
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'start_time' => $startTimeUtc,
-            'end_time' => $endTimeUtc,
-            'status' => 'pending', // Valid enum values: pending, confirmed, completed, cancelled, no-show
-            'notes' => $this->request->getPost('notes') ?? ''
+            'customer_first_name' => $this->request->getPost('customer_first_name'),
+            'customer_last_name' => $this->request->getPost('customer_last_name'),
+            'customer_email' => $this->request->getPost('customer_email'),
+            'customer_phone' => $this->request->getPost('customer_phone'),
+            'customer_address' => $this->request->getPost('customer_address'),
+            'customer_notes' => $this->request->getPost('notes'),
+            'notes' => $this->request->getPost('notes'),
+            'notification_types' => ['email', 'whatsapp']
         ];
 
-        log_message('info', '[Appointments::store] Attempting to insert appointment: ' . json_encode($appointmentData));
-        $appointmentId = $this->appointmentModel->insert($appointmentData);
+        // Add custom fields if provided
+        for ($i = 1; $i <= 6; $i++) {
+            $fieldValue = $this->request->getPost("custom_field_{$i}");
+            if ($fieldValue !== null && $fieldValue !== '') {
+                $bookingData["custom_field_{$i}"] = $fieldValue;
+            }
+        }
 
-        if (!$appointmentId) {
-            $errors = $this->appointmentModel->errors();
-            log_message('error', '[Appointments::store] Failed to insert appointment. Model errors: ' . json_encode($errors));
+        // Use AppointmentBookingService for all booking logic
+        $bookingService = new \App\Services\AppointmentBookingService();
+        $clientTimezone = $this->resolveClientTimezone();
+        $result = $bookingService->createAppointment($bookingData, $clientTimezone);
+
+        // Handle result
+        if (!$result['success']) {
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(400)->setJSON([
                     'success' => false,
-                    'message' => 'Failed to create appointment. Please try again.',
-                    'errors' => $errors
+                    'message' => $result['message'],
+                    'errors' => $result['errors'] ?? []
                 ]);
             }
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to create appointment. Please try again.');
-        }
-        
-        log_message('info', '[Appointments::store] ✅ Appointment created successfully! ID: ' . $appointmentId);
-
-        // Phase 5: enqueue notifications (dispatch handled by cron via notifications:dispatch-queue)
-        try {
-            (new \App\Services\NotificationQueueService())
-                ->enqueueAppointmentEvent(\App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT, 'email', 'appointment_confirmed', (int) $appointmentId);
-            (new \App\Services\NotificationQueueService())
-                ->enqueueAppointmentEvent(\App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT, 'whatsapp', 'appointment_confirmed', (int) $appointmentId);
-        } catch (\Throwable $e) {
-            log_message('error', '[Appointments::store] Notification enqueue failed: {msg}', ['msg' => $e->getMessage()]);
+                ->with('error', $result['message']);
         }
 
         // Success - redirect to appointments list or view
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Appointment booked successfully! Confirmation email will be sent shortly.',
+                'message' => $result['message'],
                 'redirect' => '/appointments',
-                'appointmentId' => $appointmentId
+                'appointmentId' => $result['appointmentId']
             ]);
         }
         return redirect()->to('/appointments')
-            ->with('success', 'Appointment booked successfully! Confirmation email will be sent shortly.');
+            ->with('success', $result['message']);
     }
 
     private function resolveClientTimezone(): string
@@ -676,7 +595,7 @@ class Appointments extends BaseController
             $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
         } catch (\Exception $e) {
             log_message('error', '[Appointments::update] DateTime error: ' . $e->getMessage());
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $startDateTime = new \DateTime($startLocal, new \DateTimeZone('UTC'));
             $clientTimezone = 'UTC';
         }
 

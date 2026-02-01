@@ -1,4 +1,62 @@
 <?php
+
+/**
+ * =============================================================================
+ * CUSTOMER MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/CustomerModel.php
+ * @description Data model for customers (people who book appointments).
+ *              Separate from users - customers don't log in to the system.
+ * 
+ * DATABASE TABLE: xs_customers
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - first_name      : Customer first name
+ * - last_name       : Customer last name
+ * - email           : Contact email (for notifications)
+ * - phone           : Contact phone (for SMS/WhatsApp)
+ * - address         : Optional address
+ * - notes           : Staff notes about customer
+ * - custom_fields   : JSON for additional data
+ * - hash            : Unique identifier for URLs
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * CUSTOMERS VS USERS:
+ * -----------------------------------------------------------------------------
+ * - Customers: People who book appointments, no system login
+ * - Users: System users (admin, provider, staff) who log in
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - findByHash()         : Find customer by public hash
+ * - findByEmail()        : Find customer by email
+ * - findByPhone()        : Find customer by phone
+ * - search()             : Search by name/email/phone
+ * - getOrCreate()        : Find existing or create new
+ * - getAppointments()    : Customer's appointment history
+ * 
+ * MODEL CALLBACKS:
+ * -----------------------------------------------------------------------------
+ * - beforeInsert: generateHash (creates unique customer identifier)
+ * 
+ * VALIDATION:
+ * -----------------------------------------------------------------------------
+ * Validation is handled by BookingSettingsService which provides
+ * dynamic rules based on admin settings. Model validation is disabled
+ * to prevent conflicts.
+ * 
+ * @see         app/Controllers/CustomerManagement.php for admin CRUD
+ * @see         app/Services/BookingSettingsService.php for validation
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

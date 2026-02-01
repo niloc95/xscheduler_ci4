@@ -13,7 +13,6 @@ class AddCustomFieldsColumnToCustomers extends MigrationBase
                 'custom_fields' => [
                     'type'       => 'TEXT',
                     'null'       => true,
-                    'after'      => 'notes',
                     'comment'    => 'JSON encoded map of custom booking fields',
                 ],
             ]);

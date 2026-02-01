@@ -1,5 +1,54 @@
 <?php
 
+/**
+ * =============================================================================
+ * FILTERS CONFIGURATION
+ * =============================================================================
+ * 
+ * @file        app/Config/Filters.php
+ * @description Configures HTTP request/response filters (middleware) for the
+ *              WebSchedulr application. Filters run before and/or after
+ *              controller methods to handle authentication, authorization,
+ *              security, and other cross-cutting concerns.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Filters intercept HTTP requests before they reach controllers and can also
+ * modify responses before they're sent to clients. This centralizes security
+ * and preprocessing logic.
+ * 
+ * CUSTOM FILTERS:
+ * -----------------------------------------------------------------------------
+ * - auth              : Verifies user is logged in, redirects to login if not
+ * - role              : Checks user has required role(s) e.g., 'role:admin,provider'
+ * - setup             : Ensures initial setup wizard is completed
+ * - setup_auth        : Combined setup + auth check for protected routes
+ * - api_auth          : JWT/session auth for API endpoints
+ * - api_cors          : CORS headers for API cross-origin requests
+ * - timezone          : Detects and stores client timezone in session
+ * - public_rate_limit : Rate limiting for public booking endpoints
+ * 
+ * BUILT-IN FILTERS:
+ * -----------------------------------------------------------------------------
+ * - csrf              : Cross-Site Request Forgery protection
+ * - cors              : Cross-Origin Resource Sharing headers
+ * - secureheaders     : Security headers (X-Frame-Options, etc.)
+ * - toolbar           : Debug toolbar (dev environment only)
+ * 
+ * USAGE IN ROUTES:
+ * -----------------------------------------------------------------------------
+ * $routes->get('admin', 'Admin::index', ['filter' => 'role:admin']);
+ * $routes->group('api', ['filter' => 'api_auth'], function($routes) {...});
+ * 
+ * @see         app/Filters/ for filter implementations
+ * @see         app/Config/Routes.php for filter application to routes
+ * @package     Config
+ * @extends     CodeIgniter\Config\Filters
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace Config;
 
 use CodeIgniter\Config\Filters as BaseFilters;

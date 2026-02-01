@@ -1,5 +1,57 @@
 <?php
 
+/**
+ * =============================================================================
+ * SERVICE MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/ServiceModel.php
+ * @description Data model for services offered by providers. Services define
+ *              what can be booked, including duration and pricing.
+ * 
+ * DATABASE TABLE: xs_services
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - name            : Service name
+ * - description     : Service description
+ * - duration_min    : Duration in minutes
+ * - price           : Service price (decimal)
+ * - category_id     : FK to xs_categories (optional)
+ * - active          : Is service bookable (0/1)
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * RELATED TABLES:
+ * -----------------------------------------------------------------------------
+ * - xs_categories         : Service categories
+ * - xs_providers_services : Many-to-many with providers
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getStats()            : Service statistics
+ * - getActive()           : List active services
+ * - getByCategory()       : Filter by category
+ * - getByProvider()       : Services offered by provider
+ * - getPopular()          : Most booked services
+ * 
+ * VALIDATION RULES:
+ * -----------------------------------------------------------------------------
+ * - name: Required, 2-255 characters
+ * - duration_min: Required, positive integer
+ * - price: Optional, decimal
+ * - category_id: Optional, integer
+ * - active: Optional, 0 or 1
+ * 
+ * @see         app/Controllers/Services.php for admin CRUD
+ * @see         app/Controllers/Api/V1/Services.php for API
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

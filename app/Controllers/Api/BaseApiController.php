@@ -1,5 +1,60 @@
 <?php
 
+/**
+ * =============================================================================
+ * BASE API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/BaseApiController.php
+ * @description Abstract base class for all API controllers providing
+ *              standardized response methods and authentication helpers.
+ * 
+ * NO ROUTES - Abstract class extended by other API controllers
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides consistent API response structure:
+ * - Standardized JSON format for success/error responses
+ * - HTTP status code helpers (ok, created, badRequest, etc.)
+ * - Authentication check methods
+ * - CORS handling support
+ * 
+ * RESPONSE FORMATS:
+ * -----------------------------------------------------------------------------
+ * Success (200/201):
+ * {
+ *   "data": { ... },
+ *   "meta": { "timestamp": "...", "pagination": { ... } }
+ * }
+ * 
+ * Error (4xx/5xx):
+ * {
+ *   "error": {
+ *     "message": "Human readable message",
+ *     "code": "ERROR_CODE",
+ *     "details": { ... }
+ *   }
+ * }
+ * 
+ * HELPER METHODS:
+ * -----------------------------------------------------------------------------
+ * - ok($data, $meta)           : 200 Success
+ * - created($data, $meta)      : 201 Created
+ * - noContent()                : 204 No Content
+ * - badRequest($msg, $details) : 400 Bad Request
+ * - unauthorized($msg)         : 401 Unauthorized
+ * - forbidden($msg)            : 403 Forbidden
+ * - notFound($msg)             : 404 Not Found
+ * - serverError($msg, $details): 500 Server Error
+ * 
+ * @see         app/Controllers/Api/*.php for implementations
+ * @package     App\Controllers\Api
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;

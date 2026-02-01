@@ -1,5 +1,55 @@
 <?php
 
+/**
+ * =============================================================================
+ * CALENDAR CONFIG SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/CalendarConfigService.php
+ * @description Service for calendar/scheduler display configuration.
+ *              Provides settings for the custom scheduler component.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralized calendar configuration:
+ * - Time format (12h/24h)
+ * - First day of week
+ * - Slot duration
+ * - Business hours display
+ * - View preferences (day/week/month default)
+ * - Time slot intervals
+ * 
+ * CONFIGURATION OPTIONS:
+ * -----------------------------------------------------------------------------
+ * - timeFormat        : '12h' or '24h'
+ * - firstDay          : 0=Sunday, 1=Monday
+ * - slotDuration      : Minutes per slot (15, 30, 60)
+ * - minTime           : Calendar start time (e.g., '08:00')
+ * - maxTime           : Calendar end time (e.g., '18:00')
+ * - defaultView       : 'day', 'week', or 'month'
+ * - snapDuration      : Drag snap interval
+ * - timezone          : Business timezone
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getConfig()               : Full scheduler config object
+ * - getForJavaScript()        : JSON-ready config for frontend
+ * - getTimeGridOptions()      : Time grid specific settings
+ * - getBusinessHours()        : Working hours configuration
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     $config = (new CalendarConfigService())->getForJavaScript();
+ *     // Pass to view for JavaScript scheduler initialization
+ * 
+ * @see         resources/js/scheduler.js for frontend usage
+ * @see         app/Services/LocalizationSettingsService.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\SettingModel;

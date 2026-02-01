@@ -1,5 +1,54 @@
 <?php
 
+/**
+ * =============================================================================
+ * USER PROFILE CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Profile.php
+ * @description User profile management including personal settings, password
+ *              changes, notification preferences, and account deletion.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /profile                      : View profile page
+ * POST /profile/update               : Update profile information
+ * POST /profile/password             : Change password
+ * POST /profile/avatar               : Upload profile avatar
+ * POST /profile/notifications        : Update notification preferences
+ * POST /profile/delete               : Delete user account
+ * GET  /profile/export               : Export personal data (GDPR)
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Self-service account management for logged-in users:
+ * - View and edit personal information (name, email, phone)
+ * - Change password with strength validation
+ * - Upload and manage profile avatar
+ * - Configure notification preferences (email, SMS, WhatsApp)
+ * - Export personal data for GDPR compliance
+ * - Request account deletion
+ * 
+ * PROFILE SECTIONS:
+ * -----------------------------------------------------------------------------
+ * - Personal Info: Name, email, phone, timezone
+ * - Security: Password change, 2FA settings
+ * - Notifications: Email/SMS/WhatsApp preferences
+ * - Privacy: Data export, account deletion
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * All routes require authentication; users can only edit their own profile.
+ * 
+ * @see         app/Views/profile/ for view templates
+ * @see         app/Models/UserModel.php for user data
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;

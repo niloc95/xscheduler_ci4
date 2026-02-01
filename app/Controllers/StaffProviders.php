@@ -1,5 +1,55 @@
 <?php
 
+/**
+ * =============================================================================
+ * STAFF PROVIDERS CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/StaffProviders.php
+ * @description API controller for managing providers assigned to a staff
+ *              member. Inverse of ProviderStaff (staff → provider view).
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /staff-providers/:staffId          : List providers for staff member
+ * POST /staff-providers/:staffId/assign   : Assign provider to staff
+ * POST /staff-providers/:staffId/remove   : Remove provider assignment
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Manages the staff-to-provider relationship (inverse view):
+ * - List all providers a staff member works with
+ * - View from staff member's perspective
+ * - Useful for staff dashboards and availability
+ * 
+ * RELATIONSHIP STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * - Staff members can work with multiple providers
+ * - Shows which providers the staff member supports
+ * - Same xs_provider_staff table, different perspective
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Admin: Can view/manage any staff's provider list
+ * - Staff: Can only view own provider assignments
+ * - Receptionist: Can view own provider assignments
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * Returns JSON with provider list including:
+ * - id, name, email
+ * - specialties/services offered
+ * - assignment details
+ * 
+ * @see         app/Models/ProviderStaffModel.php for data layer
+ * @see         app/Controllers/ProviderStaff.php for inverse relationship
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\ProviderStaffModel;

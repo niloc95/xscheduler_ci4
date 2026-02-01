@@ -1,5 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * CUSTOMER MANAGEMENT CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/CustomerManagement.php
+ * @description Handles customer record management including listing, creating,
+ *              editing, viewing, and deleting customer profiles.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /customers                  : List all customers with search
+ * GET  /customers/create           : Show customer creation form
+ * POST /customers/store            : Create new customer record
+ * GET  /customers/edit/:hash       : Show edit form for customer
+ * POST /customers/update/:hash     : Update existing customer
+ * GET  /customers/view/:hash       : View customer profile with history
+ * POST /customers/delete/:hash     : Soft delete customer record
+ * GET  /customers/search           : AJAX search endpoint
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Manages the customer database:
+ * - Customer profile CRUD operations
+ * - Contact information management (email, phone, address)
+ * - Appointment history viewing
+ * - Customer search and filtering
+ * - Hash-based URLs for privacy
+ * 
+ * CUSTOMER DATA:
+ * -----------------------------------------------------------------------------
+ * - Personal: First name, last name, email, phone
+ * - Address: Street, city, state, postal code, country
+ * - Communication: Preferred contact method, opt-out flags
+ * - History: Appointment count, last visit, total spend
+ * 
+ * SECURITY:
+ * -----------------------------------------------------------------------------
+ * - Hash identifiers for non-enumerable URLs
+ * - Role-based access (staff+ can view, admin can delete)
+ * - CSRF protection on forms
+ * - Input validation and sanitization
+ * 
+ * DEPENDENCIES:
+ * -----------------------------------------------------------------------------
+ * - CustomerModel              : Database operations
+ * - BookingSettingsService     : Field configuration
+ * - CustomerAppointmentService : History and statistics
+ * 
+ * @see         app/Views/customers/ for view templates
+ * @see         app/Models/CustomerModel.php for data model
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
@@ -48,7 +106,7 @@ class CustomerManagement extends BaseController
             'totalCustomers' => $totalCustomers,
         ];
 
-        return view('customer_management/index', $data);
+        return view('customer-management/index', $data);
     }
 
     /**
@@ -69,7 +127,7 @@ class CustomerManagement extends BaseController
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
         ];
-        return view('customer_management/create', $data);
+        return view('customer-management/create', $data);
     }
 
     /**
@@ -207,7 +265,7 @@ class CustomerManagement extends BaseController
             'customFields' => $customFields,
             'customFieldValues' => $customFieldValues,
         ];
-        return view('customer_management/edit', $data);
+        return view('customer-management/edit', $data);
     }
 
     /**
@@ -424,6 +482,6 @@ class CustomerManagement extends BaseController
             'currentPage' => $page,
         ];
 
-        return view('customer_management/history', $data);
+        return view('customer-management/history', $data);
     }
 }

@@ -1,5 +1,61 @@
 <?php
 
+/**
+ * =============================================================================
+ * SETUP HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/setup_helper.php
+ * @description Global helper functions for checking application setup status.
+ *              Single source of truth for setup completion across the app.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via preload.php or manually:
+ *     helper('setup');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * is_setup_completed()
+ *   Check if initial application setup is complete
+ *   Returns: bool
+ * 
+ * SETUP COMPLETION CHECKS:
+ * -----------------------------------------------------------------------------
+ * 1. Flag file exists (fastest):
+ *    - writable/setup_complete.flag
+ *    - writable/setup_completed.flag (legacy)
+ * 
+ * 2. .env file exists
+ * 
+ * 3. Database credentials in config
+ * 
+ * 4. Database connection works
+ * 
+ * 5. Required tables exist (xs_users, xs_settings)
+ * 
+ * 6. Admin user exists
+ * 
+ * FLAG FILE:
+ * -----------------------------------------------------------------------------
+ * The setup_complete.flag file is created at the end of the setup wizard.
+ * This provides a fast check without database queries.
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     helper('setup');
+ *     if (!is_setup_completed()) {
+ *         return redirect()->to('/setup');
+ *     }
+ * 
+ * @see         app/Controllers/Setup.php for setup wizard
+ * @see         app/Filters/SetupFilter.php for route protection
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('is_setup_completed')) {
     /**
      * Check if the application setup has been completed

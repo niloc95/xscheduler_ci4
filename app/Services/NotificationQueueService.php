@@ -1,5 +1,68 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION QUEUE SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationQueueService.php
+ * @description Manages the notification queue for async notification delivery.
+ *              Handles enqueueing notifications and reminder scheduling.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides async notification handling by:
+ * - Enqueueing notifications for background processing
+ * - Scheduling reminders based on business rules
+ * - Managing idempotency to prevent duplicates
+ * - Supporting delayed delivery (run_after)
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * enqueueAppointmentEvent($businessId, $channel, $eventType, $appointmentId, $runAfter)
+ *   Queue a notification for an appointment event
+ *   Returns: ['ok' => bool, 'queue_id' => int|null]
+ * 
+ * enqueueDueReminders($businessId)
+ *   Scan for appointments due for reminders and queue them
+ *   Returns: ['scanned' => int, 'enqueued' => int, 'skipped' => int]
+ * 
+ * NOTIFICATION EVENTS:
+ * -----------------------------------------------------------------------------
+ * - appointment_confirmed  : New booking created
+ * - appointment_cancelled  : Booking cancelled
+ * - appointment_rescheduled: Booking time changed
+ * - appointment_reminder   : Upcoming appointment reminder
+ * - appointment_no_show    : Customer didn't attend
+ * 
+ * CHANNELS:
+ * -----------------------------------------------------------------------------
+ * - email    : Email notifications
+ * - sms      : SMS text notifications
+ * - whatsapp : WhatsApp messages
+ * 
+ * IDEMPOTENCY:
+ * -----------------------------------------------------------------------------
+ * Uses idempotency keys to prevent duplicate notifications:
+ * Key format: {channel}_{eventType}_{appointmentId}_{timestamp}
+ * Duplicate keys are silently ignored.
+ * 
+ * REMINDER SCHEDULING:
+ * -----------------------------------------------------------------------------
+ * Reminders use 'run_after' to schedule for X minutes before appointment:
+ * 1. Get reminder offset from business rules
+ * 2. Calculate run_after = start_datetime - offset
+ * 3. Queue with run_after timestamp
+ * 4. Dispatcher processes when run_after <= now
+ * 
+ * @see         app/Services/NotificationQueueDispatcher.php
+ * @see         app/Models/NotificationQueueModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;

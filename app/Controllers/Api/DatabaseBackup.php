@@ -1,5 +1,60 @@
 <?php
 
+/**
+ * =============================================================================
+ * DATABASE BACKUP API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/DatabaseBackup.php
+ * @description Secure database backup and restore functionality with
+ *              comprehensive security controls and audit logging.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * POST   /api/database-backup/create   : Create new backup
+ * GET    /api/database-backup/list     : List available backups
+ * GET    /api/database-backup/download : Download backup file
+ * DELETE /api/database-backup/delete   : Delete backup file
+ * POST   /api/database-backup/restore  : Restore from backup
+ * 
+ * SECURITY REQUIREMENTS:
+ * -----------------------------------------------------------------------------
+ * - AC1: Admin authentication required (403 without)
+ * - AC2: Master switch enabled (database.allow_backup setting)
+ * - AC3: Randomized filenames prevent guessing
+ * - AC4: Backups stored outside web root (writable/backups/)
+ * - AC5: All operations logged to audit trail
+ * 
+ * BACKUP FILE FORMAT:
+ * -----------------------------------------------------------------------------
+ * - Filename: backup_{random_string}_{timestamp}.sql.gz
+ * - Location: WRITEPATH/backups/ (outside web root)
+ * - Compressed: gzip for smaller file size
+ * - Contains: Full database dump with tables and data
+ * 
+ * MASTER SWITCH:
+ * -----------------------------------------------------------------------------
+ * The database.allow_backup setting must be enabled for any
+ * backup operations. This provides an additional layer of
+ * security beyond authentication.
+ * 
+ * AUDIT LOGGING:
+ * -----------------------------------------------------------------------------
+ * All backup operations are logged with:
+ * - Action type (create, download, delete, restore)
+ * - User ID and IP address
+ * - Timestamp
+ * - Success/failure status
+ * 
+ * @see         app/Models/SettingModel.php for master switch
+ * @see         writable/backups/ for backup storage
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Models\SettingModel;

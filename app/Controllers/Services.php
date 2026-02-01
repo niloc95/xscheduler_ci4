@@ -1,5 +1,60 @@
 <?php
 
+/**
+ * =============================================================================
+ * SERVICES CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Services.php
+ * @description Manages the service catalog including services offered, their
+ *              durations, pricing, and category organization.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /services                     : List all services
+ * GET  /services/create              : Show service creation form
+ * POST /services/store               : Create new service
+ * GET  /services/edit/:hash          : Show edit form for service
+ * POST /services/update/:hash        : Update existing service
+ * POST /services/delete/:hash        : Soft delete service
+ * GET  /services/categories          : List service categories
+ * POST /services/categories/store    : Create new category
+ * POST /services/categories/update   : Update category
+ * POST /services/categories/delete   : Delete category
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Manages the service offerings that customers can book:
+ * - Service definitions (name, description, duration, price)
+ * - Category organization for service grouping
+ * - Provider assignment (which providers offer which services)
+ * - Active/inactive status management
+ * 
+ * SERVICE DATA:
+ * -----------------------------------------------------------------------------
+ * - Basic: Name, description, short description
+ * - Pricing: Base price, currency (from settings)
+ * - Duration: Service duration in minutes
+ * - Category: Organizational grouping
+ * - Providers: List of providers who can perform service
+ * - Status: Active/inactive for booking availability
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Admin: Full CRUD on all services and categories
+ * - Provider: Can manage own services only
+ * - Staff/Customer: Read-only access
+ * 
+ * @see         app/Views/services/ for view templates
+ * @see         app/Models/ServiceModel.php for data model
+ * @see         app/Models/CategoryModel.php for categories
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;

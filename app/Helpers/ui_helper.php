@@ -1,5 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * UI HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/ui_helper.php
+ * @description Helper functions for rendering standardized UI components.
+ *              Ensures consistent styling across the application.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('ui');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * ui_button($text, $href, $type, $attributes)
+ *   Render a button or link styled as button
+ *   Types: primary, secondary, ghost, pill
+ *   Example: ui_button('Save', null, 'primary', ['id' => 'save-btn'])
+ * 
+ * ui_card($title, $content, $footer, $options)
+ *   Render a card component with optional header/footer
+ *   Example: ui_card('Settings', '<p>Content</p>', null, ['class' => 'mt-4'])
+ * 
+ * ui_badge($text, $variant)
+ *   Render a badge/tag component
+ *   Variants: primary, success, warning, danger, info
+ * 
+ * ui_alert($message, $type, $dismissible)
+ *   Render an alert message box
+ *   Types: success, error, warning, info
+ * 
+ * ui_modal($id, $title, $content, $footer, $options)
+ *   Render a modal dialog structure
+ * 
+ * ui_table($headers, $rows, $options)
+ *   Render a data table with consistent styling
+ * 
+ * BUTTON TYPES:
+ * -----------------------------------------------------------------------------
+ * - primary   : Blue accent color, main actions
+ * - secondary : Gray, secondary actions
+ * - ghost     : Transparent, subtle actions
+ * - pill      : Rounded pill shape
+ * 
+ * TAILWIND INTEGRATION:
+ * -----------------------------------------------------------------------------
+ * All components use Tailwind CSS classes with dark mode support.
+ * Custom class overrides can be passed via options/attributes.
+ * 
+ * @see         resources/css/components.css for base styles
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('ui_button')) {
     function ui_button($text, $href = null, $type = 'primary', $attributes = []) {
         $type = strtolower($type ?? 'primary');

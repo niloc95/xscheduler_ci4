@@ -133,7 +133,7 @@
                 </div>
 
                 <div id="providerScheduleSection" class="<?= old('role') === 'provider' ? '' : 'hidden' ?>">
-                    <?= $this->include('user_management/components/provider_schedule') ?>
+                    <?= $this->include('user-management/components/provider-schedule') ?>
                 </div>
 
                 <div id="providerAssignmentsSection" class="<?= old('role') === 'provider' ? '' : 'hidden' ?>">
@@ -146,7 +146,7 @@
                 </div>
 
                 <div id="staffAssignmentsSection" class="<?= old('role') === 'staff' ? '' : 'hidden' ?>">
-                    <?= $this->include('user_management/components/staff_providers', [
+                    <?= $this->include('user-management/components/staff-providers', [
                         'assignedProviders' => $assignedProviders ?? [],
                         'availableProviders' => $providers ?? [],
                         'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',

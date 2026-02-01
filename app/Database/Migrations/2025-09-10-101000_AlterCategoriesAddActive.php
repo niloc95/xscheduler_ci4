@@ -13,7 +13,6 @@ class AlterCategoriesAddActive extends MigrationBase
                 'type'       => 'TINYINT',
                 'constraint' => 1,
                 'default'    => 1,
-                'after'      => 'color',
             ],
         ]);
     }

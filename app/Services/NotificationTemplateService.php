@@ -1,5 +1,68 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION TEMPLATE SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationTemplateService.php
+ * @description Handles loading and rendering of notification message templates
+ *              with placeholder substitution and legal content integration.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides dynamic message generation for all notification types:
+ * - Load templates from database or defaults
+ * - Replace placeholders with appointment data
+ * - Include legal content (policies, terms)
+ * - Support multiple channels (email, SMS, WhatsApp)
+ * 
+ * SUPPORTED PLACEHOLDERS:
+ * -----------------------------------------------------------------------------
+ * Customer Info:
+ * - {customer_name}       : Full customer name
+ * - {customer_first_name} : First name only
+ * - {customer_email}      : Customer email
+ * - {customer_phone}      : Customer phone number
+ * 
+ * Appointment Info:
+ * - {service_name}        : Service booked
+ * - {service_duration}    : Duration in minutes
+ * - {provider_name}       : Provider/staff name
+ * - {appointment_date}    : Formatted date
+ * - {appointment_time}    : Formatted time
+ * - {appointment_datetime}: Full datetime
+ * 
+ * Business Info:
+ * - {business_name}       : Business name
+ * - {business_email}      : Contact email
+ * - {business_phone}      : Contact phone
+ * - {business_address}    : Business address
+ * 
+ * Legal Content:
+ * - {cancellation_policy} : Cancellation policy text
+ * - {rescheduling_policy} : Rescheduling policy text
+ * - {terms_link}          : Terms & Conditions link
+ * - {privacy_link}        : Privacy policy link
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * render($eventType, $channel, $appointmentData)
+ *   Render template with placeholder substitution
+ * 
+ * getTemplate($eventType, $channel)
+ *   Get template content (custom or default)
+ * 
+ * getPlaceholderData($appointmentId)
+ *   Build placeholder data array from appointment
+ * 
+ * @see         app/Models/MessageTemplateModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\SettingModel;

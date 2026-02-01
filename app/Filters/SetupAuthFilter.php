@@ -1,5 +1,53 @@
 <?php
 
+/**
+ * =============================================================================
+ * SETUP AUTH FILTER
+ * =============================================================================
+ * 
+ * @file        app/Filters/SetupAuthFilter.php
+ * @description Combined filter that checks both setup completion AND user
+ *              authentication in a single filter.
+ * 
+ * FILTER ALIAS: 'setup_auth'
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Combines two checks in one filter:
+ * 1. Setup completion check (like SetupFilter)
+ * 2. Authentication check (like AuthFilter)
+ * 
+ * BEHAVIOR:
+ * -----------------------------------------------------------------------------
+ * Before Request:
+ * 1. Check if setup is completed
+ *    - If not: redirect to /setup
+ * 2. Check if user is logged in
+ *    - If not: store intended URL, redirect to /auth/login
+ * 3. If both pass: continue to controller
+ * 
+ * USE CASE:
+ * -----------------------------------------------------------------------------
+ * For routes that need both checks without nesting filters:
+ *     $routes->get('/profile', 'Profile::index', ['filter' => 'setup_auth']);
+ * 
+ * Instead of:
+ *     ['filter' => ['setup', 'auth']]
+ * 
+ * REDIRECT HANDLING:
+ * -----------------------------------------------------------------------------
+ * Stores intended URL in session before redirecting to login,
+ * allowing return to original destination after successful login.
+ * 
+ * @see         app/Filters/SetupFilter.php for setup-only check
+ * @see         app/Filters/AuthFilter.php for auth-only check
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Filters;
 
 use CodeIgniter\Filters\FilterInterface;

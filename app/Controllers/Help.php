@@ -1,5 +1,55 @@
 <?php
 
+/**
+ * =============================================================================
+ * HELP CENTER CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Help.php
+ * @description Help center with FAQs, documentation, support resources,
+ *              and context-sensitive help for users.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /help                         : Help center home
+ * GET  /help/faq                     : Frequently asked questions
+ * GET  /help/article/:slug           : View help article
+ * GET  /help/search                  : Search help content
+ * GET  /help/contact                 : Contact support form
+ * POST /help/contact                 : Submit support request
+ * GET  /help/tour                    : Interactive feature tour
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides self-service support resources:
+ * - Searchable FAQ database
+ * - Role-specific help articles (admin, provider, staff)
+ * - Getting started guides
+ * - Video tutorials (if configured)
+ * - Contact form for support tickets
+ * - Interactive product tour
+ * 
+ * CONTENT ORGANIZATION:
+ * -----------------------------------------------------------------------------
+ * - Getting Started: Setup guides, first steps
+ * - Appointments: Booking, rescheduling, cancellation
+ * - User Management: Roles, permissions, schedules
+ * - Settings: Configuration options explained
+ * - Troubleshooting: Common issues and solutions
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Public: Basic FAQs and general help
+ * - Authenticated: Role-specific content and support tickets
+ * 
+ * @see         app/Views/help/ for view templates
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;

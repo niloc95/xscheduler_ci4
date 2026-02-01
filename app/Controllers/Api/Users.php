@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * USERS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/Users.php
+ * @description API for user listing and role-based counts used by
+ *              dashboard widgets and user selection dropdowns.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/users                         : List users (with role filter)
+ * GET  /api/user-counts                   : Get user counts by role
+ * GET  /api/users/:id                     : Get specific user details
+ * 
+ * QUERY PARAMETERS (GET /api/users):
+ * -----------------------------------------------------------------------------
+ * - role         : Filter by role (admin, provider, staff)
+ * - is_active    : Filter by active status
+ * - search       : Search by name or email
+ * - page         : Page number for pagination
+ * - per_page     : Items per page
+ * 
+ * COUNTS RESPONSE:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "data": {
+ *     "admins": 2,
+ *     "providers": 5,
+ *     "staff": 12,
+ *     "total": 19
+ *   }
+ * }
+ * 
+ * NOTE: Customers are managed separately in CustomerModel and
+ * are excluded from these counts.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Supports various UI components:
+ * - Dashboard user count widgets
+ * - Provider selection dropdowns
+ * - Staff assignment lists
+ * - User management filters
+ * 
+ * @see         app/Models/UserModel.php for data layer
+ * @see         app/Controllers/UserManagement.php for full CRUD
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Models\UserModel;

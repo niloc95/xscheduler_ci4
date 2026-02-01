@@ -14,7 +14,6 @@ class AddHashToAppointments extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 64,
                 'null'       => true, // Allow null initially for existing records
-                'after'      => 'id',
             ],
         ]);
 

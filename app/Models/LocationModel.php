@@ -1,5 +1,58 @@
 <?php
 
+/**
+ * =============================================================================
+ * LOCATION MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/LocationModel.php
+ * @description Data model for provider business locations. Supports multi-
+ *              location providers with working days assigned per location.
+ * 
+ * DATABASE TABLE: xs_locations
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - provider_id     : FK to xs_users (provider)
+ * - name            : Location friendly name
+ * - address         : Full physical address
+ * - contact_number  : Location phone number
+ * - is_primary      : Is this the main location (0/1)
+ * - is_active       : Is location available for booking (0/1)
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * RELATED TABLE: xs_location_days
+ * -----------------------------------------------------------------------------
+ * Maps working days to locations:
+ * - location_id    : FK to xs_locations
+ * - day_of_week    : 0-6 (Sunday-Saturday)
+ * 
+ * MULTI-LOCATION CONCEPT:
+ * -----------------------------------------------------------------------------
+ * - Providers can have multiple locations
+ * - Each location has its own address and contact
+ * - Working days can be assigned per location
+ * - Working HOURS remain global to the provider
+ * - Appointments are booked at a specific location
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getProviderLocations(id)      : All locations for provider
+ * - getProviderLocationsWithDays(): Include day assignments
+ * - getLocationDays(id)           : Working days for location
+ * - setLocationDays(id, days)     : Update day assignments
+ * - getPrimaryLocation(id)        : Get provider's main location
+ * 
+ * @see         app/Controllers/Api/Locations.php for API
+ * @see         app/Views/settings/locations.php for admin UI
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

@@ -1,5 +1,61 @@
 <?php
 
+/**
+ * =============================================================================
+ * LOCATIONS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/Locations.php
+ * @description API for managing provider business locations including
+ *              addresses, operating hours, and service availability.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET    /api/locations                   : List all locations
+ * GET    /api/locations/:id               : Get location details
+ * POST   /api/locations                   : Create new location
+ * PUT    /api/locations/:id               : Update location
+ * DELETE /api/locations/:id               : Delete location
+ * GET    /api/locations/:id/providers     : Get providers at location
+ * 
+ * QUERY PARAMETERS (GET /api/locations):
+ * -----------------------------------------------------------------------------
+ * - provider_id  : Filter by provider
+ * - with_days    : Include operating days (1/0)
+ * - is_active    : Filter by active status
+ * 
+ * LOCATION STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "id": 1,
+ *   "name": "Main Office",
+ *   "address": "123 Main St",
+ *   "city": "Cape Town",
+ *   "postal_code": "8001",
+ *   "phone": "+27 21 555 1234",
+ *   "is_active": true,
+ *   "days": [
+ *     { "day_of_week": 1, "start_time": "09:00", "end_time": "17:00" }
+ *   ]
+ * }
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Supports multi-location businesses:
+ * - Define physical locations/branches
+ * - Set operating hours per location
+ * - Assign providers to locations
+ * - Location-based booking flow
+ * 
+ * @see         app/Models/LocationModel.php for data layer
+ * @see         app/Views/settings/locations.php for admin UI
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Models\LocationModel;

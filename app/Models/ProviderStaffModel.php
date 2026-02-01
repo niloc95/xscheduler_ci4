@@ -1,5 +1,52 @@
 <?php
 
+/**
+ * =============================================================================
+ * PROVIDER STAFF MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/ProviderStaffModel.php
+ * @description Data model for provider-staff assignments. Manages the many-to-
+ *              many relationship between providers and their staff members.
+ * 
+ * DATABASE TABLE: xs_provider_staff_assignments
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - provider_id     : FK to xs_users (provider)
+ * - staff_id        : FK to xs_users (staff)
+ * - assigned_by     : User who made the assignment
+ * - status          : Assignment status (active, inactive)
+ * - assigned_at     : When assignment was created
+ * 
+ * RELATIONSHIP STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * - Providers can have multiple staff members
+ * - Staff can be assigned to multiple providers
+ * - This is the pivot table for the many-to-many relationship
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getStaffByProvider(id)    : Get all staff for a provider
+ * - getProvidersByStaff(id)   : Get all providers for a staff member
+ * - assignStaff(provider, staff) : Create assignment
+ * - removeStaff(provider, staff) : Remove assignment
+ * - isAssigned(provider, staff)  : Check if assignment exists
+ * 
+ * STATUS VALUES:
+ * -----------------------------------------------------------------------------
+ * - active   : Staff is currently assigned and working
+ * - inactive : Assignment is paused/disabled
+ * 
+ * @see         app/Controllers/ProviderStaff.php for provider view
+ * @see         app/Controllers/StaffProviders.php for staff view
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use CodeIgniter\Model;

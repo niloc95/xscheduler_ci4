@@ -1,5 +1,64 @@
 <?php
 
+/**
+ * =============================================================================
+ * USER MODEL
+ * =============================================================================
+ * 
+ * @file        app/Models/UserModel.php
+ * @description Data model for system users including admins, providers, and
+ *              staff. Handles authentication, roles, and user management.
+ * 
+ * DATABASE TABLE: xs_users
+ * -----------------------------------------------------------------------------
+ * Columns:
+ * - id              : Primary key
+ * - name            : Display name
+ * - email           : Login email (unique)
+ * - phone           : Contact phone
+ * - password_hash   : Bcrypt hashed password
+ * - role            : admin, provider, staff, customer
+ * - permissions     : JSON array of specific permissions
+ * - status          : Account status
+ * - is_active       : Soft active/inactive flag
+ * - last_login      : Last successful login timestamp
+ * - profile_image   : Avatar image path
+ * - color           : Provider calendar color (hex)
+ * - reset_token     : Password reset token
+ * - reset_expires   : Token expiration datetime
+ * - created_at      : Creation timestamp
+ * - updated_at      : Last update timestamp
+ * 
+ * USER ROLES:
+ * -----------------------------------------------------------------------------
+ * - admin    : Full system access, manages all settings
+ * - provider : Service provider, has own schedule and calendar
+ * - staff    : Assigned to provider(s), limited access
+ * - customer : End user (deprecated, use CustomerModel instead)
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getStats()            : User counts by role
+ * - getProviders()        : List all providers
+ * - findByEmail()         : Find user by email
+ * - verifyPassword()      : Check password hash
+ * - setPassword()         : Hash and set password
+ * - generateResetToken()  : Create password reset token
+ * 
+ * MODEL CALLBACKS:
+ * -----------------------------------------------------------------------------
+ * - beforeInsert: ensureProviderColor (auto-assign calendar color)
+ * - beforeUpdate: ensureProviderColorOnUpdate
+ * 
+ * @see         app/Controllers/Auth.php for authentication
+ * @see         app/Controllers/UserManagement.php for admin CRUD
+ * @package     App\Models
+ * @extends     BaseModel
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Models;
 
 use App\Models\BaseModel;

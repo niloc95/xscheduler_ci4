@@ -21,6 +21,9 @@ class AddProfileImageToUsers extends MigrationBase
 
     public function down()
     {
-        $this->forge->dropColumn('users', 'profile_image');
+        // Check if column exists before dropping (SQLite compatibility)
+        if ($this->db->fieldExists('profile_image', 'users')) {
+            $this->forge->dropColumn('users', 'profile_image');
+        }
     }
 }

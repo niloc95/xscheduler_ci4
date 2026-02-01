@@ -1,5 +1,57 @@
 <?php
 
+/**
+ * =============================================================================
+ * PROVIDER SCHEDULE CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/ProviderSchedule.php
+ * @description API controller for managing provider working hours and
+ *              availability schedules (weekly recurring patterns).
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /provider-schedule/:providerId       : Get provider's schedule
+ * POST /provider-schedule/:providerId/save  : Save/update schedule
+ * GET  /provider-schedule/:providerId/breaks: Get break periods
+ * POST /provider-schedule/:providerId/breaks: Save break periods
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Manages provider availability configuration:
+ * - Weekly working hours (per day of week)
+ * - Start and end times for each working day
+ * - Break periods (lunch, etc.)
+ * - Non-working days (days off)
+ * 
+ * SCHEDULE STRUCTURE:
+ * -----------------------------------------------------------------------------
+ * Each provider has 7 day records (Mon-Sun) containing:
+ * - day_of_week: 0=Sunday through 6=Saturday
+ * - is_working: boolean (works on this day)
+ * - start_time: HH:MM format
+ * - end_time: HH:MM format
+ * - breaks: array of {start, end} break periods
+ * 
+ * ACCESS CONTROL:
+ * -----------------------------------------------------------------------------
+ * - Admin: Can view/edit any provider's schedule
+ * - Provider: Can only view/edit own schedule
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * Returns JSON with schedule data and localization context
+ * (time format, timezone) for proper display.
+ * 
+ * @see         app/Models/ProviderScheduleModel.php for data layer
+ * @see         app/Services/LocalizationSettingsService.php for formatting
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\ProviderScheduleModel;

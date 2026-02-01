@@ -1,5 +1,70 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION EMAIL SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationEmailService.php
+ * @description Handles sending email notifications using configured SMTP
+ *              integrations. Manages email delivery for all notification types.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides email delivery capability for appointment notifications:
+ * - Confirmations
+ * - Reminders
+ * - Cancellations
+ * - Reschedules
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * sendEmail($businessId, $toEmail, $subject, $message)
+ *   Send an email using business SMTP configuration
+ *   Returns: ['ok' => bool, 'error' => string|null]
+ * 
+ * getPublicIntegration($businessId)
+ *   Get sanitized integration info (without sensitive data)
+ *   For display in settings UI
+ * 
+ * configureIntegration($businessId, $config)
+ *   Save SMTP configuration (encrypted)
+ * 
+ * testConnection($businessId, $testEmail)
+ *   Send test email to verify SMTP configuration
+ * 
+ * SMTP CONFIGURATION:
+ * -----------------------------------------------------------------------------
+ * Config is stored encrypted in xs_business_integrations:
+ * - host       : SMTP hostname (smtp.gmail.com)
+ * - port       : SMTP port (587, 465, 25)
+ * - crypto     : Encryption type (tls, ssl, none)
+ * - username   : SMTP authentication username
+ * - password   : SMTP authentication password
+ * - from_email : Sender email address
+ * - from_name  : Sender display name
+ * 
+ * ENCRYPTION:
+ * -----------------------------------------------------------------------------
+ * SMTP credentials are encrypted using notification_encrypt_config()
+ * before storage. Decrypted on-demand for sending.
+ * 
+ * COMMON PROVIDERS:
+ * -----------------------------------------------------------------------------
+ * - Gmail SMTP
+ * - Mailgun SMTP
+ * - SendGrid SMTP
+ * - Amazon SES SMTP
+ * - Custom SMTP servers
+ * 
+ * @see         app/Helpers/notification_helper.php for encryption
+ * @see         app/Models/BusinessIntegrationModel.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;

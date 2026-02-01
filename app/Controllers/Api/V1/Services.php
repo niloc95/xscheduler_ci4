@@ -1,5 +1,58 @@
 <?php
 
+/**
+ * =============================================================================
+ * V1 SERVICES API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/V1/Services.php
+ * @description API for listing services offered, including categories,
+ *              durations, and pricing for the booking flow.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/v1/services               : List all services
+ * GET  /api/v1/services/:id           : Get service details
+ * GET  /api/v1/services/categories    : List service categories
+ * 
+ * QUERY PARAMETERS (GET /api/v1/services):
+ * -----------------------------------------------------------------------------
+ * - page          : Page number for pagination
+ * - length        : Items per page
+ * - sort          : Sort field (name, duration_min, price)
+ * - providerId    : Filter by provider who offers service
+ * - categoryId    : Filter by category
+ * - active        : Filter by active status
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "data": {
+ *     "items": [
+ *       {
+ *         "id": 1,
+ *         "name": "Haircut",
+ *         "description": "Standard haircut service",
+ *         "duration_min": 30,
+ *         "price": 150.00,
+ *         "color": "#10B981",
+ *         "category": "Hair",
+ *         "active": true
+ *       }
+ *     ],
+ *     "total": 12
+ *   }
+ * }
+ * 
+ * @see         app/Models/ServiceModel.php for data layer
+ * @see         app/Models/CategoryModel.php for categories
+ * @package     App\Controllers\Api\V1
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api\V1;
 use App\Models\ServiceModel;
 use App\Models\CategoryModel;

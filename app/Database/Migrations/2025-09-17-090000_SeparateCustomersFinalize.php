@@ -29,7 +29,6 @@ class SeparateCustomersFinalize extends MigrationBase
                         'constraint' => 11,
                         'unsigned'   => true,
                         'null'       => true,
-                        'after'      => 'user_id',
                         'comment'    => 'Customer ID from xs_customers table',
                     ]
                 ]);
@@ -53,7 +52,6 @@ class SeparateCustomersFinalize extends MigrationBase
                     'constraint' => 11,
                     'unsigned'   => true,
                     'null'       => true,
-                    'after'      => 'user_id',
                     'comment'    => 'Customer ID from xs_customers table',
                 ]
             ]);
@@ -128,8 +126,14 @@ SQL;
 
     private function createIndexIfMissing(string $table, string $indexName, array $columns): void
     {
-        $db     = $this->db;
-        $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        $db = $this->db;
+        
+        // Cross-database compatible index check
+        if ($db->DBDriver === 'SQLite3') {
+            $exists = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name=?", [$indexName])->getFirstRow();
+        } else {
+            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
+        }
 
         if ($exists) {
             return;

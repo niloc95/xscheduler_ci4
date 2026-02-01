@@ -1,5 +1,68 @@
 <?php
 
+/**
+ * =============================================================================
+ * AVAILABILITY API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/Availability.php
+ * @description API for checking provider availability and retrieving
+ *              available time slots for appointment booking.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/availability/slots          : Get available slots for a date
+ * GET  /api/availability/calendar       : Get availability for date range
+ * GET  /api/availability/check          : Check if specific slot is available
+ * GET  /api/availability/providers      : Get providers with availability
+ * 
+ * SLOTS ENDPOINT PARAMETERS:
+ * -----------------------------------------------------------------------------
+ * - provider_id (required)  : Provider to check availability for
+ * - date (required)         : Date in Y-m-d format
+ * - service_id (required)   : Service to book (determines duration)
+ * - buffer_minutes          : Buffer between appointments (0, 15, 30)
+ * - timezone                : Client timezone for conversions
+ * 
+ * SLOTS RESPONSE:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "ok": true,
+ *   "data": {
+ *     "date": "2025-11-13",
+ *     "provider_id": 2,
+ *     "service_id": 1,
+ *     "slots": [
+ *       {
+ *         "start": "09:00",
+ *         "end": "10:00",
+ *         "startTime": "2025-11-13T09:00:00+02:00",
+ *         "endTime": "2025-11-13T10:00:00+02:00"
+ *       }
+ *     ],
+ *     "timezone": "Africa/Johannesburg"
+ *   }
+ * }
+ * 
+ * AVAILABILITY LOGIC:
+ * -----------------------------------------------------------------------------
+ * Considers all scheduling constraints:
+ * - Provider working hours
+ * - Existing appointments
+ * - Buffer time between appointments
+ * - Service duration
+ * - Provider breaks
+ * - Business hours from settings
+ * 
+ * @see         app/Services/AvailabilityService.php for calculation logic
+ * @see         app/Models/ProviderScheduleModel.php for schedules
+ * @package     App\Controllers\Api
+ * @extends     BaseApiController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api;
 
 use App\Services\AvailabilityService;

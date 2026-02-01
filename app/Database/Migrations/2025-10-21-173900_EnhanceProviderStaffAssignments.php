@@ -18,7 +18,6 @@ class EnhanceProviderStaffAssignments extends Migration
                 'constraint' => 11,
                 'unsigned'   => true,
                 'null'       => true,
-                'after'      => 'staff_id',
             ],
         ]);
 
@@ -28,7 +27,6 @@ class EnhanceProviderStaffAssignments extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 20,
                 'default'    => 'active',
-                'after'      => 'assigned_by',
             ],
         ]);
 

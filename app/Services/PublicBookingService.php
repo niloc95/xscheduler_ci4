@@ -1,5 +1,77 @@
 <?php
 
+/**
+ * =============================================================================
+ * PUBLIC BOOKING SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/PublicBookingService.php
+ * @description Comprehensive service for public-facing appointment booking.
+ *              Handles the entire booking flow from widget to confirmation.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Powers the public booking interface with:
+ * - Provider/service listing
+ * - Availability calendar generation
+ * - Time slot availability checking
+ * - Booking form validation
+ * - Appointment creation
+ * - Customer management
+ * - Notification triggering
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * buildViewContext()
+ *   Build initial data for booking widget
+ *   Returns: providers, services, initial availability
+ * 
+ * listProviders()
+ *   Get active providers for public booking
+ * 
+ * listServices($providerId)
+ *   Get services available for booking (optionally filtered by provider)
+ * 
+ * getCalendarAvailability($providerId, $month, $year)
+ *   Get month view of available dates
+ * 
+ * getAvailableSlots($providerId, $serviceId, $date)
+ *   Get available time slots for specific date
+ * 
+ * createBooking($data)
+ *   Create appointment with full validation
+ *   Handles customer creation, slot checking, notifications
+ * 
+ * BOOKING FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. User selects provider (optional)
+ * 2. User selects service
+ * 3. Calendar shows available dates
+ * 4. User selects date
+ * 5. Time slots shown for selected date
+ * 6. User selects time slot
+ * 7. User fills customer details
+ * 8. Booking submitted and validated
+ * 9. Appointment created
+ * 10. Notifications sent
+ * 
+ * DEPENDENCY INJECTION:
+ * -----------------------------------------------------------------------------
+ * Supports dependency injection for testing:
+ * - BookingSettingsService
+ * - AvailabilityService
+ * - AppointmentModel
+ * - CustomerModel
+ * - etc.
+ * 
+ * @see         app/Controllers/AppFlow.php for booking routes
+ * @see         app/Views/booking/*.php for UI
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Exceptions\PublicBookingException;

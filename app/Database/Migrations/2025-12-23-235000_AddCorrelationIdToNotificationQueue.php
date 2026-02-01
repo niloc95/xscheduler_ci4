@@ -23,7 +23,6 @@ class AddCorrelationIdToNotificationQueue extends MigrationBase
                 'type' => 'VARCHAR',
                 'constraint' => 64,
                 'null' => true,
-                'after' => 'idempotency_key',
             ],
         ]);
 
@@ -50,7 +49,12 @@ class AddCorrelationIdToNotificationQueue extends MigrationBase
         }
 
         try {
-            $this->db->query('DROP INDEX idx_notification_queue_correlation_id ON ' . $table);
+            // SQLite-compatible DROP INDEX
+            if ($this->db->DBDriver === 'SQLite3') {
+                $this->db->query('DROP INDEX idx_notification_queue_correlation_id');
+            } else {
+                $this->db->query('DROP INDEX idx_notification_queue_correlation_id ON ' . $table);
+            }
         } catch (\Throwable $e) {
             // ignore
         }

@@ -1,5 +1,62 @@
 <?php
 
+/**
+ * =============================================================================
+ * USER HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/user_helper.php
+ * @description Helper functions for user-related display formatting.
+ *              Provides consistent role and status badge rendering.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('user');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * get_role_display_name($role)
+ *   Convert role key to human-readable name
+ *   Example: get_role_display_name('admin') => 'Admin'
+ * 
+ * get_role_badge_classes($role)
+ *   Get Tailwind CSS classes for role badge styling
+ *   Example: get_role_badge_classes('admin') => 'bg-red-100 text-red-800 ...'
+ * 
+ * get_status_badge_classes($isActive)
+ *   Get Tailwind CSS classes for active/inactive status
+ *   Example: get_status_badge_classes(true) => 'bg-green-100 text-green-800 ...'
+ * 
+ * ROLE COLORS:
+ * -----------------------------------------------------------------------------
+ * - admin    : Red (high privilege indicator)
+ * - provider : Blue (service provider)
+ * - staff    : Green (team member)
+ * - customer : Gray (default/external)
+ * 
+ * USAGE IN VIEWS:
+ * -----------------------------------------------------------------------------
+ *     <span class="badge <?= get_role_badge_classes($user['role']) ?>">
+ *         <?= get_role_display_name($user['role']) ?>
+ *     </span>
+ * 
+ *     <span class="badge <?= get_status_badge_classes($user['is_active']) ?>">
+ *         <?= $user['is_active'] ? 'Active' : 'Inactive' ?>
+ *     </span>
+ * 
+ * DARK MODE:
+ * -----------------------------------------------------------------------------
+ * All badge classes include dark mode variants (dark:bg-*, dark:text-*)
+ * for consistent appearance in both light and dark themes.
+ * 
+ * @see         app/Views/users/*.php for usage examples
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('get_role_display_name')) {
     /**
      * Get display name for user role

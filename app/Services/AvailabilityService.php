@@ -1,5 +1,58 @@
 <?php
 
+/**
+ * =============================================================================
+ * AVAILABILITY SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/AvailabilityService.php
+ * @description Core service for calculating provider availability. Single
+ *              source of truth for all availability-related calculations.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Calculates available booking slots considering ALL constraints:
+ * - Global business hours
+ * - Provider working schedule (weekly recurring)
+ * - Provider breaks (lunch, etc.)
+ * - Blocked times (vacations, one-time unavailability)
+ * - Existing appointments
+ * - Buffer time between appointments
+ * - Service duration requirements
+ * - Location-based availability (if multi-location)
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getAvailableSlots(providerId, date, serviceId)
+ *   Returns array of bookable time slots
+ * 
+ * - isSlotAvailable(providerId, start, end)
+ *   Check if specific time range is available
+ * 
+ * - getCalendarAvailability(providerId, startDate, endDate)
+ *   Get availability for date range (calendar view)
+ * 
+ * - hasConflict(providerId, start, end, excludeId)
+ *   Check for conflicts with existing appointments
+ * 
+ * SLOT CALCULATION FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Get provider's working hours for the day
+ * 2. Split into slots based on service duration
+ * 3. Remove slots that overlap with breaks
+ * 4. Remove slots that overlap with blocked times
+ * 5. Remove slots that conflict with existing appointments
+ * 6. Apply buffer time between available slots
+ * 7. Return remaining slots as available
+ * 
+ * @see         app/Controllers/Api/Availability.php for API layer
+ * @see         app/Models/ProviderScheduleModel.php for schedule data
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\AppointmentModel;

@@ -1,5 +1,61 @@
 <?php
 
+/**
+ * =============================================================================
+ * INITIAL SETUP WIZARD CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Setup.php
+ * @description First-run setup wizard for initial application configuration
+ *              including database, admin user, and business settings.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /setup                        : Display setup wizard
+ * POST /setup/process                : Process setup form submission
+ * POST /setup/test-database          : Test database connection
+ * POST /setup/create-database        : Create database tables
+ * POST /setup/create-admin           : Create admin user account
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * One-time installation wizard that guides through:
+ * - Database connection configuration
+ * - Database table creation (migrations)
+ * - Admin account creation
+ * - Basic business settings (name, timezone, currency)
+ * - .env file generation
+ * 
+ * SETUP FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Check system requirements (PHP version, extensions)
+ * 2. Configure database connection
+ * 3. Run migrations to create tables
+ * 4. Create first admin user
+ * 5. Set basic business settings
+ * 6. Write setup_complete.flag to prevent re-running
+ * 
+ * SECURITY:
+ * -----------------------------------------------------------------------------
+ * - Protected by SetupFilter (blocks access after completion)
+ * - Validates all inputs server-side
+ * - Generates secure admin password
+ * - Creates .env with secure settings
+ * 
+ * FILE MARKERS:
+ * -----------------------------------------------------------------------------
+ * - writable/setup_complete.flag : Indicates setup is done
+ * - .env : Environment configuration file
+ * 
+ * @see         app/Views/setup.php for wizard template
+ * @see         app/Database/Migrations/ for table schemas
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use CodeIgniter\HTTP\ResponseInterface;

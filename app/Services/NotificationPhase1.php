@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * NOTIFICATION PHASE 1 SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/NotificationPhase1.php
+ * @description Core notification orchestration service. Manages notification
+ *              rules, channels, and event-to-notification mappings.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Central coordinator for the notification system:
+ * - Define supported notification channels
+ * - Define notification event types
+ * - Manage notification rules (which events trigger which channels)
+ * - Provide rule configuration to admin UI
+ * - Validate notification settings
+ * 
+ * SUPPORTED CHANNELS:
+ * -----------------------------------------------------------------------------
+ * - email    : Email notifications via SMTP/API
+ * - sms      : SMS via Twilio/MessageBird/etc.
+ * - whatsapp : WhatsApp Business messages
+ * 
+ * EVENT TYPES:
+ * -----------------------------------------------------------------------------
+ * - appointment_confirmed  : Booking confirmation to customer
+ * - appointment_reminder   : Reminder before appointment
+ * - appointment_cancelled  : Cancellation notification
+ * - appointment_rescheduled: Time change notification
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getRules(businessId)        : Get all notification rules
+ * - saveRules(businessId, data) : Update notification rules
+ * - isChannelEnabled(channel)   : Check if channel is configured
+ * - getEnabledEventsForChannel(): Get events enabled for channel
+ * 
+ * ARCHITECTURE:
+ * -----------------------------------------------------------------------------
+ * NotificationPhase1 (rules) → NotificationQueueService (queue)
+ * → NotificationQueueDispatcher (process) → Channel Services (send)
+ * 
+ * @see         app/Commands/DispatchNotificationQueue.php
+ * @see         app/Controllers/Settings.php for admin UI
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;

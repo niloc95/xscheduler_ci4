@@ -1,5 +1,52 @@
 <?php
 
+/**
+ * =============================================================================
+ * DASHBOARD CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Dashboard.php
+ * @description Main dashboard controller for WebSchedulr. Displays the landing
+ *              page with metrics, today's schedule, alerts, and quick actions.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /dashboard           : Main dashboard landing page
+ * GET  /dashboard/api       : AJAX data refresh endpoint
+ * GET  /dashboard/api/metrics : Metrics data for dashboard widgets
+ * GET  /dashboard/charts    : Chart data for analytics widgets
+ * GET  /dashboard/status    : System status information
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides authenticated users with an overview of their scheduling business:
+ * - Key metrics (appointments today, pending confirmations, revenue)
+ * - Today's schedule grouped by provider
+ * - Actionable alerts (pending approvals, missing data, etc.)
+ * - Quick navigation to common tasks
+ * 
+ * ROLE-BASED DATA:
+ * -----------------------------------------------------------------------------
+ * - Admin     : Sees all data across all providers
+ * - Provider  : Sees own appointments and assigned staff
+ * - Staff     : Sees assigned provider's appointments only
+ * - Customer  : Redirected to customer portal (not this dashboard)
+ * 
+ * DEPENDENCIES:
+ * -----------------------------------------------------------------------------
+ * - DashboardService     : Business logic for metrics and data aggregation
+ * - AuthorizationService : Role-based access control checks
+ * - UserModel, AppointmentModel, CustomerModel, ServiceModel
+ * 
+ * @see         app/Services/DashboardService.php for business logic
+ * @see         app/Views/dashboard/landing.php for view template
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;

@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * AUTHENTICATION CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Auth.php
+ * @description Handles all authentication operations including login, logout,
+ *              password reset, and session management for WebSchedulr.
+ * 
+ * ROUTES HANDLED:
+ * -----------------------------------------------------------------------------
+ * GET  /login                      : Show login form
+ * POST /login                      : Process login attempt
+ * GET  /auth/login                 : Alternative login URL
+ * POST /auth/attemptLogin          : Process login attempt
+ * GET  /auth/logout                : Log out and destroy session
+ * GET  /auth/forgot-password       : Show password reset request form
+ * POST /auth/send-reset-link       : Email password reset link
+ * GET  /auth/reset-password/:token : Show password reset form
+ * POST /auth/update-password       : Process password reset
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Manages user authentication lifecycle:
+ * - Login with email/password validation
+ * - Session creation and management
+ * - Password reset via email tokens
+ * - Secure logout with session destruction
+ * - Remember me functionality (optional)
+ * 
+ * SECURITY FEATURES:
+ * -----------------------------------------------------------------------------
+ * - Password hashing with bcrypt (cost 12)
+ * - Rate limiting on login attempts
+ * - CSRF protection on all forms
+ * - Secure session regeneration on login
+ * - Token-based password reset with expiration
+ * 
+ * SESSION DATA:
+ * -----------------------------------------------------------------------------
+ * On successful login, stores:
+ * - isLoggedIn (bool)   : Authentication flag
+ * - user_id (int)       : User's database ID
+ * - user (array)        : User data (name, email, role, etc.)
+ * 
+ * @see         app/Filters/AuthFilter.php for auth checking
+ * @see         app/Views/auth/ for view templates
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Models\UserModel;
@@ -102,7 +156,7 @@ class Auth extends BaseController
             'validation' => $this->validator
         ];
 
-        return view('auth/forgot_password', $data);
+        return view('auth/forgot-password', $data);
     }
 
     /**
@@ -177,7 +231,7 @@ class Auth extends BaseController
             'validation' => $this->validator
         ];
 
-        return view('auth/reset_password', $data);
+        return view('auth/reset-password', $data);
     }
 
     /**
@@ -261,7 +315,7 @@ class Auth extends BaseController
         $this->email->setFrom('noreply@webschedulr.com', 'WebSchedulr');
         $this->email->setSubject('Password Reset Request - WebSchedulr');
 
-        $message = view('auth/emails/password_reset', [
+        $message = view('auth/emails/password-reset', [
             'name' => $name,
             'resetLink' => $resetLink
         ]);

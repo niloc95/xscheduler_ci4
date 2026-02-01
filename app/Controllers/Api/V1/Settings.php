@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * V1 SETTINGS API CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Api/V1/Settings.php
+ * @description API for retrieving and updating system settings including
+ *              localization, booking, calendar, and branding configuration.
+ * 
+ * API ENDPOINTS:
+ * -----------------------------------------------------------------------------
+ * GET  /api/v1/settings                     : Get settings (with prefix filter)
+ * PUT  /api/v1/settings                     : Update settings (admin only)
+ * GET  /api/v1/settings/localization        : Get localization settings
+ * GET  /api/v1/settings/calendar            : Get calendar configuration
+ * GET  /api/v1/settings/booking             : Get booking settings
+ * GET  /api/v1/settings/branding            : Get branding (logo, colors)
+ * POST /api/v1/settings/logo                : Upload logo file
+ * 
+ * QUERY PARAMETERS (GET /api/v1/settings):
+ * -----------------------------------------------------------------------------
+ * - prefix        : Filter settings by prefix (e.g., 'general.', 'booking.')
+ * 
+ * SETTINGS CATEGORIES:
+ * -----------------------------------------------------------------------------
+ * - general.*       : Business name, contact info
+ * - localization.*  : Timezone, date/time format, currency
+ * - booking.*       : Slot duration, buffer time, advance booking
+ * - calendar.*      : Week start, working hours, view defaults
+ * - notifications.* : Email, SMS, WhatsApp settings
+ * - branding.*      : Logo, colors, theme
+ * 
+ * RESPONSE FORMAT:
+ * -----------------------------------------------------------------------------
+ * {
+ *   "data": {
+ *     "general.business_name": "My Salon",
+ *     "localization.timezone": "Africa/Johannesburg",
+ *     "localization.currency": "ZAR"
+ *   }
+ * }
+ * 
+ * @see         app/Models/SettingModel.php for data layer
+ * @see         app/Services/LocalizationSettingsService.php
+ * @package     App\Controllers\Api\V1
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers\Api\V1;
 
 use App\Controllers\BaseController;

@@ -1,5 +1,60 @@
 <?php
 
+/**
+ * =============================================================================
+ * BOOKING SETTINGS SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/BookingSettingsService.php
+ * @description Service for managing booking form field configurations.
+ *              Controls which fields are shown/hidden/required in booking forms.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Dynamic form field configuration:
+ * - Control visibility of customer fields
+ * - Control required vs optional fields
+ * - Define custom fields for booking
+ * - Provide validation rules based on settings
+ * 
+ * FIELD CONFIGURATION:
+ * -----------------------------------------------------------------------------
+ * Each field has:
+ * - display  : boolean - Show field in form
+ * - required : boolean - Field is mandatory
+ * 
+ * STANDARD FIELDS:
+ * -----------------------------------------------------------------------------
+ * - first_name  : Customer first name
+ * - last_name   : Customer last name
+ * - email       : Contact email
+ * - phone       : Contact phone
+ * - address     : Physical address
+ * - notes       : Booking notes
+ * 
+ * CUSTOM FIELDS:
+ * -----------------------------------------------------------------------------
+ * Administrators can define additional custom fields with:
+ * - Field label
+ * - Field type (text, select, checkbox, etc.)
+ * - Display/required settings
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getFieldConfig()          : Get all field configurations
+ * - getValidationRules()      : Get CodeIgniter validation rules
+ * - getCustomFields()         : Get custom field definitions
+ * - isFieldVisible(field)     : Check if field should be shown
+ * - isFieldRequired(field)    : Check if field is required
+ * 
+ * @see         app/Controllers/Settings.php for admin configuration
+ * @see         app/Controllers/CustomerManagement.php for usage
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\SettingModel;

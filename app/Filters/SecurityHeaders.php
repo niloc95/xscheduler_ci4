@@ -1,9 +1,54 @@
 <?php
+
 /**
- * Enhanced Security Middleware for WebSchedulr CI4
+ * =============================================================================
+ * SECURITY HEADERS FILTER
+ * =============================================================================
  * 
- * PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
- * Copyright (c) 2025 niloc95. All rights reserved.
+ * @file        app/Filters/SecurityHeaders.php
+ * @description HTTP middleware that adds security headers to all responses.
+ *              Implements defense-in-depth security measures.
+ * 
+ * FILTER ALIAS: 'security_headers'
+ * 
+ * HEADERS ADDED:
+ * -----------------------------------------------------------------------------
+ * - X-Frame-Options: DENY
+ *   Prevents clickjacking by disabling iframe embedding
+ * 
+ * - X-Content-Type-Options: nosniff
+ *   Prevents MIME type sniffing attacks
+ * 
+ * - X-XSS-Protection: 1; mode=block
+ *   Enables browser XSS filtering (legacy browsers)
+ * 
+ * - Referrer-Policy: strict-origin-when-cross-origin
+ *   Controls referrer information sent with requests
+ * 
+ * - Strict-Transport-Security (HTTPS only)
+ *   Enforces HTTPS connections (HSTS)
+ * 
+ * - Permissions-Policy
+ *   Restricts browser features (camera, microphone, etc.)
+ * 
+ * BEHAVIOR:
+ * -----------------------------------------------------------------------------
+ * After Request (response ready):
+ * 1. Set security headers on response object
+ * 2. Continue with response delivery
+ * 
+ * CSP NOTE:
+ * -----------------------------------------------------------------------------
+ * Content-Security-Policy is configured separately in
+ * app/Config/ContentSecurityPolicy.php
+ * 
+ * @see         app/Config/ContentSecurityPolicy.php for CSP
+ * @see         app/Config/Filters.php for global filter setup
+ * @package     App\Filters
+ * @implements  FilterInterface
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
  */
 
 namespace App\Filters;

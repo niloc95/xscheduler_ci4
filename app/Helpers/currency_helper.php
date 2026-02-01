@@ -1,10 +1,60 @@
 <?php
 
 /**
- * Currency Helper
+ * =============================================================================
+ * CURRENCY HELPER
+ * =============================================================================
  * 
- * Provides currency formatting functions based on the application's
- * localization settings.
+ * @file        app/Helpers/currency_helper.php
+ * @description Global helper functions for currency formatting based on
+ *              application localization settings.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('currency');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * format_currency($amount, $code, $decimals)
+ *   Formats number as currency with symbol
+ *   Example: format_currency(150.00) => "R150.00"
+ * 
+ * get_currency_symbol($code)
+ *   Gets symbol for currency code
+ *   Example: get_currency_symbol('USD') => "$"
+ * 
+ * get_currency_code()
+ *   Gets configured currency code from settings
+ *   Example: get_currency_code() => "ZAR"
+ * 
+ * SUPPORTED CURRENCIES:
+ * -----------------------------------------------------------------------------
+ * - USD ($)  : US Dollar
+ * - EUR (€)  : Euro
+ * - GBP (£)  : British Pound
+ * - ZAR (R)  : South African Rand
+ * - INR (₹)  : Indian Rupee
+ * - AUD ($)  : Australian Dollar
+ * - CAD ($)  : Canadian Dollar
+ * - And many more...
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     // Uses configured currency
+ *     echo format_currency(150.00); // "R150.00"
+ * 
+ *     // Override currency
+ *     echo format_currency(150.00, 'USD'); // "$150.00"
+ * 
+ *     // Custom decimals
+ *     echo format_currency(150.00, null, 0); // "R150"
+ * 
+ * @see         app/Services/LocalizationSettingsService.php
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
  */
 
 if (! function_exists('format_currency')) {

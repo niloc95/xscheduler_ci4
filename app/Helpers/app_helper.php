@@ -1,5 +1,52 @@
 <?php
-// app/Helpers/app_helper.php
+
+/**
+ * =============================================================================
+ * APP HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/app_helper.php
+ * @description Core application helper functions for settings and asset URLs.
+ *              Provides convenient access to application settings from anywhere.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Loaded automatically via BaseController or manually:
+ *     helper('app');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * setting($key, $default)
+ *   Get a setting value by key with caching
+ *   Example: setting('general.business_name', 'WebSchedulr')
+ * 
+ * settings_by_prefix($prefix)
+ *   Get all settings matching a prefix
+ *   Example: settings_by_prefix('booking.') => ['booking.enabled' => '1', ...]
+ * 
+ * setting_url($key, $default)
+ *   Build URL for writable-stored asset path from settings
+ *   Example: setting_url('general.logo') => '/writable/uploads/logo.png'
+ * 
+ * provider_image_url($path)
+ *   Build URL for provider profile images
+ *   Example: provider_image_url('uploads/providers/photo.jpg')
+ * 
+ * get_setting($key, $default)  [deprecated]
+ *   Legacy wrapper for setting()
+ * 
+ * CACHING:
+ * -----------------------------------------------------------------------------
+ * The setting() function uses static caching within a request to avoid
+ * repeated database queries for the same setting key.
+ * 
+ * @see         app/Models/SettingModel.php
+ * @see         app/Helpers/settings_helper.php (duplicate - prefer this file)
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
 
 use App\Models\SettingModel;
 

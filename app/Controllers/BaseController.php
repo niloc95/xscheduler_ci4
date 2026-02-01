@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * BASE CONTROLLER
+ * =============================================================================
+ * 
+ * @file        app/Controllers/BaseController.php
+ * @description Abstract base class that all WebSchedulr controllers extend.
+ *              Provides shared functionality, helper loading, and common
+ *              properties accessible to all child controllers.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralizes common controller functionality to avoid code duplication:
+ * - Auto-loads frequently used helpers
+ * - Initializes request/response objects
+ * - Provides logger access
+ * - Can define shared methods for authentication state, user data, etc.
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ * All application controllers should extend this class:
+ * 
+ *     class Dashboard extends BaseController
+ *     {
+ *         public function index()
+ *         {
+ *             // $this->request, $this->response, $this->logger available
+ *         }
+ *     }
+ * 
+ * SHARED HELPERS:
+ * -----------------------------------------------------------------------------
+ * Helpers listed in $helpers array are auto-loaded for all controllers:
+ * - 'url'      : URL generation functions
+ * - 'form'     : Form helper functions
+ * - 'html'     : HTML helper functions
+ * - 'currency' : Currency formatting (custom)
+ * 
+ * SECURITY NOTE:
+ * -----------------------------------------------------------------------------
+ * Declare any new methods as protected or private to prevent direct URL access.
+ * 
+ * @see         app/Controllers/ for controller implementations
+ * @package     App\Controllers
+ * @extends     CodeIgniter\Controller
+ * @abstract
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use CodeIgniter\Controller;

@@ -1,5 +1,63 @@
 <?php
 
+/**
+ * =============================================================================
+ * BUSINESS HOURS SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/BusinessHoursService.php
+ * @description Centralizes business hours validation logic for appointment
+ *              scheduling across all controllers and services.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Provides consistent business hours validation to prevent appointments
+ * from being booked outside operating hours. Used by:
+ * - AppointmentBookingService
+ * - AvailabilityService
+ * - Public booking API
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * validateAppointmentTime($startTime, $endTime)
+ *   Check if appointment is within business hours
+ *   Returns: ['valid' => bool, 'reason' => string|null, 'hours' => array|null]
+ * 
+ * getBusinessHoursForDay($weekdayNum)
+ *   Get hours for specific day (0=Sunday, 6=Saturday)
+ *   Returns: ['start_time' => 'HH:mm:ss', 'end_time' => 'HH:mm:ss'] or null
+ * 
+ * isBusinessOpen($weekdayNum)
+ *   Check if business is open on given day
+ * 
+ * getWeekdayNumber($dateTime)
+ *   Convert DateTime to weekday number (0-6)
+ * 
+ * DAY MAPPING:
+ * -----------------------------------------------------------------------------
+ * - 0: Sunday
+ * - 1: Monday
+ * - 2: Tuesday
+ * - 3: Wednesday
+ * - 4: Thursday
+ * - 5: Friday
+ * - 6: Saturday
+ * 
+ * VALIDATION FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Get weekday number from appointment start time
+ * 2. Check if business is open that day
+ * 3. Check if time is within start/end hours
+ * 4. Return validation result with helpful message
+ * 
+ * @see         app/Models/BusinessHourModel.php for data storage
+ * @see         app/Services/AvailabilityService.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use DateTime;

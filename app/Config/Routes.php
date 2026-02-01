@@ -1,5 +1,45 @@
 <?php
 
+/**
+ * =============================================================================
+ * ROUTES CONFIGURATION
+ * =============================================================================
+ * 
+ * @file        app/Config/Routes.php
+ * @description Defines all HTTP routes for the WebSchedulr application.
+ *              Maps URLs to controller methods and applies middleware filters.
+ * 
+ * ROUTE GROUPS:
+ * -----------------------------------------------------------------------------
+ * - Public Routes     : Setup wizard, login, password reset (no auth required)
+ * - Dashboard Routes  : Main dashboard and metrics (requires auth)
+ * - User Management   : CRUD for users (admin/provider only)
+ * - Appointments      : Booking management (authenticated users)
+ * - Customers         : Customer records (staff+ roles)
+ * - Services          : Service catalog management (admin only)
+ * - Settings          : Application configuration (admin only)
+ * - API Routes        : RESTful endpoints under /api/v1/
+ * - Public Booking    : Customer-facing booking pages (no auth)
+ * 
+ * FILTERS APPLIED:
+ * -----------------------------------------------------------------------------
+ * - 'setup'           : Ensures initial setup is completed
+ * - 'auth'            : Requires user to be logged in
+ * - 'role:admin'      : Restricts to admin users only
+ * - 'role:admin,provider' : Allows admin and provider roles
+ * 
+ * API VERSIONING:
+ * -----------------------------------------------------------------------------
+ * All API routes are versioned under /api/v1/ for future compatibility.
+ * 
+ * @see         app/Config/Filters.php for filter definitions
+ * @see         app/Controllers/ for route handler implementations
+ * @package     App\Config
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 use CodeIgniter\Router\RouteCollection;
 
 /**
@@ -224,6 +264,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1');
     $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
+    $routes->patch('appointments/(:num)/notes', 'Api\\Appointments::updateNotes/$1');
     $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
     // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)

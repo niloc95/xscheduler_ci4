@@ -121,9 +121,10 @@ export class DayView {
         const serviceName = appointment.serviceName || 'Appointment';
         const location = appointment.location || '';
         
-        // Format time
-        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-        const dateTimeDisplay = appointment.startDateTime.toFormat(`MMMM d'${this.getOrdinalSuffix(appointment.startDateTime.day)}', yyyy 'at' ${timeFormat === '24h' ? 'HH:mm' : 'h:mm a'}`);
+        // Format time using localization settings
+        const is24Hour = this.settings?.getTimeFormat?.() === '24h';
+        const timeFormat = is24Hour ? 'HH:mm' : 'h:mm a';
+        const dateTimeDisplay = appointment.startDateTime.toFormat(`MMMM d'${this.getOrdinalSuffix(appointment.startDateTime.day)}', yyyy 'at' ${timeFormat}`);
         
         const providerInitial = provider?.name?.charAt(0)?.toUpperCase() || '?';
         const providerName = provider?.name || 'Unknown Provider';

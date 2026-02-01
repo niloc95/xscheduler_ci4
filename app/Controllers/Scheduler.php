@@ -1,5 +1,45 @@
 <?php
 
+/**
+ * =============================================================================
+ * LEGACY SCHEDULER CONTROLLER (DEPRECATED)
+ * =============================================================================
+ * 
+ * @file        app/Controllers/Scheduler.php
+ * @description Legacy FullCalendar-based scheduler. Routes now redirect to
+ *              the new Appointments module. Kept for backward compatibility.
+ * 
+ * ROUTES HANDLED (ALL DEPRECATED):
+ * -----------------------------------------------------------------------------
+ * GET  /scheduler                    : 308 Redirect to /appointments
+ * GET  /scheduler/client             : 308 Redirect to /appointments
+ * GET  /api/slots                    : Legacy availability slots (deprecated)
+ * 
+ * DEPRECATION NOTICE:
+ * -----------------------------------------------------------------------------
+ * ⚠️ This controller is ARCHIVED and will be removed in a future version.
+ * 
+ * Migration path:
+ * - /scheduler      → Use /appointments
+ * - /api/slots      → Use /api/availability or /api/availability/calendar
+ * 
+ * HISTORY:
+ * -----------------------------------------------------------------------------
+ * - Original FullCalendar-based scheduling system
+ * - Replaced with new appointment management module (Oct 2025)
+ * - Routes return 308 (Permanent Redirect) for SEO
+ * - API endpoints maintained temporarily for integrations
+ * 
+ * @deprecated Since v2.0 - Use Appointments controller instead
+ * @see         app/Controllers/Appointments.php for replacement
+ * @see         docs/architecture/LEGACY_SCHEDULER_ARCHITECTURE.md
+ * @package     App\Controllers
+ * @extends     BaseController
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Controllers;
 
 use App\Controllers\BaseController;

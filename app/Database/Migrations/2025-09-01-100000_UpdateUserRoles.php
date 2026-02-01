@@ -36,7 +36,6 @@ class UpdateUserRoles extends MigrationBase
                 'constraint' => 11,
                 'unsigned' => true,
                 'null' => true,
-                'after' => 'role',
             ];
         }
 
@@ -44,7 +43,6 @@ class UpdateUserRoles extends MigrationBase
             $newFields['permissions'] = [
                 'type' => 'JSON',
                 'null' => true,
-                'after' => isset($newFields['provider_id']) ? 'provider_id' : 'role',
             ];
         }
 
@@ -53,7 +51,6 @@ class UpdateUserRoles extends MigrationBase
                 'type' => 'BOOLEAN',
                 'default' => true,
                 'null' => false,
-                'after' => isset($newFields['permissions']) ? 'permissions' : (isset($newFields['provider_id']) ? 'provider_id' : 'role'),
             ];
         }
 
@@ -128,8 +125,22 @@ class UpdateUserRoles extends MigrationBase
 
     private function createIndexIfMissing(string $table, string $index, array $columns): void
     {
-        $db     = $this->db;
-        $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$index])->getFirstRow();
+        $db = $this->db;
+        
+        // SQLite-compatible index existence check
+        $driver = $db->DBDriver;
+        
+        if ($driver === 'SQLite3') {
+            // For SQLite, query sqlite_master
+            $exists = $db->query(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
+                [$index]
+            )->getFirstRow();
+        } else {
+            // For MySQL/other databases
+            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$index])->getFirstRow();
+        }
+        
         if ($exists) {
             return;
         }

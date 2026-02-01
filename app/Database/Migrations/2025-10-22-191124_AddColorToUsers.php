@@ -15,7 +15,6 @@ class AddColorToUsers extends Migration
                 'constraint' => 10,
                 'null'       => true,
                 'comment'    => 'Provider color for calendar display (hex code)',
-                'after'      => 'profile_image',
             ],
         ];
         

@@ -1,5 +1,56 @@
 <?php
 
+/**
+ * =============================================================================
+ * LOCALIZATION SETTINGS SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/LocalizationSettingsService.php
+ * @description Centralized service for all localization-related settings
+ *              including timezone, date/time formats, and currency.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Single source of truth for localization:
+ * - Time format (12h vs 24h)
+ * - Date format (MM/DD/YYYY, DD/MM/YYYY, etc.)
+ * - Timezone configuration
+ * - First day of week (Sunday vs Monday)
+ * - Currency symbol and format
+ * - Number formatting (decimal separator, etc.)
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * - getTimeFormat()       : Returns '12h' or '24h'
+ * - isTwelveHour()        : Boolean check for 12-hour format
+ * - getDateFormat()       : PHP date format string
+ * - getTimezone()         : Configured timezone string
+ * - getFirstDayOfWeek()   : 0=Sunday, 1=Monday
+ * - getCurrency()         : Currency code (USD, EUR, ZAR)
+ * - getCurrencySymbol()   : Currency symbol ($, €, R)
+ * - formatTime(datetime)  : Format time according to settings
+ * - formatDate(datetime)  : Format date according to settings
+ * - formatCurrency(amount): Format currency with symbol
+ * - getContext()          : Get all localization settings as array
+ * 
+ * CACHING:
+ * -----------------------------------------------------------------------------
+ * Settings are cached on first access and reused throughout request.
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     $loc = new LocalizationSettingsService();
+ *     $timeFormat = $loc->isTwelveHour() ? 'h:i A' : 'H:i';
+ *     $formatted = $loc->formatCurrency(150.00); // "R150.00"
+ * 
+ * @see         app/Models/SettingModel.php for raw settings
+ * @see         resources/js/utils/settings-manager.js for JS equivalent
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 use App\Models\SettingModel;

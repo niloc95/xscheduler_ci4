@@ -1,5 +1,70 @@
 <?php
 
+/**
+ * =============================================================================
+ * DATABASE SETUP HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/DatabaseSetup.php
+ * @description Class-based helper for initializing database during setup wizard.
+ *              Supports both MySQL and SQLite database backends.
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ * Used internally by Setup controller:
+ *     $setup = new DatabaseSetup($setupData);
+ *     $success = $setup->initialize();
+ * 
+ * SUPPORTED DATABASES:
+ * -----------------------------------------------------------------------------
+ * - MySQL/MariaDB : Full production support
+ * - SQLite        : Development/testing support
+ * 
+ * INITIALIZATION FLOW:
+ * -----------------------------------------------------------------------------
+ * 1. Receives setup data array from wizard
+ * 2. Determines database type (mysql/sqlite)
+ * 3. Creates database connection config
+ * 4. Tests connection
+ * 5. Creates required tables via migrations
+ * 6. Seeds initial data (admin user, default settings)
+ * 7. Writes .env file with database credentials
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * initialize()         : Main entry point, routes to MySQL or SQLite
+ * initializeMySQL()    : MySQL-specific initialization
+ * initializeSQLite()   : SQLite-specific initialization
+ * runMigrations()      : Execute database migrations
+ * seedInitialData()    : Create admin user and default settings
+ * writeEnvFile()       : Update .env with database config
+ * 
+ * SETUP DATA STRUCTURE:
+ * -----------------------------------------------------------------------------
+ *     [
+ *         'database' => [
+ *             'type' => 'mysql',
+ *             'mysql' => [
+ *                 'hostname' => 'localhost',
+ *                 'username' => 'root',
+ *                 'password' => 'secret',
+ *                 'database' => 'webschedulr'
+ *             ]
+ *         ],
+ *         'admin' => [
+ *             'email' => 'admin@example.com',
+ *             'password' => 'hashed_password'
+ *         ]
+ *     ]
+ * 
+ * @see         app/Controllers/Setup.php for wizard controller
+ * @see         app/Database/Migrations/ for schema definitions
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Helpers;
 
 use Config\Database;

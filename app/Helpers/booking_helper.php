@@ -1,5 +1,59 @@
 <?php
 
+/**
+ * =============================================================================
+ * BOOKING HELPER
+ * =============================================================================
+ * 
+ * @file        app/Helpers/booking_helper.php
+ * @description Helper functions for rendering dynamic booking form fields
+ *              based on configurable settings.
+ * 
+ * LOADING:
+ * -----------------------------------------------------------------------------
+ * Load manually where needed:
+ *     helper('booking');
+ * 
+ * AVAILABLE FUNCTIONS:
+ * -----------------------------------------------------------------------------
+ * render_booking_fields($settings, $values)
+ *   Render HTML form fields for public booking form
+ *   Supports custom fields with configurable display/required options
+ * 
+ * validate_booking_fields($settings, $data)
+ *   Validate submitted booking form data against settings rules
+ * 
+ * CONFIGURABLE FIELDS:
+ * -----------------------------------------------------------------------------
+ * Standard Fields:
+ * - first_names      : Customer first name(s)
+ * - surname          : Customer surname
+ * - email            : Customer email
+ * - phone            : Customer phone number
+ * 
+ * Custom Fields (1-6):
+ * - custom_field_1..6_enabled  : Enable/disable custom field
+ * - custom_field_1..6_title    : Field label text
+ * - custom_field_1..6_type     : Field type (text, textarea, select, checkbox)
+ * - custom_field_1..6_required : Whether field is required
+ * 
+ * SETTING KEYS:
+ * -----------------------------------------------------------------------------
+ *     booking.first_names_display
+ *     booking.first_names_required
+ *     booking.custom_field_1_enabled
+ *     booking.custom_field_1_title
+ *     booking.custom_field_1_type
+ *     booking.custom_field_1_required
+ * 
+ * @see         app/Models/SettingModel.php for settings storage
+ * @see         app/Controllers/Api/Appointments.php for booking API
+ * @package     App\Helpers
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 if (!function_exists('render_booking_fields')) {
     /**
      * Render booking form fields based on settings configuration

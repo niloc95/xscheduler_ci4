@@ -1,5 +1,65 @@
 <?php
 
+/**
+ * =============================================================================
+ * APPOINTMENT DASHBOARD CONTEXT SERVICE
+ * =============================================================================
+ * 
+ * @file        app/Services/AppointmentDashboardContextService.php
+ * @description Builds role-based context for appointment dashboard queries.
+ *              Determines filtering based on user role and permissions.
+ * 
+ * PURPOSE:
+ * -----------------------------------------------------------------------------
+ * Centralizes the logic for determining what appointments a user can see
+ * based on their role. This ensures consistent access control across all
+ * dashboard and appointment list views.
+ * 
+ * ROLE-BASED ACCESS:
+ * -----------------------------------------------------------------------------
+ * - admin    : Sees ALL appointments (no filtering)
+ * - provider : Sees only THEIR appointments (filter by provider_id)
+ * - staff    : Sees appointments for assigned providers (filter by staff_id)
+ * - customer : Sees only their own appointments (filter by customer_id)
+ * - guest    : No access (returns empty results)
+ * 
+ * KEY METHODS:
+ * -----------------------------------------------------------------------------
+ * build($role, $userId, $user)
+ *   Build context array for dashboard queries
+ *   Returns array with role, IDs, and filter flags
+ * 
+ * CONTEXT STRUCTURE:
+ * -----------------------------------------------------------------------------
+ *     [
+ *         'role'               => 'provider',
+ *         'user_id'            => 123,
+ *         'provider_id'        => 123,
+ *         'staff_id'           => null,
+ *         'customer_id'        => null,
+ *         'filter_by_provider' => true,
+ *         'filter_by_staff'    => false,
+ *         'filter_by_customer' => false,
+ *     ]
+ * 
+ * USAGE:
+ * -----------------------------------------------------------------------------
+ *     $contextService = new AppointmentDashboardContextService();
+ *     $context = $contextService->build($role, $userId, $userData);
+ *     
+ *     // Use context in appointment queries
+ *     if ($context['filter_by_provider']) {
+ *         $query->where('provider_id', $context['provider_id']);
+ *     }
+ * 
+ * @see         app/Services/DashboardService.php for usage
+ * @see         app/Controllers/Dashboard.php
+ * @package     App\Services
+ * @author      WebSchedulr Team
+ * @copyright   2024-2026 WebSchedulr
+ * =============================================================================
+ */
+
 namespace App\Services;
 
 /**
