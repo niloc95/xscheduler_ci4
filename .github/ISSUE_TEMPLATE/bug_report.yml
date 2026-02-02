@@ -1,0 +1,127 @@
+name: 🐞 Bug Report
+description: Report a bug or error in xScheduler
+title: "[Bug]: "
+labels: ["bug", "needs-info"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below with as much detail as possible.
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where are you running xScheduler?
+      options:
+        - Localhost
+        - Shared Hosting
+        - VPS (Virtual Private Server)
+        - Cloud (AWS, Azure, DigitalOcean, etc.)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP Version
+      description: What version of PHP are you running? (e.g., 8.1.2, 8.2.0)
+      placeholder: "8.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: ci4-version
+    attributes:
+      label: CodeIgniter 4 Version
+      description: What version of CodeIgniter 4 are you using?
+      placeholder: "4.6.1"
+    validations:
+      required: true
+
+  - type: input
+    id: xscheduler-version
+    attributes:
+      label: xScheduler Version
+      description: What commit hash or version are you running? (Check your latest git commit)
+      placeholder: "main branch / commit hash"
+    validations:
+      required: false
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "Describe the bug in detail..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue? Please be as detailed as possible.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "I expected..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: "Instead, this happened..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-logs
+    attributes:
+      label: Error Logs / Screenshots
+      description: |
+        Please include any relevant error logs from:
+        - writable/logs/
+        - Browser console (F12 Developer Tools)
+        - PHP error logs
+        
+        You can also attach screenshots by dragging and dropping images here.
+      placeholder: "Paste error logs or drag & drop screenshots here..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (database setup, browser version, etc.)
+      placeholder: "Any additional information..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have checked the documentation and REQUIREMENTS.md
+          required: true
+        - label: I have included error logs or screenshots where applicable
+          required: false

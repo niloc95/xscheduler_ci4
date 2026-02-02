@@ -24,6 +24,7 @@ A modern, enterprise-ready appointment scheduling application built with CodeIgn
 - [Security](#-security)
 - [Documentation](#-documentation)
 - [Troubleshooting](#-troubleshooting)
+- [Support & Bug Reporting](#-support--bug-reporting)
 - [Roadmap](#-roadmap)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -698,7 +699,70 @@ npm run build
 
 ---
 
-## 📈 Roadmap
+## � Support & Bug Reporting
+
+We use GitHub's built-in tools for all support, bug reports, and feature requests. Please follow these guidelines:
+
+### 🐞 Reporting Bugs
+
+**Found a bug?** → [**Create a Bug Report**](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
+
+Before reporting:
+1. **Search existing issues** to avoid duplicates
+2. **Check the documentation** in [`/docs`](docs/)
+3. **Review [REQUIREMENTS.md](docs/REQUIREMENTS.md)** to ensure your environment is supported
+
+**What to include:**
+- Environment details (Localhost, VPS, Shared Hosting)
+- PHP version and CodeIgniter 4 version
+- Clear steps to reproduce the issue
+- Expected vs actual behavior
+- Error logs from `writable/logs/` or browser console
+- Screenshots if applicable
+
+### ✨ Requesting Features
+
+**Have an idea?** → [**Create a Feature Request**](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
+
+**What to include:**
+- Clear problem description
+- Proposed solution with details
+- Use case / user story (who benefits and how)
+- Alternative approaches (optional)
+
+### 💬 Asking Questions
+
+**Need help?** → [**Start a Discussion**](https://github.com/niloc95/xscheduler_ci4/discussions)
+
+Use GitHub Discussions for:
+- ❓ General questions ("How do I...?")
+- 🛠️ Installation and setup help
+- 💡 Ideas that aren't fully formed yet
+- 🗣️ Community feedback and suggestions
+- 🎓 How-to questions
+
+**Please do NOT use Issues for support questions** - use Discussions instead.
+
+### 🔒 Security Vulnerabilities
+
+**Found a security issue?** → See [**SECURITY.md**](SECURITY.md) for responsible disclosure.
+
+**Do NOT open public issues for security vulnerabilities.**
+
+### 📚 Documentation
+
+Before asking for help, check these resources:
+
+| Document | Description |
+|----------|-------------|
+| [REQUIREMENTS.md](docs/REQUIREMENTS.md) | System requirements and compatibility |
+| [/docs](docs/) | Complete documentation |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [SECURITY.md](SECURITY.md) | Security policy |
+
+---
+
+## �📈 Roadmap
 
 ### ✅ Completed (v1.0)
 - [x] User authentication & role-based access

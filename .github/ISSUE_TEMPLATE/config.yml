@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions - Questions & Support
+    url: https://github.com/niloc95/xscheduler_ci4/discussions
+    about: Ask questions, get installation help, or discuss ideas
+  - name: 📚 Documentation
+    url: https://github.com/niloc95/xscheduler_ci4/tree/main/docs
+    about: Read the documentation and requirements
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/niloc95/xscheduler_ci4/security/advisories/new
+    about: Report a security vulnerability privately
