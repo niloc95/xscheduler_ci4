@@ -2,7 +2,7 @@
   "name": "webschedulr_ci4",
   "version": "1.0.0",
   "type": "module",
-  "description": "## What is CodeIgniter?",
+  "description": "Modern appointment scheduling system built with CodeIgniter 4",
   "main": "index.js",
   "directories": {
     "test": "tests"
@@ -14,6 +14,13 @@
     "package": "node scripts/package.js",
     "package:archive": "node scripts/package.js --archive-logs",
     "deploy": "node scripts/package.js",
+    "release": "node scripts/release.js patch",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major",
+    "release:beta": "node scripts/release.js --beta",
+    "release:rc": "node scripts/release.js --rc",
+    "release:dry": "node scripts/release.js --dry-run",
     "build:dev": "node scripts/build-config.js build development",
     "build:staging": "node scripts/build-config.js build staging",
     "build:prod": "node scripts/build-config.js build production"
