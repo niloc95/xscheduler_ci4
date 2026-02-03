@@ -1,0 +1,71 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features",
+      "labels": ["enhancement", "feature"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["bug", "fix"]
+    },
+    {
+      "title": "## 📚 Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "## 🔒 Security",
+      "labels": ["security"]
+    },
+    {
+      "title": "## ⚡ Performance",
+      "labels": ["performance", "optimization"]
+    },
+    {
+      "title": "## 🎨 UI/UX",
+      "labels": ["ui", "ux", "design"]
+    },
+    {
+      "title": "## 🔧 Maintenance",
+      "labels": ["maintenance", "chore", "refactor"]
+    },
+    {
+      "title": "## 📦 Dependencies",
+      "labels": ["dependencies"]
+    }
+  ],
+  "ignore_labels": [
+    "duplicate",
+    "invalid",
+    "wontfix",
+    "question"
+  ],
+  "sort": "ASC",
+  "template": "#{{CHANGELOG}}\n\n<details>\n<summary>Full Changelog</summary>\n\n#{{UNCATEGORIZED}}\n</details>",
+  "pr_template": "- #{{TITLE}} by @#{{AUTHOR}} in ##{{NUMBER}}",
+  "empty_template": "- No changes",
+  "label_extractor": [
+    {
+      "pattern": "(.) \\[([^\\]]*)\\]",
+      "target": "$1"
+    }
+  ],
+  "transformers": [
+    {
+      "pattern": "[\\-\\*] (\\[(...|TEST|CI|SKIP)\\])( )?(.+?)\n(.+?[\\-\\*] )(.+)",
+      "target": "- $4\n  - $6"
+    }
+  ],
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 200,
+  "max_back_track_time_days": 365,
+  "exclude_merge_branches": [
+    "Owner/qa"
+  ],
+  "tag_resolver": {
+    "method": "semver"
+  },
+  "base_branches": [
+    "main",
+    "master"
+  ]
+}

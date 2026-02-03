@@ -202,11 +202,48 @@ See [SECURITY.md](SECURITY.md) for responsible disclosure.
 
 ---
 
+## � Versioning & Releases
+
+xScheduler follows [Semantic Versioning 2.0.0](https://semver.org/):
+
+### Version Format: `MAJOR.MINOR.PATCH`
+
+- **MAJOR** (X.0.0) - Incompatible API changes or breaking changes
+- **MINOR** (0.X.0) - New features, backwards-compatible
+- **PATCH** (0.0.X) - Bug fixes, backwards-compatible
+
+### Release Types
+
+- **Stable**: `v1.0.0` - Production ready
+- **Release Candidate**: `v1.0.0-rc.1` - Final testing
+- **Beta**: `v1.0.0-beta.1` - Feature complete, testing
+- **Alpha**: `v1.0.0-alpha.1` - Early development
+
+### Changelog
+
+All changes are tracked in [CHANGELOG.md](CHANGELOG.md). When contributing:
+
+1. Add your changes to the `[Unreleased]` section
+2. Use these categories:
+   - **Added** - New features
+   - **Changed** - Changes in existing functionality
+   - **Deprecated** - Soon-to-be removed features
+   - **Removed** - Removed features
+   - **Fixed** - Bug fixes
+   - **Security** - Security improvements
+
+### Release Process
+
+For maintainers creating releases, see [docs/RELEASING.md](docs/RELEASING.md) for the complete release guide.
+
+---
+
 ## 📞 Getting Help
 
 - **Questions?** → [GitHub Discussions](https://github.com/niloc95/xscheduler_ci4/discussions)
 - **Bug?** → [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
 - **Feature idea?** → [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
+- **Releases** → [GitHub Releases](https://github.com/niloc95/xscheduler_ci4/releases)
 
 ---
 

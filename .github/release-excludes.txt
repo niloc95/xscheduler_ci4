@@ -1,0 +1,77 @@
+# Files to exclude from release package
+
+# Development files
+.git/
+.github/
+.gitignore
+.gitattributes
+.editorconfig
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Tests
+tests/
+cypress/
+cypress.config.js
+phpunit.xml.dist
+.phpunit.cache/
+
+# Development configs
+vite.config.js
+postcss.config.js
+tailwind.config.js
+composer-setup.php
+
+# Build artifacts
+build/logs/
+writable/logs/*
+writable/cache/*
+writable/session/*
+writable/debugbar/*
+writable/uploads/*
+!writable/logs/.htaccess
+!writable/cache/.htaccess
+!writable/session/.htaccess
+!writable/debugbar/.htaccess
+!writable/uploads/.htaccess
+
+# Environment files
+.env
+.env.example
+env
+
+# Development docs
+docs/development/
+docs/testing/
+notes/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.sql
+cookies.txt
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+temp/
+tmp/
