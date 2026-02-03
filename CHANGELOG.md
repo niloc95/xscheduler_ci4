@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-02-03
+
 ### Added
 - Comprehensive bug reporting system with GitHub Issues templates
 - GitHub Discussions integration for community support
@@ -105,4 +107,5 @@ For upgrade instructions between major versions, see [docs/UPGRADING.md](docs/UP
 ---
 
 [Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.1
 [1.0.0]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.0
