@@ -18,6 +18,7 @@
  *   npm run release -- --version=1.2.3  # Specific version
  *   npm run release -- --beta    # Create beta release (1.0.0-beta.1)
  *   npm run release -- --rc      # Create release candidate (1.0.0-rc.1)
+ *   npm run release -- --skip-package  # Skip local deployment package creation
  */
 
 import fs from 'fs';
@@ -49,6 +50,7 @@ if (hasFlag('alpha')) bumpType = 'alpha';
 const specificVersion = getArg('version');
 const dryRun = hasFlag('dry-run');
 const skipBuild = hasFlag('skip-build');
+const skipPackage = hasFlag('skip-package');
 const force = hasFlag('force');
 
 // Colors for console output
@@ -314,6 +316,14 @@ async function release() {
     if (!skipBuild) {
         log.step('Building production assets...');
         run('npm run build');
+    }
+
+    // Create deployment package (optional, GitHub Actions will also do this)
+    if (!skipPackage) {
+        log.step('Creating deployment package...');
+        run('node scripts/package.js');
+        log.success('Local deployment package created: webschedulr-deploy.zip');
+        log.info('Note: GitHub Actions will create the official release package');
     }
 
     // Update version in package.json

@@ -13,39 +13,61 @@ git pull origin main
 
 # Run tests
 composer test
-npm run lint
 
-# Build assets
-npm run build
+# Test complete packaging workflow
+npm run package
 ```
 
-### 2. Update Version 📝
-
-Edit these files:
-
-- `CHANGELOG.md` - Add new version section
-- `app/Config/Constants.php` - Update APP_VERSION
+### 2. Create Release 🎯
 
 ```bash
-# Commit version bump
-git add CHANGELOG.md app/Config/Constants.php
-git commit -m "Bump version to v1.1.0"
-git push origin main
+# Standard release (patch version bump)
+npm run release
+
+# Minor version (new features)
+npm run release:minor
+
+# Major version (breaking changes)
+npm run release:major
+
+# Test first (dry run)
+npm run release:dry
 ```
 
-### 3. Create & Push Tag 🏷️
+**What happens automatically:**
+1. ✅ Builds production assets (`npm run build`)
+2. ✅ Creates deployment package (`node scripts/package.js`)
+3. ✅ Bumps version in `package.json`
+4. ✅ Updates `CHANGELOG.md`
+5. ✅ Creates git commit and tag
+6. ✅ Pushes to GitHub
+7. ✅ Triggers GitHub Actions
+8. ✅ GitHub Actions creates release with ZIP artifact
+
+### 3. Verify Release 👀
 
 ```bash
-# Create tag
-git tag -a v1.1.0 -m "Release v1.1.0"
+# Check git tags
+git tag -l
 
-# Push tag (triggers release workflow)
-git push origin v1.1.0
+# Monitor GitHub Actions
+# https://github.com/niloc95/xscheduler_ci4/actions
+
+# View release
+# https://github.com/niloc95/xscheduler_ci4/releases
 ```
 
-### 4. Monitor Release 👀
+---
 
-Watch GitHub Actions: https://github.com/niloc95/xscheduler_ci4/actions
+## 📦 Standalone Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run build` | Build assets only |
+| `npm run package` | Build + create deployment ZIP |
+| `npm run package:local` | Create ZIP without rebuilding |
+| `npm run release` | Complete release workflow |
+| `npm run release:dry` | Test release (no changes) |
 
 ---
 
