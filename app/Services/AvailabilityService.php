@@ -457,6 +457,20 @@ class AvailabilityService
         
         $currentTime = new DateTime($date . ' ' . $providerHours['start_time'], $tz);
         $endTime = new DateTime($date . ' ' . $providerHours['end_time'], $tz);
+        $now = new DateTime('now', $tz);
+        
+        // If the current time is later than the start time (for today), adjust start time
+        if ($currentTime < $now) {
+            $currentTime = clone $now;
+            // Round up to next slot interval (e.g., if now is 14:37, start at 14:45 or 15:00)
+            $minutes = (int)$currentTime->format('i');
+            $slotInterval = $serviceDuration + $bufferMinutes;
+            // Round up to next interval
+            $minutesToAdd = $slotInterval - ($minutes % $slotInterval);
+            if ($minutesToAdd < $slotInterval) {
+                $currentTime->add(new DateInterval('PT' . $minutesToAdd . 'M'));
+            }
+        }
         
         $slotDuration = $serviceDuration + $bufferMinutes;
         $interval = new DateInterval('PT' . $slotDuration . 'M');

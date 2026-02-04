@@ -6,6 +6,13 @@ import { initAppointmentForm } from './modules/appointments/appointments-form.js
 // Import charts functionality
 import Charts from './charts.js';
 
+// Import analytics charts
+import { 
+    initRevenueTrendChart, 
+    initTimeSlotChart, 
+    initServiceDistributionChart 
+} from './modules/analytics/analytics-charts.js';
+
 import { attachTimezoneHeaders } from './utils/timezone-helper.js';
 import { getBaseUrl } from './utils/url-helpers.js';
 
@@ -37,11 +44,26 @@ import { SettingsManager } from './modules/scheduler/settings-manager.js';
 
 // Import scheduler styles
 import '../css/scheduler.css';
+
 // Export shared time-slot UI initializer to window so PHP views can call it
 import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
 if (typeof window !== 'undefined') {
     window.initTimeSlotsUI = initTimeSlotsUI;
 }
+
+// Export analytics chart functions to window for PHP views
+if (typeof window !== 'undefined') {
+    window.initRevenueTrendChart = initRevenueTrendChart;
+    window.initTimeSlotChart = initTimeSlotChart;
+    window.initServiceDistributionChart = initServiceDistributionChart;
+}
+
+// Also export as ES6 modules
+export { 
+    initRevenueTrendChart, 
+    initTimeSlotChart, 
+    initServiceDistributionChart 
+};
 
 // ============================================
 // COMPONENT INITIALIZATION

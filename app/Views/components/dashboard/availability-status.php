@@ -30,6 +30,8 @@ if (empty($availability)) {
             <?php
             $status = $provider['status'] ?? 'off';
             $nextSlot = $provider['next_slot'] ?? null;
+            $nextSlotLabel = is_array($nextSlot) ? ($nextSlot['label'] ?? null) : $nextSlot;
+            $noSlotsToday = is_array($nextSlot) ? (bool) ($nextSlot['no_slots_today'] ?? false) : false;
             $providerColor = $provider['color'] ?? '#3B82F6';
             
             $statusConfig = [
@@ -68,9 +70,11 @@ if (empty($availability)) {
                             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                                 <?= esc($provider['name']) ?>
                             </p>
-                            <?php if ($nextSlot): ?>
+                            <?php if ($nextSlotLabel): ?>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Next: <?= esc($nextSlot) ?>
+                                <?= $noSlotsToday && $nextSlotLabel === 'No slots available today'
+                                    ? esc($nextSlotLabel)
+                                    : 'Next: ' . esc($nextSlotLabel) ?>
                             </p>
                             <?php endif; ?>
                         </div>

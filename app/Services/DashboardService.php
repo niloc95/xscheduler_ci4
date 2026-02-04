@@ -56,6 +56,7 @@ use App\Models\ServiceModel;
 use App\Models\CustomerModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\BusinessHourModel;
+use App\Services\AvailabilityService;
 
 /**
  * Dashboard Service
@@ -74,6 +75,7 @@ class DashboardService
     protected ProviderScheduleModel $providerScheduleModel;
     protected BusinessHourModel $businessHourModel;
     protected LocalizationSettingsService $localizationService;
+    protected AvailabilityService $availabilityService;
 
     public function __construct()
     {
@@ -84,6 +86,7 @@ class DashboardService
         $this->providerScheduleModel = new ProviderScheduleModel();
         $this->businessHourModel = new BusinessHourModel();
         $this->localizationService = new LocalizationSettingsService();
+        $this->availabilityService = new AvailabilityService();
     }
 
     /**
@@ -423,7 +426,7 @@ class DashboardService
                 // If currentTime >= endTime, status remains 'off'
             }
 
-            $nextSlot = $this->getNextAvailableSlot($provider['id']);
+            $nextSlot = $this->getNextAvailableSlotDetails($provider['id']);
             
             // Get provider's services
             $providerServices = $this->getProviderServices($provider['id']);
@@ -450,30 +453,45 @@ class DashboardService
     protected function getProviderServices(int $providerId): array
     {
         $db = \Config\Database::connect();
+        $hasProviderServices = method_exists($db, 'tableExists') ? $db->tableExists('xs_provider_services') : true;
+        $servicesHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_services') : true;
         
         // Check if provider_services table exists (linking table)
         try {
-            $builder = $db->table('xs_provider_services ps');
-            $builder->select('s.name')
-                ->join('xs_services s', 's.id = ps.service_id')
-                ->where('ps.provider_id', $providerId)
-                ->where('s.is_active', true);
-            
-            $services = $builder->get()->getResultArray();
-            return array_column($services, 'name');
-        } catch (\Exception $e) {
-            // Fallback: try to get all active services if no provider_services table
-            try {
-                $builder = $db->table('xs_services');
-                $builder->select('name')
-                    ->where('is_active', true)
-                    ->limit(5);
+            if ($hasProviderServices) {
+                $builder = $db->table('xs_provider_services ps');
+                $builder->select('s.name')
+                    ->join('xs_services s', 's.id = ps.service_id')
+                    ->where('ps.provider_id', $providerId);
+
+                if ($servicesHasIsActive) {
+                    $builder->where('s.is_active', true);
+                }
                 
                 $services = $builder->get()->getResultArray();
                 return array_column($services, 'name');
-            } catch (\Exception $e2) {
-                return [];
             }
+            
+            // No provider_services table, fall through to general services fallback
+        } catch (\Exception $e) {
+            // Exception occurred, fall through to fallback
+        }
+        
+        // Fallback: try to get all active services if no provider_services table
+        try {
+            $builder = $db->table('xs_services');
+            $builder->select('name');
+
+            if ($servicesHasIsActive) {
+                $builder->where('is_active', true);
+            }
+
+            $builder->limit(5);
+            
+            $services = $builder->get()->getResultArray();
+            return array_column($services, 'name');
+        } catch (\Exception $e2) {
+            return [];
         }
     }
 
@@ -503,105 +521,160 @@ class DashboardService
     }
 
     /**
-     * Helper: Get next available slot for provider
+     * Helper: Get next available slot details for provider
      * 
-     * Returns the next available time slot respecting:
-     * - Provider's working hours (from xs_provider_schedules or xs_business_hours)
-     * - Break times
-     * - Existing appointments
-     * 
+     * Uses AvailabilityService to respect provider schedule, breaks,
+     * blocked times, appointment conflicts, buffer time, and service duration.
+     *
      * @param int $providerId
-     * @return string|null Time string (HH:MM) or null if not working today
+     * @return array Slot details
      */
-    protected function getNextAvailableSlot(int $providerId): ?string
+    protected function getNextAvailableSlotDetails(int $providerId): array
     {
-        $today = date('Y-m-d');
-        $now = new \DateTime();
-        $currentTime = $now->format('H:i:s');
-        $dayOfWeek = strtolower($now->format('l')); // 'monday', 'tuesday', etc.
-        $weekdayNum = (int) $now->format('w'); // 0=Sunday, 1=Monday, etc.
+        $timezone = $this->localizationService->getTimezone();
+        $tz = new \DateTimeZone($timezone);
+        $today = (new \DateTimeImmutable('today', $tz))->format('Y-m-d');
+        $tomorrow = (new \DateTimeImmutable('tomorrow', $tz))->format('Y-m-d');
 
-        // Step 1: Get provider's working hours for today
-        $workingHours = $this->getProviderWorkingHours($providerId, $dayOfWeek, $weekdayNum);
-        
-        if (!$workingHours) {
-            // Provider not working today
-            return null;
+        $serviceId = $this->getProviderDefaultServiceId($providerId);
+        if (!$serviceId) {
+            return [
+                'has_slot' => false,
+                'no_slots_today' => true,
+                'is_today' => false,
+                'date' => null,
+                'time' => null,
+                'label' => 'No slots available today'
+            ];
         }
 
-        $startTime = $workingHours['start_time'];
-        $endTime = $workingHours['end_time'];
-        $breaks = $workingHours['breaks'] ?? [];
+        $bufferMinutes = $this->availabilityService->getBufferTime($providerId);
 
-        // Step 2: If current time is past end time, provider is done for the day
-        if ($currentTime >= $endTime) {
-            return null;
+        // Check for slots today
+        $todaySlots = $this->availabilityService->getAvailableSlots(
+            $providerId,
+            $today,
+            $serviceId,
+            $bufferMinutes,
+            $timezone
+        );
+
+        if (!empty($todaySlots)) {
+            $slot = $todaySlots[0];
+            $time = $slot['startFormatted'] ?? $slot['start']->format('H:i');
+            return [
+                'has_slot' => true,
+                'no_slots_today' => false,
+                'is_today' => true,
+                'date' => $today,
+                'time' => $time,
+                'label' => 'Today at ' . $time
+            ];
         }
 
-        // Step 3: Get today's future appointments for this provider
-        $appointments = $this->appointmentModel
-            ->where('provider_id', $providerId)
-            ->where('DATE(start_time)', $today)
-            ->where('start_time >', $now->format('Y-m-d H:i:s'))
-            ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
-            ->orderBy('start_time', 'ASC')
-            ->findAll();
+        // Look ahead for the next available slot (up to 30 days)
+        $daysAhead = 30;
+        $nextSlot = null;
+        $nextDate = null;
 
-        // Step 4: Determine the earliest available slot
-        // Start from either now + 30 min (buffer) or working hours start, whichever is later
-        $bufferTime = (clone $now)->modify('+30 minutes')->format('H:i:s');
-        $candidateTime = max($bufferTime, $startTime);
+        for ($i = 1; $i <= $daysAhead; $i++) {
+            $date = (new \DateTimeImmutable($today, $tz))->modify('+' . $i . ' days')->format('Y-m-d');
+            $slots = $this->availabilityService->getAvailableSlots(
+                $providerId,
+                $date,
+                $serviceId,
+                $bufferMinutes,
+                $timezone
+            );
 
-        // If candidate is past end time, no slots available
-        if ($candidateTime >= $endTime) {
-            return null;
-        }
-
-        // Step 5: Check if candidate time is during a break
-        $candidateTime = $this->adjustForBreaks($candidateTime, $breaks, $endTime);
-        if ($candidateTime === null || $candidateTime >= $endTime) {
-            return null;
-        }
-
-        // Step 6: Check if candidate time conflicts with appointments
-        if (empty($appointments)) {
-            // No appointments, candidate time is available
-            return substr($candidateTime, 0, 5); // Return HH:MM format
-        }
-
-        // Check if there's a gap before the first appointment
-        $firstApptStart = date('H:i:s', strtotime($appointments[0]['start_time']));
-        if ($candidateTime < $firstApptStart) {
-            return substr($candidateTime, 0, 5);
-        }
-
-        // Find a gap between appointments
-        foreach ($appointments as $i => $apt) {
-            $aptEnd = date('H:i:s', strtotime($apt['end_time']));
-            
-            // Check if there's another appointment after this one
-            if (isset($appointments[$i + 1])) {
-                $nextAptStart = date('H:i:s', strtotime($appointments[$i + 1]['start_time']));
-                
-                // Is there a gap?
-                if ($aptEnd < $nextAptStart) {
-                    // Check the gap is not during break
-                    $gapStart = $this->adjustForBreaks($aptEnd, $breaks, $endTime);
-                    if ($gapStart !== null && $gapStart < $nextAptStart && $gapStart < $endTime) {
-                        return substr($gapStart, 0, 5);
-                    }
-                }
-            } else {
-                // This is the last appointment, check if there's time after
-                $afterLast = $this->adjustForBreaks($aptEnd, $breaks, $endTime);
-                if ($afterLast !== null && $afterLast < $endTime) {
-                    return substr($afterLast, 0, 5);
-                }
+            if (!empty($slots)) {
+                $nextSlot = $slots[0];
+                $nextDate = $date;
+                break;
             }
         }
 
-        // No available slots found
-        return null;
+        if ($nextSlot && $nextDate) {
+            $time = $nextSlot['startFormatted'] ?? $nextSlot['start']->format('H:i');
+            if ($nextDate === $tomorrow) {
+                $label = 'Tomorrow at ' . $time;
+            } else {
+                $context = $this->localizationService->getContext();
+                $dateFormat = $context['date_format'] ?? 'M j, Y';
+                $dateLabel = (new \DateTimeImmutable($nextDate, $tz))->format($dateFormat);
+                $label = $dateLabel . ' at ' . $time;
+            }
+
+            return [
+                'has_slot' => true,
+                'no_slots_today' => true,
+                'is_today' => false,
+                'date' => $nextDate,
+                'time' => $time,
+                'label' => $label
+            ];
+        }
+
+        return [
+            'has_slot' => false,
+            'no_slots_today' => true,
+            'is_today' => false,
+            'date' => null,
+            'time' => null,
+            'label' => 'No slots available today'
+        ];
+    }
+
+    /**
+     * Helper: Get provider default service ID (shortest active service)
+     * 
+     * @param int $providerId
+     * @return int|null
+     */
+    protected function getProviderDefaultServiceId(int $providerId): ?int
+    {
+        $db = \Config\Database::connect();
+        $hasProviderServices = method_exists($db, 'tableExists') ? $db->tableExists('xs_provider_services') : true;
+        $servicesHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_services') : true;
+
+        try {
+            if ($hasProviderServices) {
+                $builder = $db->table('xs_provider_services ps');
+                $builder->select('s.id, s.duration_min')
+                    ->join('xs_services s', 's.id = ps.service_id')
+                    ->where('ps.provider_id', $providerId);
+
+                if ($servicesHasIsActive) {
+                    $builder->where('s.is_active', true);
+                }
+
+                $builder->orderBy('s.duration_min', 'ASC')
+                    ->orderBy('s.id', 'ASC')
+                    ->limit(1);
+
+                $service = $builder->get()->getRowArray();
+                if ($service && isset($service['id'])) {
+                    return (int) $service['id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore and fallback below
+        }
+
+        if ($servicesHasIsActive) {
+            $service = $this->serviceModel
+                ->where('is_active', true)
+                ->orderBy('duration_min', 'ASC')
+                ->orderBy('id', 'ASC')
+                ->first();
+        } else {
+            $service = $this->serviceModel
+                ->orderBy('duration_min', 'ASC')
+                ->orderBy('id', 'ASC')
+                ->first();
+        }
+
+        return $service['id'] ?? null;
     }
 
     /**

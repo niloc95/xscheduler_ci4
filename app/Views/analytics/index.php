@@ -8,12 +8,15 @@
 <?= $this->section('page_subtitle') ?>Monitor your business performance and insights<?= $this->endSection() ?>
 
 <?= $this->section('dashboard_actions') ?>
-    <select id="timeframe" class="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-        <option value="7d" <?= $timeframe === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
-        <option value="30d" <?= $timeframe === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
-        <option value="3m" <?= $timeframe === '3m' ? 'selected' : '' ?>>Last 3 Months</option>
-        <option value="1y" <?= $timeframe === '1y' ? 'selected' : '' ?>>Last Year</option>
-    </select>
+    <div class="relative">
+        <select id="timeframe" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;" class="border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="7d" <?= $timeframe === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
+            <option value="30d" <?= $timeframe === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
+            <option value="3m" <?= $timeframe === '3m' ? 'selected' : '' ?>>Last 3 Months</option>
+            <option value="1y" <?= $timeframe === '1y' ? 'selected' : '' ?>>Last Year</option>
+        </select>
+        <span class="material-symbols-rounded absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">expand_more</span>
+    </div>
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6<?= $this->endSection() ?>
@@ -24,7 +27,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-                <p class="text-3xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['total_revenue'], 2) ?></p>
+                <p class="text-3xl font-bold text-gray-900 dark:text-white"><?= format_currency($overview['total_revenue']) ?></p>
                 <div class="flex items-center mt-2">
                     <span class="material-symbols-rounded text-green-500 mr-1 text-base align-middle">trending_up</span>
                     <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['revenue_change'] ?>%</span>
@@ -76,7 +79,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Booking Value</p>
-                <p class="text-2xl font-bold text-gray-900 dark:text-white">$<?= number_format($overview['avg_booking_value'], 2) ?></p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white"><?= format_currency($overview['avg_booking_value']) ?></p>
                 <div class="flex items-center mt-1">
                     <span class="text-sm font-medium text-green-600 dark:text-green-400">+<?= $overview['booking_value_change'] ?>%</span>
                 </div>
@@ -124,17 +127,16 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Revenue Trend</h3>
-                <select class="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                    <option>Daily</option>
-                    <option>Monthly</option>
-                </select>
-            </div>
-            <div class="h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div class="text-center">
-                    <span class="material-symbols-rounded mx-auto text-gray-400 dark:text-gray-500 mb-2 text-4xl block">bar_chart_4_bars</span>
-                    <p class="text-gray-500 dark:text-gray-400">Revenue Chart</p>
-                    <p class="text-sm text-gray-400 dark:text-gray-500">Chart implementation pending</p>
+                <div class="relative">
+                    <select id="revenueChartType" class="appearance-none text-sm border border-gray-300 dark:border-gray-600 rounded-lg pl-3 pr-9 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="daily">Daily</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                    <span class="material-symbols-rounded absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400 text-base">expand_more</span>
                 </div>
+            </div>
+            <div class="h-64">
+                <canvas id="revenueChart"></canvas>
             </div>
         </div>
 
@@ -148,6 +150,7 @@
                                 <?php if ($status === 'completed'): ?>bg-green-500
                                 <?php elseif ($status === 'pending'): ?>bg-amber-500
                                 <?php elseif ($status === 'cancelled'): ?>bg-red-500
+                                <?php elseif ($status === 'confirmed'): ?>bg-blue-500
                                 <?php else: ?>bg-gray-500<?php endif; ?>"></div>
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize"><?= $status ?></span>
                         </div>
@@ -159,6 +162,7 @@
                                     <?php if ($status === 'completed'): ?>bg-green-500
                                     <?php elseif ($status === 'pending'): ?>bg-amber-500
                                     <?php elseif ($status === 'cancelled'): ?>bg-red-500
+                                    <?php elseif ($status === 'confirmed'): ?>bg-blue-500
                                     <?php else: ?>bg-gray-500<?php endif; ?>"
                                     style="width: <?= $totalAppointments > 0 ? ($count / $totalAppointments) * 100 : 0 ?>%"></div>
                             </div>
@@ -183,7 +187,7 @@
                             <p class="text-sm text-gray-600 dark:text-gray-400"><?= $service['bookings'] ?> bookings</p>
                         </div>
                         <div class="text-right">
-                            <p class="font-semibold text-gray-900 dark:text-white">$<?= number_format($service['revenue'], 2) ?></p>
+                            <p class="font-semibold text-gray-900 dark:text-white"><?= format_currency($service['revenue']) ?></p>
                             <p class="text-sm text-green-600 dark:text-green-400">+<?= $service['growth'] ?>%</p>
                         </div>
                     </div>
@@ -195,6 +199,37 @@
 
 <?= $this->section('scripts') ?>
 <script>
+// Revenue data from PHP
+const revenueData = <?= json_encode($revenue) ?>;
+const currencySymbol = '<?= esc(get_app_currency_symbol()) ?>';
+
+// Wait for main.js to load and expose window functions
+window.addEventListener('load', function() {
+    // Initialize revenue chart
+    let revenueChart = null;
+    let currentChartType = 'daily';
+
+    function updateRevenueChart(type) {
+        if (revenueChart) {
+            revenueChart.destroy();
+        }
+        if (typeof window.initRevenueTrendChart === 'function') {
+            revenueChart = window.initRevenueTrendChart('revenueChart', revenueData, type, currencySymbol);
+            currentChartType = type;
+        } else {
+            console.error('initRevenueTrendChart not found on window object');
+        }
+    }
+
+    // Initialize with daily view
+    updateRevenueChart('daily');
+
+    // Chart type change handler
+    document.getElementById('revenueChartType').addEventListener('change', function() {
+        updateRevenueChart(this.value);
+    });
+});
+
 // Timeframe change handler
 document.getElementById('timeframe').addEventListener('change', function() {
     const timeframe = this.value;

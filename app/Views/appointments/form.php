@@ -15,6 +15,7 @@
  */
 
 $isEditMode = !empty($appointment['id']) || !empty($appointment['appointment_id']);
+$isPastAppointment = $isPastAppointment ?? false;
 $formAction = $isEditMode 
     ? base_url('/appointments/update/' . esc($appointment['hash'])) 
     : base_url('/appointments/store');
@@ -57,6 +58,22 @@ $pageSubtitle = $isEditMode
                         <li><?= esc($error) ?></li>
                     <?php endforeach ?>
                 </ul>
+            </div>
+        </div>
+    </div>
+    <?php endif ?>
+
+    <?php if ($isEditMode && $isPastAppointment): ?>
+    <!-- Past Appointment Warning -->
+    <div class="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div class="flex items-start">
+            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 mr-3">history</span>
+            <div class="flex-1">
+                <h3 class="text-sm font-medium text-amber-800 dark:text-amber-200">Past Appointment</h3>
+                <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    This appointment has already passed. You can only update the status and notes. 
+                    Date, time, provider, and service cannot be changed.
+                </p>
             </div>
         </div>
     </div>
@@ -365,7 +382,8 @@ $pageSubtitle = $isEditMode
                     <select id="provider_id" 
                             name="provider_id" 
                             required 
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
+                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>">
                         <option value="">Select a provider...</option>
                         <?php foreach ($providers as $provider): ?>
                             <option value="<?= $provider['id'] ?>" 
@@ -374,6 +392,9 @@ $pageSubtitle = $isEditMode
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if ($isEditMode && $isPastAppointment): ?>
+                    <input type="hidden" name="provider_id" value="<?= esc($appointment['provider_id'] ?? '') ?>" />
+                    <?php endif; ?>
                 </div>
 
                 <!-- Service Selection -->
@@ -384,9 +405,13 @@ $pageSubtitle = $isEditMode
                     <select id="service_id" 
                             name="service_id" 
                             required 
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
+                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>">
                         <option value="">Select a provider first...</option>
                     </select>
+                    <?php if ($isEditMode && $isPastAppointment): ?>
+                    <input type="hidden" name="service_id" value="<?= esc($appointment['service_id'] ?? '') ?>" />
+                    <?php endif; ?>
                 </div>
 
                 <!-- Date & Time Selection -->
@@ -400,7 +425,11 @@ $pageSubtitle = $isEditMode
                                name="appointment_date" 
                                value="<?= esc(old('appointment_date', $appointment['date'] ?? '')) ?>"
                                required 
-                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                               <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
+                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>" />
+                        <?php if ($isEditMode && $isPastAppointment): ?>
+                        <input type="hidden" name="appointment_date" value="<?= esc($appointment['date'] ?? '') ?>" />
+                        <?php endif; ?>
                         <!-- Available dates hint -->
                         <div id="available-dates-hint" class="hidden mt-2">
                             <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -424,6 +453,12 @@ $pageSubtitle = $isEditMode
                                value="<?= esc(old('appointment_time', $appointment['time'] ?? '')) ?>"
                                required />
 
+                        <?php if ($isEditMode && $isPastAppointment): ?>
+                        <!-- Past appointment: Show read-only time display -->
+                        <div class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 opacity-60">
+                            <?= esc($appointment['time'] ?? 'N/A') ?>
+                        </div>
+                        <?php else: ?>
                         <!-- Time Slots Container -->
                         <div id="time-slots-container" class="mt-2">
                             <div id="time-slots-loading" class="hidden">
@@ -453,6 +488,7 @@ $pageSubtitle = $isEditMode
                             </div>
                             <div id="time-slots-grid" class="hidden"></div>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -566,6 +602,10 @@ function initAppointmentForm() {
     const dateInput = document.getElementById('appointment_date');
     const timeInput = document.getElementById('appointment_time');
     const summaryDiv = document.getElementById('appointment-summary');
+    
+    // Currency symbol from settings
+    const currencySymbol = '<?= esc(get_app_currency_symbol()) ?>';
+    window.appCurrencySymbol = currencySymbol;
 
     // Initialize time slots UI
     const currentAptId = isEditMode ? "<?= esc($appointment['id'] ?? $appointment['appointment_id'] ?? '') ?>" : null;
@@ -891,7 +931,7 @@ function initAppointmentForm() {
                     ? service.dataset.duration + ' minutes' 
                     : '-';
                 document.getElementById('summary-price').textContent = service.dataset.price 
-                    ? '$' + parseFloat(service.dataset.price).toFixed(2) 
+                    ? currencySymbol + parseFloat(service.dataset.price).toFixed(2) 
                     : '-';
             } else {
                 summaryDiv.classList.add('hidden');

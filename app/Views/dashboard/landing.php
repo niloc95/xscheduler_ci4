@@ -108,6 +108,11 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     <?php
                     $status = $provider['status'] ?? 'off';
                     $nextSlot = $provider['next_slot'] ?? null;
+                    $nextSlotLabel = is_array($nextSlot) ? ($nextSlot['label'] ?? null) : $nextSlot;
+                    $nextSlotDate = is_array($nextSlot) ? ($nextSlot['date'] ?? null) : null;
+                    $nextSlotTime = is_array($nextSlot) ? ($nextSlot['time'] ?? null) : (is_string($nextSlot) ? $nextSlot : null);
+                    $noSlotsToday = is_array($nextSlot) ? (bool) ($nextSlot['no_slots_today'] ?? false) : false;
+                    $hasSlot = is_array($nextSlot) ? (bool) ($nextSlot['has_slot'] ?? false) : !empty($nextSlot);
                     $providerColor = $provider['color'] ?? '#3B82F6';
                     $providerId = $provider['id'] ?? null;
                     $services = $provider['services'] ?? [];
@@ -123,8 +128,8 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     // Build quick book URL
                     $bookUrl = null;
                     if ($isWorking && $providerId) {
-                        $params = ['provider_id' => $providerId, 'date' => date('Y-m-d')];
-                        if ($nextSlot) $params['time'] = $nextSlot;
+                        $params = ['provider_id' => $providerId, 'date' => $nextSlotDate ?: date('Y-m-d')];
+                        if ($nextSlotTime) $params['time'] = $nextSlotTime;
                         $bookUrl = base_url('/appointments/create') . '?' . http_build_query($params);
                     }
                     ?>
@@ -147,9 +152,14 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                         
                         <!-- Status / Next Slot -->
                         <div class="flex items-center justify-between">
-                            <?php if ($isWorking && $nextSlot): ?>
+                            <?php if ($hasSlot && $nextSlotLabel): ?>
                                 <span class="text-xs text-gray-600 dark:text-gray-400">
-                                    Next: <span class="font-medium"><?= esc($nextSlot) ?></span>
+                                    <?php if ($noSlotsToday): ?>
+                                        <span class="block">No slots available today</span>
+                                        <span class="block">Next: <span class="font-medium"><?= esc($nextSlotLabel) ?></span></span>
+                                    <?php else: ?>
+                                        Next: <span class="font-medium"><?= esc($nextSlotLabel) ?></span>
+                                    <?php endif; ?>
                                 </span>
                             <?php else: ?>
                                 <span class="text-xs text-gray-400 dark:text-gray-500">

@@ -261,6 +261,30 @@ class Appointments extends BaseController
             return redirect()->back()->with('error', 'Access denied');
         }
 
+        // Check if user is trying to book in the past
+        $appointmentDate = $this->request->getPost('appointment_date');
+        $appointmentTime = $this->request->getPost('appointment_time');
+        
+        if ($appointmentDate && $appointmentTime) {
+            $clientTimezone = $this->resolveClientTimezone();
+            $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($clientTimezone));
+            $now = new \DateTime('now', new \DateTimeZone($clientTimezone));
+            
+            if ($appointmentDateTime < $now) {
+                $errorMsg = 'Cannot book appointments in the past. Please select a future date and time.';
+                log_message('error', '[Appointments::store] Attempted to book in the past: ' . $appointmentDate . ' ' . $appointmentTime);
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => $errorMsg
+                    ]);
+                }
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', $errorMsg);
+            }
+        }
+
         $validation = \Config\Services::validation();
         
         // Check if customer_id is provided (from search)
@@ -433,6 +457,11 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
+        // Check if appointment is in the past - only allow status changes for past appointments
+        $appointmentTime = new \DateTime($appointment['start_time'], new \DateTimeZone('UTC'));
+        $now = new \DateTime('now', new \DateTimeZone('UTC'));
+        $isPastAppointment = $appointmentTime < $now;
+
         // Initialize services
         $bookingService = new BookingSettingsService();
         $localizationService = new LocalizationSettingsService();
@@ -491,6 +520,7 @@ class Appointments extends BaseController
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
             'localization' => $localizationService->getContext(),
+            'isPastAppointment' => $isPastAppointment,
         ];
 
         return view('appointments/form', $data);
@@ -531,6 +561,30 @@ class Appointments extends BaseController
         }
 
         $appointmentId = $existingAppointment['id'];
+
+        // Get the new appointment date/time from form
+        $newAppointmentDate = $this->request->getPost('appointment_date');
+        $newAppointmentTime = $this->request->getPost('appointment_time');
+        
+        // Check if user is trying to schedule in the past
+        if ($newAppointmentDate && $newAppointmentTime) {
+            $clientTimezone = $this->resolveClientTimezone();
+            $newDateTime = new \DateTime($newAppointmentDate . ' ' . $newAppointmentTime, new \DateTimeZone($clientTimezone));
+            $now = new \DateTime('now', new \DateTimeZone($clientTimezone));
+            
+            if ($newDateTime < $now) {
+                $errorMsg = 'Cannot schedule appointments in the past. Please select a future date and time.';
+                if ($this->request->isAJAX()) {
+                    return $this->response->setStatusCode(422)->setJSON([
+                        'success' => false,
+                        'message' => $errorMsg
+                    ]);
+                }
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', $errorMsg);
+            }
+        }
 
         $validation = \Config\Services::validation();
         

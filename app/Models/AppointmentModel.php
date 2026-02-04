@@ -889,6 +889,49 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Get appointment counts by status for analytics
+     * 
+     * @param array $options Options: 'format' => 'simple' returns just status=>count
+     * @return array Status counts
+     */
+    public function getStatusStats(array $options = []): array
+    {
+        $builder = $this->builder();
+        $results = $builder->select('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->getResultArray();
+        
+        // Convert to associative array
+        $statusCounts = [];
+        foreach ($results as $row) {
+            $statusCounts[$row['status']] = (int)$row['count'];
+        }
+        
+        // Ensure all statuses are present even if count is 0
+        $allStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
+        foreach ($allStatuses as $status) {
+            if (!isset($statusCounts[$status])) {
+                $statusCounts[$status] = 0;
+            }
+        }
+        
+        if (isset($options['format']) && $options['format'] === 'simple') {
+            return $statusCounts;
+        }
+        
+        // Return with additional metadata
+        $total = array_sum($statusCounts);
+        return [
+            'counts' => $statusCounts,
+            'total' => $total,
+            'percentages' => array_map(function($count) use ($total) {
+                return $total > 0 ? round(($count / $total) * 100, 1) : 0;
+            }, $statusCounts)
+        ];
+    }
+
+    /**
      * Get completion rate
      */
     public function getCompletionRate(): float

@@ -112,8 +112,19 @@
                                 <span class="mx-2">•</span>
                                 <span><?= date('l, F j, Y') ?></span>
                                 <span class="mx-2">•</span>
-                                <span class="text-blue-600 dark:text-blue-400"><?= esc($displayRole) ?></span>
+                                <span id="header-live-clock" class="text-blue-600 dark:text-blue-400 font-mono"><?= date('H:i:s') ?></span>
                             </p>
+                            <script>
+                                (function() {
+                                    const clockEl = document.getElementById('header-live-clock');
+                                    if (clockEl) {
+                                        setInterval(() => {
+                                            const now = new Date();
+                                            clockEl.textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                        }, 1000);
+                                    }
+                                })();
+                            </script>
                         </div>
                         </div>
                         

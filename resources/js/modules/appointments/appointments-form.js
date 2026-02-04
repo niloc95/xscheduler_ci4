@@ -118,13 +118,28 @@ export async function initAppointmentForm() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault(); // Prevent default form submission
         
+        // Clear previous validation errors
+        clearAllFieldErrors(form);
+        
+        // Validate form fields
+        const validationErrors = validateAppointmentForm(form);
+        if (validationErrors.length > 0) {
+            // Show field errors and focus on first invalid field
+            showValidationErrors(validationErrors);
+            return false;
+        }
+        
         if (formState.isAvailable === false) {
-            alert('This time slot is not available. Please choose a different time.');
+            showNotification('error', 'This time slot is not available. Please choose a different time.');
+            const timeInput = document.getElementById('appointment_time');
+            if (timeInput) {
+                timeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             return false;
         }
 
         if (formState.isChecking) {
-            alert('Please wait while we check availability...');
+            showNotification('info', 'Please wait while we check availability...');
             return false;
         }
         
@@ -155,7 +170,26 @@ export async function initAppointmentForm() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('[appointments-form] Server error response:', errorText);
-                throw new Error(`Server returned ${response.status}`);
+                
+                // Try to parse validation errors from JSON response
+                if (response.status === 422) {
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        if (errorData.errors) {
+                            const errors = Object.entries(errorData.errors).map(([field, messages]) => ({
+                                field,
+                                message: Array.isArray(messages) ? messages[0] : messages
+                            }));
+                            showValidationErrors(errors);
+                            return;
+                        }
+                    } catch (parseError) {
+                        // Fall through to generic message
+                    }
+                    throw new Error('Please fill in all required fields before submitting.');
+                }
+                
+                throw new Error(`Server error (${response.status}). Please try again.`);
             }
             
             // Check if response is JSON (API) or HTML (redirect)
@@ -165,8 +199,8 @@ export async function initAppointmentForm() {
                 const result = await response.json();
                 
                 if (result.success || result.data) {
-                    // Show success message
-                    alert('✅ Appointment booked successfully!');
+                    // Show success notification
+                    showNotification('success', 'Appointment booked successfully!');
 
                     if (typeof window !== 'undefined') {
                         const detail = { source: 'appointment-form', action: 'create-or-update' };
@@ -177,8 +211,10 @@ export async function initAppointmentForm() {
                         }
                     }
                     
-                    // Redirect to appointments page so calendar can refresh
-                    window.location.href = withBaseUrl('/appointments');
+                    // Redirect to appointments page after short delay
+                    setTimeout(() => {
+                        window.location.href = withBaseUrl('/appointments');
+                    }, 500);
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
@@ -197,7 +233,7 @@ export async function initAppointmentForm() {
             
         } catch (error) {
             console.error('[appointments-form] ❌ Form submission error:', error);
-            alert('❌ Failed to create appointment: ' + error.message);
+            showNotification('error', error.message || 'Failed to create appointment. Please try again.');
             
             // Re-enable submit button
             submitButton.disabled = false;
@@ -243,7 +279,8 @@ async function loadProviderServices(providerId, serviceSelect, formState) {
             services.forEach(service => {
                 const option = document.createElement('option');
                 option.value = service.id;
-                option.textContent = `${service.name} - ${service.duration} min - $${parseFloat(service.price).toFixed(2)}`;
+                const currencySymbol = window.appCurrencySymbol || '$';
+                option.textContent = `${service.name} - ${service.duration} min - ${currencySymbol}${parseFloat(service.price).toFixed(2)}`;
                 option.dataset.duration = service.duration;
                 option.dataset.price = service.price;
                 serviceSelect.appendChild(option);
@@ -576,4 +613,222 @@ function createSlotSuggestions() {
     div.className = 'mt-2 text-sm hidden';
     div.setAttribute('aria-live', 'polite');
     return div;
+}
+
+/**
+ * Validate the appointment form and return validation errors
+ * @param {HTMLFormElement} form - The form element
+ * @returns {Array} Array of {field, message} objects
+ */
+function validateAppointmentForm(form) {
+    const errors = [];
+    
+    // Check if in search mode or create mode
+    const searchSection = document.getElementById('customer-search-section');
+    const createSection = document.getElementById('customer-create-section');
+    const isSearchMode = searchSection && !searchSection.classList.contains('hidden');
+    const isCreateMode = createSection && !createSection.classList.contains('hidden');
+    
+    // Customer validation (only in create mode, not edit)
+    const customerIdInput = form.querySelector('input[name="customer_id"]');
+    const hasSelectedCustomer = customerIdInput && customerIdInput.value;
+    
+    if (isSearchMode && !hasSelectedCustomer) {
+        errors.push({
+            field: 'customer_search',
+            message: 'Please search and select an existing customer, or switch to "Create New" to enter customer details'
+        });
+    }
+    
+    // If in create mode, check required customer fields
+    if (isCreateMode && !hasSelectedCustomer) {
+        const firstNameInput = document.getElementById('customer_first_name');
+        const emailInput = document.getElementById('customer_email');
+        
+        // Check first name (commonly required)
+        if (firstNameInput && firstNameInput.dataset.originalRequired === '1' && !firstNameInput.value.trim()) {
+            errors.push({
+                field: 'customer_first_name',
+                message: 'First name is required'
+            });
+        }
+        
+        // Check email (commonly required)
+        if (emailInput && emailInput.dataset.originalRequired === '1' && !emailInput.value.trim()) {
+            errors.push({
+                field: 'customer_email',
+                message: 'Email is required'
+            });
+        }
+    }
+    
+    // Provider validation
+    const providerSelect = document.getElementById('provider_id');
+    if (!providerSelect || !providerSelect.value) {
+        errors.push({
+            field: 'provider_id',
+            message: 'Please select a service provider'
+        });
+    }
+    
+    // Service validation
+    const serviceSelect = document.getElementById('service_id');
+    if (!serviceSelect || !serviceSelect.value) {
+        errors.push({
+            field: 'service_id',
+            message: 'Please select a service'
+        });
+    }
+    
+    // Date validation
+    const dateInput = document.getElementById('appointment_date');
+    if (!dateInput || !dateInput.value) {
+        errors.push({
+            field: 'appointment_date',
+            message: 'Please select an appointment date'
+        });
+    }
+    
+    // Time validation
+    const timeInput = document.getElementById('appointment_time');
+    if (!timeInput || !timeInput.value) {
+        errors.push({
+            field: 'appointment_time',
+            message: 'Please select an appointment time'
+        });
+    }
+    
+    return errors;
+}
+
+/**
+ * Show validation errors with field highlighting and focus
+ * @param {Array} errors - Array of {field, message} objects
+ */
+function showValidationErrors(errors) {
+    if (!errors || errors.length === 0) return;
+    
+    let firstErrorField = null;
+    
+    errors.forEach((error, index) => {
+        const fieldElement = document.getElementById(error.field);
+        if (fieldElement) {
+            // Add error styling to field
+            fieldElement.classList.add('border-red-500', 'ring-2', 'ring-red-500/20');
+            fieldElement.classList.remove('border-gray-300', 'dark:border-gray-600');
+            
+            // Create or update error message element
+            let errorElement = document.getElementById(`${error.field}_error`);
+            if (!errorElement) {
+                errorElement = document.createElement('p');
+                errorElement.id = `${error.field}_error`;
+                errorElement.className = 'mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1';
+                fieldElement.parentNode.appendChild(errorElement);
+            }
+            errorElement.innerHTML = `
+                <span class="material-symbols-outlined text-sm">error</span>
+                ${error.message}
+            `;
+            errorElement.classList.remove('hidden');
+            
+            // Track first error field for focus
+            if (index === 0) {
+                firstErrorField = fieldElement;
+            }
+        }
+    });
+    
+    // Focus and scroll to first error field
+    if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+            firstErrorField.focus();
+        }, 300);
+    }
+    
+    // Show summary notification
+    showNotification('error', `Please correct ${errors.length} error${errors.length > 1 ? 's' : ''} below`);
+}
+
+/**
+ * Clear all field errors from the form
+ * @param {HTMLFormElement} form - The form element
+ */
+function clearAllFieldErrors(form) {
+    // Remove error styling from all fields
+    form.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500', 'ring-2', 'ring-red-500/20');
+        el.classList.add('border-gray-300', 'dark:border-gray-600');
+    });
+    
+    // Hide all error messages
+    form.querySelectorAll('[id$="_error"]').forEach(el => {
+        el.classList.add('hidden');
+    });
+    
+    // Remove dynamically created error elements
+    document.querySelectorAll('.field-error-dynamic').forEach(el => el.remove());
+}
+
+/**
+ * Show a notification toast
+ * @param {string} type - 'success', 'error', 'info', 'warning'
+ * @param {string} message - The message to display
+ */
+function showNotification(type, message) {
+    // Remove any existing notifications
+    document.querySelectorAll('.appointment-notification').forEach(n => n.remove());
+    
+    const colors = {
+        success: 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800',
+        error: 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800',
+        warning: 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800',
+        info: 'bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800'
+    };
+    
+    const icons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `appointment-notification fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg border ${colors[type] || colors.info} transform transition-all duration-300 translate-x-full`;
+    
+    notification.innerHTML = `
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-xl flex-shrink-0">${icons[type] || icons.info}</span>
+            <div class="flex-1 text-sm font-medium">${message}</div>
+            <button type="button" class="flex-shrink-0 text-current opacity-50 hover:opacity-100 transition-opacity" aria-label="Close">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+        notification.classList.remove('translate-x-full');
+        notification.classList.add('translate-x-0');
+    });
+    
+    // Close button handler
+    const closeBtn = notification.querySelector('button');
+    closeBtn.addEventListener('click', () => {
+        notification.classList.remove('translate-x-0');
+        notification.classList.add('translate-x-full');
+        setTimeout(() => notification.remove(), 300);
+    });
+    
+    // Auto-dismiss after 5 seconds (longer for errors)
+    const duration = type === 'error' ? 7000 : 5000;
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.remove('translate-x-0');
+            notification.classList.add('translate-x-full');
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, duration);
 }

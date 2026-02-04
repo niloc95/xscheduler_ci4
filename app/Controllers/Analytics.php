@@ -69,7 +69,7 @@ class Analytics extends BaseController
         $this->appointmentModel = new AppointmentModel();
         $this->customerModel = new CustomerModel();
         $this->serviceModel = new ServiceModel();
-        helper('permissions');
+        helper(['permissions', 'currency']);
     }
 
     /**
@@ -89,18 +89,19 @@ class Analytics extends BaseController
 
         $currentUser = session()->get('user');
         $currentRole = current_user_role();
+        $timeframe = $this->request->getGet('timeframe') ?? '30d';
 
         $data = [
             'title' => $currentRole === 'admin' ? 'Analytics Dashboard' : 'My Analytics',
             'current_page' => 'analytics',
             'user_role' => $currentRole,
             'user' => $currentUser,
-            'overview' => $this->getOverviewStats($currentRole),
-            'revenue' => $this->getRevenueData(),
-            'appointments' => $this->getAppointmentAnalytics(),
-            'services' => $this->getServiceAnalytics(),
-            'customers' => $this->getCustomerAnalytics(),
-            'timeframe' => $this->request->getGet('timeframe') ?? '30d'
+            'overview' => $this->getOverviewStats($currentRole, $timeframe),
+            'revenue' => $this->getRevenueData($timeframe),
+            'appointments' => $this->getAppointmentAnalytics($timeframe),
+            'services' => $this->getServiceAnalytics($timeframe),
+            'customers' => $this->getCustomerAnalytics($timeframe),
+            'timeframe' => $timeframe
         ];
 
         return view('analytics/index', $data);
@@ -155,7 +156,7 @@ class Analytics extends BaseController
     /**
      * Get overview statistics - REAL DATA
      */
-    private function getOverviewStats($role)
+    private function getOverviewStats($role, $timeframe = '30d')
     {
         try {
             // Get real revenue
@@ -227,7 +228,7 @@ class Analytics extends BaseController
     /**
      * Get revenue data for charts - REAL DATA
      */
-    private function getRevenueData()
+    private function getRevenueData($timeframe = '30d')
     {
         try {
             return [
@@ -246,7 +247,7 @@ class Analytics extends BaseController
     /**
      * Get appointment analytics - REAL DATA
      */
-    private function getAppointmentAnalytics()
+    private function getAppointmentAnalytics($timeframe = '30d')
     {
         try {
             return [
@@ -268,7 +269,7 @@ class Analytics extends BaseController
     /**
      * Get service analytics - REAL DATA
      */
-    private function getServiceAnalytics()
+    private function getServiceAnalytics($timeframe = '30d')
     {
         try {
             $popularServices = $this->serviceModel->getPopularServicesWithStats(10);
@@ -306,7 +307,7 @@ class Analytics extends BaseController
     /**
      * Get customer analytics - REAL DATA
      */
-    private function getCustomerAnalytics()
+    private function getCustomerAnalytics($timeframe = '30d')
     {
         try {
             $newVsReturning = $this->customerModel->getNewVsReturning();

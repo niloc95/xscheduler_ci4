@@ -181,6 +181,7 @@ const SPA = (() => {
   };
 
   const submitHandler = (e) => {
+    if (e.defaultPrevented) return;
     const form = e.target.closest('form');
     if (!form) return;
     if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) return;
