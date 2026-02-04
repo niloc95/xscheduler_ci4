@@ -48,7 +48,7 @@ jobs:
         run: npm run build
         
       - name: Create deployment package
-        run: npm run package
+        run: npm run package:local
         
       - name: Get release tag
         id: tag
