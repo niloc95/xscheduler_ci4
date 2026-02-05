@@ -39,7 +39,7 @@ export class SchedulerCore {
         }
         
         this.currentDate = DateTime.now();
-        this.currentView = 'day'; // 'day', 'week', or 'month' - Day view is default
+        this.currentView = 'week'; // 'day', 'week', or 'month' - Week view is default
         this.appointments = [];
         this.providers = [];
         this.visibleProviders = new Set();

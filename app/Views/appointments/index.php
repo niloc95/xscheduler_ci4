@@ -120,12 +120,14 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
 
     <!-- View Controls and Action Button Row -->
     <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <!-- View Toggle Buttons (Day/Week/Month) -->
+        <!-- View Toggle Buttons (Day/Week/Month) - HIDDEN: Week view only for now -->
         <div class="flex flex-wrap items-center gap-2" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
+            <?php /* View toggle buttons temporarily hidden - Week view is default
             <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Today</button>
-            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200" data-view="day">Day</button>
-            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" data-view="week">Week</button>
+            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" data-view="day">Day</button>
+            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200" data-view="week">Week</button>
             <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" data-view="month">Month</button>
+            */ ?>
             
             <!-- Advanced Filter Toggle -->
             <button type="button" 
