@@ -76,7 +76,34 @@ export function findOverlappingAppointments(appointments, slotStart, slotEnd, op
  * @param {number} excludeAppointmentId - Optional appointment ID to exclude
  * @returns {Object} { bookedProviders: [], availableProviders: [], overlappingAppointments: [] }
  */
-export function getProviderAvailabilityForSlot(appointments, slotStart, slotEnd, providers, excludeAppointmentId = null) {
+function getProviderScheduleFor(providerSchedules, providerId) {
+    if (!providerSchedules) return null;
+    if (providerSchedules instanceof Map) {
+        return providerSchedules.get(providerId) || providerSchedules.get(String(providerId));
+    }
+    if (typeof providerSchedules === 'object') {
+        return providerSchedules[providerId] || providerSchedules[String(providerId)];
+    }
+    return null;
+}
+
+function isProviderWorkingForSlot(schedule, slotStart, slotEnd) {
+    if (!schedule) return true;
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[slotStart.weekday % 7];
+    const daySchedule = schedule[dayName];
+
+    if (!daySchedule || !daySchedule.enabled) return false;
+
+    const [startHour, startMin] = daySchedule.start.split(':').map(Number);
+    const [endHour, endMin] = daySchedule.end.split(':').map(Number);
+    const startTime = slotStart.set({ hour: startHour, minute: startMin, second: 0, millisecond: 0 });
+    const endTime = slotStart.set({ hour: endHour, minute: endMin, second: 0, millisecond: 0 });
+
+    return slotStart >= startTime && slotEnd <= endTime;
+}
+
+export function getProviderAvailabilityForSlot(appointments, slotStart, slotEnd, providers, excludeAppointmentId = null, providerSchedules = null) {
     const overlappingAppointments = findOverlappingAppointments(
         appointments, 
         slotStart, 
@@ -88,6 +115,11 @@ export function getProviderAvailabilityForSlot(appointments, slotStart, slotEnd,
     const availableProviders = [];
     
     providers.forEach(provider => {
+        const schedule = getProviderScheduleFor(providerSchedules, provider.id);
+        if (!isProviderWorkingForSlot(schedule, slotStart, slotEnd)) {
+            return;
+        }
+
         const isBooked = overlappingAppointments.some(apt => {
             const aptProviderId = parseInt(apt.providerId, 10);
             const provId = parseInt(provider.id, 10);
@@ -142,6 +174,9 @@ export function isSlotAvailableForProvider(appointments, slotStart, slotEnd, pro
  * @param {Array} options.appointments - Appointments to check against
  * @param {Array} options.providers - Providers to check availability for
  * @param {number} options.excludeAppointmentId - Optional appointment to exclude
+ * @param {Map|Object} options.providerSchedules - Provider schedules keyed by provider id
+ * @param {DateTime} options.minDateTime - Optional minimum DateTime (filter past slots)
+ * @param {boolean} options.filterEmptyProviders - Remove slots with no working providers
  * @returns {Array} Array of slot objects with availability info
  */
 export function generateSlotsWithAvailability(options) {
@@ -151,7 +186,10 @@ export function generateSlotsWithAvailability(options) {
         slotDuration = 30,
         appointments = [],
         providers = [],
-        excludeAppointmentId = null
+        excludeAppointmentId = null,
+        providerSchedules = null,
+        minDateTime = null,
+        filterEmptyProviders = false
     } = options;
     
     const slots = [];
@@ -195,7 +233,8 @@ export function generateSlotsWithAvailability(options) {
             slotStart,
             slotEnd,
             providers,
-            excludeAppointmentId
+            excludeAppointmentId,
+            providerSchedules
         );
         
         slots.push({
@@ -214,7 +253,17 @@ export function generateSlotsWithAvailability(options) {
         }
     }
     
-    return slots;
+    let filteredSlots = slots;
+    if (minDateTime) {
+        filteredSlots = filteredSlots.filter(slot => slot.slotStart >= minDateTime);
+    }
+    if (filterEmptyProviders) {
+        filteredSlots = filteredSlots.filter(
+            slot => (slot.availableProviders.length + slot.bookedProviders.length) > 0
+        );
+    }
+
+    return filteredSlots;
 }
 
 /**

@@ -56,6 +56,7 @@
 
 namespace App\Controllers\Api\V1;
 use App\Models\UserModel;
+use App\Models\ProviderScheduleModel;
 
 class Providers extends BaseApiController
 {
@@ -378,5 +379,19 @@ class Providers extends BaseApiController
             case 'image/webp': if (function_exists('imagewebp')) { @imagewebp($dst, $path, 85); } break;
         }
         imagedestroy($src); imagedestroy($dst);
+    }
+
+    /**
+     * GET /api/providers/:id/schedule
+     * Returns provider's weekly schedule for the scheduler.
+     */
+    public function schedule(int $providerId)
+    {
+        $model = new ProviderScheduleModel();
+        $schedule = $model->getByProvider($providerId);
+
+        return $this->response->setJSON([
+            'schedule' => $schedule,
+        ]);
     }
 }

@@ -277,26 +277,27 @@ class AppointmentModel extends BaseModel
     {
         $startDateTime = $startDate . ' 00:00:00';
         $endDateTime = $endDate . ' 23:59:59';
+        $table = $this->table;
         
         // Build base query with date range
-        $baseQuery = function() use ($startDateTime, $endDateTime, $providerId) {
-            $builder = $this->builder()
-                ->where('start_time >=', $startDateTime)
-                ->where('start_time <=', $endDateTime);
+        $baseQuery = function() use ($startDateTime, $endDateTime, $providerId, $table) {
+            $builder = $this->db->table($table)
+                ->where("{$table}.start_time >=", $startDateTime)
+                ->where("{$table}.start_time <=", $endDateTime);
             
             if ($providerId) {
-                $builder->where('provider_id', $providerId);
+                $builder->where("{$table}.provider_id", $providerId);
             }
             
             return $builder;
         };
         
         // Count by status within date range
-        $pending = (int) $baseQuery()->where('status', 'pending')->countAllResults(false);
-        $confirmed = (int) $baseQuery()->where('status', 'confirmed')->countAllResults(false);
-        $completed = (int) $baseQuery()->where('status', 'completed')->countAllResults(false);
-        $cancelled = (int) $baseQuery()->where('status', 'cancelled')->countAllResults(false);
-        $noshow = (int) $baseQuery()->where('status', 'no-show')->countAllResults(false);
+        $pending = (int) $baseQuery()->where("{$table}.status", 'pending')->countAllResults(false);
+        $confirmed = (int) $baseQuery()->where("{$table}.status", 'confirmed')->countAllResults(false);
+        $completed = (int) $baseQuery()->where("{$table}.status", 'completed')->countAllResults(false);
+        $cancelled = (int) $baseQuery()->where("{$table}.status", 'cancelled')->countAllResults(false);
+        $noshow = (int) $baseQuery()->where("{$table}.status", 'no-show')->countAllResults(false);
         
         // Calculate totals
         $upcoming = $pending + $confirmed;
@@ -326,11 +327,13 @@ class AppointmentModel extends BaseModel
         $startDateTime = $startDate . ' 00:00:00';
         $endDateTime = $endDate . ' 23:59:59';
         
+        $table = $this->table;
         $result = $this->builder()
-            ->select('DISTINCT xs_appointments.provider_id as id, u.name, u.color')
-            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
-            ->where('start_time >=', $startDateTime)
-            ->where('start_time <=', $endDateTime)
+            ->distinct()
+            ->select("{$table}.provider_id as id, u.name, u.color")
+            ->join('xs_users as u', "u.id = {$table}.provider_id", 'left')
+            ->where("{$table}.start_time >=", $startDateTime)
+            ->where("{$table}.start_time <=", $endDateTime)
             ->orderBy('u.name', 'ASC')
             ->get()
             ->getResultArray();

@@ -303,6 +303,8 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     
     // Public providers endpoint (no auth required for calendar)
     $routes->get('providers', 'Api\\V1\\Providers::index');
+    // Provider schedule API (auth required for scheduler)
+    $routes->get('providers/(:num)/schedule', 'Api\\V1\\Providers::schedule/$1');
 
     // Versioned API v1 (authenticated) - only non-appointment endpoints
     $routes->group('v1', ['filter' => 'api_auth'], function($routes) {

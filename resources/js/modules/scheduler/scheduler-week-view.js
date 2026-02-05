@@ -30,6 +30,10 @@ export class WeekView {
     constructor(scheduler) {
         this.scheduler = scheduler;
         this.selectedDate = null; // Currently selected date for slot view
+        this.slotPickerDisplayMonth = null; // Tracks which month the dropdown calendar shows
+        this._scheduleLoadInFlight = new Set();
+        this._scheduleLoadFailed = new Set();
+        this._scheduleLoadAttempts = new Map();
     }
 
     debugLog(...args) {
@@ -389,7 +393,11 @@ export class WeekView {
      * Render mini date picker dropdown for slot panel
      */
     renderSlotDatePicker() {
-        const displayMonth = this.selectedDate.startOf('month');
+        // Use dedicated display month so month nav doesn't change selectedDate
+        if (!this.slotPickerDisplayMonth) {
+            this.slotPickerDisplayMonth = this.selectedDate.startOf('month');
+        }
+        const displayMonth = this.slotPickerDisplayMonth;
         const firstDayOfWeek = this.settings?.getFirstDayOfWeek?.() || 0;
         
         // Calculate grid start
@@ -420,7 +428,7 @@ export class WeekView {
                     <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-sm">chevron_left</span>
                 </button>
                 <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                    ${this.selectedDate.toFormat('MMMM yyyy')}
+                    ${displayMonth.toFormat('MMMM yyyy')}
                 </span>
                 <button type="button"
                         class="slot-picker-nav p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -443,7 +451,7 @@ export class WeekView {
                 ${calDays.map(day => {
                     const isToday = day.hasSame(DateTime.now(), 'day');
                     const isSelected = day.hasSame(this.selectedDate, 'day');
-                    const isCurrentMonth = day.month === this.selectedDate.month;
+                    const isCurrentMonth = day.month === displayMonth.month;
                     const isPast = day < DateTime.now().startOf('day');
                     
                     let classes = 'slot-picker-day w-8 h-8 flex items-center justify-center text-xs rounded-lg transition-colors ';
@@ -700,6 +708,23 @@ export class WeekView {
             console.warn('🔧 No providers to use, returning empty slots');
             return [];
         }
+
+        // Load provider schedules in the background if missing
+        this.ensureProviderSchedulesLoaded(providersToUse);
+
+        // Build provider schedule map for working-hours filtering
+        const providerSchedules = new Map();
+        if (this.settings?.getProviderSchedule) {
+            providersToUse.forEach(provider => {
+                const schedule = this.settings.getProviderSchedule(provider.id);
+                if (schedule) {
+                    providerSchedules.set(String(provider.id), schedule);
+                }
+            });
+        }
+
+        const now = DateTime.now();
+        const minDateTime = date.hasSame(now, 'day') ? now.startOf('minute') : null;
         
         // Use centralized slot generation with proper overlap detection
         // This correctly handles appointments that SPAN multiple slots
@@ -708,7 +733,10 @@ export class WeekView {
             businessHours: this.businessHours,
             slotDuration: this.slotDuration,
             appointments: this.appointments,
-            providers: providersToUse
+            providers: providersToUse,
+            providerSchedules,
+            minDateTime,
+            filterEmptyProviders: true
         });
         
         this.debugLog('🔧 Generated', slots.length, 'slots with proper overlap detection');
@@ -735,6 +763,52 @@ export class WeekView {
             const end = period.end;
             return checkDate >= start && checkDate <= end;
         });
+    }
+
+    async ensureProviderSchedulesLoaded(providers) {
+        if (!this.settings?.loadProviderSchedule || !this.settings?.getProviderSchedule) return;
+        if (!providers || providers.length === 0) return;
+
+        const missingProviders = providers.filter(provider => {
+            if (this.settings.getProviderSchedule(provider.id)) return false;
+            if (this._scheduleLoadFailed.has(provider.id)) return false;
+            const attempts = this._scheduleLoadAttempts.get(provider.id) || 0;
+            return attempts < 2;
+        });
+
+        if (missingProviders.length === 0) return;
+
+        const loadPromises = missingProviders.map(provider => {
+            if (this._scheduleLoadInFlight.has(provider.id)) return null;
+            this._scheduleLoadInFlight.add(provider.id);
+            this._scheduleLoadAttempts.set(
+                provider.id,
+                (this._scheduleLoadAttempts.get(provider.id) || 0) + 1
+            );
+            return this.settings.loadProviderSchedule(provider.id)
+                .then(schedule => ({ providerId: provider.id, schedule }))
+                .catch(() => ({ providerId: provider.id, schedule: null }))
+                .finally(() => this._scheduleLoadInFlight.delete(provider.id));
+        }).filter(Boolean);
+
+        if (loadPromises.length === 0) return;
+
+        const results = await Promise.all(loadPromises);
+        let loadedAny = false;
+        results.forEach(result => {
+            if (!result) return;
+            if (result.schedule) {
+                loadedAny = true;
+                return;
+            }
+            this._scheduleLoadFailed.add(result.providerId);
+        });
+
+        if (loadedAny) {
+            this.updateSlotDateDisplay();
+            this.updateTimeSlotEngine();
+            this.updateAppointmentSummary();
+        }
     }
     
     /**
@@ -818,13 +892,30 @@ export class WeekView {
             });
         });
         
-        // --- Slot Date Picker Controls ---
+        // --- Slot Date Picker Controls (Event Delegation) ---
+        // Uses delegation on stable container so innerHTML replacements don't break handlers.
         
-        // Date picker toggle
         const datePickerToggle = container.querySelector('#slot-date-picker-toggle');
         const datePickerDropdown = container.querySelector('#slot-date-picker-dropdown');
         const datePickerChevron = container.querySelector('#date-picker-chevron');
         
+        // Helper: close the dropdown
+        const closeDropdown = () => {
+            if (datePickerDropdown) {
+                datePickerDropdown.classList.add('hidden');
+                if (datePickerChevron) datePickerChevron.textContent = 'expand_more';
+            }
+        };
+        
+        // Helper: update slot panel after date change
+        const onDateChanged = () => {
+            this.slotPickerDisplayMonth = this.selectedDate.startOf('month');
+            this.updateSlotDateDisplay();
+            this.updateTimeSlotEngine();
+            this.updateAppointmentSummary();
+        };
+        
+        // Toggle dropdown
         if (datePickerToggle && datePickerDropdown) {
             datePickerToggle.addEventListener('click', () => {
                 const isHidden = datePickerDropdown.classList.contains('hidden');
@@ -834,103 +925,62 @@ export class WeekView {
                 }
             });
             
-            // Close dropdown when clicking outside
+            // Close on outside click
             document.addEventListener('click', (e) => {
                 if (!datePickerToggle.contains(e.target) && !datePickerDropdown.contains(e.target)) {
-                    datePickerDropdown.classList.add('hidden');
-                    if (datePickerChevron) {
-                        datePickerChevron.textContent = 'expand_more';
-                    }
+                    closeDropdown();
                 }
             });
         }
         
-        // Slot date picker day clicks
-        container.querySelectorAll('.slot-picker-day:not([disabled])').forEach(el => {
-            el.addEventListener('click', () => {
-                const dateStr = el.dataset.date;
-                if (dateStr) {
-                    this.selectedDate = DateTime.fromISO(dateStr);
-                    this.updateSlotDateDisplay();
-                    this.updateTimeSlotEngine();
-                    this.updateAppointmentSummary();
-                    // Close dropdown
-                    if (datePickerDropdown) {
-                        datePickerDropdown.classList.add('hidden');
-                        if (datePickerChevron) {
-                            datePickerChevron.textContent = 'expand_more';
-                        }
+        // Delegated click handler on the dropdown calendar container
+        const calendarContainer = container.querySelector('#slot-mini-calendar-container');
+        if (calendarContainer) {
+            calendarContainer.addEventListener('click', (e) => {
+                // Day click
+                const dayBtn = e.target.closest('.slot-picker-day:not([disabled])');
+                if (dayBtn) {
+                    const dateStr = dayBtn.dataset.date;
+                    if (dateStr) {
+                        this.selectedDate = DateTime.fromISO(dateStr);
+                        closeDropdown();
+                        onDateChanged();
                     }
+                    return;
                 }
-            });
-        });
-        
-        // Slot date picker navigation
-        container.querySelectorAll('.slot-picker-nav').forEach(el => {
-            el.addEventListener('click', () => {
-                const direction = el.dataset.direction;
-                if (direction === 'prev') {
-                    this.selectedDate = this.selectedDate.minus({ months: 1 }).startOf('month');
-                } else {
-                    this.selectedDate = this.selectedDate.plus({ months: 1 }).startOf('month');
-                }
-                // Re-render the dropdown calendar
-                const calendarContainer = container.querySelector('#slot-mini-calendar-container');
-                if (calendarContainer) {
+                
+                // Month nav click
+                const navBtn = e.target.closest('.slot-picker-nav');
+                if (navBtn) {
+                    const direction = navBtn.dataset.direction;
+                    if (direction === 'prev') {
+                        this.slotPickerDisplayMonth = (this.slotPickerDisplayMonth || this.selectedDate.startOf('month')).minus({ months: 1 });
+                    } else {
+                        this.slotPickerDisplayMonth = (this.slotPickerDisplayMonth || this.selectedDate.startOf('month')).plus({ months: 1 });
+                    }
                     calendarContainer.innerHTML = this.renderSlotDatePicker();
-                    // Re-attach click handlers
-                    calendarContainer.querySelectorAll('.slot-picker-day:not([disabled])').forEach(dayEl => {
-                        dayEl.addEventListener('click', () => {
-                            const dateStr = dayEl.dataset.date;
-                            if (dateStr) {
-                                this.selectedDate = DateTime.fromISO(dateStr);
-                                this.updateSlotDateDisplay();
-                                this.updateTimeSlotEngine();
-                                this.updateAppointmentSummary();
-                                if (datePickerDropdown) {
-                                    datePickerDropdown.classList.add('hidden');
-                                }
-                            }
-                        });
-                    });
-                    calendarContainer.querySelectorAll('.slot-picker-nav').forEach(navEl => {
-                        navEl.addEventListener('click', arguments.callee);
-                    });
+                    return;
                 }
             });
+        }
+        
+        // Previous day button
+        container.querySelector('#prev-slot-date')?.addEventListener('click', () => {
+            this.selectedDate = this.selectedDate.minus({ days: 1 });
+            onDateChanged();
         });
         
-        // Previous/Next day buttons
-        const prevDayBtn = container.querySelector('#prev-slot-date');
-        const nextDayBtn = container.querySelector('#next-slot-date');
-        const todayBtn = container.querySelector('#today-slot-date');
+        // Next day button
+        container.querySelector('#next-slot-date')?.addEventListener('click', () => {
+            this.selectedDate = this.selectedDate.plus({ days: 1 });
+            onDateChanged();
+        });
         
-        if (prevDayBtn) {
-            prevDayBtn.addEventListener('click', () => {
-                this.selectedDate = this.selectedDate.minus({ days: 1 });
-                this.updateSlotDateDisplay();
-                this.updateTimeSlotEngine();
-                this.updateAppointmentSummary();
-            });
-        }
-        
-        if (nextDayBtn) {
-            nextDayBtn.addEventListener('click', () => {
-                this.selectedDate = this.selectedDate.plus({ days: 1 });
-                this.updateSlotDateDisplay();
-                this.updateTimeSlotEngine();
-                this.updateAppointmentSummary();
-            });
-        }
-        
-        if (todayBtn) {
-            todayBtn.addEventListener('click', () => {
-                this.selectedDate = DateTime.now().startOf('day');
-                this.updateSlotDateDisplay();
-                this.updateTimeSlotEngine();
-                this.updateAppointmentSummary();
-            });
-        }
+        // Today button
+        container.querySelector('#today-slot-date')?.addEventListener('click', () => {
+            this.selectedDate = DateTime.now().startOf('day');
+            onDateChanged();
+        });
     }
     
     /**
@@ -998,6 +1048,9 @@ export class WeekView {
      * Update the slot date picker display
      */
     updateSlotDateDisplay() {
+        // Sync the display month to the selected date's month
+        this.slotPickerDisplayMonth = this.selectedDate.startOf('month');
+
         // Update the date picker toggle display
         const weekdayEl = this.container.querySelector('#slot-engine-weekday');
         const fullDateEl = this.container.querySelector('#slot-engine-date');
@@ -1009,7 +1062,7 @@ export class WeekView {
             fullDateEl.textContent = this.selectedDate.toFormat('MMMM d, yyyy');
         }
         
-        // Update the dropdown calendar
+        // Re-render the dropdown calendar (delegation handles listeners)
         const calendarContainer = this.container.querySelector('#slot-mini-calendar-container');
         if (calendarContainer) {
             calendarContainer.innerHTML = this.renderSlotDatePicker();

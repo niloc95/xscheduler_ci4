@@ -465,7 +465,36 @@ export class SettingsManager {
             if (!response.ok) throw new Error('Failed to load provider schedule');
             
             const data = await response.json();
-            const schedule = data.data || data;
+            const raw = data.schedule || data.data || data;
+            
+            // Normalize DB format to day-name keyed format
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const schedule = {};
+            dayNames.forEach(name => {
+                schedule[name] = { enabled: false, start: '09:00', end: '17:00' };
+            });
+            
+            if (raw && typeof raw === 'object') {
+                Object.entries(raw).forEach(([key, entry]) => {
+                    if (!entry) return;
+                    // key may be a day name ("monday") or numeric index
+                    let dayName = dayNames.includes(key) ? key : null;
+                    if (!dayName) {
+                        const dayIndex = parseInt(entry.day_of_week ?? key, 10);
+                        dayName = !isNaN(dayIndex) ? dayNames[dayIndex] : null;
+                    }
+                    // Also accept day_of_week as a day name string
+                    if (!dayName && typeof entry.day_of_week === 'string' && dayNames.includes(entry.day_of_week)) {
+                        dayName = entry.day_of_week;
+                    }
+                    if (!dayName) return;
+                    schedule[dayName] = {
+                        enabled: !!(entry.is_active ?? entry.is_working ?? entry.enabled),
+                        start: (entry.start_time || entry.start || '09:00').substring(0, 5),
+                        end: (entry.end_time || entry.end || '17:00').substring(0, 5),
+                    };
+                });
+            }
             
             this.settings.providerSchedules.set(providerId, schedule);
             return schedule;
