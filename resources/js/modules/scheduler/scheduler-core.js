@@ -14,6 +14,11 @@ import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
 
+// Stats System - following Car Analogy architecture
+import { getStatsForView } from './stats/stats-engine.js';
+import { STATUS_DEFINITIONS, getStatusDef } from './stats/stats-definitions.js';
+import { getViewTitle } from './stats/stats-view-configs.js';
+
 function getBaseUrl() {
     return String(window.__BASE_URL__ || '').replace(/\/+$/, '');
 }
@@ -593,55 +598,43 @@ export class SchedulerCore {
     
     /**
      * Update stats bar with current data
-     * Uses same simple counting approach as Day Summary (proven to work)
+     * Uses Stats Engine for consistent calculation (Car Analogy: Engine powers all views)
      */
     updateStatsBar() {
         if (!this.statsBarContainer) return;
         
-        // Simple status counting - same as renderDaySummary
-        const statusCounts = {
-            pending: 0,
-            confirmed: 0,
-            completed: 0,
-            cancelled: 0,
-            'no-show': 0
-        };
-        
-        this.appointments.forEach(apt => {
-            const status = apt.status?.toLowerCase() || 'pending';
-            if (statusCounts.hasOwnProperty(status)) {
-                statusCounts[status]++;
-            } else if (status === 'noshow' || status === 'no_show') {
-                statusCounts['no-show']++;
-            }
-        });
-        
-        const total = this.appointments.length;
+        // Use Stats Engine for calculation (single source of truth)
+        const stats = getStatsForView(this.appointments, this.currentView, this.currentDate);
         const activeFilter = this.activeFilters?.status || null;
         
-        // Get title based on view
-        let title, dateRange;
+        // Get view-appropriate title from config
+        const title = getViewTitle(this.currentView, this.currentDate);
+        
+        // Get date range display based on view
+        let dateRange;
         switch (this.currentView) {
             case 'day':
-                title = "Today's Summary";
                 dateRange = this.currentDate.toFormat('EEEE, MMMM d, yyyy');
                 break;
             case 'week':
-                title = "This Week's Summary";
                 const weekStart = this.currentDate.startOf('week');
                 const weekEnd = this.currentDate.endOf('week');
                 dateRange = `${weekStart.toFormat('MMM d')} – ${weekEnd.toFormat('MMM d, yyyy')}`;
                 break;
             case 'month':
-                title = "This Month's Summary";
                 dateRange = this.currentDate.toFormat('MMMM yyyy');
                 break;
             default:
-                title = "Summary";
                 dateRange = this.currentDate.toFormat('MMMM d, yyyy');
         }
         
-        // Render the stats bar (same styling as Day Summary)
+        // Render the stats bar using definitions from Stats Definitions
+        const statusPills = Object.keys(STATUS_DEFINITIONS).map(statusKey => {
+            const def = getStatusDef(statusKey);
+            const count = stats.byStatus[statusKey] || 0;
+            return this.renderStatusPill(statusKey, def.label, count, activeFilter, def);
+        }).join('');
+        
         this.statsBarContainer.innerHTML = `
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -651,14 +644,10 @@ export class SchedulerCore {
                         <p class="text-sm text-gray-500 dark:text-gray-400">${dateRange}</p>
                     </div>
                 </div>
-                <span class="text-2xl font-bold text-gray-900 dark:text-white">${total}</span>
+                <span class="text-2xl font-bold text-gray-900 dark:text-white">${stats.total}</span>
             </div>
             <div class="p-4 flex flex-wrap items-center gap-2">
-                ${this.renderStatusPill('pending', 'Pending', statusCounts.pending, activeFilter, 'amber')}
-                ${this.renderStatusPill('confirmed', 'Confirmed', statusCounts.confirmed, activeFilter, 'blue')}
-                ${this.renderStatusPill('completed', 'Completed', statusCounts.completed, activeFilter, 'emerald')}
-                ${this.renderStatusPill('cancelled', 'Cancelled', statusCounts.cancelled, activeFilter, 'red')}
-                ${this.renderStatusPill('no-show', 'No-Show', statusCounts['no-show'], activeFilter, 'gray')}
+                ${statusPills}
             </div>
             ${activeFilter ? `
                 <div class="px-4 pb-4">
@@ -674,41 +663,38 @@ export class SchedulerCore {
             ` : ''}
         `;
         
-        this.debugLog('📊 Stats bar updated:', statusCounts);
+        this.debugLog('📊 Stats bar updated:', stats.byStatus);
     }
     
     /**
      * Render a status pill for the stats bar
+     * Uses STATUS_DEFINITIONS for consistent colors (Car Analogy: Sensors)
+     * 
+     * @param {string} status - Status key
+     * @param {string} label - Display label
+     * @param {number} count - Count to display
+     * @param {string|null} activeFilter - Currently active filter
+     * @param {Object} def - Status definition from STATUS_DEFINITIONS
      */
-    renderStatusPill(status, label, count, activeFilter, color) {
+    renderStatusPill(status, label, count, activeFilter, def) {
         const isActive = activeFilter === status;
         const ringClass = isActive ? 'ring-2 ring-blue-500' : '';
         
-        // Tailwind requires full class names (no dynamic interpolation)
-        const colorClasses = {
-            amber: 'bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-100 hover:ring-amber-400',
-            blue: 'bg-blue-100 border-blue-300 text-blue-900 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-100 hover:ring-blue-400',
-            emerald: 'bg-emerald-100 border-emerald-300 text-emerald-900 dark:bg-emerald-900/30 dark:border-emerald-500 dark:text-emerald-100 hover:ring-emerald-400',
-            red: 'bg-red-100 border-red-300 text-red-900 dark:bg-red-900/30 dark:border-red-500 dark:text-red-100 hover:ring-red-400',
-            gray: 'bg-gray-100 border-gray-300 text-gray-900 dark:bg-gray-700/50 dark:border-gray-500 dark:text-gray-100 hover:ring-gray-400'
-        };
-        
-        const dotClasses = {
-            amber: 'bg-amber-500',
-            blue: 'bg-blue-500',
-            emerald: 'bg-emerald-500',
-            red: 'bg-red-500',
-            gray: 'bg-gray-500'
-        };
+        // Use colors from status definition
+        const colors = def.colors;
+        const bgClass = `${colors.light.bg} ${colors.dark.bg}`;
+        const borderClass = `${colors.light.border} ${colors.dark.border}`;
+        const textClass = `${colors.light.text} ${colors.dark.text}`;
+        const dotClass = `${colors.light.dot} ${colors.dark.dot}`;
         
         return `
             <button type="button" 
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer transition-all
-                           ${colorClasses[color] || colorClasses.gray}
+                           ${bgClass} ${borderClass} ${textClass}
                            hover:ring-2 hover:ring-offset-1 ${ringClass}"
                     data-filter-status="${status}"
                     title="Filter by ${label}">
-                <span class="w-2 h-2 rounded-full ${dotClasses[color] || dotClasses.gray}"></span>
+                <span class="w-2 h-2 rounded-full ${dotClass}"></span>
                 <span class="text-xs font-medium">${label}</span>
                 <span class="text-xs font-bold">${count}</span>
             </button>
