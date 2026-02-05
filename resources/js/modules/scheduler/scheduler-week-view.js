@@ -161,50 +161,111 @@ export class WeekView {
                     <!-- RIGHT PANEL: Time Slot Availability Engine -->
                     <div class="week-right-panel p-4 md:p-6 order-2 bg-gray-50 dark:bg-gray-800/50">
                         
-                        <!-- Slot Engine Header -->
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                    Available Time Slots
-                                </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400" id="slot-engine-date">
-                                    ${this.selectedDate.toFormat('EEEE, MMMM d, yyyy')}
-                                </p>
+                        <!-- Slot Engine Header with Date Picker -->
+                        <div class="mb-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
+                                        Available Slots
+                                    </h3>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full" id="provider-count-badge">
+                                    <span class="material-symbols-outlined text-sm">group</span>
+                                    <span id="provider-count-label">${this.visibleProviders.length} provider${this.visibleProviders.length !== 1 ? 's' : ''}</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-500 dark:text-gray-400" id="provider-count-label">
-                                    ${this.visibleProviders.length} provider${this.visibleProviders.length !== 1 ? 's' : ''}
-                                </span>
+                            
+                            <!-- Date Picker Row -->
+                            <div class="mt-3 flex items-center gap-2">
+                                <button type="button" 
+                                        id="prev-slot-date"
+                                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        title="Previous day">
+                                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">chevron_left</span>
+                                </button>
+                                
+                                <div class="relative flex-1">
+                                    <button type="button" 
+                                            id="slot-date-picker-toggle"
+                                            class="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm hover:border-blue-400 dark:hover:border-blue-500 transition-all group">
+                                        <div class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">calendar_today</span>
+                                            <div class="text-left">
+                                                <div class="text-sm font-semibold text-gray-900 dark:text-white" id="slot-engine-weekday">
+                                                    ${this.selectedDate.toFormat('EEEE')}
+                                                </div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400" id="slot-engine-date">
+                                                    ${this.selectedDate.toFormat('MMMM d, yyyy')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="material-symbols-outlined text-gray-400 group-hover:text-blue-500 transition-colors" id="date-picker-chevron">expand_more</span>
+                                    </button>
+                                    
+                                    <!-- Mini Date Picker Dropdown -->
+                                    <div id="slot-date-picker-dropdown" 
+                                         class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-50 hidden">
+                                        <div class="p-3" id="slot-mini-calendar-container">
+                                            ${this.renderSlotDatePicker()}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" 
+                                        id="next-slot-date"
+                                        class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        title="Next day">
+                                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">chevron_right</span>
+                                </button>
+                                
+                                <button type="button" 
+                                        id="today-slot-date"
+                                        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                        title="Go to today">
+                                    Today
+                                </button>
                             </div>
                         </div>
                         
                         <!-- Provider Filter Pills -->
-                        <div class="flex flex-wrap gap-2 mb-4" id="provider-filter-pills">
-                            ${this.renderProviderFilterPills()}
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Filter by Provider</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2" id="provider-filter-pills">
+                                ${this.renderProviderFilterPills()}
+                            </div>
                         </div>
                         
                         <!-- Time Slot List -->
-                        <div id="time-slot-engine" class="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto pr-2">
-                            ${this.renderTimeSlotEngine(this.selectedDate)}
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Time Slots</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500" id="slot-count-label"></span>
+                            </div>
+                            <div id="time-slot-engine" class="space-y-2 max-h-[calc(100vh-420px)] overflow-y-auto pr-1 custom-scrollbar">
+                                ${this.renderTimeSlotEngine(this.selectedDate)}
+                            </div>
                         </div>
                         
-                        <!-- Legend -->
-                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <!-- Legend - Compact -->
+                        <div class="pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div class="flex flex-wrap items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center gap-1">
-                                    <span class="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700"></span>
-                                    <span>Available</span>
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600"></span>
+                                    <span>Open</span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <span class="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700"></span>
-                                    <span>Partially Booked</span>
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600"></span>
+                                    <span>Partial</span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <span class="w-3 h-3 rounded bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700"></span>
-                                    <span>Fully Booked</span>
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600"></span>
+                                    <span>Full</span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <span class="w-3 h-3 rounded bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"></span>
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-gray-200 dark:bg-gray-600 border border-gray-400 dark:border-gray-500"></span>
                                     <span>Blocked</span>
                                 </div>
                             </div>
@@ -320,6 +381,95 @@ export class WeekView {
                         `;
                     }).join('')}
                 </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * Render mini date picker dropdown for slot panel
+     */
+    renderSlotDatePicker() {
+        const displayMonth = this.selectedDate.startOf('month');
+        const firstDayOfWeek = this.settings?.getFirstDayOfWeek?.() || 0;
+        
+        // Calculate grid start
+        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
+        const monthStartWeekday = displayMonth.weekday;
+        let daysBack = monthStartWeekday - luxonFirstDay;
+        if (daysBack < 0) daysBack += 7;
+        const gridStart = displayMonth.minus({ days: daysBack });
+        
+        // Generate 6 weeks of days
+        const calDays = [];
+        let current = gridStart;
+        for (let i = 0; i < 42; i++) {
+            calDays.push(current);
+            current = current.plus({ days: 1 });
+        }
+        
+        // Day headers
+        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        const rotatedDays = [...dayNames.slice(firstDayOfWeek), ...dayNames.slice(0, firstDayOfWeek)];
+        
+        return `
+            <!-- Month Navigation -->
+            <div class="flex items-center justify-between mb-2">
+                <button type="button" 
+                        class="slot-picker-nav p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        data-direction="prev">
+                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-sm">chevron_left</span>
+                </button>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                    ${this.selectedDate.toFormat('MMMM yyyy')}
+                </span>
+                <button type="button"
+                        class="slot-picker-nav p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        data-direction="next">
+                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300 text-sm">chevron_right</span>
+                </button>
+            </div>
+            
+            <!-- Day Headers -->
+            <div class="grid grid-cols-7 mb-1">
+                ${rotatedDays.map(day => `
+                    <div class="text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 py-1">
+                        ${day}
+                    </div>
+                `).join('')}
+            </div>
+            
+            <!-- Days Grid -->
+            <div class="grid grid-cols-7 gap-0.5">
+                ${calDays.map(day => {
+                    const isToday = day.hasSame(DateTime.now(), 'day');
+                    const isSelected = day.hasSame(this.selectedDate, 'day');
+                    const isCurrentMonth = day.month === this.selectedDate.month;
+                    const isPast = day < DateTime.now().startOf('day');
+                    
+                    let classes = 'slot-picker-day w-8 h-8 flex items-center justify-center text-xs rounded-lg transition-colors ';
+                    
+                    if (isSelected) {
+                        classes += 'bg-blue-600 text-white font-bold cursor-pointer ';
+                    } else if (isPast) {
+                        classes += 'text-gray-300 dark:text-gray-600 cursor-not-allowed ';
+                    } else if (isToday) {
+                        classes += 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60 ';
+                    } else if (isCurrentMonth) {
+                        classes += 'text-gray-900 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ';
+                    } else {
+                        classes += 'text-gray-400 dark:text-gray-500 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ';
+                    }
+                    
+                    return `
+                        <button type="button" 
+                                class="${classes}"
+                                data-date="${day.toISODate()}"
+                                ${isPast ? 'disabled' : ''}
+                                title="${day.toFormat('MMMM d, yyyy')}">
+                            ${day.day}
+                        </button>
+                    `;
+                }).join('')}
             </div>
         `;
     }
@@ -667,6 +817,120 @@ export class WeekView {
                 this.updateAppointmentSummary();
             });
         });
+        
+        // --- Slot Date Picker Controls ---
+        
+        // Date picker toggle
+        const datePickerToggle = container.querySelector('#slot-date-picker-toggle');
+        const datePickerDropdown = container.querySelector('#slot-date-picker-dropdown');
+        const datePickerChevron = container.querySelector('#date-picker-chevron');
+        
+        if (datePickerToggle && datePickerDropdown) {
+            datePickerToggle.addEventListener('click', () => {
+                const isHidden = datePickerDropdown.classList.contains('hidden');
+                datePickerDropdown.classList.toggle('hidden');
+                if (datePickerChevron) {
+                    datePickerChevron.textContent = isHidden ? 'expand_less' : 'expand_more';
+                }
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!datePickerToggle.contains(e.target) && !datePickerDropdown.contains(e.target)) {
+                    datePickerDropdown.classList.add('hidden');
+                    if (datePickerChevron) {
+                        datePickerChevron.textContent = 'expand_more';
+                    }
+                }
+            });
+        }
+        
+        // Slot date picker day clicks
+        container.querySelectorAll('.slot-picker-day:not([disabled])').forEach(el => {
+            el.addEventListener('click', () => {
+                const dateStr = el.dataset.date;
+                if (dateStr) {
+                    this.selectedDate = DateTime.fromISO(dateStr);
+                    this.updateSlotDateDisplay();
+                    this.updateTimeSlotEngine();
+                    this.updateAppointmentSummary();
+                    // Close dropdown
+                    if (datePickerDropdown) {
+                        datePickerDropdown.classList.add('hidden');
+                        if (datePickerChevron) {
+                            datePickerChevron.textContent = 'expand_more';
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Slot date picker navigation
+        container.querySelectorAll('.slot-picker-nav').forEach(el => {
+            el.addEventListener('click', () => {
+                const direction = el.dataset.direction;
+                if (direction === 'prev') {
+                    this.selectedDate = this.selectedDate.minus({ months: 1 }).startOf('month');
+                } else {
+                    this.selectedDate = this.selectedDate.plus({ months: 1 }).startOf('month');
+                }
+                // Re-render the dropdown calendar
+                const calendarContainer = container.querySelector('#slot-mini-calendar-container');
+                if (calendarContainer) {
+                    calendarContainer.innerHTML = this.renderSlotDatePicker();
+                    // Re-attach click handlers
+                    calendarContainer.querySelectorAll('.slot-picker-day:not([disabled])').forEach(dayEl => {
+                        dayEl.addEventListener('click', () => {
+                            const dateStr = dayEl.dataset.date;
+                            if (dateStr) {
+                                this.selectedDate = DateTime.fromISO(dateStr);
+                                this.updateSlotDateDisplay();
+                                this.updateTimeSlotEngine();
+                                this.updateAppointmentSummary();
+                                if (datePickerDropdown) {
+                                    datePickerDropdown.classList.add('hidden');
+                                }
+                            }
+                        });
+                    });
+                    calendarContainer.querySelectorAll('.slot-picker-nav').forEach(navEl => {
+                        navEl.addEventListener('click', arguments.callee);
+                    });
+                }
+            });
+        });
+        
+        // Previous/Next day buttons
+        const prevDayBtn = container.querySelector('#prev-slot-date');
+        const nextDayBtn = container.querySelector('#next-slot-date');
+        const todayBtn = container.querySelector('#today-slot-date');
+        
+        if (prevDayBtn) {
+            prevDayBtn.addEventListener('click', () => {
+                this.selectedDate = this.selectedDate.minus({ days: 1 });
+                this.updateSlotDateDisplay();
+                this.updateTimeSlotEngine();
+                this.updateAppointmentSummary();
+            });
+        }
+        
+        if (nextDayBtn) {
+            nextDayBtn.addEventListener('click', () => {
+                this.selectedDate = this.selectedDate.plus({ days: 1 });
+                this.updateSlotDateDisplay();
+                this.updateTimeSlotEngine();
+                this.updateAppointmentSummary();
+            });
+        }
+        
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                this.selectedDate = DateTime.now().startOf('day');
+                this.updateSlotDateDisplay();
+                this.updateTimeSlotEngine();
+                this.updateAppointmentSummary();
+            });
+        }
     }
     
     /**
@@ -731,6 +995,28 @@ export class WeekView {
     }
     
     /**
+     * Update the slot date picker display
+     */
+    updateSlotDateDisplay() {
+        // Update the date picker toggle display
+        const weekdayEl = this.container.querySelector('#slot-engine-weekday');
+        const fullDateEl = this.container.querySelector('#slot-engine-date');
+        
+        if (weekdayEl) {
+            weekdayEl.textContent = this.selectedDate.toFormat('EEEE');
+        }
+        if (fullDateEl) {
+            fullDateEl.textContent = this.selectedDate.toFormat('MMMM d, yyyy');
+        }
+        
+        // Update the dropdown calendar
+        const calendarContainer = this.container.querySelector('#slot-mini-calendar-container');
+        if (calendarContainer) {
+            calendarContainer.innerHTML = this.renderSlotDatePicker();
+        }
+    }
+    
+    /**
      * Update time slot engine
      */
     updateTimeSlotEngine() {
@@ -738,12 +1024,6 @@ export class WeekView {
         this.visibleProviders = this.providers.filter(p => 
             this.scheduler.visibleProviders.has(p.id) || this.scheduler.visibleProviders.has(parseInt(p.id, 10))
         );
-        
-        // Update slot engine header date
-        const dateEl = this.container.querySelector('#slot-engine-date');
-        if (dateEl) {
-            dateEl.textContent = this.selectedDate.toFormat('EEEE, MMMM d, yyyy');
-        }
         
         // Update provider count label
         const countLabel = this.container.querySelector('#provider-count-label');
