@@ -75,6 +75,12 @@ class Dashboard extends BaseApiController
      * GET /api/dashboard/appointment-stats
      * 
      * Return appointment stats for the SPA dashboard.
+     * Supports date range filtering via query parameters.
+     * 
+     * Query Parameters:
+     * - view: 'day'|'week'|'month' (optional, defaults to 'day')
+     * - date: 'YYYY-MM-DD' (optional, defaults to today)
+     * - provider_id: int (optional, filter by provider)
      */
     public function appointmentStats()
     {
@@ -83,16 +89,58 @@ class Dashboard extends BaseApiController
         }
 
         try {
-            $stats = $this->appointmentModel->getStats();
+            // Parse query parameters
+            $view = $this->request->getGet('view') ?? 'day';
+            $dateParam = $this->request->getGet('date') ?? date('Y-m-d');
+            $providerId = $this->request->getGet('provider_id');
+            
+            // Calculate date range based on view
+            $startDate = $dateParam;
+            $endDate = $dateParam;
+            
+            switch ($view) {
+                case 'week':
+                    // Get start (Monday) and end (Sunday) of the week
+                    $date = new \DateTime($dateParam);
+                    $dayOfWeek = (int) $date->format('N'); // 1=Monday, 7=Sunday
+                    $date->modify('-' . ($dayOfWeek - 1) . ' days');
+                    $startDate = $date->format('Y-m-d');
+                    $date->modify('+6 days');
+                    $endDate = $date->format('Y-m-d');
+                    break;
+                    
+                case 'month':
+                    $date = new \DateTime($dateParam);
+                    $startDate = $date->format('Y-m-01');
+                    $endDate = $date->format('Y-m-t');
+                    break;
+                    
+                case 'day':
+                default:
+                    // Single day - startDate and endDate are the same
+                    break;
+            }
+            
+            // Get date-range aware stats
+            $stats = $this->appointmentModel->getStatsForDateRange($startDate, $endDate, $providerId);
+            
+            // Get providers with appointments in this date range
+            $activeProviders = $this->appointmentModel->getProvidersWithAppointments($startDate, $endDate);
 
             return $this->ok([
                 'upcoming' => (int) ($stats['upcoming'] ?? 0),
                 'completed' => (int) ($stats['completed'] ?? 0),
-                'pending' => (int) ($stats['today'] ?? 0),
-                'today' => (int) ($stats['today'] ?? 0),
+                'pending' => (int) ($stats['pending'] ?? 0),
+                'confirmed' => (int) ($stats['confirmed'] ?? 0),
+                'cancelled' => (int) ($stats['cancelled'] ?? 0),
+                'noshow' => (int) ($stats['noshow'] ?? 0),
                 'total' => (int) ($stats['total'] ?? 0),
+                'active_providers' => $activeProviders,
             ], [
                 'timestamp' => date('c'),
+                'view' => $view,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ]);
         } catch (\Exception $e) {
             log_message('error', 'Dashboard API Error: ' . $e->getMessage());

@@ -59,6 +59,9 @@ export class SchedulerCore {
         // Initialize appointment details modal (for viewing/editing)
         this.appointmentDetailsModal = new AppointmentDetailsModal(this);
         
+        // Stats bar container reference (initialized after DOM ready)
+        this.statsBarContainer = null;
+        
         this.options = options;
     }
 
@@ -106,6 +109,9 @@ export class SchedulerCore {
 
             // Set initial visibility of daily appointments section
             this.toggleDailyAppointmentsSection();
+            
+            // Initialize stats bar if container exists
+            this.initStatsBar();
 
             // Render the initial view
             this.debugLog('🎨 Rendering view...');
@@ -423,6 +429,18 @@ export class SchedulerCore {
             if (this.dragDropManager) {
                 this.dragDropManager.enableDragDrop(this.container);
             }
+            
+            // Update stats bar with current data (uses Stats Engine)
+            this.updateStatsBar();
+            
+            // Dispatch view change event for external components
+            window.dispatchEvent(new CustomEvent('scheduler:view-rendered', {
+                detail: {
+                    view: this.currentView,
+                    date: this.currentDate.toISODate(),
+                    appointmentCount: filteredAppointments.length
+                }
+            }));
         } else {
             console.error(`View not implemented: ${this.currentView}`);
             this.container.innerHTML = `
@@ -544,6 +562,180 @@ export class SchedulerCore {
         }
         
         displayElement.textContent = displayText;
+    }
+    
+    /**
+     * Initialize the Stats Bar component
+     * Uses simple inline counting (same approach as Day Summary which works 100%)
+     */
+    initStatsBar() {
+        this.statsBarContainer = document.getElementById('scheduler-stats-bar');
+        if (!this.statsBarContainer) {
+            this.debugLog('📊 Stats bar container not found, skipping stats bar init');
+            return;
+        }
+        
+        // Listen for filter clicks from stats bar pills
+        this.statsBarContainer.addEventListener('click', (e) => {
+            const pill = e.target.closest('[data-filter-status]');
+            if (pill) {
+                const status = pill.dataset.filterStatus;
+                this.debugLog('📊 Stats bar filter clicked:', status);
+                
+                // Toggle filter - if already active, clear it
+                const currentStatus = this.activeFilters?.status;
+                this.setStatusFilter(status === currentStatus ? null : status);
+            }
+        });
+        
+        this.debugLog('📊 Stats bar initialized');
+    }
+    
+    /**
+     * Update stats bar with current data
+     * Uses same simple counting approach as Day Summary (proven to work)
+     */
+    updateStatsBar() {
+        if (!this.statsBarContainer) return;
+        
+        // Simple status counting - same as renderDaySummary
+        const statusCounts = {
+            pending: 0,
+            confirmed: 0,
+            completed: 0,
+            cancelled: 0,
+            'no-show': 0
+        };
+        
+        this.appointments.forEach(apt => {
+            const status = apt.status?.toLowerCase() || 'pending';
+            if (statusCounts.hasOwnProperty(status)) {
+                statusCounts[status]++;
+            } else if (status === 'noshow' || status === 'no_show') {
+                statusCounts['no-show']++;
+            }
+        });
+        
+        const total = this.appointments.length;
+        const activeFilter = this.activeFilters?.status || null;
+        
+        // Get title based on view
+        let title, dateRange;
+        switch (this.currentView) {
+            case 'day':
+                title = "Today's Summary";
+                dateRange = this.currentDate.toFormat('EEEE, MMMM d, yyyy');
+                break;
+            case 'week':
+                title = "This Week's Summary";
+                const weekStart = this.currentDate.startOf('week');
+                const weekEnd = this.currentDate.endOf('week');
+                dateRange = `${weekStart.toFormat('MMM d')} – ${weekEnd.toFormat('MMM d, yyyy')}`;
+                break;
+            case 'month':
+                title = "This Month's Summary";
+                dateRange = this.currentDate.toFormat('MMMM yyyy');
+                break;
+            default:
+                title = "Summary";
+                dateRange = this.currentDate.toFormat('MMMM d, yyyy');
+        }
+        
+        // Render the stats bar (same styling as Day Summary)
+        this.statsBarContainer.innerHTML = `
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">calendar_today</span>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">${title}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">${dateRange}</p>
+                    </div>
+                </div>
+                <span class="text-2xl font-bold text-gray-900 dark:text-white">${total}</span>
+            </div>
+            <div class="p-4 flex flex-wrap items-center gap-2">
+                ${this.renderStatusPill('pending', 'Pending', statusCounts.pending, activeFilter, 'amber')}
+                ${this.renderStatusPill('confirmed', 'Confirmed', statusCounts.confirmed, activeFilter, 'blue')}
+                ${this.renderStatusPill('completed', 'Completed', statusCounts.completed, activeFilter, 'emerald')}
+                ${this.renderStatusPill('cancelled', 'Cancelled', statusCounts.cancelled, activeFilter, 'red')}
+                ${this.renderStatusPill('no-show', 'No-Show', statusCounts['no-show'], activeFilter, 'gray')}
+            </div>
+            ${activeFilter ? `
+                <div class="px-4 pb-4">
+                    <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900/30 rounded-lg px-4 py-2">
+                        <span class="text-sm text-blue-700 dark:text-blue-300">
+                            Showing: <span class="font-medium capitalize">${activeFilter.replace('-', ' ')}</span>
+                        </span>
+                        <button type="button" data-filter-status="${activeFilter}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            Clear filter
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        
+        this.debugLog('📊 Stats bar updated:', statusCounts);
+    }
+    
+    /**
+     * Render a status pill for the stats bar
+     */
+    renderStatusPill(status, label, count, activeFilter, color) {
+        const isActive = activeFilter === status;
+        const ringClass = isActive ? 'ring-2 ring-blue-500' : '';
+        
+        // Tailwind requires full class names (no dynamic interpolation)
+        const colorClasses = {
+            amber: 'bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-100 hover:ring-amber-400',
+            blue: 'bg-blue-100 border-blue-300 text-blue-900 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-100 hover:ring-blue-400',
+            emerald: 'bg-emerald-100 border-emerald-300 text-emerald-900 dark:bg-emerald-900/30 dark:border-emerald-500 dark:text-emerald-100 hover:ring-emerald-400',
+            red: 'bg-red-100 border-red-300 text-red-900 dark:bg-red-900/30 dark:border-red-500 dark:text-red-100 hover:ring-red-400',
+            gray: 'bg-gray-100 border-gray-300 text-gray-900 dark:bg-gray-700/50 dark:border-gray-500 dark:text-gray-100 hover:ring-gray-400'
+        };
+        
+        const dotClasses = {
+            amber: 'bg-amber-500',
+            blue: 'bg-blue-500',
+            emerald: 'bg-emerald-500',
+            red: 'bg-red-500',
+            gray: 'bg-gray-500'
+        };
+        
+        return `
+            <button type="button" 
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer transition-all
+                           ${colorClasses[color] || colorClasses.gray}
+                           hover:ring-2 hover:ring-offset-1 ${ringClass}"
+                    data-filter-status="${status}"
+                    title="Filter by ${label}">
+                <span class="w-2 h-2 rounded-full ${dotClasses[color] || dotClasses.gray}"></span>
+                <span class="text-xs font-medium">${label}</span>
+                <span class="text-xs font-bold">${count}</span>
+            </button>
+        `;
+    }
+    
+    /**
+     * Set status filter and re-render
+     * @param {string|null} status - Status to filter by, or null to clear
+     */
+    setStatusFilter(status) {
+        this.debugLog('📊 setStatusFilter called:', status);
+        
+        // Update active filters
+        this.activeFilters = this.activeFilters || {};
+        this.activeFilters.status = status || null;
+        
+        // Store on window for external access (status-filters.js compatibility)
+        this.statusFilter = status || null;
+        
+        // Re-render with new filter
+        this.render();
+        
+        // Dispatch event for other components
+        window.dispatchEvent(new CustomEvent('scheduler:status-filter-changed', {
+            detail: { status: status || null }
+        }));
     }
     
     /**

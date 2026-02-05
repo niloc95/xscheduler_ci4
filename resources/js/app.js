@@ -23,7 +23,7 @@ import { applyDynamicColors } from './utils/dynamic-colors.js';
 import { initGlobalSearch } from './modules/search/global-search.js';
 
 // Import status filters
-import { initStatusFilterControls, emitAppointmentsUpdated, refreshAppointmentStats } from './modules/filters/status-filters.js';
+import { initStatusFilterControls, initSummaryCardFilters, initViewToggleHandlers, emitAppointmentsUpdated, refreshAppointmentStats } from './modules/filters/status-filters.js';
 
 // Import advanced filters
 import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js';
@@ -89,6 +89,12 @@ function initializeComponents() {
 
     // Wire up dashboard filters
     initStatusFilterControls();
+    
+    // Wire up summary card filters (clickable status cards)
+    initSummaryCardFilters();
+    
+    // Wire up view toggle handlers (Day/Week/Month stats refresh)
+    initViewToggleHandlers();
 
     // Initialize global header search
     initGlobalSearch();

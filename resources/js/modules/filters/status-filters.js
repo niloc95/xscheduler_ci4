@@ -71,10 +71,39 @@ function updateCountElement(elementId, value) {
 }
 
 /**
- * Refresh appointment statistics from API
- * Respects active status filter if set
+ * Get current scheduler view and date context
+ * @returns {Object} { view: 'day'|'week'|'month', date: 'YYYY-MM-DD' }
  */
-export async function refreshAppointmentStats() {
+function getSchedulerContext() {
+    // Try to get from global scheduler instance
+    if (window.scheduler) {
+        return {
+            view: window.scheduler.currentView || 'day',
+            date: window.scheduler.currentDate?.toISOString?.()?.split('T')[0] || new Date().toISOString().split('T')[0]
+        };
+    }
+    
+    // Fallback to calendar element data
+    const calendar = document.getElementById('appointments-inline-calendar');
+    if (calendar) {
+        return {
+            view: calendar.dataset.view || 'day',
+            date: calendar.dataset.currentDate || new Date().toISOString().split('T')[0]
+        };
+    }
+    
+    return { view: 'day', date: new Date().toISOString().split('T')[0] };
+}
+
+/**
+ * Refresh appointment statistics from API
+ * Respects active status filter and current view context
+ * 
+ * @param {Object} options - Optional override parameters
+ * @param {string} options.view - Override view type ('day'|'week'|'month')
+ * @param {string} options.date - Override date (YYYY-MM-DD)
+ */
+export async function refreshAppointmentStats(options = {}) {
     if (typeof window === 'undefined') {
         return;
     }
@@ -88,7 +117,12 @@ export async function refreshAppointmentStats() {
 
     try {
         const activeStatus = getActiveStatusFilter();
+        const context = getSchedulerContext();
         const url = new URL(`${getBaseUrl()}/api/dashboard/appointment-stats`);
+        
+        // Add view and date context for date-range aware stats
+        url.searchParams.set('view', options.view || context.view);
+        url.searchParams.set('date', options.date || context.date);
         
         // Add status filter to request if active
         if (activeStatus) {
@@ -110,11 +144,30 @@ export async function refreshAppointmentStats() {
 
         const payload = await response.json();
         const stats = payload.data || payload;
+        const meta = payload.meta || {};
 
-        // Update count elements
-        updateCountElement('upcomingCount', stats.upcoming);
+        // Update summary counts (combined upcoming = pending + confirmed)
+        const upcomingTotal = (stats.pending || 0) + (stats.confirmed || 0);
+        updateCountElement('upcomingCount', upcomingTotal);
         updateCountElement('completedCount', stats.completed);
+        
+        // Update detailed status counts if elements exist
         updateCountElement('pendingCount', stats.pending);
+        updateCountElement('confirmedCount', stats.confirmed);
+        updateCountElement('cancelledCount', stats.cancelled);
+        updateCountElement('noshowCount', stats.noshow);
+        updateCountElement('totalCount', stats.total);
+        
+        // Update provider filter dropdown if active_providers data available
+        if (stats.active_providers && Array.isArray(stats.active_providers)) {
+            updateProviderFilterOptions(stats.active_providers);
+        }
+        
+        // Dispatch event with full stats for other components
+        window.dispatchEvent(new CustomEvent('stats-refreshed', { 
+            detail: { stats, meta }
+        }));
+        
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
@@ -122,6 +175,40 @@ export async function refreshAppointmentStats() {
         console.error('[status-filters] Failed to refresh appointment stats', error);
     } finally {
         statsRefreshAbortController = null;
+    }
+}
+
+/**
+ * Update provider filter dropdown to only show providers with appointments
+ * @param {Array} activeProviders - List of providers with appointments
+ */
+function updateProviderFilterOptions(activeProviders) {
+    const providerSelect = document.getElementById('filter-provider');
+    if (!providerSelect) return;
+    
+    const currentValue = providerSelect.value;
+    const activeIds = new Set(activeProviders.map(p => String(p.id)));
+    
+    // Disable providers without appointments, keep "All Providers" option enabled
+    Array.from(providerSelect.options).forEach(option => {
+        if (option.value === '') {
+            // "All Providers" option - always enabled
+            return;
+        }
+        
+        if (activeIds.has(option.value)) {
+            option.disabled = false;
+            option.classList.remove('text-gray-400', 'dark:text-gray-600');
+        } else {
+            option.disabled = true;
+            option.classList.add('text-gray-400', 'dark:text-gray-600');
+        }
+    });
+    
+    // If current selection is now disabled, reset to "All"
+    const currentOption = providerSelect.querySelector(`option[value="${currentValue}"]`);
+    if (currentOption?.disabled) {
+        providerSelect.value = '';
     }
 }
 
@@ -279,3 +366,190 @@ export function initStatusFilterControls() {
         });
     });
 }
+
+/**
+ * Initialize clickable summary cards in the context summary section
+ * These cards act as status filters when clicked
+ */
+export function initSummaryCardFilters() {
+    const summaryCards = document.querySelectorAll('.status-summary-card[data-filter-status]');
+    if (!summaryCards.length) return;
+    
+    const activeIndicator = document.getElementById('active-filter-indicator');
+    const activeLabel = document.getElementById('active-filter-label');
+    const clearBtn = document.getElementById('clear-status-filter');
+    
+    /**
+     * Update UI to reflect active filter
+     */
+    const updateFilterIndicator = (status, label) => {
+        if (!activeIndicator) return;
+        
+        if (status) {
+            activeIndicator.classList.remove('hidden');
+            if (activeLabel) activeLabel.textContent = label;
+        } else {
+            activeIndicator.classList.add('hidden');
+            if (activeLabel) activeLabel.textContent = 'All appointments';
+        }
+    };
+    
+    /**
+     * Apply filter from summary card
+     */
+    const applyFilter = async (status) => {
+        // Update visual state of cards
+        summaryCards.forEach(card => {
+            if (card.dataset.filterStatus === status) {
+                card.classList.add('ring-2', 'ring-blue-500');
+            } else {
+                card.classList.remove('ring-2', 'ring-blue-500');
+            }
+        });
+        
+        // Get label from clicked card
+        const clickedCard = document.querySelector(`.status-summary-card[data-filter-status="${status}"]`);
+        const label = clickedCard?.querySelector('.text-xs')?.textContent || status;
+        
+        updateFilterIndicator(status, label);
+        
+        // Update container data attribute
+        const container = document.querySelector('[data-status-filter-container]');
+        if (container) {
+            container.dataset.activeStatus = status || '';
+        }
+        
+        // Apply to scheduler
+        await applySchedulerFilter(status || null);
+        
+        // Emit update
+        emitAppointmentsUpdated({ source: 'summary-card', status: status || null });
+    };
+    
+    // Bind click handlers to summary cards
+    summaryCards.forEach(card => {
+        if (card.dataset.summaryCardBound === 'true') return;
+        card.dataset.summaryCardBound = 'true';
+        
+        card.addEventListener('click', () => {
+            const status = card.dataset.filterStatus;
+            const currentStatus = document.querySelector('[data-status-filter-container]')?.dataset.activeStatus;
+            
+            // Toggle off if same status clicked
+            if (status === currentStatus) {
+                applyFilter(null);
+            } else {
+                applyFilter(status);
+            }
+        });
+    });
+    
+    // Bind clear filter button
+    if (clearBtn && clearBtn.dataset.clearBound !== 'true') {
+        clearBtn.dataset.clearBound = 'true';
+        clearBtn.addEventListener('click', () => applyFilter(null));
+    }
+}
+
+/**
+ * Initialize view toggle buttons to refresh stats on view change
+ */
+export function initViewToggleHandlers() {
+    const viewButtons = document.querySelectorAll('.view-toggle-btn[data-view]');
+    if (!viewButtons.length) return;
+    
+    const summaryTitle = document.getElementById('summary-title');
+    const summaryDateRange = document.getElementById('summary-date-range');
+    const summaryTotal = document.getElementById('summary-total');
+    
+    /**
+     * Update summary section header based on view
+     */
+    const updateSummaryHeader = (view, date) => {
+        const dateObj = new Date(date + 'T00:00:00');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        
+        if (summaryTitle) {
+            switch (view) {
+                case 'day':
+                    summaryTitle.textContent = "Today's Summary";
+                    break;
+                case 'week':
+                    summaryTitle.textContent = "This Week's Summary";
+                    break;
+                case 'month':
+                    summaryTitle.textContent = "This Month's Summary";
+                    break;
+            }
+        }
+        
+        if (summaryDateRange) {
+            switch (view) {
+                case 'day':
+                    summaryDateRange.textContent = dateObj.toLocaleDateString(undefined, options);
+                    break;
+                case 'week': {
+                    // Calculate week range (Monday to Sunday)
+                    const day = dateObj.getDay();
+                    const mondayDiff = day === 0 ? -6 : 1 - day;
+                    const monday = new Date(dateObj);
+                    monday.setDate(dateObj.getDate() + mondayDiff);
+                    const sunday = new Date(monday);
+                    sunday.setDate(monday.getDate() + 6);
+                    summaryDateRange.textContent = `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${sunday.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                    break;
+                }
+                case 'month': {
+                    summaryDateRange.textContent = dateObj.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+                    break;
+                }
+            }
+        }
+    };
+    
+    viewButtons.forEach(btn => {
+        if (btn.dataset.viewToggleBound === 'true') return;
+        btn.dataset.viewToggleBound = 'true';
+        
+        btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
+            const currentDate = getSchedulerContext().date;
+            
+            // Update button styles
+            viewButtons.forEach(b => {
+                if (b === btn) {
+                    b.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+                    b.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+                } else {
+                    b.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                    b.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
+                }
+            });
+            
+            // Update summary header
+            updateSummaryHeader(view, currentDate);
+            
+            // Refresh stats for new view
+            refreshAppointmentStats({ view, date: currentDate });
+        });
+    });
+    
+    // Listen for scheduler date changes
+    window.addEventListener('scheduler:date-change', (event) => {
+        const { view, date } = event.detail || {};
+        if (view && date) {
+            updateSummaryHeader(view, date);
+            refreshAppointmentStats({ view, date });
+        }
+    });
+}
+
+/**
+ * Initialize all status filter components
+ */
+export function initAllFilters() {
+    initStatusFilterControls();
+    initSummaryCardFilters();
+    initViewToggleHandlers();
+}
+

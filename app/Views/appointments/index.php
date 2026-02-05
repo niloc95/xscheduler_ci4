@@ -62,63 +62,89 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
 
 <?php // Filter controls and primary action with date picker alignment ?>
 <?= $this->section('dashboard_filters') ?>
-    <?php $upcomingCount = ($stats['pending'] ?? 0) + ($stats['today'] ?? 0); ?>
+    <?php $upcomingCount = ($stats['pending'] ?? 0) + ($stats['confirmed'] ?? 0) + ($stats['today'] ?? 0); ?>
     <?php $completedCount = $stats['completed'] ?? 0; ?>
+    <?php $pendingCount = $stats['pending'] ?? 0; ?>
+    <?php $confirmedCount = $stats['confirmed'] ?? 0; ?>
+    <?php $cancelledCount = $stats['cancelled'] ?? 0; ?>
+    <?php $noshowCount = $stats['noshow'] ?? 0; ?>
 
-    <?php
-        $statCards = [
-            [
-                'label' => 'Upcoming Appointments',
-                'value' => $upcomingCount,
-                'options' => ['valueId' => 'upcomingCount']
-            ],
-            [
-                'label' => 'Completed Appointments',
-                'value' => $completedCount,
-                'options' => ['valueId' => 'completedCount']
-            ],
-        ];
-
-        $statusFilters = [
-            ['label' => 'Pending', 'status' => 'pending', 'title' => 'Show pending appointments'],
-            ['label' => 'Completed', 'status' => 'completed', 'title' => 'Show completed appointments'],
-        ];
-    ?>
-
-    <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <?php foreach ($statCards as $card): ?>
-                <?= ui_dashboard_stat_card($card['label'], $card['value'], $card['options'] ?? []); ?>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="flex w-full flex-col gap-3 items-stretch lg:flex-1 lg:items-end">
-            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
-                <!-- View Selection Buttons - Material Design 3 Styled -->
-                <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Today</button>
-                <button type="button" data-calendar-action="day" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200">Day</button>
-                    <button type="button" data-calendar-action="week" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Week</button>
-                <button type="button" data-calendar-action="month" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Month</button>
-                
-                <!-- Advanced Filter Toggle -->
-                <button type="button" 
-                        id="advanced-filter-toggle"
-                        class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm inline-flex items-center gap-1"
-                        title="Advanced Filters">
-                    <span class="material-symbols-outlined text-base">filter_alt</span>
-                    Filters
-                    <span class="material-symbols-outlined text-base transition-transform duration-200" id="filter-toggle-icon">expand_more</span>
-                </button>
+    <!-- Stats Bar Container - Rendered by Stats Engine (JS) -->
+    <!-- Initial server-rendered values, replaced by JS on load -->
+    <div id="scheduler-stats-bar" 
+         class="mb-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+         data-initial-pending="<?= $pendingCount ?>"
+         data-initial-confirmed="<?= $confirmedCount ?>"
+         data-initial-completed="<?= $completedCount ?>"
+         data-initial-cancelled="<?= $cancelledCount ?>"
+         data-initial-noshow="<?= $noshowCount ?>">
+        <!-- Fallback content before JS loads -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">calendar_today</span>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Today's Summary</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400"><?= date('l, F j, Y') ?></p>
+                </div>
             </div>
-
-                <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
-                <a href="<?= base_url('/appointments/create') ?>"
-                    class="btn btn-primary inline-flex items-center justify-center gap-2 px-4 py-2 w-full sm:w-auto lg:self-end">
-                <span class="material-symbols-outlined text-base">add</span>
-                <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
-            </a>
-            <?php endif; ?>
+            <span class="text-2xl font-bold text-gray-900 dark:text-white"><?= $upcomingCount + $completedCount ?></span>
         </div>
+        <div class="p-4 flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-100">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="text-xs font-medium">Pending</span>
+                <span class="text-xs font-bold"><?= $pendingCount ?></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-blue-100 border-blue-300 text-blue-900 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-100">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span class="text-xs font-medium">Confirmed</span>
+                <span class="text-xs font-bold"><?= $confirmedCount ?></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-emerald-100 border-emerald-300 text-emerald-900 dark:bg-emerald-900/30 dark:border-emerald-500 dark:text-emerald-100">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-medium">Completed</span>
+                <span class="text-xs font-bold"><?= $completedCount ?></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-red-100 border-red-300 text-red-900 dark:bg-red-900/30 dark:border-red-500 dark:text-red-100">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                <span class="text-xs font-medium">Cancelled</span>
+                <span class="text-xs font-bold"><?= $cancelledCount ?></span>
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-gray-100 border-gray-300 text-gray-900 dark:bg-gray-700/50 dark:border-gray-500 dark:text-gray-100">
+                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                <span class="text-xs font-medium">No-Show</span>
+                <span class="text-xs font-bold"><?= $noshowCount ?></span>
+            </span>
+        </div>
+    </div>
+
+    <!-- View Controls and Action Button Row -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <!-- View Toggle Buttons (Day/Week/Month) -->
+        <div class="flex flex-wrap items-center gap-2" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
+            <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm">Today</button>
+            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:shadow-md transition-all duration-200" data-view="day">Day</button>
+            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" data-view="week">Week</button>
+            <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm" data-view="month">Month</button>
+            
+            <!-- Advanced Filter Toggle -->
+            <button type="button" 
+                    id="advanced-filter-toggle"
+                    class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 hover:shadow-sm inline-flex items-center gap-1"
+                    title="Advanced Filters">
+                <span class="material-symbols-outlined text-base">filter_alt</span>
+                Filters
+                <span class="material-symbols-outlined text-base transition-transform duration-200" id="filter-toggle-icon">expand_more</span>
+            </button>
+        </div>
+
+        <?php if (has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+        <a href="<?= base_url('/appointments/create') ?>"
+            class="btn btn-primary inline-flex items-center justify-center gap-2 px-4 py-2">
+            <span class="material-symbols-outlined text-base">add</span>
+            <?= $user_role === 'customer' ? 'Book Appointment' : 'New Appointment' ?>
+        </a>
+        <?php endif; ?>
     </div>
 
     <!-- Advanced Filter Panel -->

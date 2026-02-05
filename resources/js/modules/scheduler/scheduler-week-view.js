@@ -134,11 +134,6 @@ export class WeekView {
                         <!-- Mini Calendar -->
                         ${this.renderMiniCalendar()}
                         
-                        <!-- Quick Stats -->
-                        <div class="mt-4 grid grid-cols-3 gap-3">
-                            ${this.renderQuickStats(weekAppointments)}
-                        </div>
-                        
                         <!-- Appointment Summary List -->
                         <div class="mt-6">
                             <div class="flex items-center justify-between mb-3">
@@ -325,30 +320,6 @@ export class WeekView {
                         `;
                     }).join('')}
                 </div>
-            </div>
-        `;
-    }
-    
-    /**
-     * Render quick stats cards
-     */
-    renderQuickStats(weekAppointments) {
-        const total = weekAppointments.length;
-        const confirmed = weekAppointments.filter(a => a.status === 'confirmed').length;
-        const pending = weekAppointments.filter(a => a.status === 'pending').length;
-        
-        return `
-            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${total}</div>
-                <div class="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-wide">Total</div>
-            </div>
-            <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
-                <div class="text-2xl font-bold text-green-600 dark:text-green-400">${confirmed}</div>
-                <div class="text-[10px] text-green-600 dark:text-green-400 uppercase tracking-wide">Confirmed</div>
-            </div>
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 text-center">
-                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">${pending}</div>
-                <div class="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">Pending</div>
             </div>
         `;
     }

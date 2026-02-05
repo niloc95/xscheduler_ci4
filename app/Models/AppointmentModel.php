@@ -265,6 +265,80 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Get stats for a specific date range.
+     * Used for dynamic dashboard stats based on Day/Week/Month view.
+     * 
+     * @param string $startDate Start date (Y-m-d)
+     * @param string $endDate End date (Y-m-d)
+     * @param int|null $providerId Optional provider filter
+     * @return array Stats within the date range
+     */
+    public function getStatsForDateRange(string $startDate, string $endDate, ?int $providerId = null): array
+    {
+        $startDateTime = $startDate . ' 00:00:00';
+        $endDateTime = $endDate . ' 23:59:59';
+        
+        // Build base query with date range
+        $baseQuery = function() use ($startDateTime, $endDateTime, $providerId) {
+            $builder = $this->builder()
+                ->where('start_time >=', $startDateTime)
+                ->where('start_time <=', $endDateTime);
+            
+            if ($providerId) {
+                $builder->where('provider_id', $providerId);
+            }
+            
+            return $builder;
+        };
+        
+        // Count by status within date range
+        $pending = (int) $baseQuery()->where('status', 'pending')->countAllResults(false);
+        $confirmed = (int) $baseQuery()->where('status', 'confirmed')->countAllResults(false);
+        $completed = (int) $baseQuery()->where('status', 'completed')->countAllResults(false);
+        $cancelled = (int) $baseQuery()->where('status', 'cancelled')->countAllResults(false);
+        $noshow = (int) $baseQuery()->where('status', 'no-show')->countAllResults(false);
+        
+        // Calculate totals
+        $upcoming = $pending + $confirmed;
+        $total = $pending + $confirmed + $completed + $cancelled + $noshow;
+        
+        return [
+            'pending' => $pending,
+            'confirmed' => $confirmed,
+            'completed' => $completed,
+            'cancelled' => $cancelled,
+            'noshow' => $noshow,
+            'upcoming' => $upcoming,
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Get list of providers who have appointments in a date range.
+     * Used to filter provider dropdown to only show relevant providers.
+     * 
+     * @param string $startDate Start date (Y-m-d)
+     * @param string $endDate End date (Y-m-d)
+     * @return array List of providers with id, name, color
+     */
+    public function getProvidersWithAppointments(string $startDate, string $endDate): array
+    {
+        $startDateTime = $startDate . ' 00:00:00';
+        $endDateTime = $endDate . ' 23:59:59';
+        
+        $result = $this->builder()
+            ->select('DISTINCT xs_appointments.provider_id as id, u.name, u.color')
+            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
+            ->where('start_time >=', $startDateTime)
+            ->where('start_time <=', $endDateTime)
+            ->orderBy('u.name', 'ASC')
+            ->get()
+            ->getResultArray();
+        
+        return $result ?: [];
+    }
+
+    /**
      * Get appointment with all related data (customer, service, provider)
      * Centralizes JOIN query to eliminate duplication across controllers
      * 
