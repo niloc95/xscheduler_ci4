@@ -211,7 +211,3 @@ async function initScheduler() {
 // PAGE INITIALIZATION
 // ============================================
 
-// Initialize appointment form on create page
-document.addEventListener('DOMContentLoaded', () => {
-    prefillAppointmentForm();
-});

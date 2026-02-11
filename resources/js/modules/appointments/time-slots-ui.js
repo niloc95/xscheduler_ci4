@@ -68,6 +68,7 @@ export function initTimeSlotsUI(options) {
   // Track if this is the initial load to avoid clearing URL-populated values
   let isInitialProviderChange = true;
   let isInitialServiceChange = true;
+  let bootInProgress = false; // Guard against duplicate loads from external prefill
 
   const el = {
     grid: document.getElementById(gridId),
@@ -381,6 +382,9 @@ export function initTimeSlotsUI(options) {
 
   // Wire events
   providerSelect.addEventListener('change', async () => {
+    // Skip if the boot IIFE is already handling the initial load
+    if (bootInProgress) return;
+
     await loadServices(providerSelect.value);
     timeInput.value = '';
     
@@ -414,8 +418,10 @@ export function initTimeSlotsUI(options) {
     loadSlots();
   });
 
-  // Initial boot
+  // Initial boot — single source of truth for prefilling from URL params
   (async () => {
+    bootInProgress = true;
+
     // Pre-fill from URL parameters first
     if (urlProviderId && !providerSelect.value) {
       providerSelect.value = urlProviderId;
@@ -430,26 +436,23 @@ export function initTimeSlotsUI(options) {
     if (providerSelect.value) {
       await loadServices(providerSelect.value);
       
-      // After loading services, check if we should load slots
-      // Small delay to allow DOM to update with service selection
-      setTimeout(() => {
-        // Reset the initial change flags after first load
-        isInitialProviderChange = false;
-        isInitialServiceChange = false;
-        
-        if (serviceSelect.value) {
-          loadSlots(true).then(() => {
-            // Try to select the time from URL after slots are loaded
-            if (initialTimeToSelect && el.grid) {
-              const matchingBtn = el.grid.querySelector(`[data-time="${initialTimeToSelect}"]`);
-              if (matchingBtn) {
-                matchingBtn.click();
-              }
-            }
-          });
+      // Reset flags and release boot guard
+      isInitialProviderChange = false;
+      isInitialServiceChange = false;
+      bootInProgress = false;
+
+      if (serviceSelect.value) {
+        await loadSlots(true);
+        // Try to select the time from URL after slots are loaded
+        if (initialTimeToSelect && el.grid) {
+          const matchingBtn = el.grid.querySelector(`[data-time="${initialTimeToSelect}"]`);
+          if (matchingBtn) {
+            matchingBtn.click();
+          }
         }
-      }, 100);
+      }
     } else {
+      bootInProgress = false;
       hideAllStates();
       el.prompt?.classList.remove('hidden');
     }

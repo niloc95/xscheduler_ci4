@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderInitials, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -353,7 +353,7 @@ export class MonthView {
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
                                      style="background-color: ${color};">
-                                    ${provider.name.charAt(0).toUpperCase()}
+                                    ${getProviderInitials(provider.name)}
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <h4 class="font-semibold text-gray-900 dark:text-white truncate">

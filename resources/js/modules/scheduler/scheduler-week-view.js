@@ -9,7 +9,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
 import { generateSlotsWithAvailability, findOverlappingAppointments, getProviderAvailabilityForSlot } from '../../utils/scheduling-utils.js';
 
 function getBaseUrl() {
@@ -517,7 +517,7 @@ export class WeekView {
                     <div class="flex-shrink-0">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
                              style="background-color: ${providerColor};">
-                            ${provider?.name?.charAt(0)?.toUpperCase() || '?'}
+                            ${getProviderInitials(provider?.name)}
                         </div>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -619,32 +619,54 @@ export class WeekView {
             const formattedTime = DateTime.fromFormat(slot.time, 'HH:mm').toFormat(timeFormat);
             
             return `
-                <div class="time-slot-item flex items-center gap-4 p-3 rounded-lg border ${slotBgClass} transition-all cursor-pointer"
+                <div class="time-slot-item flex items-center gap-3 p-3 rounded-lg border ${slotBgClass} transition-all cursor-pointer"
                      data-slot-time="${slot.time}"
                      data-date="${date.toISODate()}"
                      ${isBlocked || isFullyBooked ? 'data-disabled="true"' : ''}>
                     
                     <!-- Time -->
-                    <div class="flex-shrink-0 w-20">
-                        <span class="text-lg font-bold text-gray-900 dark:text-white">${formattedTime}</span>
+                    <div class="flex-shrink-0 w-16 text-center">
+                        <span class="text-base font-bold text-gray-900 dark:text-white">${formattedTime}</span>
                     </div>
                     
-                    <!-- Provider Availability Indicators -->
+                    <!-- Provider Availability — clickable name chips -->
                     <div class="flex-1 min-w-0">
                         <div class="flex flex-wrap gap-1.5 mb-1">
                             ${providersToShow.map(provider => {
                                 const isBooked = slot.bookedProviders.some(bp => bp.id === provider.id);
                                 const color = getProviderColor(provider);
-                                const initial = provider.name?.charAt(0)?.toUpperCase() || '?';
+                                const initials = getProviderInitials(provider.name);
+                                // Extract a short display name: strip "Dr./Mr./etc", show surname
+                                const shortName = (provider.name || '')
+                                    .replace(/^(dr|mr|mrs|ms|prof|rev)\\.?\\s*/i, '')
+                                    .replace(/[.,]\\s*(md|phd|dds|do|rn|np|pa|dvm|jr|sr|ii|iii|iv)$/i, '')
+                                    .trim()
+                                    .split(/\\s+/)
+                                    .pop() || initials;
                                 
+                                if (isBooked) {
+                                    return `
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 line-through opacity-60"
+                                              title="${this.escapeHtml(provider.name)} — Booked">
+                                            <span class="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0"></span>
+                                            ${this.escapeHtml(shortName)}
+                                        </span>`;
+                                }
+                                // Available provider: clickable chip → opens booking form pre-populated
+                                const bookUrl = withBaseUrl(
+                                    `/appointments/create?date=${date.toISODate()}&time=${slot.time}&provider_id=${provider.id}`
+                                );
                                 return `
-                                    <div class="relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold transition-all ${isBooked ? 'ring-2 ring-red-400 opacity-50' : ''}"
-                                         style="background-color: ${isBooked ? '#9CA3AF' : color}; color: white;"
-                                         title="${this.escapeHtml(provider.name)} - ${isBooked ? 'Booked' : 'Available'}">
-                                        ${initial}
-                                        ${isBooked ? '<span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>' : ''}
-                                    </div>
-                                `;
+                                    <a href="${bookUrl}"
+                                       class="provider-book-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-gray-800 dark:text-gray-100 cursor-pointer hover:ring-2 hover:ring-offset-1 transition-all"
+                                       style="background-color: ${color}20; border: 1px solid ${color}40;"
+                                       title="Book with ${this.escapeHtml(provider.name)} at ${formattedTime}"
+                                       data-provider-id="${provider.id}"
+                                       data-slot-time="${slot.time}"
+                                       data-slot-date="${date.toISODate()}">
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></span>
+                                        ${this.escapeHtml(shortName)}
+                                    </a>`;
                             }).join('')}
                         </div>
                         <div class="flex items-center gap-1 ${statusColor}">
@@ -653,13 +675,13 @@ export class WeekView {
                         </div>
                     </div>
                     
-                    <!-- Book Button - passes available provider IDs for smarter form pre-filling -->
+                    <!-- Book Button (first available provider) -->
                     ${!isBlocked && !isFullyBooked ? `
-                        <a href="${withBaseUrl(`/appointments/create?date=${date.toISODate()}&time=${slot.time}&available_providers=${slot.availableProviders.map(p => p.id).join(',')}`)}"
-                           class="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                        <a href="${withBaseUrl(`/appointments/create?date=${date.toISODate()}&time=${slot.time}&provider_id=${slot.availableProviders[0]?.id || ''}`)}"
+                           class="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
                            data-slot-time="${slot.time}"
                            data-slot-date="${date.toISODate()}"
-                           data-available-providers="${slot.availableProviders.map(p => p.id).join(',')}">
+                           data-provider-id="${slot.availableProviders[0]?.id || ''}">
                             Book
                         </a>
                     ` : ''}
@@ -854,12 +876,11 @@ export class WeekView {
         // Time slot clicks (for available slots)
         container.querySelectorAll('.time-slot-item:not([data-disabled])').forEach(el => {
             el.addEventListener('click', (e) => {
-                // Don't trigger if clicking the Book button
-                if (e.target.tagName === 'A') return;
+                // Don't trigger if clicking a link (Book button or provider chip)
+                if (e.target.closest('a')) return;
                 
                 const time = el.dataset.slotTime;
                 const date = el.dataset.date;
-                // Could open a quick booking modal here
                 this.debugLog('Selected slot:', time, 'on', date);
             });
         });
@@ -874,11 +895,11 @@ export class WeekView {
                 if (isActive) {
                     this.scheduler.visibleProviders.delete(providerId);
                     el.dataset.active = 'false';
-                    el.style.opacity = '0.4';
+                    el.classList.add('opacity-40');
                 } else {
                     this.scheduler.visibleProviders.add(providerId);
                     el.dataset.active = 'true';
-                    el.style.opacity = '1';
+                    el.classList.remove('opacity-40');
                 }
                 
                 // Update visible providers list
@@ -1092,7 +1113,7 @@ export class WeekView {
             // Re-attach slot click handlers
             slotEngine.querySelectorAll('.time-slot-item:not([data-disabled])').forEach(el => {
                 el.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'A') return;
+                    if (e.target.closest('a')) return;
                     const time = el.dataset.slotTime;
                     const date = el.dataset.date;
                     this.debugLog('Selected slot:', time, 'on', date);
@@ -1178,7 +1199,7 @@ export class WeekView {
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
                                                  style="background-color: ${color};">
-                                                ${provider.name.charAt(0).toUpperCase()}
+                                                ${getProviderInitials(provider.name)}
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <h4 class="font-semibold text-gray-900 dark:text-white truncate">

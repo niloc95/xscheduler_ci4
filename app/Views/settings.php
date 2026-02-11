@@ -65,7 +65,7 @@
     <div id="settings-content">
     
     <!-- General Settings Form -->
-    <form id="general-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" enctype="multipart/form-data" class="mt-4 space-y-6" data-tab-form="general">
+    <form id="general-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" enctype="multipart/form-data" class="mt-4 space-y-6" data-tab-form="general" data-no-spa="true">
         <?= csrf_field() ?>
         <input type="hidden" name="form_source" value="general_settings">
             <!-- General Settings -->
@@ -136,7 +136,7 @@
         </form>
 
             <!-- Localization Form -->
-            <form id="localization-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="localization">
+            <form id="localization-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="localization" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="localization_settings">
             <section id="panel-localization" class="tab-panel hidden">
@@ -245,7 +245,7 @@
             </form>
 
             <!-- Booking Settings Form -->
-            <form id="booking-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="booking">
+            <form id="booking-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="booking" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="booking_settings">
             <section id="panel-booking" class="tab-panel hidden">
@@ -363,7 +363,7 @@
                                         </label>
                                     </div>
                                     
-                                    <div class="custom-field-settings" <?= ($settings["booking.custom_field_{$i}_enabled"] ?? '0') !== '1' ? 'style="opacity: 0.5; pointer-events: none;"' : '' ?>>
+                                    <div class="custom-field-settings <?= ($settings["booking.custom_field_{$i}_enabled"] ?? '0') !== '1' ? 'opacity-50 pointer-events-none' : '' ?>">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field Title</label>
@@ -406,7 +406,7 @@
             </form>
 
             <!-- Business hours Form -->
-            <form id="business-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="business">
+            <form id="business-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="business" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="business_settings">
             <section id="panel-business" class="tab-panel hidden">
@@ -499,7 +499,7 @@
             </form>
 
             <!-- Legal Contents Form -->
-            <form id="legal-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="legal">
+            <form id="legal-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="legal" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="legal_settings">
             <section id="panel-legal" class="tab-panel hidden">
@@ -550,7 +550,7 @@
             </form>
 
             <!-- Integrations Form -->
-            <form id="integrations-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="integrations">
+            <form id="integrations-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="integrations" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="integrations_settings">
             <section id="panel-integrations" class="tab-panel hidden">
@@ -851,7 +851,7 @@
                         </div>
 
                         <!-- Link Generator Info (shown when link_generator selected) -->
-                        <div id="wa_link_generator_section" class="mt-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700" style="<?= $waProvider !== 'link_generator' ? 'display:none;' : '' ?>">
+                        <div id="wa_link_generator_section" class="mt-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 <?= $waProvider !== 'link_generator' ? 'hidden' : '' ?>">
                             <div class="flex items-start gap-3">
                                 <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
                                 <div>
@@ -871,7 +871,7 @@
                         </div>
 
                         <!-- Twilio WhatsApp Settings (shown when twilio selected) -->
-                        <div id="wa_twilio_section" class="mt-4" style="<?= $waProvider !== 'twilio' ? 'display:none;' : '' ?>">
+                        <div id="wa_twilio_section" class="mt-4 <?= $waProvider !== 'twilio' ? 'hidden' : '' ?>">
                             <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 mb-4">
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl">info</span>
@@ -894,7 +894,7 @@
                         </div>
 
                         <!-- Meta Cloud API Settings (shown when meta_cloud selected) -->
-                        <div id="wa_meta_section" class="mt-4" style="<?= $waProvider !== 'meta_cloud' ? 'display:none;' : '' ?>">
+                        <div id="wa_meta_section" class="mt-4 <?= $waProvider !== 'meta_cloud' ? 'hidden' : '' ?>">
                             <div class="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 mb-4">
                                 <div class="flex items-start gap-3">
                                     <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-xl">business</span>
@@ -965,8 +965,12 @@
                         </div>
 
                         <script>
-                        document.addEventListener('DOMContentLoaded', function() {
+                        // Initialize immediately (works on first load and SPA re-navigation)
+                        (function initWhatsAppProviderToggle() {
                             const providerSelect = document.getElementById('whatsapp_provider');
+                            if (!providerSelect || providerSelect.dataset.toggleWired === 'true') return;
+                            providerSelect.dataset.toggleWired = 'true';
+                            
                             const sections = {
                                 link_generator: document.getElementById('wa_link_generator_section'),
                                 twilio: document.getElementById('wa_twilio_section'),
@@ -977,13 +981,15 @@
                                 const selected = providerSelect.value;
                                 Object.keys(sections).forEach(key => {
                                     if (sections[key]) {
-                                        sections[key].style.display = key === selected ? '' : 'none';
+                                        sections[key].classList.toggle('hidden', key !== selected);
                                     }
                                 });
                             }
                             
                             providerSelect.addEventListener('change', updateSections);
-                        });
+                            // Set initial state
+                            updateSections();
+                        })();
                         </script>
 
                         <?php if ($smsDecryptError === 'encryption_key_mismatch'): ?>
@@ -1386,12 +1392,18 @@
 
                     <!-- Template Tabs JavaScript -->
                     <script>
-                    document.addEventListener('DOMContentLoaded', function() {
+                    // Execute immediately (works on first load and SPA re-navigation)
+                    (function initTemplateTabs() {
                         // Template tab switching
                         const templateTabs = document.querySelectorAll('.template-tab-btn');
                         const templatePanels = document.querySelectorAll('.template-panel');
                         
+                        if (!templateTabs.length) return;
+                        
                         templateTabs.forEach(tab => {
+                            if (tab.dataset.templateTabWired === 'true') return;
+                            tab.dataset.templateTabWired = 'true';
+                            
                             tab.addEventListener('click', function() {
                                 const targetPanel = this.dataset.templateTab;
                                 
@@ -1439,13 +1451,17 @@
                         });
                         
                         // Reset templates button
-                        document.getElementById('reset-templates-btn')?.addEventListener('click', function() {
-                            if (confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
-                                // Reload page to get defaults
-                                window.location.reload();
-                            }
-                        });
-                    });
+                        const resetBtn = document.getElementById('reset-templates-btn');
+                        if (resetBtn && resetBtn.dataset.resetWired !== 'true') {
+                            resetBtn.dataset.resetWired = 'true';
+                            resetBtn.addEventListener('click', function() {
+                                if (confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
+                                    // Reload page to get defaults
+                                    window.location.reload();
+                                }
+                            });
+                        }
+                    })();
                     </script>
 
                     <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1622,6 +1638,21 @@
                     // no-op
                 }
             };
+
+            // Shared CSRF helper — used by all settings form scripts
+            window.xsGetCsrf = window.xsGetCsrf || function () {
+                const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+                const token  = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                return { header, token };
+            };
+
+            // Shared HTML escaper — used in template literals
+            window.xsEscapeHtml = window.xsEscapeHtml || function (str) {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            };
         })();
         </script>
 
@@ -1678,7 +1709,7 @@
                                     ${startDate}${isMultiDay ? ' - ' + endDate : ''}
                                 </span>
                             </div>
-                            ${period.notes ? `<p class="text-sm text-gray-600 dark:text-gray-400 ml-6">${period.notes.replace(/</g, '&lt;')}</p>` : ''}
+                            ${period.notes ? `<p class="text-sm text-gray-600 dark:text-gray-400 ml-6">${xsEscapeHtml(period.notes)}</p>` : ''}
                         </div>
                         <div class="flex gap-1 ml-4">
                             <button type="button" class="btn btn-ghost btn-sm p-2" data-edit="${idx}" title="Edit period">
@@ -1795,9 +1826,7 @@
                     xsDebugLog('Full block periods array:', blockPeriods);
                     
                     try {
-                        // Get CSRF token
-                        const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-                        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        const { header, token } = xsGetCsrf();
                         
                         // Save to database via API
                         const response = await fetch("<?= base_url('api/v1/settings') ?>", {
@@ -1918,9 +1947,7 @@
                         xsDebugLog('Remaining block periods:', blockPeriods);
                         
                         try {
-                            // Get CSRF token
-                            const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-                            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                            const { header, token } = xsGetCsrf();
                             
                             // Save to database via API
                             const response = await fetch("<?= base_url('api/v1/settings') ?>", {
@@ -2014,14 +2041,22 @@
 
         <script>
         // General tab API integration: load on view and save via POST to /api/v1/settings
-        document.addEventListener('DOMContentLoaded', () => {
-            xsDebugLog('Settings: DOMContentLoaded fired, calling initSettingsApi');
-            initSettingsApi();
-        });
-        document.addEventListener('spa:navigated', () => {
-            xsDebugLog('Settings: spa:navigated fired, calling initSettingsApi');
-            initSettingsApi();
-        });
+        // Call immediately (works for both first-load and SPA re-execution)
+        // Also register for spa:navigated in case scripts execute before DOM is ready
+        (function() {
+            // Guard: only register ONE spa:navigated listener per page lifecycle
+            if (!window.__settingsSpaListenerRegistered) {
+                window.__settingsSpaListenerRegistered = true;
+                document.addEventListener('spa:navigated', (e) => {
+                    // Only run if navigated to settings page
+                    const url = e?.detail?.url || '';
+                    if (url.includes('/settings') || document.getElementById('general-settings-form')) {
+                        xsDebugLog('Settings: spa:navigated fired, calling initSettingsApi');
+                        initSettingsApi();
+                    }
+                });
+            }
+        })();
 
         // Live-update the sidebar brand title when company name changes
         (function wireSidebarBrandSync(){
@@ -2040,14 +2075,8 @@
                 input.addEventListener('change', handler);
                 input.dataset.brandSync = 'true';
             }
-            // Initial bind + on SPA navigations
-            document.addEventListener('DOMContentLoaded', bindInput);
-            document.addEventListener('spa:navigated', () => {
-                bindInput();
-                // After navigation (e.g., post-save redirect), ensure value is reflected
-                const nameVal = document.getElementById('spa-content')?.querySelector('input[name="company_name"]')?.value;
-                if (typeof nameVal !== 'undefined') setBrandName(nameVal);
-            });
+            // Bind immediately (works for both first-load and SPA re-execution)
+            bindInput();
         })();
 
         function initSettingsApi() {
@@ -2067,6 +2096,12 @@
             
             initCustomFieldToggles();
         }
+
+        // Initialize immediately — this is the key call that wires up the Edit button.
+        // On first page load, DOMContentLoaded has already fired by the time inline scripts run.
+        // On SPA re-navigation, scripts are re-executed and this runs directly.
+        xsDebugLog('Settings: Calling initSettingsApi immediately (inline)');
+        initSettingsApi();
 
         function initGeneralSettingsForm() {
             const form = document.getElementById('general-settings-form');
@@ -2178,13 +2213,10 @@
             }
 
             function getCsrf() {
-                const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content')
-                    || window.appConfig?.csrfHeaderName
-                    || 'X-CSRF-TOKEN';
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                    || window.appConfig?.csrfToken
-                    || csrfInput?.value
-                    || '';
+                const base = xsGetCsrf();
+                // Also check appConfig and form-level csrfInput as fallbacks
+                const header = base.header || window.appConfig?.csrfHeaderName || 'X-CSRF-TOKEN';
+                const token  = base.token || window.appConfig?.csrfToken || csrfInput?.value || '';
                 return { header, token };
             }
 
@@ -2480,8 +2512,8 @@
 
                 // Get CSRF token
                 const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
-                const header = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || csrfInput?.value || '';
+                const { header, token: metaToken } = xsGetCsrf();
+                const token = metaToken || csrfInput?.value || '';
 
                 // Collect form data, ensuring unchecked checkboxes are recorded as "0"
                 const payload = {};
@@ -2606,27 +2638,22 @@
 
         function initCustomFieldToggles() {
             // Handle custom field enable/disable toggles
+            // Guard: skip toggles already initialized
             document.querySelectorAll('.custom-field-toggle').forEach(toggle => {
+                if (toggle.dataset.toggleWired === 'true') return;
+                toggle.dataset.toggleWired = 'true';
+                
                 toggle.addEventListener('change', function() {
                     const container = this.closest('.custom-field-container');
                     const settings = container.querySelector('.custom-field-settings');
                     const inputs = settings.querySelectorAll('.custom-field-input');
-                    
-                    if (this.checked) {
-                        // Enable field - make it editable and visible
-                        settings.style.opacity = '1';
-                        settings.style.pointerEvents = 'auto';
-                        inputs.forEach(input => {
-                            input.disabled = false;
-                        });
-                    } else {
-                        // Disable field - grey out and make non-editable
-                        settings.style.opacity = '0.5';
-                        settings.style.pointerEvents = 'none';
-                        inputs.forEach(input => {
-                            input.disabled = true;
-                        });
-                    }
+                    const isEnabled = this.checked;
+
+                    settings.classList.toggle('opacity-50', !isEnabled);
+                    settings.classList.toggle('pointer-events-none', !isEnabled);
+                    inputs.forEach(input => {
+                        input.disabled = !isEnabled;
+                    });
                 });
                 
                 // Trigger initial state
@@ -2634,9 +2661,7 @@
             });
         }
 
-        // Initialize on page load and SPA navigation
-        document.addEventListener('DOMContentLoaded', initCustomFieldToggles);
-        document.addEventListener('spa:navigated', initCustomFieldToggles);
+        // NOTE: initCustomFieldToggles is called from initSettingsApi(), no separate listeners needed
         </script>
 
         <!-- Time Format Handler Script -->
@@ -2712,11 +2737,45 @@
                     if (dbInfoHost) dbInfoHost.textContent = data.database?.host || 'Unknown';
 
                     // Update last backup info
-                    updateLastBackupDisplay(data.last_backup);
+                    // If status API has no last_backup record, try fetching from /list
+                    if (data.last_backup?.time && data.last_backup?.filename) {
+                        updateLastBackupDisplay(data.last_backup);
+                    } else {
+                        await fetchLatestBackupFromList();
+                    }
 
                 } catch (error) {
                     console.error('Failed to load backup status:', error);
                     if (dbInfoType) dbInfoType.textContent = 'Error loading';
+                    if (dbInfoName) dbInfoName.textContent = 'Error loading';
+                    if (dbInfoHost) dbInfoHost.textContent = 'Error loading';
+                }
+            }
+
+            // Fetch the most recent backup from the /list endpoint as fallback
+            async function fetchLatestBackupFromList() {
+                try {
+                    const response = await fetch(`${API_BASE}/list`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    });
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    if (data.backups?.length > 0) {
+                        const latest = data.backups[0]; // sorted descending by date
+                        updateLastBackupDisplay({
+                            time: latest.created,
+                            filename: latest.filename,
+                            size_formatted: latest.size_formatted
+                        });
+                    } else {
+                        updateLastBackupDisplay(null);
+                    }
+                } catch {
+                    updateLastBackupDisplay(null);
                 }
             }
 
@@ -2727,15 +2786,15 @@
                 if (lastBackup?.time && lastBackup?.filename) {
                     lastBackupDetails.innerHTML = `
                         <div class="flex-1">
-                            <p class="text-sm text-gray-900 dark:text-gray-100">${escapeHtml(lastBackup.time)}</p>
+                            <p class="text-sm text-gray-900 dark:text-gray-100">${xsEscapeHtml(lastBackup.time)}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                ${escapeHtml(lastBackup.filename)} 
-                                <span class="text-gray-400">(${escapeHtml(lastBackup.size_formatted || 'Unknown size')})</span>
+                                ${xsEscapeHtml(lastBackup.filename)} 
+                                <span class="text-gray-400">(${xsEscapeHtml(lastBackup.size_formatted || 'Unknown size')})</span>
                             </p>
                         </div>
                         <a href="${API_BASE}/download/${encodeURIComponent(lastBackup.filename)}" 
                            data-no-spa="true"
-                           download="${escapeHtml(lastBackup.filename)}"
+                           download="${xsEscapeHtml(lastBackup.filename)}"
                            class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm inline-flex items-center gap-1">
                             <span class="material-symbols-outlined text-base">download</span>
                             Download
@@ -2860,22 +2919,22 @@
                                 ${data.backups.map(backup => `
                                     <div class="py-3 flex items-center justify-between gap-4">
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${escapeHtml(backup.filename)}</p>
+                                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">${xsEscapeHtml(backup.filename)}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                ${escapeHtml(backup.created)} • ${escapeHtml(backup.size_formatted)}
+                                                ${xsEscapeHtml(backup.created)} • ${xsEscapeHtml(backup.size_formatted)}
                                             </p>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <a href="${API_BASE}/download/${encodeURIComponent(backup.filename)}" 
-                                                              data-no-spa="true"
-                                                              download="${escapeHtml(backup.filename)}"
+                                               data-no-spa="true"
+                                               download="${xsEscapeHtml(backup.filename)}"
                                                class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
                                                title="Download">
                                                 <span class="material-symbols-outlined text-xl">download</span>
                                             </a>
                                             <button type="button" 
                                                     class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition delete-backup-btn"
-                                                    data-filename="${escapeHtml(backup.filename)}"
+                                                    data-filename="${xsEscapeHtml(backup.filename)}"
                                                     title="Delete">
                                                 <span class="material-symbols-outlined text-xl">delete</span>
                                             </button>
@@ -2958,24 +3017,17 @@
                 backupSuccess.classList.remove('hidden');
             }
 
-            function escapeHtml(str) {
-                if (!str) return '';
-                const div = document.createElement('div');
-                div.textContent = str;
-                return div.innerHTML;
-            }
-
             // Initialize when database tab is shown
             document.querySelectorAll('[data-tab="database"]').forEach(btn => {
+                if (btn.dataset.dbTabWired === 'true') return;
+                btn.dataset.dbTabWired = 'true';
                 btn.addEventListener('click', () => {
                     loadBackupStatus();
                 });
             });
 
-            // Also load on initial page load if database tab is active
-            if (document.querySelector('[data-tab="database"].active')) {
-                loadBackupStatus();
-            }
+            // Load immediately — data will populate when the tab becomes visible
+            loadBackupStatus();
         })();
         </script>
 <?= $this->endSection() ?>

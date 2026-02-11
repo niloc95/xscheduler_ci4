@@ -150,6 +150,41 @@ export function getProviderColor(provider) {
 }
 
 /**
+ * Extract meaningful initials from a provider name.
+ * Strips common prefixes (Dr., Mr., Mrs., etc.) to avoid all providers
+ * showing the same letter when they share a title.
+ *
+ * Examples:
+ *   "Dr. Smith"        → "SM"
+ *   "Dr. Ayanda Mbeki" → "AM"
+ *   "Paul Smith. MD"   → "PS"
+ *   "Joe"              → "JO"
+ *   "J"                → "J"
+ *
+ * @param {string} name - Full provider name
+ * @returns {string} 1–2 character initials, uppercased
+ */
+export function getProviderInitials(name) {
+    if (!name || typeof name !== 'string') return '?';
+
+    // Strip common honorific prefixes and trailing suffixes
+    const cleaned = name
+        .replace(/^(dr|mr|mrs|ms|prof|rev)\.?\s*/i, '')
+        .replace(/[.,]\s*(md|phd|dds|do|rn|np|pa|dvm|jr|sr|ii|iii|iv)$/i, '')
+        .trim();
+
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) return name.charAt(0).toUpperCase() || '?';
+    if (parts.length === 1) {
+        // Single word — return first 2 characters
+        return parts[0].substring(0, 2).toUpperCase();
+    }
+    // Multi-word — first char of first + first char of last
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+/**
  * Calculate contrasting text color for a background
  * @param {string} hexColor - Hex color code
  * @returns {string} 'white' or 'black'

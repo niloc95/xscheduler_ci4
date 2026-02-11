@@ -9,7 +9,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class DayView {
@@ -126,7 +126,7 @@ export class DayView {
         const timeFormat = is24Hour ? 'HH:mm' : 'h:mm a';
         const dateTimeDisplay = appointment.startDateTime.toFormat(`MMMM d'${this.getOrdinalSuffix(appointment.startDateTime.day)}', yyyy 'at' ${timeFormat}`);
         
-        const providerInitial = provider?.name?.charAt(0)?.toUpperCase() || '?';
+        const providerInitial = getProviderInitials(provider?.name);
         const providerName = provider?.name || 'Unknown Provider';
         
         return `
