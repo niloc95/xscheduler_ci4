@@ -349,12 +349,23 @@ class Setup extends BaseController
             // Step 1.5: Verify required tables exist before proceeding
             $verify = $this->verifyRequiredTables();
             if (!$verify['success']) {
+                // SQLite-only self-heal: stale/partial DB files can report
+                // successful migration history but miss required tables.
+                $recovery = $this->recoverSQLiteSchema();
+                if ($recovery['attempted'] && $recovery['success']) {
+                    $verify = $this->verifyRequiredTables();
+                }
+
+                if ($verify['success']) {
+                    log_message('info', 'Setup: Required tables verified after SQLite recovery');
+                } else {
                 $missingList = implode(', ', $verify['missing']);
                 log_message('error', 'Setup: Required tables missing after migrations: ' . $missingList);
                 return [
                     'success' => false,
                     'message' => 'Required tables missing after migrations: ' . $missingList
                 ];
+                }
             }
 
             // Step 2: Run seeders (optional)
@@ -403,17 +414,46 @@ class Setup extends BaseController
     {
         $required = ['users', 'services', 'appointments', 'settings'];
         $missing = [];
+        $db = null;
         try {
-            $db = \Config\Database::connect();
+            // Use a non-shared connection and uncached checks to avoid stale
+            // table metadata right after migration execution.
+            $db = \Config\Database::connect('default', false);
+            $this->setSQLitePragmas($db);
+            $prefixMismatch = [];
+
+            $tableNames = array_map(
+                static fn(string $name): string => strtolower($name),
+                $db->listTables(),
+            );
+
             foreach ($required as $t) {
-                if (! $db->tableExists($t)) {
-                    $missing[] = $db->prefixTable($t);
+                $prefixed = $db->prefixTable($t);
+                $hasPrefixed = in_array(strtolower($prefixed), $tableNames, true);
+                $hasUnprefixed = in_array(strtolower($t), $tableNames, true);
+
+                if (! $hasPrefixed) {
+                    if ($prefixed !== $t && $hasUnprefixed) {
+                        $prefixMismatch[] = $t;
+                        continue;
+                    }
+
+                    $missing[] = $prefixed;
                 }
+            }
+
+            if (! empty($prefixMismatch)) {
+                log_message('warning', 'Setup: Prefix mismatch detected. Unprefixed tables exist: ' . implode(', ', $prefixMismatch));
             }
         } catch (\Throwable $e) {
             log_message('error', 'Setup: verifyRequiredTables failed: ' . $e->getMessage());
             // If we cannot verify, consider as missing core tables
             $missing = $required;
+        } finally {
+            if ($db !== null && method_exists($db, 'close')) {
+                $db->close();
+            }
+            unset($db);
         }
 
         return [
@@ -423,22 +463,42 @@ class Setup extends BaseController
     }
 
     /**
+     * Set SQLite PRAGMAs to prevent "database is locked" errors.
+     *
+     * busy_timeout: waits up to 5 seconds for write-lock release.
+     * journal_mode=WAL: allows concurrent readers + single writer.
+     */
+    protected function setSQLitePragmas(\CodeIgniter\Database\BaseConnection $db): void
+    {
+        if (property_exists($db, 'DBDriver') && $db->DBDriver === 'SQLite3') {
+            try {
+                $db->query("PRAGMA busy_timeout = 5000");
+                $db->query("PRAGMA journal_mode = WAL");
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: Could not set SQLite PRAGMAs: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * Run database migrations
      */
     protected function runMigrations(): array
     {
+        $db = null;
+        $migrate = null;
         try {
-            // Log current DB connection details for diagnostics
-            try {
-                $db = \Config\Database::connect();
-                $driver = property_exists($db, 'DBDriver') ? $db->DBDriver : 'unknown';
-                $dbname = property_exists($db, 'database') ? $db->database : '';
-                log_message('info', 'Setup: Running migrations with DB driver=' . $driver . ' database=' . $dbname);
-            } catch (\Throwable $e) {
-                log_message('warning', 'Setup: Could not log DB connection details: ' . $e->getMessage());
-            }
+            $db = \Config\Database::connect('default', false);
+            $this->setSQLitePragmas($db);
 
-            $migrate = \Config\Services::migrations();
+            $driver = property_exists($db, 'DBDriver') ? $db->DBDriver : 'unknown';
+            $dbname = property_exists($db, 'database') ? $db->database : '';
+            $prefix = property_exists($db, 'DBPrefix') ? $db->DBPrefix : '';
+            log_message('info', 'Setup: Running migrations with DB driver=' . $driver . ' database=' . $dbname . ' prefix=' . $prefix);
+
+            // Force a non-shared MigrationRunner bound to the explicit runtime
+            // connection so we do not accidentally use stale/shared defaults.
+            $migrate = \Config\Services::migrations(config('Migrations'), $db, false);
             
             // Get all migrations
             $migrations = $migrate->findMigrations();
@@ -461,6 +521,18 @@ class Setup extends BaseController
                 ];
             }
 
+            // SQLite-focused diagnostic logging to prove table visibility on
+            // the same connection used by migrations.
+            try {
+                if (property_exists($db, 'DBDriver') && $db->DBDriver === 'SQLite3') {
+                    $rows = $db->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")->getResultArray();
+                    $tableNames = array_map(static fn(array $row): string => (string) ($row['name'] ?? ''), $rows);
+                    log_message('info', 'Setup: SQLite tables after migrations: ' . implode(', ', $tableNames));
+                }
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: Could not log SQLite table list: ' . $e->getMessage());
+            }
+
             log_message('info', 'Migrations completed successfully');
             return [
                 'success' => true,
@@ -474,6 +546,13 @@ class Setup extends BaseController
                 'success' => false,
                 'message' => 'Database migration failed: ' . $e->getMessage()
             ];
+        } finally {
+            // CRITICAL: Release SQLite file lock before seeders/admin creation
+            unset($migrate);
+            if ($db !== null && method_exists($db, 'close')) {
+                $db->close();
+            }
+            unset($db);
         }
     }
 
@@ -482,8 +561,14 @@ class Setup extends BaseController
      */
     protected function runSeeders(): array
     {
+        $db = null;
         try {
-            $seeder = \Config\Database::seeder();
+            // Use an explicit non-shared connection with SQLite PRAGMAs so the
+            // seeder does not conflict with connections from previous steps.
+            $db = \Config\Database::connect('default', false);
+            $this->setSQLitePragmas($db);
+
+            $seeder = new \CodeIgniter\Database\Seeder(config('Database'), $db);
             
             // Check if default seeder exists
             $seederClass = 'App\Database\Seeds\MainSeeder';
@@ -527,6 +612,74 @@ class Setup extends BaseController
                 'success' => false,
                 'message' => $e->getMessage()
             ];
+        } finally {
+            if ($db !== null && method_exists($db, 'close')) {
+                $db->close();
+            }
+            unset($seeder, $db);
+        }
+    }
+
+    /**
+     * Attempt one-time SQLite schema recovery if required tables are missing.
+     *
+     * This handles stale/partial SQLite files from interrupted setup attempts.
+     */
+    protected function recoverSQLiteSchema(): array
+    {
+        $db = null;
+        $freshDb = null;
+        try {
+            $db = \Config\Database::connect('default', false);
+            if (!property_exists($db, 'DBDriver') || $db->DBDriver !== 'SQLite3') {
+                return ['attempted' => false, 'success' => false, 'message' => 'Not SQLite'];
+            }
+
+            $databaseFile = (string) ($db->database ?? '');
+            if ($databaseFile === '' || $databaseFile === ':memory:') {
+                return ['attempted' => false, 'success' => false, 'message' => 'No SQLite file path'];
+            }
+
+            log_message('warning', 'Setup: SQLite recovery attempting schema rebuild for file: ' . $databaseFile);
+
+            if (method_exists($db, 'close')) {
+                $db->close();
+            }
+            $db = null; // Prevent double-close in finally
+
+            $directory = dirname($databaseFile);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            if (is_file($databaseFile) && !@unlink($databaseFile)) {
+                return ['attempted' => true, 'success' => false, 'message' => 'Could not delete stale SQLite DB file'];
+            }
+
+            $freshDb = \Config\Database::connect('default', false);
+            $this->setSQLitePragmas($freshDb);
+            $migrate = \Config\Services::migrations(config('Migrations'), $freshDb, false);
+            $result = $migrate->latest();
+
+            if ($result === false) {
+                $error = $migrate->getCliMessages();
+                return ['attempted' => true, 'success' => false, 'message' => 'Recovery migration failed: ' . implode(', ', $error)];
+            }
+
+            log_message('info', 'Setup: SQLite recovery migration completed successfully');
+            return ['attempted' => true, 'success' => true, 'message' => 'Recovery completed'];
+        } catch (\Throwable $e) {
+            log_message('error', 'Setup: SQLite recovery failed: ' . $e->getMessage());
+            return ['attempted' => true, 'success' => false, 'message' => $e->getMessage()];
+        } finally {
+            unset($migrate);
+            if ($db !== null && method_exists($db, 'close')) {
+                $db->close();
+            }
+            if ($freshDb !== null && method_exists($freshDb, 'close')) {
+                $freshDb->close();
+            }
+            unset($freshDb, $db);
         }
     }
 
@@ -535,19 +688,61 @@ class Setup extends BaseController
      */
     protected function createAdminUser(array $adminData): array
     {
+        $db = null;
         try {
-            $db = \Config\Database::connect();
+            // Use a non-shared connection and uncached checks to avoid stale
+            // metadata after migrations in this same request.
+            $db = \Config\Database::connect('default', false);
+            $this->setSQLitePragmas($db);
+            $prefix = method_exists($db, 'getPrefix') ? (string) $db->getPrefix() : '';
+            $prefixedUsersTable = $db->prefixTable('users');
+
+            $tableNames = array_map(
+                static fn(string $name): string => strtolower($name),
+                $db->listTables(),
+            );
+
+            $hasPrefixed = in_array(strtolower($prefixedUsersTable), $tableNames, true);
+            $hasUnprefixed = in_array('users', $tableNames, true);
+
+            // Resolve actual users table name in DB.
+            $usersTable = null;
+            if ($hasPrefixed) {
+                $usersTable = $prefixedUsersTable;
+            } elseif ($hasUnprefixed) {
+                $usersTable = 'users';
+            }
             
             // Check if users table exists
-            if (!$db->tableExists('users')) {
+            if ($usersTable === null) {
                 return [
                     'success' => false,
                     'message' => 'Users table does not exist. Please ensure migrations have run properly.'
                 ];
             }
 
+            // Decide what table name to pass to Query Builder without causing
+            // double prefixing.
+            $builderTable = $usersTable;
+            if ($usersTable === $prefixedUsersTable && $prefix !== '') {
+                // Let Query Builder apply prefix once.
+                $builderTable = 'users';
+            }
+
+            $prefixTemporarilyCleared = false;
+            if ($usersTable === 'users' && $prefix !== '') {
+                // If table is unprefixed but connection has a prefix, temporarily
+                // clear it so builder operations target the actual table.
+                $db->setPrefix('');
+                $builderTable = 'users';
+                $prefixTemporarilyCleared = true;
+                log_message('warning', 'Setup: Using unprefixed users table while DB prefix is set to ' . $prefix);
+            }
+
+            try {
+
             // Check if admin user already exists
-            $existingUser = $db->table('users')
+            $existingUser = $db->table($builderTable)
                               ->where('email', $adminData['email'])
                               ->orWhere('email', $adminData['userid'] . '@admin.local')
                               ->get()
@@ -573,7 +768,7 @@ class Setup extends BaseController
             ];
 
             // Insert admin user
-            $result = $db->table('users')->insert($userData);
+            $result = $db->table($builderTable)->insert($userData);
             
             if (!$result) {
                 return [
@@ -588,12 +783,23 @@ class Setup extends BaseController
                 'message' => 'Admin user created successfully'
             ];
 
+            } finally {
+                if ($prefixTemporarilyCleared) {
+                    $db->setPrefix($prefix);
+                }
+            }
+
         } catch (\Exception $e) {
             log_message('error', 'Admin user creation failed: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => $e->getMessage()
             ];
+        } finally {
+            if ($db !== null && method_exists($db, 'close')) {
+                $db->close();
+            }
+            unset($db);
         }
     }
 
