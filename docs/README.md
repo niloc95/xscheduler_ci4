@@ -1,154 +1,127 @@
 # 📘 xScheduler CI4 Documentation
 
-**Welcome to the xScheduler CI4 documentation hub.**
-
-⚠️ **IMPORTANT UPDATE (Jan 29, 2026):** Comprehensive audit completed. See **Quick Reference Guide** for fast onboarding.
-
----
-
-## 🎯 Start Here: January 2026 Comprehensive Codebase Audit
-
-**New to the project? Start with the latest comprehensive audit documentation:**
-
-### Core Audit Documents (Recommended Reading Order)
-1. **[Quick Reference Guide](./QUICK_REFERENCE.md)** ⭐ *START HERE* - Fast lookup for file locations, common tasks, and debugging (10 min)
-2. **[Audit Executive Summary](./AUDIT_EXECUTIVE_SUMMARY.md)** - High-level overview, critical findings, action items (15 min)
-3. **[Comprehensive Codebase Audit](./COMPREHENSIVE_CODEBASE_AUDIT.md)** - Deep technical analysis of all 1,466 files (40 min reference)
-
-### Legacy Documentation (For Reference Only)
-- [Audit README](./AUDIT_README.md) - Older overview document (deprecated, see above)
-- [Codebase Index](./CODEBASE_INDEX.md) - Older file index (deprecated, see Quick Reference Guide)
-- [Codebase Audit](./CODEBASE_AUDIT.md) - Older detailed audit (deprecated, see Comprehensive Audit)
-- [Audit Summary](./AUDIT_SUMMARY.md) - Older summary (deprecated, see Executive Summary)
-
-## 🚀 Quick Start
-
-**Getting started with development:**
-
-1. **[Installation & Setup](./development/setup-workflow.md)** - Get started with installation and configuration
-2. **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
-3. **[Layout System](./GLOBAL_LAYOUT_SYSTEM.md)** - Global layout and UI components
-4. **[Scheduling System](./SCHEDULING_SYSTEM.md)** - Core scheduling functionality
+**Welcome to the xScheduler CI4 documentation hub.**  
+**Last Updated:** February 12, 2026
 
 ---
 
+## 🎯 Start Here
 
-## 📚 Documentation Categories
+**New to the project?**
 
-### 🏗️ Architecture & System Design
+1. **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
+2. **[Quick Reference](./development/QUICK_REFERENCE.md)** - Fast lookup for common tasks (10 min)
+3. **[Development Setup](./development/setup-workflow.md)** - Installation and configuration
 
-Core system architecture, design patterns, and technical overview.
+---
 
-- **[System Architecture (Master Context)](./architecture/mastercontext.md)** - Complete technical overview and system design
-- **[Role-Based Access Control](./architecture/ROLE_BASED_SYSTEM.md)** - User roles, permissions, and access matrix
-- **[Multi-Tenant SaaS Architecture](./architecture/MULTI-TENANT-SAAS-ARCHITECTURE.md)** - Multi-tenant design and implementation
-- **[User-Customer Split Design](./architecture/USER_CUSTOMER_SPLIT.md)** - User and customer data model
-- **[Calendar UI Architecture](./architecture/CALENDAR_UI_ARCHITECTURE.md)** - Calendar system architecture
-- **[Material Dashboard Guide](./architecture/MATERIAL_DASHBOARD_GUIDE.md)** - Dashboard design and implementation
+## 📚 Documentation Structure
 
-### 💻 Development Guides
+### 🏗️ [Architecture](./architecture/)
+System design, patterns, and technical architecture
+- Master Context (complete system overview)
+- Role-Based Access Control
+- Multi-Tenant SaaS Architecture
+- Calendar UI Architecture
+- User-Customer Split Design
 
-Development guides, implementation details, and feature documentation.
+### 💻 [Development](./development/)
+Developer guides, conventions, and workflows
+- Setup workflow
+- Quick reference guide
+- Layout systems
+- File naming conventions
+- Provider system guide
+- Sample data
 
-- **[Setup & Installation](./development/setup-workflow.md)** - Project setup, database migrations, environment configuration
-- **[Unified Layout System](./development/UNIFIED_LAYOUT_SYSTEM.md)** - Comprehensive layout and UI system guide
-- **[Layout Quick Reference](./development/LAYOUT_QUICK_REFERENCE.md)** - Quick reference for layout patterns
-- **[Dashboard Landing View](./development/DASHBOARD_LANDING_VIEW_IMPLEMENTATION.md)** - Dashboard implementation guide
-- **[Provider System Guide](./development/provider_system_guide.md)** - Provider setup, staff assignments, service bindings
-- **[Dynamic Customer Fields](./development/dynamic-customer-fields.md)** - Custom customer field configuration
-- **[Schedule Views](./development/schedule-view.md)** - Schedule view implementation
-- **[Provider UX](./development/provider-ux.md)** - Provider user experience design
-- **[Sample Data](./development/SAMPLE_DATA.md)** - Test data and seeding
+### 🚀 [Deployment](./deployment/)
+Production deployment, releases, and URL configuration
+- Flexible deployment audit
+- Production URL auto-detection
+- Packaging and release guide
+- Quick release guide
+- Public booking fixes
 
-### ⚙️ Configuration & Settings
+### 🗄️ [Database](./database/)
+Database design, migrations, and best practices
+- SQLite migration compatibility
+- DB prefix best practices
 
-Environment configuration, application settings, and localization.
+### ⚙️ [Configuration](./configuration/)
+Environment configuration and settings
+- ENV configuration guide
+- Setup-driven ENV config
+- Localization settings
+- Settings implementation
 
-- **[Environment Configuration](./configuration/ENV-CONFIGURATION-GUIDE.md)** - .env setup and environment variables
-- **[Settings Implementation](./configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)** - Application settings and configuration
-- **[Localization & i18n](./configuration/LOCALIZATION_SETTINGS_UPDATE.md)** - Multi-language and regional settings
-- **[Contact Fields Configuration](./configuration/SETTINGS_CONTACT_FIELDS.md)** - Contact field customization
-- **[Setup Completion](./configuration/SETUP_COMPLETION_REPORT.md)** - Setup wizard completion tracking
-- **[Setup-Driven Config](./configuration/SETUP-DRIVEN-ENV-CONFIG.md)** - Configuration through setup wizard
+### 🎨 [Design](./design/)
+UI/UX standards, color palettes, and design systems
+- UI standards
+- Color palette analysis
+- Material icons usage
+- Preloaded availability system
 
-### 🚀 Deployment & Production
+### ✨ [Features](./features/)
+Feature documentation and implementation guides
+- Scheduling system
+- Notifications implementation
+- Customer appointment history
 
-Production deployment, server configuration, and hosting setup.
+### 🔒 [Security](./security/)
+Security implementation and compliance
+- Security status and implementation guide
+- Hash-based URL implementation
+- Encryption assessment
+- Quick security fixes
 
-- **[Production Setup Guide](./deployment/PRODUCTION_FIX_GUIDE.md)** - Production deployment and hardening
-- **[MySQL Connection Setup](./deployment/MYSQL-TEST-CONNECTION-FIX.md)** - Database connection troubleshooting
-- **[URL Auto-Detection](./deployment/PRODUCTION-URL-AUTO-DETECTION.md)** - Automatic URL configuration
-- **[Public Booking Deployment](./deployment/PUBLIC_BOOKING.md)** - Public booking page setup
-- **[ZIP Deployment](./deployment/ZIP-DEPLOYMENT-SUMMARY.md)** - Package deployment method
-- **[Merge Summary](./deployment/MERGE_SUMMARY.md)** - Branch merge documentation
+### 🧪 [Testing](./testing/)
+Test suites, strategies, and documentation
 
-### 🛡️ Security & Compliance
+### 👥 [User Management](./user-management/)
+User roles, permissions, and management
 
-Security implementation, best practices, and compliance standards.
+### 🔧 [Technical](./technical/)
+Technical references and specifications
+- OpenAPI specification
+- CSS consolidation guide
+- Command reference
 
-- **[Security Implementation](./security/SECURITY_IMPLEMENTATION_GUIDE.md)** - Security best practices and implementation
-- **[Security Status](./security/SECURITY_STATUS.md)** - Current security measures and features
-- **[HIPAA Compliance](./compliance/HIPAA-COMPLIANCE-ASSESSMENT.md)** - Healthcare compliance assessment
+### 🌐 [Compliance](./compliance/)
+Regulatory compliance documentation
 
-### 🗄️ Database
+### 🌙 [Dark Mode](./dark-mode/)
+Dark mode implementation
 
-Database schema, migrations, and data management.
+### 📦 [Archive](./_archive/)
+Historical audits and completion reports (reference only)
 
-- **[Database Schema](./database/database-schema.md)** - Complete database structure and relationships
-- **[Backup & Maintenance](./database/backup-and-maintenance.md)** - Database backup procedures and maintenance
-- **[DB Prefix Best Practices](./database/DB_PREFIX_BEST_PRACTICES.md)** - Database naming conventions
+---
 
-### 🎨 Design & UI/UX
+## 🔍 Quick Lookup
 
-Design system, styling, and user interface documentation.
+### By Task
+- **Initial Setup** → [Setup Workflow](./development/setup-workflow.md)
+- **Calendar Implementation** → [Calendar UI Architecture](./architecture/CALENDAR_UI_ARCHITECTURE.md)
+- **Provider Management** → [Provider System Guide](./development/provider_system_guide.md)
+- **Deployment** → [Flexible Deployment Guide](./deployment/FLEXIBLE_DEPLOYMENT_AUDIT.md)
+- **Security** → [Security Implementation Guide](./security/SECURITY_IMPLEMENTATION_GUIDE.md)
+- **Database Migrations** → [SQLite Compatibility](./database/SQLITE_MIGRATION_COMPATIBILITY.md)
 
-- **[Color Palette](./design/COLOR-PALETTE-ANALYSIS.md)** - Color schemes for light/dark modes
-- **[Material Icons Usage](./design/MATERIAL_ICONS_USAGE.md)** - Icon system implementation
-- **[Preloaded Availability System](./design/PRELOADED_AVAILABILITY_SYSTEM.md)** - Availability UI design
-- **[Dark Mode Implementation](./dark-mode/DARK_MODE_IMPLEMENTATION.md)** - Dark theme support
-
-### 🔧 Technical References
-
-Technical guides, CLI commands, and troubleshooting.
-
-- **[CLI Commands Reference](./technical/command.md)** - PHP Spark commands and utilities
-- **[SPA Settings Fix](./technical/SPA_SETTINGS_FIX.md)** - Single-page application configuration
-- **[Icon Display Fix](./technical/ICON-DISPLAY-FIX.md)** - Material icons troubleshooting
-- **[CSS Cleanup Summary](./technical/CSS_CLEANUP_SUMMARY.md)** - CSS consolidation documentation
-
-### 🔔 Features & Functionality
-
-Feature-specific documentation and implementation guides.
-
-- **[Scheduling System](./SCHEDULING_SYSTEM.md)** - Core scheduling system documentation
-- **[Notifications Implementation](./NOTIFICATIONS_IMPLEMENTATION_CHECKLIST.md)** - Notification system setup
-- **[Customer Appointment History](./features/CUSTOMER_APPOINTMENT_HISTORY.md)** - Customer history feature
-- **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
-
-### 👥 User Management
-
-User accounts, roles, and customer management.
-
-- User management documentation available in `./user-management/` directory
-
-### 📁 Archive
-
-Historical documentation preserved for reference.
-
-- **[Bug Fixes Archive](./archive/bug-fixes.md)** - Historical bug fixes
-- **[Troubleshooting Archive](./archive/troubleshooting-guides.md)** - Historical troubleshooting guides
+### By Role
+- **Developers** → Start with Development + Architecture sections
+- **DevOps/Deployment** → Start with Deployment + Configuration sections
+- **Designers** → Start with Design + UI/UX sections
+- **Security/Compliance** → Start with Security + Compliance sections
 
 ---
 
 ## 📖 Documentation Standards
 
-### File Naming Convention
-
-See [File Naming Convention](./file-naming-convention.md) for documentation standards.
-
-### API Documentation
-
-- **[OpenAPI Specification](./openapi.yml)** - RESTful API documentation
+All documentation follows standardized naming conventions and organizational structure. See [File Naming Convention](./development/file-naming-convention.md) for guidelines on:
+- Filename format rules (lowercase, hyphens)
+- Folder structure organization
+- Link formatting standards
+- Content organization guidelines
 
 ---
 
@@ -160,35 +133,7 @@ See [File Naming Convention](./file-naming-convention.md) for documentation stan
 
 ---
 
-**Last Updated**: January 2026
-
-## 📋 Documentation Standards
-
-### Naming Convention & Organization
-All documentation follows a standardized naming convention and organizational structure. See [File Naming Convention Guide](./file-naming-convention.md) for:
-- Filename format rules (lowercase, hyphens)
-- Folder structure organization
-- Link formatting standards
-- Content organization guidelines
-
-### Document Audit & Consolidation
-For information about documentation organization and consolidation history, see [Document Audit Summary](./DOCUMENT_AUDIT_SUMMARY.md).
-
----
-
-## 🔍 Finding Information
-
-### By Topic
-- **Calendar Features** → [Calendar Implementation Guide](./development/calendar-implementation.md)
-- **Provider Management** → [Provider & Staff System Guide](./development/provider-system-guide.md)
-- **UI/UX Design** → [Calendar UI Overview](./ui-ux/calendar-ui-overview.md)
-- **Deployment** → [Production Setup Guide](./deployment/PRODUCTION_FIX_GUIDE.md)
-- **Security** → [Security Implementation Guide](./security/SECURITY_IMPLEMENTATION_GUIDE.md)
-- **Database** → [Master Context Document](./architecture/mastercontext.md)
-- **Setup** → [Setup & Installation Guide](./development/setup-workflow.md)
-
-### By Role
-- **Developers** → Start with [AUDIT_README.md](./AUDIT_README.md), then Development + Architecture sections
+**Last Updated**: February 12, 2026
 - **DevOps/SysAdmin** → Deployment + Configuration sections
 - **QA Engineers** → Testing + [CODEBASE_AUDIT.md](./CODEBASE_AUDIT.md) for test coverage
 - **Product Managers** → [AUDIT_SUMMARY.md](./AUDIT_SUMMARY.md) + Features overview
