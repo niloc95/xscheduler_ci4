@@ -79,6 +79,53 @@ class UserModel extends BaseModel
     protected $beforeInsert = ['ensureProviderColor'];
     protected $beforeUpdate = ['ensureProviderColorOnUpdate'];
 
+    /**
+     * Flag to ensure auto-repair runs only once per request.
+     */
+    private static bool $schemaChecked = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->ensureColorColumnExists();
+    }
+
+    /**
+     * Auto-repair: Add the 'color' column if it is missing.
+     *
+     * This handles the case where the AddColorToUsers migration failed
+     * silently (e.g. SQLite "database is locked" during setup).
+     */
+    private function ensureColorColumnExists(): void
+    {
+        if (self::$schemaChecked) {
+            return;
+        }
+        self::$schemaChecked = true;
+
+        try {
+            $db = $this->db ?? \Config\Database::connect();
+            $table = $db->prefixTable('users');
+
+            if (!$db->fieldExists('color', $table)) {
+                // Column is missing — add it now
+                $forge = \Config\Database::forge();
+                $forge->addColumn('users', [
+                    'color' => [
+                        'type'       => 'VARCHAR',
+                        'constraint' => 10,
+                        'null'       => true,
+                    ],
+                ]);
+                log_message('warning', '[UserModel] Auto-repaired missing "color" column on ' . $table);
+            }
+        } catch (\Throwable $e) {
+            // Log but don't crash — the column may still be missing
+            // but crashing here would make the entire app unusable.
+            log_message('error', '[UserModel] ensureColorColumnExists failed: ' . $e->getMessage());
+        }
+    }
+
     // Dates (handled by BaseModel)
 
     // Validation

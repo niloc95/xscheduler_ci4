@@ -8,15 +8,23 @@ class AddColorToUsers extends MigrationBase
 {
     public function up()
     {
+        // Skip if column already exists (may have been added in initial
+        // CreateUsersTable migration on fresh installs).
+        if ($this->db->fieldExists('color', $this->db->prefixTable('users'))
+            || $this->db->fieldExists('color', 'users')) {
+            log_message('info', 'AddColorToUsers: color column already exists, skipping');
+            return;
+        }
+
         // Add color column for provider color assignment
-        $fields = [
+        $fields = $this->sanitiseFields([
             'color' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 10,
                 'null'       => true,
                 'comment'    => 'Provider color for calendar display (hex code)',
             ],
-        ];
+        ]);
         
         $this->forge->addColumn('users', $fields);
         

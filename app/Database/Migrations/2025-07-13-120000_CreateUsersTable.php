@@ -46,6 +46,11 @@ class CreateUsersTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => true,
             ],
+            'color' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 10,
+                'null'       => true,
+            ],
         ]));
 
         $this->forge->addKey('id', true);
