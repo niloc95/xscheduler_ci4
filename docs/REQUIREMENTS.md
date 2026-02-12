@@ -19,7 +19,9 @@ WebSchedulr is a modern online appointment scheduling system for service-based b
 - **Backend:** CodeIgniter 4.6.1 (PHP 8.1+)
 - **Frontend:** Tailwind CSS 3.4.17 + Material Web Components
 - **Charts:** Chart.js 4.5.0
-- **Database:** MySQL or SQLite
+- **Database:** 
+  - **SQLite 3.x** (zero-config) — See [SQLite Zero-Config Setup Guide](./configuration/SQLITE_ZERO_CONFIG_SETUP.md)
+  - **MySQL 5.7+** or **MariaDB 10.2+** — See [Database Selection Guide](./database/DATABASE_SELECTION_GUIDE.md)
 - **Build System:** Vite 6.3.5
 
 ---

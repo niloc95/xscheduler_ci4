@@ -44,15 +44,16 @@ Production deployment, releases, and URL configuration
 
 ### 🗄️ [Database](./database/)
 Database design, migrations, and best practices
-- SQLite migration compatibility
-- DB prefix best practices
+- **Database Selection Guide** — Choose between SQLite (zero-config) or MySQL (enterprise)
+- **SQLite Migration Compatibility** — Cross-database migration patterns
+- **DB Prefix Best Practices** — Table naming and collision prevention
 
 ### ⚙️ [Configuration](./configuration/)
 Environment configuration and settings
-- ENV configuration guide
-- Setup-driven ENV config
-- Localization settings
-- Settings implementation
+- **SQLite Zero-Config Setup** — Instant deployment without database server
+- **ENV Configuration Guide** — Environment variables and setup
+- **Setup Completion Report** — Setup wizard features and workflow
+- **Localization Settings Update** — Multi-language support configuration
 
 ### 🎨 [Design](./design/)
 UI/UX standards, color palettes, and design systems
@@ -101,6 +102,8 @@ Historical audits and completion reports (reference only)
 
 ### By Task
 - **Initial Setup** → [Setup Workflow](./development/setup-workflow.md)
+- **Choosing a Database** → [Database Selection Guide](./database/DATABASE_SELECTION_GUIDE.md)
+- **SQLite Zero-Config Setup** → [SQLite Zero-Config](./configuration/SQLITE_ZERO_CONFIG_SETUP.md)
 - **Calendar Implementation** → [Calendar UI Architecture](./architecture/CALENDAR_UI_ARCHITECTURE.md)
 - **Provider Management** → [Provider System Guide](./development/provider_system_guide.md)
 - **Deployment** → [Flexible Deployment Guide](./deployment/FLEXIBLE_DEPLOYMENT_AUDIT.md)
@@ -133,13 +136,6 @@ All documentation follows standardized naming conventions and organizational str
 
 ---
 
-**Last Updated**: February 12, 2026
-- **DevOps/SysAdmin** → Deployment + Configuration sections
-- **QA Engineers** → Testing + [CODEBASE_AUDIT.md](./CODEBASE_AUDIT.md) for test coverage
-- **Product Managers** → [AUDIT_SUMMARY.md](./AUDIT_SUMMARY.md) + Features overview
-
----
-
 ## 📦 Archive
 
 Historical documentation has been moved to [_archive/](./_archive/) including:
@@ -147,36 +143,18 @@ Historical documentation has been moved to [_archive/](./_archive/) including:
 - Superseded project summaries
 - Outdated implementation guides
 
-See [_archive/README.md](./_archive/README.md) for details.
-
 ---
 
 ## 📊 Documentation Statistics
 
-- **Active Documents:** 62 comprehensive guides (15 archived)
-- **New Audit Docs:** 6 comprehensive analysis documents
-- **Last Major Update:** January 28, 2025 (Comprehensive Codebase Audit)
-- **Coverage Areas:** 10 major categories + audit documentation
+- **Active Documents:** 64 comprehensive guides (15 archived)
+- **Database Guides:** SQLite zero-config + MySQL options
+- **Last Major Update:** February 12, 2026 (Database documentation expansion)
+- **Coverage Areas:** 10 major categories + database selection guides
 - **Code Examples:** 100+ with syntax highlighting
-- **Status:** ✅ Cleaned & Organized
+- **Status:** ✅ Complete & Current
 
 ---
 
-## 🏆 Quality Standards
-
-All documentation meets these standards:
-- ✅ Clear, concise language
-- ✅ Proper formatting (markdown)
-- ✅ Code examples with syntax highlighting
-- ✅ Cross-references and links
-- ✅ Table of contents (if applicable)
-- ✅ Last updated date provided
-- ✅ GitHub preview compatible
-- ✅ Organized by purpose
-
----
-
-**Last Updated:** January 28, 2025  
-**Documentation Status:** ✅ Cleaned & Organized  
-**Branch:** docs  
-**Ready for:** Production deployment and team review
+**Last Updated:** February 12, 2026  
+**Documentation Status:** ✅ Complete with Database Selection & Zero-Config Guides
