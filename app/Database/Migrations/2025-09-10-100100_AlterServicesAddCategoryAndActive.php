@@ -18,17 +18,15 @@ class AlterServicesAddCategoryAndActive extends MigrationBase
             'constraint' => 11,
             'unsigned'   => true,
             'null'       => true,
-            'after'      => 'description',
         ];
         // active
         $fields['active'] = [
             'type'       => 'TINYINT',
             'constraint' => 1,
             'default'    => 1,
-            'after'      => 'price',
         ];
 
-        $forge->addColumn('services', $fields);
+        $forge->addColumn('services', $this->sanitiseFields($fields));
 
     }
 

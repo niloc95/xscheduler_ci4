@@ -37,8 +37,7 @@
         <?= $this->include('components/footer') ?>
     </div>
     
-    <!-- Scripts -->
-    <script src="<?= base_url('build/assets/main.js') ?>"></script>
+    <!-- Scripts (setup.js is loaded by the setup view via the head section) -->
     <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
 </body>
 </html>

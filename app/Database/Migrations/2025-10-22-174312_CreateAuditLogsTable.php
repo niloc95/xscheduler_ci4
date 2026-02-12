@@ -2,13 +2,13 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateAuditLogsTable extends Migration
+class CreateAuditLogsTable extends MigrationBase
 {
     public function up()
     {
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
@@ -68,7 +68,7 @@ class CreateAuditLogsTable extends Migration
                 'type' => 'DATETIME',
                 'null' => false,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addKey('user_id');

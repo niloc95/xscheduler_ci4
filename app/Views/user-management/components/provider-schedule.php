@@ -25,18 +25,17 @@ $firstDay = $scheduleDays[0] ?? 'monday';
 <?php
 // Determine initial visibility based on current role selection
 $currentRole = old('role', $user['role'] ?? '');
-$initialDisplay = ($currentRole === 'provider') ? 'block' : 'none';
+$isProviderRole = ($currentRole === 'provider');
 ?>
 <div id="provider-schedule-section"
-     class="mt-8"
+     class="mt-8 <?= $isProviderRole ? '' : 'hidden' ?>"
      data-provider-schedule-section
      data-source-day="<?= esc($firstDay) ?>"
      data-time-format="<?= esc($timeFormat) ?>"
      data-time-example="<?= esc($timeExample) ?>"
      data-timezone="<?= esc($timezone) ?>"
      data-time-pattern="<?= esc($timePattern) ?>"
-    data-format-description="<?= esc($formatDescription) ?>"
-     style="display: <?= $initialDisplay ?>;">
+     data-format-description="<?= esc($formatDescription) ?>">
     <div class="card card-spacious">
         <div class="card-header flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex flex-col gap-1">
@@ -177,7 +176,7 @@ $initialDisplay = ($currentRole === 'provider') ? 'block' : 'none';
     function toggleScheduleSection(roleValue) {
         if (!scheduleSection) return;
         const isProvider = roleValue === 'provider';
-        scheduleSection.style.display = isProvider ? 'block' : 'none';
+        scheduleSection.classList.toggle('hidden', !isProvider);
         if (!isProvider) {
             setCopyButtonDisabled(true);
         } else {
@@ -264,7 +263,7 @@ $initialDisplay = ($currentRole === 'provider') ? 'block' : 'none';
 
     function updateCopyButtonState() {
         if (!scheduleSection || !copyBtn) return;
-        if (scheduleSection.style.display === 'none') {
+        if (scheduleSection.classList.contains('hidden')) {
             setCopyButtonDisabled(true);
             return;
         }

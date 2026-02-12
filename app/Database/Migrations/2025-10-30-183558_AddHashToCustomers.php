@@ -2,21 +2,31 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddHashToCustomers extends Migration
+class AddHashToCustomers extends MigrationBase
 {
     public function up()
     {
+        // Guard: skip if customers table doesn't exist yet
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
+        // Skip if hash column already exists
+        if ($this->db->fieldExists('hash', 'customers')) {
+            return;
+        }
+
         // Add hash column to customers table (without prefix, CI4 adds it)
-        $this->forge->addColumn('customers', [
+        $this->forge->addColumn('customers', $this->sanitiseFields([
             'hash' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 64,
                 'null'       => true, // Allow null initially for existing records
                 'after'      => 'id',
             ],
-        ]);
+        ]));
 
         // Add unique index on hash column for fast lookups
         $this->forge->addKey('hash', false, true, 'idx_customers_hash');
@@ -35,21 +45,34 @@ class AddHashToCustomers extends Migration
         }
 
         // Now make hash column NOT NULL after all records have hashes
-        $this->forge->modifyColumn('customers', [
-            'hash' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 64,
-                'null'       => false,
-            ],
-        ]);
+        // Skip on SQLite — modifyColumn triggers table recreation that can fail
+        if (!$this->isSQLite()) {
+            $this->forge->modifyColumn('customers', [
+                'hash' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 64,
+                    'null'       => false,
+                ],
+            ]);
+        }
     }
 
     public function down()
     {
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
         // Remove unique index
-        $this->forge->dropKey('customers', 'idx_customers_hash');
+        try {
+            $this->forge->dropKey('customers', 'idx_customers_hash');
+        } catch (\Throwable $e) {
+            // Index may not exist
+        }
         
         // Remove hash column
-        $this->forge->dropColumn('customers', 'hash');
+        if ($this->db->fieldExists('hash', 'customers')) {
+            $this->forge->dropColumn('customers', 'hash');
+        }
     }
 }

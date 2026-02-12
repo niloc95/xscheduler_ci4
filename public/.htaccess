@@ -75,6 +75,6 @@ ServerSignature Off
 
 # Content Security Policy (Enable in production)
 <IfModule mod_headers.c>
-    # Basic CSP - customize based on your needs
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
+    # CSP: allow Google Fonts, Material Symbols, Alpine.js CDN, and module scripts
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none';"
 </IfModule>

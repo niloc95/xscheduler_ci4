@@ -10,7 +10,7 @@ class AddUpdatedByToSettings extends MigrationBase
     {
         // Ensure settings table exists; create if missing
         if (! $this->db->tableExists('settings')) {
-            $this->forge->addField([
+            $this->forge->addField($this->sanitiseFields([
                 'id' => [
                     'type'           => 'INT',
                     'constraint'     => 11,
@@ -43,7 +43,7 @@ class AddUpdatedByToSettings extends MigrationBase
                     'unsigned' => true,
                     'null'     => true,
                 ],
-            ]);
+            ]));
             $this->forge->addKey('id', true);
             $this->forge->addUniqueKey('setting_key');
             $this->forge->createTable('settings');
@@ -59,13 +59,13 @@ class AddUpdatedByToSettings extends MigrationBase
 
         // Add column if it does not exist
         if (! $this->db->fieldExists('updated_by', 'settings')) {
-            $this->forge->addColumn('settings', [
+            $this->forge->addColumn('settings', $this->sanitiseFields([
                 'updated_by' => [
                     'type'     => 'INT',
                     'unsigned' => true,
                     'null'     => true,
                 ],
-            ]);
+            ]));
 
             if ($this->db->DBDriver === 'MySQLi') {
                 $settings = $this->db->prefixTable('settings');

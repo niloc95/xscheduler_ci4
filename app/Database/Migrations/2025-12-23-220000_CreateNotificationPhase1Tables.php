@@ -10,7 +10,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
     {
         // business_notification_rules
         if (!$this->db->tableExists($this->db->prefixTable('business_notification_rules'))) {
-            $this->forge->addField([
+            $this->forge->addField($this->sanitiseFields([
                 'id' => [
                     'type'           => 'INT',
                     'constraint'     => 11,
@@ -49,7 +49,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
                     'type' => 'DATETIME',
                     'null' => true,
                 ],
-            ]);
+            ]));
 
             $this->forge->addKey('id', true);
             $this->forge->addKey(['business_id', 'event_type']);
@@ -59,7 +59,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
 
         // business_integrations
         if (!$this->db->tableExists($this->db->prefixTable('business_integrations'))) {
-            $this->forge->addField([
+            $this->forge->addField($this->sanitiseFields([
                 'id' => [
                     'type'           => 'INT',
                     'constraint'     => 11,
@@ -107,7 +107,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
                     'type' => 'DATETIME',
                     'null' => true,
                 ],
-            ]);
+            ]));
 
             $this->forge->addKey('id', true);
             $this->forge->addKey(['business_id', 'channel']);
@@ -117,7 +117,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
 
         // message_templates (phase-ready, not required in Phase 1)
         if (!$this->db->tableExists($this->db->prefixTable('message_templates'))) {
-            $this->forge->addField([
+            $this->forge->addField($this->sanitiseFields([
                 'id' => [
                     'type'           => 'INT',
                     'constraint'     => 11,
@@ -175,7 +175,7 @@ class CreateNotificationPhase1Tables extends MigrationBase
                     'type' => 'DATETIME',
                     'null' => true,
                 ],
-            ]);
+            ]));
 
             $this->forge->addKey('id', true);
             $this->forge->addKey(['business_id', 'event_type', 'channel']);

@@ -2,13 +2,13 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateReceptionistProvidersTable extends Migration
+class CreateReceptionistProvidersTable extends MigrationBase
 {
     public function up()
     {
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
@@ -48,7 +48,7 @@ class CreateReceptionistProvidersTable extends Migration
                 'default'    => 'active',
                 'comment'    => 'Assignment status: active, inactive',
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addKey('receptionist_id');

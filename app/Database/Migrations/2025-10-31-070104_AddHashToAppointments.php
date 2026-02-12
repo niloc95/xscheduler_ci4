@@ -2,12 +2,22 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddHashToAppointments extends Migration
+class AddHashToAppointments extends MigrationBase
 {
     public function up()
     {
+        // Guard: skip if appointments table doesn't exist yet
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
+        // Skip if hash column already exists
+        if ($this->db->fieldExists('hash', 'appointments')) {
+            return;
+        }
+
         // Add hash column to appointments table
         $this->forge->addColumn('appointments', [
             'hash' => [
@@ -34,21 +44,34 @@ class AddHashToAppointments extends Migration
         }
 
         // Now make hash column NOT NULL after all records have hashes
-        $this->forge->modifyColumn('appointments', [
-            'hash' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 64,
-                'null'       => false,
-            ],
-        ]);
+        // Skip on SQLite — modifyColumn triggers table recreation that can fail
+        if (!$this->isSQLite()) {
+            $this->forge->modifyColumn('appointments', [
+                'hash' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 64,
+                    'null'       => false,
+                ],
+            ]);
+        }
     }
 
     public function down()
     {
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         // Remove unique index
-        $this->forge->dropKey('appointments', 'idx_appointments_hash');
+        try {
+            $this->forge->dropKey('appointments', 'idx_appointments_hash');
+        } catch (\Throwable $e) {
+            // Index may not exist
+        }
         
         // Remove hash column
-        $this->forge->dropColumn('appointments', 'hash');
+        if ($this->db->fieldExists('hash', 'appointments')) {
+            $this->forge->dropColumn('appointments', 'hash');
+        }
     }
 }

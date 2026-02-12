@@ -11,6 +11,22 @@ const FIELD_LABELS = {
   notes: 'Notes',
 };
 
+// UI Component Classes - Extracted to avoid duplication
+const UI_CLASSES = {
+  buttonPrimary: 'inline-flex w-full items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300',
+  buttonSecondary: 'inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600',
+  inputBase: 'mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus-visible:ring-blue-200',
+  selectBase: 'mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus-visible:ring-blue-200',
+  cardBase: 'rounded-2xl border border-slate-200 px-4 py-3',
+  cardInfo: 'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600',
+  cardError: 'rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800',
+  cardWarning: 'rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700',
+  cardDashed: 'rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-600',
+  slotButton: 'w-full rounded-2xl border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
+  datePill: 'rounded-2xl border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
+  tabButton: 'w-full rounded-2xl px-5 py-3 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
+};
+
 if (!root) {
   console.warn('[public-booking] Root element not found.');
 } else {
@@ -275,8 +291,8 @@ function bootstrapPublicBooking() {
       const services = (payload?.data ?? payload ?? []).map(svc => ({
         id: svc.id,
         name: svc.name,
-        duration: svc.duration_min ?? svc.durationMin ?? svc.duration,
-        durationMinutes: svc.duration_min ?? svc.durationMin ?? svc.duration,
+        duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
+        durationMinutes: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
         formattedPrice: svc.price ? `$${parseFloat(svc.price).toFixed(2)}` : '',
       }));
@@ -802,13 +818,12 @@ function bootstrapPublicBooking() {
         <nav class="grid gap-1 sm:flex" role="tablist">
           ${tabs.map(tab => {
             const isActive = tab.key === activeView;
-            const base = 'w-full rounded-2xl px-5 py-3 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200';
             const stateClass = isActive
               ? 'bg-slate-900 text-white shadow'
               : 'text-slate-500 hover:text-slate-900';
             const detailClass = isActive ? 'text-slate-200' : 'text-slate-400';
             return `
-              <button type="button" data-view-toggle="${tab.key}" class="${base} ${stateClass}" role="tab" aria-selected="${isActive}">
+              <button type="button" data-view-toggle="${tab.key}" class="${UI_CLASSES.tabButton} ${stateClass}" role="tab" aria-selected="${isActive}">
                 <span class="block">${escapeHtml(tab.label)}</span>
                 <span class="text-xs font-normal ${detailClass}">${escapeHtml(tab.description)}</span>
               </button>
@@ -838,7 +853,7 @@ function bootstrapPublicBooking() {
 
   function renderLookupStage(manageState, ctx) {
     const info = manageState.lookupError
-      ? `<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">${escapeHtml(manageState.lookupError)}</div>`
+      ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(manageState.lookupError)}</div>`
       : '';
     const contactError = manageState.lookupErrors?.contact
       ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
@@ -859,27 +874,27 @@ function bootstrapPublicBooking() {
           ${info}
           <label class="block text-sm font-medium text-slate-700">
             Confirmation token
-            <input name="token" value="${escapeHtml(manageState.lookupForm.token ?? '')}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="abcd-1234-efgh" required>
+            <input name="token" value="${escapeHtml(manageState.lookupForm.token ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="abcd-1234-efgh" required>
             ${renderFieldError('token', manageState.lookupErrors)}
           </label>
           <div class="grid gap-4 md:grid-cols-2">
             <label class="block text-sm font-medium text-slate-700">
               Email address
-              <input type="email" name="email" value="${escapeHtml(manageState.lookupForm.email ?? '')}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="you@example.com">
+              <input type="email" name="email" value="${escapeHtml(manageState.lookupForm.email ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="you@example.com">
               ${renderFieldError('email', manageState.lookupErrors)}
             </label>
             <label class="block text-sm font-medium text-slate-700">
               Phone number
-              <input type="tel" name="phone" value="${escapeHtml(manageState.lookupForm.phone ?? '')}" class="mt-1 w-full rounded-2xl border-slate-200 px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" placeholder="(555) 555-1234">
+              <input type="tel" name="phone" value="${escapeHtml(manageState.lookupForm.phone ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="(555) 555-1234">
               ${renderFieldError('phone', manageState.lookupErrors)}
             </label>
           </div>
-          <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-600">
+          <div class="${UI_CLASSES.cardDashed}">
             Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
             ${contactError}
           </div>
           <p class="text-xs font-medium ${policyClass}">${policyMessage}</p>
-          <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
+          <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
         </form>
       </section>
     `;
@@ -926,10 +941,10 @@ function bootstrapPublicBooking() {
             <p class="mt-0.5 font-mono text-base text-slate-900">${escapeHtml(appointment.token ?? '')}</p>
             <p class="mt-2 text-sm text-slate-600">${contactLine}</p>
           </div>
-          <button type="button" data-manage-reset class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600">Use a different token</button>
+          <button type="button" data-manage-reset class="${UI_CLASSES.buttonSecondary}">Use a different token</button>
         </div>
         <dl class="mt-6 grid gap-4 text-left md:grid-cols-3">
-          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+          <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Current time</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(slotSummary)}</dd>
           </div>
@@ -948,7 +963,7 @@ function bootstrapPublicBooking() {
 
   function renderForm(currentState, ctx, options = {}) {
     const generalError = currentState.globalError
-      ? `<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">${escapeHtml(currentState.globalError)}</div>`
+      ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(currentState.globalError)}</div>`
       : '';
     const formId = options.formId ?? 'public-booking-form';
 
@@ -999,7 +1014,7 @@ function bootstrapPublicBooking() {
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block text-sm font-medium text-slate-700">
           Provider
-          <select name="provider_id" data-provider-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${ctx.providers?.length ? '' : 'disabled'}>
+          <select name="provider_id" data-provider-select class="${UI_CLASSES.selectBase}" ${ctx.providers?.length ? '' : 'disabled'}>
             <option value="" ${currentState.providerId ? '' : 'selected'}>Choose a provider</option>
             ${providerOptions}
           </select>
@@ -1007,7 +1022,7 @@ function bootstrapPublicBooking() {
         </label>
         <label class="block text-sm font-medium text-slate-700">
           Service
-          <select name="service_id" data-service-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${currentState.servicesLoading || !currentState.providerId ? 'disabled' : ''}>
+          <select name="service_id" data-service-select class="${UI_CLASSES.selectBase}" ${currentState.servicesLoading || !currentState.providerId ? 'disabled' : ''}>
             <option value="" ${currentState.serviceId ? '' : 'selected'}>${currentState.servicesLoading ? 'Loading services...' : (currentState.providerId ? 'Choose a service' : 'Select a provider first')}</option>
             ${serviceOptions}
           </select>
@@ -1029,7 +1044,7 @@ function bootstrapPublicBooking() {
 
     const slotButtons = currentState.slots.map(slot => {
       const isSelected = slot.start === currentState.selectedSlot?.start;
-      const baseClasses = 'w-full rounded-2xl border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200';
+      const baseClasses = UI_CLASSES.slotButton;
       const stateClasses = isSelected
         ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
         : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
@@ -1117,11 +1132,10 @@ function bootstrapPublicBooking() {
 
     const pills = dates.slice(0, 6).map(date => {
       const isSelected = date === state.appointmentDate;
-      const base = 'rounded-2xl border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200';
       const stateClass = isSelected
         ? 'border-blue-600 bg-blue-50 text-blue-900'
         : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
-      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${base} ${stateClass}">${escapeHtml(formatDatePillLabel(date))}</button>`;
+      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDatePillLabel(date))}</button>`;
     }).join('');
 
     const moreCount = Math.max(0, dates.length - 6);
@@ -1221,7 +1235,7 @@ function bootstrapPublicBooking() {
     const text = currentState.submitting ? pendingLabel : submitLabel;
     return `
       <div class="flex flex-col gap-3">
-        <button type="submit" class="inline-flex items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300" ${disabled}>${escapeHtml(text)}</button>
+        <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${disabled}>${escapeHtml(text)}</button>
         <p class="text-center text-xs text-slate-400">${escapeHtml(helperText)}</p>
       </div>
     `;
@@ -1283,7 +1297,7 @@ function bootstrapPublicBooking() {
     return `
       <label class="block text-sm font-medium text-slate-700">
         ${escapeHtml(label)} ${required ? '<span class="text-red-500">*</span>' : ''}
-        <input name="${name}" value="${escapeHtml(currentState.form[name] ?? '')}" type="${name === 'email' ? 'email' : (name === 'phone' ? 'tel' : 'text')}" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${required ? 'aria-required="true"' : ''}>
+        <input name="${name}" value="${escapeHtml(currentState.form[name] ?? '')}" type="${name === 'email' ? 'email' : (name === 'phone' ? 'tel' : 'text')}" class="${UI_CLASSES.inputBase}" ${required ? 'aria-required="true"' : ''}>
         ${renderFieldError(name, currentState.errors)}
       </label>
     `;
@@ -1299,7 +1313,7 @@ function bootstrapPublicBooking() {
       return `
         <label class="block text-sm font-medium text-slate-700">
           ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
-          <textarea name="${key}" rows="3" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${escapeHtml(currentState.form[key] ?? '')}</textarea>
+          <textarea name="${key}" rows="3" class="${UI_CLASSES.inputBase}">${escapeHtml(currentState.form[key] ?? '')}</textarea>
           ${renderFieldError(key, currentState.errors)}
         </label>
       `;
@@ -1319,7 +1333,7 @@ function bootstrapPublicBooking() {
     return `
       <label class="block text-sm font-medium text-slate-700">
         ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
-        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" class="${UI_CLASSES.inputBase}">
         ${renderFieldError(key, currentState.errors)}
       </label>
     `;

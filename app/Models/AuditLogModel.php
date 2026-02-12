@@ -61,17 +61,12 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
-
-class AuditLogModel extends Model
+class AuditLogModel extends BaseModel
 {
-    protected $table            = 'audit_logs';
-    protected $primaryKey       = 'id';
-    protected $useAutoIncrement = true;
-    protected $returnType       = 'array';
-    protected $useSoftDeletes   = false;
-    protected $protectFields    = true;
-    protected $allowedFields    = [
+    protected $table      = 'audit_logs';
+    protected $primaryKey = 'id';
+
+    protected $allowedFields = [
         'user_id',
         'action',
         'target_type',
@@ -80,15 +75,13 @@ class AuditLogModel extends Model
         'new_value',
         'ip_address',
         'user_agent',
-        'created_at'
+        'created_at',
     ];
 
-    // Dates
-    protected $useTimestamps = false; // Manual control
-    protected $dateFormat    = 'datetime';
+    // Write-only log — no auto-updated_at
+    protected $useTimestamps = false;
     protected $createdField  = 'created_at';
     protected $updatedField  = false;
-    protected $deletedField  = false;
 
     /**
      * Log an audit trail event

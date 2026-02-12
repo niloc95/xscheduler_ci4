@@ -13,10 +13,9 @@ class AddProfileImageToUsers extends MigrationBase
                 'type'       => 'VARCHAR',
                 'constraint' => 255,
                 'null'       => true,
-                'after'      => 'phone',
             ],
         ];
-        $this->forge->addColumn('users', $fields);
+        $this->forge->addColumn('users', $this->sanitiseFields($fields));
     }
 
     public function down()

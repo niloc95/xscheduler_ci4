@@ -12,7 +12,7 @@ class CreateNotificationDeliveryLogsTable extends MigrationBase
             return;
         }
 
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type' => 'INT',
                 'constraint' => 11,
@@ -81,7 +81,7 @@ class CreateNotificationDeliveryLogsTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => true,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addKey(['business_id', 'created_at']);

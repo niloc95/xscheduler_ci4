@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddColorToUsers extends Migration
+class AddColorToUsers extends MigrationBase
 {
     public function up()
     {

@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddBookingFieldSettings extends Migration
+class AddBookingFieldSettings extends MigrationBase
 {
     public function up()
     {

@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class CreateSettingsTableIfMissing extends Migration
+class CreateSettingsTableIfMissing extends MigrationBase
 {
     public function up()
     {

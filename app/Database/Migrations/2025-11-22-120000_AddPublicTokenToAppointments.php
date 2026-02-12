@@ -2,12 +2,17 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class AddPublicTokenToAppointments extends Migration
+class AddPublicTokenToAppointments extends MigrationBase
 {
     public function up()
     {
+        // Guard: skip if appointments table doesn't exist yet
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         if (!$this->db->fieldExists('public_token', 'appointments')) {
             $this->forge->addColumn('appointments', [
                 'public_token' => [
@@ -30,6 +35,10 @@ class AddPublicTokenToAppointments extends Migration
 
     public function down()
     {
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         if ($this->db->fieldExists('public_token', 'appointments')) {
             $this->forge->dropKey('appointments', 'idx_appointments_public_token');
             $this->forge->dropColumn('appointments', ['public_token', 'public_token_expires_at']);

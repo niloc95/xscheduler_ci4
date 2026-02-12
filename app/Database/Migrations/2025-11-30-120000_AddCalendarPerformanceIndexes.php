@@ -2,7 +2,7 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
 /**
  * Migration: Add Calendar Performance Indexes
@@ -16,97 +16,39 @@ use CodeIgniter\Database\Migration;
  * These indexes support the P0-3 optimization that loads only today+future appointments
  * by provider, significantly reducing calendar load times for systems with historical data.
  */
-class AddCalendarPerformanceIndexes extends Migration
+class AddCalendarPerformanceIndexes extends MigrationBase
 {
     public function up()
     {
-        // Check if indexes already exist to prevent duplicate index errors
-        $db = \Config\Database::connect();
-        $tableName = 'xs_appointments';
-        
-        // Get existing indexes (cross-database compatible)
-        $existingIndexes = [];
-        if ($db->DBDriver === 'SQLite3') {
-            $query = $db->query("PRAGMA index_list({$tableName})");
-            foreach ($query->getResultArray() as $row) {
-                $existingIndexes[] = $row['name'];
-            }
-        } else {
-            $query = $db->query("SHOW INDEX FROM {$tableName}");
-            foreach ($query->getResultArray() as $row) {
-                $existingIndexes[] = $row['Key_name'];
-            }
+        $table = 'appointments';
+
+        // Guard: skip if appointments table doesn't exist yet
+        if (!$this->db->tableExists($table)) {
+            return;
         }
-        
+
         // Index for futureOnly queries: WHERE start_time >= TODAY
-        // This index optimizes the P0-3 futureOnly=1 parameter that excludes historical data
-        if (!in_array('idx_appts_start_time', $existingIndexes)) {
-            $this->forge->addKey('start_time', false, false, 'idx_appts_start_time');
-            log_message('info', '[Migration] Adding idx_appts_start_time index');
-        }
-        
+        $this->createIndexIfMissing($table, 'idx_appts_start_time', ['start_time']);
+
         // Composite index for calendar range + provider queries
-        // Optimizes: WHERE start_time >= ? AND start_time <= ? AND provider_id = ?
-        if (!in_array('idx_appts_start_provider', $existingIndexes)) {
-            // Use raw SQL for composite index since forge doesn't support it directly
-            $db->query("CREATE INDEX idx_appts_start_provider ON {$tableName} (start_time, provider_id)");
-            log_message('info', '[Migration] Adding idx_appts_start_provider composite index');
-        }
-        
-        // Composite index for calendar range + status queries (supports status filter buttons)
-        // Optimizes: WHERE start_time >= ? AND status = ?
-        if (!in_array('idx_appts_start_status', $existingIndexes)) {
-            $db->query("CREATE INDEX idx_appts_start_status ON {$tableName} (start_time, status)");
-            log_message('info', '[Migration] Adding idx_appts_start_status composite index');
-        }
-        
+        $this->createIndexIfMissing($table, 'idx_appts_start_provider', ['start_time', 'provider_id']);
+
+        // Composite index for calendar range + status queries
+        $this->createIndexIfMissing($table, 'idx_appts_start_status', ['start_time', 'status']);
+
         log_message('info', '[Migration] Calendar performance indexes added successfully');
     }
 
     public function down()
     {
-        $db = \Config\Database::connect();
-        $tableName = 'xs_appointments';
-        
-        // Get existing indexes (cross-database compatible)
-        $existingIndexes = [];
-        if ($db->DBDriver === 'SQLite3') {
-            $query = $db->query("PRAGMA index_list({$tableName})");
-            foreach ($query->getResultArray() as $row) {
-                $existingIndexes[] = $row['name'];
-            }
-        } else {
-            $query = $db->query("SHOW INDEX FROM {$tableName}");
-            foreach ($query->getResultArray() as $row) {
-                $existingIndexes[] = $row['Key_name'];
-            }
+        if (!$this->db->tableExists('appointments')) {
+            return;
         }
-        
-        // Drop indexes if they exist
-        if (in_array('idx_appts_start_time', $existingIndexes)) {
-            if ($db->DBDriver === 'SQLite3') {
-                $db->query("DROP INDEX idx_appts_start_time");
-            } else {
-                $db->query("DROP INDEX idx_appts_start_time ON {$tableName}");
-            }
-        }
-        
-        if (in_array('idx_appts_start_provider', $existingIndexes)) {
-            if ($db->DBDriver === 'SQLite3') {
-                $db->query("DROP INDEX idx_appts_start_provider");
-            } else {
-                $db->query("DROP INDEX idx_appts_start_provider ON {$tableName}");
-            }
-        }
-        
-        if (in_array('idx_appts_start_status', $existingIndexes)) {
-            if ($db->DBDriver === 'SQLite3') {
-                $db->query("DROP INDEX idx_appts_start_status");
-            } else {
-                $db->query("DROP INDEX idx_appts_start_status ON {$tableName}");
-            }
-        }
-        
+
+        $this->dropIndexIfExists('appointments', 'idx_appts_start_time');
+        $this->dropIndexIfExists('appointments', 'idx_appts_start_provider');
+        $this->dropIndexIfExists('appointments', 'idx_appts_start_status');
+
         log_message('info', '[Migration] Calendar performance indexes removed');
     }
 }

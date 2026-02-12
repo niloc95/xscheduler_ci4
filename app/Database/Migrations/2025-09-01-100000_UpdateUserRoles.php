@@ -17,15 +17,14 @@ class UpdateUserRoles extends MigrationBase
         $usersTable = $db->prefixTable('users');
 
         // Update the users table to support new role structure (prefix-safe)
-        $fields = [
+        $this->modifyEnumColumn('users', [
             'role' => [
                 'type' => 'ENUM',
                 'constraint' => ['admin', 'provider', 'staff', 'customer'],
                 'default' => 'customer',
                 'null' => false,
             ],
-        ];
-        $this->forge->modifyColumn('users', $fields);
+        ]);
 
         // Add additional user fields if they don't exist
         $newFields = [];
@@ -34,14 +33,13 @@ class UpdateUserRoles extends MigrationBase
             $newFields['provider_id'] = [
                 'type' => 'INT',
                 'constraint' => 11,
-                'unsigned' => true,
                 'null' => true,
             ];
         }
 
         if (!$db->fieldExists('permissions', 'users')) {
             $newFields['permissions'] = [
-                'type' => 'JSON',
+                'type' => 'TEXT',
                 'null' => true,
             ];
         }
@@ -71,16 +69,16 @@ class UpdateUserRoles extends MigrationBase
 
         if (!$hasProviderFK && $db->fieldExists('provider_id', 'users')) {
             try {
-                $db->query("ALTER TABLE `{$usersTable}` ADD CONSTRAINT `users_provider_fk` FOREIGN KEY (`provider_id`) REFERENCES `{$usersTable}`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
+                $this->mysqlOnly("ALTER TABLE `{$usersTable}` ADD CONSTRAINT `users_provider_fk` FOREIGN KEY (`provider_id`) REFERENCES `{$usersTable}`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
             } catch (\Exception $e) {
                 // FK might already exist or there might be data issues, continue
                 log_message('warning', 'Could not add provider_id foreign key: ' . $e->getMessage());
             }
         }
 
-        $this->createIndexIfMissing($usersTable, 'idx_users_role', ['role']);
-        $this->createIndexIfMissing($usersTable, 'idx_users_provider_id', ['provider_id']);
-        $this->createIndexIfMissing($usersTable, 'idx_users_active', ['is_active']);
+        $this->createIndexIfMissing('users', 'idx_users_role', ['role']);
+        $this->createIndexIfMissing('users', 'idx_users_provider_id', ['provider_id']);
+        $this->createIndexIfMissing('users', 'idx_users_active', ['is_active']);
     }
 
     public function down()
@@ -93,9 +91,9 @@ class UpdateUserRoles extends MigrationBase
 
         $usersTable = $db->prefixTable('users');
 
-        // Remove foreign key if it exists
+        // Remove foreign key if it exists (MySQL only — SQLite does not support DROP FOREIGN KEY)
         try {
-            $db->query("ALTER TABLE `{$usersTable}` DROP FOREIGN KEY `users_provider_fk`");
+            $this->mysqlOnly("ALTER TABLE `{$usersTable}` DROP FOREIGN KEY `users_provider_fk`");
         } catch (\Exception $e) {
             // FK might not exist
         }
@@ -112,41 +110,13 @@ class UpdateUserRoles extends MigrationBase
         }
         
         // Revert role enum to original values
-        $fields = [
+        $this->modifyEnumColumn('users', [
             'role' => [
                 'type' => 'ENUM',
                 'constraint' => ['customer', 'provider', 'admin'],
                 'default' => 'customer',
             ],
-        ];
-        
-        $this->forge->modifyColumn('users', $fields);
+        ]);
     }
 
-    private function createIndexIfMissing(string $table, string $index, array $columns): void
-    {
-        $db = $this->db;
-        
-        // SQLite-compatible index existence check
-        $driver = $db->DBDriver;
-        
-        if ($driver === 'SQLite3') {
-            // For SQLite, query sqlite_master
-            $exists = $db->query(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
-                [$index]
-            )->getFirstRow();
-        } else {
-            // For MySQL/other databases
-            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$index])->getFirstRow();
-        }
-        
-        if ($exists) {
-            return;
-        }
-
-        $quotedColumns = array_map(static fn ($column) => "`{$column}`", $columns);
-        $columnList = implode(', ', $quotedColumns);
-        $db->query("CREATE INDEX `{$index}` ON `{$table}` ({$columnList})");
-    }
 }

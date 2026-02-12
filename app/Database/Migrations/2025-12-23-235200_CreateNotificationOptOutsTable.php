@@ -12,7 +12,7 @@ class CreateNotificationOptOutsTable extends MigrationBase
             return;
         }
 
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type' => 'INT',
                 'constraint' => 11,
@@ -46,7 +46,7 @@ class CreateNotificationOptOutsTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => true,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addUniqueKey(['business_id', 'channel', 'recipient'], 'uniq_opt_out');

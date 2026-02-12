@@ -16,7 +16,12 @@ class AddLocationToAppointments extends MigrationBase
 {
     public function up()
     {
-        $fields = [
+        // Guard: skip if appointments table doesn't exist yet
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
+        $fields = $this->sanitiseFields([
             'location_id' => [
                 'type'       => 'INT',
                 'constraint' => 11,
@@ -41,16 +46,20 @@ class AddLocationToAppointments extends MigrationBase
                 'null'       => true,
                 'comment'    => 'Snapshot: Contact number at booking time',
             ],
-        ];
+        ]);
 
         $this->forge->addColumn('appointments', $fields);
 
-        // Add index for location queries
-        $this->db->query('ALTER TABLE xs_appointments ADD INDEX idx_location_id (location_id)');
+        // Add index for location queries (cross-database)
+        $this->createIndexIfMissing('appointments', 'idx_location_id', ['location_id']);
     }
 
     public function down()
     {
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         $this->forge->dropColumn('appointments', ['location_id', 'location_name', 'location_address', 'location_contact']);
     }
 }

@@ -20,7 +20,7 @@ class CreateLocationsTable extends MigrationBase
     public function up()
     {
         // Main locations table
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
@@ -66,7 +66,7 @@ class CreateLocationsTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => true,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addKey('provider_id');
@@ -75,7 +75,7 @@ class CreateLocationsTable extends MigrationBase
         $this->forge->createTable('locations', true);
 
         // Location working days pivot table
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
@@ -93,7 +93,7 @@ class CreateLocationsTable extends MigrationBase
                 'unsigned'   => true,
                 'comment'    => '0=Sunday, 1=Monday, ... 6=Saturday',
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addKey('location_id');

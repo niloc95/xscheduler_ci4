@@ -303,6 +303,5 @@ export function refreshChartsOnThemeChange() {
  * Initialize all analytics charts on page
  */
 export function initAnalyticsCharts() {
-    // This will be called from the analytics page
-    console.log('Analytics charts module loaded');
+    // Analytics charts initialization
 }

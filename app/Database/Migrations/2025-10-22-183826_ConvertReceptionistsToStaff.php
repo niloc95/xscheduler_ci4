@@ -2,9 +2,9 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 
-class ConvertReceptionistsToStaff extends Migration
+class ConvertReceptionistsToStaff extends MigrationBase
 {
     public function up()
     {

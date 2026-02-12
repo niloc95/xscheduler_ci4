@@ -9,7 +9,7 @@
 
 <?= $this->section('dashboard_actions') ?>
     <div class="relative">
-        <select id="timeframe" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;" class="border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <select id="timeframe" class="appearance-none border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             <option value="7d" <?= $timeframe === '7d' ? 'selected' : '' ?>>Last 7 Days</option>
             <option value="30d" <?= $timeframe === '30d' ? 'selected' : '' ?>>Last 30 Days</option>
             <option value="3m" <?= $timeframe === '3m' ? 'selected' : '' ?>>Last 3 Months</option>

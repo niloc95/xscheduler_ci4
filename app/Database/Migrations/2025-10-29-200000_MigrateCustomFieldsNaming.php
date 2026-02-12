@@ -18,6 +18,11 @@ class MigrateCustomFieldsNaming extends MigrationBase
 {
     public function up()
     {
+        // Guard: skip if customers table doesn't exist yet
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
         // Get all customers with custom_fields data
         $builder = $this->db->table('customers');
         $customers = $builder->select('id, custom_fields')
@@ -81,6 +86,11 @@ class MigrateCustomFieldsNaming extends MigrationBase
 
     public function down()
     {
+        // Guard: skip if customers table doesn't exist yet
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
         // Get all customers with custom_fields data
         $builder = $this->db->table('customers');
         $customers = $builder->select('id, custom_fields')

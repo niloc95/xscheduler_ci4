@@ -152,7 +152,7 @@ export class AppointmentDetailsModal {
                                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
                                 <div class="flex items-center gap-2">
                                     <div class="relative">
-                                        <select id="detail-status-select" class="text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer bg-none" style="-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 height=%2218%22 viewBox=%220 -960 960 960%22 width=%2218%22 fill=%22%236b7280%22%3E%3Cpath d=%22M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
+                                        <select id="detail-status-select" class="text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none [background-image:url('data:image/svg+xml;charset=UTF-8,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_height=%2218%22_viewBox=%220_-960_960_960%22_width=%2218%22_fill=%22%236b7280%22%3E%3Cpath_d=%22M480-344_240-584l56-56_184_184_184-184_56_56-240_240Z%22/%3E%3C/svg%3E')] [background-repeat:no-repeat] [background-position:right_0.5rem_center] [background-size:1rem]">
                                             <option value="pending">Pending</option>
                                             <option value="confirmed">Confirmed</option>
                                             <option value="completed">Completed</option>

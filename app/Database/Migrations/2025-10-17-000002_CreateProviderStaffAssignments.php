@@ -2,15 +2,15 @@
 
 namespace App\Database\Migrations;
 
-use CodeIgniter\Database\Migration;
+use App\Database\MigrationBase;
 use CodeIgniter\Database\RawSql;
 use Config\Database;
 
-class CreateProviderStaffAssignments extends Migration
+class CreateProviderStaffAssignments extends MigrationBase
 {
     public function up()
     {
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'constraint'     => 11,
@@ -32,7 +32,7 @@ class CreateProviderStaffAssignments extends Migration
                 'null'    => false,
                 'default' => new RawSql('CURRENT_TIMESTAMP'),
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addUniqueKey(['provider_id', 'staff_id'], 'provider_staff_unique');

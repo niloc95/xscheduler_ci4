@@ -713,6 +713,7 @@ class Setup extends BaseController
                                "database.default.username = \n" .
                                "database.default.password = \n" .
                                "database.default.port = 3306\n" .
+                               "database.default.DBPrefix = xs_\n" .
                                "encryption.key = \n";
             }
 
@@ -785,6 +786,9 @@ class Setup extends BaseController
     $portValue = isset($data['db_port']) ? (int) $data['db_port'] : 3306;
     $envContent = $replaceKey($envContent, 'database.default.port', (string) $portValue);
 
+        // Ensure DBPrefix is always set
+        $envContent = $replaceKey($envContent, 'database.default.DBPrefix', 'xs_');
+
         // Encryption key
         $envContent = $replaceKey($envContent, 'encryption.key', $this->generateEncryptionKey());
 
@@ -824,6 +828,9 @@ class Setup extends BaseController
                 if (!empty($data['db_port'])) {
                     $dbConfig->default['port'] = (int) $data['db_port'];
                 }
+
+                // Always set DBPrefix
+                $dbConfig->default['DBPrefix'] = 'xs_';
                 
                 log_message('info', 'Setup: Runtime DB config updated with: ' . json_encode([
                     'DBDriver' => $dbConfig->default['DBDriver'],

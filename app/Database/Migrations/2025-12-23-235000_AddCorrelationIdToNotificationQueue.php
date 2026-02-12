@@ -8,56 +8,40 @@ class AddCorrelationIdToNotificationQueue extends MigrationBase
 {
     public function up()
     {
-        $table = $this->db->prefixTable('notification_queue');
-        if (!$this->db->tableExists($table)) {
+        if (!$this->db->tableExists('notification_queue')) {
             return;
         }
 
-        $fields = $this->db->getFieldNames($table);
+        $prefixed = $this->db->prefixTable('notification_queue');
+        $fields   = $this->db->getFieldNames($prefixed);
         if (in_array('correlation_id', $fields, true)) {
             return;
         }
 
         $this->forge->addColumn('notification_queue', [
             'correlation_id' => [
-                'type' => 'VARCHAR',
+                'type'       => 'VARCHAR',
                 'constraint' => 64,
-                'null' => true,
+                'null'       => true,
             ],
         ]);
 
-        $this->forge->addKey('correlation_id');
-        // CI4 Forge won't addKey on existing table via addKey reliably across drivers.
-        // Use raw query for the index if possible.
-        try {
-            $this->db->query('CREATE INDEX idx_notification_queue_correlation_id ON ' . $table . ' (correlation_id)');
-        } catch (\Throwable $e) {
-            // ignore if index exists or driver doesn't support
-        }
+        $this->createIndexIfMissing('notification_queue', 'idx_notification_queue_correlation_id', ['correlation_id']);
     }
 
     public function down()
     {
-        $table = $this->db->prefixTable('notification_queue');
-        if (!$this->db->tableExists($table)) {
+        if (!$this->db->tableExists('notification_queue')) {
             return;
         }
 
-        $fields = $this->db->getFieldNames($table);
+        $prefixed = $this->db->prefixTable('notification_queue');
+        $fields   = $this->db->getFieldNames($prefixed);
         if (!in_array('correlation_id', $fields, true)) {
             return;
         }
 
-        try {
-            // SQLite-compatible DROP INDEX
-            if ($this->db->DBDriver === 'SQLite3') {
-                $this->db->query('DROP INDEX idx_notification_queue_correlation_id');
-            } else {
-                $this->db->query('DROP INDEX idx_notification_queue_correlation_id ON ' . $table);
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
+        $this->dropIndexIfExists('notification_queue', 'idx_notification_queue_correlation_id');
 
         $this->forge->dropColumn('notification_queue', 'correlation_id');
     }

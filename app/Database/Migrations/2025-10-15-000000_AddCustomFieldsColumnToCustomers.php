@@ -8,6 +8,10 @@ class AddCustomFieldsColumnToCustomers extends MigrationBase
 {
     public function up()
     {
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
         if (!$this->db->fieldExists('custom_fields', 'customers')) {
             $this->forge->addColumn('customers', [
                 'custom_fields' => [
@@ -21,6 +25,10 @@ class AddCustomFieldsColumnToCustomers extends MigrationBase
 
     public function down()
     {
+        if (!$this->db->tableExists('customers')) {
+            return;
+        }
+
         if ($this->db->fieldExists('custom_fields', 'customers')) {
             $this->forge->dropColumn('customers', 'custom_fields');
         }

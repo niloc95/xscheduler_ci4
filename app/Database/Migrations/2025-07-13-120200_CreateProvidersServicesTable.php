@@ -8,7 +8,7 @@ class CreateProvidersServicesTable extends MigrationBase
 {
     public function up()
     {
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'provider_id' => [
                 'type'       => 'INT',
                 'constraint' => 11,
@@ -23,7 +23,7 @@ class CreateProvidersServicesTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => false,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey(['provider_id', 'service_id'], true);
         $this->forge->addForeignKey('provider_id', 'users', 'id', 'CASCADE', 'CASCADE');

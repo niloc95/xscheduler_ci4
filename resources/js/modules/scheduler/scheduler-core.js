@@ -734,23 +734,23 @@ export class SchedulerCore {
         const openParam = urlParams.get('open');
         
         if (openParam) {
-            console.log('🔗 Found "open" parameter:', openParam);
+            this.debugLog('🔗 Found "open" parameter:', openParam);
             this.openAppointmentById(openParam, true);
             return;
         }
         
         // Fall back to hash check
         const hash = window.location.hash;
-        console.log('🔍 Checking URL hash:', hash);
+        this.debugLog('🔍 Checking URL hash:', hash);
         
         if (!hash || !hash.startsWith('#appointment-')) {
-            console.log('⏭️  No appointment in URL');
+            this.debugLog('⏭️  No appointment in URL');
             return;
         }
 
         // Extract appointment identifier from hash
         const appointmentIdentifier = hash.substring('#appointment-'.length);
-        console.log('🔗 Found appointment in hash:', appointmentIdentifier);
+        this.debugLog('🔗 Found appointment in hash:', appointmentIdentifier);
         this.openAppointmentById(appointmentIdentifier, false);
     }
     
@@ -760,22 +760,21 @@ export class SchedulerCore {
      * @param {boolean} clearQueryParam - Whether to clear query param from URL
      */
     openAppointmentById(identifier, clearQueryParam = false) {
-        console.log('🔍 Looking for appointment:', identifier);
-        console.log('📋 Available appointments:', this.appointments.length);
-        console.log('📊 Appointments data:', this.appointments.map(a => ({ id: a.id, hash: a.hash })));
+        this.debugLog('🔍 Looking for appointment:', identifier);
+        this.debugLog('📋 Available appointments:', this.appointments.length);
 
         // Try to find the appointment by ID or hash
         const appointment = this.appointments.find(apt => {
             const matchById = apt.id && apt.id.toString() === identifier;
             const matchByHash = apt.hash && apt.hash === identifier;
             if (matchById || matchByHash) {
-                console.log('✅ Found matching appointment:', apt);
+                this.debugLog('✅ Found matching appointment:', apt);
             }
             return matchById || matchByHash;
         });
 
         if (appointment) {
-            console.log('✅ Opening appointment from URL:', appointment);
+            this.debugLog('✅ Opening appointment from URL:', appointment);
             
             if (!this.appointmentDetailsModal) {
                 console.error('❌ Appointment details modal not initialized!');
@@ -798,15 +797,15 @@ export class SchedulerCore {
                         window.history.replaceState(null, null, window.location.pathname + window.location.search);
                     }
                     
-                    console.log('✅ Modal opened and URL cleaned');
+                    this.debugLog('✅ Modal opened and URL cleaned');
                 } catch (error) {
                     console.error('❌ Error opening modal:', error);
                 }
             }, 300);
         } else {
             console.warn('⚠️  Appointment not found for identifier:', identifier);
-            console.log('Available IDs:', this.appointments.map(a => a.id));
-            console.log('Available hashes:', this.appointments.map(a => a.hash));
+            this.debugLog('Available IDs:', this.appointments.map(a => a.id));
+            this.debugLog('Available hashes:', this.appointments.map(a => a.hash));
         }
     }
 }

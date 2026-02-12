@@ -53,19 +53,16 @@
 
 namespace App\Controllers\Api\V1;
 
-use App\Controllers\BaseController;
+use App\Controllers\Api\V1\BaseApiController;
 use App\Models\SettingFileModel;
 use App\Models\SettingModel;
 use App\Services\CalendarConfigService;
 use App\Services\LocalizationSettingsService;
 use App\Services\BookingSettingsService;
-use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class Settings extends BaseController
+class Settings extends BaseApiController
 {
-    use ResponseTrait;
-
     protected $model;
 
     public function __construct()

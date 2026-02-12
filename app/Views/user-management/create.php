@@ -114,7 +114,7 @@
                     </div>
 
                     <!-- Provider Color Picker (Optional) -->
-                    <div class="form-group provider-color-field" style="display: none;">
+                    <div class="form-group provider-color-field hidden">
                         <label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
                             Calendar Color <span class="text-gray-500 text-xs">(Optional)</span>
                         </label>
@@ -155,7 +155,7 @@
                 </div>
 
                 <!-- Role Description -->
-                <div id="role-description" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" style="display: none;">
+                <div id="role-description" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hidden">
                     <h4 class="font-medium text-blue-800 dark:text-blue-200 mb-2">Role Permissions</h4>
                     <div id="role-permissions" class="text-sm text-blue-700 dark:text-blue-300"></div>
                 </div>
@@ -346,10 +346,10 @@ function toggleRoleDetails() {
             rolePermissions.innerHTML = descriptions[role] || '';
         }
         if (roleDescription) {
-            roleDescription.style.display = 'block';
+            roleDescription.classList.remove('hidden');
         }
     } else if (roleDescription) {
-        roleDescription.style.display = 'none';
+        roleDescription.classList.add('hidden');
     }
 
     if (providerScheduleSection) {
@@ -368,7 +368,7 @@ function toggleRoleDetails() {
     // Toggle provider color field
     const colorFields = document.querySelectorAll('.provider-color-field');
     colorFields.forEach(field => {
-        field.style.display = (role === 'provider') ? 'block' : 'none';
+        field.classList.toggle('hidden', role !== 'provider');
     });
 }
 

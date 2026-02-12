@@ -41,11 +41,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     
     <!-- App Styles -->
-    <?php if (file_exists(FCPATH . 'build/assets/app.css')): ?>
-    <link rel="stylesheet" href="<?= base_url('build/assets/app.css') ?>">
-    <?php else: ?>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <?php endif; ?>
+    <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
     
     <?= $this->renderSection('head') ?>
 </head>
@@ -98,9 +94,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- App Scripts -->
-    <?php if (file_exists(FCPATH . 'build/assets/app.js')): ?>
-    <script type="module" src="<?= base_url('build/assets/app.js') ?>"></script>
-    <?php endif; ?>
+    <script type="module" src="<?= base_url('build/assets/main.js') ?>"></script>
+    <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
     
     <?= $this->renderSection('scripts') ?>
 </body>

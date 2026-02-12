@@ -22,8 +22,8 @@ class SeparateCustomersFinalize extends MigrationBase
             // Just ensure the role enum is correct and add customer_id column if needed
             
             // Check if customer_id column exists, add it if not
-            if (!$db->fieldExists('customer_id', 'appointments')) {
-                $this->forge->addColumn('appointments', [
+            if ($db->tableExists('appointments') && !$db->fieldExists('customer_id', 'appointments')) {
+                $this->forge->addColumn('appointments', $this->sanitiseFields([
                     'customer_id' => [
                         'type'       => 'INT',
                         'constraint' => 11,
@@ -31,13 +31,20 @@ class SeparateCustomersFinalize extends MigrationBase
                         'null'       => true,
                         'comment'    => 'Customer ID from xs_customers table',
                     ]
-                ]);
+                ]));
 
-                $this->createIndexIfMissing($appointmentsTable, 'idx_appointments_customer_id', ['customer_id']);
+                $this->createIndexIfMissing('appointments', 'idx_appointments_customer_id', ['customer_id']);
             }
             
-            // Ensure proper role enum (without customer for fresh installs)
-            $db->query("ALTER TABLE `{$usersTable}` MODIFY role ENUM('admin','provider','staff') NOT NULL DEFAULT 'staff'");
+            // Ensure proper role (skips on SQLite where ENUM is VARCHAR)
+            $this->modifyEnumColumn('users', [
+                'role' => [
+                    'type'       => 'ENUM',
+                    'constraint' => ['admin', 'provider', 'staff'],
+                    'default'    => 'staff',
+                    'null'       => false,
+                ],
+            ]);
             
             return; // Skip the rest of the migration
         }
@@ -45,8 +52,8 @@ class SeparateCustomersFinalize extends MigrationBase
         // Legacy data migration - only runs if there are customer users
         
         // 0) First, add customer_id column to appointments table if it doesn't exist
-        if (!$db->fieldExists('customer_id', 'appointments')) {
-            $this->forge->addColumn('appointments', [
+        if ($db->tableExists('appointments') && !$db->fieldExists('customer_id', 'appointments')) {
+            $this->forge->addColumn('appointments', $this->sanitiseFields([
                 'customer_id' => [
                     'type'       => 'INT',
                     'constraint' => 11,
@@ -54,10 +61,16 @@ class SeparateCustomersFinalize extends MigrationBase
                     'null'       => true,
                     'comment'    => 'Customer ID from xs_customers table',
                 ]
-            ]);
+            ]));
 
             // Add index for customer_id
-            $this->createIndexIfMissing($appointmentsTable, 'idx_appointments_customer_id', ['customer_id']);
+            $this->createIndexIfMissing('appointments', 'idx_appointments_customer_id', ['customer_id']);
+        }
+
+        // Steps 1-4: MySQL-specific data migration (SUBSTRING_INDEX, JOIN UPDATE)
+        // SQLite fresh installs won't have legacy customer data to migrate
+        if ($this->isSQLite()) {
+            return;
         }
 
         // 1) Insert customers from xs_users into xs_customers if not already present (by email or phone)
@@ -104,19 +117,33 @@ SQL;
 
         // 5) Alter enum to remove 'customer' and set a safe default
         //    Note: MySQL/MariaDB specific. Adjust as needed for other DBs.
-        $db->query("ALTER TABLE `{$usersTable}` MODIFY role ENUM('admin','provider','staff') NOT NULL DEFAULT 'staff'");
+        // 5) Alter enum to remove 'customer' and set a safe default (skips on SQLite)
+        $this->modifyEnumColumn('users', [
+            'role' => [
+                'type'       => 'ENUM',
+                'constraint' => ['admin', 'provider', 'staff'],
+                'default'    => 'staff',
+                'null'       => false,
+            ],
+        ]);
     }
 
     public function down()
     {
         $db         = $this->db;
-        $usersTable = $db->prefixTable('users');
 
-        // Reverse step 5: restore enum to include 'customer' (works for both fresh and legacy installs)
-        $db->query("ALTER TABLE `{$usersTable}` MODIFY role ENUM('admin','provider','staff','customer') NOT NULL DEFAULT 'customer'");
+        // Reverse step 5: restore enum to include 'customer' (skips on SQLite)
+        $this->modifyEnumColumn('users', [
+            'role' => [
+                'type'       => 'ENUM',
+                'constraint' => ['admin', 'provider', 'staff', 'customer'],
+                'default'    => 'customer',
+                'null'       => false,
+            ],
+        ]);
 
         // Remove the customer_id column from appointments table if it exists
-        if ($db->fieldExists('customer_id', 'appointments')) {
+        if ($db->tableExists('appointments') && $db->fieldExists('customer_id', 'appointments')) {
             $this->forge->dropColumn('appointments', 'customer_id');
         }
 
@@ -124,22 +151,4 @@ SQL;
         // because that would require historical state. Down migration focuses on schema changes only.
     }
 
-    private function createIndexIfMissing(string $table, string $indexName, array $columns): void
-    {
-        $db = $this->db;
-        
-        // Cross-database compatible index check
-        if ($db->DBDriver === 'SQLite3') {
-            $exists = $db->query("SELECT name FROM sqlite_master WHERE type='index' AND name=?", [$indexName])->getFirstRow();
-        } else {
-            $exists = $db->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName])->getFirstRow();
-        }
-
-        if ($exists) {
-            return;
-        }
-
-        $columnList = implode(', ', array_map(static fn ($column) => "`{$column}`", $columns));
-        $db->query("CREATE INDEX `{$indexName}` ON `{$table}` ({$columnList})");
-    }
 }

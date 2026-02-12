@@ -8,7 +8,7 @@ class CreateProviderSchedulesTable extends MigrationBase
 {
     public function up(): void
     {
-        $this->forge->addField([
+        $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
                 'unsigned'       => true,
@@ -53,7 +53,7 @@ class CreateProviderSchedulesTable extends MigrationBase
                 'type' => 'DATETIME',
                 'null' => true,
             ],
-        ]);
+        ]));
 
         $this->forge->addKey('id', true);
         $this->forge->addUniqueKey(['provider_id', 'day_of_week'], 'provider_day_unique');

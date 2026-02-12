@@ -8,6 +8,11 @@ class AddReminderSentToAppointments extends MigrationBase
 {
     public function up()
     {
+        // Guard: skip if appointments table doesn't exist yet
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         // Cross-DB: BOOLEAN maps to appropriate underlying type per driver
         $field = [
             'reminder_sent' => [
@@ -21,6 +26,10 @@ class AddReminderSentToAppointments extends MigrationBase
 
     public function down()
     {
+        if (!$this->db->tableExists('appointments')) {
+            return;
+        }
+
         $this->forge->dropColumn('appointments', 'reminder_sent');
     }
 }

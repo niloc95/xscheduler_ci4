@@ -119,7 +119,7 @@
 						$canEditColor = ($currentUser['role'] ?? '') === 'admin';
 						?>
 						<?php if ($isProvider && $canEditColor): ?>
-						<div class="form-group provider-color-field" style="display: <?= $isProvider ? 'block' : 'none' ?>;">
+						<div class="form-group provider-color-field">
 							<label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
 								Calendar Color
 							</label>
@@ -136,7 +136,7 @@
 							</div>
 						</div>
 						<?php elseif ($isProvider): ?>
-						<div class="form-group provider-color-field" style="display: <?= $isProvider ? 'block' : 'none' ?>;">
+						<div class="form-group provider-color-field">
 							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
 								Calendar Color
 							</label>
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		const isProvider = roleSelect.value === 'provider';
 		scheduleSection.classList.toggle('hidden', !isProvider);
 		colorFields.forEach(field => {
-			field.style.display = isProvider ? 'block' : 'none';
+			field.classList.toggle('hidden', !isProvider);
 		});
 	}
 
