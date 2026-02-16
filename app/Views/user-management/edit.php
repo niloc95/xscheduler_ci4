@@ -172,7 +172,7 @@
 								'canManageAssignments' => $canManageAssignments ?? false,
 								'providerId' => $user['id'] ?? null,
 							]) ?>
-						<?php elseif ($user['role'] === 'staff'): ?>
+						<?php elseif (($user['role'] ?? '') === 'staff'): ?>
 							<?= $this->include('user-management/components/staff-providers', [
 								'assignedProviders' => $assignedProviders ?? [],
 								'availableProviders' => $availableProviders ?? [],
@@ -331,10 +331,10 @@
 						<strong class="text-blue-700 dark:text-blue-300">Provider:</strong>
 						<p class="text-gray-600 dark:text-gray-400">Manage own services and staff</p>
 					</div>
-						<div class="text-sm">
-							<strong class="text-green-700 dark:text-green-300">Staff:</strong>
-							<p class="text-gray-600 dark:text-gray-400">Limited to providers they assist</p>
-						</div>
+					<div class="text-sm">
+						<strong class="text-green-700 dark:text-green-300">Staff:</strong>
+						<p class="text-gray-600 dark:text-gray-400">Limited to providers they assist</p>
+					</div>
 					<div class="text-sm">
 						<strong class="text-gray-700 dark:text-gray-300">Customer:</strong>
 						<p class="text-gray-600 dark:text-gray-400">Book and manage own appointments</p>
@@ -346,15 +346,18 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Provider fields visibility — runs immediately (SPA-compatible)
+(function() {
 	const roleSelect = document.getElementById('role');
-	const scheduleSection = document.getElementById('providerScheduleSection');
+	const scheduleWrapper = document.getElementById('providerScheduleSection');
+	const locationsWrapper = document.getElementById('providerLocationsWrapper');
 	const colorFields = document.querySelectorAll('.provider-color-field');
-	if (!roleSelect || !scheduleSection) return;
+	if (!roleSelect) return;
 
 	function toggleProviderFields() {
 		const isProvider = roleSelect.value === 'provider';
-		scheduleSection.classList.toggle('hidden', !isProvider);
+		if (scheduleWrapper) scheduleWrapper.classList.toggle('hidden', !isProvider);
+		if (locationsWrapper) locationsWrapper.classList.toggle('hidden', !isProvider);
 		colorFields.forEach(field => {
 			field.classList.toggle('hidden', !isProvider);
 		});
@@ -362,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	roleSelect.addEventListener('change', toggleProviderFields);
 	toggleProviderFields();
-});
+})();
 
 // Toggle password visibility
 function togglePassword(fieldId) {

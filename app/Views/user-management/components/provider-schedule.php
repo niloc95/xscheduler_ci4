@@ -374,7 +374,9 @@ $isProviderRole = ($currentRole === 'provider');
         updateCopyButtonState();
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize immediately — SPA re-executes inline scripts but does NOT
+    // re-fire DOMContentLoaded, so we must run init directly.
+    function initProviderSchedule() {
         scheduleSection = document.querySelector('[data-provider-schedule-section]');
         if (scheduleSection) {
             sourceDayKey = scheduleSection.dataset.sourceDay || sourceDayKey;
@@ -431,6 +433,13 @@ $isProviderRole = ($currentRole === 'provider');
                 input.value = normaliseInputValue(input.value);
             });
         });
-    });
+    }
+
+    // Run immediately if DOM is ready (SPA nav), or wait for DOMContentLoaded (initial load)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initProviderSchedule);
+    } else {
+        initProviderSchedule();
+    }
 })();
 </script>
