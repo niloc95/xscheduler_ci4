@@ -1133,8 +1133,8 @@ class Setup extends BaseController
      */
     protected function detectProductionURL(): string
     {
-        // In production, prefer to leave empty for App.php auto-detection
-        // But if we can reliably detect the URL, use it
+        // Detect the full base URL including any subdirectory the app lives in.
+        // This is critical for subdirectory deployments (e.g. /v50a/, /booking/).
         if (!empty($_SERVER['HTTP_HOST'])) {
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
                        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
@@ -1144,19 +1144,42 @@ class Setup extends BaseController
             
             $host = $_SERVER['HTTP_HOST'];
             
-            // Handle subdirectory installations
+            // Detect subdirectory from SCRIPT_NAME (most reliable)
             $path = '';
             if (!empty($_SERVER['SCRIPT_NAME'])) {
                 $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
-                if ($scriptDir !== '/' && $scriptDir !== '.') {
-                    $path = $scriptDir;
+                if ($scriptDir !== '/' && $scriptDir !== '.' && $scriptDir !== '\\') {
+                    $path = rtrim($scriptDir, '/\\');
                 }
             }
             
-            return $protocol . $host . $path . '/';
+            // Cross-check with REQUEST_URI if SCRIPT_NAME gave us nothing.
+            // On some shared hosts, SCRIPT_NAME is just /index.php while
+            // REQUEST_URI still contains the full /subfolder/setup path.
+            if ($path === '' && !empty($_SERVER['REQUEST_URI'])) {
+                $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '';
+                // Strip the CI4 route portion (e.g. /setup, /setup/process)
+                // to isolate the subdirectory prefix.
+                $knownSegments = ['setup', 'auth', 'dashboard', 'index.php'];
+                foreach ($knownSegments as $seg) {
+                    $pos = strpos($uri, '/' . $seg);
+                    if ($pos !== false && $pos > 0) {
+                        $path = rtrim(substr($uri, 0, $pos), '/\\');
+                        break;
+                    }
+                }
+            }
+            
+            $detectedUrl = $protocol . $host . $path . '/';
+            log_message('info', 'Setup: Detected production URL: ' . $detectedUrl . 
+                       ' (SCRIPT_NAME=' . ($_SERVER['SCRIPT_NAME'] ?? 'N/A') . 
+                       ', REQUEST_URI=' . ($_SERVER['REQUEST_URI'] ?? 'N/A') . ')');
+            
+            return $detectedUrl;
         }
         
         // Fallback: leave empty for App.php constructor to handle
+        log_message('warning', 'Setup: Could not detect production URL — HTTP_HOST is empty');
         return '';
     }
 
