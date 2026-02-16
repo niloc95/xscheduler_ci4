@@ -107,8 +107,14 @@ class UserManagement extends BaseController
         }
 
         // Get users based on current user's role and permissions
-        $users = $this->getUsersBasedOnRole($currentUserId);
-        $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
+        $users = [];
+        $stats = ['total' => 0, 'admins' => 0, 'providers' => 0, 'staff' => 0, 'recent' => 0];
+        try {
+            $users = $this->getUsersBasedOnRole($currentUserId);
+            $stats = $this->getUserStatsBasedOnRole($currentUserId, $users);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UserManagement::index failed to load users: ' . $e->getMessage());
+        }
 
         $data = [
             'title' => 'User Management - WebSchedulr',
@@ -770,7 +776,12 @@ class UserManagement extends BaseController
             return $this->response->setStatusCode(401)->setJSON(['error' => 'Unauthorized']);
         }
 
-        $stats = $this->getUserStatsBasedOnRole($currentUserId);
+        $stats = ['total' => 0, 'admins' => 0, 'providers' => 0, 'staff' => 0];
+        try {
+            $stats = $this->getUserStatsBasedOnRole($currentUserId);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UserManagement::apiCounts failed: ' . $e->getMessage());
+        }
         
         return $this->response->setJSON([
             'counts' => [
@@ -798,7 +809,12 @@ class UserManagement extends BaseController
         $role = $this->request->getGet('role');
         
         // Get users based on role permission
-        $users = $this->getUsersBasedOnRole($currentUserId);
+        try {
+            $users = $this->getUsersBasedOnRole($currentUserId);
+        } catch (\Throwable $e) {
+            log_message('warning', 'UserManagement::apiList failed to load users: ' . $e->getMessage());
+            return $this->response->setJSON(['items' => [], 'total' => 0]);
+        }
         
         // Filter by role if specified
         if ($role && in_array($role, ['admin', 'provider', 'staff'])) {
@@ -874,30 +890,38 @@ class UserManagement extends BaseController
         // Fetch assignments for providers
         $providerAssignments = [];
         if (!empty($providerIds)) {
-            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
-                ->select('psa.provider_id, GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ", ") AS staff_names')
-                ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'left')
-                ->whereIn('psa.provider_id', $providerIds)
-                ->groupBy('psa.provider_id');
-            
-            $results = $builder->get()->getResultArray();
-            foreach ($results as $row) {
-                $providerAssignments[$row['provider_id']] = $row['staff_names'];
+            try {
+                $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                    ->select('psa.provider_id, GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ", ") AS staff_names')
+                    ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'left')
+                    ->whereIn('psa.provider_id', $providerIds)
+                    ->groupBy('psa.provider_id');
+                
+                $results = $builder->get()->getResultArray();
+                foreach ($results as $row) {
+                    $providerAssignments[$row['provider_id']] = $row['staff_names'];
+                }
+            } catch (\Throwable $e) {
+                log_message('warning', 'enrichUsersWithAssignments: provider assignments query failed: ' . $e->getMessage());
             }
         }
 
         // Fetch assignments for staff
         $staffAssignments = [];
         if (!empty($staffIds)) {
-            $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
-                ->select('psa.staff_id, GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ", ") AS provider_names')
-                ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'left')
-                ->whereIn('psa.staff_id', $staffIds)
-                ->groupBy('psa.staff_id');
-            
-            $results = $builder->get()->getResultArray();
-            foreach ($results as $row) {
-                $staffAssignments[$row['staff_id']] = $row['provider_names'];
+            try {
+                $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
+                    ->select('psa.staff_id, GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ", ") AS provider_names')
+                    ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'left')
+                    ->whereIn('psa.staff_id', $staffIds)
+                    ->groupBy('psa.staff_id');
+                
+                $results = $builder->get()->getResultArray();
+                foreach ($results as $row) {
+                    $staffAssignments[$row['staff_id']] = $row['provider_names'];
+                }
+            } catch (\Throwable $e) {
+                log_message('warning', 'enrichUsersWithAssignments: staff assignments query failed: ' . $e->getMessage());
             }
         }
 

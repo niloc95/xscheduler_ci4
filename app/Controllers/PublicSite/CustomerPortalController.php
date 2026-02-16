@@ -14,8 +14,8 @@ use CodeIgniter\HTTP\ResponseInterface;
  * Access is controlled by customer hash (no login required).
  * 
  * Routes:
- * - GET /public/my-appointments/{hash} - View appointments page
- * - GET /public/my-appointments/{hash}/data - JSON endpoint for SPA
+ * - GET /my-appointments/{hash} - View appointments page
+ * - GET /my-appointments/{hash}/data - JSON endpoint for SPA
  */
 class CustomerPortalController extends BaseController
 {
@@ -29,7 +29,7 @@ class CustomerPortalController extends BaseController
     }
 
     /**
-     * GET /public/my-appointments/{hash}
+     * GET /my-appointments/{hash}
      * 
      * Display customer's appointment history page
      */
@@ -91,7 +91,7 @@ class CustomerPortalController extends BaseController
     }
 
     /**
-     * GET /public/my-appointments/{hash}/upcoming
+     * GET /my-appointments/{hash}/upcoming
      * 
      * Get upcoming appointments JSON
      */
@@ -115,7 +115,7 @@ class CustomerPortalController extends BaseController
     }
 
     /**
-     * GET /public/my-appointments/{hash}/history
+     * GET /my-appointments/{hash}/history
      * 
      * Get appointment history JSON with pagination
      */
@@ -145,7 +145,7 @@ class CustomerPortalController extends BaseController
     }
 
     /**
-     * GET /public/my-appointments/{hash}/autofill
+     * GET /my-appointments/{hash}/autofill
      * 
      * Get customer autofill data for new booking
      */

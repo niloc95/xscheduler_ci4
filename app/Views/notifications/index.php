@@ -6,6 +6,43 @@
 
 <?= $this->section('header_title') ?>Notifications<?= $this->endSection() ?>
 
+<?php
+// Safe defaults
+$notifications = $notifications ?? [];
+$unread_count  = $unread_count ?? 0;
+$filter        = $filter ?? 'all';
+
+// Icon/color lookup maps (Tailwind-safe — no dynamic class interpolation)
+$colorBgMap = [
+    'blue'   => 'bg-blue-100 dark:bg-blue-900',
+    'green'  => 'bg-green-100 dark:bg-green-900',
+    'amber'  => 'bg-amber-100 dark:bg-amber-900',
+    'red'    => 'bg-red-100 dark:bg-red-900',
+    'purple' => 'bg-purple-100 dark:bg-purple-900',
+    'pink'   => 'bg-pink-100 dark:bg-pink-900',
+    'indigo' => 'bg-indigo-100 dark:bg-indigo-900',
+];
+$colorTextMap = [
+    'blue'   => 'text-blue-600 dark:text-blue-400',
+    'green'  => 'text-green-600 dark:text-green-400',
+    'amber'  => 'text-amber-600 dark:text-amber-400',
+    'red'    => 'text-red-600 dark:text-red-400',
+    'purple' => 'text-purple-600 dark:text-purple-400',
+    'pink'   => 'text-pink-600 dark:text-pink-400',
+    'indigo' => 'text-indigo-600 dark:text-indigo-400',
+];
+$iconMap = [
+    'calendar'    => 'calendar_month',
+    'bell'        => 'notifications',
+    'x-circle'    => 'cancel',
+    'credit-card' => 'credit_card',
+    'star'        => 'star',
+    'users'       => 'group',
+    'gift'        => 'card_giftcard',
+    'cog'         => 'settings',
+];
+?>
+
 <?= $this->section('content') ?>
 <!-- Page Header -->
 <div class="mb-6">
@@ -16,13 +53,13 @@
                      <?php if ($unread_count > 0): ?>
                      <a href="<?= base_url('/notifications/mark-all-read') ?>" 
                          class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                          <span class="material-symbols-rounded mr-2 text-base align-middle">done_all</span>
+                          <span class="material-symbols-outlined mr-2 text-base align-middle">done_all</span>
                           Mark All Read
                      </a>
                      <?php endif; ?>
                 <a href="<?= base_url('/settings#notifications') ?>" 
                          class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                          <span class="material-symbols-rounded mr-2 text-base align-middle">settings</span>
+                          <span class="material-symbols-outlined mr-2 text-base align-middle">settings</span>
                     Settings
                 </a>
             </div>
@@ -35,7 +72,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">notifications_active</span>
+                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">notifications_active</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -49,7 +86,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-2xl">mark_email_unread</span>
+                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">mark_email_unread</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -63,7 +100,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">done_all</span>
+                        <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">done_all</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -77,7 +114,7 @@
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                        <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">today</span>
+                        <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">today</span>
                     </div>
                 </div>
                 <div class="ml-4">
@@ -116,33 +153,14 @@
                     <div class="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 <?= !$notification['read'] ? 'bg-blue-50 dark:bg-blue-900/10' : '' ?>">
                         <div class="flex items-start space-x-4">
                             <div class="flex-shrink-0">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center
-                                    <?php if ($notification['color'] === 'blue'): ?>bg-blue-100 dark:bg-blue-900
-                                    <?php elseif ($notification['color'] === 'green'): ?>bg-green-100 dark:bg-green-900
-                                    <?php elseif ($notification['color'] === 'amber'): ?>bg-amber-100 dark:bg-amber-900
-                                    <?php elseif ($notification['color'] === 'red'): ?>bg-red-100 dark:bg-red-900
-                                    <?php elseif ($notification['color'] === 'purple'): ?>bg-purple-100 dark:bg-purple-900
-                                    <?php elseif ($notification['color'] === 'pink'): ?>bg-pink-100 dark:bg-pink-900
-                                    <?php elseif ($notification['color'] === 'indigo'): ?>bg-indigo-100 dark:bg-indigo-900
-                                    <?php else: ?>bg-gray-100 dark:bg-gray-900<?php endif; ?>">
-                                    
-                                    <?php if ($notification['icon'] === 'calendar'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">calendar_month</span>
-                                    <?php elseif ($notification['icon'] === 'bell'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">notifications</span>
-                                    <?php elseif ($notification['icon'] === 'x-circle'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">cancel</span>
-                                    <?php elseif ($notification['icon'] === 'credit-card'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">credit_card</span>
-                                    <?php elseif ($notification['icon'] === 'star'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">star</span>
-                                    <?php elseif ($notification['icon'] === 'users'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">group</span>
-                                    <?php elseif ($notification['icon'] === 'gift'): ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">card_giftcard</span>
-                                    <?php else: ?>
-                                        <span class="material-symbols-rounded text-<?= $notification['color'] ?>-600 dark:text-<?= $notification['color'] ?>-400 text-lg">settings</span>
-                                    <?php endif; ?>
+                                <?php
+                                    $nColor = $notification['color'] ?? 'gray';
+                                    $bgClass = $colorBgMap[$nColor] ?? 'bg-gray-100 dark:bg-gray-900';
+                                    $txtClass = $colorTextMap[$nColor] ?? 'text-gray-600 dark:text-gray-400';
+                                    $iconName = $iconMap[$notification['icon'] ?? ''] ?? 'settings';
+                                ?>
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center <?= $bgClass ?>">
+                                    <span class="material-symbols-outlined <?= $txtClass ?> text-lg"><?= $iconName ?></span>
                                 </div>
                             </div>
                             
@@ -204,11 +222,11 @@
             </div>
         <?php else: ?>
             <div class="p-12 text-center">
-                <span class="material-symbols-rounded w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4 text-5xl block">notifications_off</span>
+                <span class="material-symbols-outlined w-16 h-16 mx-auto text-gray-400 dark:text-gray-500 mb-4 text-5xl block">notifications_off</span>
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications yet</h3>
                 <p class="text-gray-600 dark:text-gray-400 mb-4">Notifications will appear here when appointments are confirmed, reminded, cancelled, or rescheduled.</p>
                 <a href="<?= base_url('/settings#notifications') ?>" class="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium">
-                    <span class="material-symbols-rounded mr-1 text-base">settings</span>
+                    <span class="material-symbols-outlined mr-1 text-base">settings</span>
                     Configure notification settings
                 </a>
             </div>
@@ -220,7 +238,16 @@
 function deleteNotification(notificationId) {
     const action = notificationId.startsWith('queue_') ? 'cancel this pending notification' : 'delete this notification';
     if (confirm('Are you sure you want to ' + action + '?')) {
-        window.location.href = `<?= base_url('/notifications/delete/') ?>${notificationId}`;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `<?= base_url('/notifications/delete/') ?>${notificationId}`;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '<?= csrf_token() ?>';
+        csrf.value = '<?= csrf_hash() ?>';
+        form.appendChild(csrf);
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>

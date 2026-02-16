@@ -116,7 +116,22 @@ if (!function_exists('setting_url')) {
         }
 
         $path = setting($key, $default);
-        if (!$path || !is_string($path)) return null;
+        if (!$path || !is_string($path)) {
+            if (is_string($default) && $default !== null) {
+                $default = ltrim($default, '/');
+                if (preg_match('~^https?://~i', $default)) {
+                    return $default;
+                }
+                return base_url($default);
+            }
+
+            $fallback = setting_asset_fallback_path($key);
+            if ($fallback) {
+                return base_url($fallback);
+            }
+
+            return null;
+        }
         if (is_string($path) && str_starts_with($path, 'db://')) {
             return base_url('assets/db/' . rawurlencode($key));
         }
@@ -129,6 +144,59 @@ if (!function_exists('setting_url')) {
             return base_url($path);
         }
         return base_url('writable/' . $path);
+    }
+}
+
+if (!function_exists('setting_asset_fallback_path')) {
+    /**
+     * Provide filesystem fallback for settings-backed assets when no DB entry exists yet.
+     */
+    function setting_asset_fallback_path(string $key): ?string
+    {
+        static $directories = [
+            'general.company_logo' => 'assets/settings',
+        ];
+
+        $relativeDir = $directories[$key] ?? null;
+        if ($relativeDir === null) {
+            return null;
+        }
+
+        $fullDir = rtrim(FCPATH, '/\\') . '/' . trim($relativeDir, '/');
+        if (!is_dir($fullDir) || !is_readable($fullDir)) {
+            return null;
+        }
+
+        if ($key === 'general.company_logo') {
+            $defaultLogo = $fullDir . '/default-logo.svg';
+            if (is_file($defaultLogo)) {
+                return trim($relativeDir, '/') . '/default-logo.svg';
+            }
+        }
+
+        $candidates = [];
+        foreach (['png', 'jpg', 'jpeg', 'webp', 'svg'] as $ext) {
+            $pattern = $fullDir . '/*.' . $ext;
+            $matches = glob($pattern) ?: [];
+            foreach ($matches as $file) {
+                if (is_file($file)) {
+                    $candidates[] = $file;
+                }
+            }
+        }
+
+        if (empty($candidates)) {
+            return null;
+        }
+
+        usort($candidates, static fn(string $a, string $b) => filemtime($b) <=> filemtime($a));
+
+        $newest = $candidates[0] ?? null;
+        if (!$newest) {
+            return null;
+        }
+
+        return trim($relativeDir, '/') . '/' . basename($newest);
     }
 }
 

@@ -211,7 +211,7 @@ $routes->group('scheduler', ['filter' => 'setup'], function($routes) {
 $routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
 
 // New dedicated public booking experience (Option B)
-$routes->group('public/booking', ['filter' => 'setup'], function($routes) {
+$routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
     $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
     $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
@@ -221,7 +221,7 @@ $routes->group('public/booking', ['filter' => 'setup'], function($routes) {
 });
 
 // Public customer portal - My Appointments (no auth, uses customer hash)
-$routes->group('public/my-appointments', ['filter' => 'setup'], function($routes) {
+$routes->group('my-appointments', ['filter' => 'setup'], function($routes) {
     $routes->get('(:segment)', 'PublicSite\CustomerPortalController::index/$1', ['filter' => 'public_rate_limit']);
     $routes->get('(:segment)/upcoming', 'PublicSite\CustomerPortalController::upcoming/$1', ['filter' => 'public_rate_limit']);
     $routes->get('(:segment)/history', 'PublicSite\CustomerPortalController::history/$1', ['filter' => 'public_rate_limit']);
@@ -316,6 +316,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
         // Some production hosts/WAFs block PUT requests; accept POST as well.
         $routes->match(['put', 'post'], 'settings', 'Api\\V1\\Settings::update');
         $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
+        $routes->post('settings/icon', 'Api\\V1\\Settings::uploadIcon');
     });
 });
 

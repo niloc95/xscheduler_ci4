@@ -395,33 +395,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (roleSelect) {
         toggleRoleDetails();
     }
-    
-    // Debug form submission
-    const form = document.getElementById('createUserForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('Form submit event triggered!');
-            console.log('Form action:', form.action);
-            console.log('Form method:', form.method);
-            
-            // Check required fields
-            const requiredFields = form.querySelectorAll('[required]');
-            let allValid = true;
-            requiredFields.forEach(function(field) {
-                if (!field.value) {
-                    console.log('Missing required field:', field.name || field.id);
-                    allValid = false;
-                }
-            });
-            
-            if (!allValid) {
-                console.log('Form validation failed - missing required fields');
-                return; // Let browser handle validation
-            }
-            
-            console.log('All validations passed, form should submit now');
-        });
-    }
 });
 </script>
 <?= $this->endSection() ?>

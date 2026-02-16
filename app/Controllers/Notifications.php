@@ -108,42 +108,47 @@ class Notifications extends BaseController
         $notifications = [];
         $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
 
-        // Get delivery logs (sent notifications)
-        $logModel = new NotificationDeliveryLogModel();
-        $logBuilder = $logModel->builder();
-        
-        $logBuilder->select('xs_notification_delivery_logs.*, a.start_time as appointment_start, 
-                            c.first_name as customer_first_name, c.last_name as customer_last_name,
-                            s.name as service_name, u.name as provider_name')
-            ->join('xs_appointments a', 'a.id = xs_notification_delivery_logs.appointment_id', 'left')
-            ->join('xs_customers c', 'c.id = a.customer_id', 'left')
-            ->join('xs_services s', 's.id = a.service_id', 'left')
-            ->join('xs_users u', 'u.id = a.provider_id', 'left')
-            ->where('xs_notification_delivery_logs.business_id', $businessId)
-            ->orderBy('xs_notification_delivery_logs.created_at', 'DESC')
-            ->limit(50);
+        try {
+            // Get delivery logs (sent notifications)
+            $logModel = new NotificationDeliveryLogModel();
+            $logBuilder = $logModel->builder();
+            
+            $logBuilder->select('xs_notification_delivery_logs.*, a.start_time as appointment_start, 
+                                c.first_name as customer_first_name, c.last_name as customer_last_name,
+                                s.name as service_name, u.name as provider_name')
+                ->join('xs_appointments a', 'a.id = xs_notification_delivery_logs.appointment_id', 'left')
+                ->join('xs_customers c', 'c.id = a.customer_id', 'left')
+                ->join('xs_services s', 's.id = a.service_id', 'left')
+                ->join('xs_users u', 'u.id = a.provider_id', 'left')
+                ->where('xs_notification_delivery_logs.business_id', $businessId)
+                ->orderBy('xs_notification_delivery_logs.created_at', 'DESC')
+                ->limit(50);
 
-        // Apply filter
-        if ($filter === 'appointments') {
-            $logBuilder->whereIn('xs_notification_delivery_logs.event_type', [
-                'appointment_confirmed', 'appointment_reminder', 
-                'appointment_cancelled', 'appointment_rescheduled'
-            ]);
+            // Apply filter
+            if ($filter === 'appointments') {
+                $logBuilder->whereIn('xs_notification_delivery_logs.event_type', [
+                    'appointment_confirmed', 'appointment_reminder', 
+                    'appointment_cancelled', 'appointment_rescheduled'
+                ]);
+            }
+
+            $logs = $logBuilder->get()->getResultArray();
+
+            foreach ($logs as $log) {
+                $notifications[] = $this->formatDeliveryLog($log);
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Notification delivery logs unavailable: ' . $e->getMessage());
         }
 
-        $logs = $logBuilder->get()->getResultArray();
-
-        foreach ($logs as $log) {
-            $notifications[] = $this->formatDeliveryLog($log);
-        }
-
-        // Get pending queue items
-        $queueModel = new NotificationQueueModel();
-        $queueBuilder = $queueModel->builder();
-        
-        $queueBuilder->select('xs_notification_queue.*, a.start_time as appointment_start,
-                              c.first_name as customer_first_name, c.last_name as customer_last_name,
-                              s.name as service_name, u.name as provider_name')
+        try {
+            // Get pending queue items
+            $queueModel = new NotificationQueueModel();
+            $queueBuilder = $queueModel->builder();
+            
+            $queueBuilder->select('xs_notification_queue.*, a.start_time as appointment_start,
+                                  c.first_name as customer_first_name, c.last_name as customer_last_name,
+                                  s.name as service_name, u.name as provider_name')
             ->join('xs_appointments a', 'a.id = xs_notification_queue.appointment_id', 'left')
             ->join('xs_customers c', 'c.id = a.customer_id', 'left')
             ->join('xs_services s', 's.id = a.service_id', 'left')
@@ -153,10 +158,13 @@ class Notifications extends BaseController
             ->orderBy('xs_notification_queue.created_at', 'DESC')
             ->limit(20);
 
-        $queue = $queueBuilder->get()->getResultArray();
+            $queue = $queueBuilder->get()->getResultArray();
 
-        foreach ($queue as $item) {
-            $notifications[] = $this->formatQueueItem($item);
+            foreach ($queue as $item) {
+                $notifications[] = $this->formatQueueItem($item);
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Notification queue unavailable: ' . $e->getMessage());
         }
 
         // Sort by time (newest first)
@@ -475,20 +483,24 @@ class Notifications extends BaseController
         $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
         $count = 0;
 
-        // Count pending queue items
-        $queueModel = new NotificationQueueModel();
-        $count += $queueModel
-            ->where('business_id', $businessId)
-            ->whereIn('status', ['queued', 'failed'])
-            ->countAllResults();
+        try {
+            // Count pending queue items
+            $queueModel = new NotificationQueueModel();
+            $count += $queueModel
+                ->where('business_id', $businessId)
+                ->whereIn('status', ['queued', 'failed'])
+                ->countAllResults();
 
-        // Count recent failed deliveries (last 24 hours)
-        $logModel = new NotificationDeliveryLogModel();
-        $count += $logModel
-            ->where('business_id', $businessId)
-            ->where('status', 'failed')
-            ->where('created_at >', date('Y-m-d H:i:s', strtotime('-24 hours')))
-            ->countAllResults();
+            // Count recent failed deliveries (last 24 hours)
+            $logModel = new NotificationDeliveryLogModel();
+            $count += $logModel
+                ->where('business_id', $businessId)
+                ->where('status', 'failed')
+                ->where('created_at >', date('Y-m-d H:i:s', strtotime('-24 hours')))
+                ->countAllResults();
+        } catch (\Throwable $e) {
+            log_message('warning', 'Notification count unavailable: ' . $e->getMessage());
+        }
 
         return $count;
     }

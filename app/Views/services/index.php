@@ -21,7 +21,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Services</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_services'] ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_services'] ?? 0 ?></p>
             </div>
         </div>
     </div>
@@ -35,7 +35,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['active_services'] ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['active_services'] ?? 0 ?></p>
             </div>
         </div>
     </div>
@@ -49,7 +49,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Categories</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['categories'] ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['categories'] ?? 0 ?></p>
             </div>
         </div>
     </div>
@@ -63,7 +63,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bookings</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_bookings'] ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_bookings'] ?? 0 ?></p>
             </div>
         </div>
     </div>
@@ -77,7 +77,7 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?php helper('currency'); echo format_currency($stats['avg_price']); ?></p>
+                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?php helper('currency'); echo format_currency($stats['avg_price'] ?? 0); ?></p>
             </div>
         </div>
     </div>
@@ -223,7 +223,6 @@
                                             <?php helper('currency'); echo format_currency($service['price']); ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200"><?= $service['bookings_count'] ?></td>
-                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <?php if ($service['status'] === 'active'): ?>
                                                 <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">

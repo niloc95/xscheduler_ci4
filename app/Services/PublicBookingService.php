@@ -160,6 +160,9 @@ class PublicBookingService
             'reschedulePolicy' => $this->getReschedulePolicy(),
             'initialAvailability' => $initialAvailability,
             'initialCalendar' => $initialCalendar,
+            'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
+            'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
+            'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
         ];
     }
 

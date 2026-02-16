@@ -86,7 +86,7 @@
 </div>
 <script>
 (function(){
-    function esc(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+    function esc(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
     async function reloadCustomers(){/* Placeholder for future dynamic fetch */}
     function isCustomerInteractionPage() {
         const spaContent = document.getElementById('spa-content');

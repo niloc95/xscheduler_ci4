@@ -113,9 +113,26 @@ class Services extends BaseController
     $activeTab = in_array($activeTab, ['services', 'categories'], true) ? $activeTab : 'services';
 
         // Fetch real data for dashboard while keeping view unchanged
-        $services = $this->serviceModel->findWithRelations(100, 0);
-        $categories = $this->categoryModel->withServiceCounts();
-        $stats = $this->serviceModel->getStats();
+        try {
+            $services = $this->serviceModel->findWithRelations(100, 0);
+        } catch (\Throwable $e) {
+            log_message('error', 'Services: findWithRelations failed — ' . $e->getMessage());
+            $services = $this->serviceModel->orderBy('created_at', 'DESC')->limit(100)->findAll();
+        }
+
+        try {
+            $categories = $this->categoryModel->withServiceCounts();
+        } catch (\Throwable $e) {
+            log_message('error', 'Services: withServiceCounts failed — ' . $e->getMessage());
+            $categories = $this->categoryModel->orderBy('name', 'ASC')->findAll();
+        }
+
+        try {
+            $stats = $this->serviceModel->getStats();
+        } catch (\Throwable $e) {
+            log_message('error', 'Services: getStats failed — ' . $e->getMessage());
+            $stats = ['total' => 0, 'active' => 0, 'categories' => 0, 'bookings' => 0, 'avg_price' => 0];
+        }
 
         // Map stats to existing keys expected by the view
         $mappedStats = [
@@ -136,7 +153,7 @@ class Services extends BaseController
                 'category_id' => isset($s['category_id']) ? (int)$s['category_id'] : null,
                 'duration' => (int)($s['duration_min'] ?? 0),
                 'price' => isset($s['price']) ? (float)$s['price'] : 0,
-                'provider' => $s['provider_names'] ?: '—',
+                'provider' => ($s['provider_names'] ?? '') ?: '—',
                 'status' => ((int)($s['active'] ?? 1)) === 1 ? 'active' : 'inactive',
                 'bookings_count' => 0,
             ];

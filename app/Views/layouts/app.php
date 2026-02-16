@@ -25,6 +25,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="WebSchedulr - Professional Appointment Scheduling">
     <title><?= $this->renderSection('title') ?: 'WebSchedulr' ?></title>
+    <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
     
     <!-- Prevent FOUC: Apply dark mode immediately -->
     <script>
@@ -56,20 +57,18 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen antialiased transition-colors duration-200">
     <!-- Sidebar (Fixed position - outside flow) -->
-    <aside class="xs-sidebar" id="main-sidebar">
-        <?php 
-        // Auto-include sidebar if section not provided
-        $sidebarContent = $this->renderSection('sidebar');
-        if (empty(trim($sidebarContent ?? ''))) {
-            // Detect current page from URL for sidebar highlighting
-            $uri = service('uri');
-            $segment = $uri->getSegment(1) ?: 'dashboard';
-            echo $this->include('components/unified-sidebar', ['current_page' => $segment]);
-        } else {
-            echo $sidebarContent;
-        }
-        ?>
-    </aside>
+    <?php 
+    // Auto-include sidebar if section not provided
+    $sidebarContent = $this->renderSection('sidebar');
+    if (empty(trim($sidebarContent ?? ''))) {
+        // Detect current page from URL for sidebar highlighting
+        $uri = service('uri');
+        $segment = $uri->getSegment(1) ?: 'dashboard';
+        echo $this->include('components/unified-sidebar', ['current_page' => $segment]);
+    } else {
+        echo $sidebarContent;
+    }
+    ?>
     
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebar-overlay" class="xs-sidebar-overlay lg:hidden"></div>

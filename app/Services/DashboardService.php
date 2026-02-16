@@ -516,7 +516,7 @@ class DashboardService
             'confirmation_enabled' => false, // From settings
             'email_enabled' => true, // Check email configuration
             'whatsapp_enabled' => false, // Check WhatsApp configuration
-            'booking_url' => base_url('/public/booking'),
+            'booking_url' => base_url('/booking'),
         ];
     }
 

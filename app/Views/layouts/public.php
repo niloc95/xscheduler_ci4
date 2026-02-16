@@ -46,7 +46,7 @@
         <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
             <!-- Logo/Business Name -->
             <div class="flex items-center gap-3">
-                <?php $logoUrl = function_exists('setting_url') ? setting_url('general.company_logo') : null; ?>
+                <?php $logoUrl = function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : null; ?>
                 <?php if ($logoUrl): ?>
                     <img src="<?= esc($logoUrl) ?>" alt="Logo" class="h-10 w-auto rounded-lg">
                 <?php else: ?>

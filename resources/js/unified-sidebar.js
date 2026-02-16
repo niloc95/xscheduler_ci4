@@ -6,8 +6,8 @@
 class UnifiedSidebar {
     constructor() {
         this.sidebar = document.getElementById('main-sidebar');
-        this.backdrop = document.getElementById('sidebar-overlay');  // Match layouts/app.php
-        this.menuToggle = document.getElementById('menu-toggle');    // Match layouts/app.php
+        this.backdrop = document.getElementById('sidebar-overlay') || document.getElementById('mobile-backdrop');
+        this.menuToggle = document.getElementById('menu-toggle');
         this.closeButton = document.getElementById('sidebar-close-btn');
         
         this.isOpen = false;

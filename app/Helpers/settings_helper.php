@@ -123,18 +123,17 @@ if (!function_exists('setting_url')) {
 
         $path = setting($key, $default);
         if (!$path || !is_string($path)) {
-            $fallback = setting_asset_fallback_path($key);
-            if ($fallback) {
-                return base_url($fallback);
-            }
-
             if (is_string($default) && $default !== null) {
                 $default = ltrim($default, '/');
                 if (preg_match('~^https?://~i', $default)) {
                     return $default;
                 }
-
                 return base_url($default);
+            }
+
+            $fallback = setting_asset_fallback_path($key);
+            if ($fallback) {
+                return base_url($fallback);
             }
 
             return null;
@@ -176,6 +175,13 @@ if (!function_exists('setting_asset_fallback_path')) {
         $fullDir = rtrim(FCPATH, '/\\') . '/' . trim($relativeDir, '/');
         if (!is_dir($fullDir) || !is_readable($fullDir)) {
             return null;
+        }
+
+        if ($key === 'general.company_logo') {
+            $defaultLogo = $fullDir . '/default-logo.svg';
+            if (is_file($defaultLogo)) {
+                return trim($relativeDir, '/') . '/default-logo.svg';
+            }
         }
 
         $candidates = [];

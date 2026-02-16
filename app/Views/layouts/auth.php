@@ -51,7 +51,7 @@
         <div class="auth-card w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <!-- Logo Section -->
             <div class="px-8 pt-8 pb-6 text-center border-b border-gray-100 dark:border-gray-700">
-                <?php $logoUrl = function_exists('setting_url') ? setting_url('general.company_logo') : null; ?>
+                <?php $logoUrl = function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : null; ?>
                 <?php if ($logoUrl): ?>
                     <img src="<?= esc($logoUrl) ?>" alt="Logo" class="h-16 w-auto mx-auto rounded-lg">
                 <?php else: ?>

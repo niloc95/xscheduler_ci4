@@ -97,11 +97,6 @@ html.dark #main-sidebar.unified-sidebar {
     #main-sidebar.unified-sidebar.open {
         transform: translateX(0) !important;
     }
-    
-    #mobile-backdrop.open {
-        display: block !important;
-        opacity: 1 !important;
-    }
 }
 
 /* Desktop: Use shared frame inset for consistent alignment with header */

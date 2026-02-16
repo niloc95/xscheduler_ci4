@@ -9,16 +9,13 @@ $currentUser = session()->get('user');
 $currentRole = current_user_role();
 ?>
 
-<!-- Mobile Menu Backdrop -->
-<div id="mobile-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden lg:hidden transition-opacity duration-300"></div>
-
 <!-- Sidebar -->
-<aside id="main-sidebar" class="unified-sidebar">
+<aside id="main-sidebar" class="unified-sidebar xs-sidebar">
     <div class="sidebar-content">
         <!-- Logo Section -->
         <div class="sidebar-header">
             <div class="brand-section">
-                <?php $logoUrl = setting_url('general.company_logo'); ?>
+                <?php $logoUrl = setting_url('general.company_logo', 'assets/settings/default-logo.svg'); ?>
                 <?php if ($logoUrl): ?>
                     <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="brand-logo" />
                 <?php else: ?>

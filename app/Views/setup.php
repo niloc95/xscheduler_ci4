@@ -27,9 +27,7 @@ window.appConfig = {
     <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
         <!-- Logo -->
         <div class="flex items-center">
-            <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 mr-3 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
+            <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebSchedulr" class="w-8 h-8 mr-3 transition-colors duration-200" />
             <h1 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200">xScheduler</h1>
         </div>
         
@@ -52,11 +50,9 @@ window.appConfig = {
             <!-- Setup Header -->
             <div class="text-center mb-8">
                 <div class="bg-white dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-brand border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <svg class="w-8 h-8 text-md-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-            </div>                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200 text-md-primary">Welcome to xScheduler</h1>
+                    <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebSchedulr" class="w-10 h-10" />
+                </div>
+                <h1 class="text-3xl font-bold mb-2 transition-colors duration-200 text-md-primary">Welcome to xScheduler</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Let's set up your scheduling application in just a few steps</p>
             </div>
 

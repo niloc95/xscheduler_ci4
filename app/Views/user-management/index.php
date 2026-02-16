@@ -144,7 +144,8 @@
     ];
     const roleMap={ total:'all', admins:'admin', providers:'provider', staff:'staff' };
     const state={activeRole:'total',initialized:false,lastCounts:null};
-    function baseUrl(p){return `${window.location.origin.replace(/\/$/,'')}/${p}`;}
+    const APP_BASE = '<?= rtrim(base_url(), '/') ?>/';
+    function baseUrl(p){return APP_BASE + p;}
     function showError(msg){const b=document.getElementById('users-error'); if(!b) return; b.textContent=msg; b.classList.remove('hidden');}
     function clearError(){const b=document.getElementById('users-error'); if(!b) return; b.classList.add('hidden'); b.textContent='';}
     function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}

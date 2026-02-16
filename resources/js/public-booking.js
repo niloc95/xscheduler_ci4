@@ -35,6 +35,7 @@ if (!root) {
 
 function bootstrapPublicBooking() {
   const context = parseContext();
+  const bookingBase = context.bookingBaseUrl || '/booking';
   const today = new Date();
   const initialAvailability = context.initialAvailability ?? null;
   const initialCalendar = context.initialCalendar ?? null;
@@ -406,7 +407,7 @@ function bootstrapPublicBooking() {
         params.set('phone', phone);
       }
       const query = params.toString();
-      const url = query ? `/public/booking/${encodeURIComponent(token)}?${query}` : `/public/booking/${encodeURIComponent(token)}`;
+      const url = query ? `${bookingBase}/${encodeURIComponent(token)}?${query}` : `${bookingBase}/${encodeURIComponent(token)}`;
 
       const response = await fetch(url, {
         headers: {
@@ -545,7 +546,7 @@ function bootstrapPublicBooking() {
     try {
       const contactExtras = target === 'manage' ? state.manage.contact ?? {} : {};
       const payload = buildPayload(draft, contactExtras);
-      let endpoint = '/public/booking';
+      let endpoint = bookingBase;
       let method = 'POST';
 
       if (target === 'manage') {
@@ -553,7 +554,7 @@ function bootstrapPublicBooking() {
         if (!token) {
           throw new Error('Missing appointment token.');
         }
-        endpoint = `/public/booking/${encodeURIComponent(token)}`;
+        endpoint = `${bookingBase}/${encodeURIComponent(token)}`;
         method = 'PATCH';
       }
 
@@ -655,7 +656,7 @@ function bootstrapPublicBooking() {
     });
 
     try {
-      const response = await fetch(`/public/booking/calendar?${query.toString()}`, {
+      const response = await fetch(`${bookingBase}/calendar?${query.toString()}`, {
         headers: {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -739,7 +740,7 @@ function bootstrapPublicBooking() {
     });
 
     try {
-      const response = await fetch(`/public/booking/slots?${query.toString()}`, {
+      const response = await fetch(`${bookingBase}/slots?${query.toString()}`, {
         headers: {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -798,9 +799,15 @@ function bootstrapPublicBooking() {
 
   function renderHero(ctx) {
     const timezone = ctx.timezone ?? 'local timezone';
+    const logoUrl = ctx.logoUrl ?? '';
+    const businessName = ctx.businessName ?? 'WebSchedulr';
+    const logoHtml = logoUrl
+      ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(businessName)}" class="mx-auto h-14 w-auto rounded-lg mb-4" />`
+      : `<div class="mx-auto w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center mb-4"><svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>`;
     return `
       <header class="text-center">
-        <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Secure Self-Service Booking</p>
+        ${logoHtml}
+        <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">${escapeHtml(businessName)}</p>
         <h1 class="mt-2 text-3xl font-semibold text-slate-900">Reserve an appointment</h1>
         <p class="mt-3 text-base text-slate-600">Pick a provider, choose a service, and lock in a time that works for you. All times are shown in <span class="font-semibold">${escapeHtml(timezone)}</span>.</p>
       </header>

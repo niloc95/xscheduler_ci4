@@ -24,7 +24,7 @@
                     <?php endif; ?>
                 </span>
                 <button type="button" onclick="document.getElementById('success-alert').remove()" class="ml-4 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
-                    <span class="material-symbols-rounded text-lg">close</span>
+                    <span class="material-symbols-outlined text-lg">close</span>
                 </button>
             </div>
             <?php if (session()->getFlashdata('success_html')): ?>
@@ -114,7 +114,7 @@
                                 <input id="company_logo" type="file" name="company_logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="form-input file-input" disabled />
                             </div>
                             <div id="company_logo_preview_container" class="mt-2 md:mt-0">
-                                <?php $logoPreview = setting_url('general.company_logo'); if ($logoPreview): ?>
+                                <?php $logoPreview = setting_url('general.company_logo', 'assets/settings/default-logo.svg'); if ($logoPreview): ?>
                                     <img id="company_logo_preview_img" src="<?= esc($logoPreview) ?>" data-src="<?= esc($logoPreview) ?>" alt="Current logo" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 object-contain" />
                                 <?php else: ?>
                                     <img id="company_logo_preview_img" src="" alt="Logo preview" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 hidden object-contain" />
@@ -123,6 +123,22 @@
                         </div>
                     </div>
                     
+                    <div class="form-field">
+                        <label class="form-label">Company Icon (Favicon)</label>
+                        <div class="md:flex md:items-center md:gap-4">
+                            <div class="md:flex-1">
+                                <input id="company_icon" type="file" name="company_icon" accept="image/x-icon,image/png,image/svg+xml,.ico" class="form-input file-input" disabled />
+                                <p class="form-help mt-1">Browser tab icon (16x16 or 32x32 recommended). Supports ICO, PNG, SVG.</p>
+                            </div>
+                            <div id="company_icon_preview_container" class="mt-2 md:mt-0">
+                                <?php $iconPreview = setting_url('general.company_icon', 'assets/settings/default-icon.svg'); if ($iconPreview): ?>
+                                    <img id="company_icon_preview_img" src="<?= esc($iconPreview) ?>" data-src="<?= esc($iconPreview) ?>" alt="Current icon" class="h-8 w-8 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 object-contain" />
+                                <?php else: ?>
+                                    <img id="company_icon_preview_img" src="" alt="Icon preview" class="h-8 w-8 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 hidden object-contain" />
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
                     
                 </div>
                 
@@ -1887,8 +1903,8 @@
                             alert('✓ Block period saved successfully!');
                         }
                         
-                    } catch (error) {
-                        console.error('❌ Block period save failed:', error);
+                    } catch (saveErr) {
+                        console.error('❌ Block period save failed:', saveErr);
                         
                         // Revert local changes on error
                         if (editingIndex !== null) {
@@ -1906,19 +1922,19 @@
                         submitBtn.disabled = false;
                         
                         // Show error in modal
-                        error.textContent = error?.message || 'Failed to save block period. Please try again.';
+                        error.textContent = saveErr?.message || 'Failed to save block period. Please try again.';
                         error.classList.remove('hidden');
                         
                         // Show error toast
                         window.XSNotify?.toast?.({
                             type: 'error',
                             title: '✗ Save Failed',
-                            message: error?.message || 'Failed to save block period. Please try again.',
+                            message: saveErr?.message || 'Failed to save block period. Please try again.',
                             autoClose: false
                         });
                         
                         if (!window.XSNotify?.toast) {
-                            alert('✗ Failed to save block period: ' + (error?.message || 'Unknown error'));
+                            alert('✗ Failed to save block period: ' + (saveErr?.message || 'Unknown error'));
                         }
                     }
                 });
@@ -2114,6 +2130,8 @@
             const btnCancel = document.getElementById('general-cancel-btn');
             const logoInput = document.getElementById('company_logo');
             const logoImg = document.getElementById('company_logo_preview_img');
+            const iconInput = document.getElementById('company_icon');
+            const iconImg = document.getElementById('company_icon_preview_img');
             const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
 
             xsDebugLog('General Settings: Found elements:', {
@@ -2122,7 +2140,9 @@
                 btnEdit: !!btnEdit,
                 btnCancel: !!btnCancel,
                 logoInput: !!logoInput,
-                logoImg: !!logoImg
+                logoImg: !!logoImg,
+                iconInput: !!iconInput,
+                iconImg: !!iconImg
             });
 
             if (!generalPanel || !saveBtn || !btnEdit) {
@@ -2131,7 +2151,7 @@
             }
 
             const lockableFields = Array.from(generalPanel.querySelectorAll('input:not([type="hidden"]), textarea, select'))
-                .filter(el => el.id !== 'company_logo');
+                .filter(el => el.id !== 'company_logo' && el.id !== 'company_icon');
 
             const fieldMap = {
                 company_name: 'general.company_name',
@@ -2144,11 +2164,13 @@
 
             const apiEndpoint = "<?= base_url('api/v1/settings') ?>";
             const logoEndpoint = "<?= base_url('api/v1/settings/logo') ?>";
+            const iconEndpoint = "<?= base_url('api/v1/settings/icon') ?>";
 
             let editing = false;
             let hasChanges = false;
             let initialValues = collectCurrentValues();
             let initialLogoSrc = logoImg ? (logoImg.dataset.src || logoImg.src || '') : '';
+            let initialIconSrc = iconImg ? (iconImg.dataset.src || iconImg.src || '') : '';
 
             function collectCurrentValues() {
                 const values = {};
@@ -2206,6 +2228,12 @@
                     logoInput.classList.toggle('bg-gray-100', locked);
                     logoInput.classList.toggle('dark:bg-gray-800/70', locked);
                 }
+                if (iconInput) {
+                    iconInput.disabled = locked;
+                    iconInput.classList.toggle('cursor-not-allowed', locked);
+                    iconInput.classList.toggle('bg-gray-100', locked);
+                    iconInput.classList.toggle('dark:bg-gray-800/70', locked);
+                }
                 if (btnEdit) btnEdit.classList.toggle('hidden', !locked);
                 if (btnCancel) btnCancel.classList.toggle('hidden', locked);
                 
@@ -2256,6 +2284,16 @@
                 reader.readAsDataURL(file);
             }
 
+            function previewIcon(file) {
+                if (!iconImg || !file || !file.type?.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    iconImg.src = event.target?.result || '';
+                    iconImg.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+
             setLockedState(true);
 
             // Track changes on all lockable fields
@@ -2302,6 +2340,18 @@
                         previewLogo(file);
                     } else if (logoImg && initialLogoSrc) {
                         logoImg.src = initialLogoSrc;
+                    }
+                    updateSaveButtonState();
+                });
+            }
+
+            if (iconInput) {
+                iconInput.addEventListener('change', (event) => {
+                    const file = event.target?.files?.[0];
+                    if (file) {
+                        previewIcon(file);
+                    } else if (iconImg && initialIconSrc) {
+                        iconImg.src = initialIconSrc;
                     }
                     updateSaveButtonState();
                 });
@@ -2407,6 +2457,38 @@
                         uploadedLogoUrl = logoResult.url || null;
                     }
 
+                    let uploadedIconUrl = null;
+                    if (iconInput?.files?.length) {
+                        const fileData = new FormData();
+                        fileData.append('company_icon', iconInput.files[0]);
+                        if (csrfInput?.name && csrfInput.value) {
+                            fileData.append(csrfInput.name, csrfInput.value);
+                        }
+
+                        const uploadToken = csrfInput?.value || token;
+
+                        const iconResponse = await fetch(iconEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                ...(uploadToken ? { [header]: uploadToken } : {})
+                            },
+                            body: fileData
+                        });
+
+                        updateCsrfFromResponse(iconResponse);
+
+                        if (!iconResponse.ok) {
+                            throw new Error(`Icon upload failed (HTTP ${iconResponse.status})`);
+                        }
+
+                        const iconResult = await iconResponse.json();
+                        if (!iconResult?.ok) {
+                            throw new Error(iconResult?.message || 'Icon upload failed.');
+                        }
+                        uploadedIconUrl = iconResult.url || null;
+                    }
+
                     initialValues = collectCurrentValues();
                     editing = false;
                     hasChanges = false;
@@ -2425,6 +2507,20 @@
                         initialLogoSrc = logoImg.dataset.src || logoImg.src || initialLogoSrc;
                     } else if (uploadedLogoUrl) {
                         initialLogoSrc = uploadedLogoUrl;
+                    }
+
+                    if (uploadedIconUrl && iconImg) {
+                        iconImg.src = uploadedIconUrl;
+                        iconImg.dataset.src = uploadedIconUrl;
+                        iconImg.classList.remove('hidden');
+                    }
+                    if (iconInput) {
+                        iconInput.value = '';
+                    }
+                    if (iconImg && !uploadedIconUrl) {
+                        initialIconSrc = iconImg.dataset.src || iconImg.src || initialIconSrc;
+                    } else if (uploadedIconUrl) {
+                        initialIconSrc = uploadedIconUrl;
                     }
 
                     xsDebugLog('General settings saved successfully!');

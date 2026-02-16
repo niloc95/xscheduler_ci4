@@ -18,6 +18,7 @@
  * GET  /api/v1/settings/booking             : Get booking settings
  * GET  /api/v1/settings/branding            : Get branding (logo, colors)
  * POST /api/v1/settings/logo                : Upload logo file
+ * POST /api/v1/settings/icon                : Upload icon (favicon) file
  * 
  * QUERY PARAMETERS (GET /api/v1/settings):
  * -----------------------------------------------------------------------------
@@ -441,6 +442,104 @@ class Settings extends BaseApiController
             }
         } catch (\Throwable $e) {
             log_message('warning', 'Logo upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
+        }
+
+        return $this->response->setJSON([
+            'ok' => true,
+            'path' => $relative,
+            'url' => base_url($relative)
+        ]);
+    }
+
+    /**
+     * POST /api/v1/settings/icon
+     * Handles company icon (favicon) uploads independently of full settings form submission.
+     */
+    public function uploadIcon()
+    {
+        $file = $this->request->getFile('company_icon');
+        if (!$file) {
+            return $this->failValidationErrors('No icon file received.');
+        }
+
+        if ($file->getError() === UPLOAD_ERR_NO_FILE) {
+            return $this->failValidationErrors('Please choose an icon file to upload.');
+        }
+
+        if (!$file->isValid()) {
+            return $this->fail($file->getErrorString(), ResponseInterface::HTTP_BAD_REQUEST);
+        }
+
+        if ($file->hasMoved()) {
+            return $this->fail('Upload failed: file has already been moved.', ResponseInterface::HTTP_BAD_REQUEST);
+        }
+
+        $sizeBytes = (int) $file->getSize();
+        if ($sizeBytes > (2 * 1024 * 1024)) {
+            return $this->failValidationErrors('Icon upload too large. Maximum size is 2MB.');
+        }
+
+        $clientMime = strtolower((string) $file->getClientMimeType());
+        $realMime   = strtolower((string) $file->getMimeType());
+        $ext        = strtolower($file->getExtension() ?: pathinfo($file->getName(), PATHINFO_EXTENSION));
+
+        $allowedMimes = [
+            'image/png','image/x-png','image/x-icon','image/vnd.microsoft.icon','image/svg+xml','image/svg'
+        ];
+        $allowedExts = ['png','ico','svg'];
+
+        $mimeOk = in_array($clientMime, $allowedMimes, true) || in_array($realMime, $allowedMimes, true);
+        $extOk  = in_array($ext, $allowedExts, true);
+        if (!$mimeOk && !$extOk) {
+            return $this->failValidationErrors('Unsupported icon format. Use ICO, PNG, or SVG.');
+        }
+
+        $targetDir = rtrim(FCPATH, '/').'/assets/settings';
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
+        if (!is_dir($targetDir) || !is_writable($targetDir)) {
+            return $this->failServerError('Icon upload directory is not writable.');
+        }
+
+        $existing = $this->model->getByKeys(['general.company_icon']);
+        $previous = $existing['general.company_icon'] ?? null;
+        if ($previous) {
+            $prevPath = $this->resolveLogoPath((string) $previous);
+            if ($prevPath && is_file($prevPath)) {
+                @unlink($prevPath);
+            }
+        }
+
+        try {
+            $safeName = 'icon_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        } catch (\Throwable $e) {
+            $safeName = 'icon_' . date('Ymd_His') . '_' . uniqid('', true) . '.' . $ext;
+        }
+
+        if (!$file->move($targetDir, $safeName)) {
+            return $this->failServerError('Unable to store uploaded icon.');
+        }
+
+        $absolute = rtrim($targetDir, '/').'/'.$safeName;
+        $mimeForResize = $realMime ?: $clientMime;
+
+        // Skip resize for icons - they're typically small already
+        // SVG and ICO don't need resizing, PNG icons are usually tiny
+
+        $relative = 'assets/settings/' . $safeName;
+        $userId = session()->get('user_id');
+
+        $this->model->upsert('general.company_icon', $relative, 'string', $userId);
+
+        try {
+            $bytes = @file_get_contents($absolute);
+            if ($bytes !== false) {
+                $fileModel = new SettingFileModel();
+                $fileModel->upsert('general.company_icon', $safeName, $mimeForResize ?: $clientMime, $bytes, $userId);
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Icon upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
         }
 
         return $this->response->setJSON([

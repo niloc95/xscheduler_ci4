@@ -120,7 +120,7 @@
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <?php $logoUrl = setting_url('general.company_logo'); ?>
+            <?php $logoUrl = setting_url('general.company_logo', 'assets/settings/default-logo.svg'); ?>
             <?php if ($logoUrl): ?>
                 <img class="logo" src="<?= esc($logoUrl) ?>" alt="Company logo" />
             <?php else: ?>

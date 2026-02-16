@@ -151,31 +151,42 @@ class Settings extends BaseController
             'notifications.default_language'
         ]);
 
-        $notificationPhase1 = new NotificationPhase1();
-        $notificationRules = $notificationPhase1->getRules(NotificationPhase1::BUSINESS_ID_DEFAULT);
-        $integrationStatus = $notificationPhase1->getIntegrationStatus(NotificationPhase1::BUSINESS_ID_DEFAULT);
-        $emailIntegration = (new NotificationEmailService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
-        $smsIntegration = (new NotificationSmsService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
-        $waIntegration = (new NotificationWhatsAppService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
-
-        $waSvc = new NotificationWhatsAppService();
+        $notificationRules = [];
+        $integrationStatus = [];
+        $emailIntegration = [];
+        $smsIntegration = [];
+        $waIntegration = [];
         $waTemplates = [];
-        foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
-            $waTemplates[$eventType] = $waSvc->getActiveTemplate(NotificationPhase1::BUSINESS_ID_DEFAULT, $eventType) ?? [
-                'template_name' => '',
-                'locale' => 'en_US',
-            ];
-        }
+        $deliveryLogs = [];
+        $messageTemplates = [];
 
-        $deliveryLogModel = new NotificationDeliveryLogModel();
-        $deliveryLogs = $deliveryLogModel
-            ->where('business_id', NotificationPhase1::BUSINESS_ID_DEFAULT)
-            ->orderBy('created_at', 'DESC')
-            ->limit(50)
-            ->findAll();
-        
-        // Load message templates from settings
-        $messageTemplates = $this->loadMessageTemplates();
+        try {
+            $notificationPhase1 = new NotificationPhase1();
+            $notificationRules = $notificationPhase1->getRules(NotificationPhase1::BUSINESS_ID_DEFAULT);
+            $integrationStatus = $notificationPhase1->getIntegrationStatus(NotificationPhase1::BUSINESS_ID_DEFAULT);
+            $emailIntegration = (new NotificationEmailService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+            $smsIntegration = (new NotificationSmsService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+            $waIntegration = (new NotificationWhatsAppService())->getPublicIntegration(NotificationPhase1::BUSINESS_ID_DEFAULT);
+
+            $waSvc = new NotificationWhatsAppService();
+            foreach (array_keys(NotificationPhase1::EVENTS) as $eventType) {
+                $waTemplates[$eventType] = $waSvc->getActiveTemplate(NotificationPhase1::BUSINESS_ID_DEFAULT, $eventType) ?? [
+                    'template_name' => '',
+                    'locale' => 'en_US',
+                ];
+            }
+
+            $deliveryLogModel = new NotificationDeliveryLogModel();
+            $deliveryLogs = $deliveryLogModel
+                ->where('business_id', NotificationPhase1::BUSINESS_ID_DEFAULT)
+                ->orderBy('created_at', 'DESC')
+                ->limit(50)
+                ->findAll();
+            
+            $messageTemplates = $this->loadMessageTemplates();
+        } catch (\Throwable $e) {
+            log_message('warning', 'Settings: notification data unavailable — ' . $e->getMessage());
+        }
         
         $data = [
             'user' => session()->get('user') ?? [
