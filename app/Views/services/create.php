@@ -126,7 +126,7 @@
     e.preventDefault();
     const fd = new FormData(createCategoryForm);
     try {
-            const res = await fetch('/services/categories', {
+            const res = await fetch('<?= base_url('services/categories') ?>', {
         method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
         body: new URLSearchParams({
@@ -157,7 +157,7 @@
     e.preventDefault();
     const fd = new FormData(form);
     try {
-            const res = await fetch('/services/store', {
+            const res = await fetch('<?= base_url('services/store') ?>', {
         method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         body: fd

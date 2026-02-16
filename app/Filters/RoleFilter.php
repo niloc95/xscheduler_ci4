@@ -89,7 +89,7 @@ class RoleFilter implements FilterInterface
                     ->setJSON(['error' => ['message' => 'Authentication required. Please log in.', 'code' => 'unauthenticated']]);
             }
             session()->set('redirect_url', current_url());
-            return redirect()->to('/auth/login')->with('error', 'Please log in to access this page.');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to access this page.');
         }
 
         $userId = session()->get('user_id');
@@ -102,7 +102,7 @@ class RoleFilter implements FilterInterface
                     ->setStatusCode(401)
                     ->setJSON(['error' => ['message' => 'Invalid session. Please log in again.', 'code' => 'session_invalid']]);
             }
-            return redirect()->to('/auth/login')->with('error', 'Invalid session. Please log in again.');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Invalid session. Please log in again.');
         }
 
         // If no arguments provided, just check if logged in (already done above)
@@ -164,7 +164,7 @@ class RoleFilter implements FilterInterface
         }
 
         // Web request - redirect to dashboard with error
-        return redirect()->to('/dashboard')->with('error', 'Access denied. You do not have permission to access that resource.');
+        return redirect()->to(base_url('dashboard'))->with('error', 'Access denied. You do not have permission to access that resource.');
     }
 
     /**

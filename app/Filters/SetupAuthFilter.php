@@ -68,14 +68,14 @@ class SetupAuthFilter implements FilterInterface
     {
         // First check if setup is completed
         if (!is_setup_completed()) {
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+            return redirect()->to(base_url('setup'))->with('info', 'Please complete the initial setup first.');
         }
 
         // Then check if user is logged in
         if (!session()->get('isLoggedIn')) {
             // Store intended URL for redirect after login
             session()->set('redirect_url', current_url());
-            return redirect()->to('/auth/login')->with('error', 'Please log in to access this page.');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to access this page.');
         }
     }
 

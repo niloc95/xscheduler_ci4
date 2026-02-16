@@ -82,7 +82,7 @@ class Services extends BaseController
     private function ensureCategoryAccess()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['admin', 'provider'])) {
@@ -99,7 +99,7 @@ class Services extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Check permissions - only admin and provider can access
@@ -219,7 +219,7 @@ class Services extends BaseController
     public function create()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['admin', 'provider'])) {
@@ -250,7 +250,7 @@ class Services extends BaseController
     public function edit($serviceId = null)
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['admin', 'provider'])) {
@@ -299,7 +299,7 @@ class Services extends BaseController
             return $response;
         }
 
-        return redirect()->to('/services?tab=categories');
+        return redirect()->to(base_url('services?tab=categories'));
     }
 
     /**
@@ -395,7 +395,7 @@ class Services extends BaseController
             ]);
         }
 
-        return redirect()->to('/services?tab=categories')->with('message', 'Category created');
+        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category created');
     }
 
     /** Update category */
@@ -441,7 +441,7 @@ class Services extends BaseController
             ]);
         }
 
-        return redirect()->to('/services?tab=categories')->with('message', 'Category updated');
+        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category updated');
     }
 
     /** Deactivate category */
@@ -461,7 +461,7 @@ class Services extends BaseController
             ]);
         }
 
-        return redirect()->to('/services?tab=categories')->with('message', 'Category deactivated');
+        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category deactivated');
     }
 
     /** Activate category */
@@ -481,7 +481,7 @@ class Services extends BaseController
             ]);
         }
 
-        return redirect()->to('/services?tab=categories')->with('message', 'Category activated');
+        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category activated');
     }
 
     /** Delete a category (hard delete) */
@@ -515,7 +515,7 @@ class Services extends BaseController
             ]);
         }
 
-        return redirect()->to('/services?tab=categories')->with('message', 'Category deleted');
+        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category deleted');
     }
 
     /**
@@ -577,7 +577,7 @@ class Services extends BaseController
                 'id' => $serviceId
             ]);
         }
-        return redirect()->to('/services')->with('message', 'Service created');
+        return redirect()->to(base_url('services'))->with('message', 'Service created');
     }
 
     /**
@@ -653,7 +653,7 @@ class Services extends BaseController
                 'redirect' => '/services'
             ]);
         }
-        return redirect()->to('/services')->with('message', 'Service updated');
+        return redirect()->to(base_url('services'))->with('message', 'Service updated');
     }
 
     /**

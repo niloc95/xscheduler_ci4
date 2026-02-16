@@ -73,7 +73,7 @@ class SetupFilter implements FilterInterface
         // Check if setup is completed
         if (!is_setup_completed()) {
             // Redirect to setup page
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+            return redirect()->to(base_url('setup'))->with('info', 'Please complete the initial setup first.');
         }
     }
 

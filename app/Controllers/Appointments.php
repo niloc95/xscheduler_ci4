@@ -88,7 +88,7 @@ class Appointments extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $currentUser = session()->get('user');
@@ -170,16 +170,16 @@ class Appointments extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!$appointmentId) {
-            return redirect()->to('/appointments')->with('error', 'Appointment not found.');
+            return redirect()->to(base_url('appointments'))->with('error', 'Appointment not found.');
         }
 
         // Redirect to appointments page with query parameter to open modal
         // The JavaScript will detect this and open the appointment modal
-        return redirect()->to('/appointments?open=' . $appointmentId);
+        return redirect()->to(base_url('appointments?open=' . $appointmentId));
     }
 
     /**
@@ -189,7 +189,7 @@ class Appointments extends BaseController
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
@@ -253,7 +253,7 @@ class Appointments extends BaseController
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
             log_message('error', '[Appointments::store] Not logged in');
-            return redirect()->to('/auth/login')->with('error', 'Please log in to book an appointment');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to book an appointment');
         }
 
         if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
@@ -386,7 +386,7 @@ class Appointments extends BaseController
                 'appointmentId' => $result['appointmentId']
             ]);
         }
-        return redirect()->to('/appointments')
+        return redirect()->to(base_url('appointments'))
             ->with('success', $result['message']);
     }
 
@@ -427,7 +427,7 @@ class Appointments extends BaseController
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['staff', 'provider', 'admin'])) {
@@ -543,7 +543,7 @@ class Appointments extends BaseController
     {
         // Check authentication and permissions
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login')->with('error', 'Please log in to continue');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to continue');
         }
 
         if (!has_role(['staff', 'provider', 'admin'])) {
@@ -737,7 +737,7 @@ class Appointments extends BaseController
                 'redirect' => '/appointments'
             ]);
         }
-        return redirect()->to('/appointments')
+        return redirect()->to(base_url('appointments'))
             ->with('success', 'Appointment updated successfully!');
     }
 }

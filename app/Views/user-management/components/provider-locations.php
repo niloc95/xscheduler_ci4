@@ -246,7 +246,7 @@ const LocationManager = {
         };
         
         try {
-            const response = await fetch('/api/locations', {
+            const response = await fetch('<?= base_url('api/locations') ?>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -274,7 +274,7 @@ const LocationManager = {
         data[field] = value;
         
         try {
-            const response = await fetch(`/api/locations/${locationId}`, {
+            const response = await fetch(`<?= base_url('api/locations') ?>/${locationId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -312,7 +312,7 @@ const LocationManager = {
         });
         
         try {
-            const response = await fetch(`/api/locations/${locationId}`, {
+            const response = await fetch(`<?= base_url('api/locations') ?>/${locationId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -333,7 +333,7 @@ const LocationManager = {
     
     async setPrimary(locationId) {
         try {
-            const response = await fetch(`/api/locations/${locationId}/set-primary`, {
+            const response = await fetch(`<?= base_url('api/locations') ?>/${locationId}/set-primary`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -360,7 +360,7 @@ const LocationManager = {
         }
         
         try {
-            const response = await fetch(`/api/locations/${locationId}`, {
+            const response = await fetch(`<?= base_url('api/locations') ?>/${locationId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'

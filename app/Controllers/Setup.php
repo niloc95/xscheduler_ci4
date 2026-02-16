@@ -78,7 +78,7 @@ class Setup extends BaseController
     {
         // Check if setup is already completed using global helper
         if (is_setup_completed()) {
-            return redirect()->to('/auth/login')->with('info', 'Setup has already been completed. Please log in.');
+            return redirect()->to(base_url('auth/login'))->with('info', 'Setup has already been completed. Please log in.');
         }
 
         return view('setup');
@@ -297,14 +297,14 @@ class Setup extends BaseController
                     ->setJSON([
                         'success' => true,
                         'message' => 'Setup completed successfully! Please log in with your admin account.',
-                        'redirect' => '/auth/login'
+                        'redirect' => base_url('auth/login')
                     ]);
             }
 
             // Non-AJAX fallback
             session()->setFlashdata('success', 'Setup completed successfully! Please log in with your admin account.');
             $this->cleanOutputBuffer();
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
 
         } catch (\Exception $e) {
             log_message('error', 'Setup process failed: ' . $e->getMessage());

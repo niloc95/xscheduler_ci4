@@ -79,7 +79,7 @@ class Analytics extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
                 // Check permissions - admin and provider can access analytics
@@ -113,7 +113,7 @@ class Analytics extends BaseController
     public function revenue()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['admin', 'provider'])) {
@@ -136,7 +136,7 @@ class Analytics extends BaseController
     public function customers()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!has_role(['admin', 'provider'])) {

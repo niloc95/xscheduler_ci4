@@ -84,7 +84,7 @@ class CustomerManagement extends BaseController
     {
         $currentUserId = (int) (session()->get('user_id') ?? 0);
         if (!$currentUserId) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Basic listing; later we can scope by provider if schema supports assignment
@@ -115,7 +115,7 @@ class CustomerManagement extends BaseController
     public function create()
     {
         if (!session()->get('user_id')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
         
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
@@ -136,7 +136,7 @@ class CustomerManagement extends BaseController
     public function store()
     {
         if (!session()->get('user_id')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Use dynamic validation rules from booking settings
@@ -213,7 +213,7 @@ class CustomerManagement extends BaseController
                     'redirect' => '/customer-management'
                 ]);
             }
-            return redirect()->to('/customer-management')->with('success', 'Customer created successfully.');
+            return redirect()->to(base_url('customer-management'))->with('success', 'Customer created successfully.');
         }
         
         // Log model validation errors if any
@@ -240,11 +240,11 @@ class CustomerManagement extends BaseController
     public function edit(string $hash)
     {
         if (!session()->get('user_id')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
-            return redirect()->to('/customer-management')->with('error', 'Customer not found.');
+            return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
         }
         
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
@@ -274,7 +274,7 @@ class CustomerManagement extends BaseController
     public function update(string $hash)
     {
         if (!session()->get('user_id')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
@@ -282,7 +282,7 @@ class CustomerManagement extends BaseController
             if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->setJSON(['success' => false, 'message' => $errorMsg]);
             }
-            return redirect()->to('/customer-management')->with('error', $errorMsg);
+            return redirect()->to(base_url('customer-management'))->with('error', $errorMsg);
         }
 
         $id = $customer['id'];
@@ -369,7 +369,7 @@ class CustomerManagement extends BaseController
             }
             
             log_message('info', '[CustomerManagement] Redirecting to /customer-management');
-            return redirect()->to('/customer-management')->with('success', 'Customer updated successfully.');
+            return redirect()->to(base_url('customer-management'))->with('success', 'Customer updated successfully.');
         }
         
         // Log model validation errors if any
@@ -432,12 +432,12 @@ class CustomerManagement extends BaseController
     public function history(string $hash)
     {
         if (!session()->get('user_id')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
         
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
-            return redirect()->to('/customer-management')->with('error', 'Customer not found.');
+            return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
         }
 
         $customerId = (int) $customer['id'];

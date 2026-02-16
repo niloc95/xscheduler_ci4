@@ -77,7 +77,7 @@ class Notifications extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $currentUser = session()->get('user');
@@ -418,7 +418,7 @@ class Notifications extends BaseController
     public function markAsRead($notificationId = null)
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Parse notification ID (format: log_123 or queue_456)
@@ -437,7 +437,7 @@ class Notifications extends BaseController
     public function markAllAsRead()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // For now, this is UI-only. Could implement with session or user preferences table.
@@ -451,7 +451,7 @@ class Notifications extends BaseController
     public function delete($notificationId = null)
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Parse notification ID (format: log_123 or queue_456)
@@ -472,7 +472,7 @@ class Notifications extends BaseController
      */
     public function settings()
     {
-        return redirect()->to('/settings#notifications');
+        return redirect()->to(base_url('settings#notifications'));
     }
 
     /**

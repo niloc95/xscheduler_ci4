@@ -103,7 +103,7 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Get users based on current user's role and permissions
@@ -138,14 +138,14 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Determine which roles the current user can create
     $availableRoles = $this->getAvailableRolesForUser($currentUserId);
         
         if (empty($availableRoles)) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'You do not have permission to create users.');
         }
 
@@ -201,7 +201,7 @@ class UserManagement extends BaseController
 
         if (!$currentUserId || !$currentUser) {
             log_message('warning', 'No session in store - redirecting to login');
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Validation rules
@@ -305,7 +305,7 @@ class UserManagement extends BaseController
                             'userId' => $userId
                         ]);
                     }
-                    return redirect()->to('/user-management/edit/' . $userId)
+                    return redirect()->to(base_url('user-management/edit/' . $userId))
                         ->with('error', 'User created, but assignment to provider failed. Please contact support or try assigning again.');
                 }
                 
@@ -332,7 +332,7 @@ class UserManagement extends BaseController
                     'userId' => $userId
                 ]);
             }
-            return redirect()->to('/user-management/edit/' . $userId)
+            return redirect()->to(base_url('user-management/edit/' . $userId))
                            ->with('success', 'User created successfully. You can now manage assignments and schedules.');
         } else {
             log_message('error', '[UserManagement::store] Failed to create user');
@@ -356,13 +356,13 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $user = $this->userModel->find($userId);
         
         if (!$user) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'User not found.');
         }
 
@@ -370,7 +370,7 @@ class UserManagement extends BaseController
         $canManage = $this->userModel->canManageUser($currentUserId, $userId);
         
         if (!$canManage) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'You do not have permission to edit this user.');
         }
 
@@ -462,12 +462,12 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $user = $this->userModel->find($userId);
         if (!$user) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'User not found.');
         }
 
@@ -479,7 +479,7 @@ class UserManagement extends BaseController
                     'message' => 'You do not have permission to edit this user.'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'You do not have permission to edit this user.');
         }
 
@@ -628,7 +628,7 @@ class UserManagement extends BaseController
                     'redirect' => '/user-management'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('success', 'User updated successfully.');
         } else {
             if ($this->request->isAJAX()) {
@@ -650,7 +650,7 @@ class UserManagement extends BaseController
         $currentUserId = session()->get('user_id');
 
         if (!$currentUserId) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if ($currentUserId === $userId) {
@@ -660,7 +660,7 @@ class UserManagement extends BaseController
                     'message' => 'You cannot deactivate your own account.'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'You cannot deactivate your own account.');
         }
 
@@ -672,7 +672,7 @@ class UserManagement extends BaseController
                     'redirect' => '/user-management'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('success', 'User deactivated successfully.');
         } else {
             if ($this->request->isAJAX()) {
@@ -681,7 +681,7 @@ class UserManagement extends BaseController
                     'message' => 'Failed to deactivate user or insufficient permissions.'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'Failed to deactivate user or insufficient permissions.');
         }
     }
@@ -694,7 +694,7 @@ class UserManagement extends BaseController
         $currentUserId = session()->get('user_id');
 
         if (!$currentUserId) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if ($this->userModel->update($userId, ['is_active' => true])) {
@@ -705,7 +705,7 @@ class UserManagement extends BaseController
                     'redirect' => '/user-management'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('success', 'User activated successfully.');
         } else {
             if ($this->request->isAJAX()) {
@@ -714,7 +714,7 @@ class UserManagement extends BaseController
                     'message' => 'Failed to activate user.'
                 ]);
             }
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'Failed to activate user.');
         }
     }
@@ -728,33 +728,33 @@ class UserManagement extends BaseController
         $currentUser = session()->get('user');
 
         if (!$currentUserId || !$currentUser) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Only admins can delete users
         if ($currentUser['role'] !== 'admin') {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'Only administrators can delete users.');
         }
 
         // Cannot delete yourself
         if ($currentUserId === $userId) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'You cannot delete your own account.');
         }
 
         $targetUser = $this->userModel->find($userId);
         if (!$targetUser) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'User not found.');
         }
 
         // Perform the delete
         if ($this->userModel->delete($userId)) {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('success', 'User "' . esc($targetUser['name']) . '" deleted successfully.');
         } else {
-            return redirect()->to('/user-management')
+            return redirect()->to(base_url('user-management'))
                            ->with('error', 'Failed to delete user. Please try again.');
         }
     }

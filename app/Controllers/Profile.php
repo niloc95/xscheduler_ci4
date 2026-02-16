@@ -69,18 +69,18 @@ class Profile extends BaseController
     public function index()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $userId = (int) session()->get('user_id');
         if ($userId <= 0) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $userRecord = $this->userModel->find($userId);
         if (!$userRecord) {
             session()->setFlashdata('error', 'We could not load your account. Please sign in again.');
-            return redirect()->to('/auth/logout');
+            return redirect()->to(base_url('auth/logout'));
         }
 
         session()->set('user', [
@@ -127,12 +127,12 @@ class Profile extends BaseController
     public function updateProfile()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $userId = (int) session()->get('user_id');
         if ($userId <= 0) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $rules = [
@@ -150,7 +150,7 @@ class Profile extends BaseController
                     'errors' => $this->validator->getErrors()
                 ]);
             }
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('profile_errors', $this->validator->getErrors())
                 ->with('active_tab', 'profile')
@@ -159,7 +159,7 @@ class Profile extends BaseController
 
         $userRecord = $this->userModel->find($userId);
         if (!$userRecord) {
-            return redirect()->to('/auth/login')
+            return redirect()->to(base_url('auth/login'))
                 ->with('error', 'Your account is no longer available. Please sign in again.');
         }
 
@@ -183,7 +183,7 @@ class Profile extends BaseController
                     'message' => 'Unable to update profile. Please try again.'
                 ]);
             }
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('profile_errors', ['general' => 'Unable to update profile at this time.'])
                 ->with('active_tab', 'profile')
@@ -204,7 +204,7 @@ class Profile extends BaseController
                 'redirect' => '/profile'
             ]);
         }
-        return redirect()->to('/profile')
+        return redirect()->to(base_url('profile'))
             ->with('success', 'Profile updated successfully.')
             ->with('active_tab', 'profile');
     }
@@ -215,12 +215,12 @@ class Profile extends BaseController
     public function changePassword()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $userId = (int) session()->get('user_id');
         if ($userId <= 0) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $rules = [
@@ -230,7 +230,7 @@ class Profile extends BaseController
         ];
 
         if (!$this->validate($rules)) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', $this->validator->getErrors())
                 ->with('active_tab', 'password')
@@ -239,13 +239,13 @@ class Profile extends BaseController
 
         $userRecord = $this->userModel->find($userId);
         if (!$userRecord) {
-            return redirect()->to('/auth/login')
+            return redirect()->to(base_url('auth/login'))
                 ->with('error', 'Your account is no longer available. Please sign in again.');
         }
 
         $currentPassword = (string) $this->request->getPost('current_password');
         if (!password_verify($currentPassword, $userRecord['password_hash'])) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', ['current_password' => 'The current password you entered is incorrect.'])
                 ->with('active_tab', 'password')
@@ -254,7 +254,7 @@ class Profile extends BaseController
 
         $newPassword = (string) $this->request->getPost('new_password');
         if (password_verify($newPassword, $userRecord['password_hash'])) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', ['new_password' => 'Please choose a password that differs from your current one.'])
                 ->with('active_tab', 'password')
@@ -262,12 +262,12 @@ class Profile extends BaseController
         }
 
         if (!$this->userModel->updateUser($userId, ['password' => $newPassword], $userId)) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Unable to update password. Please try again later.')
                 ->with('active_tab', 'password');
         }
 
-        return redirect()->to('/profile')
+        return redirect()->to(base_url('profile'))
             ->with('success', 'Password updated successfully.')
             ->with('active_tab', 'password');
     }
@@ -275,42 +275,42 @@ class Profile extends BaseController
     public function uploadPicture()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $userId = (int) session()->get('user_id');
         if ($userId <= 0) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $file = $this->request->getFile('profile_picture');
         if (!$file) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'No file uploaded.')
                 ->with('active_tab', 'profile');
         }
 
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Please choose a profile image to upload.')
                 ->with('active_tab', 'profile');
         }
 
         if (!$file->isValid()) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Upload failed: ' . $file->getErrorString())
                 ->with('active_tab', 'profile');
         }
 
         if ($file->hasMoved()) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Upload failed: file has already been processed.')
                 ->with('active_tab', 'profile');
         }
 
         $sizeBytes = (int) $file->getSize();
         if ($sizeBytes > (2 * 1024 * 1024)) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Profile image too large. Maximum size is 2MB.')
                 ->with('active_tab', 'profile');
         }
@@ -327,7 +327,7 @@ class Profile extends BaseController
         $mimeOk = in_array($clientMime, $allowedMimes, true) || in_array($realMime, $allowedMimes, true);
         $extOk  = in_array($ext, $allowedExts, true);
         if (!$mimeOk && !$extOk) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Unsupported image format. Use PNG, JPG, SVG, WebP, or GIF.')
                 ->with('active_tab', 'profile');
         }
@@ -337,14 +337,14 @@ class Profile extends BaseController
             @mkdir($targetDir, 0755, true);
         }
         if (!is_dir($targetDir) || !is_writable($targetDir)) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Profile image directory is not writable.')
                 ->with('active_tab', 'profile');
         }
 
         $userRecord = $this->userModel->find($userId);
         if (!$userRecord) {
-            return redirect()->to('/auth/login')
+            return redirect()->to(base_url('auth/login'))
                 ->with('error', 'Your account is no longer available. Please sign in again.');
         }
 
@@ -357,7 +357,7 @@ class Profile extends BaseController
         }
 
         if (!$file->move($targetDir, $safeName)) {
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Unable to store uploaded profile image.')
                 ->with('active_tab', 'profile');
         }
@@ -379,7 +379,7 @@ class Profile extends BaseController
 
         if (!$this->userModel->update($userId, ['profile_image' => $relative])) {
             @unlink($absolute);
-            return redirect()->to('/profile')
+            return redirect()->to(base_url('profile'))
                 ->with('error', 'Unable to update profile image. Please try again.')
                 ->with('active_tab', 'profile');
         }
@@ -391,7 +391,7 @@ class Profile extends BaseController
             'profile_image' => $relative,
         ]);
 
-        return redirect()->to('/profile')
+        return redirect()->to(base_url('profile'))
             ->with('success', 'Profile photo updated successfully.')
             ->with('active_tab', 'profile');
     }
@@ -402,7 +402,7 @@ class Profile extends BaseController
     public function privacy()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $currentUser = session()->get('user');
@@ -424,7 +424,7 @@ class Profile extends BaseController
     public function updatePrivacy()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // For now, redirect back to profile
@@ -436,7 +436,7 @@ class Profile extends BaseController
             ]);
         }
         session()->setFlashdata('success', 'Privacy settings updated successfully');
-        return redirect()->to('/profile');
+        return redirect()->to(base_url('profile'));
     }
 
     /**
@@ -445,7 +445,7 @@ class Profile extends BaseController
     public function account()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $currentUser = session()->get('user');
@@ -467,7 +467,7 @@ class Profile extends BaseController
     public function updateAccount()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // For now, redirect back to profile
@@ -479,7 +479,7 @@ class Profile extends BaseController
             ]);
         }
         session()->setFlashdata('success', 'Account settings updated successfully');
-        return redirect()->to('/profile');
+        return redirect()->to(base_url('profile'));
     }
 
     /**

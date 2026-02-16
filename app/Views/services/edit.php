@@ -114,7 +114,7 @@
   createCategoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(createCategoryForm);
-  const res = await fetch('/services/categories', {
+  const res = await fetch('<?= base_url('services/categories') ?>', {
       method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' },
       body: new URLSearchParams({ name: fd.get('new_category_name'), color: fd.get('new_category_color') || '#3B82F6' })
     });
@@ -132,7 +132,7 @@
     e.preventDefault();
     const fd = new FormData(form);
     
-    const res = await fetch('/services/update/' + serviceId, {
+    const res = await fetch('<?= base_url('services/update') ?>/' + serviceId, {
       method: 'POST',
       headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       body: fd

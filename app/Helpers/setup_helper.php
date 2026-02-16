@@ -45,7 +45,7 @@
  * -----------------------------------------------------------------------------
  *     helper('setup');
  *     if (!is_setup_completed()) {
- *         return redirect()->to('/setup');
+ *         return redirect()->to(base_url('setup'));
  *     }
  * 
  * @see         app/Controllers/Setup.php for setup wizard
@@ -129,7 +129,7 @@ if (!function_exists('ensure_setup_completed')) {
     function ensure_setup_completed()
     {
         if (!is_setup_completed()) {
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+            return redirect()->to(base_url('setup'))->with('info', 'Please complete the initial setup first.');
         }
         
         return null;

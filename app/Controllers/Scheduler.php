@@ -65,13 +65,13 @@ class Scheduler extends BaseController
     // Legacy scheduler dashboard route (permanently redirects to Appointments)
     public function index()
     {
-        return redirect()->to('/appointments', 'auto', 308);
+        return redirect()->to(base_url('appointments'), 'auto', 308);
     }
 
     // Legacy public booking route (redirects to Appointments)
     public function client()
     {
-        return redirect()->to('/appointments', 'auto', 308);
+        return redirect()->to(base_url('appointments'), 'auto', 308);
     }
 
     // API: GET /api/slots?provider_id=1&service_id=2&date=2025-08-24

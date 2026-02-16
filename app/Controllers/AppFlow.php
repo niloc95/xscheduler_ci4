@@ -65,17 +65,17 @@ class AppFlow extends BaseController
         // Check if setup is completed
         if (!is_setup_completed()) {
             // Setup not completed - redirect to setup
-            return redirect()->to('/setup');
+            return redirect()->to(base_url('setup'));
         }
 
         // Setup is completed - check if user is logged in
         if (session()->get('isLoggedIn')) {
             // User is logged in - go to dashboard
-            return redirect()->to('/dashboard');
+            return redirect()->to(base_url('dashboard'));
         }
 
         // User is not logged in - go to login
-        return redirect()->to('/login');
+        return redirect()->to(base_url('auth/login'));
     }
 
 }

@@ -82,7 +82,7 @@ class Dashboard extends BaseController
     {
         // Check if setup is completed first
         if (!is_setup_completed()) {
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+            return redirect()->to(base_url('setup'))->with('info', 'Please complete the initial setup first.');
         }
 
         try {
@@ -123,7 +123,7 @@ class Dashboard extends BaseController
                 '<p>' . esc($e->getMessage()) . '</p>' .
                 '<p>Your role: ' . esc($this->authService->getUserRole(session()->get('user'))) . '</p>' .
                 '<p>User data: ' . esc(json_encode(session()->get('user'))) . '</p>' .
-                '<p><a href="/logout">Logout</a> | <a href="/">Home</a></p>'
+                '<p><a href="' . base_url('auth/logout') . '">Logout</a> | <a href="' . base_url() . '">Home</a></p>'
             );
             
         } catch (\Exception $e) {
@@ -194,7 +194,7 @@ class Dashboard extends BaseController
         // If no user in session or missing required data, redirect to login
         if (!$currentUser || !$userId || !session()->get('isLoggedIn')) {
             session()->destroy();
-            return redirect()->to('/login')->with('error', 'Please log in to access the dashboard.');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to access the dashboard.');
         }
 
         // Extract user info for authorization

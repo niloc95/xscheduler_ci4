@@ -40,7 +40,7 @@
  * -----------------------------------------------------------------------------
  *     helper('permissions');
  *     if (!has_role(['admin', 'provider'])) {
- *         return redirect()->to('/dashboard');
+ *         return redirect()->to(base_url('dashboard'));
  *     }
  * 
  * @see         app/Models/UserPermissionModel.php for permission definitions

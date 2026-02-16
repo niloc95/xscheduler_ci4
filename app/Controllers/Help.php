@@ -94,7 +94,7 @@ class Help extends BaseController
     public function article($articleId = null)
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!$articleId) {
@@ -123,11 +123,11 @@ class Help extends BaseController
     public function category($categorySlug = null)
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         if (!$categorySlug) {
-            return redirect()->to('/help');
+            return redirect()->to(base_url('help'));
         }
 
         $category = $this->getHelpCategory($categorySlug);
@@ -180,7 +180,7 @@ class Help extends BaseController
     public function contact()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $data = [
@@ -199,7 +199,7 @@ class Help extends BaseController
     public function submitTicket()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $rules = [
@@ -217,7 +217,7 @@ class Help extends BaseController
 
         // In real implementation, save ticket to database and send notifications
         
-        return redirect()->to('/help')->with('success', 'Support ticket submitted successfully. We\'ll get back to you within 24 hours.');
+        return redirect()->to(base_url('help'))->with('success', 'Support ticket submitted successfully. We\'ll get back to you within 24 hours.');
     }
 
     /**
@@ -226,7 +226,7 @@ class Help extends BaseController
     public function faq()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $data = [
@@ -245,7 +245,7 @@ class Help extends BaseController
     public function tutorials()
     {
         if (!session()->get('isLoggedIn')) {
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $data = [

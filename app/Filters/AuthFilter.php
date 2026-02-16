@@ -83,7 +83,7 @@ class AuthFilter implements FilterInterface
             session()->set('redirect_url', current_url());
             
             // Redirect to login page
-            return redirect()->to('/auth/login')->with('error', 'Please log in to access this page.');
+            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to access this page.');
         }
 
         // If arguments are provided, do additional role/permission checks
@@ -92,7 +92,7 @@ class AuthFilter implements FilterInterface
             $user = session()->get('user');
 
             if (!$userId || !$user) {
-                return redirect()->to('/auth/login')->with('error', 'Invalid session. Please log in again.');
+                return redirect()->to(base_url('auth/login'))->with('error', 'Invalid session. Please log in again.');
             }
 
             // Simple role check if arguments are role names (customers are no longer users)
@@ -145,6 +145,6 @@ class AuthFilter implements FilterInterface
         }
 
         // Web request - redirect to dashboard with error
-        return redirect()->to('/dashboard')->with('error', 'Access denied. You do not have permission to access that resource.');
+        return redirect()->to(base_url('dashboard'))->with('error', 'Access denied. You do not have permission to access that resource.');
     }
 }

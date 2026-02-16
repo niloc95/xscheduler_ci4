@@ -78,12 +78,12 @@ class Auth extends BaseController
     {
         // Check if setup is completed first
         if (!is_setup_completed()) {
-            return redirect()->to('/setup')->with('info', 'Please complete the initial setup first.');
+            return redirect()->to(base_url('setup'))->with('info', 'Please complete the initial setup first.');
         }
 
         // Check for properly authenticated user
         if (session()->get('isLoggedIn') === true && session()->get('user_id')) {
-            return redirect()->to('/dashboard');
+            return redirect()->to(base_url('dashboard'));
         }
 
         // Clear corrupt session data (has user data but not properly logged in)
@@ -140,7 +140,7 @@ class Auth extends BaseController
         session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
 
         // Redirect to intended URL or dashboard
-        $redirectUrl = session()->get('redirect_url') ?: '/dashboard';
+        $redirectUrl = session()->get('redirect_url') ?: base_url('dashboard');
         session()->remove('redirect_url');
         
         return redirect()->to($redirectUrl);
@@ -202,7 +202,7 @@ class Auth extends BaseController
             session()->setFlashdata('error', 'Failed to send reset email. Please try again.');
         }
 
-        return redirect()->to('/auth/login');
+        return redirect()->to(base_url('auth/login'));
     }
 
     /**
@@ -212,7 +212,7 @@ class Auth extends BaseController
     {
         if (!$token) {
             session()->setFlashdata('error', 'Invalid reset token.');
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Verify token and check expiration
@@ -222,7 +222,7 @@ class Auth extends BaseController
 
         if (!$user) {
             session()->setFlashdata('error', 'Invalid or expired reset token.');
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         $data = [
@@ -254,7 +254,7 @@ class Auth extends BaseController
                     'errors' => $this->validator->getErrors()
                 ]);
             }
-            return redirect()->to("/auth/reset-password/{$token}")
+            return redirect()->to(base_url("auth/reset-password/{$token}"))
                            ->withInput()
                            ->with('validation', $this->validator);
         }
@@ -275,7 +275,7 @@ class Auth extends BaseController
                 ]);
             }
             session()->setFlashdata('error', 'Invalid or expired reset token.');
-            return redirect()->to('/auth/login');
+            return redirect()->to(base_url('auth/login'));
         }
 
         // Update password and clear reset token
@@ -289,11 +289,11 @@ class Auth extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Your password has been updated successfully. Please login with your new password.',
-                'redirect' => '/auth/login'
+                'redirect' => base_url('auth/login')
             ]);
         }
         session()->setFlashdata('success', 'Your password has been updated successfully. Please login with your new password.');
-        return redirect()->to('/auth/login');
+        return redirect()->to(base_url('auth/login'));
     }
 
     /**
@@ -303,7 +303,7 @@ class Auth extends BaseController
     {
         session()->destroy();
         session()->setFlashdata('success', 'You have been logged out successfully.');
-        return redirect()->to('/auth/login');
+        return redirect()->to(base_url('auth/login'));
     }
 
     /**
