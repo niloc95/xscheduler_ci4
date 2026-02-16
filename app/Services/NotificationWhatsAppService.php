@@ -363,13 +363,18 @@ class NotificationWhatsAppService
 
     public function getActiveTemplate(int $businessId, string $eventType): ?array
     {
-        $model = new MessageTemplateModel();
-        $row = $model
-            ->where('business_id', $businessId)
-            ->where('event_type', $eventType)
-            ->where('channel', self::CHANNEL)
-            ->where('is_active', 1)
-            ->first();
+        try {
+            $model = new MessageTemplateModel();
+            $row = $model
+                ->where('business_id', $businessId)
+                ->where('event_type', $eventType)
+                ->where('channel', self::CHANNEL)
+                ->where('is_active', 1)
+                ->first();
+        } catch (\Throwable $e) {
+            log_message('debug', 'NotificationWhatsAppService::getActiveTemplate — table unavailable: ' . $e->getMessage());
+            return null;
+        }
 
         if (!is_array($row)) {
             return null;
@@ -745,13 +750,18 @@ class NotificationWhatsAppService
 
     private function getIntegrationRow(int $businessId): ?array
     {
-        $model = new BusinessIntegrationModel();
-        $row = $model
-            ->where('business_id', $businessId)
-            ->where('channel', self::CHANNEL)
-            ->first();
+        try {
+            $model = new BusinessIntegrationModel();
+            $row = $model
+                ->where('business_id', $businessId)
+                ->where('channel', self::CHANNEL)
+                ->first();
 
-        return is_array($row) ? $row : null;
+            return is_array($row) ? $row : null;
+        } catch (\Throwable $e) {
+            log_message('debug', 'NotificationWhatsAppService::getIntegrationRow — table unavailable: ' . $e->getMessage());
+            return null;
+        }
     }
 
     private function encryptConfig(array $config): string

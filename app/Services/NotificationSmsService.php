@@ -397,13 +397,18 @@ class NotificationSmsService
 
     private function getIntegrationRow(int $businessId): ?array
     {
-        $model = new BusinessIntegrationModel();
-        $row = $model
-            ->where('business_id', $businessId)
-            ->where('channel', self::CHANNEL)
-            ->first();
+        try {
+            $model = new BusinessIntegrationModel();
+            $row = $model
+                ->where('business_id', $businessId)
+                ->where('channel', self::CHANNEL)
+                ->first();
 
-        return is_array($row) ? $row : null;
+            return is_array($row) ? $row : null;
+        } catch (\Throwable $e) {
+            log_message('debug', 'NotificationSmsService::getIntegrationRow — table unavailable: ' . $e->getMessage());
+            return null;
+        }
     }
 
     private function encryptConfig(array $config): string

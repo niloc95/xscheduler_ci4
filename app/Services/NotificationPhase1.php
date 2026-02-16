@@ -71,9 +71,6 @@ class NotificationPhase1
 
     public function getRules(int $businessId = self::BUSINESS_ID_DEFAULT): array
     {
-        $model = new BusinessNotificationRuleModel();
-        $rows = $model->where('business_id', $businessId)->findAll();
-
         $rules = [];
         foreach (array_keys(self::EVENTS) as $eventType) {
             foreach (self::CHANNELS as $channel) {
@@ -82,6 +79,14 @@ class NotificationPhase1
                     'reminder_offset_minutes' => null,
                 ];
             }
+        }
+
+        try {
+            $model = new BusinessNotificationRuleModel();
+            $rows = $model->where('business_id', $businessId)->findAll();
+        } catch (\Throwable $e) {
+            log_message('debug', 'NotificationPhase1::getRules — table unavailable: ' . $e->getMessage());
+            return $rules;
         }
 
         foreach ($rows as $row) {
@@ -104,9 +109,6 @@ class NotificationPhase1
 
     public function getIntegrationStatus(int $businessId = self::BUSINESS_ID_DEFAULT): array
     {
-        $model = new BusinessIntegrationModel();
-        $rows = $model->where('business_id', $businessId)->findAll();
-
         $status = [];
         foreach (self::CHANNELS as $channel) {
             $status[$channel] = [
@@ -116,6 +118,14 @@ class NotificationPhase1
                 'health_status' => 'unknown',
                 'last_tested_at' => null,
             ];
+        }
+
+        try {
+            $model = new BusinessIntegrationModel();
+            $rows = $model->where('business_id', $businessId)->findAll();
+        } catch (\Throwable $e) {
+            log_message('debug', 'NotificationPhase1::getIntegrationStatus — table unavailable: ' . $e->getMessage());
+            return $status;
         }
 
         foreach ($rows as $row) {
