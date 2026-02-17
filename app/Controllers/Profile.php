@@ -230,6 +230,13 @@ class Profile extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Please correct the highlighted fields.',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', $this->validator->getErrors())
@@ -239,12 +246,26 @@ class Profile extends BaseController
 
         $userRecord = $this->userModel->find($userId);
         if (!$userRecord) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'success' => false,
+                    'message' => 'Your account is no longer available. Please sign in again.',
+                    'redirect' => base_url('auth/login')
+                ]);
+            }
             return redirect()->to(base_url('auth/login'))
                 ->with('error', 'Your account is no longer available. Please sign in again.');
         }
 
         $currentPassword = (string) $this->request->getPost('current_password');
         if (!password_verify($currentPassword, $userRecord['password_hash'])) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Current password is incorrect.',
+                    'errors' => ['current_password' => 'The current password you entered is incorrect.']
+                ]);
+            }
             return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', ['current_password' => 'The current password you entered is incorrect.'])
@@ -254,6 +275,13 @@ class Profile extends BaseController
 
         $newPassword = (string) $this->request->getPost('new_password');
         if (password_verify($newPassword, $userRecord['password_hash'])) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'New password must be different from the current password.',
+                    'errors' => ['new_password' => 'Please choose a password that differs from your current one.']
+                ]);
+            }
             return redirect()->to(base_url('profile'))
                 ->withInput()
                 ->with('password_errors', ['new_password' => 'Please choose a password that differs from your current one.'])
@@ -262,11 +290,24 @@ class Profile extends BaseController
         }
 
         if (!$this->userModel->updateUser($userId, ['password' => $newPassword], $userId)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'success' => false,
+                    'message' => 'Unable to update password. Please try again later.'
+                ]);
+            }
             return redirect()->to(base_url('profile'))
                 ->with('error', 'Unable to update password. Please try again later.')
                 ->with('active_tab', 'password');
         }
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Password updated successfully.',
+                'redirect' => base_url('profile')
+            ]);
+        }
         return redirect()->to(base_url('profile'))
             ->with('success', 'Password updated successfully.')
             ->with('active_tab', 'password');
@@ -379,6 +420,12 @@ class Profile extends BaseController
 
         if (!$this->userModel->update($userId, ['profile_image' => $relative])) {
             @unlink($absolute);
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'success' => false,
+                    'message' => 'Unable to update profile image. Please try again.'
+                ]);
+            }
             return redirect()->to(base_url('profile'))
                 ->with('error', 'Unable to update profile image. Please try again.')
                 ->with('active_tab', 'profile');
@@ -391,6 +438,13 @@ class Profile extends BaseController
             'profile_image' => $relative,
         ]);
 
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Profile photo updated successfully.',
+                'redirect' => base_url('profile')
+            ]);
+        }
         return redirect()->to(base_url('profile'))
             ->with('success', 'Profile photo updated successfully.')
             ->with('active_tab', 'profile');

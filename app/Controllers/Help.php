@@ -210,13 +210,27 @@ class Help extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => 'Please correct the highlighted fields.',
+                    'errors' => $this->validator->getErrors()
+                ]);
+            }
             return redirect()->back()
                 ->withInput()
                 ->with('validation', $this->validator);
         }
 
         // In real implementation, save ticket to database and send notifications
-        
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Support ticket submitted successfully. We\'ll get back to you within 24 hours.',
+                'redirect' => base_url('help')
+            ]);
+        }
         return redirect()->to(base_url('help'))->with('success', 'Support ticket submitted successfully. We\'ll get back to you within 24 hours.');
     }
 

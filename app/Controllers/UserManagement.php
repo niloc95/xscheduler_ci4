@@ -733,27 +733,58 @@ class UserManagement extends BaseController
 
         // Only admins can delete users
         if ($currentUser['role'] !== 'admin') {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'success' => false,
+                    'message' => 'Only administrators can delete users.'
+                ]);
+            }
             return redirect()->to(base_url('user-management'))
                            ->with('error', 'Only administrators can delete users.');
         }
 
         // Cannot delete yourself
         if ($currentUserId === $userId) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'You cannot delete your own account.'
+                ]);
+            }
             return redirect()->to(base_url('user-management'))
                            ->with('error', 'You cannot delete your own account.');
         }
 
         $targetUser = $this->userModel->find($userId);
         if (!$targetUser) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'success' => false,
+                    'message' => 'User not found.'
+                ]);
+            }
             return redirect()->to(base_url('user-management'))
                            ->with('error', 'User not found.');
         }
 
         // Perform the delete
         if ($this->userModel->delete($userId)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'User "' . esc($targetUser['name']) . '" deleted successfully.',
+                    'redirect' => base_url('user-management')
+                ]);
+            }
             return redirect()->to(base_url('user-management'))
                            ->with('success', 'User "' . esc($targetUser['name']) . '" deleted successfully.');
         } else {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to delete user. Please try again.'
+                ]);
+            }
             return redirect()->to(base_url('user-management'))
                            ->with('error', 'Failed to delete user. Please try again.');
         }

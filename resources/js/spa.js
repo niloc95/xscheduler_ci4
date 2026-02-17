@@ -214,13 +214,12 @@ const SPA = (() => {
 
       // Try to parse JSON response
       let data;
+      const text = await res.text();
       try {
-        const text = await res.text();
         data = JSON.parse(text);
       } catch (e) {
         // If not JSON, treat as HTML content and navigate
-        const html = await res.text();
-        el.innerHTML = html;
+        el.innerHTML = text;
         document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url: action } }));
         if (window.xsViewInitializers) {
           window.xsViewInitializers.forEach(fn => {
@@ -326,6 +325,17 @@ const SPA = (() => {
 
   return { init, navigate, submitForm };
 })();
+
+// XSNotify — global toast API that bridges to xs:flash events
+window.XSNotify = {
+  toast({ type = 'info', title = '', message = '', autoClose = true, duration = 5000 } = {}) {
+    const text = message || title;
+    if (!text) return;
+    document.dispatchEvent(new CustomEvent('xs:flash', {
+      detail: { type, message: text }
+    }));
+  }
+};
 
 // Flash message handler - listen for xs:flash events
 document.addEventListener('xs:flash', (e) => {
