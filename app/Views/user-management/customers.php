@@ -86,7 +86,6 @@
 </div>
 <script>
 (function(){
-    const esc = window.xsEscapeHtml;
     async function reloadCustomers(){/* Placeholder for future dynamic fetch */}
     function isCustomerInteractionPage() {
         const spaContent = document.getElementById('spa-content');
@@ -94,7 +93,10 @@
     }
     document.getElementById('customerRefresh')?.addEventListener('click',()=>reloadCustomers());
     if (isCustomerInteractionPage()) reloadCustomers();
-    document.addEventListener('spa:navigated',()=>{ if(isCustomerInteractionPage()) reloadCustomers(); });
+    if (!window.__customerInteractionSpaListenerBound) {
+        window.__customerInteractionSpaListenerBound = true;
+        document.addEventListener('spa:navigated',()=>{ if(isCustomerInteractionPage()) reloadCustomers(); });
+    }
 })();
 </script>
 <?= $this->endSection() ?>

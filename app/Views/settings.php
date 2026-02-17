@@ -2779,7 +2779,10 @@
             }
             
             // Re-run on SPA navigation
-            document.addEventListener('spa:navigated', initTimeFormatting);
+            if (!window.__settingsTimeFormatSpaListenerBound) {
+                window.__settingsTimeFormatSpaListenerBound = true;
+                document.addEventListener('spa:navigated', initTimeFormatting);
+            }
         </script>
 
         <!-- Database Settings Tab Script -->
