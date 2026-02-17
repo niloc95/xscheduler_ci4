@@ -144,7 +144,7 @@ class CustomerManagement extends BaseController
 
         if (!$this->validate($rules)) {
             // Return JSON for SPA or HTML for traditional form
-            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            if ($this->request->isAJAX()) {
                 return response()->setJSON([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -206,7 +206,7 @@ class CustomerManagement extends BaseController
             log_message('info', '[CustomerManagement] Successfully created customer ID: ' . $id);
             
             // Return JSON for SPA or HTML for traditional form
-            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            if ($this->request->isAJAX()) {
                 return response()->setJSON([
                     'success' => true,
                     'message' => 'Customer created successfully.',
@@ -225,7 +225,7 @@ class CustomerManagement extends BaseController
         log_message('error', '[CustomerManagement] Failed to create customer');
         
         // Return JSON for SPA or HTML for traditional form
-        if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+        if ($this->request->isAJAX()) {
             return response()->setJSON([
                 'success' => false,
                 'message' => 'Failed to create customer.'
@@ -279,7 +279,7 @@ class CustomerManagement extends BaseController
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             $errorMsg = 'Customer not found.';
-            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            if ($this->request->isAJAX()) {
                 return response()->setJSON(['success' => false, 'message' => $errorMsg]);
             }
             return redirect()->to(base_url('customer-management'))->with('error', $errorMsg);
@@ -291,7 +291,7 @@ class CustomerManagement extends BaseController
         $rules = $this->bookingSettings->getValidationRulesForUpdate($id);
 
         if (!$this->validate($rules)) {
-            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            if ($this->request->isAJAX()) {
                 return response()->setJSON([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -360,7 +360,7 @@ class CustomerManagement extends BaseController
         if ($this->customers->update($id, $payload, false)) {
             log_message('info', '[CustomerManagement] Successfully updated customer ID: ' . $id);
             
-            if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            if ($this->request->isAJAX()) {
                 return response()->setJSON([
                     'success' => true,
                     'message' => 'Customer updated successfully.',
@@ -380,7 +380,7 @@ class CustomerManagement extends BaseController
         
         log_message('error', '[CustomerManagement] Failed to update customer ID: ' . $id);
         
-        if ($this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+        if ($this->request->isAJAX()) {
             return response()->setJSON([
                 'success' => false,
                 'message' => 'Failed to update customer.'

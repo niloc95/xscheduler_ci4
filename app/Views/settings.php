@@ -614,7 +614,7 @@
             </form>
 
             <!-- Notifications Settings Form (Phase 1: Rules only, no sending) -->
-            <form id="notifications-settings-form" method="POST" action="<?= base_url('settings/notifications') ?>" class="mt-4 space-y-6" data-tab-form="notifications">
+            <form id="notifications-settings-form" method="POST" action="<?= base_url('settings/notifications') ?>" class="mt-4 space-y-6" data-tab-form="notifications" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="notification_rules_phase1">
                 <section id="panel-notifications" class="tab-panel hidden">
