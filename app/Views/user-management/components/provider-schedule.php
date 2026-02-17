@@ -22,13 +22,8 @@ $formatDescription = $localizationContext['format_description'] ?? (
 );
 $firstDay = $scheduleDays[0] ?? 'monday';
 ?>
-<?php
-// Determine initial visibility based on current role selection
-$currentRole = old('role', $user['role'] ?? '');
-$isProviderRole = ($currentRole === 'provider');
-?>
 <div id="provider-schedule-section"
-     class="mt-8 <?= $isProviderRole ? '' : 'hidden' ?>"
+     class="mt-8"
      data-provider-schedule-section
      data-source-day="<?= esc($firstDay) ?>"
      data-time-format="<?= esc($timeFormat) ?>"
@@ -174,9 +169,10 @@ $isProviderRole = ($currentRole === 'provider');
     }
 
     function toggleScheduleSection(roleValue) {
+        // Visibility is controlled by parent wrapper (providerScheduleSection)
+        // This function now only manages copy button state
         if (!scheduleSection) return;
         const isProvider = roleValue === 'provider';
-        scheduleSection.classList.toggle('hidden', !isProvider);
         if (!isProvider) {
             setCopyButtonDisabled(true);
         } else {
@@ -423,12 +419,9 @@ $isProviderRole = ($currentRole === 'provider');
         toggleScheduleSection(roleSelect.value);
         updateCopyButtonState();
 
-        if (roleSelect.dataset.providerScheduleToggleBound !== 'true') {
-            roleSelect.addEventListener('change', function() {
-                toggleScheduleSection(roleSelect.value);
-            });
-            roleSelect.dataset.providerScheduleToggleBound = 'true';
-        }
+        roleSelect.addEventListener('change', function() {
+            toggleScheduleSection(roleSelect.value);
+        });
 
         const inputs = scheduleSection?.querySelectorAll('[data-time-input]') || [];
         inputs.forEach((input) => {
