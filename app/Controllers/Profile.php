@@ -201,7 +201,7 @@ class Profile extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Profile updated successfully.',
-                'redirect' => '/profile'
+                'redirect' => base_url('profile')
             ]);
         }
         return redirect()->to(base_url('profile'))
@@ -486,7 +486,7 @@ class Profile extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Privacy settings updated successfully',
-                'redirect' => '/profile'
+                'redirect' => base_url('profile')
             ]);
         }
         session()->setFlashdata('success', 'Privacy settings updated successfully');
@@ -529,7 +529,7 @@ class Profile extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Account settings updated successfully',
-                'redirect' => '/profile'
+                'redirect' => base_url('profile')
             ]);
         }
         session()->setFlashdata('success', 'Account settings updated successfully');

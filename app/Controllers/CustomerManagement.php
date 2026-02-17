@@ -210,7 +210,7 @@ class CustomerManagement extends BaseController
                 return response()->setJSON([
                     'success' => true,
                     'message' => 'Customer created successfully.',
-                    'redirect' => '/customer-management'
+                    'redirect' => base_url('customer-management')
                 ]);
             }
             return redirect()->to(base_url('customer-management'))->with('success', 'Customer created successfully.');
@@ -364,7 +364,7 @@ class CustomerManagement extends BaseController
                 return response()->setJSON([
                     'success' => true,
                     'message' => 'Customer updated successfully.',
-                    'redirect' => '/customer-management'
+                    'redirect' => base_url('customer-management')
                 ]);
             }
             

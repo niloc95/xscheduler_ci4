@@ -389,7 +389,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Category created',
-                'redirect' => '/services?tab=categories',
+                'redirect' => base_url('services?tab=categories'),
                 'id' => (int)$id,
                 'name' => $name
             ]);
@@ -437,7 +437,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Category updated',
-                'redirect' => '/services?tab=categories'
+                'redirect' => base_url('services?tab=categories')
             ]);
         }
 
@@ -457,7 +457,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Category deactivated',
-                'redirect' => '/services?tab=categories'
+                'redirect' => base_url('services?tab=categories')
             ]);
         }
 
@@ -477,7 +477,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Category activated',
-                'redirect' => '/services?tab=categories'
+                'redirect' => base_url('services?tab=categories')
             ]);
         }
 
@@ -511,7 +511,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Category deleted',
-                'redirect' => '/services?tab=categories'
+                'redirect' => base_url('services?tab=categories')
             ]);
         }
 
@@ -573,7 +573,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Service created',
-                'redirect' => '/services',
+                'redirect' => base_url('services'),
                 'id' => $serviceId
             ]);
         }
@@ -650,7 +650,7 @@ class Services extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Service updated',
-                'redirect' => '/services'
+                'redirect' => base_url('services')
             ]);
         }
         return redirect()->to(base_url('services'))->with('message', 'Service updated');

@@ -328,7 +328,7 @@ class UserManagement extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User created successfully. You can now manage assignments and schedules.',
-                    'redirect' => '/user-management/edit/' . $userId,
+                    'redirect' => base_url('user-management/edit/' . $userId),
                     'userId' => $userId
                 ]);
             }
@@ -625,7 +625,7 @@ class UserManagement extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User updated successfully.',
-                    'redirect' => '/user-management'
+                    'redirect' => base_url('user-management')
                 ]);
             }
             return redirect()->to(base_url('user-management'))
@@ -669,7 +669,7 @@ class UserManagement extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User deactivated successfully.',
-                    'redirect' => '/user-management'
+                    'redirect' => base_url('user-management')
                 ]);
             }
             return redirect()->to(base_url('user-management'))
@@ -702,7 +702,7 @@ class UserManagement extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User activated successfully.',
-                    'redirect' => '/user-management'
+                    'redirect' => base_url('user-management')
                 ]);
             }
             return redirect()->to(base_url('user-management'))

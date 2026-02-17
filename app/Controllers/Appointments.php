@@ -382,7 +382,7 @@ class Appointments extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => $result['message'],
-                'redirect' => '/appointments',
+                'redirect' => base_url('appointments'),
                 'appointmentId' => $result['appointmentId']
             ]);
         }
@@ -734,7 +734,7 @@ class Appointments extends BaseController
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Appointment updated successfully!',
-                'redirect' => '/appointments'
+                'redirect' => base_url('appointments')
             ]);
         }
         return redirect()->to(base_url('appointments'))
