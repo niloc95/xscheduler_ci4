@@ -323,7 +323,9 @@
     </div>
 </div>
 
-<script>
+<script type="text/javascript">
+// DEBUG: Remove after testing - this alert confirms script execution
+alert('[DEBUG] Create User script is executing');
 (function() {
     console.log('[CreateUser] Script starting');
     const form = document.getElementById('createUserForm');

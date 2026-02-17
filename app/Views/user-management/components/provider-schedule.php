@@ -158,6 +158,7 @@ $firstDay = $scheduleDays[0] ?? 'monday';
 
 <script>
 (function() {
+    console.log('[ProviderScheduleComponent] Script starting');
     let scheduleSection = null;
     let copyBtn = null;
     let sourceDayKey = 'monday';
@@ -373,6 +374,7 @@ $firstDay = $scheduleDays[0] ?? 'monday';
     // Initialize immediately — SPA re-executes inline scripts but does NOT
     // re-fire DOMContentLoaded, so we must run init directly.
     function initProviderSchedule() {
+        console.log('[ProviderScheduleComponent] initProviderSchedule called');
         scheduleSection = document.querySelector('[data-provider-schedule-section]');
         if (scheduleSection) {
             sourceDayKey = scheduleSection.dataset.sourceDay || sourceDayKey;
