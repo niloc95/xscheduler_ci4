@@ -11,20 +11,7 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
 import { generateSlotsWithAvailability, findOverlappingAppointments, getProviderAvailabilityForSlot } from '../../utils/scheduling-utils.js';
-
-function getBaseUrl() {
-    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
-    if (!raw) return '';
-    return String(raw).replace(/\/+$/, '');
-}
-
-function withBaseUrl(path) {
-    const base = getBaseUrl();
-    if (!base) return path;
-    if (!path) return base + '/';
-    if (path.startsWith('/')) return base + path;
-    return base + '/' + path;
-}
+import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class WeekView {
     constructor(scheduler) {

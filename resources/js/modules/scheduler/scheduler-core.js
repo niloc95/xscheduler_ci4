@@ -13,22 +13,12 @@ import { DayView } from './scheduler-day-view.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
+import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 // Stats System - following Car Analogy architecture
 import { getStatsForView } from './stats/stats-engine.js';
 import { STATUS_DEFINITIONS, getStatusDef } from './stats/stats-definitions.js';
 import { getViewTitle } from './stats/stats-view-configs.js';
-
-function getBaseUrl() {
-    return String(window.__BASE_URL__ || '').replace(/\/+$/, '');
-}
-
-function withBaseUrl(urlPath) {
-    const baseUrl = getBaseUrl();
-    if (!baseUrl) return urlPath;
-    const normalizedPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
-    return `${baseUrl}${normalizedPath}`;
-}
 
 export class SchedulerCore {
     constructor(containerId, options = {}) {

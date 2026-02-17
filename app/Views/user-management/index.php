@@ -148,7 +148,7 @@
     function baseUrl(p){return APP_BASE + p;}
     function showError(msg){const b=document.getElementById('users-error'); if(!b) return; b.textContent=msg; b.classList.remove('hidden');}
     function clearError(){const b=document.getElementById('users-error'); if(!b) return; b.classList.add('hidden'); b.textContent='';}
-    function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+    function escapeHtml(s){return window.xsEscapeHtml(s);}
     function roleLabel(r){return {admin:'Admin',provider:'Provider',staff:'Staff'}[r]||r;}
     function fmtDate(s){try{return new Date(s).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});}catch(e){return s||'';}}
     function userRow(u){

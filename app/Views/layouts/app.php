@@ -51,6 +51,7 @@
     <script>
         window.__BASE_URL__ = '<?= base_url() ?>';
         window.__CSRF_TOKEN__ = '<?= csrf_hash() ?>';
+        window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebSchedulr'), 'js') ?>';
     </script>
     
     <?= $this->renderSection('head') ?>

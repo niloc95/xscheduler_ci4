@@ -7,20 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { checkForConflicts } from '../../utils/scheduling-utils.js';
-
-function getBaseUrl() {
-    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
-    if (!raw) return '';
-    return String(raw).replace(/\/+$/, '');
-}
-
-function withBaseUrl(path) {
-    const base = getBaseUrl();
-    if (!base) return path;
-    if (!path) return base + '/';
-    if (path.startsWith('/')) return base + path;
-    return base + '/' + path;
-}
+import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class DragDropManager {
     constructor(scheduler) {
@@ -367,17 +354,6 @@ export class DragDropManager {
     }
 
     showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        const bgColor = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-blue-600';
-        
-        toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in`;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('animate-slide-out');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        document.dispatchEvent(new CustomEvent('xs:flash', { detail: { type, message } }));
     }
 }

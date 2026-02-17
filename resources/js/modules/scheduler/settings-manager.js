@@ -7,19 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { logger } from './logger.js';
-
-const getBaseUrl = () => {
-    const raw = typeof window !== 'undefined' ? window.__BASE_URL__ : '';
-    return (raw || '').replace(/\/+$/, '');
-};
-
-const withBaseUrl = (path) => {
-    const base = getBaseUrl();
-    if (!base) return path;
-    if (!path) return base + '/';
-    if (path.startsWith('/')) return base + path;
-    return base + '/' + path;
-};
+import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class SettingsManager {
     constructor() {

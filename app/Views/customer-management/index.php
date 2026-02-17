@@ -311,12 +311,8 @@ function initCustomerSearch() {
         return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
 
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // Helper function to escape HTML (delegates to global)
+    const escapeHtml = window.xsEscapeHtml;
 
     // Event listener for input with debounce
     searchInput.addEventListener('input', function(e) {

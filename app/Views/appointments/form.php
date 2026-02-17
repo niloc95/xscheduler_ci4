@@ -642,17 +642,8 @@ function initAppointmentForm() {
         let searchTimeout = null;
         let selectedCustomer = null;
 
-        // Utility function for escaping HTML
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
+        // Utility function for escaping HTML (delegates to global)
+        const escapeHtml = window.xsEscapeHtml;
 
         // Customer mode toggle
         document.querySelectorAll('.customer-mode-btn')?.forEach(btn => {
@@ -942,11 +933,7 @@ function initAppointmentForm() {
         dateInput.addEventListener('change', updateSummary);
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
-    }
+    const escapeHtml = window.xsEscapeHtml;
 }
 
 // Register for both initial load and SPA navigation

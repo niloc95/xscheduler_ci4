@@ -3,6 +3,7 @@
  * Optimized with Material Design 3 color tokens, caching, and debouncing
  */
 import Chart from 'chart.js/auto';
+import { getBaseUrl } from './utils/url-helpers.js';
 
 // Store chart instances to prevent duplicates
 const chartInstances = {};
@@ -18,9 +19,6 @@ const DEBOUNCE_DELAY = 300;
 
 // Current filter period
 let currentPeriod = 'month';
-
-// Get base URL for API calls
-const getBaseUrl = () => (window.__BASE_URL__ || '').replace(/\/+$/, '');
 
 // Dark mode detection
 const isDarkMode = () => document.documentElement.classList.contains('dark');

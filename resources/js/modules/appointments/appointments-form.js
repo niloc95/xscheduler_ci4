@@ -245,45 +245,8 @@ function clearAllFieldErrors(form) {
 // ── Notifications ─────────────────────────────────────────────────────
 
 function showNotification(type, message) {
+    // Clean up any legacy notification elements
     document.querySelectorAll('.appointment-notification').forEach((n) => n.remove());
-
-    const colors = {
-        success: 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800',
-        error: 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800',
-        warning: 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800',
-        info: 'bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800',
-    };
-    const icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
-
-    const notification = document.createElement('div');
-    notification.className = `appointment-notification fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg border ${colors[type] || colors.info} transform transition-all duration-300 translate-x-full`;
-    notification.innerHTML = `
-        <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-xl flex-shrink-0">${icons[type] || icons.info}</span>
-            <div class="flex-1 text-sm font-medium">${message}</div>
-            <button type="button" class="flex-shrink-0 text-current opacity-50 hover:opacity-100 transition-opacity" aria-label="Close">
-                <span class="material-symbols-outlined text-lg">close</span>
-            </button>
-        </div>`;
-
-    document.body.appendChild(notification);
-    requestAnimationFrame(() => {
-        notification.classList.remove('translate-x-full');
-        notification.classList.add('translate-x-0');
-    });
-
-    notification.querySelector('button').addEventListener('click', () => {
-        notification.classList.remove('translate-x-0');
-        notification.classList.add('translate-x-full');
-        setTimeout(() => notification.remove(), 300);
-    });
-
-    const duration = type === 'error' ? 7000 : 5000;
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.classList.remove('translate-x-0');
-            notification.classList.add('translate-x-full');
-            setTimeout(() => notification.remove(), 300);
-        }
-    }, duration);
+    // Delegate to unified xs:flash system
+    document.dispatchEvent(new CustomEvent('xs:flash', { detail: { type, message } }));
 }

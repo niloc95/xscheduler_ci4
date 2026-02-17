@@ -45,6 +45,17 @@ import { SettingsManager } from './modules/scheduler/settings-manager.js';
 // Import scheduler styles
 import '../css/scheduler.css';
 
+// Import currency formatter (was orphaned — now included in bundle)
+import './currency.js';
+
+// Define global escapeHtml utility — single source of truth
+window.xsEscapeHtml = window.xsEscapeHtml || function(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+};
+
 // Export shared time-slot UI initializer to window so PHP views can call it
 import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
 if (typeof window !== 'undefined') {

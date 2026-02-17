@@ -1662,7 +1662,7 @@
                 return { header, token };
             };
 
-            // Shared HTML escaper — used in template literals
+            // Shared HTML escaper — delegates to global defined in app.js
             window.xsEscapeHtml = window.xsEscapeHtml || function (str) {
                 if (!str) return '';
                 const div = document.createElement('div');
