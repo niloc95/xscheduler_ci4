@@ -613,7 +613,12 @@ export class AppointmentDetailsModal {
         this.close();
         // Navigate to edit page using hash for security
         const identifier = appointment.hash || appointment.id;
-        window.location.href = withBaseUrl(`/appointments/edit/${identifier}`);
+        const url = withBaseUrl(`/appointments/edit/${identifier}`);
+        if (window.xsSPA) {
+            window.xsSPA.navigate(url);
+        } else {
+            window.location.href = url;
+        }
     }
     
     /**

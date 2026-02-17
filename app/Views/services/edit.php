@@ -168,7 +168,12 @@
 
   closeResultModal.addEventListener('click', () => {
     hide(resultModal);
-    window.location.href = '<?= base_url('/services') ?>';
+    const url = '<?= base_url('/services') ?>';
+    if (window.xsSPA) {
+      window.xsSPA.navigate(url);
+    } else {
+      window.location.href = url;
+    }
   });
 })();
 </script>

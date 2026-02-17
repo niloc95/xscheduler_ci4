@@ -258,8 +258,12 @@ const LocationManager = {
             const result = await response.json();
             
             if (result.status === 'ok') {
-                // Reload to show new location
-                location.reload();
+                // Refresh via SPA to show new location
+                if (window.xsSPA) {
+                    window.xsSPA.navigate(window.location.pathname + window.location.search);
+                } else {
+                    location.reload();
+                }
             } else {
                 alert('Failed to add location: ' + (result.message || 'Unknown error'));
             }
@@ -344,7 +348,12 @@ const LocationManager = {
             const result = await response.json();
             
             if (result.status === 'ok') {
-                location.reload();
+                // Refresh via SPA to reflect primary change
+                if (window.xsSPA) {
+                    window.xsSPA.navigate(window.location.pathname + window.location.search);
+                } else {
+                    location.reload();
+                }
             } else {
                 alert('Failed to set primary: ' + (result.message || 'Unknown error'));
             }

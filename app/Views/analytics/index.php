@@ -199,12 +199,11 @@
 
 <?= $this->section('scripts') ?>
 <script>
-// Revenue data from PHP
-const revenueData = <?= json_encode($revenue) ?>;
-const currencySymbol = '<?= esc(get_app_currency_symbol()) ?>';
+(function() {
+    // Revenue data from PHP
+    const revenueData = <?= json_encode($revenue) ?>;
+    const currencySymbol = '<?= esc(get_app_currency_symbol()) ?>';
 
-// Wait for main.js to load and expose window functions
-window.addEventListener('load', function() {
     // Initialize revenue chart
     let revenueChart = null;
     let currentChartType = 'daily';
@@ -225,15 +224,25 @@ window.addEventListener('load', function() {
     updateRevenueChart('daily');
 
     // Chart type change handler
-    document.getElementById('revenueChartType').addEventListener('change', function() {
-        updateRevenueChart(this.value);
-    });
-});
+    const chartTypeEl = document.getElementById('revenueChartType');
+    if (chartTypeEl) {
+        chartTypeEl.addEventListener('change', function() {
+            updateRevenueChart(this.value);
+        });
+    }
 
-// Timeframe change handler
-document.getElementById('timeframe').addEventListener('change', function() {
-    const timeframe = this.value;
-    window.location.href = `<?= current_url() ?>?timeframe=${timeframe}`;
-});
+    // Timeframe change handler
+    const timeframeEl = document.getElementById('timeframe');
+    if (timeframeEl) {
+        timeframeEl.addEventListener('change', function() {
+            const url = `<?= current_url() ?>?timeframe=${this.value}`;
+            if (window.xsSPA) {
+                window.xsSPA.navigate(url);
+            } else {
+                window.location.href = url;
+            }
+        });
+    }
+})();
 </script>
 <?= $this->endSection() ?>

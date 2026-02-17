@@ -93,14 +93,24 @@ export async function initAppointmentForm() {
                     showNotification('success', 'Appointment booked successfully!');
                     emitAppointmentsUpdated('create-or-update');
                     setTimeout(() => {
-                        window.location.href = withBaseUrl('/appointments');
+                        const url = withBaseUrl('/appointments');
+                        if (window.xsSPA) {
+                            window.xsSPA.navigate(url);
+                        } else {
+                            window.location.href = url;
+                        }
                     }, 500);
                 } else {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
             } else {
                 emitAppointmentsUpdated('create-or-update');
-                window.location.href = withBaseUrl('/appointments');
+                const url = withBaseUrl('/appointments');
+                if (window.xsSPA) {
+                    window.xsSPA.navigate(url);
+                } else {
+                    window.location.href = url;
+                }
             }
         } catch (error) {
             console.error('[appointments-form] ❌ Submission error:', error);

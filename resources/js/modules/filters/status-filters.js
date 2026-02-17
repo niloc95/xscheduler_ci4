@@ -534,14 +534,17 @@ export function initViewToggleHandlers() {
         });
     });
     
-    // Listen for scheduler date changes
-    window.addEventListener('scheduler:date-change', (event) => {
-        const { view, date } = event.detail || {};
-        if (view && date) {
-            updateSummaryHeader(view, date);
-            refreshAppointmentStats({ view, date });
-        }
-    });
+    // Listen for scheduler date changes (guard against accumulation)
+    if (!window.__xsDateChangeListenerBound) {
+        window.__xsDateChangeListenerBound = true;
+        window.addEventListener('scheduler:date-change', (event) => {
+            const { view, date } = event.detail || {};
+            if (view && date) {
+                updateSummaryHeader(view, date);
+                refreshAppointmentStats({ view, date });
+            }
+        });
+    }
 }
 
 /**

@@ -457,56 +457,7 @@
                                 <h4 class="font-medium text-gray-900 dark:text-white">Privacy Settings</h4>
 
                             <script>
-                            document.addEventListener('DOMContentLoaded', () => {
-                                const tabContainer = document.querySelector('[data-profile-tabs]');
-                                if (!tabContainer) {
-                                    return;
-                                }
-
-                                const forms = {
-                                    profile: document.getElementById('profileForm'),
-                                    password: document.getElementById('passwordForm')
-                                };
-
-                                const buttons = tabContainer.querySelectorAll('[data-profile-tab-button]');
-
-                                function activateTab(target) {
-                                    const isProfile = target === 'profile';
-                                    if (forms.profile) {
-                                        forms.profile.classList.toggle('hidden', !isProfile);
-                                    }
-                                    if (forms.password) {
-                                        forms.password.classList.toggle('hidden', isProfile);
-                                    }
-
-                                    buttons.forEach((btn) => {
-                                        const btnTarget = btn.getAttribute('data-profile-tab-button');
-                                        const activeClasses = 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20';
-                                        const inactiveClasses = 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600';
-                                        if (btnTarget === target) {
-                                            btn.classList.add(...activeClasses.split(' '));
-                                            btn.classList.remove(...inactiveClasses.split(' '));
-                                        } else {
-                                            btn.classList.remove(...activeClasses.split(' '));
-                                            btn.classList.add(...inactiveClasses.split(' '));
-                                        }
-                                    });
-                                }
-
-                                buttons.forEach((btn) => {
-                                    btn.addEventListener('click', () => {
-                                        const target = btn.getAttribute('data-profile-tab-button');
-                                        activateTab(target);
-                                    });
-                                });
-
-                                document.querySelectorAll('[data-profile-tab-trigger]').forEach((trigger) => {
-                                    trigger.addEventListener('click', () => {
-                                        const target = trigger.getAttribute('data-profile-tab-trigger');
-                                        activateTab(target);
-                                    });
-                                });
-                            });
+                            /* Tab logic handled by script block at bottom of page */
                             </script>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Control your privacy preferences</p>
                             </div>
@@ -527,11 +478,12 @@
 </div>
 
                     <script>
-                    document.addEventListener('DOMContentLoaded', function () {
+                    (function () {
                         const container = document.querySelector('[data-profile-tabs]');
-                        if (!container) {
+                        if (!container || container.dataset.tabsInitialized === 'true') {
                             return;
                         }
+                        container.dataset.tabsInitialized = 'true';
 
                         const forms = {
                             profile: container.querySelector('#profileForm'),
@@ -586,6 +538,6 @@
 
                         const initialTab = container.dataset.activeTab || 'profile';
                         activateTab(initialTab);
-                    });
+                    })();
                     </script>
 <?= $this->endSection() ?>

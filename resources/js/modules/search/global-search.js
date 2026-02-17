@@ -310,8 +310,10 @@ export function initGlobalSearch() {
     // Bind events to all search inputs
     inputs.forEach(bindInput);
 
-    // Hide results when clicking outside
-    document.addEventListener('click', (e) => {
+    // Hide results when clicking outside (guard against accumulation)
+    if (!window.__xsGlobalSearchClickBound) {
+        window.__xsGlobalSearchClickBound = true;
+        document.addEventListener('click', (e) => {
         const wrappers = [
             document.getElementById('global-search-wrapper'),
             document.getElementById('global-search-wrapper-mobile')
@@ -334,4 +336,5 @@ export function initGlobalSearch() {
             hideResults();
         }
     });
+    } // end guard
 }
