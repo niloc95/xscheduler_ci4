@@ -363,15 +363,19 @@
 		});
 	}
 
-	roleSelect.addEventListener('change', toggleProviderFields);
+	if (roleSelect.dataset.providerFieldsBound !== 'true') {
+		roleSelect.addEventListener('change', toggleProviderFields);
+		roleSelect.dataset.providerFieldsBound = 'true';
+	}
 	toggleProviderFields();
 })();
 
 // Toggle password visibility
-function togglePassword(fieldId) {
+window.togglePassword = function(fieldId) {
 	const field = document.getElementById(fieldId);
 	const icon = document.getElementById(fieldId + '-icon');
-	
+	if (!field || !icon) return;
+
 	if (field.type === 'password') {
 		field.type = 'text';
 		icon.textContent = 'visibility_off';
@@ -379,6 +383,6 @@ function togglePassword(fieldId) {
 		field.type = 'password';
 		icon.textContent = 'visibility';
 	}
-}
+};
 </script>
 <?= $this->endSection() ?>

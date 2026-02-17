@@ -423,9 +423,12 @@ $isProviderRole = ($currentRole === 'provider');
         toggleScheduleSection(roleSelect.value);
         updateCopyButtonState();
 
-        roleSelect.addEventListener('change', function() {
-            toggleScheduleSection(roleSelect.value);
-        });
+        if (roleSelect.dataset.providerScheduleToggleBound !== 'true') {
+            roleSelect.addEventListener('change', function() {
+                toggleScheduleSection(roleSelect.value);
+            });
+            roleSelect.dataset.providerScheduleToggleBound = 'true';
+        }
 
         const inputs = scheduleSection?.querySelectorAll('[data-time-input]') || [];
         inputs.forEach((input) => {
