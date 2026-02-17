@@ -325,6 +325,7 @@
 
 <script>
 (function() {
+    console.log('[CreateUser] Script starting');
     const form = document.getElementById('createUserForm');
     const roleSelect = document.getElementById('role');
     const roleDescription = document.getElementById('role-description');
@@ -333,9 +334,19 @@
     const providerAssignmentsSection = document.getElementById('providerAssignmentsSection');
     const staffAssignmentsSection = document.getElementById('staffAssignmentsSection');
 
+    console.log('[CreateUser] Elements found:', {
+        form: !!form,
+        roleSelect: !!roleSelect,
+        providerScheduleSection: !!providerScheduleSection
+    });
+
     function toggleRoleDetails() {
-        if (!roleSelect) return;
+        if (!roleSelect) {
+            console.log('[CreateUser] toggleRoleDetails: roleSelect is null');
+            return;
+        }
         const role = roleSelect.value;
+        console.log('[CreateUser] toggleRoleDetails called, role:', role);
 
         if (role) {
             const descriptions = {
@@ -355,7 +366,11 @@
         }
 
         if (providerScheduleSection) {
-            providerScheduleSection.classList.toggle('hidden', role !== 'provider');
+            const shouldHide = role !== 'provider';
+            console.log('[CreateUser] Toggling providerScheduleSection, shouldHide:', shouldHide);
+            providerScheduleSection.classList.toggle('hidden', shouldHide);
+        } else {
+            console.log('[CreateUser] providerScheduleSection is null!');
         }
 
         if (providerAssignmentsSection) {
@@ -374,8 +389,11 @@
     }
 
     if (roleSelect && form && form.dataset.roleToggleBound !== 'true') {
+        console.log('[CreateUser] Binding change listener');
         roleSelect.addEventListener('change', toggleRoleDetails);
         form.dataset.roleToggleBound = 'true';
+    } else {
+        console.log('[CreateUser] NOT binding:', { roleSelect: !!roleSelect, form: !!form, alreadyBound: form?.dataset?.roleToggleBound });
     }
 
     window.togglePassword = function(fieldId) {
@@ -393,6 +411,7 @@
     };
 
     if (roleSelect) {
+        console.log('[CreateUser] Calling initial toggleRoleDetails');
         toggleRoleDetails();
     }
 })();
