@@ -898,13 +898,20 @@ class UserManagement extends BaseController
     }
 
     /**
-     * Enrich user array with assignment relationships
+     * Enrich user array with assignment relationships.
+     *
+     * Uses database-agnostic GROUP_CONCAT syntax so the query works on
+     * both MySQL/MariaDB and SQLite (production uses SQLite).
      */
     private function enrichUsersWithAssignments(array $users): array
     {
         if (empty($users)) {
             return $users;
         }
+
+        $db = $this->userModel->db;
+        $driver = $db->DBDriver;
+        $isSQLite = stripos($driver, 'sqlite') !== false;
 
         // Group users by role for batch queries
         $providerIds = [];
@@ -918,12 +925,23 @@ class UserManagement extends BaseController
             }
         }
 
+        // Build GROUP_CONCAT expression per driver
+        // MySQL:  GROUP_CONCAT(DISTINCT col ORDER BY col SEPARATOR ', ')
+        // SQLite: GROUP_CONCAT(col, ', ')   — no DISTINCT/ORDER inside aggregate
+        $staffConcat = $isSQLite
+            ? "GROUP_CONCAT(staff.name, ', ') AS staff_names"
+            : "GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ', ') AS staff_names";
+
+        $providerConcat = $isSQLite
+            ? "GROUP_CONCAT(provider.name, ', ') AS provider_names"
+            : "GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ', ') AS provider_names";
+
         // Fetch assignments for providers
         $providerAssignments = [];
         if (!empty($providerIds)) {
             try {
-                $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
-                    ->select('psa.provider_id, GROUP_CONCAT(DISTINCT staff.name ORDER BY staff.name SEPARATOR ", ") AS staff_names')
+                $builder = $db->table('xs_provider_staff_assignments AS psa')
+                    ->select("psa.provider_id, {$staffConcat}", false)
                     ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'left')
                     ->whereIn('psa.provider_id', $providerIds)
                     ->groupBy('psa.provider_id');
@@ -941,8 +959,8 @@ class UserManagement extends BaseController
         $staffAssignments = [];
         if (!empty($staffIds)) {
             try {
-                $builder = $this->userModel->db->table('xs_provider_staff_assignments AS psa')
-                    ->select('psa.staff_id, GROUP_CONCAT(DISTINCT provider.name ORDER BY provider.name SEPARATOR ", ") AS provider_names')
+                $builder = $db->table('xs_provider_staff_assignments AS psa')
+                    ->select("psa.staff_id, {$providerConcat}", false)
                     ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'left')
                     ->whereIn('psa.staff_id', $staffIds)
                     ->groupBy('psa.staff_id');
