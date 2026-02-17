@@ -362,15 +362,20 @@ function bootstrapPublicBooking() {
     if (!name) {
       return;
     }
-    updateManage(prev => ({
-      ...prev,
-      lookupForm: {
-        ...prev.lookupForm,
-        [name]: event.target.value,
-      },
-      lookupErrors: { ...prev.lookupErrors, [name]: undefined, contact: undefined },
-      lookupError: '',
-    }));
+
+    // Update state silently (no re-render) to preserve cursor position
+    state.manage.lookupForm[name] = event.target.value;
+    if (state.manage.lookupErrors[name]) {
+      delete state.manage.lookupErrors[name];
+      const errEl = event.target.closest('label')?.querySelector('.text-red-600');
+      if (errEl) errEl.remove();
+    }
+    if (state.manage.lookupErrors.contact) {
+      delete state.manage.lookupErrors.contact;
+      const contactErr = root.querySelector('[data-contact-error]');
+      if (contactErr) contactErr.remove();
+    }
+    state.manage.lookupError = '';
   }
 
   async function handleLookupSubmit(event) {
@@ -505,14 +510,16 @@ function bootstrapPublicBooking() {
       return;
     }
     const value = type === 'checkbox' ? (event.target.checked ? '1' : '0') : event.target.value;
-    updateDraft(target, prev => ({
-      ...prev,
-      form: {
-        ...prev.form,
-        [name]: value,
-      },
-      errors: { ...prev.errors, [name]: undefined },
-    }));
+
+    // Update state silently (no re-render) to avoid cursor-reset on
+    // input types that don't support setSelectionRange (email, tel, etc.)
+    const draft = getDraft(target);
+    draft.form[name] = value;
+    if (draft.errors[name]) {
+      delete draft.errors[name];
+      const errEl = event.target.closest('label')?.querySelector('.text-red-600');
+      if (errEl) errEl.remove();
+    }
   }
 
   async function handleSubmit(event, target = 'booking') {
