@@ -324,6 +324,7 @@
 </div>
 
 <script>
+(function() {
 const roleSelect = document.getElementById('role');
 const roleDescription = document.getElementById('role-description');
 const rolePermissions = document.getElementById('role-permissions');
@@ -376,8 +377,8 @@ if (roleSelect) {
     roleSelect.addEventListener('change', toggleRoleDetails);
 }
 
-// Toggle password visibility
-function togglePassword(fieldId) {
+// Toggle password visibility — must be global for onclick handlers
+window.togglePassword = function(fieldId) {
     const field = document.getElementById(fieldId);
     const icon = document.getElementById(fieldId + '-icon');
     
@@ -388,11 +389,12 @@ function togglePassword(fieldId) {
         field.type = 'password';
         icon.textContent = 'visibility';
     }
-}
+};
 
 // Initialize form immediately (SPA-compatible — DOMContentLoaded won't re-fire)
 if (roleSelect) {
     toggleRoleDetails();
 }
+})();
 </script>
 <?= $this->endSection() ?>
