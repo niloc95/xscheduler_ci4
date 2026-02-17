@@ -236,7 +236,6 @@ class PublicBookingService
             'customer_id' => $customerId,
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'user_id' => $provider['id'],
             'start_time' => $slot['start']->format('Y-m-d H:i:s'),
             'end_time' => $slot['end']->format('Y-m-d H:i:s'),
             'status' => 'pending',

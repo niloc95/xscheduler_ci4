@@ -284,6 +284,7 @@ function bootstrapPublicBooking() {
 
       updateCsrfFromHeaders(response.headers);
       const payload = await safeJson(response);
+      updateCsrfFromBody(payload);
 
       if (!response.ok) {
         throw new Error(payload?.error ?? 'Unable to load services.');
@@ -418,6 +419,7 @@ function bootstrapPublicBooking() {
 
       updateCsrfFromHeaders(response.headers);
       const data = await safeJson(response);
+      updateCsrfFromBody(data);
 
       if (!response.ok) {
         const details = data?.details ?? {};
@@ -571,6 +573,7 @@ function bootstrapPublicBooking() {
 
       updateCsrfFromHeaders(response.headers);
       const data = await safeJson(response);
+      updateCsrfFromBody(data);
 
       if (!response.ok) {
         const details = data?.details ?? {};
@@ -665,6 +668,7 @@ function bootstrapPublicBooking() {
 
       updateCsrfFromHeaders(response.headers);
       const payload = await safeJson(response);
+      updateCsrfFromBody(payload);
 
       if (!response.ok) {
         throw new Error(payload?.error ?? 'Unable to load availability.');
@@ -749,6 +753,7 @@ function bootstrapPublicBooking() {
 
       updateCsrfFromHeaders(response.headers);
       const data = await safeJson(response);
+      updateCsrfFromBody(data);
 
       if (!response.ok) {
         throw new Error(data?.error ?? 'Unable to load availability.');
@@ -794,6 +799,17 @@ function bootstrapPublicBooking() {
     if (newValue && newValue !== state.csrf.value) {
       state.csrf = { ...state.csrf, value: newValue };
       root.dataset.csrfValue = newValue;
+    }
+  }
+
+  /**
+   * Update CSRF token from JSON response body (CI4 regenerate=true sends
+   * a fresh token in the response payload).
+   */
+  function updateCsrfFromBody(data) {
+    if (data?.csrf?.value) {
+      state.csrf = { ...state.csrf, value: data.csrf.value };
+      root.dataset.csrfValue = data.csrf.value;
     }
   }
 

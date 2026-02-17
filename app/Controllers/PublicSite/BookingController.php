@@ -156,6 +156,12 @@ class BookingController extends BaseController
 
     private function respondJson(array $payload, int $status = 200)
     {
+        // Include refreshed CSRF token so JS can update on regenerate
+        $payload['csrf'] = [
+            'name'  => csrf_token(),
+            'value' => csrf_hash(),
+        ];
+
         return $this->response->setStatusCode($status)->setJSON($payload);
     }
 }

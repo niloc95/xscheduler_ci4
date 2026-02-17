@@ -67,7 +67,6 @@ class AppointmentModel extends BaseModel
 
     // Only valid fields
     protected $allowedFields    = [
-        'user_id',
         'customer_id',
         'service_id',
         'provider_id',
@@ -196,9 +195,10 @@ class AppointmentModel extends BaseModel
         if (empty($payload['status'])) {
             $payload['status'] = 'pending';
         }
-        if (empty($payload['user_id']) && !empty($payload['provider_id'])) {
-            $payload['user_id'] = $payload['provider_id'];
-        }
+        // user_id column was removed in the customers-split migration;
+        // ensure it never gets inserted accidentally.
+        unset($payload['user_id']);
+
         if (!$this->insert($payload, false)) {
             return false;
         }
