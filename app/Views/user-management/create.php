@@ -325,76 +325,76 @@
 
 <script>
 (function() {
-const roleSelect = document.getElementById('role');
-const roleDescription = document.getElementById('role-description');
-const rolePermissions = document.getElementById('role-permissions');
-const providerScheduleSection = document.getElementById('providerScheduleSection');
-const providerAssignmentsSection = document.getElementById('providerAssignmentsSection');
-const staffAssignmentsSection = document.getElementById('staffAssignmentsSection');
+    const form = document.getElementById('createUserForm');
+    const roleSelect = document.getElementById('role');
+    const roleDescription = document.getElementById('role-description');
+    const rolePermissions = document.getElementById('role-permissions');
+    const providerScheduleSection = document.getElementById('providerScheduleSection');
+    const providerAssignmentsSection = document.getElementById('providerAssignmentsSection');
+    const staffAssignmentsSection = document.getElementById('staffAssignmentsSection');
 
-function toggleRoleDetails() {
-    if (!roleSelect) return;
-    const role = roleSelect.value;
+    function toggleRoleDetails() {
+        if (!roleSelect) return;
+        const role = roleSelect.value;
 
-    if (role) {
-        const descriptions = {
-            'admin': 'Full system access including settings, user management, and all features.',
-            'provider': 'Can manage own calendar, create staff, manage services and categories.',
-            'staff': 'Limited to managing own calendar and assigned appointments. Provider assignments managed after creation.'
-        };
+        if (role) {
+            const descriptions = {
+                'admin': 'Full system access including settings, user management, and all features.',
+                'provider': 'Can manage own calendar, create staff, manage services and categories.',
+                'staff': 'Limited to managing own calendar and assigned appointments. Provider assignments managed after creation.'
+            };
 
-        if (rolePermissions) {
-            rolePermissions.innerHTML = descriptions[role] || '';
+            if (rolePermissions) {
+                rolePermissions.innerHTML = descriptions[role] || '';
+            }
+            if (roleDescription) {
+                roleDescription.classList.remove('hidden');
+            }
+        } else if (roleDescription) {
+            roleDescription.classList.add('hidden');
         }
-        if (roleDescription) {
-            roleDescription.classList.remove('hidden');
+
+        if (providerScheduleSection) {
+            providerScheduleSection.classList.toggle('hidden', role !== 'provider');
         }
-    } else if (roleDescription) {
-        roleDescription.classList.add('hidden');
+
+        if (providerAssignmentsSection) {
+            providerAssignmentsSection.classList.toggle('hidden', role !== 'provider');
+        }
+
+        if (staffAssignmentsSection) {
+            const isStaff = role === 'staff';
+            staffAssignmentsSection.classList.toggle('hidden', !isStaff);
+        }
+
+        const colorFields = document.querySelectorAll('.provider-color-field');
+        colorFields.forEach((field) => {
+            field.classList.toggle('hidden', role !== 'provider');
+        });
     }
 
-    if (providerScheduleSection) {
-        providerScheduleSection.classList.toggle('hidden', role !== 'provider');
+    if (roleSelect && form && form.dataset.roleToggleBound !== 'true') {
+        roleSelect.addEventListener('change', toggleRoleDetails);
+        form.dataset.roleToggleBound = 'true';
     }
 
-    if (providerAssignmentsSection) {
-        providerAssignmentsSection.classList.toggle('hidden', role !== 'provider');
+    window.togglePassword = function(fieldId) {
+        const field = document.getElementById(fieldId);
+        const icon = document.getElementById(fieldId + '-icon');
+        if (!field || !icon) return;
+
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            field.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    };
+
+    if (roleSelect) {
+        toggleRoleDetails();
     }
-
-    if (staffAssignmentsSection) {
-        const isStaff = role === 'staff';
-        staffAssignmentsSection.classList.toggle('hidden', !isStaff);
-    }
-
-    // Toggle provider color field
-    const colorFields = document.querySelectorAll('.provider-color-field');
-    colorFields.forEach(field => {
-        field.classList.toggle('hidden', role !== 'provider');
-    });
-}
-
-if (roleSelect) {
-    roleSelect.addEventListener('change', toggleRoleDetails);
-}
-
-// Toggle password visibility — must be global for onclick handlers
-window.togglePassword = function(fieldId) {
-    const field = document.getElementById(fieldId);
-    const icon = document.getElementById(fieldId + '-icon');
-    
-    if (field.type === 'password') {
-        field.type = 'text';
-        icon.textContent = 'visibility_off';
-    } else {
-        field.type = 'password';
-        icon.textContent = 'visibility';
-    }
-};
-
-// Initialize form immediately (SPA-compatible — DOMContentLoaded won't re-fire)
-if (roleSelect) {
-    toggleRoleDetails();
-}
 })();
 </script>
 <?= $this->endSection() ?>
