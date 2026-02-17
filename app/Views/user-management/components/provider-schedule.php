@@ -158,7 +158,6 @@ $firstDay = $scheduleDays[0] ?? 'monday';
 
 <script>
 (function() {
-    console.log('[ProviderScheduleComponent] Script starting');
     let scheduleSection = null;
     let copyBtn = null;
     let sourceDayKey = 'monday';
@@ -169,11 +168,48 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         copyBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     }
 
+    /**
+     * Toggle ALL role-dependent sections when the role dropdown changes.
+     * Handles: provider schedule wrapper, provider assignments, staff assignments,
+     * provider color fields, role description, and copy-button state.
+     */
     function toggleScheduleSection(roleValue) {
-        // Visibility is controlled by parent wrapper (providerScheduleSection)
-        // This function now only manages copy button state
-        if (!scheduleSection) return;
         const isProvider = roleValue === 'provider';
+
+        // Parent wrapper that holds this entire component
+        const wrapper = document.getElementById('providerScheduleSection');
+        if (wrapper) wrapper.classList.toggle('hidden', !isProvider);
+
+        // Provider assignments (locked notice on create)
+        const provAssign = document.getElementById('providerAssignmentsSection');
+        if (provAssign) provAssign.classList.toggle('hidden', !isProvider);
+
+        // Staff assignments (only visible for staff role)
+        const staffAssign = document.getElementById('staffAssignmentsSection');
+        if (staffAssign) staffAssign.classList.toggle('hidden', roleValue !== 'staff');
+
+        // Provider colour picker
+        document.querySelectorAll('.provider-color-field').forEach(function(field) {
+            field.classList.toggle('hidden', !isProvider);
+        });
+
+        // Role description card
+        const roleDesc = document.getElementById('role-description');
+        const rolePerms = document.getElementById('role-permissions');
+        if (roleValue) {
+            const descriptions = {
+                'admin': 'Full system access including settings, user management, and all features.',
+                'provider': 'Can manage own calendar, create staff, manage services and categories.',
+                'staff': 'Limited to managing own calendar and assigned appointments. Provider assignments managed after creation.'
+            };
+            if (rolePerms) rolePerms.innerHTML = descriptions[roleValue] || '';
+            if (roleDesc) roleDesc.classList.remove('hidden');
+        } else if (roleDesc) {
+            roleDesc.classList.add('hidden');
+        }
+
+        // Copy-button state (schedule-specific)
+        if (!scheduleSection) return;
         if (!isProvider) {
             setCopyButtonDisabled(true);
         } else {
@@ -371,10 +407,24 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         updateCopyButtonState();
     }
 
+    // Password visibility toggle — defined here because this script reliably
+    // executes on both full-page and SPA navigation.
+    window.togglePassword = function(fieldId) {
+        var field = document.getElementById(fieldId);
+        var icon = document.getElementById(fieldId + '-icon');
+        if (!field || !icon) return;
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.textContent = 'visibility_off';
+        } else {
+            field.type = 'password';
+            icon.textContent = 'visibility';
+        }
+    };
+
     // Initialize immediately — SPA re-executes inline scripts but does NOT
     // re-fire DOMContentLoaded, so we must run init directly.
     function initProviderSchedule() {
-        console.log('[ProviderScheduleComponent] initProviderSchedule called');
         scheduleSection = document.querySelector('[data-provider-schedule-section]');
         if (scheduleSection) {
             sourceDayKey = scheduleSection.dataset.sourceDay || sourceDayKey;
@@ -421,9 +471,13 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         toggleScheduleSection(roleSelect.value);
         updateCopyButtonState();
 
-        roleSelect.addEventListener('change', function() {
-            toggleScheduleSection(roleSelect.value);
-        });
+        // Guard against duplicate binding on SPA re-navigation
+        if (roleSelect.dataset.scheduleToggleBound !== 'true') {
+            roleSelect.addEventListener('change', function() {
+                toggleScheduleSection(roleSelect.value);
+            });
+            roleSelect.dataset.scheduleToggleBound = 'true';
+        }
 
         const inputs = scheduleSection?.querySelectorAll('[data-time-input]') || [];
         inputs.forEach((input) => {
