@@ -190,7 +190,7 @@ window.appConfig = {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- MySQL Option -->
                             <label class="relative cursor-pointer">
-                                <input type="radio" name="database_type" value="mysql" class="sr-only peer" id="db_mysql">
+                                <input type="radio" name="database_type" value="mysql" class="sr-only peer" id="db_mysql" checked>
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
                                         <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200 text-md-primary">MySQL Database</h3>
@@ -207,9 +207,9 @@ window.appConfig = {
                                 </div>
                             </label>
 
-                            <!-- SQLite Option -->
-                            <label class="relative cursor-pointer">
-                                <input type="radio" name="database_type" value="sqlite" class="sr-only peer" id="db_sqlite" checked>
+                            <!-- SQLite Option (hidden — MySQL required for production) -->
+                            <label class="relative cursor-pointer hidden">
+                                <input type="radio" name="database_type" value="sqlite" class="sr-only peer" id="db_sqlite">
                                 <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
                                     <div class="flex items-center justify-between mb-2">
                                         <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200 text-md-primary">SQLite Database</h3>
@@ -228,7 +228,7 @@ window.appConfig = {
                         </div>
                     </div>
 
-                    <!-- MySQL Configuration Fields -->                        <div id="mysql_config" class="space-y-4 hidden">
+                    <!-- MySQL Configuration Fields -->                        <div id="mysql_config" class="space-y-4">
                             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-500 dark:border-blue-400 rounded-lg p-4 transition-colors duration-200">
                                 <h4 class="font-medium mb-3 transition-colors duration-200 text-md-primary">MySQL Connection Settings</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -312,7 +312,7 @@ window.appConfig = {
                             <div id="connection_result" class="mt-2 hidden"></div>
                         </div>
                     </div>                        <!-- SQLite Configuration Display -->
-                        <div id="sqlite_config" class="space-y-4">
+                        <div id="sqlite_config" class="space-y-4 hidden">
                             <div class="bg-green-50 dark:bg-green-900/20 border border-gray-300 dark:border-green-600 rounded-lg p-4 transition-colors duration-200">
                                 <h4 class="font-medium mb-2 transition-colors duration-200 text-md-primary">SQLite Auto-Configuration</h4>
                                 <div class="flex items-start space-x-3">
