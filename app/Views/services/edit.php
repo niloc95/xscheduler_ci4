@@ -94,6 +94,10 @@
 <script>
 (function(){
   const form = document.getElementById('editServiceForm');
+  if (!form || form.dataset.initialized === 'true') return;
+  form.dataset.initialized = 'true';
+  // (original reference kept below for element lookups)
+  void form;
   const serviceId = form.service_id.value;
   const openCategoryModal = document.getElementById('openCategoryModal');
   const categoryModal = document.getElementById('categoryModal');

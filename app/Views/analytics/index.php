@@ -200,6 +200,11 @@
 <?= $this->section('scripts') ?>
 <script>
 (function() {
+    // Guard against duplicate initialization on SPA re-navigation
+    const chartEl = document.getElementById('revenueChart');
+    if (!chartEl || chartEl.dataset.initialized === 'true') return;
+    chartEl.dataset.initialized = 'true';
+
     // Revenue data from PHP
     const revenueData = <?= json_encode($revenue) ?>;
     const currencySymbol = '<?= esc(get_app_currency_symbol()) ?>';

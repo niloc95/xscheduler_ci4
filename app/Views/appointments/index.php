@@ -245,7 +245,7 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
 <?= $this->endSection() ?>
 
 <?php if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])): ?>
-<?= $this->section('extra_js') ?>
+<?= $this->section('scripts') ?>
 <script>
     window.__calendarPrototype = {
         enabled: true,
@@ -253,9 +253,19 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
         endpoints: <?= json_encode($calendarPrototype['endpoints'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
     };
     window.__calendarBootstrap = <?= json_encode($calendarPrototype['bootstrap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+
+    <?php if (!empty($calendarPrototypeAssets['js'])): ?>
+    // Dynamic import — works in both regular page loads and SPA-injected scripts
+    (async function initCalendarPrototype() {
+        try {
+            const module = await import('<?= esc($calendarPrototypeAssets['js']) ?>');
+            if (typeof module.default === 'function') module.default();
+            console.log('[Calendar] Prototype module loaded');
+        } catch (err) {
+            console.warn('[Calendar] Prototype module unavailable:', err.message);
+        }
+    })();
+    <?php endif; ?>
 </script>
-<?php if (!empty($calendarPrototypeAssets['js'])): ?>
-<script type="module" src="<?= esc($calendarPrototypeAssets['js']) ?>"></script>
-<?php endif; ?>
 <?= $this->endSection() ?>
 <?php endif; ?>

@@ -70,8 +70,11 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * Regenerate CSRF Token on every submission.
+     *
+     * Disabled (false) so AJAX-heavy SPA pages can make
+     * multiple requests without the token becoming stale.
      */
-    public bool $regenerate = true;
+    public bool $regenerate = false;
 
     /**
      * --------------------------------------------------------------------------

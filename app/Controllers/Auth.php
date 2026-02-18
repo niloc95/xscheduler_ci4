@@ -137,6 +137,7 @@ class Auth extends BaseController
         ];
 
         session()->set($sessionData);
+        session()->regenerate();  // Prevent session fixation attacks
         session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
 
         // Redirect to intended URL or dashboard

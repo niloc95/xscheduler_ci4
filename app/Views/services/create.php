@@ -106,6 +106,10 @@
 <script>
 (function() {
   const form = document.getElementById('createServiceForm');
+  if (!form || form.dataset.initialized === 'true') return;
+  form.dataset.initialized = 'true';
+  // (original reference kept below for element lookups)
+  void form;
   const categorySelect = document.getElementById('categorySelect');
   const categoryModal = document.getElementById('categoryModal');
   const openCategoryModal = document.getElementById('openCategoryModal');

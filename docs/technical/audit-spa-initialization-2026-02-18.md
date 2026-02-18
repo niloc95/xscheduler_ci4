@@ -113,8 +113,8 @@ A comprehensive audit of the frontend (JavaScript/SPA), backend (Controllers/Rou
 ## 4. Recommended Future Work
 
 1. ~~**Consolidate settings.php scripts** — Merge 8 script blocks into 1-2, eliminating cross-block dependencies~~ ✅ Done (commit `a4ec63b`)
-2. **Fix calendar module script** — Convert `appointments/index.php` `type="module"` to dynamic import pattern
-3. **Enable CSRF globally** — Re-enable CSRF in Filters.php and ensure all AJAX responses include fresh tokens
-4. **Session regeneration** — Add `session()->regenerate()` after login in Auth controller
-5. **Orphaned views cleanup** — Review and remove unused component views in `app/Views/components/`
-6. **Add re-init guards** — Add `dataset.initialized` guards to services/create.php, services/edit.php, analytics/index.php
+2. ~~**Fix calendar module script** — Convert `appointments/index.php` `type="module"` to dynamic import pattern~~ ✅ Done — moved from dead `extra_js` section to `scripts`, converted to dynamic `import()`
+3. ~~**Enable CSRF globally** — Re-enable CSRF in Filters.php and ensure all AJAX responses include fresh tokens~~ ✅ Done — enabled with `except: api/*`, set `regenerate=false` for SPA, added `<meta>` tags to layout
+4. ~~**Session regeneration** — Add `session()->regenerate()` after login in Auth controller~~ ✅ Done
+5. ~~**Orphaned views cleanup** — Review and remove unused component views in `app/Views/components/`~~ ✅ Done — removed 21 orphaned files (all `dashboard/*`, `ui/*` except `flash-messages.php`, `page-header.php`)
+6. ~~**Add re-init guards** — Add `dataset.initialized` guards to services/create.php, services/edit.php, analytics/index.php~~ ✅ Done

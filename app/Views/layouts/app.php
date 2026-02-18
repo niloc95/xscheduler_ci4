@@ -53,6 +53,8 @@
         window.__CSRF_TOKEN__ = '<?= csrf_hash() ?>';
         window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebSchedulr'), 'js') ?>';
     </script>
+    <meta name="csrf-header" content="X-CSRF-TOKEN">
+    <meta name="csrf-token" content="<?= csrf_hash() ?>">
     
     <?= $this->renderSection('head') ?>
 </head>
