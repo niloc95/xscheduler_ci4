@@ -243,21 +243,21 @@ window.appConfig = {
                                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-200"
                                         value="localhost"
                                         placeholder="localhost">
-                                    <div id="mysql_hostname_error" class="mt-1 text-sm text-red-600 hidden"></div>
+                                    <div id="mysql_hostname_error" class="mt-1 text-sm text-red-600 dark:text-red-400 hidden transition-colors duration-200"></div>
                                 </div>
 
                                 <div>
-                                    <label for="mysql_port" class="block text-sm font-medium text-gray-700 mb-2">
-                                        Port <span class="text-red-500">*</span>
+                                    <label for="mysql_port" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-200">
+                                        Port <span class="text-red-500 dark:text-red-400">*</span>
                                     </label>
                                     <input 
                                         type="number"
                                         id="mysql_port"
                                         name="mysql_port"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-200"
                                         value="3306"
                                         placeholder="3306">
-                                    <div id="mysql_port_error" class="mt-1 text-sm text-red-600 hidden"></div>
+                                    <div id="mysql_port_error" class="mt-1 text-sm text-red-600 dark:text-red-400 hidden transition-colors duration-200"></div>
                                 </div>
 
                                 <div>
