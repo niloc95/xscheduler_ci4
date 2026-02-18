@@ -30,7 +30,7 @@
             <?php if (session()->getFlashdata('success_html')): ?>
             <script>
                 // Auto-dismiss WhatsApp link alert when link is clicked
-                document.addEventListener('DOMContentLoaded', function() {
+                (function() {
                     const alert = document.getElementById('success-alert');
                     if (alert) {
                         const link = alert.querySelector('a[target="_blank"]');
@@ -42,7 +42,7 @@
                             });
                         }
                     }
-                });
+                })();
             </script>
             <?php endif; ?>
         <?php endif; ?>
@@ -2057,22 +2057,17 @@
 
         <script>
         // General tab API integration: load on view and save via POST to /api/v1/settings
-        // Call immediately (works for both first-load and SPA re-execution)
-        // Also register for spa:navigated in case scripts execute before DOM is ready
-        (function() {
-            // Guard: only register ONE spa:navigated listener per page lifecycle
-            if (!window.__settingsSpaListenerRegistered) {
-                window.__settingsSpaListenerRegistered = true;
-                document.addEventListener('spa:navigated', (e) => {
-                    // Only run if navigated to settings page
-                    const url = e?.detail?.url || '';
-                    if (url.includes('/settings') || document.getElementById('general-settings-form')) {
-                        xsDebugLog('Settings: spa:navigated fired, calling initSettingsApi');
-                        initSettingsApi();
-                    }
-                });
-            }
-        })();
+        // Robust initialization that works on both first page load and SPA navigation.
+        // Uses xsRegisterViewInit for SPA re-runs + immediate call + rAF safety net.
+
+        // Register with SPA view initializer system for reliable re-execution
+        if (typeof window.xsRegisterViewInit === 'function') {
+            window.xsRegisterViewInit(function settingsViewInit() {
+                // Only run on settings page
+                if (!document.getElementById('general-settings-form')) return;
+                initSettingsApi();
+            });
+        }
 
         // Live-update the sidebar brand title when company name changes
         (function wireSidebarBrandSync(){
@@ -2118,6 +2113,17 @@
         // On SPA re-navigation, scripts are re-executed and this runs directly.
         xsDebugLog('Settings: Calling initSettingsApi immediately (inline)');
         initSettingsApi();
+
+        // Safety net: if the DOM wasn't quite ready (rare edge case with SPA timing),
+        // retry once in the next animation frame
+        if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
+            requestAnimationFrame(function() {
+                if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
+                    xsDebugLog('Settings: rAF retry — initSettingsApi');
+                    initSettingsApi();
+                }
+            });
+        }
 
         function initGeneralSettingsForm() {
             const form = document.getElementById('general-settings-form');
@@ -2761,28 +2767,19 @@
         </script>
 
         <!-- Time Format Handler Script -->
-        <script type="module">
-            import timeFormatHandler from '<?= base_url('build/assets/time-format-handler.js') ?>';
-            
-            // Initialize on settings page load
-            async function initTimeFormatting() {
-                await timeFormatHandler.init();
-                timeFormatHandler.addFormattedDisplays();
-                xsDebugLog('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
-            }
-            
-            // Run on page load
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initTimeFormatting);
-            } else {
-                initTimeFormatting();
-            }
-            
-            // Re-run on SPA navigation
-            if (!window.__settingsTimeFormatSpaListenerBound) {
-                window.__settingsTimeFormatSpaListenerBound = true;
-                document.addEventListener('spa:navigated', initTimeFormatting);
-            }
+        <script>
+            // Dynamic import works in both regular and SPA-injected scripts
+            (async function initTimeFormatting() {
+                try {
+                    const module = await import('<?= base_url('build/assets/time-format-handler.js') ?>');
+                    const timeFormatHandler = module.default || module;
+                    await timeFormatHandler.init();
+                    timeFormatHandler.addFormattedDisplays();
+                    xsDebugLog('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
+                } catch (err) {
+                    console.warn('[Settings] Time format handler unavailable:', err.message);
+                }
+            })();
         </script>
 
         <!-- Database Settings Tab Script -->

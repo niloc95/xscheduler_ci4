@@ -88,6 +88,11 @@ const SPA = (() => {
 
   const fetchPage = async (url) => {
     const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    if (res.status === 401) {
+      // Session expired — full reload to trigger login redirect
+      window.location.href = url;
+      throw new Error('Session expired');
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     // Try to extract only the content inside #spa-content if rendered server-side
@@ -147,17 +152,21 @@ const SPA = (() => {
       scripts.forEach(orig => {
         // Skip if already processed
         if (orig.dataset.spaExecuted === 'true') return;
-        const s = document.createElement('script');
-        // Copy attributes (src, type, etc.)
-        for (const attr of orig.attributes) {
-          s.setAttribute(attr.name, attr.value);
+        try {
+          const s = document.createElement('script');
+          // Copy attributes (src, type, etc.)
+          for (const attr of orig.attributes) {
+            s.setAttribute(attr.name, attr.value);
+          }
+          // Inline code
+          if (!orig.src) {
+            s.textContent = orig.textContent;
+          }
+          s.dataset.spaExecuted = 'true';
+          orig.replaceWith(s);
+        } catch (scriptErr) {
+          console.error('SPA script execution error:', scriptErr);
         }
-        // Inline code
-        if (!orig.src) {
-          s.textContent = orig.textContent;
-        }
-        s.dataset.spaExecuted = 'true';
-        orig.replaceWith(s);
       });
   // Initialize any tabs rendered in the new content
   initTabsInSpaContent();

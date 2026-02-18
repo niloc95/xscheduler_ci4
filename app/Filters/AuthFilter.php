@@ -79,6 +79,15 @@ class AuthFilter implements FilterInterface
     {
         // Check if user is logged in
         if (!session()->get('isLoggedIn')) {
+            // For AJAX/API requests, return JSON 401 instead of redirect
+            if ($request instanceof \CodeIgniter\HTTP\IncomingRequest
+                && ($request->isAJAX() || $request->getHeaderLine('Accept') === 'application/json')
+            ) {
+                return service('response')
+                    ->setStatusCode(401)
+                    ->setJSON(['error' => ['message' => 'Session expired. Please log in again.', 'code' => 'unauthenticated']]);
+            }
+
             // Store intended URL for redirect after login
             session()->set('redirect_url', current_url());
             

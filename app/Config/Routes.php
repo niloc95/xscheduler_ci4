@@ -105,7 +105,7 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)
-$routes->group('services', function($routes) {
+$routes->group('services', ['filter' => ['setup', 'auth']], function($routes) {
     $routes->get('', 'Services::index');
     // Note: view route removed - use edit instead
     $routes->get('create', 'Services::create');

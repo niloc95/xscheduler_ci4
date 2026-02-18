@@ -123,10 +123,15 @@ $colorClass = $colors[$color] ?? $colors['primary'];
             </span>
         </p>
         <script>
-            document.getElementById('<?= esc($id) ?>').addEventListener('change', function() {
-                this.closest('.xs-toggle').querySelector('.toggle-status-text').textContent = 
-                    this.checked ? '<?= esc($onLabel) ?>' : '<?= esc($offLabel) ?>';
-            });
+            (function() {
+                var el = document.getElementById('<?= esc($id) ?>');
+                if (!el || el.dataset.toggleBound === 'true') return;
+                el.dataset.toggleBound = 'true';
+                el.addEventListener('change', function() {
+                    this.closest('.xs-toggle').querySelector('.toggle-status-text').textContent = 
+                        this.checked ? '<?= esc($onLabel) ?>' : '<?= esc($offLabel) ?>';
+                });
+            })();
         </script>
         <?php endif; ?>
     </div>
