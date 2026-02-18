@@ -980,33 +980,6 @@
                             </button>
                         </div>
 
-                        <script>
-                        // Initialize immediately (works on first load and SPA re-navigation)
-                        (function initWhatsAppProviderToggle() {
-                            const providerSelect = document.getElementById('whatsapp_provider');
-                            if (!providerSelect || providerSelect.dataset.toggleWired === 'true') return;
-                            providerSelect.dataset.toggleWired = 'true';
-                            
-                            const sections = {
-                                link_generator: document.getElementById('wa_link_generator_section'),
-                                twilio: document.getElementById('wa_twilio_section'),
-                                meta_cloud: document.getElementById('wa_meta_section')
-                            };
-                            
-                            function updateSections() {
-                                const selected = providerSelect.value;
-                                Object.keys(sections).forEach(key => {
-                                    if (sections[key]) {
-                                        sections[key].classList.toggle('hidden', key !== selected);
-                                    }
-                                });
-                            }
-                            
-                            providerSelect.addEventListener('change', updateSections);
-                            // Set initial state
-                            updateSections();
-                        })();
-                        </script>
 
                         <?php if ($smsDecryptError === 'encryption_key_mismatch'): ?>
                         <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
@@ -1407,78 +1380,6 @@
                     </div>
 
                     <!-- Template Tabs JavaScript -->
-                    <script>
-                    // Execute immediately (works on first load and SPA re-navigation)
-                    (function initTemplateTabs() {
-                        // Template tab switching
-                        const templateTabs = document.querySelectorAll('.template-tab-btn');
-                        const templatePanels = document.querySelectorAll('.template-panel');
-                        
-                        if (!templateTabs.length) return;
-                        
-                        templateTabs.forEach(tab => {
-                            if (tab.dataset.templateTabWired === 'true') return;
-                            tab.dataset.templateTabWired = 'true';
-                            
-                            tab.addEventListener('click', function() {
-                                const targetPanel = this.dataset.templateTab;
-                                
-                                // Update tab styles
-                                templateTabs.forEach(t => {
-                                    t.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                                    t.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
-                                });
-                                this.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                                this.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
-                                
-                                // Show/hide panels
-                                templatePanels.forEach(panel => {
-                                    if (panel.dataset.templatePanel === targetPanel) {
-                                        panel.classList.remove('hidden');
-                                    } else {
-                                        panel.classList.add('hidden');
-                                    }
-                                });
-                            });
-                        });
-                        
-                        // SMS character counter
-                        const smsTextareas = document.querySelectorAll('.sms-template-textarea');
-                        smsTextareas.forEach(textarea => {
-                            const counterSpan = document.querySelector(`.sms-char-counter[data-for="${textarea.name}"] .char-count`);
-                            if (counterSpan) {
-                                const updateCounter = () => {
-                                    const len = textarea.value.length;
-                                    counterSpan.textContent = len;
-                                    if (len > 248) {
-                                        counterSpan.parentElement.classList.add('text-red-600', 'dark:text-red-400');
-                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400');
-                                    } else if (len > 200) {
-                                        counterSpan.parentElement.classList.add('text-yellow-600', 'dark:text-yellow-400');
-                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400', 'text-red-600', 'dark:text-red-400');
-                                    } else {
-                                        counterSpan.parentElement.classList.add('text-gray-600', 'dark:text-gray-400');
-                                        counterSpan.parentElement.classList.remove('text-red-600', 'dark:text-red-400', 'text-yellow-600', 'dark:text-yellow-400');
-                                    }
-                                };
-                                textarea.addEventListener('input', updateCounter);
-                                updateCounter(); // Initial count
-                            }
-                        });
-                        
-                        // Reset templates button
-                        const resetBtn = document.getElementById('reset-templates-btn');
-                        if (resetBtn && resetBtn.dataset.resetWired !== 'true') {
-                            resetBtn.dataset.resetWired = 'true';
-                            resetBtn.addEventListener('click', function() {
-                                if (confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
-                                    // Reload page to get defaults
-                                    window.location.reload();
-                                }
-                            });
-                        }
-                    })();
-                    </script>
 
                     <div class="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button id="save-notifications-btn" type="submit" name="intent" value="save" class="btn-submit">
@@ -1642,7 +1543,17 @@
             </div>
         </div>
         
+    </div>
+</div>
+
         <script>
+        // ═══════════════════════════════════════════════════════════
+        // Settings Page — Consolidated Script
+        // Helpers, WhatsApp toggle, template tabs, blocked periods,
+        // main API init, time format, and database tab.
+        // ═══════════════════════════════════════════════════════════
+
+        // ─── Shared Helpers ─────────────────────────────────────
         (function () {
             // Gate verbose debug logs behind appConfig.debug
             window.xsDebugLog = window.xsDebugLog || function (...args) {
@@ -1670,9 +1581,107 @@
                 return div.innerHTML;
             };
         })();
-        </script>
 
-        <script>
+        // ─── WhatsApp Provider Toggle ───────────────────────────
+                        // Initialize immediately (works on first load and SPA re-navigation)
+                        (function initWhatsAppProviderToggle() {
+                            const providerSelect = document.getElementById('whatsapp_provider');
+                            if (!providerSelect || providerSelect.dataset.toggleWired === 'true') return;
+                            providerSelect.dataset.toggleWired = 'true';
+                            
+                            const sections = {
+                                link_generator: document.getElementById('wa_link_generator_section'),
+                                twilio: document.getElementById('wa_twilio_section'),
+                                meta_cloud: document.getElementById('wa_meta_section')
+                            };
+                            
+                            function updateSections() {
+                                const selected = providerSelect.value;
+                                Object.keys(sections).forEach(key => {
+                                    if (sections[key]) {
+                                        sections[key].classList.toggle('hidden', key !== selected);
+                                    }
+                                });
+                            }
+                            
+                            providerSelect.addEventListener('change', updateSections);
+                            // Set initial state
+                            updateSections();
+                        })();
+
+        // ─── Notification Template Tabs ─────────────────────────
+                    // Execute immediately (works on first load and SPA re-navigation)
+                    (function initTemplateTabs() {
+                        // Template tab switching
+                        const templateTabs = document.querySelectorAll('.template-tab-btn');
+                        const templatePanels = document.querySelectorAll('.template-panel');
+                        
+                        if (!templateTabs.length) return;
+                        
+                        templateTabs.forEach(tab => {
+                            if (tab.dataset.templateTabWired === 'true') return;
+                            tab.dataset.templateTabWired = 'true';
+                            
+                            tab.addEventListener('click', function() {
+                                const targetPanel = this.dataset.templateTab;
+                                
+                                // Update tab styles
+                                templateTabs.forEach(t => {
+                                    t.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                                    t.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                                });
+                                this.classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                                this.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300', 'dark:text-gray-400', 'dark:hover:text-gray-300');
+                                
+                                // Show/hide panels
+                                templatePanels.forEach(panel => {
+                                    if (panel.dataset.templatePanel === targetPanel) {
+                                        panel.classList.remove('hidden');
+                                    } else {
+                                        panel.classList.add('hidden');
+                                    }
+                                });
+                            });
+                        });
+                        
+                        // SMS character counter
+                        const smsTextareas = document.querySelectorAll('.sms-template-textarea');
+                        smsTextareas.forEach(textarea => {
+                            const counterSpan = document.querySelector(`.sms-char-counter[data-for="${textarea.name}"] .char-count`);
+                            if (counterSpan) {
+                                const updateCounter = () => {
+                                    const len = textarea.value.length;
+                                    counterSpan.textContent = len;
+                                    if (len > 248) {
+                                        counterSpan.parentElement.classList.add('text-red-600', 'dark:text-red-400');
+                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400');
+                                    } else if (len > 200) {
+                                        counterSpan.parentElement.classList.add('text-yellow-600', 'dark:text-yellow-400');
+                                        counterSpan.parentElement.classList.remove('text-gray-600', 'dark:text-gray-400', 'text-red-600', 'dark:text-red-400');
+                                    } else {
+                                        counterSpan.parentElement.classList.add('text-gray-600', 'dark:text-gray-400');
+                                        counterSpan.parentElement.classList.remove('text-red-600', 'dark:text-red-400', 'text-yellow-600', 'dark:text-yellow-400');
+                                    }
+                                };
+                                textarea.addEventListener('input', updateCounter);
+                                updateCounter(); // Initial count
+                            }
+                        });
+                        
+                        // Reset templates button
+                        const resetBtn = document.getElementById('reset-templates-btn');
+                        if (resetBtn && resetBtn.dataset.resetWired !== 'true') {
+                            resetBtn.dataset.resetWired = 'true';
+                            resetBtn.addEventListener('click', function() {
+                                if (confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
+                                    // Reload page to get defaults
+                                    window.location.reload();
+                                }
+                            });
+                        }
+                    })();
+
+        // ─── Blocked Periods Structured UI ──────────────────────
         // --- Blocked Periods Structured UI ---
         (function initBlockedPeriodsUI() {
             // Guard against re-initialization
@@ -2051,11 +2060,8 @@
             // Initial render
             renderBlockPeriods();
         })();
-        </script>
-    </div>
-</div>
 
-        <script>
+        // ─── Main Settings API Init ─────────────────────────────
         // General tab API integration: load on view and save via POST to /api/v1/settings
         // Robust initialization that works on both first page load and SPA navigation.
         // Uses xsRegisterViewInit for SPA re-runs + immediate call + rAF safety net.
@@ -2764,10 +2770,8 @@
         }
 
         // NOTE: initCustomFieldToggles is called from initSettingsApi(), no separate listeners needed
-        </script>
 
-        <!-- Time Format Handler Script -->
-        <script>
+        // ─── Time Format Handler ────────────────────────────────
             // Dynamic import works in both regular and SPA-injected scripts
             (async function initTimeFormatting() {
                 try {
@@ -2780,10 +2784,8 @@
                     console.warn('[Settings] Time format handler unavailable:', err.message);
                 }
             })();
-        </script>
 
-        <!-- Database Settings Tab Script -->
-        <script>
+        // ─── Database Settings Tab ──────────────────────────────
         (function initDatabaseSettingsTab() {
             const backupToggle = document.getElementById('backup-enabled-toggle');
             const createBackupBtn = document.getElementById('create-backup-btn');
