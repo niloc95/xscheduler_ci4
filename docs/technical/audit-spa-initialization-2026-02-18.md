@@ -112,7 +112,7 @@ A comprehensive audit of the frontend (JavaScript/SPA), backend (Controllers/Rou
 
 ## 4. Recommended Future Work
 
-1. **Consolidate settings.php scripts** — Merge 8 script blocks into 1-2, eliminating cross-block dependencies
+1. ~~**Consolidate settings.php scripts** — Merge 8 script blocks into 1-2, eliminating cross-block dependencies~~ ✅ Done (commit `a4ec63b`)
 2. **Fix calendar module script** — Convert `appointments/index.php` `type="module"` to dynamic import pattern
 3. **Enable CSRF globally** — Re-enable CSRF in Filters.php and ensure all AJAX responses include fresh tokens
 4. **Session regeneration** — Add `session()->regenerate()` after login in Auth controller
