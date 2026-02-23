@@ -66,6 +66,7 @@
 namespace App\Services;
 
 use App\Models\SettingModel;
+use App\Services\LocalizationSettingsService;
 
 /**
  * NotificationTemplateService
@@ -300,10 +301,12 @@ class NotificationTemplateService
 
         if (!empty($data['start_datetime'])) {
             try {
+                $loc = new LocalizationSettingsService();
                 $dt = new \DateTime($data['start_datetime']);
-                $appointmentDate = $dt->format('l, F j, Y'); // Monday, January 15, 2025
-                $appointmentTime = $dt->format('g:i A');     // 2:30 PM
-                $appointmentDatetime = $dt->format('l, F j, Y \a\t g:i A');
+                $timeStr      = $loc->formatTimeForDisplay($dt->format('H:i:s'));
+                $appointmentDate     = $dt->format('l, F j, Y');
+                $appointmentTime     = $timeStr;
+                $appointmentDatetime = $dt->format('l, F j, Y') . ' at ' . $timeStr;
             } catch (\Exception $e) {
                 // Fallback
                 $appointmentDate = $data['date'] ?? '';

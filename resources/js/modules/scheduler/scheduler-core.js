@@ -146,7 +146,7 @@ export class SchedulerCore {
             console.error('Failed to load calendar config:', error);
             // Use defaults if config fails to load
             this.calendarConfig = {
-                timeFormat: '12h',
+                timeFormat: '24h',
                 firstDayOfWeek: 0,
                 businessHours: {
                     startTime: '09:00',
@@ -266,6 +266,15 @@ export class SchedulerCore {
                 }
             }
             
+            // Location filter
+            if (this.activeFilters?.locationId) {
+                const locationId = apt.locationId ? (typeof apt.locationId === 'string' ? parseInt(apt.locationId, 10) : apt.locationId) : null;
+                if (locationId !== this.activeFilters.locationId) {
+                    this.debugLog(`   Apt ${apt.id}: FILTERED OUT by location (apt.locationId=${locationId}, filter=${this.activeFilters.locationId})`);
+                    return false;
+                }
+            }
+            
             this.debugLog(`   Apt ${apt.id}: INCLUDED (provider=${providerId}, status=${apt.status}, service=${serviceId})`);
             return true;
         });
@@ -287,14 +296,15 @@ export class SchedulerCore {
      * Set filters for status, provider, and service
      * This is the unified filter mechanism used by the Advanced Filter Panel
      */
-    async setFilters({ status = '', providerId = '', serviceId = '' }) {
-        this.debugLog('📊 setFilters called with:', { status, providerId, serviceId });
+    async setFilters({ status = '', providerId = '', serviceId = '', locationId = '' }) {
+        this.debugLog('📊 setFilters called with:', { status, providerId, serviceId, locationId });
         
         // Store filter values
         this.activeFilters = {
             status: status || null,
             providerId: providerId ? parseInt(providerId, 10) : null,
-            serviceId: serviceId ? parseInt(serviceId, 10) : null
+            serviceId: serviceId ? parseInt(serviceId, 10) : null,
+            locationId: locationId ? parseInt(locationId, 10) : null
         };
         
         this.debugLog('📊 activeFilters set to:', this.activeFilters);

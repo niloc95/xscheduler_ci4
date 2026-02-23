@@ -86,6 +86,7 @@ class Appointments extends BaseApiController
             $end = $this->request->getGet('end');
             $providerId = $this->request->getGet('providerId');
             $serviceId = $this->request->getGet('serviceId');
+            $locationId = $this->request->getGet('locationId');
             
             // Pagination parameters
             // For calendar views, allow up to 1000 per page to load all appointments
@@ -140,6 +141,10 @@ class Appointments extends BaseApiController
                 $builder->where('xs_appointments.service_id', (int)$serviceId);
             }
             
+            if ($locationId) {
+                $builder->where('xs_appointments.location_id', (int)$locationId);
+            }
+            
             // Get total count for pagination
             $countBuilder = clone $builder;
             $totalCount = $countBuilder->countAllResults(false);
@@ -158,13 +163,13 @@ class Appointments extends BaseApiController
             
             // Transform data for custom scheduler with provider colors
             $events = array_map(function($appointment) {
-                $startIso = $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null);
-                $endIso = $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null);
+                $startIso = $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null);
+                $endIso = $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null);
 
                 log_message('debug', '[API/Appointments::index] Appointment #' . $appointment['id'] . ':', [
                     'customer' => $appointment['customer_name'],
-                    'utc_start' => $startIso,
-                    'utc_end' => $endIso,
+                    'iso_start' => $startIso,
+                    'iso_end' => $endIso,
                     'provider' => $appointment['provider_name'],
                     'service' => $appointment['service_name']
                 ]);
@@ -188,12 +193,16 @@ class Appointments extends BaseApiController
                     'email' => $appointment['customer_email'] ?? null,
                     'phone' => $appointment['customer_phone'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
+                    'locationId' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
+                    'locationName' => $appointment['location_name'] ?? null,
+                    'locationAddress' => $appointment['location_address'] ?? null,
+                    'locationContact' => $appointment['location_contact'] ?? null,
                     // Note: start_time/end_time removed - use 'start'/'end' instead (ISO 8601)
                 ];
             }, $appointments);
             
-            log_message('info', '[API/Appointments::index] Returning ' . count($events) . ' events in UTC format');
-            log_message('info', '[API/Appointments::index] Note: Frontend custom scheduler will handle timezone conversion');
+            log_message('info', '[API/Appointments::index] Returning ' . count($events) . ' events with app-timezone ISO timestamps');
+            log_message('info', '[API/Appointments::index] Note: times carry the app timezone offset (e.g. +02:00); frontend Luxon zone option uses this for display');
             log_message('info', '[API/Appointments::index] ==================================================');
             
             return $response->setJSON([
@@ -261,15 +270,18 @@ class Appointments extends BaseApiController
                 'provider_color' => $appointment['provider_color'] ?? '#3B82F6',
                 'service_id' => $appointment['service_id'],
                 'service_name' => $appointment['service_name'] ?? 'N/A',
-                'start_time' => $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
-                'end_time' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
-                'start' => $this->formatUtc($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
-                'end' => $this->formatUtc($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
+                'start_time' => $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
+                'end_time' => $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
+                'start' => $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
+                'end' => $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
                 'service_duration' => $appointment['service_duration'], // Standardized field name
                 'service_price' => $appointment['service_price'],
                 'status' => $appointment['status'],
                 'notes' => $appointment['notes'] ?? '',
-                'location' => $appointment['location'] ?? '',
+                'location_id' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
+                'location_name' => $appointment['location_name'] ?? '',
+                'location_address' => $appointment['location_address'] ?? '',
+                'location_contact' => $appointment['location_contact'] ?? '',
                 'is_paid' => $appointment['is_paid'] ?? false,
                 'created_at' => $appointment['created_at'] ?? null,
                 'updated_at' => $appointment['updated_at'] ?? null,
@@ -623,15 +635,18 @@ class Appointments extends BaseApiController
         }
     }
 
-    private function formatUtc(?string $datetime): ?string
+    private function formatIso(?string $datetime): ?string
     {
         if (!$datetime) {
             return null;
         }
 
         try {
-            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
-            return $dt->format('Y-m-d\TH:i:s\Z');
+            // DB stores times in app timezone — attach the correct offset so
+            // JavaScript / Luxon receives a proper absolute moment in time.
+            $tz = (new LocalizationSettingsService())->getTimezone();
+            $dt = new \DateTime($datetime, new \DateTimeZone($tz));
+            return $dt->format('Y-m-d\TH:i:sP'); // e.g. 2026-02-23T16:00:00+02:00
         } catch (\Exception $e) {
             return $datetime;
         }

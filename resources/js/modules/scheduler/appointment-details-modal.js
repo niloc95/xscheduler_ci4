@@ -124,6 +124,28 @@ export class AppointmentDetailsModal {
                                 </div>
                             </div>
                             
+                            <!-- Location Section -->
+                            <div id="detail-location-wrapper" class="hidden">
+                                <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">location_on</span>
+                                    Location
+                                </h4>
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">business</span>
+                                        <span id="detail-location-name" class="text-sm text-gray-900 dark:text-white font-medium"></span>
+                                    </div>
+                                    <div id="detail-location-address-wrapper" class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">map</span>
+                                        <span id="detail-location-address" class="text-sm text-gray-600 dark:text-gray-300"></span>
+                                    </div>
+                                    <div id="detail-location-contact-wrapper" class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm text-gray-400">call</span>
+                                        <a id="detail-location-contact" href="#" class="text-sm text-gray-900 dark:text-white hover:underline"></a>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Notes Section -->
                             <div id="detail-notes-wrapper">
                                 <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
@@ -411,6 +433,31 @@ export class AppointmentDetailsModal {
             const providerColor = appointment.providerColor || '#3B82F6';
             this.modal.querySelector('#detail-provider-color').style.backgroundColor = providerColor;
             this.modal.querySelector('#detail-provider-name').textContent = appointment.providerName || 'Provider';
+            
+            // Location
+            const locationWrapper = this.modal.querySelector('#detail-location-wrapper');
+            if (appointment.locationName) {
+                locationWrapper.classList.remove('hidden');
+                this.modal.querySelector('#detail-location-name').textContent = appointment.locationName;
+                
+                if (appointment.locationAddress) {
+                    this.modal.querySelector('#detail-location-address').textContent = appointment.locationAddress;
+                    this.modal.querySelector('#detail-location-address-wrapper').classList.remove('hidden');
+                } else {
+                    this.modal.querySelector('#detail-location-address-wrapper').classList.add('hidden');
+                }
+                
+                if (appointment.locationContact) {
+                    const contactEl = this.modal.querySelector('#detail-location-contact');
+                    contactEl.textContent = appointment.locationContact;
+                    contactEl.href = `tel:${appointment.locationContact}`;
+                    this.modal.querySelector('#detail-location-contact-wrapper').classList.remove('hidden');
+                } else {
+                    this.modal.querySelector('#detail-location-contact-wrapper').classList.add('hidden');
+                }
+            } else {
+                locationWrapper.classList.add('hidden');
+            }
             
             // Notes - set textarea value and track changes
             const notesTextarea = this.modal.querySelector('#detail-notes');

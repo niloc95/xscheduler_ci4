@@ -172,11 +172,18 @@ class DashboardService
             ->whereIn('xs_appointments.status', ['cancelled', 'no-show'])
             ->countAllResults(false);
 
+        // Confirmed today
+        $confirmed = $builder
+            ->where('DATE(start_time)', $today)
+            ->where('xs_appointments.status', 'confirmed')
+            ->countAllResults(false);
+
         return [
             'total' => $total,
             'upcoming' => $upcoming,
             'pending' => $pending,
             'cancelled' => $cancelled,
+            'confirmed' => $confirmed,
         ];
     }
 

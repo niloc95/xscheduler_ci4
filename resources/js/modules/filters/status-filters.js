@@ -132,8 +132,10 @@ export async function refreshAppointmentStats(options = {}) {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            credentials: 'same-origin',
             cache: 'no-store',
             signal: statsRefreshAbortController.signal
         });

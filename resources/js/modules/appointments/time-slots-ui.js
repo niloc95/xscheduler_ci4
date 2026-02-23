@@ -29,6 +29,8 @@ import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
  * @param {string|number} [options.excludeAppointmentId]
  * @param {string|number} [options.preselectServiceId]
  * @param {string} [options.initialTime]
+ * @param {string} [options.locationSelectId]
+ * @param {string|number} [options.preselectLocationId]
  * @param {(time:string)=>void} [options.onTimeSelected]
  */
 export function initTimeSlotsUI(options) {
@@ -37,6 +39,7 @@ export function initTimeSlotsUI(options) {
     serviceSelectId,
     dateInputId,
     timeInputId,
+    locationSelectId = 'location_id',
     gridId = 'time-slots-grid',
     loadingId = 'time-slots-loading',
     emptyId = 'time-slots-empty',
@@ -45,6 +48,7 @@ export function initTimeSlotsUI(options) {
     promptId = 'time-slots-prompt',
     excludeAppointmentId,
     preselectServiceId,
+    preselectLocationId,
     initialTime,
     onTimeSelected
   } = options || {};
@@ -53,6 +57,8 @@ export function initTimeSlotsUI(options) {
   const serviceSelect = document.getElementById(serviceSelectId);
   const dateInput = document.getElementById(dateInputId);
   const timeInput = document.getElementById(timeInputId);
+  const locationSelect = document.getElementById(locationSelectId);
+  const locationWrapper = document.getElementById('location-selection-wrapper');
 
   if (!providerSelect || !serviceSelect || !dateInput || !timeInput) {
     console.warn('[time-slots-ui] Missing required elements');
@@ -99,7 +105,8 @@ export function initTimeSlotsUI(options) {
   }
 
   async function fetchCalendar(providerId, serviceId, startDate, forceRefresh = false) {
-    const key = buildCalendarCacheKey(providerId, serviceId, startDate, excludeAppointmentId);
+    const locationId = locationSelect ? locationSelect.value : '';
+    const key = buildCalendarCacheKey(providerId, serviceId, startDate, excludeAppointmentId) + (locationId ? `_loc${locationId}` : '');
     const cached = forceRefresh ? null : getCacheEntry(key);
     if (cached) {
       return cached.data;
@@ -116,6 +123,9 @@ export function initTimeSlotsUI(options) {
     }
     if (excludeAppointmentId) {
       params.append('exclude_appointment_id', String(excludeAppointmentId));
+    }
+    if (locationId) {
+      params.append('location_id', locationId);
     }
 
     let response;
@@ -196,6 +206,54 @@ export function initTimeSlotsUI(options) {
     }
 
     el.availableDatesHint.classList.remove('hidden');
+  }
+
+  /**
+   * Load locations for a provider via API and populate the location dropdown
+   */
+  async function loadLocations(providerId) {
+    if (!locationSelect) return;
+
+    locationSelect.innerHTML = '<option value="">Loading locations...</option>';
+
+    if (!providerId) {
+      locationSelect.innerHTML = '<option value="">Select a provider first...</option>';
+      if (locationWrapper) locationWrapper.classList.add('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`));
+      if (!res.ok) throw new Error('Failed to load locations');
+      const result = await res.json();
+      const locations = result.data || [];
+
+      if (locations.length === 0) {
+        locationSelect.innerHTML = '<option value="">No locations for this provider</option>';
+        if (locationWrapper) locationWrapper.classList.add('hidden');
+        return;
+      }
+
+      locationSelect.innerHTML = '<option value="">Any location</option>';
+      locations.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value = loc.id;
+        opt.textContent = loc.name + (loc.address ? ` — ${loc.address}` : '');
+        opt.dataset.name = loc.name || '';
+        opt.dataset.address = loc.address || '';
+        opt.dataset.contact = loc.contact_number || '';
+        if (preselectLocationId && String(preselectLocationId) === String(loc.id)) {
+          opt.selected = true;
+        }
+        locationSelect.appendChild(opt);
+      });
+
+      if (locationWrapper) locationWrapper.classList.remove('hidden');
+    } catch (e) {
+      console.error('[time-slots-ui] Error loading locations:', e);
+      locationSelect.innerHTML = '<option value="">Any location</option>';
+      if (locationWrapper) locationWrapper.classList.remove('hidden');
+    }
   }
 
   async function loadServices(providerId) {
@@ -385,7 +443,10 @@ export function initTimeSlotsUI(options) {
     // Skip if the boot IIFE is already handling the initial load
     if (bootInProgress) return;
 
-    await loadServices(providerSelect.value);
+    await Promise.all([
+      loadServices(providerSelect.value),
+      loadLocations(providerSelect.value),
+    ]);
     timeInput.value = '';
     
     // Only clear date if not initial load with URL parameters
@@ -400,6 +461,17 @@ export function initTimeSlotsUI(options) {
       loadSlots(true);
     }
   });
+
+  // Location change — reload slots for the selected location
+  if (locationSelect) {
+    locationSelect.addEventListener('change', () => {
+      timeInput.value = '';
+      dateInput.value = '';
+      if (serviceSelect.value && providerSelect.value) {
+        loadSlots(true);
+      }
+    });
+  }
 
   serviceSelect.addEventListener('change', () => {
     timeInput.value = '';
@@ -434,7 +506,10 @@ export function initTimeSlotsUI(options) {
     
     // If provider is already chosen, load services and respect preselect
     if (providerSelect.value) {
-      await loadServices(providerSelect.value);
+      await Promise.all([
+        loadServices(providerSelect.value),
+        loadLocations(providerSelect.value),
+      ]);
       
       // Reset flags and release boot guard
       isInitialProviderChange = false;

@@ -19,7 +19,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-      <form id="editServiceForm" action="/services/update/<?= (int)$service['id'] ?>" method="post" class="card card-spacious">
+      <form id="editServiceForm" action="<?= base_url('services/update/' . (int)$service['id']) ?>" method="post" class="card card-spacious">
         <?= csrf_field() ?>
                 <input type="hidden" name="service_id" value="<?= (int)$service['id'] ?>">
                 <div class="card-header flex-col items-start gap-2">
@@ -30,12 +30,16 @@
                 <?= $this->include('services/_form', ['service' => $service, 'categories' => $categories, 'providers' => $providers, 'linkedProviders' => $linkedProviders ?? []]) ?>
         </div>
 
-        <div class="card-footer flex justify-end">
+        <div class="card-footer flex flex-wrap justify-end gap-3">
+          <button type="button" id="openCategoryModal" class="btn btn-secondary">
+            <span class="material-symbols-outlined">add</span>
+            New Category
+          </button>
           <button type="submit" class="btn btn-primary">
             <span class="material-symbols-outlined">save</span>
-                        Save Changes
-                    </button>
-                </div>
+            Save Changes
+          </button>
+        </div>
             </form>
         </div>
         <div class="lg:col-span-1">
@@ -59,14 +63,19 @@
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md p-6">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create Category</h3>
     <form id="createCategoryForm">
+      <?= csrf_field() ?>
       <div class="space-y-3">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-          <input type="text" name="new_category_name" required class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+          <label class="form-label">Name</label>
+          <input type="text" name="name" required class="form-input" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-          <input type="color" name="new_category_color" value="#3B82F6" class="mt-1 h-10 w-16 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
+          <label class="form-label">Description</label>
+          <textarea name="description" rows="2" class="form-input"></textarea>
+        </div>
+        <div>
+          <label class="form-label">Color</label>
+          <input type="color" name="color" value="#3B82F6" class="mt-1 h-10 w-16 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
         </div>
       </div>
       <div class="mt-6 flex justify-end space-x-3">
@@ -112,28 +121,34 @@
   const show = (el) => { el.classList.remove('hidden'); el.classList.add('flex'); };
   const hide = (el) => { el.classList.add('hidden'); el.classList.remove('flex'); };
 
-  openCategoryModal.addEventListener('click', () => show(categoryModal));
-  cancelCategoryModal.addEventListener('click', () => hide(categoryModal));
+  if (openCategoryModal) openCategoryModal.addEventListener('click', () => show(categoryModal));
+  if (cancelCategoryModal) cancelCategoryModal.addEventListener('click', () => hide(categoryModal));
 
-  createCategoryForm.addEventListener('submit', async (e) => {
+  if (createCategoryForm) createCategoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(createCategoryForm);
-  const res = await fetch('<?= base_url('services/categories') ?>', {
-      method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      body: new URLSearchParams({ name: fd.get('new_category_name'), color: fd.get('new_category_color') || '#3B82F6' })
+    const res = await fetch('<?= base_url('services/categories') ?>', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: fd
     });
     const data = await res.json();
     if (data && data.success) {
       const opt = document.createElement('option');
-      opt.value = data.id; opt.textContent = fd.get('new_category_name');
-      categorySelect.appendChild(opt);
-      categorySelect.value = String(data.id);
+      opt.value = data.id; opt.textContent = data.name || fd.get('name');
+      if (categorySelect) {
+        categorySelect.appendChild(opt);
+        categorySelect.value = String(data.id);
+      }
       hide(categoryModal);
     }
   });
 
+  let lastSubmitSuccess = false;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    lastSubmitSuccess = false;
     const fd = new FormData(form);
     
     const res = await fetch('<?= base_url('services/update') ?>/' + serviceId, {
@@ -160,23 +175,26 @@
     });
     
     if (data && data.success) {
+      lastSubmitSuccess = true;
       resultTitle.textContent = 'Service updated successfully';
       resultMessage.textContent = 'Your changes have been saved.';
       show(resultModal);
     } else {
       resultTitle.textContent = 'Update failed';
-      resultMessage.textContent = (data && (data.error || (data.details && JSON.stringify(data.details)))) || 'Unknown error.';
+      resultMessage.textContent = (data && (data.error || data.message || (data.details && JSON.stringify(data.details)))) || 'Unknown error.';
       show(resultModal);
     }
   });
 
-  closeResultModal.addEventListener('click', () => {
+  if (closeResultModal) closeResultModal.addEventListener('click', () => {
     hide(resultModal);
-    const url = '<?= base_url('/services') ?>';
-    if (window.xsSPA) {
-      window.xsSPA.navigate(url);
-    } else {
-      window.location.href = url;
+    if (lastSubmitSuccess) {
+      const url = '<?= base_url('/services') ?>';
+      if (window.xsSPA) {
+        window.xsSPA.navigate(url);
+      } else {
+        window.location.href = url;
+      }
     }
   });
 })();

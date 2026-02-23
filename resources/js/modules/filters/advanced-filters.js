@@ -47,6 +47,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
     const statusSelect = document.getElementById('filter-status');
     const providerSelect = document.getElementById('filter-provider');
     const serviceSelect = document.getElementById('filter-service');
+    const locationSelect = document.getElementById('filter-location');
 
     // Store all services for "All Providers" view
     const allServicesOptions = serviceSelect ? serviceSelect.innerHTML : '';
@@ -120,9 +121,10 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
             const status = statusSelect?.value || '';
             const providerId = providerSelect?.value || '';
             const serviceId = serviceSelect?.value || '';
+            const locationId = locationSelect?.value || '';
 
             try {
-                await scheduler.setFilters({ status, providerId, serviceId });
+                await scheduler.setFilters({ status, providerId, serviceId, locationId });
 
                 // Re-render provider legend to reflect filter state
                 if (typeof renderProviderLegend === 'function') {
@@ -136,7 +138,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
                 }, 1000);
 
                 // Update filter indicator on toggle button
-                const hasActiveFilters = status || providerId || serviceId;
+                const hasActiveFilters = status || providerId || serviceId || locationId;
                 updateFilterIndicator(toggleBtn, hasActiveFilters);
             } catch (error) {
                 console.error('Failed to apply filters:', error);
@@ -150,6 +152,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
             // Reset all dropdowns
             if (statusSelect) statusSelect.value = '';
             if (providerSelect) providerSelect.value = '';
+            if (locationSelect) locationSelect.value = '';
             if (serviceSelect) {
                 // Restore all services when clearing filters
                 serviceSelect.innerHTML = allServicesOptions;
@@ -158,7 +161,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
             }
 
             try {
-                await scheduler.setFilters({ status: '', providerId: '', serviceId: '' });
+                await scheduler.setFilters({ status: '', providerId: '', serviceId: '', locationId: '' });
 
                 // Re-render provider legend to reflect cleared state
                 if (typeof renderProviderLegend === 'function') {
@@ -176,7 +179,8 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
     const hasActiveFilters =
         (statusSelect?.value && statusSelect.value !== '') ||
         (providerSelect?.value && providerSelect.value !== '') ||
-        (serviceSelect?.value && serviceSelect.value !== '');
+        (serviceSelect?.value && serviceSelect.value !== '') ||
+        (locationSelect?.value && locationSelect.value !== '');
 
     if (hasActiveFilters) {
         updateFilterIndicator(toggleBtn, true);

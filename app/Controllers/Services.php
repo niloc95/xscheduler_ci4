@@ -535,8 +535,8 @@ class Services extends BaseController
             'name' => trim($input['name'] ?? ''),
             'description' => $input['description'] ?? null,
             'duration_min' => (int)($input['duration_min'] ?? 0),
-            'price' => $input['price'] !== '' ? (float)$input['price'] : null,
-            'category_id' => $input['category_id'] ? (int)$input['category_id'] : null,
+            'price' => ($input['price'] ?? '') !== '' ? (float)$input['price'] : null,
+            'category_id' => !empty($input['category_id']) ? (int)$input['category_id'] : null,
             'active' => isset($input['active']) ? (int)!!$input['active'] : 1,
         ];
 
@@ -604,8 +604,8 @@ class Services extends BaseController
             'name' => trim($input['name'] ?? ''),
             'description' => $input['description'] ?? null,
             'duration_min' => (int)($input['duration_min'] ?? 0),
-            'price' => $input['price'] !== '' ? (float)$input['price'] : null,
-            'category_id' => $input['category_id'] ? (int)$input['category_id'] : null,
+            'price' => ($input['price'] ?? '') !== '' ? (float)$input['price'] : null,
+            'category_id' => !empty($input['category_id']) ? (int)$input['category_id'] : null,
             'active' => isset($input['active']) ? (int)!!$input['active'] : 0,
         ];
 
@@ -672,6 +672,9 @@ class Services extends BaseController
         $this->serviceModel->db->table('providers_services')->delete(['service_id' => (int)$serviceId]);
         $this->serviceModel->delete((int)$serviceId);
 
-        return $this->response->setJSON(['success' => true]);
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Service deleted', 'redirect' => base_url('services')]);
+        }
+        return redirect()->to(base_url('services'))->with('message', 'Service deleted');
     }
 }

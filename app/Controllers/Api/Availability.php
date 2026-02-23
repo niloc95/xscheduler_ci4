@@ -360,6 +360,8 @@ class Availability extends BaseApiController
         $startDate = $this->request->getGet('start_date');
         $days = (int) ($this->request->getGet('days') ?? 60);
         $timezone = $this->request->getGet('timezone') ?? $this->localizationService->getTimezone();
+        $locationId = $this->request->getGet('location_id');
+        $locationId = $locationId !== null && $locationId !== '' ? (int) $locationId : null;
 
         if ($providerId <= 0 || $serviceId <= 0) {
             return $response->setStatusCode(400)->setJSON([
@@ -390,7 +392,8 @@ class Availability extends BaseApiController
                 $startDate,
                 $days,
                 $timezone,
-                $excludeAppointmentId
+                $excludeAppointmentId,
+                $locationId
             );
 
             return $response->setJSON([

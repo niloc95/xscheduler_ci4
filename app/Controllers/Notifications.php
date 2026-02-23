@@ -57,6 +57,7 @@ use App\Models\UserModel;
 use App\Models\NotificationDeliveryLogModel;
 use App\Models\NotificationQueueModel;
 use App\Models\AppointmentModel;
+use App\Services\LocalizationSettingsService;
 use App\Services\NotificationPhase1;
 use CodeIgniter\Controller;
 
@@ -317,7 +318,9 @@ class Notifications extends BaseController
         $error = $data['error'];
 
         $channelLabel = strtoupper($channel);
-        $timeStr = $appointmentStart ? date('M j, Y \a\t g:i A', strtotime($appointmentStart)) : '';
+        $timeStr = $appointmentStart
+            ? date('M j, Y', strtotime($appointmentStart)) . ' at ' . (new LocalizationSettingsService())->formatTimeForDisplay(date('H:i:s', strtotime($appointmentStart)))
+            : '';
 
         if ($status === 'success') {
             switch ($eventType) {

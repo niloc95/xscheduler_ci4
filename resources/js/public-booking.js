@@ -184,11 +184,13 @@ function bootstrapPublicBooking() {
 
     const providerSelect = form.querySelector('[data-provider-select]');
     const serviceSelect = form.querySelector('[data-service-select]');
+    const locationSelect = form.querySelector('[data-location-select]');
     const dateInput = form.querySelector('[data-date-input]');
     const dateSelect = form.querySelector('[data-date-select]');
 
     providerSelect?.addEventListener('change', (event) => handleProviderChange(event.target.value, target));
     serviceSelect?.addEventListener('change', (event) => handleServiceChange(event.target.value, target));
+    locationSelect?.addEventListener('change', (event) => handleLocationChange(event.target.value, target));
     dateInput?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     dateSelect?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     form.querySelectorAll('[data-date-pill]').forEach(button => {
@@ -229,6 +231,11 @@ function bootstrapPublicBooking() {
   }
 
   function handleProviderChange(value, target = 'booking') {
+    // Auto-resolve location: if provider has exactly 1 location, pre-select it
+    const provider = (context.providers ?? []).find(p => String(p.id) === String(value));
+    const locations = provider?.locations ?? [];
+    const autoLocationId = locations.length === 1 ? String(locations[0].id) : '';
+
     updateDraft(target, prev => ({
       ...prev,
       providerId: value,
@@ -239,8 +246,10 @@ function bootstrapPublicBooking() {
       slots: [],
       slotsError: '',
       prefetched: null,
+      resolvedLocation: null,
+      selectedLocationId: autoLocationId,
       calendar: createCalendarState(),
-      errors: { ...prev.errors, provider_id: undefined, service_id: undefined, slot_start: undefined },
+      errors: { ...prev.errors, provider_id: undefined, service_id: undefined, slot_start: undefined, location_id: undefined },
     }));
     if (value) {
       fetchProviderServices(value, target);
@@ -259,6 +268,31 @@ function bootstrapPublicBooking() {
       errors: { ...prev.errors, service_id: undefined, slot_start: undefined },
     }));
     if (value) {
+      fetchCalendar(target);
+    }
+  }
+
+  /**
+   * Handle location selection change.
+   * Stores the selected location ID and re-fetches calendar/slots scoped to that location.
+   */
+  function handleLocationChange(value, target = 'booking') {
+    const draft = getDraft(target);
+    const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+    const loc = (provider?.locations ?? []).find(l => String(l.id) === String(value)) ?? null;
+
+    updateDraft(target, prev => ({
+      ...prev,
+      selectedLocationId: value,
+      resolvedLocation: loc,
+      selectedSlot: null,
+      slots: [],
+      slotsError: '',
+      prefetched: null,
+      calendar: { ...createCalendarState(), loading: Boolean(prev.serviceId), error: '' },
+      errors: { ...prev.errors, location_id: undefined, slot_start: undefined },
+    }));
+    if (draft.serviceId) {
       fetchCalendar(target);
     }
   }
@@ -318,12 +352,23 @@ function bootstrapPublicBooking() {
     if (!value) {
       return;
     }
+    const draft = getDraft(target);
+
+    // Resolve location: if user explicitly selected one, use it; otherwise auto-resolve from date
+    let loc;
+    if (draft.selectedLocationId) {
+      const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+      loc = (provider?.locations ?? []).find(l => String(l.id) === String(draft.selectedLocationId)) ?? null;
+    } else {
+      loc = resolveLocationForDate(draft.providerId, value);
+    }
+
     updateDraft(target, prev => ({
       ...prev,
+      resolvedLocation: loc,
       errors: { ...prev.errors, slot_start: undefined },
     }));
 
-    const draft = getDraft(target);
     const availableDates = draft.calendar?.availableDates ?? [];
     if (availableDates.includes(value)) {
       syncSlotsFromCalendar(target, value);
@@ -485,9 +530,12 @@ function bootstrapPublicBooking() {
       selectedSlot: appointment.start ? { start: appointment.start, end: appointment.end, label: slotLabel } : null,
       form: {
         ...prev.form,
+        first_name: appointment.customer?.first_name ?? prev.form.first_name ?? '',
+        last_name: appointment.customer?.last_name ?? prev.form.last_name ?? '',
+        email: appointment.customer?.email ?? prev.form.email ?? contact.email ?? '',
+        phone: appointment.customer?.phone ?? prev.form.phone ?? contact.phone ?? '',
+        address: appointment.customer?.address ?? prev.form.address ?? '',
         notes: appointment.notes ?? prev.form.notes ?? '',
-        email: prev.form.email || contact.email || '',
-        phone: prev.form.phone || contact.phone || '',
       },
       slots: [],
       slotsError: '',
@@ -664,6 +712,9 @@ function bootstrapPublicBooking() {
       service_id: draft.serviceId,
       days: '60',
     });
+    if (draft.selectedLocationId) {
+      query.set('location_id', draft.selectedLocationId);
+    }
 
     try {
       const response = await fetch(`${bookingBase}/calendar?${query.toString()}`, {
@@ -749,6 +800,9 @@ function bootstrapPublicBooking() {
       service_id: draft.serviceId,
       date: draft.appointmentDate,
     });
+    if (draft.selectedLocationId) {
+      query.set('location_id', draft.selectedLocationId);
+    }
 
     try {
       const response = await fetch(`${bookingBase}/slots?${query.toString()}`, {
@@ -789,6 +843,12 @@ function bootstrapPublicBooking() {
       slot_start: draft.selectedSlot?.start ?? null,
       notes: draft.form.notes ?? '',
     };
+
+    // Include location_id — prefer resolved location, fall back to selector
+    const locationId = draft.resolvedLocation?.id ?? draft.selectedLocationId;
+    if (locationId) {
+      payload.location_id = Number(locationId);
+    }
 
     Object.entries(draft.form).forEach(([key, value]) => {
       payload[key] = value;
@@ -1002,6 +1062,7 @@ function bootstrapPublicBooking() {
         <form id="${formId}" class="space-y-6" novalidate>
           ${generalError}
           ${renderSelections(currentState, ctx)}
+          ${renderLocationCard(currentState)}
           ${renderSlotSection(currentState)}
           ${renderCustomerSection(currentState, ctx)}
           ${renderCustomFields(currentState, ctx)}
@@ -1040,6 +1101,30 @@ function bootstrapPublicBooking() {
       ? `<p class="text-sm text-slate-500">${escapeHtml(selectedService.name ?? 'Service')} &middot; ${(selectedService.duration ?? selectedService.durationMinutes ?? 0) || 0} min${selectedService.formattedPrice ? ` &middot; ${escapeHtml(selectedService.formattedPrice)}` : ''}</p>`
       : '';
 
+    // Build location selector (only when the selected provider has 2+ locations)
+    const selectedProvider = (ctx.providers ?? []).find(p => String(p.id) === String(currentState.providerId));
+    const providerLocations = selectedProvider?.locations ?? [];
+    const showLocationSelector = providerLocations.length > 1;
+    const locationOptions = providerLocations.map(loc => {
+      const optionValue = escapeHtml(String(loc.id ?? ''));
+      const isSelected = String(loc.id) === String(currentState.selectedLocationId) ? 'selected' : '';
+      const addressHint = loc.address ? ` — ${loc.address}` : '';
+      return `<option value="${optionValue}" ${isSelected}>${escapeHtml(loc.name ?? 'Location')}${escapeHtml(addressHint)}</option>`;
+    }).join('');
+
+    const locationSelector = showLocationSelector ? `
+      <div>
+        <label class="block text-sm font-medium text-slate-700">
+          Location
+          <select name="location_id" data-location-select class="${UI_CLASSES.selectBase}">
+            <option value="">All locations</option>
+            ${locationOptions}
+          </select>
+          ${renderFieldError('location_id', currentState.errors)}
+        </label>
+      </div>
+    ` : '';
+
     return `
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block text-sm font-medium text-slate-700">
@@ -1060,6 +1145,7 @@ function bootstrapPublicBooking() {
           ${renderFieldError('service_id', currentState.errors)}
         </label>
       </div>
+      ${locationSelector}
       <div class="grid gap-4 md:grid-cols-2">
         ${renderDatePickerField(currentState)}
         ${renderSchedulingTips()}
@@ -1100,6 +1186,29 @@ function bootstrapPublicBooking() {
           ${grid}
           ${emptyMessage}
           ${renderFieldError('slot_start', currentState.errors)}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderLocationCard(currentState) {
+    const loc = currentState.resolvedLocation;
+    if (!loc) {
+      return '';
+    }
+    const addressHtml = loc.address
+      ? `<p class="text-sm text-slate-600">${escapeHtml(loc.address)}</p>`
+      : '';
+    const contactHtml = loc.contact_number
+      ? `<p class="text-sm text-slate-500">${escapeHtml(loc.contact_number)}</p>`
+      : '';
+    return `
+      <div class="${UI_CLASSES.cardInfo} flex items-start gap-3">
+        <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+        <div class="min-w-0">
+          <p class="font-semibold text-slate-900">${escapeHtml(loc.name)}</p>
+          ${addressHtml}
+          ${contactHtml}
         </div>
       </div>
     `;
@@ -1279,6 +1388,8 @@ function bootstrapPublicBooking() {
     const providerLabel = resolveAppointmentProvider(appointment, ctx);
     const serviceLabel = resolveAppointmentService(appointment, ctx);
     const slotSummary = formatAppointmentRange(appointment);
+    const locationLabel = appointment.location_name ?? '';
+    const locationAddr = appointment.location_address ?? '';
     const title = options.title ?? "You're booked!";
     const subtitle = options.subtitle ?? 'We\'ll send a confirmation email shortly. Keep your token handy if you need to make changes.';
     const footerText = options.footerText ?? 'Need to reschedule? Use your token and contact email to pull up this booking anytime.';
@@ -1311,6 +1422,12 @@ function bootstrapPublicBooking() {
             <dt class="text-sm font-medium text-slate-500">Confirmation token</dt>
             <dd class="text-base font-mono text-slate-900">${escapeHtml(appointment.token ?? '')}</dd>
           </div>
+          ${locationLabel ? `
+          <div class="rounded-2xl border border-slate-200 px-4 py-3 md:col-span-2">
+            <dt class="text-sm font-medium text-slate-500">Location</dt>
+            <dd class="text-base font-semibold text-slate-900">${escapeHtml(locationLabel)}${locationAddr ? ` &middot; <span class="font-normal text-slate-600">${escapeHtml(locationAddr)}</span>` : ''}</dd>
+          </div>
+          ` : ''}
         </dl>
         <div class="mt-6 flex flex-col gap-3">
           ${primaryButton ? `<button type="button" ${primaryAttr} class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600">${escapeHtml(primaryButton.label)}</button>` : ''}
@@ -1382,8 +1499,12 @@ function bootstrapPublicBooking() {
     if (!start || !end) {
       return 'Selected time';
     }
-    const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-    return `${timeFormatter.format(start)} - ${timeFormatter.format(end)}`;
+    const use12h = context?.timeFormat !== '24h';
+    const appTz = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timeFormatter = new Intl.DateTimeFormat('en', {
+      hour: 'numeric', minute: '2-digit', hour12: use12h, timeZone: appTz,
+    });
+    return `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
   }
 
   function formatSlotSummary(slot) {
@@ -1392,10 +1513,18 @@ function bootstrapPublicBooking() {
     }
     const start = new Date(slot.start);
     const end = slot.end ? new Date(slot.end) : null;
-    const dateFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    const use12h = context?.timeFormat !== '24h';
+    const appTz = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const dateFormatter = new Intl.DateTimeFormat('en', {
+      weekday: 'short', month: 'short', day: 'numeric', timeZone: appTz,
+    });
+    const timeFormatter = new Intl.DateTimeFormat('en', {
+      hour: 'numeric', minute: '2-digit', hour12: use12h, timeZone: appTz,
+    });
     const dateLabel = dateFormatter.format(start);
-    const rangeLabel = end ? `${timeFormatter.format(start)} - ${timeFormatter.format(end)}` : timeFormatter.format(start);
+    const rangeLabel = end
+      ? `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`
+      : timeFormatter.format(start);
     return `${dateLabel}, ${rangeLabel}`;
   }
 
@@ -1450,6 +1579,7 @@ function bootstrapPublicBooking() {
     if (!availableDates.length) {
       return {
         appointmentDate: prevState.appointmentDate,
+        resolvedLocation: prevState.resolvedLocation ?? null,
         slots: [],
         selectedSlot: null,
         slotsError: calendar.error || 'No availability found in the next 60 days.',
@@ -1468,8 +1598,18 @@ function bootstrapPublicBooking() {
     const selectedSlotStart = prevState.selectedSlot?.start;
     const selectedSlot = slotList.find(slot => slot.start === selectedSlotStart) ?? null;
 
+    // If user has a selected location, use that; otherwise auto-resolve from day-of-week
+    let resolvedLocation;
+    if (prevState.selectedLocationId) {
+      const provider = (context.providers ?? []).find(p => String(p.id) === String(prevState.providerId));
+      resolvedLocation = (provider?.locations ?? []).find(l => String(l.id) === String(prevState.selectedLocationId)) ?? null;
+    } else {
+      resolvedLocation = resolveLocationForDate(prevState.providerId, appointmentDate);
+    }
+
     return {
       appointmentDate,
+      resolvedLocation,
       slots: slotList,
       selectedSlot,
       slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
@@ -1500,6 +1640,34 @@ function bootstrapPublicBooking() {
     return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
+  /**
+   * Resolve the provider location for a given date.
+   * Matches the date's day-of-week (0=Sun..6=Sat) against the provider's
+   * configured location days from ctx.providers[].locations[].days[].
+   * Returns the matching location object or null.
+   */
+  function resolveLocationForDate(providerId, dateStr) {
+    if (!providerId || !dateStr) {
+      return null;
+    }
+    const provider = (context.providers ?? []).find(p => String(p.id) === String(providerId));
+    if (!provider?.locations?.length) {
+      return null;
+    }
+    const d = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(d.getTime())) {
+      return null;
+    }
+    const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
+    for (const loc of provider.locations) {
+      if (Array.isArray(loc.days) && loc.days.includes(dayOfWeek)) {
+        return loc;
+      }
+    }
+    // Fallback: no location matched for this day — return null (don't guess)
+    return null;
+  }
+
   function createInitialFormState(ctx) {
     const base = {
       first_name: '',
@@ -1525,6 +1693,12 @@ function bootstrapPublicBooking() {
   function createBookingDraft(ctx, defaultDate, initialAvailability = null, initialCalendar = null) {
     const providerId = ctx.providers?.[0]?.id?.toString() ?? '';
     const serviceId = ctx.services?.[0]?.id?.toString() ?? '';
+
+    // Auto-select location if provider has exactly 1
+    const firstProvider = (ctx.providers ?? []).find(p => String(p.id) === providerId);
+    const providerLocations = firstProvider?.locations ?? [];
+    const autoLocationId = providerLocations.length === 1 ? String(providerLocations[0].id) : '';
+
     const calendarState = createCalendarState(initialCalendar);
     const matchesPrefetch = initialAvailability
       && String(initialAvailability.provider_id ?? '') === providerId
@@ -1543,6 +1717,7 @@ function bootstrapPublicBooking() {
     return {
       providerId,
       serviceId,
+      selectedLocationId: autoLocationId,
       services: ctx.services ?? [],
       servicesLoading: false,
       appointmentDate: selectedDate,
@@ -1550,6 +1725,7 @@ function bootstrapPublicBooking() {
       slotsLoading: false,
       slotsError: '',
       selectedSlot: null,
+      resolvedLocation: null,
       prefetched: slots.length ? { date: selectedDate } : null,
       calendar: calendarState,
       form: createInitialFormState(ctx),
@@ -1573,6 +1749,7 @@ function bootstrapPublicBooking() {
       formState: {
         providerId: '',
         serviceId: '',
+        selectedLocationId: '',
         services: ctx.services ?? [],
         servicesLoading: false,
         appointmentDate: defaultDate,
@@ -1580,6 +1757,7 @@ function bootstrapPublicBooking() {
         slotsLoading: false,
         slotsError: '',
         selectedSlot: null,
+        resolvedLocation: null,
         calendar: createCalendarState(),
         form: createInitialFormState(ctx),
         errors: {},

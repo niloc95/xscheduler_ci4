@@ -2,45 +2,37 @@
 /**
  * Provider schedule form component.
  *
+ * Uses native <input type="time"> for consistent cross-browser time picking.
+ * Values are always HH:MM (24h) — the browser renders per the user's locale.
+ *
  * Expected data:
  * - $scheduleDays: array of day keys (monday ... sunday)
- * - $providerSchedule: associative array keyed by day with is_active/start/end/breaks (strings)
+ * - $providerSchedule: associative array keyed by day with is_active/start/end/breaks (HH:MM strings)
  * - $scheduleErrors: associative array of validation messages keyed by day
+ * - $localizationContext: ['time_format' => '24h'|'12h', 'timezone' => string]
+ * - $providerLocations: (optional) array of location rows with 'days' sub-arrays from LocationModel
  */
 $localizationContext = $localizationContext ?? ['time_format' => '24h', 'timezone' => 'UTC'];
-$timeFormat = $localizationContext['time_format'] ?? '24h';
 $timezone = $localizationContext['timezone'] ?? 'UTC';
-$timeExample = $timeFormatExample ?? ($timeFormat === '12h' ? '09:00 AM' : '09:00');
-$timePattern = $timeFormat === '12h'
-    ? '^(0?[1-9]|1[0-2]):[0-5]\\d\\s?(AM|PM|am|pm)$'
-    : '^([01]?\\d|2[0-3]):[0-5]\\d$';
-$inputMode = $timeFormat === '12h' ? 'text' : 'numeric';
-$formatDescription = $localizationContext['format_description'] ?? (
-    $timeFormat === '12h'
-        ? 'Use 12-hour time like ' . $timeExample . ' (include AM/PM).'
-        : 'Use 24-hour time like ' . $timeExample . '.'
-);
 $firstDay = $scheduleDays[0] ?? 'monday';
+
+// Build location → days lookup for tick-box rendering.
+// Each entry: ['id' => int, 'name' => string, 'days' => [0,1,...6]]
+$providerLocations = $providerLocations ?? [];
+$dayNameToInt = \App\Models\LocationModel::DAY_NAME_TO_INT;
+$hasLocations = !empty($providerLocations);
 ?>
 <div id="provider-schedule-section"
      class="mt-8"
      data-provider-schedule-section
      data-source-day="<?= esc($firstDay) ?>"
-     data-time-format="<?= esc($timeFormat) ?>"
-     data-time-example="<?= esc($timeExample) ?>"
-     data-timezone="<?= esc($timezone) ?>"
-     data-time-pattern="<?= esc($timePattern) ?>"
-     data-format-description="<?= esc($formatDescription) ?>">
+     data-timezone="<?= esc($timezone) ?>">
     <div class="card card-spacious">
         <div class="card-header flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex flex-col gap-1">
                 <h3 class="card-title text-lg">Provider Work Schedule</h3>
                 <p class="card-subtitle text-sm">Define weekly availability, including optional mid-day breaks.</p>
             </div>
-            <button type="button" class="btn btn-secondary inline-flex items-center gap-2 px-3 py-2 text-sm" data-copy-schedule disabled aria-disabled="true" title="Copy the first day's schedule to all other days">
-                <span class="material-symbols-outlined text-base">content_copy</span>
-                Copy to All Days
-            </button>
         </div>
 
         <div class="card-body space-y-6">
@@ -53,11 +45,18 @@ $firstDay = $scheduleDays[0] ?? 'monday';
                     <li>Active days override the global Business Hours.</li>
                     <li>Leave a day inactive to fall back to the Business Hours configuration.</li>
                     <li>Breaks are optional and reduce availability within the active range.</li>
-                    <li><?= esc($formatDescription) ?></li>
                 </ul>
             </div>
 
             <div class="space-y-4">
+                <!-- Copy to All Days — sticky bar visible while scrolling through days -->
+                <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 flex items-center justify-between shadow-sm">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Set hours for each day, or copy from the first active day:</span>
+                    <button type="button" class="btn btn-secondary inline-flex items-center gap-2 px-3 py-2 text-sm whitespace-nowrap" data-copy-schedule disabled aria-disabled="true" title="Copy the first day's schedule to all other days">
+                        <span class="material-symbols-outlined text-base">content_copy</span>
+                        Copy to All Days
+                    </button>
+                </div>
                 <?php foreach ($scheduleDays as $index => $day):
                     $dayData = $providerSchedule[$day] ?? ['is_active' => false, 'start_time' => '', 'end_time' => '', 'break_start' => '', 'break_end' => ''];
                     $dayLabel = ucfirst($day);
@@ -85,61 +84,69 @@ $firstDay = $scheduleDays[0] ?? 'monday';
                         </div>
                     </div>
 
+                    <?php if ($hasLocations): ?>
+                    <!-- Location assignment tick boxes -->
+                    <div class="mt-3 flex flex-wrap items-center gap-4 schedule-location-checkboxes <?= $isActive ? '' : 'opacity-40 pointer-events-none' ?>">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Locations:</span>
+                        <?php foreach ($providerLocations as $loc):
+                            $locDays = array_map('intval', $loc['days'] ?? []);
+                            $dayInt  = $dayNameToInt[$day] ?? -1;
+                            $isChecked = in_array($dayInt, $locDays, true);
+                        ?>
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer text-sm">
+                            <input type="checkbox"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 js-location-day"
+                                   name="schedule[<?= esc($day) ?>][locations][]"
+                                   value="<?= esc($loc['id']) ?>"
+                                   data-location-id="<?= esc($loc['id']) ?>"
+                                   data-day="<?= esc($day) ?>"
+                                   <?= $isChecked ? 'checked' : '' ?>
+                                   <?= $isActive ? '' : 'disabled' ?>>
+                            <span class="text-gray-700 dark:text-gray-300"><?= esc($loc['name'] ?: 'Location ' . ($loc['id'])) ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 schedule-time-grid">
                         <div>
-                <label for="<?= esc($dayId) ?>-start" class="block text-sm font-medium text-gray-600 dark:text-gray-300">Start</label>
-                <input type="text" id="<?= esc($dayId) ?>-start"
-                    name="schedule[<?= esc($day) ?>][start_time]"
-                    value="<?= esc($dayData['start_time']) ?>"
-                    data-field="start"
-                    data-time-input
-                    pattern="<?= esc($timePattern) ?>"
-                                   inputmode="<?= esc($inputMode) ?>"
-                    placeholder="<?= esc($timeExample) ?>"
-                    title="<?= esc($formatDescription) ?>"
-                    class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                    <?= $isActive ? '' : 'disabled' ?>>
+                            <label for="<?= esc($dayId) ?>-start" class="form-label">Start</label>
+                            <input type="time" id="<?= esc($dayId) ?>-start"
+                                   name="schedule[<?= esc($day) ?>][start_time]"
+                                   value="<?= esc($dayData['start_time']) ?>"
+                                   data-field="start"
+                                   data-time-input
+                                   class="form-input mt-1"
+                                   <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
-                <label for="<?= esc($dayId) ?>-end" class="block text-sm font-medium text-gray-600 dark:text-gray-300">End</label>
-                <input type="text" id="<?= esc($dayId) ?>-end"
+                            <label for="<?= esc($dayId) ?>-end" class="form-label">End</label>
+                            <input type="time" id="<?= esc($dayId) ?>-end"
                                    name="schedule[<?= esc($day) ?>][end_time]"
                                    value="<?= esc($dayData['end_time']) ?>"
                                    data-field="end"
-                    data-time-input
-                    pattern="<?= esc($timePattern) ?>"
-                                   inputmode="<?= esc($inputMode) ?>"
-                    placeholder="<?= esc($timeExample) ?>"
-                    title="<?= esc($formatDescription) ?>"
-                                   class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                   data-time-input
+                                   class="form-input mt-1"
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
-                <label for="<?= esc($dayId) ?>-break-start" class="block text-sm font-medium text-gray-600 dark:text-gray-300">Break Start</label>
-                <input type="text" id="<?= esc($dayId) ?>-break-start"
+                            <label for="<?= esc($dayId) ?>-break-start" class="form-label">Break Start</label>
+                            <input type="time" id="<?= esc($dayId) ?>-break-start"
                                    name="schedule[<?= esc($day) ?>][break_start]"
                                    value="<?= esc($dayData['break_start']) ?>"
                                    data-field="break_start"
-                    data-time-input
-                    pattern="<?= esc($timePattern) ?>"
-                                   inputmode="<?= esc($inputMode) ?>"
-                    placeholder="<?= esc($timeExample) ?>"
-                    title="<?= esc($formatDescription) ?>"
-                                   class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                   data-time-input
+                                   class="form-input mt-1"
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
-                <label for="<?= esc($dayId) ?>-break-end" class="block text-sm font-medium text-gray-600 dark:text-gray-300">Break End</label>
-                <input type="text" id="<?= esc($dayId) ?>-break-end"
+                            <label for="<?= esc($dayId) ?>-break-end" class="form-label">Break End</label>
+                            <input type="time" id="<?= esc($dayId) ?>-break-end"
                                    name="schedule[<?= esc($day) ?>][break_end]"
                                    value="<?= esc($dayData['break_end']) ?>"
                                    data-field="break_end"
-                    data-time-input
-                    pattern="<?= esc($timePattern) ?>"
-                                   inputmode="<?= esc($inputMode) ?>"
-                    placeholder="<?= esc($timeExample) ?>"
-                    title="<?= esc($formatDescription) ?>"
-                                   class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                   data-time-input
+                                   class="form-input mt-1"
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                     </div>
@@ -176,24 +183,22 @@ $firstDay = $scheduleDays[0] ?? 'monday';
     function toggleScheduleSection(roleValue) {
         const isProvider = roleValue === 'provider';
 
-        // Parent wrapper that holds this entire component
         const wrapper = document.getElementById('providerScheduleSection');
         if (wrapper) wrapper.classList.toggle('hidden', !isProvider);
 
-        // Provider assignments (locked notice on create)
+        const locationsWrapper = document.getElementById('providerLocationsWrapper');
+        if (locationsWrapper) locationsWrapper.classList.toggle('hidden', !isProvider);
+
         const provAssign = document.getElementById('providerAssignmentsSection');
         if (provAssign) provAssign.classList.toggle('hidden', !isProvider);
 
-        // Staff assignments (only visible for staff role)
         const staffAssign = document.getElementById('staffAssignmentsSection');
         if (staffAssign) staffAssign.classList.toggle('hidden', roleValue !== 'staff');
 
-        // Provider colour picker
         document.querySelectorAll('.provider-color-field').forEach(function(field) {
             field.classList.toggle('hidden', !isProvider);
         });
 
-        // Role description card
         const roleDesc = document.getElementById('role-description');
         const rolePerms = document.getElementById('role-permissions');
         if (roleValue) {
@@ -208,7 +213,6 @@ $firstDay = $scheduleDays[0] ?? 'monday';
             roleDesc.classList.add('hidden');
         }
 
-        // Copy-button state (schedule-specific)
         if (!scheduleSection) return;
         if (!isProvider) {
             setCopyButtonDisabled(true);
@@ -219,15 +223,21 @@ $firstDay = $scheduleDays[0] ?? 'monday';
 
     function toggleDayInputs(dayRow, isActive) {
         if (!dayRow) return;
-    const inputs = dayRow.querySelectorAll('[data-time-input]');
+        const inputs = dayRow.querySelectorAll('[data-time-input]');
         inputs.forEach((input) => {
             input.disabled = !isActive;
-            if (!isActive) {
-                input.classList.add('opacity-70');
-            } else {
-                input.classList.remove('opacity-70');
-            }
+            input.classList.toggle('opacity-70', !isActive);
         });
+
+        // Toggle location checkboxes for this day
+        const locContainer = dayRow.querySelector('.schedule-location-checkboxes');
+        if (locContainer) {
+            locContainer.classList.toggle('opacity-40', !isActive);
+            locContainer.classList.toggle('pointer-events-none', !isActive);
+            locContainer.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+                cb.disabled = !isActive;
+            });
+        }
     }
 
     function getSourceRow() {
@@ -239,32 +249,14 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         return row ? row.querySelector(`[data-field="${field}"]`) : null;
     }
 
+    /**
+     * Parse a native time input value (HH:MM) to minutes since midnight.
+     */
     function parseToMinutes(value) {
         if (!value) return null;
-        const trimmed = value.trim();
-        if (!trimmed) return null;
-
-        const format = scheduleSection?.dataset.timeFormat || '24h';
-
-        if (format === '12h') {
-            const match = trimmed.match(/^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i);
-            if (!match) return null;
-            let hour = parseInt(match[1], 10);
-            const minute = parseInt(match[2], 10);
-            const period = match[3].toUpperCase();
-            if (period === 'PM' && hour !== 12) {
-                hour += 12;
-            } else if (period === 'AM' && hour === 12) {
-                hour = 0;
-            }
-            return hour * 60 + minute;
-        }
-
-        const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+        const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
         if (!match) return null;
-        const hour = parseInt(match[1], 10);
-        const minute = parseInt(match[2], 10);
-        return hour * 60 + minute;
+        return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
     }
 
     function isValidTimeRange(start, end) {
@@ -272,26 +264,6 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         const endMinutes = parseToMinutes(end);
         if (startMinutes === null || endMinutes === null) return false;
         return startMinutes < endMinutes;
-    }
-
-    function normaliseInputValue(value) {
-        if (!value) return value;
-        const format = scheduleSection?.dataset.timeFormat || '24h';
-        const trimmed = value.trim();
-        if (!trimmed) return trimmed;
-        if (format === '12h') {
-            const match = trimmed.match(/^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i);
-            if (!match) return trimmed;
-            const hour = match[1].padStart(2, '0');
-            const minute = match[2];
-            const period = match[3].toUpperCase();
-            return `${hour}:${minute} ${period}`;
-        }
-        const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-        if (!match) return trimmed;
-        const hour = match[1].padStart(2, '0');
-        const minute = match[2];
-        return `${hour}:${minute}`;
     }
 
     function updateCopyButtonState() {
@@ -320,12 +292,12 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         mapping.forEach((key) => {
             const value = values[key];
             if (!value && (key === 'break_start' || key === 'break_end')) {
-                return; // skip empty optional fields
+                return;
             }
             const input = getField(row, key);
             if (!input || input.disabled) return;
             if (value) {
-                input.value = normaliseInputValue(value);
+                input.value = value;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
@@ -407,21 +379,6 @@ $firstDay = $scheduleDays[0] ?? 'monday';
         updateCopyButtonState();
     }
 
-    // Password visibility toggle — defined here because this script reliably
-    // executes on both full-page and SPA navigation.
-    window.togglePassword = function(fieldId) {
-        var field = document.getElementById(fieldId);
-        var icon = document.getElementById(fieldId + '-icon');
-        if (!field || !icon) return;
-        if (field.type === 'password') {
-            field.type = 'text';
-            icon.textContent = 'visibility_off';
-        } else {
-            field.type = 'password';
-            icon.textContent = 'visibility';
-        }
-    };
-
     // Initialize immediately — SPA re-executes inline scripts but does NOT
     // re-fire DOMContentLoaded, so we must run init directly.
     function initProviderSchedule() {
@@ -478,13 +435,6 @@ $firstDay = $scheduleDays[0] ?? 'monday';
             });
             roleSelect.dataset.scheduleToggleBound = 'true';
         }
-
-        const inputs = scheduleSection?.querySelectorAll('[data-time-input]') || [];
-        inputs.forEach((input) => {
-            input.addEventListener('blur', function() {
-                input.value = normaliseInputValue(input.value);
-            });
-        });
     }
 
     // Run immediately if DOM is ready (SPA nav), or wait for DOMContentLoaded (initial load)

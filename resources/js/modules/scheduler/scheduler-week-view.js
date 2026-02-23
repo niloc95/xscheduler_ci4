@@ -518,6 +518,11 @@ export class WeekView {
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             <span class="font-medium">${time}</span> • ${this.escapeHtml(serviceName)}
                         </div>
+                        ${apt.locationName ? `
+                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1 truncate">
+                            <span class="material-symbols-outlined text-xs">location_on</span>
+                            ${this.escapeHtml(apt.locationName)}
+                        </div>` : ''}
                     </div>
                     <span class="material-symbols-outlined text-gray-400 text-lg">chevron_right</span>
                 </div>

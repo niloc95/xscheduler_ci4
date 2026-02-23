@@ -41,7 +41,9 @@ class BookingController extends BaseController
                 ], 422);
             }
 
-            $slots = $this->booking->getAvailableSlots($providerId, $serviceId, $date);
+            $slots = $this->booking->getAvailableSlots($providerId, $serviceId, $date, 
+                (int) ($this->request->getGet('location_id') ?? 0) ?: null
+            );
             return $this->respondJson(['data' => $slots]);
         } catch (PublicBookingException $e) {
             return $this->respondJson([
@@ -74,7 +76,9 @@ class BookingController extends BaseController
                 ], 422);
             }
 
-            $calendar = $this->booking->getAvailabilityCalendar($providerId, $serviceId, $startDate, $days);
+            $calendar = $this->booking->getAvailabilityCalendar($providerId, $serviceId, $startDate, $days,
+                (int) ($this->request->getGet('location_id') ?? 0) ?: null
+            );
             return $this->respondJson(['data' => $calendar]);
         } catch (PublicBookingException $e) {
             return $this->respondJson([

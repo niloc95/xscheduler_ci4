@@ -113,5 +113,9 @@ document.querySelectorAll('[data-flash-message]').forEach(el => {
         setTimeout(() => el.remove(), 300);
     }, 8000);
 });
+// Scroll to top so success/error flash messages are visible on form pages
+if (document.querySelector('[data-flash-message]')) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 </script>
 <?php endif; ?>

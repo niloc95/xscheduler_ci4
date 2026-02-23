@@ -128,7 +128,7 @@ class Filters extends BaseFilters
             'securityheaders',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',
-            'csrf' => ['except' => ['api/*']],
+            'csrf' => ['except' => ['api/*', 'setup/*']],
             // 'invalidchars',
         ],
         'after' => [

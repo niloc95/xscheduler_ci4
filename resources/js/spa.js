@@ -23,7 +23,7 @@
 // Views can register functions that should run on initial load AND after SPA navigation
 window.xsViewInitializers = window.xsViewInitializers || [];
 window.xsRegisterViewInit = function(initFn) {
-  if (typeof initFn === 'function') {
+  if (typeof initFn === 'function' && !window.xsViewInitializers.includes(initFn)) {
     window.xsViewInitializers.push(initFn);
     // Also run immediately if DOM is already ready
     if (document.readyState !== 'loading') {
@@ -168,9 +168,10 @@ const SPA = (() => {
           console.error('SPA script execution error:', scriptErr);
         }
       });
-  // Initialize any tabs rendered in the new content
-  initTabsInSpaContent();
+      // Push state BEFORE tab init so window.location.hash reflects target URL
       if (push) history.pushState({ spa: true }, '', url);
+      // Initialize any tabs rendered in the new content (reads hash)
+      initTabsInSpaContent();
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
       // Also trigger per-view init functions if registered

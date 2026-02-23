@@ -145,7 +145,7 @@ function initCustomerSearch() {
     const spinner = document.getElementById('searchSpinner');
     
     if (!searchInput || !tableBody) {
-        console.error('Customer search elements not found');
+        // Expected when navigating away from this page — stale xsViewInitializer
         return;
     }
     

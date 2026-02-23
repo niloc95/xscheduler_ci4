@@ -181,6 +181,13 @@ class AppointmentBookingService
                 'notes' => $data['notes'] ?? ''
             ];
 
+            // Snapshot location data if location_id provided
+            if (!empty($data['location_id'])) {
+                $locationModel = new \App\Models\LocationModel();
+                $snapshot = $locationModel->getLocationSnapshot((int) $data['location_id']);
+                $appointmentData = array_merge($appointmentData, $snapshot);
+            }
+
             log_message('info', '[AppointmentBookingService] Inserting appointment: ' . json_encode($appointmentData));
             $appointmentId = $this->appointmentModel->insert($appointmentData);
 
@@ -296,13 +303,17 @@ class AppointmentBookingService
     }
 
     /**
-     * Calculate appointment start/end times in both local and UTC
+     * Calculate appointment start/end times using the app timezone.
      *
-     * @param string $date Date in Y-m-d format
-     * @param string $time Time in H:i format
-     * @param int $durationMinutes Service duration
-     * @param string $timezone Client timezone
-     * @return array DateTime objects and UTC strings
+     * DB stores times as app-local (no UTC conversion). Time input from the
+     * admin form is already in app timezone; public booking slots arrive with
+     * the correct offset from the API.
+     *
+     * @param string $date           Date in Y-m-d format
+     * @param string $time           Time in H:i format (app timezone)
+     * @param int    $durationMinutes Service duration
+     * @param string $timezone       Ignored — app timezone is always used (kept for BC)
+     * @return array DateTime objects and stored time strings
      */
     protected function calculateAppointmentTimes(
         string $date,
@@ -310,36 +321,39 @@ class AppointmentBookingService
         int $durationMinutes,
         string $timezone
     ): array {
-        $startLocal = $date . ' ' . $time . ':00';
-        
+        // Always use the app timezone regardless of what the client reports.
+        $appTimezone = (new LocalizationSettingsService())->getTimezone();
+        $startLocal  = $date . ' ' . $time . ':00';
+
         try {
-            $startDateTime = new DateTime($startLocal, new DateTimeZone($timezone));
+            $startDateTime = new DateTime($startLocal, new DateTimeZone($appTimezone));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] DateTime creation failed: ' . $e->getMessage());
             $startDateTime = new DateTime($startLocal, new DateTimeZone('UTC'));
-            $timezone = 'UTC';
+            $appTimezone   = 'UTC';
         }
 
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . $durationMinutes . ' minutes');
 
-        $startUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $timezone);
-        $endUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $timezone);
+        // Store as app-local strings (no UTC conversion).
+        $startTime = $startDateTime->format('Y-m-d H:i:s');
+        $endTime   = $endDateTime->format('Y-m-d H:i:s');
 
         log_message('info', '[AppointmentBookingService] Time calculation:', [
-            'local_start' => $startDateTime->format('Y-m-d H:i:s'),
-            'local_end' => $endDateTime->format('Y-m-d H:i:s'),
-            'utc_start' => $startUtc,
-            'utc_end' => $endUtc,
-            'timezone' => $timezone
+            'start'    => $startTime,
+            'end'      => $endTime,
+            'timezone' => $appTimezone,
         ]);
 
         return [
             'startDateTime' => $startDateTime,
-            'endDateTime' => $endDateTime,
-            'startUtc' => $startUtc,
-            'endUtc' => $endUtc,
-            'timezone' => $timezone
+            'endDateTime'   => $endDateTime,
+            'startUtc'      => $startTime, // legacy key — contains app-local value
+            'endUtc'        => $endTime,   // legacy key — contains app-local value
+            'startTime'     => $startTime,
+            'endTime'       => $endTime,
+            'timezone'      => $appTimezone,
         ];
     }
 

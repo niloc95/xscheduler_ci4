@@ -206,7 +206,7 @@ class Settings extends BaseController
             'notificationMessageTemplates' => $messageTemplates,
         ];
 
-        return view('settings', $data);
+        return view('settings/index', $data);
     }
 
     /**

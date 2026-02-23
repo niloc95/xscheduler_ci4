@@ -38,15 +38,13 @@
 						<!-- Basic Information -->
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 							<div class="form-group">
-								<label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-									Full Name <span class="text-red-500">*</span>
-								</label>
+								<label for="name" class="form-label required">Full Name</label>
 								<input type="text" 
 									   id="name" 
 									   name="name" 
 									   value="<?= esc(old('name', $user['name'] ?? '')) ?>"
 									   required
-									   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('name') ? 'border-red-500 dark:border-red-400' : '' ?>"
+									   class="form-input <?= $validation && $validation->hasError('name') ? 'border-red-500 dark:border-red-400' : '' ?>"
 									   placeholder="Enter full name">
 								<?php if ($validation && $validation->hasError('name')): ?>
 									<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('name') ?></p>
@@ -54,15 +52,13 @@
 							</div>
 
 							<div class="form-group">
-								<label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-									Email Address <span class="text-red-500">*</span>
-								</label>
+								<label for="email" class="form-label required">Email Address</label>
 								<input type="email" 
 									   id="email" 
 									   name="email" 
 									   value="<?= esc(old('email', $user['email'] ?? '')) ?>"
 									   required
-									   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('email') ? 'border-red-500 dark:border-red-400' : '' ?>"
+									   class="form-input <?= $validation && $validation->hasError('email') ? 'border-red-500 dark:border-red-400' : '' ?>"
 									   placeholder="Enter email address">
 								<?php if ($validation && $validation->hasError('email')): ?>
 									<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('email') ?></p>
@@ -72,14 +68,12 @@
 
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 							<div class="form-group">
-								<label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-									Phone Number
-								</label>
+								<label for="phone" class="form-label">Phone Number</label>
 								<input type="tel" 
 									   id="phone" 
 									   name="phone" 
 									   value="<?= esc(old('phone', $user['phone'] ?? '')) ?>"
-									   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('phone') ? 'border-red-500 dark:border-red-400' : '' ?>"
+									   class="form-input <?= $validation && $validation->hasError('phone') ? 'border-red-500 dark:border-red-400' : '' ?>"
 									   placeholder="Enter phone number">
 								<?php if ($validation && $validation->hasError('phone')): ?>
 									<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('phone') ?></p>
@@ -87,13 +81,11 @@
 							</div>
 
 							<div class="form-group">
-								<label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-									Role <span class="text-red-500">*</span>
-								</label>
+								<label for="role" class="form-label required">Role</label>
 								<select id="role" 
 										name="role"
 										required
-										class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('role') ? 'border-red-500 dark:border-red-400' : '' ?>">
+										class="form-input <?= $validation && $validation->hasError('role') ? 'border-red-500 dark:border-red-400' : '' ?>">
 									<option value="">Select Role</option>
 									<?php 
 									$currentRole = old('role', $user['role'] ?? '');
@@ -119,9 +111,7 @@
 						?>
 						<?php if ($isProvider && $canEditColor): ?>
 						<div class="form-group provider-color-field">
-							<label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-								Calendar Color
-							</label>
+							<label for="color" class="form-label">Calendar Color</label>
 							<div class="flex items-center gap-3">
 								<input type="color" 
 									   id="color" 
@@ -136,9 +126,7 @@
 						</div>
 						<?php elseif ($isProvider): ?>
 						<div class="form-group provider-color-field">
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-								Calendar Color
-							</label>
+							<label class="form-label">Calendar Color</label>
 							<div class="flex items-center gap-3">
 							<div class="h-10 w-20 rounded border border-gray-300 dark:border-gray-600 provider-color-preview" 
 								 data-color="<?= esc($user['color'] ?? '#3B82F6') ?>"
@@ -151,18 +139,16 @@
 						<?php endif; ?>
 
 
-					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
-						<?= $this->include('user-management/components/provider-schedule') ?>
-					</div>
-
-					<!-- Provider Locations Section -->
+					<!-- Provider Locations Section (FIRST — configure locations before schedule) -->
 					<div id="providerLocationsWrapper" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
 						<?php if (($user['role'] ?? '') === 'provider'): ?>
-							<?= $this->include('user-management/components/provider-locations', [
-								'providerId' => $user['id'] ?? null,
-								'locations' => $providerLocations ?? [],
-							]) ?>
+						<?= $this->include('user-management/components/provider-locations') ?>
 						<?php endif; ?>
+					</div>
+
+					<!-- Provider Schedule Section (SECOND — uses locations for day assignment) -->
+					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
+						<?= $this->include('user-management/components/provider-schedule') ?>
 					</div>
 
 						<?php if (($user['role'] ?? '') === 'provider'): ?>
@@ -206,15 +192,13 @@
 
 							<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 								<div class="form-group">
-									<label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-										New Password
-									</label>
+									<label for="password" class="form-label">New Password</label>
 									<div class="relative">
 										<input type="password" 
 											   id="password" 
 											   name="password" 
 											   value="<?= old('password') ?>"
-											   class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('password') ? 'border-red-500 dark:border-red-400' : '' ?>"
+											   class="form-input pr-10 <?= $validation && $validation->hasError('password') ? 'border-red-500 dark:border-red-400' : '' ?>"
 											   placeholder="Enter new password">
 										<button type="button" 
 												onclick="togglePassword('password')"
@@ -229,15 +213,13 @@
 								</div>
 
 								<div class="form-group">
-									<label for="password_confirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-										Confirm New Password
-									</label>
+									<label for="password_confirm" class="form-label">Confirm New Password</label>
 									<div class="relative">
 										<input type="password" 
 											   id="password_confirm" 
 											   name="password_confirm" 
 											   value="<?= old('password_confirm') ?>"
-											   class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('password_confirm') ? 'border-red-500 dark:border-red-400' : '' ?>"
+											   class="form-input pr-10 <?= $validation && $validation->hasError('password_confirm') ? 'border-red-500 dark:border-red-400' : '' ?>"
 											   placeholder="Confirm new password">
 										<button type="button" 
 												onclick="togglePassword('password_confirm')"
@@ -345,44 +327,4 @@
 	</div>
 </div>
 
-<script>
-// Provider fields visibility — runs immediately (SPA-compatible)
-(function() {
-	const roleSelect = document.getElementById('role');
-	const scheduleWrapper = document.getElementById('providerScheduleSection');
-	const locationsWrapper = document.getElementById('providerLocationsWrapper');
-	const colorFields = document.querySelectorAll('.provider-color-field');
-	if (!roleSelect) return;
-
-	function toggleProviderFields() {
-		const isProvider = roleSelect.value === 'provider';
-		if (scheduleWrapper) scheduleWrapper.classList.toggle('hidden', !isProvider);
-		if (locationsWrapper) locationsWrapper.classList.toggle('hidden', !isProvider);
-		colorFields.forEach(field => {
-			field.classList.toggle('hidden', !isProvider);
-		});
-	}
-
-	if (roleSelect.dataset.providerFieldsBound !== 'true') {
-		roleSelect.addEventListener('change', toggleProviderFields);
-		roleSelect.dataset.providerFieldsBound = 'true';
-	}
-	toggleProviderFields();
-})();
-
-// Toggle password visibility
-window.togglePassword = function(fieldId) {
-	const field = document.getElementById(fieldId);
-	const icon = document.getElementById(fieldId + '-icon');
-	if (!field || !icon) return;
-
-	if (field.type === 'password') {
-		field.type = 'text';
-		icon.textContent = 'visibility_off';
-	} else {
-		field.type = 'password';
-		icon.textContent = 'visibility';
-	}
-};
-</script>
 <?= $this->endSection() ?>

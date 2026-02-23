@@ -66,6 +66,7 @@ php_errors.log
 #-------------------------
 notes
 notes/
+cookies*.txt
 
 #-------------------------
 # Node.js / NPM

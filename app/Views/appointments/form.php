@@ -106,91 +106,79 @@ $pageSubtitle = $isEditMode
                         <!-- First Name -->
                         <?php if ($fieldConfig['first_name']['display']): ?>
                         <div>
-                            <label for="customer_first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                First Name <?= $fieldConfig['first_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="customer_first_name" class="form-label <?= $fieldConfig['first_name']['required'] ? 'required' : '' ?>">First Name</label>
                             <input type="text" 
                                    id="customer_first_name" 
                                    name="customer_first_name" 
                                    value="<?= esc(old('customer_first_name', $appointment['customer_first_name'] ?? '')) ?>"
                                    <?= $fieldConfig['first_name']['required'] ? 'required' : '' ?>
-                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input" />
                         </div>
                         <?php endif; ?>
 
                         <!-- Last Name -->
                         <?php if ($fieldConfig['last_name']['display']): ?>
                         <div>
-                            <label for="customer_last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Last Name <?= $fieldConfig['last_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="customer_last_name" class="form-label <?= $fieldConfig['last_name']['required'] ? 'required' : '' ?>">Last Name</label>
                             <input type="text" 
                                    id="customer_last_name" 
                                    name="customer_last_name" 
                                    value="<?= esc(old('customer_last_name', $appointment['customer_last_name'] ?? '')) ?>"
                                    <?= $fieldConfig['last_name']['required'] ? 'required' : '' ?>
-                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input" />
                         </div>
                         <?php endif; ?>
 
                         <!-- Email -->
                         <?php if ($fieldConfig['email']['display']): ?>
                         <div>
-                            <label for="customer_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Email <?= $fieldConfig['email']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="customer_email" class="form-label <?= $fieldConfig['email']['required'] ? 'required' : '' ?>">Email</label>
                             <input type="email" 
                                    id="customer_email" 
                                    name="customer_email" 
                                    value="<?= esc(old('customer_email', $appointment['customer_email'] ?? '')) ?>"
                                    <?= $fieldConfig['email']['required'] ? 'required' : '' ?>
-                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input" />
                         </div>
                         <?php endif; ?>
 
                         <!-- Phone -->
                         <?php if ($fieldConfig['phone']['display']): ?>
                         <div>
-                            <label for="customer_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Phone <?= $fieldConfig['phone']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="customer_phone" class="form-label <?= $fieldConfig['phone']['required'] ? 'required' : '' ?>">Phone</label>
                             <input type="tel" 
                                    id="customer_phone" 
                                    name="customer_phone" 
                                    value="<?= esc(old('customer_phone', $appointment['customer_phone'] ?? '')) ?>"
                                    <?= $fieldConfig['phone']['required'] ? 'required' : '' ?>
-                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input" />
                         </div>
                         <?php endif; ?>
 
                         <!-- Address -->
                         <?php if ($fieldConfig['address']['display']): ?>
                         <div class="md:col-span-2">
-                            <label for="customer_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Address <?= $fieldConfig['address']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="customer_address" class="form-label <?= $fieldConfig['address']['required'] ? 'required' : '' ?>">Address</label>
                             <input type="text" 
                                    id="customer_address" 
                                    name="customer_address" 
                                    value="<?= esc(old('customer_address', $appointment['customer_address'] ?? '')) ?>"
                                    <?= $fieldConfig['address']['required'] ? 'required' : '' ?>
-                                   class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input" />
                         </div>
                         <?php endif; ?>
 
                         <!-- Custom Fields -->
                         <?php foreach ($customFields as $fieldKey => $fieldMeta): ?>
                         <div class="<?= $fieldMeta['type'] === 'textarea' ? 'md:col-span-2' : '' ?>">
-                            <label for="<?= esc($fieldKey) ?>" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <?= esc($fieldMeta['title']) ?> <?= $fieldMeta['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                            </label>
+                            <label for="<?= esc($fieldKey) ?>" class="form-label <?= $fieldMeta['required'] ? 'required' : '' ?>"><?= esc($fieldMeta['title']) ?></label>
                             
                             <?php if ($fieldMeta['type'] === 'textarea'): ?>
                                 <textarea id="<?= esc($fieldKey) ?>" 
                                           name="<?= esc($fieldKey) ?>" 
                                           rows="3"
                                           <?= $fieldMeta['required'] ? 'required' : '' ?>
-                                          class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"><?= esc(old($fieldKey, $appointment[$fieldKey] ?? '')) ?></textarea>
+                                          class="form-input"><?= esc(old($fieldKey, $appointment[$fieldKey] ?? '')) ?></textarea>
                             
                             <?php elseif ($fieldMeta['type'] === 'checkbox'): ?>
                                 <div class="flex items-center">
@@ -212,7 +200,7 @@ $pageSubtitle = $isEditMode
                                        name="<?= esc($fieldKey) ?>" 
                                        value="<?= esc(old($fieldKey, $appointment[$fieldKey] ?? '')) ?>"
                                        <?= $fieldMeta['required'] ? 'required' : '' ?>
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -246,7 +234,7 @@ $pageSubtitle = $isEditMode
                             <input type="text" 
                                    id="customer_search" 
                                    placeholder="Search by name, email, or phone..."
-                                   class="block w-full pl-10 pr-10 py-2 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                   class="form-input pl-10 pr-10" />
                             <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400">search</span>
                             <button type="button" id="clear_search_btn" class="hidden absolute right-2 top-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                 <span class="material-symbols-outlined text-sm">close</span>
@@ -276,71 +264,59 @@ $pageSubtitle = $isEditMode
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <?php if ($fieldConfig['first_name']['display']): ?>
                             <div>
-                                <label for="customer_first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    First Name <?= $fieldConfig['first_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="customer_first_name" class="form-label <?= $fieldConfig['first_name']['required'] ? 'required' : '' ?>">First Name</label>
                                 <input type="text" id="customer_first_name" name="customer_first_name" 
                                        data-original-required="<?= $fieldConfig['first_name']['required'] ? '1' : '0' ?>"
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             </div>
                             <?php endif; ?>
 
                             <?php if ($fieldConfig['last_name']['display']): ?>
                             <div>
-                                <label for="customer_last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Last Name <?= $fieldConfig['last_name']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="customer_last_name" class="form-label <?= $fieldConfig['last_name']['required'] ? 'required' : '' ?>">Last Name</label>
                                 <input type="text" id="customer_last_name" name="customer_last_name"
                                        data-original-required="<?= $fieldConfig['last_name']['required'] ? '1' : '0' ?>"
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             </div>
                             <?php endif; ?>
 
                             <?php if ($fieldConfig['email']['display']): ?>
                             <div>
-                                <label for="customer_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Email <?= $fieldConfig['email']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="customer_email" class="form-label <?= $fieldConfig['email']['required'] ? 'required' : '' ?>">Email</label>
                                 <input type="email" id="customer_email" name="customer_email"
                                        data-original-required="<?= $fieldConfig['email']['required'] ? '1' : '0' ?>"
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             </div>
                             <?php endif; ?>
 
                             <?php if ($fieldConfig['phone']['display']): ?>
                             <div>
-                                <label for="customer_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Phone <?= $fieldConfig['phone']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="customer_phone" class="form-label <?= $fieldConfig['phone']['required'] ? 'required' : '' ?>">Phone</label>
                                 <input type="tel" id="customer_phone" name="customer_phone"
                                        data-original-required="<?= $fieldConfig['phone']['required'] ? '1' : '0' ?>"
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             </div>
                             <?php endif; ?>
 
                             <?php if ($fieldConfig['address']['display']): ?>
                             <div class="md:col-span-2">
-                                <label for="customer_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Address <?= $fieldConfig['address']['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="customer_address" class="form-label <?= $fieldConfig['address']['required'] ? 'required' : '' ?>">Address</label>
                                 <input type="text" id="customer_address" name="customer_address"
                                        data-original-required="<?= $fieldConfig['address']['required'] ? '1' : '0' ?>"
-                                       class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                       class="form-input" />
                             </div>
                             <?php endif; ?>
 
                             <?php foreach ($customFields as $fieldKey => $fieldMeta): ?>
                             <div class="<?= $fieldMeta['type'] === 'textarea' ? 'md:col-span-2' : '' ?>">
-                                <label for="<?= esc($fieldKey) ?>" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    <?= esc($fieldMeta['title']) ?> <?= $fieldMeta['required'] ? '<span class="text-red-500">*</span>' : '' ?>
-                                </label>
+                                <label for="<?= esc($fieldKey) ?>" class="form-label <?= $fieldMeta['required'] ? 'required' : '' ?>"><?= esc($fieldMeta['title']) ?></label>
                                 
                                 <?php if ($fieldMeta['type'] === 'textarea'): ?>
                                     <textarea id="<?= esc($fieldKey) ?>" 
                                               name="<?= esc($fieldKey) ?>" 
                                               rows="3"
                                               data-original-required="<?= $fieldMeta['required'] ? '1' : '0' ?>"
-                                              class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                                              class="form-input"></textarea>
                                 
                                 <?php elseif ($fieldMeta['type'] === 'checkbox'): ?>
                                     <div class="flex items-center">
@@ -360,7 +336,7 @@ $pageSubtitle = $isEditMode
                                            id="<?= esc($fieldKey) ?>" 
                                            name="<?= esc($fieldKey) ?>"
                                            data-original-required="<?= $fieldMeta['required'] ? '1' : '0' ?>"
-                                           class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                           class="form-input" />
                                 <?php endif; ?>
                             </div>
                             <?php endforeach; ?>
@@ -376,14 +352,12 @@ $pageSubtitle = $isEditMode
 
                 <!-- Provider Selection -->
                 <div>
-                    <label for="provider_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Provider <span class="text-red-500">*</span>
-                    </label>
+                    <label for="provider_id" class="form-label required">Provider</label>
                     <select id="provider_id" 
                             name="provider_id" 
                             required 
                             <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>">
+                            class="form-input">
                         <option value="">Select a provider...</option>
                         <?php foreach ($providers as $provider): ?>
                             <option value="<?= $provider['id'] ?>" 
@@ -399,14 +373,12 @@ $pageSubtitle = $isEditMode
 
                 <!-- Service Selection -->
                 <div>
-                    <label for="service_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Service <span class="text-red-500">*</span>
-                    </label>
+                    <label for="service_id" class="form-label required">Service</label>
                     <select id="service_id" 
                             name="service_id" 
                             required 
                             <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>">
+                            class="form-input">
                         <option value="">Select a provider first...</option>
                     </select>
                     <?php if ($isEditMode && $isPastAppointment): ?>
@@ -414,19 +386,35 @@ $pageSubtitle = $isEditMode
                     <?php endif; ?>
                 </div>
 
+                <!-- Location Selection (loaded dynamically based on provider) -->
+                <div id="location-selection-wrapper" class="hidden">
+                    <label for="location_id" class="form-label">Location</label>
+                    <select id="location_id" 
+                            name="location_id" 
+                            <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
+                            class="form-input">
+                        <option value="">Select a provider first...</option>
+                    </select>
+                    <?php if ($isEditMode && $isPastAppointment): ?>
+                    <input type="hidden" name="location_id" value="<?= esc($appointment['location_id'] ?? '') ?>" />
+                    <?php endif; ?>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-xs align-middle">info</span>
+                        Where this appointment will take place
+                    </p>
+                </div>
+
                 <!-- Date & Time Selection -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="appointment_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Date <span class="text-red-500">*</span>
-                        </label>
+                        <label for="appointment_date" class="form-label required">Date</label>
                         <input type="date" 
                                id="appointment_date" 
                                name="appointment_date" 
                                value="<?= esc(old('appointment_date', $appointment['date'] ?? '')) ?>"
                                required 
                                <?= ($isEditMode && $isPastAppointment) ? 'disabled' : '' ?>
-                               class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 <?= ($isEditMode && $isPastAppointment) ? 'opacity-60 cursor-not-allowed' : '' ?>" />
+                               class="form-input" />
                         <?php if ($isEditMode && $isPastAppointment): ?>
                         <input type="hidden" name="appointment_date" value="<?= esc($appointment['date'] ?? '') ?>" />
                         <?php endif; ?>
@@ -444,9 +432,7 @@ $pageSubtitle = $isEditMode
                         </div>
                     </div>
                     <div>
-                        <label for="appointment_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Time <span class="text-red-500">*</span>
-                        </label>
+                        <label for="appointment_time" class="form-label required">Time</label>
                         <input type="hidden" 
                                id="appointment_time" 
                                name="appointment_time" 
@@ -495,13 +481,11 @@ $pageSubtitle = $isEditMode
                 <?php if ($isEditMode): ?>
                 <!-- Status (Edit mode only) -->
                 <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Status <span class="text-red-500">*</span>
-                    </label>
+                    <label for="status" class="form-label required">Status</label>
                     <select id="status" 
                             name="status" 
                             required 
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            class="form-input">
                         <option value="pending" <?= old('status', $appointment['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                         <option value="confirmed" <?= old('status', $appointment['status'] ?? '') === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
                         <option value="completed" <?= old('status', $appointment['status'] ?? '') === 'completed' ? 'selected' : '' ?>>Completed</option>
@@ -514,15 +498,13 @@ $pageSubtitle = $isEditMode
                 <!-- Notes -->
                 <?php if ($fieldConfig['notes']['display']): ?>
                 <div>
-                    <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Notes <?= $fieldConfig['notes']['required'] ? '<span class="text-red-500">*</span>' : '(Optional)' ?>
-                    </label>
+                    <label for="notes" class="form-label <?= $fieldConfig['notes']['required'] ? 'required' : '' ?>">Notes <?= $fieldConfig['notes']['required'] ? '' : '(Optional)' ?></label>
                     <textarea id="notes" 
                               name="notes" 
                               rows="4" 
                               <?= $fieldConfig['notes']['required'] ? 'required' : '' ?>
                               placeholder="Any special requests or information..."
-                              class="block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"><?= esc(old('notes', $appointment['notes'] ?? '')) ?></textarea>
+                              class="form-input"><?= esc(old('notes', $appointment['notes'] ?? '')) ?></textarea>
                 </div>
                 <?php endif; ?>
 
@@ -539,6 +521,9 @@ $pageSubtitle = $isEditMode
                         
                         <dt class="text-gray-600 dark:text-gray-400">Provider:</dt>
                         <dd id="summary-provider" class="font-medium text-gray-900 dark:text-gray-100">-</dd>
+                        
+                        <dt id="summary-location-label" class="text-gray-600 dark:text-gray-400 hidden">Location:</dt>
+                        <dd id="summary-location" class="font-medium text-gray-900 dark:text-gray-100 hidden">-</dd>
                         
                         <dt class="text-gray-600 dark:text-gray-400">Date & Time:</dt>
                         <dd id="summary-datetime" class="font-medium text-gray-900 dark:text-gray-100">-</dd>
@@ -599,6 +584,7 @@ function initAppointmentForm() {
     // Common elements
     const serviceSelect = document.getElementById('service_id');
     const providerSelect = document.getElementById('provider_id');
+    const locationSelect = document.getElementById('location_id');
     const dateInput = document.getElementById('appointment_date');
     const timeInput = document.getElementById('appointment_time');
     const summaryDiv = document.getElementById('appointment-summary');
@@ -610,16 +596,19 @@ function initAppointmentForm() {
     // Initialize time slots UI
     const currentAptId = isEditMode ? "<?= esc($appointment['id'] ?? $appointment['appointment_id'] ?? '') ?>" : null;
     const currentServiceId = "<?= esc(old('service_id', $appointment['service_id'] ?? '')) ?>";
+    const currentLocationId = "<?= esc(old('location_id', $appointment['location_id'] ?? '')) ?>";
     const currentTime = "<?= esc(old('appointment_time', $appointment['time'] ?? '')) ?>";
     
     if (window.initTimeSlotsUI) {
         window.initTimeSlotsUI({
             providerSelectId: 'provider_id',
             serviceSelectId: 'service_id',
+            locationSelectId: 'location_id',
             dateInputId: 'appointment_date',
             timeInputId: 'appointment_time',
             excludeAppointmentId: currentAptId,
             preselectServiceId: currentServiceId,
+            preselectLocationId: currentLocationId,
             initialTime: currentTime,
             onTimeSelected: isEditMode ? null : () => updateSummary()
         });
@@ -901,6 +890,18 @@ function initAppointmentForm() {
                 document.getElementById('summary-service').textContent = service.text.split(' - ')[0] || '-';
                 document.getElementById('summary-provider').textContent = provider.text.split(' - ')[0] || '-';
                 
+                // Location in summary
+                const locLabel = document.getElementById('summary-location-label');
+                const locValue = document.getElementById('summary-location');
+                if (locationSelect && locationSelect.value) {
+                    const locText = locationSelect.options[locationSelect.selectedIndex]?.text || '';
+                    if (locLabel) locLabel.classList.remove('hidden');
+                    if (locValue) { locValue.textContent = locText; locValue.classList.remove('hidden'); }
+                } else {
+                    if (locLabel) locLabel.classList.add('hidden');
+                    if (locValue) locValue.classList.add('hidden');
+                }
+                
                 if (date && time) {
                     const dt = new Date(date + 'T' + time);
                     const timeFormat = '<?= esc($localization['time_format'] ?? '12h') ?>';
@@ -931,6 +932,7 @@ function initAppointmentForm() {
 
         serviceSelect.addEventListener('change', updateSummary);
         dateInput.addEventListener('change', updateSummary);
+        if (locationSelect) locationSelect.addEventListener('change', updateSummary);
     }
 
     const escapeHtml = window.xsEscapeHtml;

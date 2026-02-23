@@ -38,15 +38,13 @@
                 <!-- Basic Information -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="form-group">
-                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                            Full Name <span class="text-red-500">*</span>
-                        </label>
+                        <label for="name" class="form-label required">Full Name</label>
                         <input type="text" 
                                id="name" 
                                name="name" 
                                value="<?= old('name') ?>"
                                required
-                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('name') ? 'border-red-500 dark:border-red-400' : '' ?>"
+                               class="form-input <?= $validation && $validation->hasError('name') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                placeholder="Enter full name">
                         <?php if ($validation && $validation->hasError('name')): ?>
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('name') ?></p>
@@ -54,15 +52,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                            Email Address <span class="text-red-500">*</span>
-                        </label>
+                        <label for="email" class="form-label required">Email Address</label>
                         <input type="email" 
                                id="email" 
                                name="email" 
                                value="<?= old('email') ?>"
                                required
-                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('email') ? 'border-red-500 dark:border-red-400' : '' ?>"
+                               class="form-input <?= $validation && $validation->hasError('email') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                placeholder="Enter email address">
                         <?php if ($validation && $validation->hasError('email')): ?>
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('email') ?></p>
@@ -72,14 +68,12 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="form-group">
-                        <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                            Phone Number
-                        </label>
+                        <label for="phone" class="form-label">Phone Number</label>
                         <input type="tel" 
                                id="phone" 
                                name="phone" 
                                value="<?= old('phone') ?>"
-                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('phone') ? 'border-red-500 dark:border-red-400' : '' ?>"
+                               class="form-input <?= $validation && $validation->hasError('phone') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                placeholder="Enter phone number">
                         <?php if ($validation && $validation->hasError('phone')): ?>
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('phone') ?></p>
@@ -87,13 +81,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                            User Role <span class="text-red-500">*</span>
-                        </label>
+                        <label for="role" class="form-label required">User Role</label>
                         <select id="role" 
                                 name="role" 
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('role') ? 'border-red-500 dark:border-red-400' : '' ?>">
+                                class="form-input <?= $validation && $validation->hasError('role') ? 'border-red-500 dark:border-red-400' : '' ?>">
                             <option value="">Select a role</option>
                             <?php foreach ($availableRoles as $roleOption): ?>
                                 <option value="<?= esc($roleOption) ?>" <?= old('role') === $roleOption ? 'selected' : '' ?>>
@@ -115,9 +107,7 @@
 
                     <!-- Provider Color Picker (Optional) -->
                     <div class="form-group provider-color-field hidden">
-                        <label for="color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                            Calendar Color <span class="text-gray-500 text-xs">(Optional)</span>
-                        </label>
+                        <label for="color" class="form-label">Calendar Color <span class="text-gray-500 text-xs">(Optional)</span></label>
                         <div class="flex items-center gap-3">
                             <input type="color" 
                                    id="color" 
@@ -165,16 +155,14 @@
                     <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4 transition-colors duration-300">Password Setup</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="form-group">
-                            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                                Password <span class="text-red-500">*</span>
-                            </label>
+                            <label for="password" class="form-label required">Password</label>
                             <div class="relative">
                                 <input type="password" 
                                        id="password" 
                                        name="password" 
                                        required
                                        minlength="8"
-                                       class="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('password') ? 'border-red-500 dark:border-red-400' : '' ?>"
+                                       class="form-input pr-12 <?= $validation && $validation->hasError('password') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                        placeholder="Enter password">
                                 <button type="button" 
                                         onclick="togglePassword('password')"
@@ -191,16 +179,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="password_confirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-                                Confirm Password <span class="text-red-500">*</span>
-                            </label>
+                            <label for="password_confirm" class="form-label required">Confirm Password</label>
                             <div class="relative">
                                 <input type="password" 
                                        id="password_confirm" 
                                        name="password_confirm" 
                                        required
                                        minlength="8"
-                                       class="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300 <?= $validation && $validation->hasError('password_confirm') ? 'border-red-500 dark:border-red-400' : '' ?>"
+                                       class="form-input pr-12 <?= $validation && $validation->hasError('password_confirm') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                        placeholder="Confirm password">
                                 <button type="button" 
                                         onclick="togglePassword('password_confirm')"

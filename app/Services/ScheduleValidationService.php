@@ -190,7 +190,10 @@ class ScheduleValidationService
     }
 
     /**
-     * Prepare schedule data for view display
+     * Prepare schedule data for view display.
+     *
+     * Returns time values in HH:MM 24-hour format suitable for native
+     * <input type="time"> elements.
      * 
      * @param array|null $source Source schedule data
      * @return array Prepared schedule with all days
@@ -221,10 +224,10 @@ class ScheduleValidationService
             $row = $source[$day];
             $prepared[$day] = [
                 'is_active' => $this->toBool($row['is_active'] ?? null),
-                'start_time' => $this->formatTimeForDisplay($row['start_time'] ?? ''),
-                'end_time' => $this->formatTimeForDisplay($row['end_time'] ?? ''),
-                'break_start' => $this->formatTimeForDisplay($row['break_start'] ?? ''),
-                'break_end' => $this->formatTimeForDisplay($row['break_end'] ?? ''),
+                'start_time' => $this->formatTimeForNativeInput($row['start_time'] ?? ''),
+                'end_time' => $this->formatTimeForNativeInput($row['end_time'] ?? ''),
+                'break_start' => $this->formatTimeForNativeInput($row['break_start'] ?? ''),
+                'break_end' => $this->formatTimeForNativeInput($row['break_end'] ?? ''),
             ];
         }
 
@@ -373,6 +376,21 @@ class ScheduleValidationService
         }
 
         return $this->localization->formatTimeForDisplay($time);
+    }
+
+    /**
+     * Format time for native <input type="time"> elements (HH:MM 24h).
+     *
+     * @param string|null $time Time in any accepted format
+     * @return string HH:MM string or empty string
+     */
+    protected function formatTimeForNativeInput(?string $time): string
+    {
+        if (!$time || trim($time) === '') {
+            return '';
+        }
+
+        return $this->localization->formatTimeForNativeInput($time);
     }
 
     /**

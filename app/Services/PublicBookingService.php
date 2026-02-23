@@ -166,7 +166,7 @@ class PublicBookingService
         ];
     }
 
-    public function getAvailableSlots(int $providerId, int $serviceId, string $date): array
+    public function getAvailableSlots(int $providerId, int $serviceId, string $date, ?int $locationId = null): array
     {
         $provider = $this->resolveProvider($providerId);
         $service = $this->resolveService($serviceId);
@@ -178,7 +178,9 @@ class PublicBookingService
             $date,
             $service['id'],
             $buffer,
-            $timezone
+            $timezone,
+            null,
+            $locationId
         );
 
         return array_map(function (array $slot) use ($timezone) {
@@ -198,7 +200,8 @@ class PublicBookingService
         int $providerId,
         int $serviceId,
         ?string $startDate = null,
-        int $days = 60
+        int $days = 60,
+        ?int $locationId = null
     ): array {
         return $this->availability->getCalendarAvailability(
             $providerId,
@@ -206,7 +209,8 @@ class PublicBookingService
             $startDate,
             $days,
             $this->localization->getTimezone(),
-            null
+            null,
+            $locationId
         );
     }
 
@@ -215,7 +219,8 @@ class PublicBookingService
         $provider = $this->resolveProvider((int) ($payload['provider_id'] ?? 0));
         $service = $this->resolveService((int) ($payload['service_id'] ?? 0));
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
-        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], null);
+        $locationId = !empty($payload['location_id']) ? (int) $payload['location_id'] : null;
+        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], null, $locationId);
 
         $customerId = $this->storeCustomer($payload);
         $token = $this->generateToken();
@@ -277,7 +282,8 @@ class PublicBookingService
         $provider = $this->resolveProvider($providerId);
         $service = $this->resolveService($serviceId);
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
-        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], (int) $appointment['id']);
+        $newLocationId = !empty($payload['location_id']) ? (int) $payload['location_id'] : null;
+        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], (int) $appointment['id'], $newLocationId);
 
         $customerId = $this->storeCustomer($payload, (int) $appointment['customer_id']);
         $newToken = $this->generateToken();
@@ -292,6 +298,17 @@ class PublicBookingService
             'public_token_expires_at' => null,
             'customer_id' => $customerId,
         ];
+
+        // Re-resolve location snapshot for the new date (may differ from original)
+        if ($newLocationId) {
+            $locationSnapshot = $this->locations->getLocationSnapshot($newLocationId);
+            if ($locationSnapshot['location_id'] !== null) {
+                $updatePayload['location_id'] = $locationSnapshot['location_id'];
+                $updatePayload['location_name'] = $locationSnapshot['location_name'];
+                $updatePayload['location_address'] = $locationSnapshot['location_address'];
+                $updatePayload['location_contact'] = $locationSnapshot['location_contact'];
+            }
+        }
 
         if (!$this->appointments->update((int) $appointment['id'], $updatePayload)) {
             throw new PublicBookingException('Unable to reschedule appointment. Please try again later.');
@@ -416,14 +433,15 @@ class PublicBookingService
         ];
     }
 
-    private function assertSlotAvailable(int $providerId, DateTimeImmutable $start, DateTimeImmutable $end, ?int $excludeAppointmentId): void
+    private function assertSlotAvailable(int $providerId, DateTimeImmutable $start, DateTimeImmutable $end, ?int $excludeAppointmentId, ?int $locationId = null): void
     {
         $result = $this->availability->isSlotAvailable(
             $providerId,
             $start->format('Y-m-d H:i:s'),
             $end->format('Y-m-d H:i:s'),
             $this->localization->getTimezone(),
-            $excludeAppointmentId
+            $excludeAppointmentId,
+            $locationId
         );
 
         if (!$result['available']) {
@@ -608,14 +626,24 @@ class PublicBookingService
         $end = new DateTimeImmutable($appointment['end_time'], $timezone);
         $provider = $this->users->find((int) $appointment['provider_id']);
         $service = $this->services->find((int) $appointment['service_id']);
-        $customerEmail = $appointment['customer_email'] ?? null;
-        $customerPhone = $appointment['customer_phone'] ?? null;
 
-        if ((!$customerEmail || !$customerPhone) && !empty($appointment['customer_id'])) {
+        // Resolve full customer record for field population
+        $customerData = [
+            'first_name' => null,
+            'last_name'  => null,
+            'email'      => $appointment['customer_email'] ?? null,
+            'phone'      => $appointment['customer_phone'] ?? null,
+            'address'    => null,
+        ];
+
+        if (!empty($appointment['customer_id'])) {
             $customer = $this->customers->find((int) $appointment['customer_id']);
             if ($customer) {
-                $customerEmail ??= $customer['email'] ?? null;
-                $customerPhone ??= $customer['phone'] ?? null;
+                $customerData['first_name'] = $customer['first_name'] ?? null;
+                $customerData['last_name']  = $customer['last_name'] ?? null;
+                $customerData['email']      = $customerData['email'] ?? $customer['email'] ?? null;
+                $customerData['phone']      = $customerData['phone'] ?? $customer['phone'] ?? null;
+                $customerData['address']    = $customer['address'] ?? null;
             }
         }
 
@@ -641,19 +669,21 @@ class PublicBookingService
                 'price' => (float) ($service['price'] ?? 0),
                 'formattedPrice' => $this->localization->formatCurrency($service['price'] ?? 0),
             ] : null,
-            'customer' => [
-                'email' => $customerEmail,
-                'phone' => $customerPhone,
-            ],
+            'customer' => $customerData,
+            // Location snapshot (may be null for legacy bookings)
+            'location_id' => !empty($appointment['location_id']) ? (int) $appointment['location_id'] : null,
+            'location_name' => $appointment['location_name'] ?? null,
+            'location_address' => $appointment['location_address'] ?? null,
+            'location_contact' => $appointment['location_contact'] ?? null,
         ];
     }
 
     private function formatSlotRange(DateTimeImmutable $start, DateTimeImmutable $end): string
     {
-        $dateLabel = $start->format('D, M j');
-        $startLabel = $start->format('g:i A');
-        $endLabel = $end->format('g:i A');
-        return sprintf('%s %s %s - %s', $dateLabel, 'at', $startLabel, $endLabel);
+        $dateLabel  = $start->format('D, M j');
+        $startLabel = $this->localization->formatTimeForDisplay($start->format('H:i:s'));
+        $endLabel   = $this->localization->formatTimeForDisplay($end->format('H:i:s'));
+        return sprintf('%s at %s – %s', $dateLabel, $startLabel, $endLabel);
     }
 
     private function fetchAppointmentByToken(string $token): array

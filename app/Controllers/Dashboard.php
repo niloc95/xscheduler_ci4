@@ -152,6 +152,7 @@ class Dashboard extends BaseController
                     'total' => 0,
                     'upcoming' => 0,
                     'pending' => 0,
+                    'confirmed' => 0,
                     'cancelled' => 0
                 ],
                 'schedule' => [],

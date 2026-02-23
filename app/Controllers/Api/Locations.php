@@ -17,6 +17,8 @@
  * PUT    /api/locations/:id               : Update location
  * DELETE /api/locations/:id               : Delete location
  * GET    /api/locations/:id/providers     : Get providers at location
+ * GET    /api/locations/for-date          : Available locations for provider+date
+ * GET    /api/locations/available-dates   : Dates when a location is available
  * 
  * QUERY PARAMETERS (GET /api/locations):
  * -----------------------------------------------------------------------------
@@ -28,27 +30,25 @@
  * -----------------------------------------------------------------------------
  * {
  *   "id": 1,
- *   "name": "Main Office",
- *   "address": "123 Main St",
- *   "city": "Cape Town",
- *   "postal_code": "8001",
- *   "phone": "+27 21 555 1234",
+ *   "provider_id": 2,
+ *   "name": "Melrose Practice",
+ *   "address": "21 Delta Rd, Eltonhill, JHB 2196",
+ *   "contact_number": "+27 11 555 1234",
+ *   "is_primary": true,
  *   "is_active": true,
- *   "days": [
- *     { "day_of_week": 1, "start_time": "09:00", "end_time": "17:00" }
- *   ]
+ *   "days": [1, 2, 3]
  * }
  * 
  * PURPOSE:
  * -----------------------------------------------------------------------------
- * Supports multi-location businesses:
+ * Supports multi-location providers:
  * - Define physical locations/branches
- * - Set operating hours per location
- * - Assign providers to locations
+ * - Assign working days per location
+ * - Working hours remain global to the provider
  * - Location-based booking flow
  * 
  * @see         app/Models/LocationModel.php for data layer
- * @see         app/Views/settings/locations.php for admin UI
+ * @see         app/Views/user-management/components/provider-locations.php for admin UI
  * @package     App\Controllers\Api
  * @extends     BaseApiController
  * @author      WebSchedulr Team
@@ -154,8 +154,9 @@ class Locations extends BaseApiController
         try {
             $data = $this->request->getJSON(true) ?? $this->request->getPost();
             
-            // Validate required fields
-            $required = ['provider_id', 'name', 'address', 'contact_number'];
+            // Validate required fields — only provider_id and name are mandatory;
+            // address and contact_number are optional on creation.
+            $required = ['provider_id', 'name'];
             foreach ($required as $field) {
                 if (empty($data[$field])) {
                     return $this->response->setStatusCode(400)->setJSON([
@@ -163,6 +164,19 @@ class Locations extends BaseApiController
                         'message' => "Field '{$field}' is required",
                     ]);
                 }
+            }
+
+            // Default optional fields to empty strings
+            $data['address'] = $data['address'] ?? '';
+            $data['contact_number'] = $data['contact_number'] ?? '';
+
+            // Enforce max locations per provider (Location A + Location B)
+            $existingCount = count($this->locationModel->getProviderLocations((int) $data['provider_id']));
+            if ($existingCount >= \App\Models\LocationModel::MAX_LOCATIONS_PER_PROVIDER) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Maximum of ' . \App\Models\LocationModel::MAX_LOCATIONS_PER_PROVIDER . ' locations per provider allowed',
+                ]);
             }
             
             $days = $data['days'] ?? [];
@@ -220,7 +234,7 @@ class Locations extends BaseApiController
             
             if ($days !== null) {
                 $this->locationModel->updateWithDays($id, $data, $days);
-            } else {
+            } elseif (!empty($data)) {
                 $this->locationModel->update($id, $data);
             }
             

@@ -119,7 +119,7 @@ export class DayView {
         
         const customerName = appointment.name || appointment.customerName || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
-        const location = appointment.location || '';
+        const location = appointment.locationName || '';
         
         // Format time using localization settings
         const is24Hour = this.settings?.getTimeFormat?.() === '24h';

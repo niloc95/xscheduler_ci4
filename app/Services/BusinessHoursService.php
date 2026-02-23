@@ -109,12 +109,13 @@ class BusinessHoursService
         // Check if start time is within business hours
         $requestedTime = $startTime->format('H:i:s');
         if ($requestedTime < $hours['start_time'] || $requestedTime >= $hours['end_time']) {
-            $startFormatted = date('g:i A', strtotime($hours['start_time']));
-            $endFormatted = date('g:i A', strtotime($hours['end_time']));
+            $loc = new \App\Services\LocalizationSettingsService();
+            $startFormatted = $loc->formatTimeForDisplay($hours['start_time']);
+            $endFormatted   = $loc->formatTimeForDisplay($hours['end_time']);
             return [
-                'valid' => false,
+                'valid'  => false,
                 'reason' => "The requested time is outside our business hours ({$startFormatted} - {$endFormatted}). Please choose a different time.",
-                'hours' => $hours
+                'hours'  => $hours
             ];
         }
         
@@ -205,11 +206,11 @@ class BusinessHoursService
         if (empty($hours['start_time']) || empty($hours['end_time'])) {
             return 'Closed';
         }
-        
-        $startFormatted = date('g:i A', strtotime($hours['start_time']));
-        $endFormatted = date('g:i A', strtotime($hours['end_time']));
-        
-        return "{$startFormatted} - {$endFormatted}";
+
+        $loc = new LocalizationSettingsService();
+        return $loc->formatTimeForDisplay($hours['start_time'])
+            . ' - '
+            . $loc->formatTimeForDisplay($hours['end_time']);
     }
 
     /**

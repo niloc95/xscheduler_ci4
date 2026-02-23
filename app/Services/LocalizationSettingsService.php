@@ -207,6 +207,26 @@ class LocalizationSettingsService
     }
 
     /**
+     * Format a stored time for use in native <input type="time"> elements.
+     *
+     * Always returns HH:MM in 24-hour format (the value format required by
+     * the HTML time input), regardless of the current localization setting.
+     *
+     * @param string|null $value Raw or stored time value
+     * @return string HH:MM string or empty string if invalid
+     */
+    public function formatTimeForNativeInput(?string $value): string
+    {
+        $normalised = $this->normaliseTimeInput($value);
+        if ($normalised === null) {
+            return '';
+        }
+
+        // normaliseTimeInput returns HH:MM:SS — strip seconds
+        return substr($normalised, 0, 5);
+    }
+
+    /**
      * Normalise an incoming time string to database format (HH:MM:SS).
      */
     public function normaliseTimeInput(?string $value): ?string

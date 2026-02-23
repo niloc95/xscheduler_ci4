@@ -23,14 +23,14 @@
  * 
  * KEY METHODS:
  * -----------------------------------------------------------------------------
- * - getAvailableSlots(providerId, date, serviceId)
- *   Returns array of bookable time slots
+ * - getAvailableSlots(providerId, date, serviceId, ..., locationId)
+ *   Returns array of bookable time slots (optionally filtered by location)
  * 
- * - isSlotAvailable(providerId, start, end)
- *   Check if specific time range is available
+ * - isSlotAvailable(providerId, start, end, ..., locationId)
+ *   Check if specific time range is available (optionally for a location)
  * 
- * - getCalendarAvailability(providerId, startDate, endDate)
- *   Get availability for date range (calendar view)
+ * - getCalendarAvailability(providerId, startDate, endDate, ..., locationId)
+ *   Get availability for date range (optionally filtered by location)
  * 
  * - hasConflict(providerId, start, end, excludeId)
  *   Check for conflicts with existing appointments
@@ -57,6 +57,7 @@ namespace App\Services;
 
 use App\Models\AppointmentModel;
 use App\Models\BusinessHourModel;
+use App\Models\LocationModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\BlockedTimeModel;
 use App\Models\ServiceModel;
@@ -85,6 +86,7 @@ class AvailabilityService
 {
     private AppointmentModel $appointmentModel;
     private BusinessHourModel $businessHourModel;
+    private LocationModel $locationModel;
     private ProviderScheduleModel $providerScheduleModel;
     private BlockedTimeModel $blockedTimeModel;
     private ServiceModel $serviceModel;
@@ -97,6 +99,7 @@ class AvailabilityService
     {
         $this->appointmentModel = new AppointmentModel();
         $this->businessHourModel = new BusinessHourModel();
+        $this->locationModel = new LocationModel();
         $this->providerScheduleModel = new ProviderScheduleModel();
         $this->blockedTimeModel = new BlockedTimeModel();
         $this->serviceModel = new ServiceModel();
@@ -112,6 +115,8 @@ class AvailabilityService
      * @param int $serviceId Service ID (determines slot duration)
      * @param int $bufferMinutes Buffer time between appointments (0, 15, or 30)
      * @param string $timezone Timezone for the calculation (default: system timezone)
+     * @param int|null $excludeAppointmentId Appointment to exclude (for reschedule)
+     * @param int|null $locationId Location ID — when set, verify location operates on this day
      * @return array Array of available slots with start and end times
      */
     public function getAvailableSlots(
@@ -120,7 +125,8 @@ class AvailabilityService
         int $serviceId,
         int $bufferMinutes = 0,
         ?string $timezone = null,
-        ?int $excludeAppointmentId = null
+        ?int $excludeAppointmentId = null,
+        ?int $locationId = null
     ): array {
         $timezone = $timezone ?? $this->localizationService->getTimezone();
         $tz = new DateTimeZone($timezone);
@@ -131,6 +137,17 @@ class AvailabilityService
         if ($this->isDateBlocked($date)) {
             log_message('info', '[AvailabilityService] Date is globally blocked');
             return [];
+        }
+
+        // Step 1b: If a location is specified, check that the location operates on this day
+        if ($locationId !== null) {
+            $dateObj = new \DateTime($date);
+            $dayInt = (int) $dateObj->format('w'); // 0=Sun … 6=Sat
+            $locationDays = $this->locationModel->getLocationDays($locationId);
+            if (!in_array($dayInt, $locationDays, true)) {
+                log_message('info', '[AvailabilityService] Location ' . $locationId . ' does not operate on day ' . $dayInt);
+                return [];
+            }
         }
         
         // Step 2: Get service duration
@@ -186,6 +203,7 @@ class AvailabilityService
      * @param string $endTime End time in Y-m-d H:i:s format
      * @param string $timezone Timezone for the check
      * @param int|null $excludeAppointmentId Appointment ID to exclude (for updates)
+     * @param int|null $locationId Location ID — when set, verify location operates on this day
      * @return array ['available' => bool, 'conflicts' => array, 'reason' => string]
      */
     public function isSlotAvailable(
@@ -193,7 +211,8 @@ class AvailabilityService
         string $startTime,
         string $endTime,
         string $timezone = 'UTC',
-        ?int $excludeAppointmentId = null
+        ?int $excludeAppointmentId = null,
+        ?int $locationId = null
     ): array {
         $start = new DateTime($startTime, new DateTimeZone($timezone));
         $end = new DateTime($endTime, new DateTimeZone($timezone));
@@ -206,6 +225,19 @@ class AvailabilityService
                 'conflicts' => [],
                 'reason' => 'Date is blocked (holiday/closure)'
             ];
+        }
+
+        // Check location operating day (if location specified)
+        if ($locationId !== null) {
+            $dayInt = (int) $start->format('w'); // 0=Sun … 6=Sat
+            $locationDays = $this->locationModel->getLocationDays($locationId);
+            if (!in_array($dayInt, $locationDays, true)) {
+                return [
+                    'available' => false,
+                    'conflicts' => [],
+                    'reason' => 'Location does not operate on this day'
+                ];
+            }
         }
         
         // Check provider working hours
@@ -638,7 +670,8 @@ class AvailabilityService
         ?string $startDate = null,
         int $days = 60,
         ?string $timezone = null,
-        ?int $excludeAppointmentId = null
+        ?int $excludeAppointmentId = null,
+        ?int $locationId = null
     ): array {
         $timezone = $timezone ?? $this->localizationService->getTimezone();
         $tz = new DateTimeZone($timezone);
@@ -653,14 +686,15 @@ class AvailabilityService
         $end = $start->modify('+' . ($days - 1) . ' days');
 
         $cacheKey = sprintf(
-            'availability_calendar_%d_%d_%s_%d_%s_%d_%s',
+            'availability_calendar_%d_%d_%s_%d_%s_%d_%s_%s',
             $providerId,
             $serviceId,
             $start->format('Ymd'),
             $days,
             str_replace(['/', '\\'], '_', $timezone),
             $bufferMinutes,
-            $excludeAppointmentId ? (string) $excludeAppointmentId : 'none'
+            $excludeAppointmentId ? (string) $excludeAppointmentId : 'none',
+            $locationId ? (string) $locationId : 'all'
         );
 
         $cacheTtl = 300; // 5 minutes
@@ -684,7 +718,8 @@ class AvailabilityService
                 $serviceId,
                 $bufferMinutes,
                 $timezone,
-                $excludeAppointmentId
+                $excludeAppointmentId,
+                $locationId
             );
 
             if (empty($slots)) {

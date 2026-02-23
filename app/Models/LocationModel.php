@@ -45,7 +45,7 @@
  * - getPrimaryLocation(id)        : Get provider's main location
  * 
  * @see         app/Controllers/Api/Locations.php for API
- * @see         app/Views/settings/locations.php for admin UI
+ * @see         app/Views/user-management/components/provider-locations.php for admin UI
  * @package     App\Models
  * @extends     BaseModel
  * @author      WebSchedulr Team
@@ -70,6 +70,38 @@ use App\Models\BaseModel;
  */
 class LocationModel extends BaseModel
 {
+    /**
+     * Maximum locations allowed per provider (Location A + Location B).
+     */
+    public const MAX_LOCATIONS_PER_PROVIDER = 2;
+
+    /**
+     * Map day-of-week integers (xs_location_days) to schedule day names (xs_provider_schedules).
+     * Sunday = 0 (JS Date convention) through Saturday = 6.
+     */
+    public const DAY_INT_TO_NAME = [
+        0 => 'sunday',
+        1 => 'monday',
+        2 => 'tuesday',
+        3 => 'wednesday',
+        4 => 'thursday',
+        5 => 'friday',
+        6 => 'saturday',
+    ];
+
+    /**
+     * Reverse map: schedule day names → integer (for bridging xs_provider_schedules → xs_location_days).
+     */
+    public const DAY_NAME_TO_INT = [
+        'sunday'    => 0,
+        'monday'    => 1,
+        'tuesday'   => 2,
+        'wednesday' => 3,
+        'thursday'  => 4,
+        'friday'    => 5,
+        'saturday'  => 6,
+    ];
+
     protected $table            = 'xs_locations';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
@@ -84,19 +116,13 @@ class LocationModel extends BaseModel
     protected $validationRules = [
         'provider_id'    => 'required|integer',
         'name'           => 'required|min_length[2]|max_length[255]',
-        'address'        => 'required|min_length[5]',
-        'contact_number' => 'required|min_length[5]|max_length[50]',
+        'address'        => 'permit_empty|max_length[500]',
+        'contact_number' => 'permit_empty|max_length[50]',
     ];
 
     protected $validationMessages = [
         'name' => [
             'required' => 'Location name is required',
-        ],
-        'address' => [
-            'required' => 'Physical address is required',
-        ],
-        'contact_number' => [
-            'required' => 'Contact number is required',
         ],
     ];
 
@@ -138,13 +164,12 @@ class LocationModel extends BaseModel
      */
     public function getLocationDays(int $locationId): array
     {
-        $db = \Config\Database::connect();
-        $result = $db->table('xs_location_days')
+        $result = $this->db->table('xs_location_days')
                      ->where('location_id', $locationId)
                      ->get()
                      ->getResultArray();
         
-        return array_column($result, 'day_of_week');
+        return array_map('intval', array_column($result, 'day_of_week'));
     }
 
     /**
@@ -155,10 +180,8 @@ class LocationModel extends BaseModel
      */
     public function setLocationDays(int $locationId, array $days): bool
     {
-        $db = \Config\Database::connect();
-        
         // Remove existing days
-        $db->table('xs_location_days')
+        $this->db->table('xs_location_days')
            ->where('location_id', $locationId)
            ->delete();
         
@@ -176,7 +199,7 @@ class LocationModel extends BaseModel
             }
             
             if (!empty($insertData)) {
-                $db->table('xs_location_days')->insertBatch($insertData);
+                $this->db->table('xs_location_days')->insertBatch($insertData);
             }
         }
         
@@ -206,9 +229,7 @@ class LocationModel extends BaseModel
      */
     public function getLocationsForDay(int $providerId, int $dayOfWeek): array
     {
-        $db = \Config\Database::connect();
-        
-        return $db->table('xs_locations l')
+        return $this->db->table('xs_locations l')
                   ->select('l.*')
                   ->join('xs_location_days ld', 'ld.location_id = l.id')
                   ->where('l.provider_id', $providerId)
@@ -290,12 +311,16 @@ class LocationModel extends BaseModel
      */
     public function createWithDays(array $data, array $days): int|false
     {
-        $db = \Config\Database::connect();
-        $db->transStart();
+        $this->db->transStart();
         
         $locationId = $this->insert($data);
         
-        if ($locationId && !empty($days)) {
+        if (!$locationId) {
+            $this->db->transComplete();
+            return false;
+        }
+        
+        if (!empty($days)) {
             $this->setLocationDays($locationId, $days);
         }
         
@@ -308,9 +333,9 @@ class LocationModel extends BaseModel
             $this->update($locationId, ['is_primary' => 1]);
         }
         
-        $db->transComplete();
+        $this->db->transComplete();
         
-        return $db->transStatus() ? $locationId : false;
+        return $this->db->transStatus() ? $locationId : false;
     }
 
     /**
@@ -318,15 +343,18 @@ class LocationModel extends BaseModel
      */
     public function updateWithDays(int $locationId, array $data, array $days): bool
     {
-        $db = \Config\Database::connect();
-        $db->transStart();
+        $this->db->transStart();
         
-        $this->update($locationId, $data);
+        // Only call update() when there are actual field changes;
+        // a days-only request sends $data = [] after stripping 'days'/'id'/'provider_id'.
+        if (!empty($data)) {
+            $this->update($locationId, $data);
+        }
         $this->setLocationDays($locationId, $days);
         
-        $db->transComplete();
+        $this->db->transComplete();
         
-        return $db->transStatus();
+        return $this->db->transStatus();
     }
 
     /**

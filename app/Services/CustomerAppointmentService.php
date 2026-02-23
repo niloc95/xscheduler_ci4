@@ -64,6 +64,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Services\LocalizationSettingsService;
 
 /**
  * Customer Appointment History Service
@@ -454,11 +455,13 @@ class CustomerAppointmentService
             $appointment['duration_min'] = (int) (($endTime - $startTime) / 60);
         }
 
-        // Add human-readable date/time
+        // Add human-readable date/time using app localization settings
         if ($startTime) {
-            $appointment['date_formatted'] = date('l, F j, Y', $startTime);
-            $appointment['time_formatted'] = date('g:i A', $startTime);
-            $appointment['datetime_formatted'] = date('M j, Y \a\t g:i A', $startTime);
+            $loc = new LocalizationSettingsService();
+            $timeFormatted = $loc->formatTimeForDisplay(date('H:i:s', $startTime));
+            $appointment['date_formatted']     = date('l, F j, Y', $startTime);
+            $appointment['time_formatted']     = $timeFormatted;
+            $appointment['datetime_formatted'] = date('M j, Y', $startTime) . ' at ' . $timeFormatted;
             $appointment['is_past'] = $startTime < $now;
             $appointment['is_today'] = date('Y-m-d', $startTime) === date('Y-m-d');
         }

@@ -263,7 +263,7 @@
                 </div>
             <?php else: ?>
                 <div class="space-y-6">
-                    <form action="<?= site_url('services/categories') ?>" method="post" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
+                    <form id="quickCategoryForm" action="<?= site_url('services/categories') ?>" method="post" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
                         <?= csrf_field() ?>
                         <input type="hidden" name="active" value="1" />
                         <div class="flex-1">
@@ -282,6 +282,8 @@
                         </div>
                     </form>
 
+                    <div id="quickAddMsg" class="hidden"></div>
+
                     <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900/40">
@@ -292,7 +294,7 @@
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody id="categoriesTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
                                 <?php if (!empty($categories)): ?>
                                     <?php foreach ($categories as $category): ?>
                                         <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
@@ -325,7 +327,7 @@
                                                     </a>
 
                                                     <?php if (!empty($category['active'])): ?>
-                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
+                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
                                                             <?= csrf_field() ?>
                                                             <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">
                                                                 <span class="material-symbols-outlined text-sm">pause</span>
@@ -333,7 +335,7 @@
                                                             </button>
                                                         </form>
                                                     <?php else: ?>
-                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" onsubmit="return confirm('Activate this category?');">
+                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Activate this category?');">
                                                             <?= csrf_field() ?>
                                                             <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
                                                                 <span class="material-symbols-outlined text-sm">play_arrow</span>
@@ -342,7 +344,7 @@
                                                         </form>
                                                     <?php endif; ?>
 
-                                                    <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
+                                                    <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
                                                         <?= csrf_field() ?>
                                                         <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                                                             <span class="material-symbols-outlined text-sm">delete</span>
@@ -367,4 +369,123 @@
             <?php endif; ?>
         </div>
     </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(function () {
+    var form = document.getElementById('quickCategoryForm');
+    if (!form || form.dataset.initialized === 'true') return;
+    form.dataset.initialized = 'true';
+
+    var tbody = document.getElementById('categoriesTableBody');
+    var msg   = document.getElementById('quickAddMsg');
+
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function showMsg(text, isError) {
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = isError
+            ? 'mt-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200'
+            : 'mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200';
+        setTimeout(function () { if (msg) msg.classList.add('hidden'); }, 4000);
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
+    function getCsrfName() {
+        var inp = form.querySelector('input[type="hidden"][name]');
+        return inp ? inp.name : 'csrf_test_name';
+    }
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var fd = new FormData(form);
+        var nameVal = String(fd.get('name') || '').trim();
+        if (!nameVal) return;
+
+        var btn = form.querySelector('[type="submit"]');
+        if (btn) { btn.disabled = true; }
+
+        try {
+            var res = await fetch(form.action, {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            var data = await res.json();
+
+            if (data && data.success) {
+                var id          = data.id;
+                var displayName = data.name || nameVal;
+                var color       = String(fd.get('color') || '#3B82F6');
+                var baseUrl     = '<?= rtrim(base_url(), '/') ?>/';
+                var csrfName    = getCsrfName();
+                var csrfValue   = getCsrfToken();
+
+                var row = document.createElement('tr');
+                row.id        = 'cat-row-' + id;
+                row.className = 'transition hover:bg-gray-50 dark:hover:bg-gray-900/40';
+                row.innerHTML =
+                    '<td class="px-6 py-4">' +
+                        '<div class="flex items-start gap-3">' +
+                            '<span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" style="background-color:' + esc(color) + '"></span>' +
+                            '<div><p class="text-sm font-semibold text-gray-900 dark:text-gray-100">' + esc(displayName) + '</p></div>' +
+                        '</div>' +
+                    '</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">0</td>' +
+                    '<td class="px-6 py-4 whitespace-nowrap">' +
+                        '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">Active</span>' +
+                    '</td>' +
+                    '<td class="px-6 py-4">' +
+                        '<div class="flex flex-wrap items-center justify-end gap-2">' +
+                            '<a href="' + esc(baseUrl) + 'services/categories/edit/' + id + '" class="btn btn-secondary btn-sm">' +
+                                '<span class="material-symbols-outlined text-sm">edit</span>Edit' +
+                            '</a>' +
+                            '<form action="' + esc(baseUrl) + 'services/categories/' + id + '/deactivate" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm(\'Deactivate this category? Services will remain but marked inactive.\')">' +
+                                '<input type="hidden" name="' + esc(csrfName) + '" value="' + esc(csrfValue) + '">' +
+                                '<button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">' +
+                                    '<span class="material-symbols-outlined text-sm">pause</span>Deactivate' +
+                                '</button>' +
+                            '</form>' +
+                            '<form action="' + esc(baseUrl) + 'services/categories/' + id + '/delete" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm(\'Delete this category? Any linked services will become uncategorized.\')">' +
+                                '<input type="hidden" name="' + esc(csrfName) + '" value="' + esc(csrfValue) + '">' +
+                                '<button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">' +
+                                    '<span class="material-symbols-outlined text-sm">delete</span>Delete' +
+                                '</button>' +
+                            '</form>' +
+                        '</div>' +
+                    '</td>';
+
+                // Remove "no categories yet" placeholder row if present
+                var placeholder = tbody ? tbody.querySelector('td[colspan="4"]') : null;
+                if (placeholder) { placeholder.closest('tr').remove(); }
+
+                if (tbody) { tbody.insertBefore(row, tbody.firstChild); }
+
+                form.reset();
+                showMsg('Category "' + esc(displayName) + '" created successfully.', false);
+            } else {
+                showMsg((data && (data.error || data.message)) || 'Failed to create category.', true);
+            }
+        } catch (err) {
+            showMsg('Error: ' + err.message, true);
+        } finally {
+            if (btn) { btn.disabled = false; }
+        }
+    });
+}());
+</script>
 <?= $this->endSection() ?>

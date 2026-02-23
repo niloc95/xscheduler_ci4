@@ -117,6 +117,23 @@ function initializeComponents() {
     prefillAppointmentForm();
 }
 
+/**
+ * Global password-visibility toggle.
+ * Used by user-management create/edit forms.
+ */
+window.togglePassword = function(fieldId) {
+    var field = document.getElementById(fieldId);
+    var icon = document.getElementById(fieldId + '-icon');
+    if (!field || !icon) return;
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.textContent = 'visibility_off';
+    } else {
+        field.type = 'password';
+        icon.textContent = 'visibility';
+    }
+};
+
 // Initialize on DOM ready (initial page load)
 document.addEventListener('DOMContentLoaded', function() {
     initializeComponents();
@@ -126,7 +143,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Re-initialize after SPA navigation
 document.addEventListener('spa:navigated', function(e) {
     initializeComponents();
-    refreshAppointmentStats();
+    // Only refresh stats on pages that have dashboard stat elements
+    if (document.getElementById('upcomingCount') || document.getElementById('completedCount')) {
+        refreshAppointmentStats();
+    }
+
 });
 
 if (typeof window !== 'undefined') {

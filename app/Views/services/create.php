@@ -20,7 +20,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-            <form id="createServiceForm" action="/services/store" method="post" class="card card-spacious">
+            <form id="createServiceForm" action="<?= base_url('services/store') ?>" method="post" class="card card-spacious">
                 <?= csrf_field() ?>
                 <div class="card-header flex-col items-start gap-2">
                     <h2 class="card-title text-xl">Service Details</h2>
@@ -66,18 +66,19 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create Category</h3>
         <form id="createCategoryForm">
+            <?= csrf_field() ?>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                    <input type="text" name="new_category_name" required class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" required class="form-input" />
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <textarea name="new_category_description" rows="2" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"></textarea>
+                    <label class="form-label">Description</label>
+                    <textarea name="description" rows="2" class="form-input"></textarea>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-                    <input type="color" name="new_category_color" value="#3B82F6" class="mt-1 h-10 w-16 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
+                    <label class="form-label">Color</label>
+                    <input type="color" name="color" value="#3B82F6" class="mt-1 h-10 w-16 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700" />
                 </div>
             </div>
             <div class="mt-6 flex justify-end space-x-3">
@@ -108,7 +109,6 @@
   const form = document.getElementById('createServiceForm');
   if (!form || form.dataset.initialized === 'true') return;
   form.dataset.initialized = 'true';
-  // (original reference kept below for element lookups)
   void form;
   const categorySelect = document.getElementById('categorySelect');
   const categoryModal = document.getElementById('categoryModal');
@@ -120,76 +120,80 @@
   const resultMessage = document.getElementById('resultMessage');
   const closeResultModal = document.getElementById('closeResultModal');
 
-  function show(el) { el.classList.remove('hidden'); el.classList.add('flex'); }
-  function hide(el) { el.classList.add('hidden'); el.classList.remove('flex'); }
+  function show(el) { if (el) { el.classList.remove('hidden'); el.classList.add('flex'); } }
+  function hide(el) { if (el) { el.classList.add('hidden'); el.classList.remove('flex'); } }
 
-  openCategoryModal.addEventListener('click', () => show(categoryModal));
-  cancelCategoryModal.addEventListener('click', () => hide(categoryModal));
+  if (openCategoryModal) openCategoryModal.addEventListener('click', () => show(categoryModal));
+  if (cancelCategoryModal) cancelCategoryModal.addEventListener('click', () => hide(categoryModal));
 
-  createCategoryForm.addEventListener('submit', async (e) => {
+  if (createCategoryForm) createCategoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(createCategoryForm);
     try {
-            const res = await fetch('<?= base_url('services/categories') ?>', {
+      const res = await fetch('<?= base_url('services/categories') ?>', {
         method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: new URLSearchParams({
-          name: fd.get('new_category_name'),
-          description: fd.get('new_category_description'),
-          color: fd.get('new_category_color') || '#3B82F6',
-        })
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        body: fd
       });
       const data = await res.json();
       if (data && data.success) {
         const opt = document.createElement('option');
         opt.value = data.id;
-        opt.textContent = data.name;
-        categorySelect.appendChild(opt);
-        categorySelect.value = String(data.id);
+        opt.textContent = data.name || fd.get('name');
+        if (categorySelect) {
+          categorySelect.appendChild(opt);
+          categorySelect.value = String(data.id);
+        }
         hide(categoryModal);
         return;
       }
       throw new Error((data && data.error) || 'Could not create category');
     } catch (err) {
-      resultTitle.textContent = 'Category error';
-      resultMessage.textContent = err.message;
+      if (resultTitle) resultTitle.textContent = 'Category error';
+      if (resultMessage) resultMessage.textContent = err.message;
       show(resultModal);
     }
   });
 
+  let lastSubmitSuccess = false;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    lastSubmitSuccess = false;
     const fd = new FormData(form);
     try {
-            const res = await fetch('<?= base_url('services/store') ?>', {
+      const res = await fetch('<?= base_url('services/store') ?>', {
         method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         body: fd
       });
       const data = await res.json();
       if (data && data.success) {
-        resultTitle.textContent = 'Service created';
-        resultMessage.textContent = 'Your service was saved successfully.';
+        lastSubmitSuccess = true;
+        if (resultTitle) resultTitle.textContent = 'Service created';
+        if (resultMessage) resultMessage.textContent = 'Your service was saved successfully.';
         show(resultModal);
       } else {
-        resultTitle.textContent = 'Could not save service';
-        resultMessage.textContent = (data && (data.error || (data.details && JSON.stringify(data.details)))) || 'Unknown error.';
+        if (resultTitle) resultTitle.textContent = 'Could not save service';
+        if (resultMessage) resultMessage.textContent = (data && (data.error || data.message || (data.details && JSON.stringify(data.details)))) || 'Unknown error.';
         show(resultModal);
       }
     } catch (err) {
-      resultTitle.textContent = 'Network error';
-      resultMessage.textContent = err.message;
+      if (resultTitle) resultTitle.textContent = 'Network error';
+      if (resultMessage) resultMessage.textContent = err.message;
       show(resultModal);
     }
   });
 
-  closeResultModal.addEventListener('click', () => {
+  if (closeResultModal) closeResultModal.addEventListener('click', () => {
     hide(resultModal);
-    const url = '<?= base_url('/services') ?>';
-    if (window.xsSPA) {
-      window.xsSPA.navigate(url);
-    } else {
-      window.location.href = url;
+    if (lastSubmitSuccess) {
+      const url = '<?= base_url('/services') ?>';
+      if (window.xsSPA) {
+        window.xsSPA.navigate(url);
+      } else {
+        window.location.href = url;
+      }
     }
   });
 })();

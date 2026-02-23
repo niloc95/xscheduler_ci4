@@ -136,11 +136,19 @@ class Appointments extends BaseController
             ->orderBy('name', 'ASC')
             ->findAll();
         
+        // Get ALL active locations for filter dropdown
+        $locationModel = new \App\Models\LocationModel();
+        $allLocations = $locationModel
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
         // Get current filter values from request
         $currentFilters = [
             'status' => $this->request->getGet('status') ?? '',
             'provider_id' => $this->request->getGet('provider_id') ?? '',
             'service_id' => $this->request->getGet('service_id') ?? '',
+            'location_id' => $this->request->getGet('location_id') ?? '',
         ];
         
         // Get real stats from database
@@ -156,6 +164,7 @@ class Appointments extends BaseController
             'activeProviders' => $activeProviders,
             'allProviders' => $allProviders,
             'allServices' => $allServices,
+            'allLocations' => $allLocations,
             'currentFilters' => $currentFilters
         ];
 
@@ -266,9 +275,9 @@ class Appointments extends BaseController
         $appointmentTime = $this->request->getPost('appointment_time');
         
         if ($appointmentDate && $appointmentTime) {
-            $clientTimezone = $this->resolveClientTimezone();
-            $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($clientTimezone));
-            $now = new \DateTime('now', new \DateTimeZone($clientTimezone));
+            $appTimezone = (new LocalizationSettingsService())->getTimezone();
+            $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($appTimezone));
+            $now = new \DateTime('now', new \DateTimeZone($appTimezone));
             
             if ($appointmentDateTime < $now) {
                 $errorMsg = 'Cannot book appointments in the past. Please select a future date and time.';
@@ -337,6 +346,7 @@ class Appointments extends BaseController
         $bookingData = [
             'provider_id' => $this->request->getPost('provider_id'),
             'service_id' => $this->request->getPost('service_id'),
+            'location_id' => $this->request->getPost('location_id'),
             'appointment_date' => $this->request->getPost('appointment_date'),
             'appointment_time' => $this->request->getPost('appointment_time'),
             'customer_id' => $customerId,
@@ -457,14 +467,16 @@ class Appointments extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
-        // Check if appointment is in the past - only allow status changes for past appointments
-        $appointmentTime = new \DateTime($appointment['start_time'], new \DateTimeZone('UTC'));
-        $now = new \DateTime('now', new \DateTimeZone('UTC'));
-        $isPastAppointment = $appointmentTime < $now;
-
-        // Initialize services
+        // Initialize services (needed for app timezone — must come before time comparisons)
         $bookingService = new BookingSettingsService();
         $localizationService = new LocalizationSettingsService();
+        $appTimezone = $localizationService->getTimezone();
+
+        // Check if appointment is in the past.
+        // DB stores times in app timezone — compare against current app-timezone time.
+        $appointmentTime = new \DateTime($appointment['start_time'], new \DateTimeZone($appTimezone));
+        $now = new \DateTime('now', new \DateTimeZone($appTimezone));
+        $isPastAppointment = $appointmentTime < $now;
 
         // Get field configuration from settings
         $fieldConfig = $bookingService->getFieldConfiguration();
@@ -478,11 +490,9 @@ class Appointments extends BaseController
             }
         }
 
-        // Convert UTC times to local for display
-        $clientTimezone = $this->resolveClientTimezone();
+        // Times are stored in app timezone — read directly, no UTC conversion.
         if (!empty($appointment['start_time'])) {
-            $startDateTime = new \DateTime($appointment['start_time'], new \DateTimeZone('UTC'));
-            $startDateTime->setTimezone(new \DateTimeZone($clientTimezone));
+            $startDateTime = new \DateTime($appointment['start_time'], new \DateTimeZone($appTimezone));
             $appointment['date'] = $startDateTime->format('Y-m-d');
             $appointment['time'] = $startDateTime->format('H:i');
         }
@@ -568,9 +578,9 @@ class Appointments extends BaseController
         
         // Check if user is trying to schedule in the past
         if ($newAppointmentDate && $newAppointmentTime) {
-            $clientTimezone = $this->resolveClientTimezone();
-            $newDateTime = new \DateTime($newAppointmentDate . ' ' . $newAppointmentTime, new \DateTimeZone($clientTimezone));
-            $now = new \DateTime('now', new \DateTimeZone($clientTimezone));
+            $appTimezone = (new LocalizationSettingsService())->getTimezone();
+            $newDateTime = new \DateTime($newAppointmentDate . ' ' . $newAppointmentTime, new \DateTimeZone($appTimezone));
+            $now = new \DateTime('now', new \DateTimeZone($appTimezone));
             
             if ($newDateTime < $now) {
                 $errorMsg = 'Cannot schedule appointments in the past. Please select a future date and time.';
@@ -635,33 +645,34 @@ class Appointments extends BaseController
                 ->with('error', 'Invalid service selected');
         }
 
-        // Determine client timezone
-        $clientTimezone = $this->resolveClientTimezone();
+        // Use app timezone consistently — form inputs are in app timezone.
+        // Times are stored as app-local values (no UTC conversion).
+        $appTimezone = (new LocalizationSettingsService())->getTimezone();
 
-        // Construct local start DateTime
+        // Construct start DateTime in app timezone
         $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
-        
+
         log_message('info', '[Appointments::update] Updating appointment #' . $appointmentId);
         log_message('info', '[Appointments::update] Input: date=' . $appointmentDate . ', time=' . $appointmentTime);
-        log_message('info', '[Appointments::update] Client timezone: ' . $clientTimezone);
-        
+        log_message('info', '[Appointments::update] App timezone: ' . $appTimezone);
+
         try {
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($clientTimezone));
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($appTimezone));
         } catch (\Exception $e) {
             log_message('error', '[Appointments::update] DateTime error: ' . $e->getMessage());
-            $startDateTime = new \DateTime($startLocal, new \DateTimeZone('UTC'));
-            $clientTimezone = 'UTC';
+            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
+            $appTimezone = 'UTC';
         }
 
         // Calculate end time based on service duration
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Convert to UTC for storage
-        $startTimeUtc = TimezoneService::toUTC($startDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        $endTimeUtc = TimezoneService::toUTC($endDateTime->format('Y-m-d H:i:s'), $clientTimezone);
-        
-        log_message('info', '[Appointments::update] UTC times: start=' . $startTimeUtc . ', end=' . $endTimeUtc);
+        // Store in app timezone — no UTC conversion.
+        $startTimeStored = $startDateTime->format('Y-m-d H:i:s');
+        $endTimeStored   = $endDateTime->format('Y-m-d H:i:s');
+
+        log_message('info', '[Appointments::update] Stored times (app tz): start=' . $startTimeStored . ', end=' . $endTimeStored);
 
         // Update customer record
         $customerId = $existingAppointment['customer_id'];
@@ -693,11 +704,19 @@ class Appointments extends BaseController
         $appointmentData = [
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTimeUtc,
-            'end_time' => $endTimeUtc,
+            'start_time' => $startTimeStored,
+            'end_time' => $endTimeStored,
             'status' => $status,
             'notes' => $this->request->getPost('notes') ?? ''
         ];
+
+        // Snapshot location data (or clear if none selected)
+        $locationId = $this->request->getPost('location_id');
+        $locationModel = new \App\Models\LocationModel();
+        $snapshot = $locationId
+            ? $locationModel->getLocationSnapshot((int) $locationId)
+            : ['location_id' => null, 'location_name' => null, 'location_address' => null, 'location_contact' => null];
+        $appointmentData = array_merge($appointmentData, $snapshot);
         
         log_message('info', '[Appointments::update] Appointment data to save: ' . json_encode($appointmentData));
 

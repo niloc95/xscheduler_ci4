@@ -62,6 +62,7 @@
 
 namespace App\Controllers;
 
+use App\Models\LocationModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
@@ -423,7 +424,7 @@ class UserManagement extends BaseController
         // Load provider locations if user is a provider
         $providerLocations = [];
         if (($user['role'] ?? '') === 'provider') {
-            $locationModel = new \App\Models\LocationModel();
+            $locationModel = new LocationModel();
             $providerLocations = $locationModel->getProviderLocationsWithDays($user['id']);
         }
 
@@ -617,6 +618,9 @@ class UserManagement extends BaseController
 
             if ($finalRole === 'provider') {
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+
+                // Sync location‑day assignments from schedule tick boxes
+                $this->syncLocationDaysFromSchedule($userId, $scheduleInput);
             } else {
                 $this->providerScheduleModel->deleteByProvider($userId);
             }
@@ -625,10 +629,10 @@ class UserManagement extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User updated successfully.',
-                    'redirect' => base_url('user-management')
+                    'redirect' => base_url('user-management/edit/' . $userId)
                 ]);
             }
-            return redirect()->to(base_url('user-management'))
+            return redirect()->to(base_url('user-management/edit/' . $userId))
                            ->with('success', 'User updated successfully.');
         } else {
             if ($this->request->isAJAX()) {
@@ -1060,23 +1064,6 @@ class UserManagement extends BaseController
         }
     }
 
-    private function canAssignToProvider(int $currentUserId, int $providerId): bool
-    {
-        $currentUser = $this->userModel->find($currentUserId);
-        
-        // Admins can assign to any provider
-        if ($currentUser['role'] === 'admin') {
-            return true;
-        }
-        
-        // Providers can only assign to themselves
-        if ($currentUser['role'] === 'provider') {
-            return $currentUserId === $providerId;
-        }
-        
-        return false;
-    }
-
     private function canChangeUserRole(int $currentUserId, int $targetUserId): bool
     {
         $currentUser = $this->userModel->find($currentUserId);
@@ -1085,143 +1072,55 @@ class UserManagement extends BaseController
         return $currentUser['role'] === 'admin';
     }
 
-    private function validateProviderScheduleInput(array $input): array
+    // -------------------------------------------------------------------------
+    // Location‑day sync helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Rebuild each location's day_of_week rows from the schedule checkboxes.
+     *
+     * The form posts:
+     *   schedule[monday][locations][] = 5
+     *   schedule[monday][locations][] = 7
+     *   schedule[tuesday][locations][] = 5
+     *   ...
+     *
+     * We invert this to per-location day lists, then call setLocationDays().
+     */
+    private function syncLocationDaysFromSchedule(int $providerId, array $scheduleInput): void
     {
-        $clean = [];
-        $errors = [];
+        $locationModel = new LocationModel();
 
-        foreach ($this->scheduleDays as $day) {
-            if (!isset($input[$day])) {
+        // Get the provider's existing locations so we know the full set
+        $providerLocations = $locationModel->getProviderLocations($providerId);
+        if (empty($providerLocations)) {
+            return;
+        }
+
+        // Build a map: locationId → [dayInt, dayInt, ...]
+        $locationDaysMap = [];
+        foreach ($providerLocations as $loc) {
+            $locationDaysMap[(int) $loc['id']] = [];
+        }
+
+        foreach ($scheduleInput as $dayName => $dayData) {
+            if (!isset(LocationModel::DAY_NAME_TO_INT[$dayName])) {
                 continue;
             }
+            $dayInt = LocationModel::DAY_NAME_TO_INT[$dayName];
 
-            $row = $input[$day];
-            $isActive = $this->toBool($row['is_active'] ?? null);
-
-            if (!$isActive) {
-                continue;
-            }
-
-            $rawStart = $row['start_time'] ?? null;
-            $rawEnd = $row['end_time'] ?? null;
-            $rawBreakStart = $row['break_start'] ?? null;
-            $rawBreakEnd = $row['break_end'] ?? null;
-
-            $start = $this->normaliseTimeString($rawStart);
-            $end   = $this->normaliseTimeString($rawEnd);
-            $breakStart = $this->normaliseTimeString($rawBreakStart);
-            $breakEnd   = $this->normaliseTimeString($rawBreakEnd);
-
-            if (!$start || !$end) {
-                $errors[$day] = 'Start and end times are required. ' . $this->localization->describeExpectedFormat();
-                continue;
-            }
-
-            if (strtotime($start) >= strtotime($end)) {
-                $errors[$day] = 'Start time must be earlier than end time.';
-                continue;
-            }
-
-            $hasBreakStartInput = is_string($rawBreakStart) && trim($rawBreakStart) !== '';
-            $hasBreakEndInput = is_string($rawBreakEnd) && trim($rawBreakEnd) !== '';
-
-            if ($hasBreakStartInput && !$breakStart) {
-                $errors[$day] = 'Break start must use the expected time format. ' . $this->localization->describeExpectedFormat();
-                continue;
-            }
-
-            if ($hasBreakEndInput && !$breakEnd) {
-                $errors[$day] = 'Break end must use the expected time format. ' . $this->localization->describeExpectedFormat();
-                continue;
-            }
-
-            if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
-                $errors[$day] = 'Provide both break start and end times. ' . $this->localization->describeExpectedFormat();
-                continue;
-            }
-
-            if ($breakStart && $breakEnd) {
-                if (strtotime($breakStart) >= strtotime($breakEnd)) {
-                    $errors[$day] = 'Break start must be earlier than break end.';
-                    continue;
-                }
-
-                if (strtotime($breakStart) < strtotime($start) || strtotime($breakEnd) > strtotime($end)) {
-                    $errors[$day] = 'Break must fall within working hours.';
-                    continue;
+            $locationIds = $dayData['locations'] ?? [];
+            foreach ($locationIds as $locId) {
+                $locId = (int) $locId;
+                if (isset($locationDaysMap[$locId])) {
+                    $locationDaysMap[$locId][] = $dayInt;
                 }
             }
-
-            $clean[$day] = [
-                'is_active'   => 1,
-                'start_time'  => $start,
-                'end_time'    => $end,
-                'break_start' => $breakStart,
-                'break_end'   => $breakEnd,
-            ];
         }
 
-        return [$clean, $errors];
-    }
-
-    private function prepareScheduleForView($source): array
-    {
-        $prepared = [];
-        foreach ($this->scheduleDays as $day) {
-            $prepared[$day] = [
-                'is_active'   => false,
-                'start_time'  => '',
-                'end_time'    => '',
-                'break_start' => '',
-                'break_end'   => '',
-            ];
+        // Persist each location's day set
+        foreach ($locationDaysMap as $locId => $days) {
+            $locationModel->setLocationDays($locId, $days);
         }
-
-        if (!is_array($source)) {
-            return $prepared;
-        }
-
-        foreach ($this->scheduleDays as $day) {
-            if (!isset($source[$day])) {
-                continue;
-            }
-
-            $row = $source[$day];
-            if (!is_array($row)) {
-                continue;
-            }
-
-            $isActive = $this->toBool($row['is_active'] ?? null);
-            $prepared[$day]['is_active'] = $isActive;
-            $prepared[$day]['start_time'] = $this->localization->formatTimeForDisplay($row['start_time'] ?? null);
-            $prepared[$day]['end_time'] = $this->localization->formatTimeForDisplay($row['end_time'] ?? null);
-            $prepared[$day]['break_start'] = $this->localization->formatTimeForDisplay($row['break_start'] ?? null);
-            $prepared[$day]['break_end'] = $this->localization->formatTimeForDisplay($row['break_end'] ?? null);
-        }
-
-        return $prepared;
-    }
-
-    private function normaliseTimeString(?string $time): ?string
-    {
-        return $this->localization->normaliseTimeInput($time);
-    }
-
-    private function toBool($value): bool
-    {
-        if (is_bool($value)) {
-            return $value;
-        }
-
-        if (is_numeric($value)) {
-            return (int) $value === 1;
-        }
-
-        if (is_string($value)) {
-            $normalized = strtolower(trim($value));
-            return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
-        }
-
-        return false;
     }
 }
