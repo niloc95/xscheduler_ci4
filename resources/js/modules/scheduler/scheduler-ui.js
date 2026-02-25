@@ -7,6 +7,8 @@
  * @module scheduler/scheduler-ui
  */
 
+import { syncDateNavLabel } from './date-nav-label.js';
+
 /**
  * Update the date display in the toolbar
  * @param {object} scheduler - Scheduler instance
@@ -18,27 +20,11 @@ function updateDateDisplay(scheduler) {
     }
 
     const displayEl = document.getElementById('scheduler-date-display');
-    if (!displayEl) return;
-
-    const { currentDate, currentView } = scheduler;
-    let displayText = '';
-
-    switch (currentView) {
-        case 'day':
-            displayText = currentDate.toFormat('EEEE, MMMM d, yyyy');
-            break;
-        case 'week':
-            const weekStart = currentDate.startOf('week');
-            const weekEnd = currentDate.endOf('week');
-            displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-            break;
-        case 'month':
-        default:
-            displayText = currentDate.toFormat('MMMM yyyy');
-            break;
-    }
-
-    displayEl.textContent = displayText;
+    syncDateNavLabel(displayEl, {
+        date: scheduler.currentDate,
+        view: scheduler.currentView,
+        timezone: scheduler?.options?.timezone
+    });
 }
 
 /**

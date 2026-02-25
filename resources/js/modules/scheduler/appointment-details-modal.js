@@ -17,6 +17,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class AppointmentDetailsModal {
@@ -373,8 +374,8 @@ export class AppointmentDetailsModal {
     populateDetails(appointment) {
         try {
             // Use existing DateTime objects if available, otherwise parse from ISO
-            const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
-            const endDateTime = appointment.endDateTime || DateTime.fromISO(appointment.end_time);
+            const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start);
+            const endDateTime = appointment.endDateTime || DateTime.fromISO(appointment.end);
             const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         
             // Status colors
@@ -400,7 +401,7 @@ export class AppointmentDetailsModal {
             this.modal.querySelector('#detail-duration').textContent = `Duration: ${duration} minutes`;
             
             // Customer
-            this.modal.querySelector('#detail-customer-name').textContent = appointment.name || appointment.customerName || 'Unknown';
+            this.modal.querySelector('#detail-customer-name').textContent = appointment.customerName || 'Unknown';
             
             if (appointment.email) {
                 this.modal.querySelector('#detail-customer-email').textContent = appointment.email;
@@ -430,7 +431,7 @@ export class AppointmentDetailsModal {
             }
             
             // Provider
-            const providerColor = appointment.providerColor || '#3B82F6';
+            const providerColor = appointment.providerColor || DEFAULT_PROVIDER_COLOR;
             const providerColorEl = this.modal.querySelector('#detail-provider-color');
             if (providerColorEl) {
                 providerColorEl.setAttribute('data-bg-color', providerColor);
@@ -663,9 +664,9 @@ export class AppointmentDetailsModal {
      * Handle cancel action
      */
     async handleCancel(appointment) {
-        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
+        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start);
         const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.name || appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}`);
+        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}`);
         
         if (!confirmed) return;
         
@@ -723,7 +724,7 @@ export class AppointmentDetailsModal {
      */
     handleWhatsApp(appointment) {
         // Get phone number from appointment data
-        const phone = appointment.customer_phone || appointment.customerPhone || appointment.phone || '';
+        const phone = appointment.customerPhone || '';
         
         if (!phone) {
             if (this.scheduler.dragDropManager) {
@@ -738,12 +739,12 @@ export class AppointmentDetailsModal {
         const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').replace(/^\+/, '');
         
         // Get appointment details for message
-        const customerName = appointment.name || appointment.customerName || 'Customer';
-        const serviceName = appointment.service_name || appointment.serviceName || appointment.service || 'your service';
-        const providerName = appointment.provider_name || appointment.providerName || '';
+        const customerName = appointment.customerName || 'Customer';
+        const serviceName = appointment.serviceName || 'your service';
+        const providerName = appointment.providerName || '';
         
         // Format date/time using localization settings
-        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start_time);
+        const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start);
         const dateStr = startDateTime.toFormat('EEEE, MMMM d, yyyy');
         const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
         const timeStr = startDateTime.toFormat(timeFormat);
@@ -804,7 +805,7 @@ export class AppointmentDetailsModal {
         
         // Check for required data
         if (channel === 'email') {
-            const email = appointment.customer_email || appointment.customerEmail || appointment.email || '';
+            const email = appointment.customerEmail || '';
             if (!email) {
                 if (this.scheduler.dragDropManager) {
                     this.scheduler.dragDropManager.showToast('No email address available for this customer', 'error');
@@ -814,7 +815,7 @@ export class AppointmentDetailsModal {
                 return;
             }
         } else if (channel === 'sms') {
-            const phone = appointment.customer_phone || appointment.customerPhone || appointment.phone || '';
+            const phone = appointment.customerPhone || '';
             if (!phone) {
                 if (this.scheduler.dragDropManager) {
                     this.scheduler.dragDropManager.showToast('No phone number available for this customer', 'error');

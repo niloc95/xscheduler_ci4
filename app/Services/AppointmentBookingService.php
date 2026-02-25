@@ -461,10 +461,9 @@ class AppointmentBookingService
     /**
      * Resolve provider location context for booking/update flows.
      *
-     * Rules:
-     * - No active locations: location_id remains null
-     * - One active location: auto-select when omitted
-     * - Multiple active locations: explicit location_id is required
+    * Rules:
+    * - No active locations: location_id remains null
+    * - Any active locations: explicit location_id is required
      */
     protected function resolveBookingLocationContext(int $providerId, ?int $requestedLocationId): array
     {
@@ -490,16 +489,12 @@ class AppointmentBookingService
             return ['success' => true, 'location_id' => $requestedLocationId, 'message' => null, 'errors' => []];
         }
 
-        if (count($activeLocationIds) > 1) {
-            return [
-                'success' => false,
-                'location_id' => null,
-                'message' => 'Please select a location for this provider.',
-                'errors' => ['location_id' => 'required']
-            ];
-        }
-
-        return ['success' => true, 'location_id' => $activeLocationIds[0], 'message' => null, 'errors' => []];
+        return [
+            'success' => false,
+            'location_id' => null,
+            'message' => 'Please select a location for this provider.',
+            'errors' => ['location_id' => 'required']
+        ];
     }
 
     /**

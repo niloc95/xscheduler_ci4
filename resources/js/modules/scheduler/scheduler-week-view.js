@@ -478,7 +478,7 @@ export class WeekView {
             const statusColors = getStatusColors(apt.status, isDarkMode());
             const providerColor = getProviderColor(provider);
             const time = apt.startDateTime.toFormat(timeFormat);
-            const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
+            const customerName = apt.customerName || apt.title || 'Unknown';
             const serviceName = apt.serviceName || 'Service';
             
             return `
@@ -923,169 +923,123 @@ export class WeekView {
     renderWeeklyAppointmentsSection(days, appointments, providers, data) {
         const dailySection = document.getElementById('daily-provider-appointments');
         if (!dailySection) return;
-        
-        const timeFormat = this.scheduler?.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        
-        // Group appointments by provider and day
-        const appointmentsByProvider = {};
-        providers.forEach(provider => {
-            appointmentsByProvider[provider.id] = {};
-            days.forEach(day => {
-                appointmentsByProvider[provider.id][day.toISODate()] = [];
+        const parseHour = (timeValue, fallbackValue) => {
+            const parsed = Number.parseInt(String(timeValue || '').split(':')[0], 10);
+            return Number.isNaN(parsed) ? fallbackValue : parsed;
+        };
+
+        const startHour = Math.max(0, parseHour(this.businessHours?.startTime, 9));
+        const endHourCandidate = parseHour(this.businessHours?.endTime, 18);
+        const endHour = Math.min(24, endHourCandidate > startHour ? endHourCandidate : startHour + 8);
+        const totalHours = endHour - startHour;
+        const is24Hour = this.scheduler?.settingsManager?.getTimeFormat() === '24h';
+
+        const timeRows = Array.from({ length: totalHours }, (_, index) => {
+            const hour = startHour + index;
+            const label = is24Hour
+                ? `${String(hour).padStart(2, '0')}:00`
+                : DateTime.fromObject({ hour }).toFormat('ha').toLowerCase();
+            return { hour, label };
+        });
+
+        const dayEntries = days.map(day => {
+            const dayAppointments = appointments
+                .filter(apt => apt.startDateTime?.hasSame(day, 'day'))
+                .sort((left, right) => left.startDateTime.toMillis() - right.startDateTime.toMillis());
+
+            const appointmentsByHour = {};
+            dayAppointments.forEach(appointment => {
+                const hour = appointment.startDateTime?.hour;
+                if (hour === undefined || hour < startHour || hour >= endHour) {
+                    return;
+                }
+
+                if (!appointmentsByHour[hour]) {
+                    appointmentsByHour[hour] = [];
+                }
+
+                appointmentsByHour[hour].push(appointment);
             });
+
+            return {
+                day,
+                appointmentsByHour,
+                isToday: day.hasSame(DateTime.now(), 'day')
+            };
         });
-        
-        appointments.forEach(apt => {
-            const dateKey = apt.startDateTime.toISODate();
-            if (appointmentsByProvider[apt.providerId] && appointmentsByProvider[apt.providerId][dateKey]) {
-                appointmentsByProvider[apt.providerId][dateKey].push(apt);
-            }
-        });
-        
-        // Calculate total appointments per provider for the week
-        const providerTotals = {};
-        providers.forEach(provider => {
-            providerTotals[provider.id] = Object.values(appointmentsByProvider[provider.id]).flat().length;
-        });
-        
-        // Filter to only show providers with appointments
-        const activeProviders = providers.filter(p => providerTotals[p.id] > 0);
-        
+
         const weekStart = days[0];
         const weekEnd = days[days.length - 1];
-        
+
+        const renderAppointmentCard = (appointment) => {
+            const startDateTime = appointment.startDateTime;
+            const darkModeEnabled = typeof isDarkMode === 'function' ? isDarkMode() : false;
+            const statusColors = getStatusColors(appointment.status, darkModeEnabled);
+            const provider = providers.find(candidate => candidate.id === appointment.providerId);
+            const providerColor = getProviderColor(provider);
+            const title = this.escapeHtml(appointment.customerName || appointment.title || 'Appointment');
+            const timeText = startDateTime.toFormat(is24Hour ? 'HH:mm' : 'h:mma').toLowerCase();
+
+            return `
+                <button
+                    type="button"
+                    class="week-timeline-event group w-full flex items-center gap-1.5 rounded px-1.5 py-1 text-left text-[11px] leading-tight border-l-2 truncate cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-white/5 text-gray-800 dark:text-gray-200"
+                    data-appointment-id="${appointment.id}"
+                    data-border-left-color="${providerColor}"
+                    title="${title}">
+                    <span class="font-semibold flex-shrink-0 tabular-nums opacity-80">${timeText}</span>
+                    <span class="font-medium truncate">${title}</span>
+                </button>
+            `;
+        };
+
         dailySection.innerHTML = `
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between">
+            <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/80">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Weekly Schedule
-                        </h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
-                            ${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}
-                        </p>
+                        <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">${weekStart.toFormat('MMMM yyyy')}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}</p>
                     </div>
-                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        ${appointments.length} ${appointments.length === 1 ? 'appointment' : 'appointments'} this week
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        ${appointments.length} ${appointments.length === 1 ? 'event' : 'events'}
                     </span>
                 </div>
-            </div>
-            
-            ${activeProviders.length > 0 ? `
-                <!-- Provider Schedule Grid -->
-                <div class="p-6">
-                    <div class="space-y-6">
-                        ${activeProviders.map(provider => {
-                            const color = provider.color || '#3B82F6';
-                            const weekAppointments = Object.values(appointmentsByProvider[provider.id]).flat();
-                            
-                            return `
-                                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all"
-                                     data-provider-id="${provider.id}">
-                                    <!-- Provider Header -->
-                                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
-                                         data-border-left-color="${color}">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                                                data-bg-color="${color}">
-                                                ${getProviderInitials(provider.name)}
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <h4 class="font-semibold text-gray-900 dark:text-white truncate">
-                                                    ${this.escapeHtml(provider.name)}
-                                                </h4>
-                                                <p class="text-sm text-gray-500 dark:text-gray-400">
-                                                    ${weekAppointments.length} ${weekAppointments.length === 1 ? 'appointment' : 'appointments'} this week
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Days Grid -->
-                                    <div class="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700">
-                                        ${days.map(day => {
-                                            const dateKey = day.toISODate();
-                                            const dayAppointments = appointmentsByProvider[provider.id][dateKey] || [];
-                                            const isToday = day.hasSame(DateTime.now(), 'day');
-                                            
-                                            return `
-                                                <div class="p-3 min-h-[100px] ${isToday ? 'bg-gray-50 dark:bg-gray-800/60' : ''}" data-day-cell="${provider.id}-${dateKey}">
-                                                    <!-- Day Header -->
-                                                    <div class="mb-2">
-                                                        <div class="text-xs font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}">
-                                                            ${day.toFormat('ccc')}
-                                                        </div>
-                                                        <div class="${isToday ? 'inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-semibold' : 'text-lg font-semibold text-gray-900 dark:text-white'}">
-                                                            ${day.day}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <!-- Appointments List -->
-                                                    <div class="space-y-1.5">
-                                                        ${dayAppointments.length > 0 ?
-                                                            dayAppointments.slice(0, 3).map(apt => {
-                                                                const time = apt.startDateTime.toFormat(timeFormat);
-                                                                const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
 
-                                                                const darkModeCheck = typeof isDarkMode === 'function' ? isDarkMode() : false;
-                                                                const aptStatusColors = getStatusColors(apt.status, darkModeCheck);
-
-                                                                return '<div class="text-xs p-2 rounded cursor-pointer transition-colors border-l-2" ' +
-                                                                    'data-bg-color="' + aptStatusColors.bg + '" ' +
-                                                                    'data-border-left-color="' + aptStatusColors.border + '" ' +
-                                                                    'data-text-color="' + aptStatusColors.text + '" ' +
-                                                                    'data-appointment-id="' + apt.id + '">' +
-                                                                    '<div class="font-medium truncate">' + time + '</div>' +
-                                                                    '<div class="truncate opacity-90">' + this.escapeHtml(customerName) + '</div>' +
-                                                                    '<span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full text-white" ' +
-                                                                    'data-bg-color="' + aptStatusColors.dot + '">' + apt.status + '</span>' +
-                                                                    '</div>';
-                                                            }).join('')
-                                                            : '<div class="text-xs text-gray-400 dark:text-gray-500 italic">No appointments</div>'
-                                                        }
-                                                        ${dayAppointments.length > 3 ?
-                                                            dayAppointments.slice(3).map(apt => {
-                                                                const time = apt.startDateTime.toFormat(timeFormat);
-                                                                const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
-
-                                                                const darkModeCheck = typeof isDarkMode === 'function' ? isDarkMode() : false;
-                                                                const aptStatusColors = getStatusColors(apt.status, darkModeCheck);
-
-                                                                return '<div class="week-day-hidden hidden text-xs p-2 rounded cursor-pointer transition-colors border-l-2" ' +
-                                                                    'data-bg-color="' + aptStatusColors.bg + '" ' +
-                                                                    'data-border-left-color="' + aptStatusColors.border + '" ' +
-                                                                    'data-text-color="' + aptStatusColors.text + '" ' +
-                                                                    'data-appointment-id="' + apt.id + '">' +
-                                                                    '<div class="font-medium truncate">' + time + '</div>' +
-                                                                    '<div class="truncate opacity-90">' + this.escapeHtml(customerName) + '</div>' +
-                                                                    '<span class="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full text-white" ' +
-                                                                    'data-bg-color="' + aptStatusColors.dot + '">' + apt.status + '</span>' +
-                                                                    '</div>';
-                                                            }).join('')
-                                                            : ''
-                                                        }
-                                                        ${dayAppointments.length > 3 ? `
-                                                            <button type="button" class="week-day-more text-xs text-blue-600 dark:text-blue-400 font-medium text-center pt-1 cursor-pointer hover:underline flex items-center justify-center gap-1">
-                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" /></svg>
-                                                                <span class="week-day-more-text">${dayAppointments.length - 3} more</span>
-                                                            </button>
-                                                        ` : ''}
-                                                    </div>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
+                <div class="overflow-x-auto">
+                    <div class="min-w-[980px]">
+                        <div class="week-timeline-grid border-l border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                            <div class="grid grid-cols-[56px_repeat(7,minmax(120px,1fr))]">
+                                <div class="h-[48px] border-r border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950"></div>
+                            ${dayEntries.map(({ day, isToday }) => `
+                                    <div class="h-[48px] border-r border-b border-slate-200 dark:border-slate-800 text-center py-2 ${isToday ? 'bg-indigo-50 dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-950'}">
+                                    <div class="text-[10px] font-medium uppercase tracking-wide ${isToday ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}">${day.toFormat('ccc')}</div>
+                                    <div class="mt-0.5 ${isToday ? 'inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-semibold' : 'text-xs font-semibold text-slate-700 dark:text-slate-200'}">${day.day}</div>
                                 </div>
-                            `;
-                        }).join('')}
+                            `).join('')}
+
+                            ${timeRows.map(row => `
+                                <div class="min-h-[48px] px-2 pt-1.5 border-b border-r border-slate-200 dark:border-slate-800 text-[11px] font-medium text-slate-500 dark:text-slate-500 bg-slate-50 dark:bg-slate-950">${row.label}</div>
+                                ${dayEntries.map(({ appointmentsByHour }) => {
+                                    const rowAppointments = appointmentsByHour[row.hour] || [];
+                                    const maxVisible = 3;
+                                    const visibleAppointments = rowAppointments.slice(0, maxVisible);
+                                    const hiddenAppointments = rowAppointments.slice(maxVisible);
+                                    const hiddenCount = hiddenAppointments.length;
+
+                                    return `<div class="min-h-[48px] border-b border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-1 py-0.5">
+                                        <div class="space-y-0.5">
+                                            ${visibleAppointments.map(renderAppointmentCard).join('')}
+                                            ${hiddenAppointments.map(apt => renderAppointmentCard(apt).replace('class="week-timeline-event', 'class="week-timeline-event hidden week-timeline-overflow')).join('')}
+                                            ${hiddenCount > 0 ? `<button type="button" class="week-expand-hour text-[10px] font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-100 cursor-pointer transition-colors w-full text-left px-1" data-expand-count="${hiddenCount}">+${hiddenCount} more</button>` : ''}
+                                        </div>
+                                    </div>`;
+                                }).join('')}
+                            `).join('')}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            ` : `
-                <div class="p-12 text-center">
-                    <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">No appointments scheduled this week</p>
-                </div>
-            `}
+            </div>
         `;
         
         // Add click handlers for appointments in the section
@@ -1096,6 +1050,7 @@ export class WeekView {
      * Attach event listeners to appointments in the weekly section
      */
     attachWeeklySectionListeners(section, data) {
+        // Appointment click handlers
         section.querySelectorAll('[data-appointment-id]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1108,16 +1063,16 @@ export class WeekView {
             });
         });
 
-        section.querySelectorAll('.week-day-more').forEach(el => {
-            el.addEventListener('click', (e) => {
-                e.preventDefault();
+        // Expand-hour handlers: reveal hidden overflow appointments
+        section.querySelectorAll('.week-expand-hour').forEach(btn => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const dayCell = el.closest('[data-day-cell]');
-                if (!dayCell) return;
-                dayCell.querySelectorAll('.week-day-hidden').forEach(item => {
+                const container = btn.parentElement;
+                if (!container) return;
+                container.querySelectorAll('.week-timeline-overflow.hidden').forEach(item => {
                     item.classList.remove('hidden');
                 });
-                el.remove();
+                btn.remove();
             });
         });
     }

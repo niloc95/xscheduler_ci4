@@ -588,10 +588,6 @@ class Availability extends BaseApiController
             return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
         }
 
-        if (count($activeLocationIds) > 1) {
-            return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required when provider has multiple active locations'];
-        }
-
-        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
+        return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required for providers with active locations'];
     }
 }

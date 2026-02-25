@@ -125,31 +125,31 @@ export class MonthView {
 
         // Render HTML
         container.innerHTML = `
-            <div class="scheduler-month-view bg-white dark:bg-gray-800">
+            <div class="scheduler-month-view rounded-xl overflow-hidden bg-white dark:bg-gray-900">
                 <!-- Day Headers -->
-                <div class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
+                <div class="grid grid-cols-7 px-1 pt-2 pb-1">
                     ${this.renderDayHeaders(config, settings)}
                 </div>
 
-                <!-- Calendar Grid - using grid-rows-6 for consistent row sizing -->
-                <div class="grid grid-cols-7 grid-rows-6 divide-x divide-y divide-gray-200 dark:divide-gray-700 border-b border-gray-200 dark:border-gray-700">
+                <!-- Calendar Grid -->
+                <div class="grid grid-cols-7 grid-rows-6 gap-px px-1 pb-1">
                     ${weeks.map(week => week.map(day => 
                         this.renderDayCell(day, monthStart.month, settings)
                     ).join('')).join('')}
                 </div>
                 
                 ${appointments.length === 0 ? `
-                <div class="px-6 py-8 text-center border-t border-gray-200 dark:border-gray-700">
-                    <span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-5xl mb-3">event_available</span>
+                <div class="px-6 py-8 text-center">
+                    <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 text-5xl mb-3">event_available</span>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Appointments</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         Click on any day to create a new appointment
                     </p>
                 </div>
                 ` : ''}
                 
                 <!-- Available Slots Panel (always visible) -->
-                <div class="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700" id="month-slot-panel">
+                <div class="p-3 md:p-4 border-t border-gray-100 dark:border-gray-800" id="month-slot-panel">
                     ${this._renderMonthSlotPanel()}
                 </div>
             </div>
@@ -166,15 +166,17 @@ export class MonthView {
     }
 
     renderDayHeaders(config, settings) {
-        const firstDay = settings?.getFirstDayOfWeek() || config?.firstDayOfWeek || 0;
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
-        // Rotate array to start with firstDay
-        const rotatedDays = [...days.slice(firstDay), ...days.slice(0, firstDay)];
-        
-        return rotatedDays.map(day => `
-            <div class="px-3 py-2 text-center">
-                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">${day}</span>
+        const firstDay = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 0;
+        const firstWeekday = firstDay === 0 ? 7 : firstDay;
+        const weekAnchor = (this.currentDate || DateTime.now()).startOf('week').set({ weekday: firstWeekday });
+
+        const shortDays = Array.from({ length: 7 }, (_, index) => {
+            return weekAnchor.plus({ days: index }).toFormat('ccc');
+        });
+
+        return shortDays.map(day => `
+            <div class="text-center py-1.5">
+                <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">${day}</span>
             </div>
         `).join('');
     }
@@ -189,50 +191,59 @@ export class MonthView {
         const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day) : null;
         const isSelected = this.selectedDate && day.hasSame(this.selectedDate, 'day');
         
+        // Day number badge styles — minimal, matching date picker
+        const dayNumBase = 'inline-flex items-center justify-center w-7 h-7 rounded-full text-sm leading-none';
+        const dayNumColor = isToday
+            ? 'bg-blue-600 text-white font-bold'
+            : isSelected
+                ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 font-semibold'
+                : isCurrentMonth
+                    ? isBlocked ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-900 dark:text-white font-medium'
+                    : 'text-gray-400 dark:text-gray-500 font-normal';
+
         const cellClasses = [
             'scheduler-day-cell',
-            'min-h-[100px]',
-            'h-full',  // Ensure cell fills grid row height
+            'min-h-[110px]',
+            'h-full',
             'p-2',
+            'rounded-lg',
             'relative',
-            'overflow-hidden',
+            '!overflow-hidden',
+            'flex',
+            'flex-col',
             'cursor-pointer',
-            'hover:bg-gray-50',
-            'dark:hover:bg-gray-700/50',
-            'transition-colors',
-            'bg-white',
-            'dark:bg-gray-800',
-            isToday ? 'today' : '',
-            !isCurrentMonth ? 'other-month bg-gray-50 dark:bg-gray-800/50' : '',
-            isPast ? 'past' : '',
+            'transition-all',
+            'duration-150',
+            isSelected
+                ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/40'
+                : isToday
+                    ? 'bg-blue-50/40 dark:bg-blue-900/10'
+                    : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]',
+            !isCurrentMonth ? 'other-month opacity-50' : '',
+            isPast && !isSelected && !isToday ? 'past' : '',
             !isWorkingDay ? 'non-working-day' : '',
-            isBlocked ? 'bg-red-50 dark:bg-red-900/10' : '',
-            isSelected ? 'ring-2 ring-blue-500 ring-inset bg-blue-50 dark:bg-blue-900/20' : ''
+            isBlocked ? '!bg-red-50/60 dark:!bg-red-900/10' : ''
         ].filter(Boolean).join(' ');
         
         return `
             <div class="${cellClasses}" data-date="${day.toISODate()}" data-click-create="day" data-select-day="${day.toISODate()}">
-                <div class="day-number text-sm font-medium mb-1 ${isCurrentMonth ? isBlocked ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'}">
-                    ${day.day}
-                    ${isBlocked ? '<span class="text-xs ml-1">🚫</span>' : ''}
+                <div class="${dayNumBase} ${dayNumColor}">
+                    ${day.day}${isBlocked ? ' <span class="text-[10px] leading-none">🚫</span>' : ''}
                 </div>
                 ${isBlocked && blockedInfo ? `
                     <div class="text-[10px] text-red-600 dark:text-red-400 font-medium mb-1 truncate" title="${this.escapeHtml(blockedInfo.notes || 'Blocked')}">
                         ${this.escapeHtml(blockedInfo.notes || 'Blocked')}
                     </div>
                 ` : ''}
-                <div class="day-appointments space-y-0.5">
+                <div class="day-appointments flex-1 space-y-1">
                     ${dayAppointments.slice(0, 2).map(apt => this.renderAppointmentBlock(apt)).join('')}
                     ${dayAppointments.slice(2).map(apt => this.renderAppointmentBlock(apt, true)).join('')}
                     ${dayAppointments.length > 2 ? `
-                        <button type="button" class="expand-day-btn w-full text-xs text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded px-1 py-0.5 flex items-center justify-center gap-1 transition-colors" 
+                        <button type="button" class="expand-day-btn w-full text-[10px] font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:text-blue-700 dark:hover:text-blue-300 rounded px-1 py-0.5 flex items-center justify-center transition-colors" 
                              data-expand-day="${day.toISODate()}"
                              data-expanded="false"
-                             title="Click to view all ${dayAppointments.length} appointments">
-                            <svg class="expand-icon w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />
-                            </svg>
-                            <span class="expand-text">+${dayAppointments.length - 2} more</span>
+                             title="View all ${dayAppointments.length} appointments">
+                            +${dayAppointments.length - 2} more
                         </button>
                     ` : ''}
                 </div>
@@ -251,19 +262,16 @@ export class MonthView {
         const is24Hour = this.settings?.getTimeFormat?.() === '24h';
         const time = appointment.startDateTime.toFormat(is24Hour ? 'HH:mm' : 'h:mm');
         const ampm = is24Hour ? '' : appointment.startDateTime.toFormat('a').toLowerCase();
-        const title = appointment.title || appointment.customerName || 'Appointment';
+        const title = appointment.customerName || appointment.title || 'Appointment';
         const hiddenClass = isHidden ? 'hidden' : '';
 
         return `
-            <div class="scheduler-appointment text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:shadow-sm transition-all truncate border-l-2 flex items-center gap-1 ${hiddenClass}"
-                 data-bg-color="${statusColors.bg}"
-                 data-border-left-color="${statusColors.border}"
-                 data-text-color="${statusColors.text}"
+            <div class="scheduler-appointment text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 transition-all truncate border-l-2 flex items-center gap-1 text-gray-800 dark:text-gray-200 ${hiddenClass}"
+                 data-border-left-color="${providerColor}"
                  data-appointment-id="${appointment.id}"
                  title="${title} at ${time}${ampm} - ${appointment.status}">
-                <span class="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" data-bg-color="${providerColor}"></span>
-                <span class="font-medium">${time}</span>
-                <span class="truncate opacity-80">${this.escapeHtml(title)}</span>
+                <span class="font-semibold flex-shrink-0 tabular-nums">${time}${ampm ? `<span class="font-normal opacity-70">${ampm}</span>` : ''}</span>
+                <span class="truncate">${this.escapeHtml(title)}</span>
             </div>
         `;
     }
@@ -343,18 +351,17 @@ export class MonthView {
         
         // Build the HTML
         let html = `
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Monthly Schedule
-                        </h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">
                             ${this.currentDate.toFormat('MMMM yyyy')}
-                        </p>
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Monthly appointment overview</p>
                     </div>
-                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        ${monthAppointments.length} ${monthAppointments.length === 1 ? 'appointment' : 'appointments'} this month
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        ${monthAppointments.length} ${monthAppointments.length === 1 ? 'appointment' : 'appointments'}
                     </span>
                 </div>
             </div>
@@ -406,7 +413,7 @@ export class MonthView {
                     providerAppointments.forEach((apt, index) => {
                         const date = apt.startDateTime.toFormat('MMM d');
                         const time = apt.startDateTime.toFormat(timeFormat);
-                        const customerName = apt.name || apt.customerName || apt.title || 'Unknown';
+                        const customerName = apt.customerName || apt.title || 'Unknown';
                         const serviceName = apt.serviceName || 'Appointment';
                         
                         const darkMode = isDarkMode();

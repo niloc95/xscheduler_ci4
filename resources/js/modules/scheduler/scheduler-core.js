@@ -13,6 +13,8 @@ import { DayView } from './scheduler-day-view.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
+import { DEFAULT_PROVIDER_COLOR } from './constants.js';
+import { formatDateNavLabel, syncDateNavLabel } from './date-nav-label.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 // Stats System - following Car Analogy architecture
@@ -204,19 +206,10 @@ export class SchedulerCore {
             if (!response.ok) throw new Error('Failed to load appointments');
             const data = await response.json();
             this.debugLog('📥 Raw API response:', data);
-            this.appointments = data.data || data || [];
-            this.debugLog('📦 Extracted appointments array:', this.appointments);
-            
-            // Parse dates with timezone awareness and ensure IDs are numbers
-            this.appointments = this.appointments.map(apt => ({
-                ...apt,
-                id: parseInt(apt.id, 10), // Ensure ID is a number
-                providerId: parseInt(apt.providerId, 10), // Ensure provider ID is a number
-                serviceId: parseInt(apt.serviceId, 10), // Ensure service ID is a number
-                customerId: parseInt(apt.customerId, 10), // Ensure customer ID is a number
-                startDateTime: DateTime.fromISO(apt.start, { zone: this.options.timezone }),
-                endDateTime: DateTime.fromISO(apt.end, { zone: this.options.timezone })
-            }));
+            const rawAppointments = data.data || data || [];
+            this.debugLog('📦 Extracted appointments array:', rawAppointments);
+
+            this.appointments = rawAppointments.map(appointment => this.normalizeAppointment(appointment));
 
             this.debugLog('📅 Appointments loaded:', this.appointments.length);
             this.debugLog('📋 Appointment details:', this.appointments);
@@ -256,14 +249,83 @@ export class SchedulerCore {
         };
     }
 
+    parseOptionalInteger(value) {
+        if (value === null || value === undefined || value === '') {
+            return null;
+        }
+
+        const parsed = Number.parseInt(String(value), 10);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    parseAppointmentDateTime(value) {
+        if (!value) {
+            return null;
+        }
+
+        const isoDateTime = DateTime.fromISO(String(value), { zone: this.options.timezone });
+        if (isoDateTime.isValid) {
+            return isoDateTime;
+        }
+
+        const sqlDateTime = DateTime.fromSQL(String(value), { zone: this.options.timezone });
+        return sqlDateTime.isValid ? sqlDateTime : null;
+    }
+
+    normalizeAppointment(rawAppointment = {}) {
+        const start = rawAppointment.start ?? rawAppointment.start_time ?? rawAppointment.startTime ?? null;
+        const end = rawAppointment.end ?? rawAppointment.end_time ?? rawAppointment.endTime ?? null;
+        const customerName = rawAppointment.customerName ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
+        const customerEmail = rawAppointment.customerEmail ?? rawAppointment.customer_email ?? rawAppointment.email ?? null;
+        const customerPhone = rawAppointment.customerPhone ?? rawAppointment.customer_phone ?? rawAppointment.phone ?? null;
+        const providerName = rawAppointment.providerName ?? rawAppointment.provider_name ?? null;
+        const serviceName = rawAppointment.serviceName ?? rawAppointment.service_name ?? null;
+        const locationName = rawAppointment.locationName ?? rawAppointment.location_name ?? null;
+        const providerColor = rawAppointment.providerColor ?? rawAppointment.provider_color ?? DEFAULT_PROVIDER_COLOR;
+        const title = rawAppointment.title ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
+
+        return {
+            ...rawAppointment,
+            id: this.parseOptionalInteger(rawAppointment.id),
+            providerId: this.parseOptionalInteger(rawAppointment.providerId ?? rawAppointment.provider_id),
+            serviceId: this.parseOptionalInteger(rawAppointment.serviceId ?? rawAppointment.service_id),
+            customerId: this.parseOptionalInteger(rawAppointment.customerId ?? rawAppointment.customer_id),
+            locationId: this.parseOptionalInteger(rawAppointment.locationId ?? rawAppointment.location_id),
+            start,
+            end,
+            start_time: rawAppointment.start_time ?? start,
+            end_time: rawAppointment.end_time ?? end,
+            title,
+            name: customerName,
+            customerName,
+            customer_name: rawAppointment.customer_name ?? customerName,
+            email: customerEmail,
+            customerEmail,
+            customer_email: rawAppointment.customer_email ?? customerEmail,
+            phone: customerPhone,
+            customerPhone,
+            customer_phone: rawAppointment.customer_phone ?? customerPhone,
+            providerName,
+            provider_name: rawAppointment.provider_name ?? providerName,
+            serviceName,
+            service_name: rawAppointment.service_name ?? serviceName,
+            locationName,
+            location_name: rawAppointment.location_name ?? locationName,
+            providerColor,
+            provider_color: rawAppointment.provider_color ?? providerColor,
+            startDateTime: this.parseAppointmentDateTime(start),
+            endDateTime: this.parseAppointmentDateTime(end)
+        };
+    }
+
     getFilteredAppointments() {
         this.debugLog('📊 getFilteredAppointments called with activeFilters:', this.activeFilters);
         this.debugLog('📊 visibleProviders:', Array.from(this.visibleProviders));
         
-        // Convert appointment providerId to number for comparison
         const filtered = this.appointments.filter(apt => {
-            const providerId = typeof apt.providerId === 'string' ? parseInt(apt.providerId, 10) : apt.providerId;
-            const serviceId = typeof apt.serviceId === 'string' ? parseInt(apt.serviceId, 10) : apt.serviceId;
+            const providerId = apt.providerId;
+            const serviceId = apt.serviceId;
+            const locationId = apt.locationId;
             
             // Provider filter (via visibleProviders set)
             if (!this.visibleProviders.has(providerId)) {
@@ -287,7 +349,6 @@ export class SchedulerCore {
             
             // Location filter
             if (this.activeFilters?.locationId) {
-                const locationId = apt.locationId ? (typeof apt.locationId === 'string' ? parseInt(apt.locationId, 10) : apt.locationId) : null;
                 if (locationId !== this.activeFilters.locationId) {
                     this.debugLog(`   Apt ${apt.id}: FILTERED OUT by location (apt.locationId=${locationId}, filter=${this.activeFilters.locationId})`);
                     return false;
@@ -317,23 +378,27 @@ export class SchedulerCore {
      */
     async setFilters({ status = '', providerId = '', serviceId = '', locationId = '' }) {
         this.debugLog('📊 setFilters called with:', { status, providerId, serviceId, locationId });
+
+        const parsedProviderId = this.parseOptionalInteger(providerId);
+        const parsedServiceId = this.parseOptionalInteger(serviceId);
+        const parsedLocationId = this.parseOptionalInteger(locationId);
         
         // Store filter values
         this.activeFilters = {
             status: status || null,
-            providerId: providerId ? parseInt(providerId, 10) : null,
-            serviceId: serviceId ? parseInt(serviceId, 10) : null,
-            locationId: locationId ? parseInt(locationId, 10) : null
+            providerId: parsedProviderId,
+            serviceId: parsedServiceId,
+            locationId: parsedLocationId
         };
         
         this.debugLog('📊 activeFilters set to:', this.activeFilters);
         
         // Update visible providers based on filter
-        if (providerId) {
+        if (parsedProviderId) {
             // If a specific provider is selected, only show that provider
             this.visibleProviders.clear();
-            this.visibleProviders.add(parseInt(providerId, 10));
-            this.debugLog('📊 visibleProviders set to single provider:', parseInt(providerId, 10));
+            this.visibleProviders.add(parsedProviderId);
+            this.debugLog('📊 visibleProviders set to single provider:', parsedProviderId);
         } else {
             // If no provider filter, show all providers
             this.visibleProviders.clear();
@@ -578,23 +643,11 @@ export class SchedulerCore {
      * @returns {string}
      */
     getDateRangeText() {
-        switch (this.currentView) {
-            case 'day':
-                return this.currentDate.toFormat('EEEE, MMMM d, yyyy');
-            case 'week': {
-                const weekStart = this.currentDate.startOf('week');
-                const weekEnd = weekStart.plus({ days: 6 });
-                if (weekStart.month === weekEnd.month) {
-                    return `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('d, yyyy')}`;
-                } else if (weekStart.year === weekEnd.year) {
-                    return `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-                }
-                return `${weekStart.toFormat('MMM d, yyyy')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-            }
-            case 'month':
-            default:
-                return this.currentDate.toFormat('MMMM yyyy');
-        }
+        return formatDateNavLabel({
+            date: this.currentDate,
+            view: this.currentView,
+            timezone: this.options.timezone
+        });
     }
 
     /**
@@ -602,8 +655,11 @@ export class SchedulerCore {
      */
     updateDateDisplay() {
         const displayElement = document.getElementById('scheduler-date-display');
-        if (!displayElement) return;
-        displayElement.textContent = this.getDateRangeText();
+        syncDateNavLabel(displayElement, {
+            date: this.currentDate,
+            view: this.currentView,
+            timezone: this.options.timezone
+        });
     }
     
     /**

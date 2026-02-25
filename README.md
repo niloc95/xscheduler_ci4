@@ -1,4 +1,4 @@
-# WebSchedulr - Professional Appointment Scheduling System
+# WebScheduler - Professional Appointment Scheduling System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CodeIgniter](https://img.shields.io/badge/CodeIgniter-4.6.1-red.svg)](https://codeigniter.com/)

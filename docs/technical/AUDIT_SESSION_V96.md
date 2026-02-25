@@ -319,3 +319,256 @@ Additional appointment scheduler UX fixes completed:
 Validation:
 
 - Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Week Grid Audit + Border/Layering Fix
+
+Targeted audit and remediation completed for the week schedule grid after visual regression report.
+
+Audit findings (`resources/js/modules/scheduler/scheduler-week-view.js`):
+
+- Inline CSS usage detected in rendered markup (`style="..."`) for:
+	- dynamic event `top/height`
+	- dynamic grid column templates
+	- negative-margin overlay stacking
+- Overlapping border/layer model caused missing top/left borders and inconsistent line rendering.
+- Orphan expansion handlers remained (`.week-day-more`, `.week-day-hidden`) after timeline rewrite.
+
+Fix applied:
+
+- Replaced overlay/negative-margin timeline composition with a single-layer, class-driven grid.
+- Removed all inline style attributes from week-grid rendering.
+- Restored consistent border model:
+	- one root `border-l border-t`
+	- cell-level `border-r border-b`
+	- no stacked duplicate grid overlays
+- Refactored event rendering to row-scoped cards (hour buckets) using existing click handlers and color hooks.
+- Removed orphan expand handlers and dead selector logic from `attachWeeklySectionListeners()`.
+
+Impact:
+
+- Week grid lines render cleanly without overlap artifacts.
+- Top and left borders are consistently visible.
+- Implementation now complies with no-inline-css requirement in this section.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 1 Refactor Kickoff (Location Strictness + Calendar Surface Cleanup)
+
+Initial implementation phase completed against the new refactor ruleset:
+
+- Strict location enforcement (no silent fallback/auto-select) applied in:
+	- `app/Services/AvailabilityService.php`
+		- `resolveLocationContext()` now requires explicit `location_id` whenever provider has active locations.
+	- `app/Services/AppointmentBookingService.php`
+		- `resolveBookingLocationContext()` now requires explicit `location_id` whenever provider has active locations.
+	- `app/Controllers/Api/Availability.php`
+		- `resolveProviderLocationContext()` now rejects omitted `location_id` whenever provider has active locations.
+	- `app/Controllers/Api/Appointments.php`
+		- `resolveProviderLocationContext()` now rejects omitted `location_id` whenever provider has active locations.
+	- `app/Services/PublicBookingService.php`
+		- `resolveBookingLocation()` no longer auto-selects provider location when omitted.
+
+- Appointment month-view surface cleanup:
+	- `app/Views/appointments/index.php`
+		- Removed `bg-white dark:bg-gray-800` from the calendar wrapper and daily appointments wrapper to match the intended month-view surface style.
+
+Validation:
+
+- `php -l` passes for modified backend files:
+	- `app/Services/AvailabilityService.php`
+	- `app/Services/AppointmentBookingService.php`
+	- `app/Services/PublicBookingService.php`
+	- `app/Controllers/Api/Availability.php`
+	- `app/Controllers/Api/Appointments.php`
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (Location-Aware Query Determinism)
+
+Follow-up backend hardening completed in availability conflict paths:
+
+- `app/Services/AvailabilityService.php`
+	- Applied `location_id` filtering to busy-period appointment query when location context is present.
+	- Applied `location_id` filtering to conflicting-appointments query when location context is present.
+	- Removed redundant location-active checks in `getAvailableSlots()` and `isSlotAvailable()` (context is already validated by `resolveLocationContext()`).
+	- Removed unused helper `isProviderLocationActive()` after consolidation.
+
+Impact:
+
+- Reduces hidden cross-location side effects during slot generation and conflict detection.
+- Improves deterministic behavior for location-scoped availability checks.
+- Removes dead code and redundant conditions per refactor rules.
+
+Validation:
+
+- `php -l app/Services/AvailabilityService.php` passes.
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (Scheduler Naming + Deterministic Normalization)
+
+Additional frontend consistency hardening completed for scheduler state handling:
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- Added centralized appointment normalization helpers:
+		- `parseOptionalInteger(value)`
+		- `parseAppointmentDateTime(value)`
+		- `normalizeAppointment(rawAppointment)`
+	- `loadAppointments()` now normalizes API payload items into a canonical internal shape (`providerId`, `serviceId`, `locationId`, `startDateTime`, `endDateTime`) before storing state.
+	- `getFilteredAppointments()` now relies on normalized canonical fields, removing repeated per-filter snake/camel conversion.
+	- `setFilters(...)` now uses `parseOptionalInteger(...)` for provider/service/location parsing to avoid integer parsing drift and NaN edge cases.
+
+- `resources/js/modules/scheduler/stats/stats-engine.js`
+	- Updated provider aggregation to prioritize canonical `providerId` before legacy `provider_id` fallback.
+	- Updated datetime parsing to use pre-normalized `startDateTime` when present/valid, then fallback parsing paths.
+	- Kept backward-compatible fallbacks for mixed API payloads while preferring canonical scheduler state.
+
+Impact:
+
+- Reduces naming inconsistency side effects across scheduler filtering/stats paths.
+- Improves determinism by normalizing appointment state once at ingest time.
+- Preserves compatibility with mixed API payload styles during transition.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (Appointments API Naming Convergence)
+
+Additional API/frontend naming convergence completed in appointment listing paths:
+
+- `app/Controllers/Api/Appointments.php`
+	- `index()` now accepts both snake_case and camelCase query filter aliases:
+		- `provider_id` / `providerId`
+		- `service_id` / `serviceId`
+		- `location_id` / `locationId`
+	- `index()` response now emits canonical snake_case entity fields (`provider_id`, `service_id`, `customer_id`, `service_name`, `provider_name`, `provider_color`, `service_duration`, `service_price`, `location_id`, `location_name`, `location_address`, `location_contact`) while retaining camelCase aliases for compatibility during transition.
+	- `meta.filters` now includes snake_case filter keys with camelCase aliases.
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- `normalizeAppointment(...)` now maps snake_case API fields into canonical scheduler display/runtime fields (`serviceName`, `providerName`, `locationName`, `providerColor`, `title`) to keep Week/Month rendering deterministic regardless of payload style.
+
+Impact:
+
+- Reduces naming drift between backend payloads and scheduler state.
+- Preserves backward compatibility while shifting canonical API semantics toward snake_case.
+
+Validation:
+
+- `php -l app/Controllers/Api/Appointments.php` passes.
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (Modal/Stats Consumer Naming Cleanup)
+
+Follow-up frontend consumer cleanup completed after API/scheduler naming convergence:
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- Extended `normalizeAppointment(...)` with canonical customer fields used by UI actions:
+		- `customerName`, `customerEmail`, `customerPhone`
+	- Preserves compatibility aliases while ensuring a deterministic camelCase runtime contract for scheduler modules.
+
+- `resources/js/modules/scheduler/appointment-details-modal.js`
+	- Removed mixed snake/camel fallback reads in high-use modal actions.
+	- Modal now consumes normalized scheduler fields consistently:
+		- `start` / `end`
+		- `customerName`
+		- `serviceName`
+		- `providerName`
+		- `customerEmail`
+		- `customerPhone`
+
+- `resources/js/modules/scheduler/stats/stats-engine.js`
+	- Provider aggregation now uses canonical `providerId` from normalized scheduler state.
+
+Impact:
+
+- Reduces mixed-naming branching in modal/stats paths.
+- Moves scheduler consumers toward a single internal naming contract while keeping ingress compatibility at normalization boundaries.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (Day/Week/Month Consumer Fallback Reduction)
+
+Additional scheduler consumer cleanup completed to reduce mixed naming branches:
+
+- `resources/js/modules/scheduler/scheduler-day-view.js`
+	- Updated appointment display name selection to rely on normalized `customerName` with `title` fallback.
+
+- `resources/js/modules/scheduler/scheduler-week-view.js`
+	- Updated appointment summary and expanded day-cell rendering to rely on normalized `customerName` with `title` fallback.
+
+- `resources/js/modules/scheduler/scheduler-month-view.js`
+	- Updated month appointment block/list title derivation to prefer normalized `customerName` with `title` fallback.
+
+Impact:
+
+- Removes remaining high-frequency `apt.name || apt.customerName` branch patterns in core scheduler views.
+- Keeps user-facing rendering unchanged while converging to a single normalized internal contract.
+
+Validation:
+
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Phase 2 Refactor (API Envelope Strictness + Constants + Debug Cleanup)
+
+Additional cleanup pass completed for strict naming, duplication reduction, and production-readiness:
+
+- `app/Controllers/Api/Appointments.php`
+	- Added centralized constant for default provider color:
+		- `DEFAULT_PROVIDER_COLOR`
+	- `index()` response now emits canonical snake_case fields only (removed mixed camelCase alias keys from payload and `meta.filters`).
+	- Replaced duplicate hardcoded provider color literals with `DEFAULT_PROVIDER_COLOR`.
+	- Removed noisy per-request/per-appointment informational/debug logs in `index()`.
+	- `meta.total` now uses filtered total count from query count result instead of page item count.
+
+- `resources/js/modules/scheduler/constants.js`
+	- Added centralized scheduler constant:
+		- `DEFAULT_PROVIDER_COLOR`
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- Switched default provider color fallback to centralized `DEFAULT_PROVIDER_COLOR` constant.
+
+- `resources/js/modules/scheduler/appointment-details-modal.js`
+	- Switched default provider color fallback to centralized `DEFAULT_PROVIDER_COLOR` constant.
+
+- `app/Views/appointments/index.php`
+	- Removed console debug output from prototype bootstrap script to avoid production debug remnants.
+
+Impact:
+
+- Removes mixed-case API response envelope drift in appointment listing.
+- Centralizes repeated default color magic value into a single scheduler constant.
+- Reduces debug/log noise for production deployments.
+
+Validation:
+
+- `php -l app/Controllers/Api/Appointments.php` passes.
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — D13 Date Navigation Label Deduplication
+
+Additional scheduler deduplication completed for header date-label rendering:
+
+- `resources/js/modules/scheduler/date-nav-label.js`
+	- Added shared date label formatter utilities:
+		- `formatDateNavLabel(...)`
+		- `syncDateNavLabel(...)`
+	- Supports day/week/month label formatting using scheduler timezone context.
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- Replaced local duplicated date-label switch logic in `getDateRangeText()` with shared `formatDateNavLabel(...)`.
+	- Replaced direct DOM text assignment in `updateDateDisplay()` with shared `syncDateNavLabel(...)`.
+
+- `resources/js/modules/scheduler/scheduler-ui.js`
+	- Replaced fallback duplicate date-label formatting switch in toolbar updater with shared `syncDateNavLabel(...)`.
+
+Impact:
+
+- Removes duplicated date-label rendering logic between core and UI fallback paths.
+- Preserves existing day/week/month output format while reducing drift risk.
+
+Validation:
+
+- Frontend build passes (`npm run build`).

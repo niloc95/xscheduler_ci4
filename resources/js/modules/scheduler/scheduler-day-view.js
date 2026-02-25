@@ -142,7 +142,7 @@ export class DayView {
         const statusColors = getStatusColors(appointment.status, darkMode);
         const providerColor = getProviderColor(provider);
         
-        const customerName = appointment.name || appointment.customerName || appointment.title || 'Unknown';
+        const customerName = appointment.customerName || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
         const location = appointment.locationName || '';
         

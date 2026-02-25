@@ -148,11 +148,6 @@ class AvailabilityService
 
         // Step 1b: If a location is specified, check that the location operates on this day
         if ($locationId !== null) {
-            if (!$this->isProviderLocationActive($providerId, $locationId)) {
-                log_message('info', '[AvailabilityService] Location ' . $locationId . ' is not active for provider ' . $providerId);
-                return [];
-            }
-
             $dateObj = new \DateTime($date);
             $dayInt = (int) $dateObj->format('w'); // 0=Sun … 6=Sat
             $locationDays = $this->locationModel->getLocationDays($locationId);
@@ -178,7 +173,7 @@ class AvailabilityService
         }
         
         // Step 4: Get all busy periods (appointments + blocked times)
-        $busyPeriods = $this->getBusyPeriods($providerId, $date, $timezone, $bufferMinutes, $excludeAppointmentId);
+        $busyPeriods = $this->getBusyPeriods($providerId, $date, $timezone, $bufferMinutes, $excludeAppointmentId, $locationId);
         log_message('info', '[AvailabilityService] Found ' . count($busyPeriods) . ' busy periods for provider ' . $providerId . ' on ' . $date);
         foreach ($busyPeriods as $busy) {
             log_message('info', '[AvailabilityService] Busy: ' . $busy['start']->format('Y-m-d H:i:s') . ' to ' . $busy['end']->format('Y-m-d H:i:s') . ' (' . $busy['type'] . ')');
@@ -251,14 +246,6 @@ class AvailabilityService
 
         // Check location operating day (if location specified)
         if ($locationId !== null) {
-            if (!$this->isProviderLocationActive($providerId, $locationId)) {
-                return [
-                    'available' => false,
-                    'conflicts' => [],
-                    'reason' => 'Location is not available for this provider'
-                ];
-            }
-
             $dayInt = (int) $start->format('w'); // 0=Sun … 6=Sat
             $locationDays = $this->locationModel->getLocationDays($locationId);
             if (!in_array($dayInt, $locationDays, true)) {
@@ -312,7 +299,8 @@ class AvailabilityService
             $providerId,
             $start->format('Y-m-d H:i:s'),
             $end->format('Y-m-d H:i:s'),
-            $excludeAppointmentId
+            $excludeAppointmentId,
+            $locationId
         );
         
         if (!empty($conflicts)) {
@@ -439,24 +427,13 @@ class AvailabilityService
         ];
     }
 
-    private function isProviderLocationActive(int $providerId, int $locationId): bool
-    {
-        $location = $this->locationModel->find($locationId);
-        if (!$location) {
-            return false;
-        }
-
-        return (int) ($location['provider_id'] ?? 0) === $providerId && (int) ($location['is_active'] ?? 0) === 1;
-    }
-
     /**
      * Resolve and validate provider location context.
      *
-     * Rules:
-     * - No active locations => location not required.
-     * - One active location => auto-resolve when omitted.
-     * - Multiple active locations => explicit location is required.
-     * - Provided location must be active and owned by provider.
+    * Rules:
+    * - No active locations => location not required.
+    * - Any active locations => explicit location is required.
+    * - Provided location must be active and owned by provider.
      *
      * @return array{valid:bool, location_id:?int, reason:?string}
      */
@@ -481,22 +458,18 @@ class AvailabilityService
             return ['valid' => true, 'location_id' => $locationId, 'reason' => null];
         }
 
-        if (count($activeLocationIds) > 1) {
-            return [
-                'valid' => false,
-                'location_id' => null,
-                'reason' => 'location_id is required when provider has multiple active locations'
-            ];
-        }
-
-        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
+        return [
+            'valid' => false,
+            'location_id' => null,
+            'reason' => 'location_id is required for providers with active locations'
+        ];
     }
 
     /**
      * Get all busy periods for a provider on a specific date
      * Returns array of ['start' => DateTime, 'end' => DateTime]
      */
-    private function getBusyPeriods(int $providerId, string $date, string $timezone, int $bufferMinutes = 0, ?int $excludeAppointmentId = null): array
+    private function getBusyPeriods(int $providerId, string $date, string $timezone, int $bufferMinutes = 0, ?int $excludeAppointmentId = null, ?int $locationId = null): array
     {
         $busy = [];
         $tz = new DateTimeZone($timezone);
@@ -507,15 +480,20 @@ class AvailabilityService
         $startOfDay = $date . ' 00:00:00';
         $endOfDay = $date . ' 23:59:59';
         
-        $appointments = $this->appointmentModel
+        $appointmentsQuery = $this->appointmentModel
             ->where('provider_id', $providerId)
             ->where('status !=', 'cancelled')
             ->where('start_time >=', $startOfDay)
             ->where('start_time <=', $endOfDay)
             ->when($excludeAppointmentId !== null, function($builder) use ($excludeAppointmentId) {
                 $builder->where('id !=', $excludeAppointmentId);
-            })
-            ->findAll();
+            });
+
+        if ($locationId !== null) {
+            $appointmentsQuery->where('location_id', $locationId);
+        }
+
+        $appointments = $appointmentsQuery->findAll();
         
         foreach ($appointments as $apt) {
             // Database stores times in local timezone, so create DateTime in local timezone
@@ -668,7 +646,8 @@ class AvailabilityService
         int $providerId,
         string $startTime,
         string $endTime,
-        ?int $excludeAppointmentId = null
+        ?int $excludeAppointmentId = null,
+        ?int $locationId = null
     ): array {
         $builder = $this->appointmentModel->builder();
         
@@ -694,6 +673,10 @@ class AvailabilityService
         
         if ($excludeAppointmentId) {
             $builder->where('id !=', $excludeAppointmentId);
+        }
+
+        if ($locationId !== null) {
+            $builder->where('location_id', $locationId);
         }
         
         return $builder->get()->getResultArray();

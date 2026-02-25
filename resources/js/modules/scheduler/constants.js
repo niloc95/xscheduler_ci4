@@ -1,0 +1,1 @@
+export const DEFAULT_PROVIDER_COLOR = '#3B82F6';

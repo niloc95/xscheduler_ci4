@@ -73,6 +73,8 @@ use App\Services\SchedulingService;
  */
 class Appointments extends BaseApiController
 {
+    private const DEFAULT_PROVIDER_COLOR = '#3B82F6';
+
     /**
      * List appointments with pagination, filtering, and date range support
      * GET /api/appointments?start=&end=&providerId=&serviceId=&page=&length=&sort=
@@ -85,9 +87,9 @@ class Appointments extends BaseApiController
             // Get query parameters
             $start = $this->request->getGet('start');
             $end = $this->request->getGet('end');
-            $providerId = $this->request->getGet('providerId');
-            $serviceId = $this->request->getGet('serviceId');
-            $locationId = $this->request->getGet('locationId');
+            $providerId = $this->request->getGet('provider_id') ?? $this->request->getGet('providerId');
+            $serviceId = $this->request->getGet('service_id') ?? $this->request->getGet('serviceId');
+            $locationId = $this->request->getGet('location_id') ?? $this->request->getGet('locationId');
             
             // Pagination parameters
             // For calendar views, allow up to 1000 per page to load all appointments
@@ -153,27 +155,10 @@ class Appointments extends BaseApiController
             // Apply pagination
             $appointments = $builder->limit($length, $offset)->get()->getResultArray();
             
-            log_message('info', '[API/Appointments::index] ========== APPOINTMENTS API RESPONSE ==========');
-            log_message('info', '[API/Appointments::index] Query filters:', [
-                'start' => $start,
-                'end' => $end,
-                'providerId' => $providerId,
-                'serviceId' => $serviceId
-            ]);
-            log_message('info', '[API/Appointments::index] Found ' . count($appointments) . ' appointments');
-            
-            // Transform data for custom scheduler with provider colors
+            // Transform data for scheduler clients (canonical snake_case)
             $events = array_map(function($appointment) {
                 $startIso = $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null);
                 $endIso = $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null);
-
-                log_message('debug', '[API/Appointments::index] Appointment #' . $appointment['id'] . ':', [
-                    'customer' => $appointment['customer_name'],
-                    'iso_start' => $startIso,
-                    'iso_end' => $endIso,
-                    'provider' => $appointment['provider_name'],
-                    'service' => $appointment['service_name']
-                ]);
 
                 return [
                     'id' => (int)$appointment['id'],
@@ -181,40 +166,37 @@ class Appointments extends BaseApiController
                     'title' => $appointment['customer_name'] ?? 'Appointment #' . $appointment['id'],
                     'start' => $startIso,
                     'end' => $endIso,
-                    'providerId' => (int)$appointment['provider_id'],
-                    'serviceId' => (int)$appointment['service_id'],
-                    'customerId' => (int)$appointment['customer_id'],
+                    'provider_id' => (int)$appointment['provider_id'],
+                    'service_id' => (int)$appointment['service_id'],
+                    'customer_id' => (int)$appointment['customer_id'],
                     'status' => $appointment['status'],
                     'name' => $appointment['customer_name'] ?? null,
-                    'serviceName' => $appointment['service_name'] ?? null,
-                    'providerName' => $appointment['provider_name'] ?? null,
-                    'providerColor' => $appointment['provider_color'] ?? '#3B82F6', // Default blue
-                    'serviceDuration' => $appointment['service_duration'] ? (int)$appointment['service_duration'] : null,
-                    'servicePrice' => $appointment['service_price'] ? (float)$appointment['service_price'] : null,
+                    'service_name' => $appointment['service_name'] ?? null,
+                    'provider_name' => $appointment['provider_name'] ?? null,
+                    'provider_color' => $appointment['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
+                    'service_duration' => $appointment['service_duration'] ? (int)$appointment['service_duration'] : null,
+                    'service_price' => $appointment['service_price'] ? (float)$appointment['service_price'] : null,
                     'email' => $appointment['customer_email'] ?? null,
                     'phone' => $appointment['customer_phone'] ?? null,
                     'notes' => $appointment['notes'] ?? null,
-                    'locationId' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
-                    'locationName' => $appointment['location_name'] ?? null,
-                    'locationAddress' => $appointment['location_address'] ?? null,
-                    'locationContact' => $appointment['location_contact'] ?? null,
+                    'location_id' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
+                    'location_name' => $appointment['location_name'] ?? null,
+                    'location_address' => $appointment['location_address'] ?? null,
+                    'location_contact' => $appointment['location_contact'] ?? null,
                     // Note: start_time/end_time removed - use 'start'/'end' instead (ISO 8601)
                 ];
             }, $appointments);
             
-            log_message('info', '[API/Appointments::index] Returning ' . count($events) . ' events with app-timezone ISO timestamps');
-            log_message('info', '[API/Appointments::index] Note: times carry the app timezone offset (e.g. +02:00); frontend Luxon zone option uses this for display');
-            log_message('info', '[API/Appointments::index] ==================================================');
-            
             return $response->setJSON([
                 'data' => $events,
                 'meta' => [
-                    'total' => count($events),
+                    'total' => (int) $totalCount,
                     'filters' => [
                         'start' => $start,
                         'end' => $end,
-                        'providerId' => $providerId,
-                        'serviceId' => $serviceId
+                        'provider_id' => $providerId,
+                        'service_id' => $serviceId,
+                        'location_id' => $locationId
                     ]
                 ]
             ]);
@@ -268,7 +250,7 @@ class Appointments extends BaseApiController
                 'customer_phone' => $appointment['customer_phone'] ?? '',
                 'provider_id' => $appointment['provider_id'],
                 'provider_name' => $appointment['provider_name'] ?? 'N/A',
-                'provider_color' => $appointment['provider_color'] ?? '#3B82F6',
+                'provider_color' => $appointment['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
                 'service_id' => $appointment['service_id'],
                 'service_name' => $appointment['service_name'] ?? 'N/A',
                 'start_time' => $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
@@ -478,11 +460,7 @@ class Appointments extends BaseApiController
             return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
         }
 
-        if (count($activeLocationIds) > 1) {
-            return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required when provider has multiple active locations'];
-        }
-
-        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
+        return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required for providers with active locations'];
     }
 
     private function getCreateValidationRules(): array

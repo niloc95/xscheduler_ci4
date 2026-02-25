@@ -62,7 +62,7 @@ function computeStats(appointments, dateRange) {
         }
         
         // Provider distribution
-        const providerId = apt.provider_id || apt.providerId || 'unassigned';
+        const providerId = apt.providerId || 'unassigned';
         byProvider[providerId] = (byProvider[providerId] || 0) + 1;
         
         // Hourly distribution
@@ -125,9 +125,13 @@ function filterByDateRange(appointments, dateRange) {
  * @private
  */
 function parseAppointmentDateTime(apt) {
+    if (apt.startDateTime && DateTime.isDateTime(apt.startDateTime) && apt.startDateTime.isValid) {
+        return apt.startDateTime;
+    }
+
     // Handle various date formats from API
-    const dateStr = apt.appointment_date || apt.appointmentDate || apt.date;
-    const timeStr = apt.start_time || apt.startTime || apt.time || '00:00';
+    const dateStr = apt.appointmentDate || apt.appointment_date || apt.date;
+    const timeStr = apt.start || apt.startTime || apt.start_time || apt.time || '00:00';
     
     if (!dateStr) {
         return DateTime.now();

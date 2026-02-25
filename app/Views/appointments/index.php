@@ -202,7 +202,7 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
 <?php // Calendar and appointments content (scrollable area below fixed header) ?>
 <?= $this->section('dashboard_content') ?>
     <!-- Calendar Container -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <div
             id="appointments-inline-calendar"
             class="w-full"
@@ -212,7 +212,7 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
     </div>
 
     <!-- Daily Appointments Section -->
-    <div id="daily-provider-appointments" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div id="daily-provider-appointments" class="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="p-8 text-center">
             <div class="loading-spinner mx-auto mb-3"></div>
             <p class="text-sm text-gray-500 dark:text-gray-400">Loading appointments...</p>
@@ -236,9 +236,8 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
         try {
             const module = await import('<?= esc($calendarPrototypeAssets['js']) ?>');
             if (typeof module.default === 'function') module.default();
-            console.log('[Calendar] Prototype module loaded');
         } catch (err) {
-            console.warn('[Calendar] Prototype module unavailable:', err.message);
+            // Silently skip when prototype bundle is unavailable in this environment.
         }
     })();
     <?php endif; ?>

@@ -82,47 +82,45 @@
 /* Month View */
 .scheduler-month-view {
     animation: fadeIn 0.3s ease-out;
-    /* P0-3 FIX: Ensure month view does not get cut off at bottom */
-    overflow: visible;
+    overflow: hidden;
     min-height: 0;
 }
 
-/* P0-3 FIX: Month grid container - ensure proper height calculation */
+/* Month grid rows — natural height expansion */
 .scheduler-month-view > .grid {
-    /* Reset auto-rows-fr that can cause truncation */
-    grid-auto-rows: minmax(100px, auto);
+    grid-auto-rows: minmax(90px, auto);
 }
 
-/* P0-3 FIX: Day headers row */
+/* Day headers row */
 .scheduler-month-view > .grid.grid-cols-7:first-child {
     flex-shrink: 0;
+    grid-auto-rows: auto;
 }
 
-/* P0-3 FIX: Calendar grid - allow natural height expansion */
+/* Calendar grid */
 .scheduler-month-view > .grid.grid-cols-7:last-of-type {
     min-height: auto;
     overflow: visible;
 }
 
 .scheduler-month-view .scheduler-appointment {
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
 
 .scheduler-month-view .scheduler-appointment:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.08);
 }
 
-/* P0-3 FIX: Day cell overflow handling */
+/* Day cell — flat, minimal */
 .scheduler-day-cell {
     cursor: pointer;
-    transition: background-color 0.15s ease;
-    /* P0-3 FIX: Allow cells to expand with content */
-    min-height: 100px;
-    overflow: visible;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 90px;
+    overflow: hidden;
 }
 
-/* P0-3 FIX: Day appointments container within cell */
+/* Day appointments scrollable container */
 .scheduler-day-cell .day-appointments {
     overflow-y: auto;
     max-height: 150px;
@@ -147,24 +145,16 @@
     background-color: rgba(107, 114, 128, 0.5);
 }
 
-.scheduler-day-cell:hover {
-    background-color: rgba(59, 130, 246, 0.05);
-}
-
-.scheduler-day-cell.today {
-    background-color: rgba(59, 130, 246, 0.1);
-}
-
 .scheduler-day-cell.other-month {
     opacity: 0.5;
 }
 
 .scheduler-day-cell.past {
-    opacity: 0.7;
+    opacity: 0.75;
 }
 
 .scheduler-day-cell.non-working-day {
-    background-color: rgba(156, 163, 175, 0.1);
+    background-color: rgba(156, 163, 175, 0.05);
 }
 
 /* Week View */
@@ -524,19 +514,11 @@
 .dark .scheduler-month-view .scheduler-appointment:hover,
 .dark .scheduler-week-view .appointment-block:hover,
 .dark .scheduler-day-view .inline-appointment:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-}
-
-.dark .scheduler-day-cell:hover {
-    background-color: rgba(59, 130, 246, 0.1);
-}
-
-.dark .scheduler-day-cell.today {
-    background-color: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }
 
 .dark .scheduler-day-cell.non-working-day {
-    background-color: rgba(75, 85, 99, 0.2);
+    background-color: rgba(75, 85, 99, 0.1);
 }
 
 .dark .drag-over {

@@ -405,11 +405,7 @@ class PublicBookingService
             return $selectedLocationId;
         }
 
-        if (count($activeLocationIds) > 1) {
-            throw new PublicBookingException('Please select a location for this provider.', 422, ['location_id' => 'required']);
-        }
-
-        return $activeLocationIds[0] ?? null;
+        throw new PublicBookingException('Please select a location for this provider.', 422, ['location_id' => 'required']);
     }
 
     private function resolveService(int $serviceId): array
