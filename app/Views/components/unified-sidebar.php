@@ -20,7 +20,7 @@ $currentRole = current_user_role();
                     <img src="<?= esc($logoUrl) ?>" alt="Company logo" class="brand-logo" />
                 <?php else: ?>
                     <div class="brand-logo-placeholder">
-                        <span class="brand-icon material-symbols-rounded">calendar_month</span>
+                        <span class="brand-icon material-symbols-outlined">calendar_month</span>
                     </div>
                 <?php endif; ?>
                 <?php 

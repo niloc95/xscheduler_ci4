@@ -65,6 +65,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Models\LocationModel;
 use App\Services\AvailabilityService;
 use App\Services\LocalizationSettingsService;
 
@@ -141,8 +142,17 @@ class Availability extends BaseApiController
         $bufferMinutes = (int) ($this->request->getGet('buffer_minutes') ?? 
                                 $this->availabilityService->getBufferTime((int)$providerId));
         $timezone = $this->request->getGet('timezone') ?? $this->localizationService->getTimezone();
+        $locationIdRaw = $this->request->getGet('location_id');
+        $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
         $excludeAppointmentId = $this->request->getGet('exclude_appointment_id');
         $excludeAppointmentId = $excludeAppointmentId !== null ? (int) $excludeAppointmentId : null;
+
+        $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return $response->setStatusCode(422)->setJSON([
+                'error' => ['message' => $locationContext['reason']]
+            ]);
+        }
         
         try {
             // Get available slots
@@ -152,7 +162,8 @@ class Availability extends BaseApiController
                 (int) $serviceId,
                 $bufferMinutes,
                 $timezone,
-                $excludeAppointmentId
+                $excludeAppointmentId,
+                $locationContext['location_id']
             );
             
             // Format slots for response
@@ -171,6 +182,7 @@ class Availability extends BaseApiController
                     'date' => $date,
                     'provider_id' => (int) $providerId,
                     'service_id' => (int) $serviceId,
+                    'location_id' => $locationContext['location_id'],
                     'buffer_minutes' => $bufferMinutes,
                     'slots' => $formattedSlots,
                     'total_slots' => count($formattedSlots),
@@ -238,6 +250,14 @@ class Availability extends BaseApiController
         $endTime = $json['end_time'];
         $timezone = $json['timezone'] ?? $this->localizationService->getTimezone();
         $excludeAppointmentId = isset($json['exclude_appointment_id']) ? (int) $json['exclude_appointment_id'] : null;
+        $locationId = isset($json['location_id']) && $json['location_id'] !== '' ? (int) $json['location_id'] : null;
+
+        $locationContext = $this->resolveProviderLocationContext($providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return $response->setStatusCode(422)->setJSON([
+                'error' => ['message' => $locationContext['reason']]
+            ]);
+        }
         
         try {
             // Check availability
@@ -246,7 +266,8 @@ class Availability extends BaseApiController
                 $startTime,
                 $endTime,
                 $timezone,
-                $excludeAppointmentId
+                $excludeAppointmentId,
+                $locationContext['location_id']
             );
             
             return $response->setJSON([
@@ -296,6 +317,8 @@ class Availability extends BaseApiController
         $startDate = $this->request->getGet('start_date');
         $endDate = $this->request->getGet('end_date');
         $serviceId = $this->request->getGet('service_id');
+        $locationIdRaw = $this->request->getGet('location_id');
+        $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
         
         if (!$providerId || !$startDate || !$endDate || !$serviceId) {
             return $response->setStatusCode(400)->setJSON([
@@ -306,6 +329,13 @@ class Availability extends BaseApiController
             ]);
         }
         
+        $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return $response->setStatusCode(422)->setJSON([
+                'error' => ['message' => $locationContext['reason']]
+            ]);
+        }
+
         try {
             $summary = [];
             $current = new \DateTime($startDate);
@@ -321,7 +351,9 @@ class Availability extends BaseApiController
                     $dateStr,
                     (int) $serviceId,
                     $bufferMinutes,
-                    $timezone
+                    $timezone,
+                    null,
+                    $locationContext['location_id']
                 );
                 
                 $summary[$dateStr] = [
@@ -363,6 +395,13 @@ class Availability extends BaseApiController
         $locationId = $this->request->getGet('location_id');
         $locationId = $locationId !== null && $locationId !== '' ? (int) $locationId : null;
 
+        $locationContext = $this->resolveProviderLocationContext($providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return $response->setStatusCode(422)->setJSON([
+                'error' => ['message' => $locationContext['reason']]
+            ]);
+        }
+
         if ($providerId <= 0 || $serviceId <= 0) {
             return $response->setStatusCode(400)->setJSON([
                 'error' => [
@@ -393,7 +432,7 @@ class Availability extends BaseApiController
                 $days,
                 $timezone,
                 $excludeAppointmentId,
-                $locationId
+                $locationContext['location_id']
             );
 
             return $response->setJSON([
@@ -439,6 +478,8 @@ class Availability extends BaseApiController
         
         $providerId = $this->request->getGet('provider_id');
         $serviceId = $this->request->getGet('service_id');
+        $locationIdRaw = $this->request->getGet('location_id');
+        $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
         
         if (!$providerId || !$serviceId) {
             return $response->setStatusCode(400)->setJSON([
@@ -453,6 +494,13 @@ class Availability extends BaseApiController
         $daysAhead = min((int) ($this->request->getGet('days_ahead') ?? 30), 90);
         $timezone = $this->localizationService->getTimezone();
         $bufferMinutes = $this->availabilityService->getBufferTime((int)$providerId);
+
+        $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return $response->setStatusCode(422)->setJSON([
+                'error' => ['message' => $locationContext['reason']]
+            ]);
+        }
         
         try {
             $current = new \DateTime($fromDate, new \DateTimeZone($timezone));
@@ -467,7 +515,9 @@ class Availability extends BaseApiController
                     $dateStr,
                     (int) $serviceId,
                     $bufferMinutes,
-                    $timezone
+                    $timezone,
+                    null,
+                    $locationContext['location_id']
                 );
                 
                 if (!empty($slots)) {
@@ -514,5 +564,34 @@ class Availability extends BaseApiController
                 ]
             ]);
         }
+    }
+
+    /**
+     * Resolve provider location context for availability endpoints.
+     */
+    private function resolveProviderLocationContext(int $providerId, ?int $requestedLocationId): array
+    {
+        $locationModel = new LocationModel();
+        $activeLocations = $locationModel->getProviderLocations($providerId, true);
+
+        if (empty($activeLocations)) {
+            return ['valid' => true, 'location_id' => null, 'reason' => null];
+        }
+
+        $activeLocationIds = array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations);
+
+        if ($requestedLocationId !== null) {
+            if (!in_array($requestedLocationId, $activeLocationIds, true)) {
+                return ['valid' => false, 'location_id' => null, 'reason' => 'Selected location is unavailable for this provider'];
+            }
+
+            return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
+        }
+
+        if (count($activeLocationIds) > 1) {
+            return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required when provider has multiple active locations'];
+        }
+
+        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
     }
 }

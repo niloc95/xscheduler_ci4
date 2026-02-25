@@ -342,7 +342,7 @@ export class AppointmentDetailsModal {
             this.modal.classList.remove('hidden');
             
             // Prevent body scroll when modal is open
-            document.body.style.overflow = 'hidden';
+            document.body.classList.add('xs-no-scroll');
             
             requestAnimationFrame(() => {
                 this.modal.classList.add('scheduler-modal-open');
@@ -359,7 +359,7 @@ export class AppointmentDetailsModal {
         this.modal.classList.remove('scheduler-modal-open');
         
         // Restore body scroll
-        document.body.style.overflow = '';
+        document.body.classList.remove('xs-no-scroll');
         
         setTimeout(() => {
             this.modal.classList.add('hidden');
@@ -431,7 +431,11 @@ export class AppointmentDetailsModal {
             
             // Provider
             const providerColor = appointment.providerColor || '#3B82F6';
-            this.modal.querySelector('#detail-provider-color').style.backgroundColor = providerColor;
+            const providerColorEl = this.modal.querySelector('#detail-provider-color');
+            if (providerColorEl) {
+                providerColorEl.setAttribute('data-bg-color', providerColor);
+                document.dispatchEvent(new Event('xs:content-updated'));
+            }
             this.modal.querySelector('#detail-provider-name').textContent = appointment.providerName || 'Provider';
             
             // Location

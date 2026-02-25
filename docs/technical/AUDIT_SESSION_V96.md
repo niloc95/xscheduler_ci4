@@ -200,3 +200,122 @@ Fix applied:
 - Returns validation error (`Invalid JSON payload`) instead of 500 when JSON is malformed and no form payload exists.
 - Filters transport keys (`csrf_test_name`, `form_source`) from persisted settings payload.
 - Keeps successful JSON and form-data updates unchanged.
+
+## 2026-02-25 Addendum — Backend Validation Centralization + Strict Location Context
+
+Additional backend hardening completed for appointment/availability flows:
+
+- Enforced strict provider-location context inside `app/Services/AvailabilityService.php`:
+	- Added centralized `resolveLocationContext()` guard.
+	- Requires explicit `location_id` when provider has multiple active locations.
+	- Auto-resolves the single active location when exactly one exists.
+	- Rejects invalid/inactive location-provider mappings consistently.
+- Updated `getAvailableSlots()` and `isSlotAvailable()` to use the same location-context resolution path, removing divergent location validation behavior.
+- Hardened `app/Services/AppointmentBookingService.php`:
+	- Added centralized `resolveBookingLocationContext()` helper.
+	- `createAppointment()` now validates/normalizes location before availability checks and persists resolved `location_id`.
+	- `updateAppointment()` now validates provider/location context even when time fields are unchanged, preventing silent multi-location fallback during updates.
+	- Availability checks in create/update now pass resolved `location_id` explicitly.
+- Hardened `app/Controllers/Api/Availability.php`:
+	- Added centralized `resolveProviderLocationContext()`.
+	- Applied consistent location validation/enforcement to `slots`, `check`, `summary`, `calendar`, and `nextAvailable` endpoints.
+	- Endpoints return `422` with a clear message when `location_id` is required or invalid.
+- Reduced duplication and improved consistency in `app/Controllers/Api/Appointments.php::checkAvailability()`:
+	- Added `validateAvailabilityPayload()` for centralized request validation.
+	- Added `resolveProviderLocationContext()` for consistent location enforcement.
+	- Availability checks now pass resolved `location_id`.
+	- Standardized service table access via prefixed table resolution (`$db->prefixTable('services')`).
+
+Validation:
+
+- `php -l` passes for:
+	- `app/Services/AvailabilityService.php`
+	- `app/Services/AppointmentBookingService.php`
+	- `app/Controllers/Api/Availability.php`
+	- `app/Controllers/Api/Appointments.php`
+
+## 2026-02-25 Addendum — Controller Validation Rule Centralization
+
+Additional backend deduplication completed for controller-level validation rules:
+
+- `app/Controllers/Appointments.php`
+	- Replaced duplicated store/update rule arrays with centralized helpers:
+		- `getStoreValidationRules(bool $hasExistingCustomer)`
+		- `getUpdateValidationRules()`
+	- Replaced repeated date-in-past checks with shared helper:
+		- `validateNotInPast(...)`
+- `app/Controllers/Api/Appointments.php`
+	- Replaced inline rule arrays in `create()` and `counts()` with centralized helpers:
+		- `getCreateValidationRules()`
+		- `getCountsValidationRules()`
+- `app/Controllers/UserManagement.php`
+	- Replaced duplicated validation arrays in `store()` and `update()` with:
+		- `getStoreValidationRules()`
+		- `getUpdateValidationRules(int $userId, bool $includePasswordRules, bool $canChangeRole)`
+
+Impact:
+
+- Reduces rule drift risk between create/update endpoints.
+- Keeps behavior and response envelopes unchanged while improving maintainability.
+
+Validation:
+
+- `php -l` passes for:
+	- `app/Controllers/Appointments.php`
+	- `app/Controllers/Api/Appointments.php`
+	- `app/Controllers/UserManagement.php`
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Controller Duplication Cleanup (D6/D7)
+
+Additional duplication cleanup completed from deferred architecture items:
+
+- `app/Controllers/Appointments.php`
+	- Centralized duplicated provider/service dropdown preparation used by both `create()` and `edit()`.
+	- Added shared helper:
+		- `formatDropdownData()`
+	- `create()` and `edit()` now consume the same providers/services formatting path.
+
+- `app/Controllers/Api/Appointments.php`
+	- Centralized repeated notification enqueue blocks across API flows.
+	- Added shared helper:
+		- `queueAppointmentNotifications(int $appointmentId, array $channels, string $eventType, string $context = 'appointment')`
+	- Replaced copy-pasted queue logic in:
+		- `updateStatus()`
+		- `create()`
+		- `update()`
+		- `delete()`
+		- `notify()` (WhatsApp path)
+
+Impact:
+
+- Reduces notification enqueue drift risk between endpoints.
+- Keeps response payloads and notification behavior unchanged while improving maintainability.
+
+Validation:
+
+- `php -l` passes for:
+	- `app/Controllers/Appointments.php`
+	- `app/Controllers/Api/Appointments.php`
+- Frontend build passes (`npm run build`).
+
+## 2026-02-25 Addendum — Appointment View UX Fixes (Day Hidden + Fresh Time Rendering)
+
+Additional appointment scheduler UX fixes completed:
+
+- `app/Views/appointments/index.php`
+	- Removed Day view toggle button from the appointments header controls.
+	- Scheduler toolbar exposes `Today`, `Week`, and `Month` controls with previous/next navigation.
+
+- `resources/js/modules/scheduler/scheduler-ui.js`
+	- Restricted view-toggle bindings to Week/Month controls (Day hidden in appointments).
+	- Updated active-state handling to target Week/Month buttons.
+
+- `resources/js/modules/scheduler/scheduler-core.js`
+	- Enforced allowed view switching to Week/Month in `changeView()`.
+	- Hardened `loadAppointments()` against stale GET caching by adding cache-busting query param and `fetch(..., { cache: 'no-store' })`.
+	- Ensures updated appointment times appear immediately after reschedule/status flows without requiring manual browser refresh.
+
+Validation:
+
+- Frontend build passes (`npm run build`).

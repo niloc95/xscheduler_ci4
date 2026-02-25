@@ -476,9 +476,6 @@
                 if (tbody) { tbody.insertBefore(row, tbody.firstChild); }
 
                 // Apply data-color attribute to the new row's color dot
-                var colorDot = row.querySelector('[data-color]');
-                if (colorDot) { colorDot.style.backgroundColor = colorDot.getAttribute('data-color'); }
-
                 form.reset();
                 showMsg('Category "' + esc(displayName) + '" created successfully.', false);
             } else {

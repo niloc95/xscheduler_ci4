@@ -108,8 +108,7 @@ if ($session->getFlashdata('message')) {
 // Auto-dismiss flash messages after 8 seconds
 document.querySelectorAll('[data-flash-message]').forEach(el => {
     setTimeout(() => {
-        el.style.transition = 'opacity 0.3s ease-out';
-        el.style.opacity = '0';
+        el.classList.add('xs-fade-out');
         setTimeout(() => el.remove(), 300);
     }, 8000);
 });

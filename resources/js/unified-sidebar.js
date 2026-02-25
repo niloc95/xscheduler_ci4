@@ -101,7 +101,7 @@ class UnifiedSidebar {
         
         // Prevent body scroll on mobile
         if (this.isMobile) {
-            document.body.style.overflow = 'hidden';
+            document.body.classList.add('xs-no-scroll');
         }
     }
     
@@ -111,7 +111,7 @@ class UnifiedSidebar {
         
         // Restore body scroll
         if (this.isMobile) {
-            document.body.style.overflow = '';
+            document.body.classList.remove('xs-no-scroll');
         }
     }
     

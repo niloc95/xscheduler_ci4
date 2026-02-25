@@ -61,6 +61,7 @@
 namespace App\Controllers\Api;
 
 use App\Models\AppointmentModel;
+use App\Models\LocationModel;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
 use App\Services\SchedulingService;
@@ -312,31 +313,40 @@ class Appointments extends BaseApiController
         $response = $this->response->setHeader('Content-Type', 'application/json');
         
         try {
-            // Get POST data
-            $json = $this->request->getJSON(true);
-            $providerId = $json['provider_id'] ?? null;
-            $serviceId = $json['service_id'] ?? null;
-            $startTime = $json['start_time'] ?? null;
-            $timezone = $this->request->getHeaderLine('X-Client-Timezone') ?: ($json['timezone'] ?? null);
-            $appointmentId = $json['appointment_id'] ?? null; // For edits, exclude this ID
-            
-            // Validate required fields
-            if (!$providerId || !$serviceId || !$startTime) {
+            $payload = $this->request->getJSON(true) ?? [];
+            $validation = $this->validateAvailabilityPayload($payload);
+            if (!$validation['valid']) {
                 return $response->setStatusCode(400)->setJSON([
                     'error' => [
-                        'message' => 'Missing required fields',
+                        'message' => $validation['message'],
                         'required' => ['provider_id', 'service_id', 'start_time']
                     ]
                 ]);
             }
-            
+
+            $providerId = $validation['provider_id'];
+            $serviceId = $validation['service_id'];
+            $startTime = $validation['start_time'];
+            $timezone = $this->request->getHeaderLine('X-Client-Timezone') ?: ($payload['timezone'] ?? null);
+            $appointmentId = isset($payload['appointment_id']) ? (int) $payload['appointment_id'] : null;
+            $requestedLocationId = isset($payload['location_id']) && $payload['location_id'] !== '' ? (int) $payload['location_id'] : null;
+
             if (!$timezone || !TimezoneService::isValidTimezone($timezone)) {
                 $timezone = (new LocalizationSettingsService())->getTimezone();
             }
 
+            $locationContext = $this->resolveProviderLocationContext($providerId, $requestedLocationId);
+            if (!$locationContext['valid']) {
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => $locationContext['reason']
+                    ]
+                ]);
+            }
+
             // Get service details for duration
             $db = \Config\Database::connect();
-            $service = $db->table('services')
+            $service = $db->table($db->prefixTable('services'))
                 ->select('duration_min, name')
                 ->where('id', (int)$serviceId)
                 ->where('active', 1)
@@ -372,7 +382,8 @@ class Appointments extends BaseApiController
                 $startLocal,
                 $endLocal,
                 $timezone,
-                $appointmentId
+                $appointmentId,
+                $locationContext['location_id']
             );
             
             // Convert to UTC for response
@@ -387,6 +398,7 @@ class Appointments extends BaseApiController
                     'service_id' => (int)$serviceId,
                     'service_name' => $service['name'],
                     'duration_min' => (int)$service['duration_min'],
+                    'location_id' => $locationContext['location_id'],
                     'start_time_local' => $startLocal,
                     'end_time_local' => $endLocal,
                     'start_time_utc' => $startUtc,
@@ -420,6 +432,79 @@ class Appointments extends BaseApiController
                 ]
             ]);
         }
+    }
+
+    /**
+     * Validate required payload fields for availability check.
+     */
+    private function validateAvailabilityPayload(array $payload): array
+    {
+        $providerId = isset($payload['provider_id']) ? (int) $payload['provider_id'] : 0;
+        $serviceId = isset($payload['service_id']) ? (int) $payload['service_id'] : 0;
+        $startTime = isset($payload['start_time']) ? trim((string) $payload['start_time']) : '';
+
+        if ($providerId <= 0 || $serviceId <= 0 || $startTime === '') {
+            return ['valid' => false, 'message' => 'Missing required fields'];
+        }
+
+        return [
+            'valid' => true,
+            'message' => null,
+            'provider_id' => $providerId,
+            'service_id' => $serviceId,
+            'start_time' => $startTime,
+        ];
+    }
+
+    /**
+     * Resolve provider location context for appointment availability checks.
+     */
+    private function resolveProviderLocationContext(int $providerId, ?int $requestedLocationId): array
+    {
+        $locationModel = new LocationModel();
+        $activeLocations = $locationModel->getProviderLocations($providerId, true);
+
+        if (empty($activeLocations)) {
+            return ['valid' => true, 'location_id' => null, 'reason' => null];
+        }
+
+        $activeLocationIds = array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations);
+
+        if ($requestedLocationId !== null) {
+            if (!in_array($requestedLocationId, $activeLocationIds, true)) {
+                return ['valid' => false, 'location_id' => null, 'reason' => 'Selected location is unavailable for this provider'];
+            }
+
+            return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
+        }
+
+        if (count($activeLocationIds) > 1) {
+            return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required when provider has multiple active locations'];
+        }
+
+        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
+    }
+
+    private function getCreateValidationRules(): array
+    {
+        return [
+            'name' => 'required|min_length[2]',
+            'email' => 'required|valid_email',
+            'providerId' => 'required|is_natural_no_zero',
+            'serviceId' => 'required|is_natural_no_zero',
+            'date' => 'required|valid_date[Y-m-d]',
+            'start' => 'required|regex_match[/^\d{2}:\d{2}$/]',
+            'phone' => 'permit_empty|string',
+            'notes' => 'permit_empty|string',
+        ];
+    }
+
+    private function getCountsValidationRules(): array
+    {
+        return [
+            'providerId' => 'permit_empty|is_natural_no_zero',
+            'serviceId' => 'permit_empty|is_natural_no_zero',
+        ];
     }
     
     /**
@@ -514,19 +599,11 @@ class Appointments extends BaseApiController
             }
 
             // Phase 5: enqueue notifications on status changes (dispatch via cron)
-            try {
-                $queue = new \App\Services\NotificationQueueService();
-                $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-                if ($newStatus === 'confirmed') {
-                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $id);
-                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $id);
-                }
-                if ($newStatus === 'cancelled') {
-                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_cancelled', (int) $id);
-                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_cancelled', (int) $id);
-                }
-            } catch (\Throwable $e) {
-                log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
+            if ($newStatus === 'confirmed') {
+                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_confirmed');
+            }
+            if ($newStatus === 'cancelled') {
+                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_cancelled');
             }
             
             return $response->setJSON([
@@ -664,16 +741,7 @@ class Appointments extends BaseApiController
         try {
             $payload = $this->request->getJSON(true) ?? $this->request->getPost();
             
-            $rules = [
-                'name' => 'required|min_length[2]',
-                'email' => 'required|valid_email',
-                'providerId' => 'required|is_natural_no_zero',
-                'serviceId' => 'required|is_natural_no_zero',
-                'date' => 'required|valid_date[Y-m-d]',
-                'start' => 'required|regex_match[/^\d{2}:\d{2}$/]',
-                'phone' => 'permit_empty|string',
-                'notes' => 'permit_empty|string',
-            ];
+            $rules = $this->getCreateValidationRules();
             
             if (!$this->validate($rules)) {
                 return $response->setStatusCode(400)->setJSON([
@@ -691,15 +759,8 @@ class Appointments extends BaseApiController
                 $res = $svc->createAppointment($payload);
 
                 // Phase 5: enqueue confirmation notifications
-                try {
-                    if (!empty($res['appointmentId'])) {
-                        $queue = new \App\Services\NotificationQueueService();
-                        $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-                        $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $res['appointmentId']);
-                        $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $res['appointmentId']);
-                    }
-                } catch (\Throwable $e) {
-                    log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) ($res['appointmentId'] ?? 0), 'msg' => $e->getMessage()]);
+                if (!empty($res['appointmentId'])) {
+                    $this->queueAppointmentNotifications((int) $res['appointmentId'], ['email', 'whatsapp'], 'appointment_confirmed');
                 }
                 
                 return $response->setStatusCode(201)->setJSON([
@@ -789,14 +850,7 @@ class Appointments extends BaseApiController
 
             // Enqueue rescheduled notification if time was changed
             if (!empty($update['start_time']) || !empty($update['end_time'])) {
-                try {
-                    $queue = new \App\Services\NotificationQueueService();
-                    $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-                    $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_rescheduled', (int) $id);
-                    $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_rescheduled', (int) $id);
-                } catch (\Throwable $e) {
-                    log_message('error', 'Notification enqueue failed for rescheduled appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
-                }
+                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_rescheduled', 'rescheduled appointment');
             }
             
             return $response->setJSON([
@@ -846,14 +900,7 @@ class Appointments extends BaseApiController
             }
 
             // Phase 5: enqueue cancellation notifications
-            try {
-                $queue = new \App\Services\NotificationQueueService();
-                $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-                $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_cancelled', (int) $id);
-                $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_cancelled', (int) $id);
-            } catch (\Throwable $e) {
-                log_message('error', 'Notification enqueue failed for appointment {id}: {msg}', ['id' => (int) $id, 'msg' => $e->getMessage()]);
-            }
+            $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_cancelled');
             
             return $response->setJSON([
                 'data' => ['ok' => true],
@@ -878,10 +925,7 @@ class Appointments extends BaseApiController
         $response = $this->response->setHeader('Content-Type', 'application/json');
         
         try {
-            $rules = [
-                'providerId' => 'permit_empty|is_natural_no_zero',
-                'serviceId'  => 'permit_empty|is_natural_no_zero',
-            ];
+            $rules = $this->getCountsValidationRules();
             
             if (!$this->validate($rules)) {
                 return $response->setStatusCode(400)->setJSON([
@@ -1076,8 +1120,7 @@ class Appointments extends BaseApiController
                 ]);
             } elseif ($channel === 'whatsapp') {
                 // WhatsApp - enqueue since it may need Link Generator flow
-                $queue = new \App\Services\NotificationQueueService();
-                $queue->enqueueAppointmentEvent($businessId, 'whatsapp', $eventType, (int) $id);
+                $this->queueAppointmentNotifications((int) $id, ['whatsapp'], $eventType);
                 
                 return $response->setJSON([
                     'data' => [
@@ -1100,6 +1143,24 @@ class Appointments extends BaseApiController
                     'message' => 'Failed to send notification',
                     'details' => $e->getMessage()
                 ]
+            ]);
+        }
+    }
+
+    private function queueAppointmentNotifications(int $appointmentId, array $channels, string $eventType, string $context = 'appointment'): void
+    {
+        try {
+            $queue = new \App\Services\NotificationQueueService();
+            $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
+
+            foreach ($channels as $channel) {
+                $queue->enqueueAppointmentEvent($businessId, $channel, $eventType, $appointmentId);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Notification enqueue failed for {context} {id}: {msg}', [
+                'context' => $context,
+                'id' => $appointmentId,
+                'msg' => $e->getMessage()
             ]);
         }
     }

@@ -86,7 +86,7 @@ export class SchedulerCore {
             this.currentDate = this.currentDate.setZone(this.options.timezone);
             this.debugLog(`🌍 Timezone: ${this.options.timezone}`);
 
-            if (this.options?.initialView && ['day', 'week', 'month'].includes(this.options.initialView)) {
+            if (this.options?.initialView && ['week', 'month'].includes(this.options.initialView)) {
                 this.currentView = this.options.initialView;
             }
 
@@ -192,9 +192,15 @@ export class SchedulerCore {
             }
 
             // Request a large batch of appointments for calendar views (up to 1000)
-            const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}&length=1000`;
+            const cacheBust = Date.now();
+            const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}&length=1000&_=${cacheBust}`;
             this.debugLog('🔄 Loading appointments from:', url);
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
             if (!response.ok) throw new Error('Failed to load appointments');
             const data = await response.json();
             this.debugLog('📥 Raw API response:', data);
@@ -349,7 +355,7 @@ export class SchedulerCore {
      */
 
     async changeView(viewName) {
-        if (!['day', 'week', 'month'].includes(viewName)) {
+        if (!['week', 'month'].includes(viewName)) {
             console.error('Invalid view:', viewName);
             return;
         }

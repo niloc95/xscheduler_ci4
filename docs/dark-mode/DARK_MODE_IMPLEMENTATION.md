@@ -8,7 +8,7 @@ The WebSchedulr dark mode system provides a comprehensive theme switching soluti
 
 ### 1. CSS Variables System
 
-The dark mode system is built on CSS custom properties defined in `resources/scss/app.scss`:
+The dark mode system is built on CSS custom properties defined in `resources/scss/abstracts/_custom-properties.scss` and bundled through `resources/scss/app-consolidated.scss`:
 
 #### Light Theme (Default)
 ```css
@@ -19,12 +19,16 @@ The dark mode system is built on CSS custom properties defined in `resources/scs
   --md-sys-color-tertiary: #FCBF49;     /* Golden Yellow */
   --md-sys-color-error: #D62828;        /* Crimson Red */
   
-  /* Custom WebSchedulr Variables */
-  --xs-bg-primary: #ffffff;
-  --xs-bg-secondary: #f8fafc;
-  --xs-text-primary: #003049;
-  --xs-text-secondary: #475569;
-  --xs-accent: #F77F00;
+  /* Canonical Tokens */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8fafc;
+  --color-text-primary: #003049;
+  --color-border: #e5e7eb;
+  --color-accent: #F77F00;
+
+  /* Legacy compatibility aliases */
+  --xs-bg-primary: var(--color-bg-primary);
+  --xs-text-primary: var(--color-text-primary);
   /* ... more variables */
 }
 ```
@@ -35,9 +39,9 @@ html.dark {
   /* Adjusted colors for dark theme */
   --md-sys-color-primary: #7FC8E8;      /* Lighter Ocean Blue */
   --md-sys-color-secondary: #FFB366;    /* Lighter Orange */
-  --xs-bg-primary: #1a202c;
-  --xs-bg-secondary: #2d3748;
-  --xs-text-primary: #f7fafc;
+  --color-bg-primary: #1a202c;
+  --color-bg-secondary: #2d3748;
+  --color-text-primary: #f7fafc;
   /* ... dark theme variables */
 }
 ```
@@ -113,16 +117,16 @@ A reusable toggle button with:
 
 ### 2. Updated Layout Components
 
-#### Header (`app/Views/components/header.php`)
+#### Header (`app/Views/layouts/app.php`)
 - Dark mode responsive navigation
 - Brand logo with CSS variable colors
 - Theme toggle in navigation bar
 
-#### Footer (`app/Views/components/footer.php`)
+#### Footer (`app/Views/layouts/app.php`)
 - Dark mode text and background colors
 - Consistent transition animations
 
-#### Main Layout (`app/Views/components/layout.php`)
+#### Main Layout (`app/Views/layouts/app.php`)
 - Dark mode initialization script (prevents flash)
 - HTML class transitions
 - Dark mode script inclusion
@@ -198,13 +202,11 @@ All elements include transition classes:
 
 ### 2. CSS Variable Usage
 ```html
-<!-- Brand colors that adapt to theme -->
-<button style="background-color: var(--md-sys-color-primary);">
-  Primary Button
-</button>
+<!-- Use utility classes or component classes that map to tokens -->
+<button class="btn btn-primary">Primary Button</button>
 
-<!-- Custom WebSchedulr variables -->
-<div style="background-color: var(--xs-bg-primary); color: var(--xs-text-primary);">
+<!-- Token-aware surface/text classes -->
+<div class="bg-xs-bg-primary text-xs-text-primary">
   Adaptive content
 </div>
 ```
@@ -269,13 +271,13 @@ To add dark mode to existing components:
    <div class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
    ```
 
-2. **Use CSS variables for brand colors**:
+2. **Use token-mapped classes for brand colors**:
    ```html
    <!-- Before -->
-   <div style="background-color: #F77F00;">
+  <div class="bg-orange-500">
    
    <!-- After -->
-   <div style="background-color: var(--md-sys-color-secondary);">
+  <div class="bg-md-secondary">
    ```
 
 3. **Add transition classes**:
@@ -350,7 +352,8 @@ To add dark mode to existing components:
 ## Quick Reference
 
 ### Key Files
-- `resources/scss/app.scss` - CSS variables and themes
+- `resources/scss/abstracts/_custom-properties.scss` - CSS variables and themes
+- `resources/scss/app-consolidated.scss` - SCSS entry point
 - `resources/js/dark-mode.js` - Theme management
 - `app/Views/components/dark-mode-toggle.php` - Toggle component
 - `tailwind.config.js` - Dark mode configuration
@@ -358,7 +361,7 @@ To add dark mode to existing components:
 ### Essential Classes
 - `dark:` prefix for dark mode variants
 - `transition-colors duration-200` for smooth transitions
-- CSS variables: `var(--xs-bg-primary)`, `var(--md-sys-color-primary)`
+- CSS variables: `var(--color-bg-primary)`, `var(--md-sys-color-primary)`
 
 ### Testing URLs
 - `/dark-mode-test` - Comprehensive test page

@@ -25,7 +25,7 @@ export function updateFilterIndicator(toggleBtn, hasActiveFilters) {
     if (hasActiveFilters) {
         const indicator = document.createElement('span');
         indicator.className = 'filter-active-indicator absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800';
-        toggleBtn.style.position = 'relative';
+        toggleBtn.classList.add('relative');
         toggleBtn.appendChild(indicator);
     }
 }
@@ -102,7 +102,8 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
 
         // Rotate icon
         if (toggleIcon) {
-            toggleIcon.style.transform = isHidden ? '' : 'rotate(180deg)';
+            toggleIcon.classList.add('transition-transform', 'duration-200');
+            toggleIcon.classList.toggle('rotate-180', !isHidden);
         }
 
         // Update toggle button styling to indicate active state

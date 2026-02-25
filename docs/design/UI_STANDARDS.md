@@ -51,10 +51,13 @@ components/ui/
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--xs-radius-sm` | 0.25rem | Subtle rounding |
-| `--xs-radius-md` | 0.5rem | Default buttons, inputs |
-| `--xs-radius-lg` | 0.75rem | Cards, modals |
-| `--xs-radius-xl` | 1rem | Large cards |
+| `--radius-standard` | 0.75rem | Primary containers (cards/sidebar/header) |
+| `--radius-control-sm` | 0.5rem | Compact controls |
+| `--radius-control-md` | 0.625rem | Default buttons, inputs |
+| `--radius-control-lg` | 0.75rem | Large controls |
+| `--xs-radius-sm` | `var(--radius-control-sm)` | Legacy alias |
+| `--xs-radius-md` | `var(--radius-control-md)` | Legacy alias |
+| `--xs-radius-lg` | `var(--radius-standard)` | Legacy alias |
 | `--xs-radius-full` | 9999px | Pills, avatars |
 
 ### Shadows
@@ -68,7 +71,17 @@ components/ui/
 
 ### Colors
 
-Using Tailwind's color palette with semantic naming:
+Canonical token strategy:
+
+- `--color-bg-primary`
+- `--color-bg-secondary`
+- `--color-text-primary`
+- `--color-border`
+- `--color-accent`
+
+Compatibility aliases remain in place (`--ws-*` and `--xs-*`) for progressive migration.
+
+Tailwind usage:
 
 - **Primary**: `primary-50` through `primary-900` (brand color)
 - **Success**: `green-*` (completed, active)
@@ -204,6 +217,11 @@ Using Tailwind's color palette with semantic naming:
 ]) ?>
 ```
 
+Touch target rule:
+- All interactive controls must maintain a minimum 44px hit area.
+- Standard buttons inherit this from the shared `.btn` primitive (`min-height: 44px`).
+- Icon-only controls must use at least `w-11 h-11`.
+
 ### Table
 
 ```php
@@ -330,11 +348,13 @@ Using Tailwind's color palette with semantic naming:
 
 ## Icon System
 
-Using Google Material Symbols (Outlined variant).
+Using Google Material Symbols (Outlined variant only).
 
 ```html
 <span class="material-symbols-outlined">icon_name</span>
 ```
+
+Do not use `material-symbols-rounded` in production views.
 
 Common icons:
 - Navigation: `home`, `arrow_back`, `menu`, `close`

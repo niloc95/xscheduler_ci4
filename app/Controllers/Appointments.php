@@ -213,21 +213,13 @@ class Appointments extends BaseController
         $customFields = $bookingService->getCustomFieldConfiguration();
         $localizationContext = $localizationService->getContext();
 
-        // Fetch real providers and services from database
-        $providers = $this->userModel->getProviders();
-        $services = $this->serviceModel->findAll();
-
-        // Format providers for dropdown
-        $providersFormatted = array_map([$this, 'formatProviderForDropdown'], $providers);
-
-        // Format services for dropdown
-        $servicesFormatted = array_map([$this, 'formatServiceForDropdown'], $services);
+        $dropdownData = $this->formatDropdownData();
 
         $data = [
             'title' => 'Book Appointment',
             'current_page' => 'appointments',
-            'services' => $servicesFormatted,
-            'providers' => $providersFormatted,
+            'services' => $dropdownData['services'],
+            'providers' => $dropdownData['providers'],
             'user_role' => current_user_role(),
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
@@ -257,27 +249,13 @@ class Appointments extends BaseController
         }
 
         // Check if user is trying to book in the past
-        $appointmentDate = $this->request->getPost('appointment_date');
-        $appointmentTime = $this->request->getPost('appointment_time');
-        
-        if ($appointmentDate && $appointmentTime) {
-            $appTimezone = (new LocalizationSettingsService())->getTimezone();
-            $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($appTimezone));
-            $now = new \DateTime('now', new \DateTimeZone($appTimezone));
-            
-            if ($appointmentDateTime < $now) {
-                $errorMsg = 'Cannot book appointments in the past. Please select a future date and time.';
-                log_message('error', '[Appointments::store] Attempted to book in the past: ' . $appointmentDate . ' ' . $appointmentTime);
-                if ($this->request->isAJAX()) {
-                    return $this->response->setStatusCode(422)->setJSON([
-                        'success' => false,
-                        'message' => $errorMsg
-                    ]);
-                }
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', $errorMsg);
-            }
+        $pastBookingError = $this->validateNotInPast(
+            $this->request->getPost('appointment_date'),
+            $this->request->getPost('appointment_time'),
+            'Cannot book appointments in the past. Please select a future date and time.'
+        );
+        if ($pastBookingError !== null) {
+            return $pastBookingError;
         }
 
         $validation = \Config\Services::validation();
@@ -285,32 +263,7 @@ class Appointments extends BaseController
         // Check if customer_id is provided (from search)
         $customerId = $this->request->getPost('customer_id');
         
-        // Validation rules - adjust based on whether customer is selected or new
-        if ($customerId) {
-            // Customer selected from search - minimal validation
-            $rules = [
-                'provider_id' => 'required|is_natural_no_zero',
-                'service_id' => 'required|is_natural_no_zero',
-                'appointment_date' => 'required|valid_date',
-                'appointment_time' => 'required',
-                'customer_id' => 'required|is_natural_no_zero',
-                'notes' => 'permit_empty|max_length[1000]'
-            ];
-        } else {
-            // New customer - full validation
-            $rules = [
-                'provider_id' => 'required|is_natural_no_zero',
-                'service_id' => 'required|is_natural_no_zero',
-                'appointment_date' => 'required|valid_date',
-                'appointment_time' => 'required',
-                'customer_first_name' => 'required|min_length[2]|max_length[120]',
-                'customer_last_name' => 'permit_empty|max_length[160]',
-                'customer_email' => 'required|valid_email|max_length[255]',
-                'customer_phone' => 'required|min_length[10]|max_length[32]',
-                'customer_address' => 'permit_empty|max_length[255]',
-                'notes' => 'permit_empty|max_length[1000]'
-            ];
-        }
+        $rules = $this->getStoreValidationRules(!empty($customerId));
 
         if (!$this->validate($rules)) {
             log_message('error', '[Appointments::store] Validation failed: ' . json_encode($validation->getErrors()));
@@ -483,22 +436,14 @@ class Appointments extends BaseController
             $appointment['time'] = $startDateTime->format('H:i');
         }
 
-        // Fetch providers and services
-        $providers = $this->userModel->getProviders();
-        $services = $this->serviceModel->findAll();
-
-        // Format providers for dropdown
-        $providersFormatted = array_map([$this, 'formatProviderForDropdown'], $providers);
-
-        // Format services for dropdown
-        $servicesFormatted = array_map([$this, 'formatServiceForDropdown'], $services);
+        $dropdownData = $this->formatDropdownData();
 
         $data = [
             'title' => 'Edit Appointment',
             'current_page' => 'appointments',
             'appointment' => $appointment,
-            'services' => $servicesFormatted,
-            'providers' => $providersFormatted,
+            'services' => $dropdownData['services'],
+            'providers' => $dropdownData['providers'],
             'user_role' => current_user_role(),
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
@@ -550,41 +495,18 @@ class Appointments extends BaseController
         $newAppointmentTime = $this->request->getPost('appointment_time');
         
         // Check if user is trying to schedule in the past
-        if ($newAppointmentDate && $newAppointmentTime) {
-            $appTimezone = (new LocalizationSettingsService())->getTimezone();
-            $newDateTime = new \DateTime($newAppointmentDate . ' ' . $newAppointmentTime, new \DateTimeZone($appTimezone));
-            $now = new \DateTime('now', new \DateTimeZone($appTimezone));
-            
-            if ($newDateTime < $now) {
-                $errorMsg = 'Cannot schedule appointments in the past. Please select a future date and time.';
-                if ($this->request->isAJAX()) {
-                    return $this->response->setStatusCode(422)->setJSON([
-                        'success' => false,
-                        'message' => $errorMsg
-                    ]);
-                }
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', $errorMsg);
-            }
+        $pastScheduleError = $this->validateNotInPast(
+            $newAppointmentDate,
+            $newAppointmentTime,
+            'Cannot schedule appointments in the past. Please select a future date and time.'
+        );
+        if ($pastScheduleError !== null) {
+            return $pastScheduleError;
         }
 
         $validation = \Config\Services::validation();
         
-        // Validation rules (status values must match API)
-        $rules = [
-            'provider_id' => 'required|is_natural_no_zero',
-            'service_id' => 'required|is_natural_no_zero',
-            'appointment_date' => 'required|valid_date',
-            'appointment_time' => 'required',
-            'status' => 'required|in_list[pending,confirmed,completed,cancelled,no-show]',
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
-            'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[32]',
-            'customer_address' => 'permit_empty|max_length[255]',
-            'notes' => 'permit_empty|max_length[1000]'
-        ];
+        $rules = $this->getUpdateValidationRules();
 
         if (!$this->validate($rules)) {
             if ($this->request->isAJAX()) {
@@ -756,5 +678,83 @@ class Appointments extends BaseController
             'duration' => $service['duration_min'], // Map duration_min to duration for consistency
             'price' => $service['price'],
         ];
+    }
+
+    private function formatDropdownData(): array
+    {
+        $providers = $this->userModel->getProviders();
+        $services = $this->serviceModel->findAll();
+
+        return [
+            'providers' => array_map([$this, 'formatProviderForDropdown'], $providers),
+            'services' => array_map([$this, 'formatServiceForDropdown'], $services),
+        ];
+    }
+
+    private function getStoreValidationRules(bool $hasExistingCustomer): array
+    {
+        $rules = [
+            'provider_id' => 'required|is_natural_no_zero',
+            'service_id' => 'required|is_natural_no_zero',
+            'appointment_date' => 'required|valid_date',
+            'appointment_time' => 'required',
+            'notes' => 'permit_empty|max_length[1000]'
+        ];
+
+        if ($hasExistingCustomer) {
+            $rules['customer_id'] = 'required|is_natural_no_zero';
+            return $rules;
+        }
+
+        return array_merge($rules, [
+            'customer_first_name' => 'required|min_length[2]|max_length[120]',
+            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_email' => 'required|valid_email|max_length[255]',
+            'customer_phone' => 'required|min_length[10]|max_length[32]',
+            'customer_address' => 'permit_empty|max_length[255]',
+        ]);
+    }
+
+    private function getUpdateValidationRules(): array
+    {
+        return [
+            'provider_id' => 'required|is_natural_no_zero',
+            'service_id' => 'required|is_natural_no_zero',
+            'appointment_date' => 'required|valid_date',
+            'appointment_time' => 'required',
+            'status' => 'required|in_list[pending,confirmed,completed,cancelled,no-show]',
+            'customer_first_name' => 'required|min_length[2]|max_length[120]',
+            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_email' => 'required|valid_email|max_length[255]',
+            'customer_phone' => 'required|min_length[10]|max_length[32]',
+            'customer_address' => 'permit_empty|max_length[255]',
+            'notes' => 'permit_empty|max_length[1000]'
+        ];
+    }
+
+    private function validateNotInPast(?string $appointmentDate, ?string $appointmentTime, string $errorMessage)
+    {
+        if (!$appointmentDate || !$appointmentTime) {
+            return null;
+        }
+
+        $appTimezone = (new LocalizationSettingsService())->getTimezone();
+        $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($appTimezone));
+        $now = new \DateTime('now', new \DateTimeZone($appTimezone));
+
+        if ($appointmentDateTime >= $now) {
+            return null;
+        }
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'success' => false,
+                'message' => $errorMessage
+            ]);
+        }
+
+        return redirect()->back()
+            ->withInput()
+            ->with('error', $errorMessage);
     }
 }

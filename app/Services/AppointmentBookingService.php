@@ -137,6 +137,16 @@ class AppointmentBookingService
                 $timezone
             );
 
+            // Step 3b: Resolve strict location context
+            $locationContext = $this->resolveBookingLocationContext(
+                (int) $data['provider_id'],
+                isset($data['location_id']) ? (int) $data['location_id'] : null
+            );
+            if (!$locationContext['success']) {
+                return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
+            }
+            $resolvedLocationId = $locationContext['location_id'];
+
             // Step 4: Validate business hours
             $businessHoursValidation = $this->businessHoursService->validateAppointmentTime(
                 $timeData['startDateTime'],
@@ -154,7 +164,8 @@ class AppointmentBookingService
                 $timeData['startDateTime']->format('Y-m-d H:i:s'),
                 $timeData['endDateTime']->format('Y-m-d H:i:s'),
                 $timezone,
-                $data['exclude_appointment_id'] ?? null
+                $data['exclude_appointment_id'] ?? null,
+                $resolvedLocationId
             );
             
             if (!$availabilityCheck['available']) {
@@ -178,13 +189,14 @@ class AppointmentBookingService
                 'start_time' => $timeData['startUtc'],
                 'end_time' => $timeData['endUtc'],
                 'status' => $data['status'] ?? 'pending',
-                'notes' => $data['notes'] ?? ''
+                'notes' => $data['notes'] ?? '',
+                'location_id' => $resolvedLocationId,
             ];
 
             // Snapshot location data if location_id provided
-            if (!empty($data['location_id'])) {
+            if (!empty($resolvedLocationId)) {
                 $locationModel = new \App\Models\LocationModel();
-                $snapshot = $locationModel->getLocationSnapshot((int) $data['location_id']);
+                $snapshot = $locationModel->getLocationSnapshot((int) $resolvedLocationId);
                 $appointmentData = array_merge($appointmentData, $snapshot);
             }
 
@@ -261,13 +273,26 @@ class AppointmentBookingService
                     return $this->error($businessHoursValidation['reason']);
                 }
 
+                $providerId = (int)($data['provider_id'] ?? $existing['provider_id']);
+                $locationContext = $this->resolveBookingLocationContext(
+                    $providerId,
+                    array_key_exists('location_id', $data)
+                        ? ($data['location_id'] !== null && $data['location_id'] !== '' ? (int) $data['location_id'] : null)
+                        : (!empty($existing['location_id']) ? (int) $existing['location_id'] : null)
+                );
+                if (!$locationContext['success']) {
+                    return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
+                }
+                $resolvedLocationId = $locationContext['location_id'];
+
                 // Check availability (exclude this appointment from conflict check)
                 $availabilityCheck = $this->availabilityService->isSlotAvailable(
-                    (int)($data['provider_id'] ?? $existing['provider_id']),
+                    $providerId,
                     $timeData['startDateTime']->format('Y-m-d H:i:s'),
                     $timeData['endDateTime']->format('Y-m-d H:i:s'),
                     $timezone,
-                    $appointmentId
+                    $appointmentId,
+                    $resolvedLocationId
                 );
                 
                 if (!$availabilityCheck['available']) {
@@ -276,6 +301,22 @@ class AppointmentBookingService
 
                 $data['start_time'] = $timeData['startUtc'];
                 $data['end_time'] = $timeData['endUtc'];
+                $data['location_id'] = $resolvedLocationId;
+            }
+
+            // Validate location/provider context for updates even when slot time is unchanged
+            if (array_key_exists('provider_id', $data) || array_key_exists('location_id', $data)) {
+                $providerId = (int)($data['provider_id'] ?? $existing['provider_id']);
+                $locationContext = $this->resolveBookingLocationContext(
+                    $providerId,
+                    array_key_exists('location_id', $data)
+                        ? ($data['location_id'] !== null && $data['location_id'] !== '' ? (int) $data['location_id'] : null)
+                        : (!empty($existing['location_id']) ? (int) $existing['location_id'] : null)
+                );
+                if (!$locationContext['success']) {
+                    return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
+                }
+                $data['location_id'] = $locationContext['location_id'];
             }
 
             // Update appointment
@@ -415,6 +456,50 @@ class AppointmentBookingService
 
         log_message('info', '[AppointmentBookingService] Created new customer ID: ' . $customerId);
         return ['success' => true, 'customerId' => (int)$customerId];
+    }
+
+    /**
+     * Resolve provider location context for booking/update flows.
+     *
+     * Rules:
+     * - No active locations: location_id remains null
+     * - One active location: auto-select when omitted
+     * - Multiple active locations: explicit location_id is required
+     */
+    protected function resolveBookingLocationContext(int $providerId, ?int $requestedLocationId): array
+    {
+        $locationModel = new \App\Models\LocationModel();
+        $activeLocations = $locationModel->getProviderLocations($providerId, true);
+
+        if (empty($activeLocations)) {
+            return ['success' => true, 'location_id' => null, 'message' => null, 'errors' => []];
+        }
+
+        $activeLocationIds = array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations);
+
+        if ($requestedLocationId !== null) {
+            if (!in_array($requestedLocationId, $activeLocationIds, true)) {
+                return [
+                    'success' => false,
+                    'location_id' => null,
+                    'message' => 'Selected location is unavailable for this provider.',
+                    'errors' => ['location_id' => 'invalid']
+                ];
+            }
+
+            return ['success' => true, 'location_id' => $requestedLocationId, 'message' => null, 'errors' => []];
+        }
+
+        if (count($activeLocationIds) > 1) {
+            return [
+                'success' => false,
+                'location_id' => null,
+                'message' => 'Please select a location for this provider.',
+                'errors' => ['location_id' => 'required']
+            ];
+        }
+
+        return ['success' => true, 'location_id' => $activeLocationIds[0], 'message' => null, 'errors' => []];
     }
 
     /**

@@ -205,15 +205,7 @@ class UserManagement extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        // Validation rules
-        $rules = [
-            'name' => 'required|min_length[2]|max_length[255]',
-            'email' => 'required|valid_email|is_unique[xs_users.email]',
-            'role' => 'required|in_list[admin,provider,staff]',
-            'password' => 'required|min_length[8]',
-            'password_confirm' => 'required|matches[password]',
-            'phone' => 'permit_empty|max_length[20]',
-        ];
+        $rules = $this->getStoreValidationRules();
 
         if (!$this->validate($rules)) {
             log_message('warning', 'Validation failed: ' . json_encode($this->validator->getErrors()));
@@ -484,23 +476,11 @@ class UserManagement extends BaseController
                            ->with('error', 'You do not have permission to edit this user.');
         }
 
-        // Validation rules
-        $rules = [
-            'name' => 'required|min_length[2]|max_length[255]',
-            'email' => "required|valid_email|is_unique[xs_users.email,id,{$userId}]",
-            'phone' => 'permit_empty|max_length[20]',
-        ];
-
-        // Add password rules if provided
-        if ($this->request->getPost('password')) {
-            $rules['password'] = 'required|min_length[8]';
-            $rules['password_confirm'] = 'required|matches[password]';
-        }
-
-        // Add role validation if user can change roles
-        if ($this->canChangeUserRole($currentUserId, $userId)) {
-            $rules['role'] = 'required|in_list[admin,provider,staff]';
-        }
+        $rules = $this->getUpdateValidationRules(
+            $userId,
+            !empty($this->request->getPost('password')),
+            $this->canChangeUserRole($currentUserId, $userId)
+        );
 
         if (!$this->validate($rules)) {
             if ($this->request->isAJAX()) {
@@ -1062,6 +1042,38 @@ class UserManagement extends BaseController
             default:
                 return false;
         }
+    }
+
+    private function getStoreValidationRules(): array
+    {
+        return [
+            'name' => 'required|min_length[2]|max_length[255]',
+            'email' => 'required|valid_email|is_unique[xs_users.email]',
+            'role' => 'required|in_list[admin,provider,staff]',
+            'password' => 'required|min_length[8]',
+            'password_confirm' => 'required|matches[password]',
+            'phone' => 'permit_empty|max_length[20]',
+        ];
+    }
+
+    private function getUpdateValidationRules(int $userId, bool $includePasswordRules, bool $canChangeRole): array
+    {
+        $rules = [
+            'name' => 'required|min_length[2]|max_length[255]',
+            'email' => "required|valid_email|is_unique[xs_users.email,id,{$userId}]",
+            'phone' => 'permit_empty|max_length[20]',
+        ];
+
+        if ($includePasswordRules) {
+            $rules['password'] = 'required|min_length[8]';
+            $rules['password_confirm'] = 'required|matches[password]';
+        }
+
+        if ($canChangeRole) {
+            $rules['role'] = 'required|in_list[admin,provider,staff]';
+        }
+
+        return $rules;
     }
 
     private function canChangeUserRole(int $currentUserId, int $targetUserId): bool

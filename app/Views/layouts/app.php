@@ -42,7 +42,6 @@
     
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     
     <!-- Material Web Components -->
     <script type="module" src="<?= base_url('build/assets/materialWeb.js') ?>"></script>
@@ -91,7 +90,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <!-- Left: Mobile Menu + Title -->
                     <div class="flex items-center gap-3 min-w-0">
-                        <button id="menu-toggle" type="button" class="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                        <button id="menu-toggle" type="button" class="lg:hidden w-11 h-11 -ml-1 inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                             <span class="material-symbols-outlined">menu</span>
                         </button>
                         <div class="min-w-0">
@@ -143,7 +142,7 @@
                                 <input type="search" 
                                        id="global-search" 
                                        placeholder="Search..." 
-                                       class="w-64 lg:w-80 h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       class="w-64 lg:w-80 h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                        autocomplete="off">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                                 <div id="global-search-results" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
@@ -156,7 +155,7 @@
                             <!-- New Appointment (Global — visible on all pages) -->
                             <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
                             <a href="<?= base_url('/appointments/create') ?>"
-                               class="btn btn-primary inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm rounded-lg whitespace-nowrap"
+                                         class="btn btn-primary inline-flex items-center justify-center gap-1.5 px-3 text-sm rounded-lg whitespace-nowrap"
                                title="New Appointment">
                                 <span class="material-symbols-outlined text-base">add</span>
                                 <span class="hidden lg:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
@@ -164,14 +163,14 @@
                             <?php endif; ?>
 
                             <!-- Notifications -->
-                            <button type="button" class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
+                            <button type="button" class="w-11 h-11 inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
                                 <span class="material-symbols-outlined">notifications</span>
                             </button>
                             
                             <!-- User Menu -->
                             <?php $user = session()->get('user'); ?>
                             <div class="relative" id="user-menu-wrapper">
-                                <button id="user-menu-btn" type="button" class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <button id="user-menu-btn" type="button" class="flex min-h-11 items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                     <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
                                         <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
                                     </div>
@@ -217,7 +216,7 @@
                             <input type="search" 
                                    id="global-search-mobile" 
                                    placeholder="Search..." 
-                                   class="w-full h-10 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
+                                   class="w-full h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
                                    autocomplete="off">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                             <div id="global-search-results-mobile" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">

@@ -47,11 +47,15 @@
   // ─────────────────────────────────────────────
   // VISUAL DESIGN TOKENS
   // ─────────────────────────────────────────────
-  --xs-radius-sm: 0.375rem;   // 6px
-  --xs-radius-md: 0.5rem;     // 8px
-  // Standardize primary UI rounding (sidebar/header/cards) to 1rem
-  --xs-radius-lg: 1rem;       // 16px
-  --xs-radius-xl: 1rem;       // 16px
+  --radius-standard: 0.75rem;
+  --radius-control-sm: 0.5rem;
+  --radius-control-md: 0.625rem;
+  --radius-control-lg: 0.75rem;
+
+  --xs-radius-sm: var(--radius-control-sm);
+  --xs-radius-md: var(--radius-control-md);
+  --xs-radius-lg: var(--radius-standard);
+  --xs-radius-xl: var(--radius-standard);
   
   --xs-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --xs-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);

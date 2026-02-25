@@ -3,6 +3,13 @@
 // ======================================
 
 :root {
+  /* Canonical Design Tokens */
+  --color-bg-primary: #{$white};
+  --color-bg-secondary: #{$gray-50};
+  --color-text-primary: #{$brand-ocean};
+  --color-border: #{$gray-200};
+  --color-accent: #{$brand-orange};
+
   /* Primary Colors - Ocean Blue */
   --md-sys-color-primary: #{$brand-ocean};
   --md-sys-color-on-primary: #{$white};
@@ -42,15 +49,15 @@
   --md-sys-color-surface-tint: #{$brand-ocean};
 
   /* Custom WebSchedulr Theme Variables - Light */
-  --ws-bg-primary: #{$white};
-  --ws-bg-secondary: #{$gray-50};
+  --ws-bg-primary: var(--color-bg-primary);
+  --ws-bg-secondary: var(--color-bg-secondary);
   --ws-bg-tertiary: #{$brand-cream};
-  --ws-text-primary: #{$brand-ocean};
+  --ws-text-primary: var(--color-text-primary);
   --ws-text-secondary: #{$gray-600};
   --ws-text-muted: #{$gray-500};
-  --ws-border: #{$gray-200};
+  --ws-border: var(--color-border);
   --ws-border-light: #{$gray-100};
-  --ws-accent: #{$brand-orange};
+  --ws-accent: var(--color-accent);
   --ws-accent-hover: #{$brand-orange-dark};
   --ws-success: #{$success};
   --ws-error: #{$error};
@@ -83,6 +90,13 @@
 /* Dark Theme - Material Design 3.0 Custom Properties */
 html.dark,
 [data-theme="dark"] {
+  /* Canonical Design Tokens */
+  --color-bg-primary: #{$dark-bg-secondary};
+  --color-bg-secondary: #{$dark-bg-tertiary};
+  --color-text-primary: #{$dark-text-primary};
+  --color-border: #{$gray-600};
+  --color-accent: #FFB366;
+
   /* Primary Colors - Ocean Blue (adjusted for dark) */
   --md-sys-color-primary: #7FC8E8;
   --md-sys-color-on-primary: #003447;
@@ -122,15 +136,15 @@ html.dark,
   --md-sys-color-surface-tint: #7FC8E8;
 
   /* Custom WebSchedulr Theme Variables - Dark */
-  --ws-bg-primary: #{$dark-bg-secondary};
-  --ws-bg-secondary: #{$dark-bg-tertiary};
+  --ws-bg-primary: var(--color-bg-primary);
+  --ws-bg-secondary: var(--color-bg-secondary);
   --ws-bg-tertiary: #{$gray-600};
-  --ws-text-primary: #{$dark-text-primary};
+  --ws-text-primary: var(--color-text-primary);
   --ws-text-secondary: #{$dark-text-secondary};
   --ws-text-muted: #{$dark-text-muted};
-  --ws-border: #{$gray-600};
+  --ws-border: var(--color-border);
   --ws-border-light: #{$dark-bg-tertiary};
-  --ws-accent: #FFB366;
+  --ws-accent: var(--color-accent);
   --ws-accent-hover: #FF9933;
   --ws-success: #FFD166;
   --ws-error: #FF6B6B;

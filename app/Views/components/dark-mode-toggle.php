@@ -11,7 +11,7 @@
 <button 
     type="button" 
     data-theme-toggle
-    class="relative inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
+    class="relative inline-flex items-center justify-center w-11 h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-all duration-200"
     aria-label="Toggle theme"
     title="Toggle between light and dark mode"
 >
@@ -21,9 +21,5 @@
 </button>
 
 <noscript>
-    <style>
-        /* Ensure readable defaults when JS is disabled */
-        html { background: #ffffff; color: #003049; }
-    </style>
-    <!-- Dark mode requires JavaScript -->
+    <p class="sr-only">Dark mode requires JavaScript.</p>
 </noscript>

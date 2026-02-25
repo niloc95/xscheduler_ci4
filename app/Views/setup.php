@@ -352,9 +352,7 @@ window.appConfig = {
                             <span class="text-gray-900 dark:text-gray-100 transition-colors duration-200">Processing setup...</span>
                         </div>
                         <div class="mt-4">
-                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 transition-colors duration-200">
-                                <div id="progress_bar" class="setup-progress-bar" style="width: 0%;"></div>
-                            </div>
+                            <progress id="progress_bar" class="setup-progress-bar w-full" value="0" max="100" aria-label="Setup progress"></progress>
                             <p id="progress_text" class="text-sm text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-200">Initializing...</p>
                         </div>
                     </div>

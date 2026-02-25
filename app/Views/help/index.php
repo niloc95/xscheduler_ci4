@@ -15,7 +15,7 @@
                    placeholder="Search for help..."
                    class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="material-symbols-rounded text-gray-400 text-lg">search</span>
+                <span class="material-symbols-outlined text-gray-400 text-lg">search</span>
             </div>
         </form>
     </div>
@@ -29,7 +29,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                            <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">rocket_launch</span>
+                            <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">rocket_launch</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Getting Started</h3>
                     </div>
@@ -46,7 +46,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
+                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Appointments</h3>
                     </div>
@@ -63,7 +63,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                            <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">handyman</span>
+                            <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">handyman</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Services</h3>
                     </div>
@@ -80,7 +80,7 @@
                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200">
                     <div class="flex items-center mb-4">
                         <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                            <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-2xl">account_balance_wallet</span>
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">account_balance_wallet</span>
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white ml-4">Account & Billing</h3>
                     </div>
@@ -107,7 +107,7 @@
                                     <h3 class="text-lg font-medium text-gray-900 dark:text-white pr-4">
                                         <?= esc($faq['question']) ?>
                                     </h3>
-                                    <span class="material-symbols-rounded text-gray-500 dark:text-gray-400 transform transition-transform duration-200">expand_more</span>
+                                    <span class="material-symbols-outlined text-gray-500 dark:text-gray-400 transition-transform duration-200">expand_more</span>
                                 </button>
                                 <div class="faq-content hidden mt-3 text-gray-600 dark:text-gray-300">
                                     <p><?= esc($faq['answer']) ?></p>
@@ -130,12 +130,12 @@
                 <div class="space-y-3">
                     <a href="<?= base_url('/help/contact') ?>" 
                        class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                        <span class="material-symbols-rounded mr-2 text-base align-middle">mail</span>
+                        <span class="material-symbols-outlined mr-2 text-base align-middle">mail</span>
                         Contact Support
                     </a>
                     <a href="<?= base_url('/help/chat') ?>" 
                        class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                        <span class="material-symbols-rounded mr-2 text-base align-middle">chat</span>
+                        <span class="material-symbols-outlined mr-2 text-base align-middle">chat</span>
                         Live Chat
                     </a>
                 </div>
@@ -220,14 +220,18 @@
 <script>
 function toggleFaq(button) {
     const content = button.nextElementSibling;
-    const icon = button.querySelector('.material-symbols-rounded');
+    const icon = button.querySelector('.material-symbols-outlined');
     
     if (content.classList.contains('hidden')) {
         content.classList.remove('hidden');
-        icon.style.transform = 'rotate(180deg)';
+        if (icon) {
+            icon.classList.add('rotate-180');
+        }
     } else {
         content.classList.add('hidden');
-        icon.style.transform = 'rotate(0deg)';
+        if (icon) {
+            icon.classList.remove('rotate-180');
+        }
     }
 }
 </script>

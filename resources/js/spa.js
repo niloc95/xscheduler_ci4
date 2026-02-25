@@ -457,8 +457,7 @@ document.addEventListener('xs:flash', (e) => {
 
   // Auto-dismiss after 5 seconds
   setTimeout(() => {
-    alert.style.transition = 'opacity 0.3s ease';
-    alert.style.opacity = '0';
+    alert.classList.add('xs-fade-out');
     setTimeout(() => alert.remove(), 300);
   }, 5000);
 });

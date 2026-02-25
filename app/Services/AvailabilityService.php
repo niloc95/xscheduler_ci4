@@ -130,6 +130,13 @@ class AvailabilityService
     ): array {
         $timezone = $timezone ?? $this->localizationService->getTimezone();
         $tz = new DateTimeZone($timezone);
+
+        $locationContext = $this->resolveLocationContext($providerId, $locationId);
+        if (!$locationContext['valid']) {
+            log_message('warning', '[AvailabilityService] Location context invalid: ' . ($locationContext['reason'] ?? 'unknown'));
+            return [];
+        }
+        $locationId = $locationContext['location_id'];
         
         log_message('info', '[AvailabilityService] Calculating slots for provider ' . $providerId . ' on ' . $date);
         
@@ -222,6 +229,16 @@ class AvailabilityService
         $start = new DateTime($startTime, new DateTimeZone($timezone));
         $end = new DateTime($endTime, new DateTimeZone($timezone));
         $date = $start->format('Y-m-d');
+
+        $locationContext = $this->resolveLocationContext($providerId, $locationId);
+        if (!$locationContext['valid']) {
+            return [
+                'available' => false,
+                'conflicts' => [],
+                'reason' => $locationContext['reason'] ?? 'Invalid location context'
+            ];
+        }
+        $locationId = $locationContext['location_id'];
         
         // Check if date is blocked
         if ($this->isDateBlocked($date)) {
@@ -430,6 +447,49 @@ class AvailabilityService
         }
 
         return (int) ($location['provider_id'] ?? 0) === $providerId && (int) ($location['is_active'] ?? 0) === 1;
+    }
+
+    /**
+     * Resolve and validate provider location context.
+     *
+     * Rules:
+     * - No active locations => location not required.
+     * - One active location => auto-resolve when omitted.
+     * - Multiple active locations => explicit location is required.
+     * - Provided location must be active and owned by provider.
+     *
+     * @return array{valid:bool, location_id:?int, reason:?string}
+     */
+    private function resolveLocationContext(int $providerId, ?int $locationId): array
+    {
+        $activeLocations = $this->locationModel->getProviderLocations($providerId, true);
+        $activeLocationIds = array_values(array_filter(array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations)));
+
+        if (empty($activeLocationIds)) {
+            return ['valid' => true, 'location_id' => null, 'reason' => null];
+        }
+
+        if ($locationId !== null) {
+            if (!in_array($locationId, $activeLocationIds, true)) {
+                return [
+                    'valid' => false,
+                    'location_id' => null,
+                    'reason' => 'Selected location is unavailable for this provider'
+                ];
+            }
+
+            return ['valid' => true, 'location_id' => $locationId, 'reason' => null];
+        }
+
+        if (count($activeLocationIds) > 1) {
+            return [
+                'valid' => false,
+                'location_id' => null,
+                'reason' => 'location_id is required when provider has multiple active locations'
+            ];
+        }
+
+        return ['valid' => true, 'location_id' => $activeLocationIds[0], 'reason' => null];
     }
 
     /**

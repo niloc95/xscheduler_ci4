@@ -478,7 +478,7 @@ class SetupWizard {
     }
 
     updateProgress(percentage, text) {
-        this.progressBar.style.width = percentage + '%';
+        this.progressBar.value = Math.max(0, Math.min(100, percentage));
         this.progressText.textContent = text;
     }
 

@@ -76,7 +76,6 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
         <!-- View Toggle Buttons -->
         <div class="flex items-center gap-1.5" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
             <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Today</button>
-            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" data-view="day">Day</button>
             <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors" data-view="week">Week</button>
             <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" data-view="month">Month</button>
         </div>

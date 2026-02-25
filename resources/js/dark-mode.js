@@ -93,12 +93,13 @@ class DarkModeManager {
             document.head.appendChild(metaThemeColor);
         }
 
-        const colors = {
-            light: '#003049', // Ocean blue for light theme
-            dark: '#1a202c'   // Dark surface for dark theme
-        };
+        const rootStyles = getComputedStyle(document.documentElement);
+        const tokenName = theme === 'dark' ? '--md-sys-color-surface' : '--md-sys-color-primary';
+        const tokenValue = rootStyles.getPropertyValue(tokenName).trim();
 
-        metaThemeColor.content = colors[theme];
+        if (tokenValue) {
+            metaThemeColor.content = tokenValue;
+        }
     }
 
     /**
@@ -121,19 +122,6 @@ class DarkModeManager {
         const toggleButtons = document.querySelectorAll('[data-theme-toggle]');
         
         toggleButtons.forEach(button => {
-            const lightIcon = button.querySelector('[data-theme-icon="light"]');
-            const darkIcon = button.querySelector('[data-theme-icon="dark"]');
-            
-            if (lightIcon && darkIcon) {
-                if (this.theme === 'dark') {
-                    lightIcon.style.display = 'block';
-                    darkIcon.style.display = 'none';
-                } else {
-                    lightIcon.style.display = 'none';
-                    darkIcon.style.display = 'block';
-                }
-            }
-            
             // Update aria-label for accessibility
             button.setAttribute('aria-label', 
                 this.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
