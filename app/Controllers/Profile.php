@@ -459,17 +459,8 @@ class Profile extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        $currentUser = session()->get('user');
-        $currentRole = current_user_role();
-
-        $data = [
-            'title' => 'Privacy Settings',
-            'current_page' => 'profile',
-            'user_role' => $currentRole,
-            'user' => $currentUser,
-        ];
-
-        return view('profile/privacy', $data);
+        return redirect()->to(base_url('profile'))
+            ->with('active_tab', 'profile');
     }
 
     /**
@@ -502,17 +493,8 @@ class Profile extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        $currentUser = session()->get('user');
-        $currentRole = current_user_role();
-
-        $data = [
-            'title' => 'Account Settings',
-            'current_page' => 'profile',
-            'user_role' => $currentRole,
-            'user' => $currentUser,
-        ];
-
-        return view('profile/account', $data);
+        return redirect()->to(base_url('profile'))
+            ->with('active_tab', 'profile');
     }
 
     /**

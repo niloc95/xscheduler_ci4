@@ -12,6 +12,11 @@
  * @param {object} scheduler - Scheduler instance
  */
 function updateDateDisplay(scheduler) {
+    if (typeof scheduler.updateDateDisplay === 'function') {
+        scheduler.updateDateDisplay();
+        return;
+    }
+
     const displayEl = document.getElementById('scheduler-date-display');
     if (!displayEl) return;
 
@@ -57,7 +62,7 @@ export function renderProviderLegend(scheduler) {
                     } hover:bg-gray-200 dark:hover:bg-gray-600"
                     data-provider-id="${provider.id}"
                     title="Toggle ${provider.name}">
-                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${color};"></span>
+                <span class="w-3 h-3 rounded-full flex-shrink-0" data-bg-color="${color}"></span>
                 <span class="truncate max-w-[120px]">${provider.name}</span>
             </button>
         `;

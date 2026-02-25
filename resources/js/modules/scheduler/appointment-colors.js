@@ -238,7 +238,7 @@ export function getAppointmentStyles(appointment, provider) {
  */
 export function getProviderDotHtml(provider, size = 'w-3 h-3') {
     const color = getProviderColor(provider);
-    return `<span class="inline-block ${size} rounded-full" style="background-color: ${color};" title="${provider?.name || 'Provider'}"></span>`;
+    return `<span class="inline-block ${size} rounded-full" data-bg-color="${color}" title="${provider?.name || 'Provider'}"></span>`;
 }
 
 /**

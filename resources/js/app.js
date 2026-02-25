@@ -34,13 +34,8 @@ import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
 // Import appointment navigation module
 import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
 
-// Import custom scheduler components
+// Import custom scheduler core (loads MonthView, WeekView, DayView, DragDropManager, SettingsManager internally)
 import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
-import { MonthView } from './modules/scheduler/scheduler-month-view.js';
-import { WeekView } from './modules/scheduler/scheduler-week-view.js';
-import { DayView } from './modules/scheduler/scheduler-day-view.js';
-import { DragDropManager } from './modules/scheduler/scheduler-drag-drop.js';
-import { SettingsManager } from './modules/scheduler/settings-manager.js';
 
 // Import scheduler styles
 import '../css/scheduler.css';
@@ -79,9 +74,6 @@ export {
 // ============================================
 // COMPONENT INITIALIZATION
 // ============================================
-
-// ⚠️ DEPRECATED: Calendar initialization removed
-// Custom scheduler placeholder will be implemented
 
 /**
  * Initialize all components (charts, scheduler, forms)
@@ -122,8 +114,8 @@ function initializeComponents() {
  * Used by user-management create/edit forms.
  */
 window.togglePassword = function(fieldId) {
-    var field = document.getElementById(fieldId);
-    var icon = document.getElementById(fieldId + '-icon');
+    const field = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '-icon');
     if (!field || !icon) return;
     if (field.type === 'password') {
         field.type = 'text';
@@ -149,6 +141,16 @@ document.addEventListener('spa:navigated', function(e) {
     }
 
 });
+
+if (!window.__xsSchedulerSettingsSavedBound) {
+    window.__xsSchedulerSettingsSavedBound = true;
+    document.addEventListener('settingsSaved', async () => {
+        if (!window.scheduler || !window.scheduler.settingsManager) return;
+        await window.scheduler.settingsManager.refresh();
+        await window.scheduler.loadAppointments();
+        window.scheduler.render();
+    });
+}
 
 if (typeof window !== 'undefined') {
     window.refreshAppointmentStats = refreshAppointmentStats;
@@ -189,7 +191,7 @@ async function initScheduler() {
         
         // Create scheduler instance
         const scheduler = new SchedulerCore('appointments-inline-calendar', {
-            initialView: 'month',
+            initialView: 'week',
             initialDate: initialDate,
             timezone: window.appTimezone || 'America/New_York',
             apiBaseUrl: `${getBaseUrl()}/api/appointments`,
@@ -207,11 +209,7 @@ async function initScheduler() {
         window.scheduler = scheduler;
         window.dispatchEvent(new CustomEvent('scheduler:ready', { detail: { scheduler } }));
 
-        // If URL includes ?open=..., open the appointment after scheduler is ready
-        const openParam = new URLSearchParams(window.location.search).get('open');
-        if (openParam && typeof scheduler.openAppointmentById === 'function') {
-            scheduler.openAppointmentById(openParam, true);
-        }
+        // NOTE: ?open= handling is in scheduler-core.js → checkUrlForAppointment()
 
         // Check if we need to refresh (e.g., after creating an appointment)
         const urlParams = new URLSearchParams(window.location.search);

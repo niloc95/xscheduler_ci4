@@ -284,6 +284,22 @@
 }
 
 // =============================================================================
+// HEADER CONTROLS SLOT
+// =============================================================================
+// Controls injected into the fixed header by child views (e.g., appointments).
+// Since the header is position:fixed, these controls never scroll out of view.
+// The ResizeObserver on .xs-header automatically updates --xs-header-height
+// so the content area pushes down to accommodate the extra rows.
+
+.xs-header-controls {
+  // Controls are inside the fixed header — no sticky needed.
+  // Just add minimal spacing between rows.
+  > * + * {
+    margin-top: var(--xs-space-1);
+  }
+}
+
+// =============================================================================
 // PAGE STRUCTURE COMPONENTS
 // =============================================================================
 // Standard components that MUST be used inside #spa-content.

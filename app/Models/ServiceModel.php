@@ -94,7 +94,7 @@ class ServiceModel extends BaseModel
 
         // naive bookings total via appointments table if exists
         try {
-            $bookings = $this->db->table('appointments')->countAllResults();
+            $bookings = $this->db->table($this->db->prefixTable('appointments'))->countAllResults();
         } catch (\Throwable $e) {
             $bookings = 0;
         }
@@ -130,11 +130,16 @@ class ServiceModel extends BaseModel
             ? "GROUP_CONCAT(u.name, ', ') as provider_names"
             : "GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') as provider_names";
 
-        $builder = $this->db->table('services s')
+        $servicesTable = $this->db->prefixTable('services');
+        $categoriesTable = $this->db->prefixTable('categories');
+        $providerServicesTable = $this->db->prefixTable('providers_services');
+        $usersTable = $this->db->prefixTable('users');
+
+        $builder = $this->db->table($servicesTable . ' s')
             ->select("s.*, c.name as category_name, {$providerConcat}", false)
-            ->join('categories c', 'c.id = s.category_id', 'left')
-            ->join('providers_services ps', 'ps.service_id = s.id', 'left')
-            ->join('users u', 'u.id = ps.provider_id', 'left')
+            ->join($categoriesTable . ' c', 'c.id = s.category_id', 'left')
+            ->join($providerServicesTable . ' ps', 'ps.service_id = s.id', 'left')
+            ->join($usersTable . ' u', 'u.id = ps.provider_id', 'left')
             ->groupBy('s.id')
             ->orderBy('s.created_at', 'DESC');
 
@@ -150,7 +155,7 @@ class ServiceModel extends BaseModel
      */
     public function setProviders(int $serviceId, array $providerIds): void
     {
-        $table = $this->db->table('providers_services');
+        $table = $this->db->table($this->db->prefixTable('providers_services'));
         // Clear existing
         $table->delete(['service_id' => $serviceId]);
         // Insert new links

@@ -10,26 +10,109 @@
  * This script automatically applies the color on page load and after SPA navigation.
  */
 
+let observerInitialized = false;
+
 /**
- * Apply data-color attributes to element backgrounds
+ * Apply dynamic color attributes to a single element
+ *
+ * Supported attributes:
+ * - data-color / data-bg-color
+ * - data-text-color
+ * - data-border-color
+ * - data-border-left-color
+ * - data-provider-color (maps to --provider-color)
+ * - data-pill-color (maps to --pill-color)
+ */
+function applyDynamicColorsToElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) {
+        return;
+    }
+
+    const backgroundColor = element.getAttribute('data-bg-color') || element.getAttribute('data-color');
+    const textColor = element.getAttribute('data-text-color');
+    const borderColor = element.getAttribute('data-border-color');
+    const borderLeftColor = element.getAttribute('data-border-left-color');
+    const providerColor = element.getAttribute('data-provider-color');
+    const pillColor = element.getAttribute('data-pill-color');
+
+    if (backgroundColor) {
+        element.style.backgroundColor = backgroundColor;
+    }
+    if (textColor) {
+        element.style.color = textColor;
+    }
+    if (borderColor) {
+        element.style.borderColor = borderColor;
+    }
+    if (borderLeftColor) {
+        element.style.borderLeftColor = borderLeftColor;
+    }
+    if (providerColor) {
+        element.style.setProperty('--provider-color', providerColor);
+    }
+    if (pillColor) {
+        element.style.setProperty('--pill-color', pillColor);
+    }
+}
+
+/**
+ * Apply dynamic colors to all supported elements
  */
 function applyDynamicColors() {
-    // Select all elements with data-color attribute
-    const elements = document.querySelectorAll('[data-color]');
-    
-    elements.forEach(element => {
-        const color = element.getAttribute('data-color');
-        if (color) {
-            element.style.backgroundColor = color;
-        }
+    const selector = [
+        '[data-color]',
+        '[data-bg-color]',
+        '[data-text-color]',
+        '[data-border-color]',
+        '[data-border-left-color]',
+        '[data-provider-color]',
+        '[data-pill-color]',
+    ].join(',');
+
+    document.querySelectorAll(selector).forEach(applyDynamicColorsToElement);
+}
+
+function observeDynamicColorNodes() {
+    if (observerInitialized || typeof MutationObserver === 'undefined') {
+        return;
+    }
+
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return;
+                }
+
+                applyDynamicColorsToElement(node);
+                if (typeof node.querySelectorAll === 'function') {
+                    node.querySelectorAll([
+                        '[data-color]',
+                        '[data-bg-color]',
+                        '[data-text-color]',
+                        '[data-border-color]',
+                        '[data-border-left-color]',
+                        '[data-provider-color]',
+                        '[data-pill-color]',
+                    ].join(',')).forEach(applyDynamicColorsToElement);
+                }
+            });
+        });
     });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    observerInitialized = true;
 }
 
 // Apply colors on DOM ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyDynamicColors);
+    document.addEventListener('DOMContentLoaded', () => {
+        applyDynamicColors();
+        observeDynamicColorNodes();
+    });
 } else {
     applyDynamicColors();
+    observeDynamicColorNodes();
 }
 
 // Re-apply colors after SPA navigation

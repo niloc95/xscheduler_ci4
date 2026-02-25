@@ -108,7 +108,7 @@ class DashboardService
         $currentDate = date($dateFormat);
         
         // Get timezone from settings
-        $timezone = env('app.timezone', 'UTC');
+        $timezone = $this->localizationService->getTimezone();
 
         return [
             'business_name' => $businessName,
@@ -735,42 +735,6 @@ class DashboardService
         }
 
         return null;
-    }
-
-    /**
-     * Adjust candidate time to skip break periods
-     * 
-     * @param string $candidateTime Time in H:i:s format
-     * @param array $breaks Array of break periods
-     * @param string $endTime Working hours end time
-     * @return string|null Adjusted time or null if no valid time found
-     */
-    private function adjustForBreaks(string $candidateTime, array $breaks, string $endTime): ?string
-    {
-        foreach ($breaks as $break) {
-            $breakStart = $break['start'] ?? null;
-            $breakEnd = $break['end'] ?? null;
-            
-            if (!$breakStart || !$breakEnd) {
-                continue;
-            }
-
-            // Normalize break times to H:i:s format
-            if (strlen($breakStart) === 5) $breakStart .= ':00';
-            if (strlen($breakEnd) === 5) $breakEnd .= ':00';
-
-            // If candidate is during break, move to end of break
-            if ($candidateTime >= $breakStart && $candidateTime < $breakEnd) {
-                $candidateTime = $breakEnd;
-            }
-        }
-
-        // Check if adjusted time is still within working hours
-        if ($candidateTime >= $endTime) {
-            return null;
-        }
-
-        return $candidateTime;
     }
 
     /**

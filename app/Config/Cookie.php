@@ -53,8 +53,26 @@ class Cookie extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * Cookie will only be set if a secure HTTPS connection exists.
+     * Auto-detects HTTPS from the current request instead of assuming
+     * production always equals HTTPS — this prevents setup wizard failures
+     * when initially accessed over plain HTTP.
      */
-    public bool $secure = (ENVIRONMENT === 'production');
+    public bool $secure = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Auto-detect secure cookies when the request arrives over HTTPS,
+        // unless explicitly overridden in .env (cookie.secure).
+        if ($this->secure === false && !is_cli()) {
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+                || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+                || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+            $this->secure = $isHttps;
+        }
+    }
 
     /**
      * --------------------------------------------------------------------------

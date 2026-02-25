@@ -95,9 +95,6 @@
                             <span class="material-symbols-outlined">menu</span>
                         </button>
                         <div class="min-w-0">
-                            <h1 id="header-title" class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white truncate">
-                                <?= esc($resolvedHeaderTitle) ?>
-                            </h1>
                             <?php 
                                 $userName = session()->get('user')['name'] ?? 'User';
                                 $userRole = session()->get('user')['role'] ?? 'user';
@@ -109,12 +106,18 @@
                                 $displayRole = $roleLabels[$userRole] ?? ucfirst($userRole);
                                 $greeting = date('H') < 12 ? 'Good morning' : (date('H') < 17 ? 'Good afternoon' : 'Good evening');
                             ?>
-                            <p id="header-subtitle" class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                                <span class="font-medium"><?= esc($greeting) ?>, <?= esc($userName) ?></span>
-                                <span class="mx-2">•</span>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 hidden sm:flex items-center gap-1.5 leading-none mb-0.5">
                                 <span><?= date('l, F j, Y') ?></span>
-                                <span class="mx-2">•</span>
+                                <span class="text-gray-300 dark:text-gray-600">·</span>
                                 <span id="header-live-clock" class="text-blue-600 dark:text-blue-400 font-mono"><?= date('H:i:s') ?></span>
+                            </p>
+                            <h1 id="header-title" class="text-lg lg:text-xl font-bold text-gray-900 dark:text-white truncate leading-tight">
+                                <?= esc($resolvedHeaderTitle) ?>
+                            </h1>
+                            <p id="header-subtitle" class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block leading-tight">
+                                <span id="header-greeting" class="font-medium"><?= esc($greeting) ?>, <?= esc($userName) ?></span>
+                                <span id="header-greeting-sep" class="mx-1">·</span>
+                                <span><?= esc($displayRole) ?></span>
                             </p>
                             <script>
                                 (function() {
@@ -150,6 +153,16 @@
                                 </div>
                             </div>
                             
+                            <!-- New Appointment (Global — visible on all pages) -->
+                            <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+                            <a href="<?= base_url('/appointments/create') ?>"
+                               class="btn btn-primary inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm rounded-lg whitespace-nowrap"
+                               title="New Appointment">
+                                <span class="material-symbols-outlined text-base">add</span>
+                                <span class="hidden lg:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
+                            </a>
+                            <?php endif; ?>
+
                             <!-- Notifications -->
                             <button type="button" class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
                                 <span class="material-symbols-outlined">notifications</span>
@@ -214,6 +227,14 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Page-Specific Header Controls (injected by child views) -->
+                    <?php $headerControlsContent = trim($this->renderSection('header_controls') ?? ''); ?>
+                    <?php if ($headerControlsContent !== ''): ?>
+                    <div class="xs-header-controls mt-3 pt-3 border-t border-gray-200 dark:border-gray-700" id="header-controls-slot">
+                        <?= $headerControlsContent ?>
+                    </div>
+                    <?php endif; ?>
                 </header>
         
         <!-- Content Area (starts BELOW the fixed header) -->
@@ -326,10 +347,27 @@
             // Sync on initial load
             syncHeaderTitle();
             
+            // Hide greeting on schedule/appointment views to save header space
+            function syncGreetingVisibility() {
+                const greetingEl = document.getElementById('header-greeting');
+                const greetingSep = document.getElementById('header-greeting-sep');
+                if (!greetingEl) return;
+                // If header has controls slot, it's a schedule view — hide greeting
+                const hasControls = document.getElementById('header-controls-slot');
+                greetingEl.style.display = hasControls ? 'none' : '';
+                if (greetingSep) greetingSep.style.display = hasControls ? 'none' : '';
+            }
+
+            syncGreetingVisibility();
+
             // Sync on SPA navigation
             document.addEventListener('spa:navigated', function() {
                 // Small delay to ensure DOM is updated
-                requestAnimationFrame(() => syncHeaderTitle());
+                requestAnimationFrame(() => {
+                    syncHeaderTitle();
+                    syncGreetingVisibility();
+                    syncHeaderHeight();
+                });
             });
             
             // User menu toggle

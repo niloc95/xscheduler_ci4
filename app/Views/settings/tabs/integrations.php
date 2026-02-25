@@ -36,7 +36,7 @@
                         <label class="form-label">LDAP Authentication</label>
                         <div class="space-y-2">
                             <label class="inline-flex items-center gap-2">
-                                <input type="checkbox" name="ldap_enabled" class="checkbox" value="1" <?= ($settings['integrations.ldap_enabled'] ?? '0') === '1' ? 'checked' : '' ?>> Enable LDAP
+                                <input type="checkbox" name="ldap_enabled" class="form-checkbox h-4 w-4 text-blue-600" value="1" <?= ($settings['integrations.ldap_enabled'] ?? '0') === '1' ? 'checked' : '' ?>> Enable LDAP
                             </label>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <input name="ldap_host" class="form-input" placeholder="ldap://host" value="<?= esc($settings['integrations.ldap_host'] ?? '') ?>" />

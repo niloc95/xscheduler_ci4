@@ -53,20 +53,12 @@
 
 namespace App\Filters;
 
-use App\Models\UserPermissionModel;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class AuthFilter implements FilterInterface
 {
-    protected $permissionModel;
-
-    public function __construct()
-    {
-        $this->permissionModel = new UserPermissionModel();
-    }
-
     /**
      * Enhanced authentication with basic role/permission support
      * 

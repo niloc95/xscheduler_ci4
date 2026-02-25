@@ -6,7 +6,14 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getProviderInitials, getProviderDotHtml, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
+import {
+    generateSlots,
+    renderSlotList,
+    renderProviderFilterPills,
+    renderSlotLegend,
+    computeDayAvailability,
+} from './slot-engine.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -50,6 +57,20 @@ export class MonthView {
         this.settings = settings;
         this.blockedPeriods = config?.blockedPeriods || [];
         this.currentDate = currentDate;
+        this.config = config;
+        this.container = container;
+        
+        // Business hours & slot config
+        this.businessHours = {
+            startTime: config?.slotMinTime || '08:00',
+            endTime: config?.slotMaxTime || '17:00',
+        };
+        let slotDur = config?.slotDuration || 30;
+        if (typeof slotDur === 'string' && slotDur.includes(':')) {
+            const parts = slotDur.split(':');
+            slotDur = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+        this.slotDuration = parseInt(slotDur, 10) || 30;
         
         // Initialize selected date to today if not set
         if (!this.selectedDate) {
@@ -124,11 +145,13 @@ export class MonthView {
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                         Click on any day to create a new appointment
                     </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-500">
-                        💡 Backend API endpoints need to be implemented to load and save appointments
-                    </p>
                 </div>
                 ` : ''}
+                
+                <!-- Available Slots Panel (always visible) -->
+                <div class="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700" id="month-slot-panel">
+                    ${this._renderMonthSlotPanel()}
+                </div>
             </div>
         `;
 
@@ -137,6 +160,9 @@ export class MonthView {
         
         // Render daily appointments section for the selected day
         this.renderDailySection(data);
+        
+        // Attach slot panel listeners
+        this._attachMonthSlotListeners();
     }
 
     renderDayHeaders(config, settings) {
@@ -147,7 +173,7 @@ export class MonthView {
         const rotatedDays = [...days.slice(firstDay), ...days.slice(0, firstDay)];
         
         return rotatedDays.map(day => `
-            <div class="px-4 py-3 text-center">
+            <div class="px-3 py-2 text-center">
                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">${day}</span>
             </div>
         `).join('');
@@ -210,6 +236,7 @@ export class MonthView {
                         </button>
                     ` : ''}
                 </div>
+                ${this._renderDayCellAvailability(day, isCurrentMonth)}
             </div>
         `;
     }
@@ -229,10 +256,12 @@ export class MonthView {
 
         return `
             <div class="scheduler-appointment text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:shadow-sm transition-all truncate border-l-2 flex items-center gap-1 ${hiddenClass}"
-                 style="background-color: ${statusColors.bg}; border-left-color: ${statusColors.border}; color: ${statusColors.text};"
+                 data-bg-color="${statusColors.bg}"
+                 data-border-left-color="${statusColors.border}"
+                 data-text-color="${statusColors.text}"
                  data-appointment-id="${appointment.id}"
                  title="${title} at ${time}${ampm} - ${appointment.status}">
-                <span class="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style="background-color: ${providerColor};"></span>
+                <span class="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" data-bg-color="${providerColor}"></span>
                 <span class="font-medium">${time}</span>
                 <span class="truncate opacity-80">${this.escapeHtml(title)}</span>
             </div>
@@ -349,10 +378,10 @@ export class MonthView {
                     <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                         <!-- Provider Header - matching Week View -->
                         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700"
-                             style="border-left: 4px solid ${color};">
+                             data-border-left-color="${color}">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                                     style="background-color: ${color};">
+                                     data-bg-color="${color}">
                                     ${getProviderInitials(provider.name)}
                                 </div>
                                 <div class="flex-1 min-w-0">
@@ -389,17 +418,19 @@ export class MonthView {
                         
                         html += `
                             <div class="appointment-item p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer border-l-4 ${hiddenClass}"
-                                 style="border-left-color: ${statusColors.border}; background-color: ${statusColors.bg}; color: ${statusColors.text};"
+                                 data-border-left-color="${statusColors.border}"
+                                 data-bg-color="${statusColors.bg}"
+                                 data-text-color="${statusColors.text}"
                                  data-appointment-id="${apt.id}">
                                 <div class="flex items-start justify-between gap-2 mb-1">
                                     <div class="flex-1 min-w-0 flex items-center gap-2">
-                                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${providerColor};"></span>
+                                        <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" data-bg-color="${providerColor}"></span>
                                         <div class="text-xs font-medium">
                                             ${date} • ${time}
                                         </div>
                                     </div>
-                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0"
-                                          style="background-color: ${statusColors.dot}; color: white;">
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 text-white"
+                                          data-bg-color="${statusColors.dot}">
                                         ${apt.status}
                                     </span>
                                 </div>
@@ -588,7 +619,8 @@ export class MonthView {
                 // Update daily appointments section
                 this.updateDailySection(container);
                 
-                // Removed: Double-click to create appointment modal
+                // Update the available slots panel for the selected date
+                this._updateMonthSlotPanel();
             });
         });
     }
@@ -756,5 +788,110 @@ export class MonthView {
                 textSpan.textContent = 'Show less';
             }
         }
+    }
+
+    // ── Available Slots Helpers ───────────────────────────────────────
+
+    /**
+     * Render a tiny availability indicator bar for a day cell in the month grid.
+     * Green = slots open, Red = fully booked, nothing for non-working days.
+     */
+    _renderDayCellAvailability(day, isCurrentMonth) {
+        if (!isCurrentMonth) return '';
+        
+        const avail = computeDayAvailability({
+            date: day,
+            businessHours: this.businessHours,
+            slotDuration: this.slotDuration,
+            appointments: this.appointments,
+            providers: this.providers,
+            blockedPeriods: this.blockedPeriods,
+            settings: this.settings,
+        });
+
+        if (avail.hasOpenSlots) {
+            return '<div class="day-availability-bar day-availability-bar--open"></div>';
+        }
+        if (avail.isFullyBooked) {
+            return '<div class="day-availability-bar day-availability-bar--full"></div>';
+        }
+        return ''; // Non-working / weekend / no providers
+    }
+
+    /**
+     * Render the full Available Slots panel below the month grid.
+     * Shows slots for the currently selected date (defaults to today).
+     */
+    _renderMonthSlotPanel() {
+        const date = this.selectedDate || DateTime.now();
+        const providers = this.providers || [];
+        if (providers.length === 0) return '';
+
+        const slots = generateSlots({
+            date,
+            businessHours: this.businessHours,
+            slotDuration: this.slotDuration,
+            appointments: this.appointments,
+            providers,
+            blockedPeriods: this.blockedPeriods,
+            settings: this.settings,
+        });
+
+        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+
+        return `<div class="slot-panel" id="month-slot-panel-inner">
+            <div class="slot-panel__header">
+                <h3 class="slot-panel__title">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
+                    Available Slots — ${date.toFormat('EEE, MMM d')}
+                </h3>
+                <div class="slot-panel__provider-count">
+                    <span class="material-symbols-outlined text-sm">group</span>
+                    <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
+                </div>
+            </div>
+            <div class="slot-panel__filters">
+                <span class="slot-panel__filter-label">Filter by Provider</span>
+                <div class="slot-panel__pills" id="month-provider-pills">
+                    ${renderProviderFilterPills(providers)}
+                </div>
+            </div>
+            <div class="slot-panel__slots">
+                <div class="slot-panel__slots-header">
+                    <span class="slot-panel__slots-label">Time Slots</span>
+                    <span class="slot-panel__slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="slot-panel__slot-list" id="month-slot-list">
+                    ${renderSlotList({ date, slots, providers, timeFormat })}
+                </div>
+            </div>
+            ${renderSlotLegend()}
+        </div>`;
+    }
+
+    /**
+     * Update the month slot panel for a new date (called on day cell click)
+     */
+    _updateMonthSlotPanel() {
+        const panelEl = this.container?.querySelector('#month-slot-panel');
+        if (!panelEl) return;
+        panelEl.innerHTML = this._renderMonthSlotPanel();
+        this._attachMonthSlotListeners();
+    }
+
+    /**
+     * Attach event listeners to the month slot panel
+     */
+    _attachMonthSlotListeners() {
+        const panelEl = this.container?.querySelector('#month-slot-panel');
+        if (!panelEl) return;
+
+        panelEl.querySelectorAll('.provider-filter-pill').forEach(el => {
+            el.addEventListener('click', () => {
+                const isActive = el.dataset.active === 'true';
+                el.dataset.active = String(!isActive);
+                el.classList.toggle('provider-filter-pill--inactive', isActive);
+            });
+        });
     }
 }

@@ -9,44 +9,6 @@
 <?= $this->section('content') ?>
 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-brand p-4 md:p-6 mb-6">
 
-        <?php if (session()->getFlashdata('error')): ?>
-            <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-                <?= esc(session()->getFlashdata('error')) ?>
-            </div>
-        <?php endif; ?>
-        <?php if (session()->getFlashdata('success')): ?>
-            <div id="success-alert" class="mb-4 p-3 rounded-lg border border-green-300/60 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 flex items-center justify-between">
-                <span>
-                    <?php if (session()->getFlashdata('success_html')): ?>
-                        <?= session()->getFlashdata('success') ?>
-                    <?php else: ?>
-                        <?= esc(session()->getFlashdata('success')) ?>
-                    <?php endif; ?>
-                </span>
-                <button type="button" onclick="document.getElementById('success-alert').remove()" class="ml-4 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200">
-                    <span class="material-symbols-outlined text-lg">close</span>
-                </button>
-            </div>
-            <?php if (session()->getFlashdata('success_html')): ?>
-            <script>
-                // Auto-dismiss WhatsApp link alert when link is clicked
-                (function() {
-                    const alert = document.getElementById('success-alert');
-                    if (alert) {
-                        const link = alert.querySelector('a[target="_blank"]');
-                        if (link) {
-                            link.addEventListener('click', function() {
-                                setTimeout(function() {
-                                    alert.remove();
-                                }, 500);
-                            });
-                        }
-                    }
-                })();
-            </script>
-            <?php endif; ?>
-        <?php endif; ?>
-
         <!-- Tabs -->
         <div class="overflow-x-auto">
             <nav class="flex gap-2 border-b border-gray-200 dark:border-gray-700" role="tablist" aria-label="Settings Sections">
@@ -163,13 +125,7 @@
                 return { header, token };
             };
 
-            // Shared HTML escaper — delegates to global defined in app.js
-            window.xsEscapeHtml = window.xsEscapeHtml || function (str) {
-                if (!str) return '';
-                const div = document.createElement('div');
-                div.textContent = str;
-                return div.innerHTML;
-            };
+            // xsEscapeHtml is defined globally in app.js (Vite bundle)
         })();
 
         // ─── WhatsApp Provider Toggle ───────────────────────────
@@ -680,19 +636,20 @@
         function initSettingsApi() {
             const root = document.getElementById('spa-content');
             xsDebugLog('Settings: initSettingsApi called, root found:', !!root);
-            if (!root) return;
+            if (!root) {
+                console.warn('[Settings] initSettingsApi: #spa-content not found');
+                return;
+            }
 
             // Initialize General Settings Form
-            initGeneralSettingsForm();
+            try { initGeneralSettingsForm(); } catch (e) { console.error('[Settings] General init error:', e); }
             
-            // Initialize other tab forms
-            initTabForm('localization');
-            initTabForm('booking');
-            initTabForm('business');
-            initTabForm('legal');
-            initTabForm('integrations');
+            // Initialize other tab forms (each isolated so one failure doesn't block others)
+            ['localization', 'booking', 'business', 'legal', 'integrations'].forEach(tab => {
+                try { initTabForm(tab); } catch (e) { console.error(`[Settings] ${tab} init error:`, e); }
+            });
             
-            initCustomFieldToggles();
+            try { initCustomFieldToggles(); } catch (e) { console.error('[Settings] Custom fields init error:', e); }
         }
 
         // Initialize immediately — works on both first page load and SPA re-navigation
@@ -704,12 +661,23 @@
         if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
             requestAnimationFrame(function() {
                 if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
+                    xsDebugLog('[Settings] Safety net A: rAF retry');
                     initSettingsApi();
                 }
             });
         }
 
-        // Safety net B: spa:navigated — fires after initTabsInSpaContent() completes,
+        // Safety net B: setTimeout — handles cases where rAF fires too early.
+        if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
+            setTimeout(function() {
+                if (!document.getElementById('general-settings-form')?.dataset.apiWired) {
+                    console.warn('[Settings] Safety net B: setTimeout retry (200ms)');
+                    initSettingsApi();
+                }
+            }, 200);
+        }
+
+        // Safety net C: spa:navigated — fires after initTabsInSpaContent() completes,
         // guaranteeing the DOM is fully settled. Registered once per page-visit to
         // avoid accumulation across navigations.
         (function registerSettingsSpaListener() {
@@ -732,37 +700,31 @@
             document.addEventListener('spa:navigated', window._settingsSpaNavHandler);
         })();
 
+        // General tab form — uses the same always-editable pattern as other tabs
+        // but adds logo/icon file upload handling on top of the standard JSON save.
         function initGeneralSettingsForm() {
             const form = document.getElementById('general-settings-form');
-            if (!form || form.dataset.apiWired === 'true') return;
+            if (!form) {
+                console.warn('[Settings] initGeneralSettingsForm: #general-settings-form not found');
+                return;
+            }
+            if (form.dataset.apiWired === 'true') return;
 
-            const generalPanel = form.querySelector('#panel-general');
+            const generalPanel = form.querySelector('#panel-general') || document.getElementById('panel-general');
             const saveBtn = document.getElementById('save-general-btn');
-            const btnEdit = document.getElementById('general-edit-btn');
-            const btnCancel = document.getElementById('general-cancel-btn');
             const logoInput = document.getElementById('company_logo');
             const logoImg = document.getElementById('company_logo_preview_img');
             const iconInput = document.getElementById('company_icon');
             const iconImg = document.getElementById('company_icon_preview_img');
             const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
 
-            xsDebugLog('General Settings: Found elements:', {
-                generalPanel: !!generalPanel,
-                saveBtn: !!saveBtn,
-                btnEdit: !!btnEdit,
-                btnCancel: !!btnCancel,
-                logoInput: !!logoInput,
-                logoImg: !!logoImg,
-                iconInput: !!iconInput,
-                iconImg: !!iconImg
-            });
-
-            if (!generalPanel || !saveBtn || !btnEdit) {
+            if (!generalPanel || !saveBtn) {
+                console.warn('[Settings] initGeneralSettingsForm: missing critical element(s)',
+                    { panel: !!generalPanel, save: !!saveBtn });
                 return;
             }
 
-            const lockableFields = Array.from(generalPanel.querySelectorAll('input:not([type="hidden"]), textarea, select'))
-                .filter(el => el.id !== 'company_logo' && el.id !== 'company_icon');
+            try {
 
             const fieldMap = {
                 company_name: 'general.company_name',
@@ -777,83 +739,18 @@
             const logoEndpoint = "<?= base_url('api/v1/settings/logo') ?>";
             const iconEndpoint = "<?= base_url('api/v1/settings/icon') ?>";
 
-            let editing = false;
             let hasChanges = false;
-            let initialValues = collectCurrentValues();
-            let initialLogoSrc = logoImg ? (logoImg.dataset.src || logoImg.src || '') : '';
-            let initialIconSrc = iconImg ? (iconImg.dataset.src || iconImg.src || '') : '';
-
-            function collectCurrentValues() {
-                const values = {};
-                Object.keys(fieldMap).forEach(name => {
-                    const el = form.elements[name];
-                    if (!el || el.type === 'file') return;
-                    values[name] = el.value ?? '';
-                });
-                return values;
-            }
-
-            function applyValues(values) {
-                Object.entries(values).forEach(([name, value]) => {
-                    const el = form.elements[name];
-                    if (!el || el.type === 'file') return;
-                    el.value = value ?? '';
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            }
-
-            function checkForChanges() {
-                if (!editing) return false;
-                
-                const currentValues = collectCurrentValues();
-                const hasFieldChanges = Object.keys(fieldMap).some(name => {
-                    return currentValues[name] !== initialValues[name];
-                });
-                
-                const currentLogoSrc = logoImg ? (logoImg.src || '') : '';
-                const hasLogoChange = logoInput?.files?.length > 0 || currentLogoSrc !== initialLogoSrc;
-                
-                return hasFieldChanges || hasLogoChange;
-            }
 
             function updateSaveButtonState() {
-                hasChanges = checkForChanges();
                 if (saveBtn) {
-                    saveBtn.disabled = !editing;
-                    saveBtn.classList.toggle('opacity-60', !editing);
-                    saveBtn.classList.toggle('cursor-not-allowed', !editing);
+                    saveBtn.disabled = !hasChanges;
+                    saveBtn.classList.toggle('opacity-60', !hasChanges);
+                    saveBtn.classList.toggle('cursor-not-allowed', !hasChanges);
                 }
-            }
-
-            function setLockedState(locked) {
-                lockableFields.forEach(el => {
-                    el.disabled = locked;
-                    el.classList.toggle('cursor-not-allowed', locked);
-                    el.classList.toggle('bg-gray-100', locked);
-                    el.classList.toggle('dark:bg-gray-800/70', locked);
-                    el.setAttribute('aria-readonly', locked ? 'true' : 'false');
-                });
-                if (logoInput) {
-                    logoInput.disabled = locked;
-                    logoInput.classList.toggle('cursor-not-allowed', locked);
-                    logoInput.classList.toggle('bg-gray-100', locked);
-                    logoInput.classList.toggle('dark:bg-gray-800/70', locked);
-                }
-                if (iconInput) {
-                    iconInput.disabled = locked;
-                    iconInput.classList.toggle('cursor-not-allowed', locked);
-                    iconInput.classList.toggle('bg-gray-100', locked);
-                    iconInput.classList.toggle('dark:bg-gray-800/70', locked);
-                }
-                if (btnEdit) btnEdit.classList.toggle('hidden', !locked);
-                if (btnCancel) btnCancel.classList.toggle('hidden', locked);
-                
-                updateSaveButtonState();
             }
 
             function getCsrf() {
                 const base = xsGetCsrf();
-                // Also check appConfig and form-level csrfInput as fallbacks
                 const header = base.header || window.appConfig?.csrfHeaderName || 'X-CSRF-TOKEN';
                 const token  = base.token || window.appConfig?.csrfToken || csrfInput?.value || '';
                 return { header, token };
@@ -885,105 +782,44 @@
                 }
             }
 
-            function previewLogo(file) {
-                if (!logoImg || !file || !file.type?.startsWith('image/')) return;
+            // Logo / icon preview
+            function previewFile(imgEl, file) {
+                if (!imgEl || !file || !file.type?.startsWith('image/')) return;
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    logoImg.src = event.target?.result || '';
-                    logoImg.classList.remove('hidden');
+                reader.onload = (e) => {
+                    imgEl.src = e.target?.result || '';
+                    imgEl.classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
             }
 
-            function previewIcon(file) {
-                if (!iconImg || !file || !file.type?.startsWith('image/')) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    iconImg.src = event.target?.result || '';
-                    iconImg.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
-
-            setLockedState(true);
-
-            // Track changes on all lockable fields
-            lockableFields.forEach(field => {
-                field.addEventListener('input', updateSaveButtonState);
-                field.addEventListener('change', updateSaveButtonState);
+            // Track changes on all form fields
+            const formInputs = Array.from(generalPanel.querySelectorAll('input:not([type="hidden"]), textarea, select'));
+            formInputs.forEach(input => {
+                input.addEventListener('input', () => { hasChanges = true; updateSaveButtonState(); });
+                input.addEventListener('change', () => { hasChanges = true; updateSaveButtonState(); });
             });
 
-            if (btnEdit) {
-                xsDebugLog('General Settings: Attaching Edit button listener');
-                btnEdit.addEventListener('click', () => {
-                    xsDebugLog('General Edit clicked');
-                    editing = true;
-                    setLockedState(false);
-                    // Focus first editable field for keyboard accessibility
-                    // (avoid saveBtn.focus() which unexpectedly scrolls the page down)
-                    lockableFields[0]?.focus();
-                });
-            }
-
-            if (btnCancel) {
-                btnCancel.addEventListener('click', () => {
-                    xsDebugLog('General Cancel clicked');
-                    editing = false;
-                    hasChanges = false;
-                    applyValues(initialValues);
-                    if (logoImg && initialLogoSrc) {
-                        logoImg.src = initialLogoSrc;
-                        logoImg.dataset.src = initialLogoSrc;
-                        logoImg.classList.remove('hidden');
-                    }
-                    if (logoImg && !initialLogoSrc) {
-                        logoImg.classList.add('hidden');
-                    }
-                    if (logoInput) {
-                        logoInput.value = '';
-                    }
-                    setLockedState(true);
-                });
-            }
-
             if (logoInput) {
-                logoInput.addEventListener('change', (event) => {
-                    const file = event.target?.files?.[0];
-                    if (file) {
-                        previewLogo(file);
-                    } else if (logoImg && initialLogoSrc) {
-                        logoImg.src = initialLogoSrc;
-                    }
+                logoInput.addEventListener('change', (e) => {
+                    const file = e.target?.files?.[0];
+                    if (file) previewFile(logoImg, file);
+                    hasChanges = true;
                     updateSaveButtonState();
                 });
             }
 
             if (iconInput) {
-                iconInput.addEventListener('change', (event) => {
-                    const file = event.target?.files?.[0];
-                    if (file) {
-                        previewIcon(file);
-                    } else if (iconImg && initialIconSrc) {
-                        iconImg.src = initialIconSrc;
-                    }
+                iconInput.addEventListener('change', (e) => {
+                    const file = e.target?.files?.[0];
+                    if (file) previewFile(iconImg, file);
+                    hasChanges = true;
                     updateSaveButtonState();
                 });
             }
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
-                
-                xsDebugLog('General form submitted - editing:', editing);
-
-                if (!editing) {
-                    window.XSNotify?.toast?.({
-                        type: 'info',
-                        title: 'Locked',
-                        message: 'Click Edit before saving your changes.',
-                        autoClose: true
-                    });
-                    return;
-                }
 
                 if (!form.reportValidity()) {
                     form.reportValidity();
@@ -999,10 +835,7 @@
                 });
 
                 xsDebugLog('Saving general settings:', payload);
-
-                const previousEditingState = editing;
                 setSavingState(true);
-                setLockedState(true);
 
                 try {
                     const response = await fetch(apiEndpoint, {
@@ -1018,126 +851,69 @@
 
                     updateCsrfFromResponse(response);
 
-                    xsDebugLog('API Response status:', response.status);
-
                     if (!response.ok) {
                         let errorId = '';
                         try {
                             const errJson = await response.json();
                             errorId = errJson?.error?.error_id || errJson?.error_id || '';
-                        } catch (e) {
-                            // ignore non-JSON errors
-                        }
+                        } catch (e) { /* ignore */ }
                         throw new Error(`Save failed (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`);
                     }
 
                     const result = await response.json();
-                    xsDebugLog('API Response data:', result);
-                    
                     if (!result?.ok) {
                         throw new Error(result?.message || 'Unable to save settings.');
                     }
 
-                    let uploadedLogoUrl = null;
+                    // Upload logo if selected
                     if (logoInput?.files?.length) {
-                        const fileData = new FormData();
-                        fileData.append('company_logo', logoInput.files[0]);
-                        if (csrfInput?.name && csrfInput.value) {
-                            fileData.append(csrfInput.name, csrfInput.value);
-                        }
-
+                        const fd = new FormData();
+                        fd.append('company_logo', logoInput.files[0]);
+                        if (csrfInput?.name && csrfInput.value) fd.append(csrfInput.name, csrfInput.value);
                         const uploadToken = csrfInput?.value || token;
-
-                        const logoResponse = await fetch(logoEndpoint, {
+                        const logoResp = await fetch(logoEndpoint, {
                             method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                ...(uploadToken ? { [header]: uploadToken } : {})
-                            },
-                            body: fileData
+                            headers: { 'X-Requested-With': 'XMLHttpRequest', ...(uploadToken ? { [header]: uploadToken } : {}) },
+                            body: fd
                         });
-
-                        updateCsrfFromResponse(logoResponse);
-
-                        if (!logoResponse.ok) {
-                            throw new Error(`Logo upload failed (HTTP ${logoResponse.status})`);
+                        updateCsrfFromResponse(logoResp);
+                        if (!logoResp.ok) throw new Error(`Logo upload failed (HTTP ${logoResp.status})`);
+                        const logoResult = await logoResp.json();
+                        if (!logoResult?.ok) throw new Error(logoResult?.message || 'Logo upload failed.');
+                        if (logoResult.url && logoImg) {
+                            logoImg.src = logoResult.url;
+                            logoImg.dataset.src = logoResult.url;
+                            logoImg.classList.remove('hidden');
                         }
-
-                        const logoResult = await logoResponse.json();
-                        if (!logoResult?.ok) {
-                            throw new Error(logoResult?.message || 'Logo upload failed.');
-                        }
-                        uploadedLogoUrl = logoResult.url || null;
-                    }
-
-                    let uploadedIconUrl = null;
-                    if (iconInput?.files?.length) {
-                        const fileData = new FormData();
-                        fileData.append('company_icon', iconInput.files[0]);
-                        if (csrfInput?.name && csrfInput.value) {
-                            fileData.append(csrfInput.name, csrfInput.value);
-                        }
-
-                        const uploadToken = csrfInput?.value || token;
-
-                        const iconResponse = await fetch(iconEndpoint, {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                ...(uploadToken ? { [header]: uploadToken } : {})
-                            },
-                            body: fileData
-                        });
-
-                        updateCsrfFromResponse(iconResponse);
-
-                        if (!iconResponse.ok) {
-                            throw new Error(`Icon upload failed (HTTP ${iconResponse.status})`);
-                        }
-
-                        const iconResult = await iconResponse.json();
-                        if (!iconResult?.ok) {
-                            throw new Error(iconResult?.message || 'Icon upload failed.');
-                        }
-                        uploadedIconUrl = iconResult.url || null;
-                    }
-
-                    initialValues = collectCurrentValues();
-                    editing = false;
-                    hasChanges = false;
-                    setSavingState(false);
-                    setLockedState(true);
-
-                    if (uploadedLogoUrl && logoImg) {
-                        logoImg.src = uploadedLogoUrl;
-                        logoImg.dataset.src = uploadedLogoUrl;
-                        logoImg.classList.remove('hidden');
-                    }
-                    if (logoInput) {
                         logoInput.value = '';
                     }
-                    if (logoImg && !uploadedLogoUrl) {
-                        initialLogoSrc = logoImg.dataset.src || logoImg.src || initialLogoSrc;
-                    } else if (uploadedLogoUrl) {
-                        initialLogoSrc = uploadedLogoUrl;
-                    }
 
-                    if (uploadedIconUrl && iconImg) {
-                        iconImg.src = uploadedIconUrl;
-                        iconImg.dataset.src = uploadedIconUrl;
-                        iconImg.classList.remove('hidden');
-                    }
-                    if (iconInput) {
+                    // Upload icon if selected
+                    if (iconInput?.files?.length) {
+                        const fd = new FormData();
+                        fd.append('company_icon', iconInput.files[0]);
+                        if (csrfInput?.name && csrfInput.value) fd.append(csrfInput.name, csrfInput.value);
+                        const uploadToken = csrfInput?.value || token;
+                        const iconResp = await fetch(iconEndpoint, {
+                            method: 'POST',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest', ...(uploadToken ? { [header]: uploadToken } : {}) },
+                            body: fd
+                        });
+                        updateCsrfFromResponse(iconResp);
+                        if (!iconResp.ok) throw new Error(`Icon upload failed (HTTP ${iconResp.status})`);
+                        const iconResult = await iconResp.json();
+                        if (!iconResult?.ok) throw new Error(iconResult?.message || 'Icon upload failed.');
+                        if (iconResult.url && iconImg) {
+                            iconImg.src = iconResult.url;
+                            iconImg.dataset.src = iconResult.url;
+                            iconImg.classList.remove('hidden');
+                        }
                         iconInput.value = '';
                     }
-                    if (iconImg && !uploadedIconUrl) {
-                        initialIconSrc = iconImg.dataset.src || iconImg.src || initialIconSrc;
-                    } else if (uploadedIconUrl) {
-                        initialIconSrc = uploadedIconUrl;
-                    }
 
-                    xsDebugLog('General settings saved successfully!');
-                    
+                    hasChanges = false;
+                    setSavingState(false);
+
                     window.XSNotify?.toast?.({
                         type: 'success',
                         title: '✓ Settings Updated',
@@ -1145,23 +921,21 @@
                         autoClose: true,
                         duration: 4000
                     });
-                    
+
                     if (!window.XSNotify?.toast) {
                         alert('✓ General settings updated successfully!');
                     }
                 } catch (error) {
                     console.error('❌ General settings save failed:', error);
-                    editing = previousEditingState;
                     setSavingState(false);
-                    setLockedState(!editing);
-                    
+
                     window.XSNotify?.toast?.({
                         type: 'error',
                         title: '✗ Save Failed',
                         message: error?.message || 'Failed to save general settings. Please try again.',
                         autoClose: false
                     });
-                    
+
                     if (!window.XSNotify?.toast) {
                         alert('✗ Failed to save: ' + (error?.message || 'Unknown error'));
                     }
@@ -1169,6 +943,11 @@
             });
 
             form.dataset.apiWired = 'true';
+            xsDebugLog('[Settings] General form initialized');
+
+            } catch (initErr) {
+                console.error('[Settings] initGeneralSettingsForm error:', initErr);
+            }
         }
 
         // Generic tab form initialization for non-General tabs

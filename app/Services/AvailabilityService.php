@@ -141,6 +141,11 @@ class AvailabilityService
 
         // Step 1b: If a location is specified, check that the location operates on this day
         if ($locationId !== null) {
+            if (!$this->isProviderLocationActive($providerId, $locationId)) {
+                log_message('info', '[AvailabilityService] Location ' . $locationId . ' is not active for provider ' . $providerId);
+                return [];
+            }
+
             $dateObj = new \DateTime($date);
             $dayInt = (int) $dateObj->format('w'); // 0=Sun … 6=Sat
             $locationDays = $this->locationModel->getLocationDays($locationId);
@@ -229,6 +234,14 @@ class AvailabilityService
 
         // Check location operating day (if location specified)
         if ($locationId !== null) {
+            if (!$this->isProviderLocationActive($providerId, $locationId)) {
+                return [
+                    'available' => false,
+                    'conflicts' => [],
+                    'reason' => 'Location is not available for this provider'
+                ];
+            }
+
             $dayInt = (int) $start->format('w'); // 0=Sun … 6=Sat
             $locationDays = $this->locationModel->getLocationDays($locationId);
             if (!in_array($dayInt, $locationDays, true)) {
@@ -407,6 +420,16 @@ class AvailabilityService
                 'end' => $breakEnd
             ]
         ];
+    }
+
+    private function isProviderLocationActive(int $providerId, int $locationId): bool
+    {
+        $location = $this->locationModel->find($locationId);
+        if (!$location) {
+            return false;
+        }
+
+        return (int) ($location['provider_id'] ?? 0) === $providerId && (int) ($location['is_active'] ?? 0) === 1;
     }
 
     /**

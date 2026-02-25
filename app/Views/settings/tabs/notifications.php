@@ -11,7 +11,7 @@
             <!-- Notifications Settings Form (Phase 1: Rules only, no sending) -->
             <form id="notifications-settings-form" method="POST" action="<?= base_url('settings/notifications') ?>" class="mt-4 space-y-6" data-tab-form="notifications" data-no-spa="true">
                 <?= csrf_field() ?>
-                <input type="hidden" name="form_source" value="notification_rules_phase1">
+                <input type="hidden" name="form_source" value="notifications_settings">
                 <section id="panel-notifications" class="tab-panel hidden">
                     <div class="flex items-center justify-between mb-3">
                         <div>
@@ -24,11 +24,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label class="form-label">Default Notification Language</label>
-                            <?php $notifLang = $settings['notifications.default_language'] ?? ($settings['localization.language'] ?? 'English'); ?>
+                            <?php $defaultLanguage = $settings['notifications.default_language'] ?? ($settings['localization.language'] ?? 'English'); ?>
                             <select name="notification_default_language" class="form-input">
-                                <option value="English" <?= $notifLang === 'English' ? 'selected' : '' ?>>English</option>
-                                <option value="Portuguese-BR" <?= $notifLang === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
-                                <option value="Spanish" <?= $notifLang === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
+                                <option value="English" <?= $defaultLanguage === 'English' ? 'selected' : '' ?>>English</option>
+                                <option value="Portuguese-BR" <?= $defaultLanguage === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
+                                <option value="Spanish" <?= $defaultLanguage === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
                             </select>
                             <p class="form-help">Used as the default language when templates are introduced.</p>
                         </div>
@@ -118,20 +118,10 @@
                             </div>
                         </div>
 
-                        <?php if ($emailDecryptError === 'encryption_key_mismatch'): ?>
-                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                            <div class="flex items-start gap-3">
-                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
-                                <div>
-                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
-                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                        Previously saved credentials cannot be decrypted because the server's encryption key has changed.
-                                        Please re-enter your SMTP credentials and save to restore email functionality.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
+                        <?= $this->include('components/ui/encryption-warning', [
+                            'condition' => $emailDecryptError === 'encryption_key_mismatch',
+                            'message'   => 'Previously saved credentials cannot be decrypted because the server\'s encryption key has changed. Please re-enter your SMTP credentials and save to restore email functionality.',
+                        ]) ?>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div class="form-field">
@@ -225,19 +215,10 @@
                             </div>
                         </div>
 
-                        <?php if ($waDecryptError === 'encryption_key_mismatch'): ?>
-                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                            <div class="flex items-start gap-3">
-                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
-                                <div>
-                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
-                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                        Previously saved WhatsApp credentials cannot be decrypted. Please re-enter your credentials.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
+                        <?= $this->include('components/ui/encryption-warning', [
+                            'condition' => $waDecryptError === 'encryption_key_mismatch',
+                            'message'   => 'Previously saved WhatsApp credentials cannot be decrypted. Please re-enter your credentials.',
+                        ]) ?>
 
                         <!-- Provider Selection -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -374,22 +355,20 @@
                                 Save WhatsApp Settings
                             </button>
                         </div>
+                    </div>
 
-
-                        <?php if ($smsDecryptError === 'encryption_key_mismatch'): ?>
-                        <div class="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                            <div class="flex items-start gap-3">
-                                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-xl">warning</span>
-                                <div>
-                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Encryption Key Mismatch</p>
-                                    <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                        Previously saved SMS credentials cannot be decrypted because the server's encryption key has changed.
-                                        Please re-enter your credentials and save to restore SMS functionality.
-                                    </p>
-                                </div>
+                    <div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+                        <div class="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200">SMS Integration</h4>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Send appointment notifications via SMS.</p>
                             </div>
                         </div>
-                        <?php endif; ?>
+
+                        <?= $this->include('components/ui/encryption-warning', [
+                            'condition' => $smsDecryptError === 'encryption_key_mismatch',
+                            'message'   => 'Previously saved SMS credentials cannot be decrypted because the server\'s encryption key has changed. Please re-enter your credentials and save to restore SMS functionality.',
+                        ]) ?>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                             <div class="form-field">
@@ -486,10 +465,16 @@
                                             return 'rule_' . preg_replace('/[^a-z0-9_]+/i', '_', $eventType . '_' . $channel);
                                         };
 
-                                        $preview = function(string $eventType, string $channel) {
+                                        $previewService = null;
+                                        try {
+                                            $previewService = new \App\Services\NotificationPhase1();
+                                        } catch (\Throwable $e) {
+                                            // Service unavailable — previews will be empty
+                                        }
+                                        $preview = function(string $eventType, string $channel) use ($previewService) {
+                                            if (!$previewService) return '';
                                             try {
-                                                $svc = new \App\Services\NotificationPhase1();
-                                                return $svc->buildPreview($eventType, $channel);
+                                                return $previewService->buildPreview($eventType, $channel);
                                             } catch (\Throwable $e) {
                                                 return '';
                                             }

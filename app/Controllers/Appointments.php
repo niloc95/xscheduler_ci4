@@ -110,8 +110,7 @@ class Appointments extends BaseController
         // Admin sees all appointments (no context filter)
         
         // Get real appointments from database
-        $appointmentModel = new \App\Models\AppointmentModel();
-        $appointments = $appointmentModel->getDashboardAppointments(null, $context, 100);
+        $appointments = $this->appointmentModel->getDashboardAppointments(null, $context, 100);
         
         // Get active providers with colors for legend
         $activeProviders = $this->userModel
@@ -152,7 +151,7 @@ class Appointments extends BaseController
         ];
         
         // Get real stats from database
-        $stats = $appointmentModel->getStats($context);
+        $stats = $this->appointmentModel->getStats($context);
         
         $data = [
             'title' => $currentRole === 'customer' ? 'My Appointments' : 'Appointments',
@@ -219,23 +218,10 @@ class Appointments extends BaseController
         $services = $this->serviceModel->findAll();
 
         // Format providers for dropdown
-        $providersFormatted = array_map(function($provider) {
-            return [
-                'id' => $provider['id'],
-                'name' => $provider['name'],
-                'speciality' => 'Provider' // TODO: Add speciality field to users table
-            ];
-        }, $providers);
+        $providersFormatted = array_map([$this, 'formatProviderForDropdown'], $providers);
 
         // Format services for dropdown
-        $servicesFormatted = array_map(function($service) {
-            return [
-                'id' => $service['id'],
-                'name' => $service['name'],
-                'duration' => $service['duration_min'], // Map duration_min to duration for consistency
-                'price' => $service['price']
-            ];
-        }, $services);
+        $servicesFormatted = array_map([$this, 'formatServiceForDropdown'], $services);
 
         $data = [
             'title' => 'Book Appointment',
@@ -502,23 +488,10 @@ class Appointments extends BaseController
         $services = $this->serviceModel->findAll();
 
         // Format providers for dropdown
-        $providersFormatted = array_map(function($provider) {
-            return [
-                'id' => $provider['id'],
-                'name' => $provider['name'],
-                'speciality' => 'Provider'
-            ];
-        }, $providers);
+        $providersFormatted = array_map([$this, 'formatProviderForDropdown'], $providers);
 
         // Format services for dropdown
-        $servicesFormatted = array_map(function($service) {
-            return [
-                'id' => $service['id'],
-                'name' => $service['name'],
-                'duration' => $service['duration_min'],
-                'price' => $service['price']
-            ];
-        }, $services);
+        $servicesFormatted = array_map([$this, 'formatServiceForDropdown'], $services);
 
         $data = [
             'title' => 'Edit Appointment',
@@ -728,7 +701,7 @@ class Appointments extends BaseController
                 ->resetReminderSentIfTimeChanged(
                     (int) $appointmentId,
                     (string) ($existingAppointment['start_time'] ?? ''),
-                    (string) ($startTimeUtc ?? '')
+                    (string) ($startTimeStored ?? '')
                 );
         } catch (\Throwable $e) {
             log_message('error', '[Appointments::update] Failed resetting reminder flag: {msg}', ['msg' => $e->getMessage()]);
@@ -758,5 +731,30 @@ class Appointments extends BaseController
         }
         return redirect()->to(base_url('appointments'))
             ->with('success', 'Appointment updated successfully!');
+    }
+
+    /**
+     * Format a provider record for dropdown display
+     */
+    private function formatProviderForDropdown(array $provider): array
+    {
+        return [
+            'id' => $provider['id'],
+            'name' => $provider['name'],
+            'speciality' => 'Provider', // TODO: Add speciality field to users table
+        ];
+    }
+
+    /**
+     * Format a service record for dropdown display
+     */
+    private function formatServiceForDropdown(array $service): array
+    {
+        return [
+            'id' => $service['id'],
+            'name' => $service['name'],
+            'duration' => $service['duration_min'], // Map duration_min to duration for consistency
+            'price' => $service['price'],
+        ];
     }
 }

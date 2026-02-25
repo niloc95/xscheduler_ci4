@@ -1,0 +1,356 @@
+// ============================================
+// Scheduler Slots — Shared Available Slots UI
+// ============================================
+// Used by Day, Week, and Month views via slot-engine.js.
+// Material Design 3 compliant — uses --md-sys-color-* and --ws-* tokens.
+
+// ─── Slot Panel Container ─────────────────────────────────────────────
+
+.slot-panel {
+  @apply flex flex-col gap-4;
+
+  &__header {
+    @apply flex items-start justify-between gap-3;
+  }
+
+  &__title {
+    @apply text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2;
+  }
+
+  &__provider-count {
+    @apply flex items-center gap-2 text-xs px-2 py-1 rounded-full;
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-variant);
+  }
+
+  // Date navigation row (Day / Month panels)
+  &__date-nav {
+    @apply flex items-center gap-2;
+  }
+
+  &__nav-btn {
+    @apply p-1.5 rounded-lg transition-colors;
+    color: var(--md-sys-color-on-surface-variant);
+
+    &:hover {
+      background: var(--md-sys-color-surface-variant);
+    }
+  }
+
+  &__date-display {
+    @apply flex-1 flex items-center gap-2 px-4 py-2.5 rounded-lg border shadow-sm;
+    background: var(--md-sys-color-surface);
+    border-color: var(--md-sys-color-outline-variant);
+  }
+
+  &__today-btn {
+    @apply px-3 py-1.5 text-xs font-medium rounded-lg transition-colors;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-primary);
+
+    &:hover {
+      filter: brightness(0.95);
+    }
+  }
+
+  // Filters section
+  &__filters {
+    @apply space-y-2;
+  }
+
+  &__filter-label {
+    @apply text-xs font-medium uppercase tracking-wide;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  &__pills {
+    @apply flex flex-wrap gap-2;
+  }
+
+  // Slots section
+  &__slots {
+    @apply space-y-2;
+  }
+
+  &__slots-header {
+    @apply flex items-center justify-between;
+  }
+
+  &__slots-label {
+    @apply text-xs font-medium uppercase tracking-wide;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  &__slot-count {
+    @apply text-xs;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  &__slot-list {
+    @apply space-y-2 overflow-y-auto pr-1;
+    max-height: calc(100vh - 420px);
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      @apply rounded-full;
+      background: var(--md-sys-color-outline-variant);
+    }
+  }
+}
+
+// ─── Provider Filter Pills ────────────────────────────────────────────
+
+.provider-filter-pill {
+  @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-all;
+  border: 1.5px solid var(--pill-color, var(--md-sys-color-outline));
+  color: var(--pill-color, var(--md-sys-color-on-surface));
+  background: color-mix(in srgb, var(--pill-color, var(--md-sys-color-primary)) 8%, transparent);
+
+  &:hover {
+    background: color-mix(in srgb, var(--pill-color, var(--md-sys-color-primary)) 16%, transparent);
+    box-shadow: 0 1px 3px rgba(0 0 0 / 0.08);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &--inactive {
+    opacity: 0.4;
+    background: transparent;
+    border-style: dashed;
+  }
+
+  &__dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+}
+
+// ─── Slot Item ────────────────────────────────────────────────────────
+
+.slot-item {
+  @apply flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer;
+
+  &__time {
+    @apply flex-shrink-0 w-16 text-center;
+  }
+
+  &__body {
+    @apply flex-1 min-w-0;
+  }
+
+  &__chips {
+    @apply flex flex-wrap gap-1.5 mb-1;
+  }
+
+  // ── Status Variants ──
+
+  &--available {
+    @apply bg-green-50 border-green-200;
+
+    &:hover {
+      @apply bg-green-100;
+    }
+
+    :is(.dark &) {
+      @apply bg-green-900/20 border-green-800;
+
+      &:hover {
+        @apply bg-green-900/30;
+      }
+    }
+  }
+
+  &--partial {
+    @apply bg-yellow-50 border-yellow-200;
+
+    &:hover {
+      @apply bg-yellow-100;
+    }
+
+    :is(.dark &) {
+      @apply bg-yellow-900/20 border-yellow-800;
+
+      &:hover {
+        @apply bg-yellow-900/30;
+      }
+    }
+  }
+
+  &--booked {
+    @apply bg-red-50 border-red-200 cursor-not-allowed;
+
+    :is(.dark &) {
+      @apply bg-red-900/20 border-red-800;
+    }
+  }
+
+  &--blocked {
+    @apply bg-gray-100 border-gray-300 cursor-not-allowed opacity-60;
+
+    :is(.dark &) {
+      @apply bg-gray-700 border-gray-600;
+    }
+  }
+}
+
+// ─── Provider Chips Inside Slots ──────────────────────────────────────
+
+.slot-chip {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all;
+
+  &__dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+
+  &--available {
+    @apply text-gray-800 cursor-pointer;
+    background: color-mix(in srgb, var(--provider-color, #3B82F6) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--provider-color, #3B82F6) 25%, transparent);
+    text-decoration: none;
+
+    &:hover {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--provider-color, #3B82F6) 40%, transparent),
+                  0 0 0 3px white;
+      transform: translateY(-1px);
+    }
+
+    :is(.dark &) {
+      @apply text-gray-100;
+    }
+  }
+
+  &--booked {
+    @apply bg-gray-100 text-gray-400 line-through opacity-60;
+
+    .slot-chip__dot {
+      @apply bg-gray-400;
+    }
+
+    :is(.dark &) {
+      @apply bg-gray-700 text-gray-500;
+    }
+  }
+}
+
+// ─── Availability Badge ───────────────────────────────────────────────
+
+.slot-badge {
+  @apply flex items-center gap-1;
+
+  &--available {
+    @apply text-green-600;
+
+    :is(.dark &) {
+      @apply text-green-400;
+    }
+  }
+
+  &--partial {
+    @apply text-yellow-600;
+
+    :is(.dark &) {
+      @apply text-yellow-400;
+    }
+  }
+
+  &--booked {
+    @apply text-red-600;
+
+    :is(.dark &) {
+      @apply text-red-400;
+    }
+  }
+
+  &--blocked {
+    @apply text-gray-500;
+
+    :is(.dark &) {
+      @apply text-gray-400;
+    }
+  }
+}
+
+// ─── Book Button (De-emphasized) ──────────────────────────────────────
+
+.slot-book-btn {
+  @apply flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap no-underline;
+  background: var(--md-sys-color-secondary);
+  color: var(--md-sys-color-on-secondary);
+
+  &:hover {
+    filter: brightness(0.9);
+  }
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────
+
+.slot-empty-state {
+  @apply text-center py-12;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+// ─── Legend ────────────────────────────────────────────────────────────
+
+.slot-legend {
+  @apply flex flex-wrap items-center gap-3 pt-3 border-t border-gray-200 dark:border-gray-700;
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant);
+
+  &__item {
+    @apply flex items-center gap-1;
+  }
+
+  &__swatch {
+    @apply w-2.5 h-2.5 rounded-sm border;
+
+    &--open {
+      @apply bg-green-100 border-green-400;
+
+      :is(.dark &) {
+        @apply bg-green-900/30 border-green-600;
+      }
+    }
+
+    &--partial {
+      @apply bg-yellow-100 border-yellow-400;
+
+      :is(.dark &) {
+        @apply bg-yellow-900/30 border-yellow-600;
+      }
+    }
+
+    &--full {
+      @apply bg-red-100 border-red-400;
+
+      :is(.dark &) {
+        @apply bg-red-900/30 border-red-600;
+      }
+    }
+
+    &--blocked {
+      @apply bg-gray-200 border-gray-400;
+
+      :is(.dark &) {
+        @apply bg-gray-600 border-gray-500;
+      }
+    }
+  }
+}
+
+// ─── Month Grid Availability Indicator ────────────────────────────────
+
+.day-availability-bar {
+  @apply h-1 w-6 mx-auto mt-0.5 rounded-full;
+
+  &--open {
+    @apply bg-green-500;
+  }
+
+  &--full {
+    @apply bg-red-500;
+  }
+}

@@ -34,6 +34,56 @@ window.xsRegisterViewInit = function(initFn) {
 
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
+  const header = () => document.querySelector('.xs-header');
+  const headerControlsSlot = () => document.getElementById('header-controls-slot');
+
+  const normalizePathname = (url) => {
+    try {
+      return new URL(url, window.location.origin).pathname;
+    } catch {
+      return window.location.pathname;
+    }
+  };
+
+  const isAppointmentControlsMarkup = (controlsHtml) => {
+    if (!controlsHtml) return false;
+    return (
+      controlsHtml.includes('data-calendar-action=') ||
+      controlsHtml.includes('scheduler-date-display') ||
+      controlsHtml.includes('scheduler-view-selector')
+    );
+  };
+
+  const shouldRenderHeaderControlsForPath = (targetPath, controlsHtml) => {
+    if (!isAppointmentControlsMarkup(controlsHtml)) {
+      return true;
+    }
+
+    return targetPath === '/appointments' || targetPath.startsWith('/appointments/');
+  };
+
+  const syncHeaderControls = (controlsHtml, hasControls) => {
+    const headerEl = header();
+    if (!headerEl) return;
+
+    let slot = headerControlsSlot();
+
+    if (hasControls) {
+      if (!slot) {
+        slot = document.createElement('div');
+        slot.id = 'header-controls-slot';
+        slot.className = 'xs-header-controls mt-3 pt-3 border-t border-gray-200 dark:border-gray-700';
+        headerEl.appendChild(slot);
+      }
+      slot.innerHTML = controlsHtml || '';
+      return;
+    }
+
+    if (slot) {
+      slot.remove();
+    }
+  };
+
   // Initialize simple tab UI inside current SPA content if present
   const initTabsInSpaContent = () => {
     const el = content();
@@ -108,10 +158,14 @@ const SPA = (() => {
       const titleEl = spaContentEl.querySelector('[data-page-title]');
       pageTitle = titleEl?.getAttribute('data-page-title');
     }
-    // Return object with both HTML and page title attribute
+    const headerControlsEl = doc.querySelector('#header-controls-slot');
+
+    // Return object with SPA content, page title, and optional header controls
     return {
       html: spaContentEl?.innerHTML ?? text,
-      pageTitle: pageTitle || null
+      pageTitle: pageTitle || null,
+      headerControlsHtml: headerControlsEl?.innerHTML ?? null,
+      hasHeaderControls: Boolean(headerControlsEl)
     };
   };
 
@@ -126,6 +180,7 @@ const SPA = (() => {
     const el = content();
     if (!el) return;
     try {
+      const targetPath = normalizePathname(url);
       // If navigating to the same path (ignoring hash), do nothing
       const dest = new URL(url, window.location.href);
       const cur = new URL(window.location.href);
@@ -136,8 +191,12 @@ const SPA = (() => {
         return;
       }
       setBusy(true);
-      const { html, pageTitle } = await fetchPage(url);
+      const { html, pageTitle, headerControlsHtml, hasHeaderControls } = await fetchPage(url);
       el.innerHTML = html;
+
+      // Keep fixed header controls in sync with the destination view
+      const shouldRenderHeaderControls = hasHeaderControls && shouldRenderHeaderControlsForPath(targetPath, headerControlsHtml);
+      syncHeaderControls(headerControlsHtml, shouldRenderHeaderControls);
       
       // Update the data-page-title attribute on spa-content for header sync
       if (pageTitle) {
@@ -384,9 +443,13 @@ document.addEventListener('xs:flash', (e) => {
   };
 
   alert.className += ' ' + (colors[type] || colors.info);
+
+  // Escape message to prevent XSS
+  const safeMessage = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   alert.innerHTML = `
     <span class="material-symbols-outlined flex-shrink-0 text-lg">${icons[type] || icons.info}</span>
-    <span class="flex-1">${message}</span>
+    <span class="flex-1">${safeMessage}</span>
     <button type="button" onclick="this.parentElement.remove()" class="flex-shrink-0 text-lg opacity-50 hover:opacity-100">close</button>
   `;
 

@@ -73,9 +73,11 @@ class CategoryModel extends BaseModel
      */
     public function withServiceCounts(): array
     {
+        $servicesTable = $this->db->prefixTable('services');
+
         $builder = $this->db->table($this->table . ' c')
             ->select('c.*, COUNT(s.id) as services_count')
-            ->join('services s', 's.category_id = c.id', 'left')
+            ->join($servicesTable . ' s', 's.category_id = c.id', 'left')
             ->groupBy('c.id')
             ->orderBy('c.name', 'ASC');
 

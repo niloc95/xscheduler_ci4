@@ -37,6 +37,8 @@ export class SchedulerCore {
         // Debouncing for render operations
         this.renderDebounceTimer = null;
         this.renderDebounceDelay = 100; // ms
+
+        this.lastDateChange = { view: null, date: null };
         
         // Initialize settings manager
         this.settingsManager = new SettingsManager();
@@ -83,6 +85,17 @@ export class SchedulerCore {
             this.options.timezone = this.settingsManager.getTimezone();
             this.currentDate = this.currentDate.setZone(this.options.timezone);
             this.debugLog(`🌍 Timezone: ${this.options.timezone}`);
+
+            if (this.options?.initialView && ['day', 'week', 'month'].includes(this.options.initialView)) {
+                this.currentView = this.options.initialView;
+            }
+
+            if (this.options?.initialDate) {
+                const initialDate = DateTime.fromISO(String(this.options.initialDate), { zone: this.options.timezone });
+                if (initialDate.isValid) {
+                    this.currentDate = initialDate.setZone(this.options.timezone);
+                }
+            }
             
             // Load initial data
             this.debugLog('📊 Loading data...');
@@ -351,41 +364,49 @@ export class SchedulerCore {
     }
 
     async navigateToToday() {
-        this.currentDate = DateTime.now().setZone(this.options.timezone);
+        await this.navigateToDate(DateTime.now().setZone(this.options.timezone));
+    }
+
+    async navigateToDate(targetDate) {
+        const normalized = DateTime.isDateTime(targetDate)
+            ? targetDate
+            : DateTime.fromISO(String(targetDate), { zone: this.options.timezone });
+
+        this.currentDate = normalized.setZone(this.options.timezone);
         await this.loadAppointments();
         this.render();
     }
 
     async navigateNext() {
+        let nextDate = this.currentDate;
         switch (this.currentView) {
             case 'day':
-                this.currentDate = this.currentDate.plus({ days: 1 });
+                nextDate = this.currentDate.plus({ days: 1 });
                 break;
             case 'week':
-                this.currentDate = this.currentDate.plus({ weeks: 1 });
+                nextDate = this.currentDate.plus({ weeks: 1 });
                 break;
             case 'month':
-                this.currentDate = this.currentDate.plus({ months: 1 });
+                nextDate = this.currentDate.plus({ months: 1 });
                 break;
         }
-        await this.loadAppointments();
-        this.render();
+        await this.navigateToDate(nextDate);
     }
 
     async navigatePrev() {
+        let prevDate = this.currentDate;
         switch (this.currentView) {
             case 'day':
-                this.currentDate = this.currentDate.minus({ days: 1 });
+                prevDate = this.currentDate.minus({ days: 1 });
                 break;
             case 'week':
-                this.currentDate = this.currentDate.minus({ weeks: 1 });
+                prevDate = this.currentDate.minus({ weeks: 1 });
                 break;
             case 'month':
-                this.currentDate = this.currentDate.minus({ months: 1 });
+                prevDate = this.currentDate.minus({ months: 1 });
                 break;
         }
-        await this.loadAppointments();
-        this.render();
+        await this.navigateToDate(prevDate);
     }
 
     render() {
@@ -437,6 +458,9 @@ export class SchedulerCore {
             
             // Update stats bar with current data (uses Stats Engine)
             this.updateStatsBar();
+
+            // Emit date-change for external listeners (status filters, summaries)
+            this.emitDateChange();
             
             // Dispatch view change event for external components
             window.dispatchEvent(new CustomEvent('scheduler:view-rendered', {
@@ -496,6 +520,21 @@ export class SchedulerCore {
         `;
     }
 
+    emitDateChange(force = false) {
+        const date = this.currentDate?.toISODate ? this.currentDate.toISODate() : null;
+        const view = this.currentView;
+        if (!date) return;
+
+        if (!force && this.lastDateChange.view === view && this.lastDateChange.date === date) {
+            return;
+        }
+
+        this.lastDateChange = { view, date };
+        window.dispatchEvent(new CustomEvent('scheduler:date-change', {
+            detail: { view, date }
+        }));
+    }
+
     destroy() {
         // Clear any pending renders
         if (this.renderDebounceTimer) {
@@ -528,45 +567,37 @@ export class SchedulerCore {
     }
     
     /**
+     * Format date range string based on current view
+     * Shared by updateDateDisplay() and updateStatsBar()
+     * @returns {string}
+     */
+    getDateRangeText() {
+        switch (this.currentView) {
+            case 'day':
+                return this.currentDate.toFormat('EEEE, MMMM d, yyyy');
+            case 'week': {
+                const weekStart = this.currentDate.startOf('week');
+                const weekEnd = weekStart.plus({ days: 6 });
+                if (weekStart.month === weekEnd.month) {
+                    return `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('d, yyyy')}`;
+                } else if (weekStart.year === weekEnd.year) {
+                    return `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
+                }
+                return `${weekStart.toFormat('MMM d, yyyy')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
+            }
+            case 'month':
+            default:
+                return this.currentDate.toFormat('MMMM yyyy');
+        }
+    }
+
+    /**
      * Update the date display in the toolbar based on current view
      */
     updateDateDisplay() {
         const displayElement = document.getElementById('scheduler-date-display');
         if (!displayElement) return;
-        
-        let displayText = '';
-        
-        switch (this.currentView) {
-            case 'day':
-                // Single day: "Monday, November 3, 2025"
-                displayText = this.currentDate.toFormat('EEEE, MMMM d, yyyy');
-                break;
-                
-            case 'week':
-                // Week range: "Nov 3 - Nov 9, 2025"
-                const weekStart = this.currentDate.startOf('week');
-                const weekEnd = weekStart.plus({ days: 6 });
-                
-                if (weekStart.month === weekEnd.month) {
-                    // Same month: "Nov 3 - 9, 2025"
-                    displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('d, yyyy')}`;
-                } else if (weekStart.year === weekEnd.year) {
-                    // Different months, same year: "Oct 30 - Nov 5, 2025"
-                    displayText = `${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-                } else {
-                    // Different years: "Dec 30, 2024 - Jan 5, 2025"
-                    displayText = `${weekStart.toFormat('MMM d, yyyy')} - ${weekEnd.toFormat('MMM d, yyyy')}`;
-                }
-                break;
-                
-            case 'month':
-            default:
-                // Month view: "November 2025"
-                displayText = this.currentDate.toFormat('MMMM yyyy');
-                break;
-        }
-        
-        displayElement.textContent = displayText;
+        displayElement.textContent = this.getDateRangeText();
     }
     
     /**
@@ -610,23 +641,8 @@ export class SchedulerCore {
         // Get view-appropriate title from config
         const title = getViewTitle(this.currentView, this.currentDate);
         
-        // Get date range display based on view
-        let dateRange;
-        switch (this.currentView) {
-            case 'day':
-                dateRange = this.currentDate.toFormat('EEEE, MMMM d, yyyy');
-                break;
-            case 'week':
-                const weekStart = this.currentDate.startOf('week');
-                const weekEnd = this.currentDate.endOf('week');
-                dateRange = `${weekStart.toFormat('MMM d')} – ${weekEnd.toFormat('MMM d, yyyy')}`;
-                break;
-            case 'month':
-                dateRange = this.currentDate.toFormat('MMMM yyyy');
-                break;
-            default:
-                dateRange = this.currentDate.toFormat('MMMM d, yyyy');
-        }
+        // Get date range display (shared with updateDateDisplay)
+        const dateRange = this.getDateRangeText();
         
         // Render the stats bar using definitions from Stats Definitions
         const statusPills = Object.keys(STATUS_DEFINITIONS).map(statusKey => {
@@ -635,31 +651,14 @@ export class SchedulerCore {
             return this.renderStatusPill(statusKey, def.label, count, activeFilter, def);
         }).join('');
         
+        // Compact inline rendering — pills only (no card wrapper)
         this.statsBarContainer.innerHTML = `
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">calendar_today</span>
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">${title}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">${dateRange}</p>
-                    </div>
-                </div>
-                <span class="text-2xl font-bold text-gray-900 dark:text-white">${stats.total}</span>
-            </div>
-            <div class="p-4 flex flex-wrap items-center gap-2">
-                ${statusPills}
-            </div>
+            ${statusPills}
             ${activeFilter ? `
-                <div class="px-4 pb-4">
-                    <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900/30 rounded-lg px-4 py-2">
-                        <span class="text-sm text-blue-700 dark:text-blue-300">
-                            Showing: <span class="font-medium capitalize">${activeFilter.replace('-', ' ')}</span>
-                        </span>
-                        <button type="button" data-filter-status="${activeFilter}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                            Clear filter
-                        </button>
-                    </div>
-                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500">
+                    Showing: <span class="font-medium capitalize">${activeFilter.replace('-', ' ')}</span>
+                    <button type="button" data-filter-status="${activeFilter}" class="ml-0.5 font-bold hover:text-blue-900 dark:hover:text-blue-100" title="Clear filter">&times;</button>
+                </span>
             ` : ''}
         `;
         
@@ -689,12 +688,12 @@ export class SchedulerCore {
         
         return `
             <button type="button" 
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer transition-all
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border cursor-pointer transition-all
                            ${bgClass} ${borderClass} ${textClass}
                            hover:ring-2 hover:ring-offset-1 ${ringClass}"
                     data-filter-status="${status}"
                     title="Filter by ${label}">
-                <span class="w-2 h-2 rounded-full ${dotClass}"></span>
+                <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>
                 <span class="text-xs font-medium">${label}</span>
                 <span class="text-xs font-bold">${count}</span>
             </button>
@@ -809,6 +808,3 @@ export class SchedulerCore {
         }
     }
 }
-
-export { CustomScheduler };
-

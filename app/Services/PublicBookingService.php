@@ -219,7 +219,7 @@ class PublicBookingService
         $provider = $this->resolveProvider((int) ($payload['provider_id'] ?? 0));
         $service = $this->resolveService((int) ($payload['service_id'] ?? 0));
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
-        $locationId = !empty($payload['location_id']) ? (int) $payload['location_id'] : null;
+        $locationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? null);
         $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], null, $locationId);
 
         $customerId = $this->storeCustomer($payload);
@@ -233,8 +233,8 @@ class PublicBookingService
             'location_contact' => null,
         ];
         
-        if (!empty($payload['location_id'])) {
-            $locationSnapshot = $this->locations->getLocationSnapshot((int) $payload['location_id']);
+        if ($locationId !== null) {
+            $locationSnapshot = $this->locations->getLocationSnapshot($locationId);
         }
 
         $appointmentPayload = [
@@ -282,7 +282,7 @@ class PublicBookingService
         $provider = $this->resolveProvider($providerId);
         $service = $this->resolveService($serviceId);
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
-        $newLocationId = !empty($payload['location_id']) ? (int) $payload['location_id'] : null;
+        $newLocationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? ($appointment['location_id'] ?? null));
         $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], (int) $appointment['id'], $newLocationId);
 
         $customerId = $this->storeCustomer($payload, (int) $appointment['customer_id']);
@@ -385,6 +385,31 @@ class PublicBookingService
         }
 
         return $provider;
+    }
+
+    private function resolveBookingLocation(int $providerId, $requestedLocationId): ?int
+    {
+        $activeLocations = $this->locations->getProviderLocations($providerId, true);
+        if (empty($activeLocations)) {
+            return null;
+        }
+
+        $activeLocationIds = array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations);
+        $selectedLocationId = !empty($requestedLocationId) ? (int) $requestedLocationId : null;
+
+        if ($selectedLocationId !== null) {
+            if (!in_array($selectedLocationId, $activeLocationIds, true)) {
+                throw new PublicBookingException('Selected location is unavailable for this provider.', 422, ['location_id' => 'invalid']);
+            }
+
+            return $selectedLocationId;
+        }
+
+        if (count($activeLocationIds) > 1) {
+            throw new PublicBookingException('Please select a location for this provider.', 422, ['location_id' => 'required']);
+        }
+
+        return $activeLocationIds[0] ?? null;
     }
 
     private function resolveService(int $serviceId): array

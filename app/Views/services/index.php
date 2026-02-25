@@ -441,7 +441,7 @@
                 row.innerHTML =
                     '<td class="px-6 py-4">' +
                         '<div class="flex items-start gap-3">' +
-                            '<span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" style="background-color:' + esc(color) + '"></span>' +
+                            '<span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" data-color="' + esc(color) + '"></span>' +
                             '<div><p class="text-sm font-semibold text-gray-900 dark:text-gray-100">' + esc(displayName) + '</p></div>' +
                         '</div>' +
                     '</td>' +
@@ -474,6 +474,10 @@
                 if (placeholder) { placeholder.closest('tr').remove(); }
 
                 if (tbody) { tbody.insertBefore(row, tbody.firstChild); }
+
+                // Apply data-color attribute to the new row's color dot
+                var colorDot = row.querySelector('[data-color]');
+                if (colorDot) { colorDot.style.backgroundColor = colorDot.getAttribute('data-color'); }
 
                 form.reset();
                 showMsg('Category "' + esc(displayName) + '" created successfully.', false);

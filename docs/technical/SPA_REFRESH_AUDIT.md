@@ -9,6 +9,13 @@
 
 The application uses a custom lightweight SPA system (`spa.js`) that intercepts link clicks and form submissions, swapping only `#spa-content` while preserving the header/sidebar/footer. The audit identified **5 critical bugs**, **7 high-priority issues**, and **12 medium/low improvements** across the codebase.
 
+## 2026-02-24 Update — Scheduler SPA Sync
+
+- Scheduler now emits a `scheduler:date-change` event on view/date changes so summary widgets refresh without manual reloads.
+- Scheduler initialization honors `initialView` and `initialDate` passed from the appointments view.
+- Appointments view re-enables Day/Week/Month toggles and week view “+X more” now expands hidden items.
+- Settings saves trigger scheduler settings refresh and re-render to avoid stale time format/business hours after SPA navigation.
+
 ### Root Cause Categories
 
 | Category | Count | Impact |

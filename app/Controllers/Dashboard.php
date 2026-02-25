@@ -103,7 +103,7 @@ class Dashboard extends BaseController
             );
 
             // Collect all dashboard data
-            $dashboardData = $this->collectDashboardData($providerScope, $userRole);
+            $dashboardData = $this->collectDashboardData($currentUser, $providerId, $providerScope, $userRole);
 
             // Build view data with user and dashboard data
             $data = $this->buildViewData($currentUser, $dashboardData);
@@ -117,12 +117,10 @@ class Dashboard extends BaseController
             log_message('warning', 'Dashboard Authorization Error: ' . $e->getMessage() . ' | User: ' . json_encode(session()->get('user')) . ' | Role: ' . ($this->authService->getUserRole(session()->get('user'))));
             
             // Don't redirect to login if user is already logged in (causes loop)
-            // Instead return a 403 response with error details
+            // Instead return a 403 response with minimal info (session data logged server-side only)
             return $this->response->setStatusCode(403)->setBody(
                 '<h1>Access Denied</h1>' .
                 '<p>' . esc($e->getMessage()) . '</p>' .
-                '<p>Your role: ' . esc($this->authService->getUserRole(session()->get('user'))) . '</p>' .
-                '<p>User data: ' . esc(json_encode(session()->get('user'))) . '</p>' .
                 '<p><a href="' . base_url('auth/logout') . '">Logout</a> | <a href="' . base_url() . '">Home</a></p>'
             );
             
@@ -176,7 +174,7 @@ class Dashboard extends BaseController
                 'servicesList' => []
             ];
             
-            return view('dashboard', $fallbackData);
+            return view('dashboard/landing', $fallbackData);
         }
     }
 
@@ -211,16 +209,17 @@ class Dashboard extends BaseController
     /**
      * Collects all dashboard data from services and models
      * 
+     * @param array $currentUser Current user data (from session)
+     * @param int|null $providerId Provider ID for the current user
      * @param array|int|null $providerScope Provider scope for data filtering (can be array or int)
      * @param string $userRole Current user's role
      * @return array Dashboard data ready for view
      */
-    private function collectDashboardData($providerScope, string $userRole): array
+    private function collectDashboardData(array $currentUser, ?int $providerId, $providerScope, string $userRole): array
     {
-        // Get dashboard context
-        $currentUser = session()->get('user');
-        $userId = session()->get('user_id');
-        $providerId = $this->authService->getProviderId($currentUser);
+        // Build dashboard context from already-resolved session data
+        // Note: user_id is stored as a separate session key, not inside the user array
+        $userId = (int) session()->get('user_id');
         $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
 
         // Extract provider ID from scope (handle both array and int)

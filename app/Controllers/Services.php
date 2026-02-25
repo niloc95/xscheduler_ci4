@@ -66,12 +66,14 @@ class Services extends BaseController
     protected $userModel;
     protected $serviceModel;
     protected $categoryModel;
+    private string $providerServicePivotTable;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->serviceModel = new ServiceModel();
         $this->categoryModel = new CategoryModel();
+        $this->providerServicePivotTable = $this->serviceModel->db->prefixTable('providers_services');
         helper('permissions');
     }
 
@@ -270,7 +272,7 @@ class Services extends BaseController
         $categories = $this->categoryModel->orderBy('name','ASC')->findAll();
 
         // Get currently linked providers
-        $linked = $this->serviceModel->db->table('providers_services')
+        $linked = $this->serviceModel->db->table($this->providerServicePivotTable)
             ->where('service_id', $serviceId)->get()->getResultArray();
         $linkedProviders = array_map(fn($r) => (int)$r['provider_id'], $linked);
 
@@ -531,14 +533,7 @@ class Services extends BaseController
         }
 
         $input = $this->request->getPost();
-        $serviceData = [
-            'name' => trim($input['name'] ?? ''),
-            'description' => $input['description'] ?? null,
-            'duration_min' => (int)($input['duration_min'] ?? 0),
-            'price' => ($input['price'] ?? '') !== '' ? (float)$input['price'] : null,
-            'category_id' => !empty($input['category_id']) ? (int)$input['category_id'] : null,
-            'active' => isset($input['active']) ? (int)!!$input['active'] : 1,
-        ];
+        $serviceData = $this->buildServicePayload($input, true);
 
         // Inline category creation if provided
         $newCategoryName = trim($input['new_category_name'] ?? '');
@@ -563,10 +558,7 @@ class Services extends BaseController
         }
 
         $serviceId = (int)$this->serviceModel->getInsertID();
-        $providerIds = $this->request->getPost('provider_ids') ?? [];
-        if (is_string($providerIds)) {
-            $providerIds = array_filter(array_map('intval', explode(',', $providerIds)));
-        }
+        $providerIds = $this->normalizeProviderIds($this->request->getPost('provider_ids'));
         $this->serviceModel->setProviders($serviceId, (array)$providerIds);
 
         if ($this->request->isAJAX()) {
@@ -600,14 +592,7 @@ class Services extends BaseController
             log_message('debug', 'Service update - Service ID: ' . $serviceId);
         }
         
-        $serviceData = [
-            'name' => trim($input['name'] ?? ''),
-            'description' => $input['description'] ?? null,
-            'duration_min' => (int)($input['duration_min'] ?? 0),
-            'price' => ($input['price'] ?? '') !== '' ? (float)$input['price'] : null,
-            'category_id' => !empty($input['category_id']) ? (int)$input['category_id'] : null,
-            'active' => isset($input['active']) ? (int)!!$input['active'] : 0,
-        ];
+        $serviceData = $this->buildServicePayload($input, false);
 
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service update - Prepared data: ' . json_encode($serviceData));
@@ -631,14 +616,7 @@ class Services extends BaseController
         }
 
         // Handle provider IDs
-        $providerIds = $this->request->getPost('provider_ids') ?? [];
-        if (is_array($providerIds)) {
-            // FormData sends array correctly
-            $providerIds = array_filter(array_map('intval', $providerIds));
-        } elseif (is_string($providerIds)) {
-            // Fallback for string format
-            $providerIds = array_filter(array_map('intval', explode(',', $providerIds)));
-        }
+        $providerIds = $this->normalizeProviderIds($this->request->getPost('provider_ids'));
         
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service update - Provider IDs: ' . json_encode($providerIds));
@@ -669,12 +647,37 @@ class Services extends BaseController
         }
 
         // Remove provider links first
-        $this->serviceModel->db->table('providers_services')->delete(['service_id' => (int)$serviceId]);
+        $this->serviceModel->db->table($this->providerServicePivotTable)->delete(['service_id' => (int)$serviceId]);
         $this->serviceModel->delete((int)$serviceId);
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['success' => true, 'message' => 'Service deleted', 'redirect' => base_url('services')]);
         }
         return redirect()->to(base_url('services'))->with('message', 'Service deleted');
+    }
+
+    private function buildServicePayload(array $input, bool $isCreate): array
+    {
+        return [
+            'name' => trim((string) ($input['name'] ?? '')),
+            'description' => $input['description'] ?? null,
+            'duration_min' => (int) ($input['duration_min'] ?? 0),
+            'price' => ($input['price'] ?? '') !== '' ? (float) $input['price'] : null,
+            'category_id' => !empty($input['category_id']) ? (int) $input['category_id'] : null,
+            'active' => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
+        ];
+    }
+
+    private function normalizeProviderIds($providerIds): array
+    {
+        if (is_array($providerIds)) {
+            return array_values(array_unique(array_filter(array_map('intval', $providerIds))));
+        }
+
+        if (is_string($providerIds) && $providerIds !== '') {
+            return array_values(array_unique(array_filter(array_map('intval', explode(',', $providerIds)))));
+        }
+
+        return [];
     }
 }

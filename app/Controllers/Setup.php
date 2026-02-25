@@ -144,6 +144,11 @@ class Setup extends BaseController
             ])->setStatusCode(400);
         }
 
+        // Determine AJAX vs non-AJAX once (used in both success and error paths)
+        $isAjax = $this->request->isAJAX() || 
+                  stripos($this->request->getHeaderLine('X-Requested-With'), 'XMLHttpRequest') !== false ||
+                  stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
+
         try {
             // Process setup with proper database configuration for .env generation
             $setupData = [
@@ -285,9 +290,6 @@ class Setup extends BaseController
 
             // If this was an AJAX request, return JSON so client JS can redirect.
             // Otherwise, fall back to a normal redirect so the browser navigates automatically.
-            $isAjax = $this->request->isAJAX() || 
-                      stripos($this->request->getHeaderLine('X-Requested-With'), 'XMLHttpRequest') !== false ||
-                      stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
 
             if ($isAjax) {
                 $this->cleanOutputBuffer();
@@ -309,9 +311,6 @@ class Setup extends BaseController
         } catch (\Exception $e) {
             log_message('error', 'Setup process failed: ' . $e->getMessage());
             // On error, honor AJAX vs non-AJAX as well
-            $isAjax = $this->request->isAJAX() || 
-                      stripos($this->request->getHeaderLine('X-Requested-With'), 'XMLHttpRequest') !== false ||
-                      stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
 
             if ($isAjax) {
                 $this->cleanOutputBuffer();
@@ -997,6 +996,14 @@ class Setup extends BaseController
 
         // Encryption key
         $envContent = $replaceKey($envContent, 'encryption.key', $this->generateEncryptionKey());
+
+        // Detect if current request is over HTTPS for cookie/security settings
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+        $envContent = $replaceKey($envContent, 'cookie.secure', $isHttps ? 'true' : 'false');
+        $envContent = $replaceKey($envContent, 'app.forceGlobalSecureRequests', $isHttps ? 'true' : 'false');
 
         // Setup flags
         $envContent = $replaceKey($envContent, 'setup.enabled', 'false');

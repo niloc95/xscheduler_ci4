@@ -10,7 +10,13 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
-import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { withBaseUrl } from '../../utils/url-helpers.js';
+import {
+    generateSlots,
+    renderSlotList,
+    renderProviderFilterPills,
+    renderSlotLegend,
+} from './slot-engine.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -27,9 +33,23 @@ export class DayView {
         this.providers = providers;
         this.config = config;
         this.data = data;
+        this.container = container;
+        
+        // Business hours & slot duration from config
+        this.businessHours = {
+            startTime: config?.slotMinTime || '08:00',
+            endTime: config?.slotMaxTime || '17:00',
+        };
+        let slotDur = config?.slotDuration || 30;
+        if (typeof slotDur === 'string' && slotDur.includes(':')) {
+            const parts = slotDur.split(':');
+            slotDur = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+        this.slotDuration = parseInt(slotDur, 10) || 30;
+        this.blockedPeriods = config?.blockedPeriods || [];
         
         // Check if this date is blocked
-        const blockedPeriods = config?.blockedPeriods || [];
+        const blockedPeriods = this.blockedPeriods;
         const isBlocked = this.isDateBlocked(currentDate, blockedPeriods);
         const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(currentDate, blockedPeriods) : null;
         
@@ -44,12 +64,12 @@ export class DayView {
         // Render the two-panel layout - Right panel first in DOM for proper layout
         container.innerHTML = `
             <div class="scheduler-day-view bg-white dark:bg-gray-800 rounded-lg">
-                <div class="flex flex-col-reverse md:flex-row gap-6 p-6">
+                <div class="flex flex-col-reverse md:flex-row gap-4 p-4">
                     
                     <!-- Left Panel: Appointments List (appears second in mobile, first in desktop) -->
                     <div class="flex-1 min-w-0 order-2 md:order-1">
-                        <div class="mb-6">
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
                                 ${currentDate.toFormat('EEEE')}'s Appointments
                             </h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -85,13 +105,18 @@ export class DayView {
                             <!-- Add Event Button - Links to appointments/create like main New Appointment button -->
                             <a href="${withBaseUrl(`/appointments/create?date=${this.currentDate.toISODate()}`)}"
                                id="day-view-add-event-btn"
-                               class="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
+                               class="w-full mt-3 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
                                 <span class="material-symbols-outlined text-lg">add</span>
                                 Add Appointment
                             </a>
                             
                             <!-- Day Summary Card -->
                             ${this.renderDaySummary(dayAppointments)}
+                            
+                            <!-- Available Slots Panel -->
+                            <div class="mt-3" id="day-slot-panel">
+                                ${this._renderDaySlotPanel()}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -104,7 +129,7 @@ export class DayView {
         // Hide the daily-provider-appointments section in Day View (redundant)
         const dailySection = document.getElementById('daily-provider-appointments');
         if (dailySection) {
-            dailySection.style.display = 'none';
+            dailySection.classList.add('hidden');
         }
     }
 
@@ -136,7 +161,7 @@ export class DayView {
                 <!-- Provider Avatar -->
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm"
-                         style="background-color: ${providerColor};"
+                         data-bg-color="${providerColor}"
                          title="${this.escapeHtml(providerName)}">
                         ${providerInitial}
                     </div>
@@ -149,7 +174,9 @@ export class DayView {
                             ${this.escapeHtml(customerName)}
                         </h4>
                         <span class="px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0"
-                              style="background-color: ${statusColors.bg}; color: ${statusColors.text}; border: 1px solid ${statusColors.border};">
+                            data-bg-color="${statusColors.bg}"
+                            data-text-color="${statusColors.text}"
+                            data-border-color="${statusColors.border}">
                             ${getStatusLabel(appointment.status)}
                         </span>
                     </div>
@@ -371,7 +398,7 @@ export class DayView {
                             return `
                                 <div class="flex items-center justify-between text-sm">
                                     <div class="flex items-center gap-2">
-                                        <span class="w-2 h-2 rounded-full" style="background-color: ${colors.dot};"></span>
+                                        <span class="w-2 h-2 rounded-full" data-bg-color="${colors.dot}"></span>
                                         <span class="text-gray-600 dark:text-gray-400 capitalize">${status.replace('-', ' ')}</span>
                                     </div>
                                     <span class="font-medium text-gray-900 dark:text-white">${count}</span>
@@ -392,7 +419,7 @@ export class DayView {
                                 return `
                                     <div class="flex items-center justify-between text-sm">
                                         <div class="flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full" style="background-color: ${color};"></span>
+                                            <span class="w-2 h-2 rounded-full" data-bg-color="${color}"></span>
                                             <span class="text-gray-600 dark:text-gray-400 truncate max-w-[120px]">${this.escapeHtml(name)}</span>
                                         </div>
                                         <span class="font-medium text-gray-900 dark:text-white">${count}</span>
@@ -465,6 +492,9 @@ export class DayView {
         
         // Add event button is now an <a> link, no JS handler needed
         // It navigates to /appointments/create?date=YYYY-MM-DD
+        
+        // Attach slot panel listeners
+        this._attachSlotPanelListeners();
     }
 
     /**
@@ -499,5 +529,100 @@ export class DayView {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ── Available Slots helpers ───────────────────────────────────────
+
+    /**
+     * Render the full Available Slots panel for the current day
+     */
+    _renderDaySlotPanel() {
+        const providers = this.providers || [];
+        if (providers.length === 0) return '';
+
+        const slots = generateSlots({
+            date: this.currentDate,
+            businessHours: this.businessHours,
+            slotDuration: this.slotDuration,
+            appointments: this.appointments,
+            providers,
+            blockedPeriods: this.blockedPeriods,
+            settings: this.settings,
+        });
+
+        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+        const slotListHtml = renderSlotList({
+            date: this.currentDate,
+            slots,
+            providers,
+            timeFormat,
+        });
+
+        return `<div class="slot-panel" id="day-slot-panel-inner">
+            <div class="slot-panel__header">
+                <h3 class="slot-panel__title">
+                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
+                    Available Slots
+                </h3>
+                <div class="slot-panel__provider-count">
+                    <span class="material-symbols-outlined text-sm">group</span>
+                    <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
+                </div>
+            </div>
+            <div class="slot-panel__filters">
+                <span class="slot-panel__filter-label">Filter by Provider</span>
+                <div class="slot-panel__pills" id="day-provider-pills">
+                    ${renderProviderFilterPills(providers)}
+                </div>
+            </div>
+            <div class="slot-panel__slots">
+                <div class="slot-panel__slots-header">
+                    <span class="slot-panel__slots-label">Time Slots</span>
+                    <span class="slot-panel__slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="slot-panel__slot-list" id="day-slot-list">
+                    ${slotListHtml}
+                </div>
+            </div>
+            ${renderSlotLegend()}
+        </div>`;
+    }
+
+    /**
+     * Re-render slot panel (after provider filter toggle)
+     */
+    _updateSlotPanel() {
+        const panelEl = this.container?.querySelector('#day-slot-panel');
+        if (!panelEl) return;
+        panelEl.innerHTML = this._renderDaySlotPanel();
+        this._attachSlotPanelListeners();
+    }
+
+    /**
+     * Attach event listeners to the slot panel inside the Day view.
+     */
+    _attachSlotPanelListeners() {
+        const panelEl = this.container?.querySelector('#day-slot-panel');
+        if (!panelEl) return;
+
+        // Provider filter pills
+        panelEl.querySelectorAll('.provider-filter-pill').forEach(el => {
+            el.addEventListener('click', () => {
+                const providerId = parseInt(el.dataset.providerId, 10);
+                const isActive = el.dataset.active === 'true';
+                const newState = !isActive;
+                el.dataset.active = String(newState);
+                el.classList.toggle('provider-filter-pill--inactive', !newState);
+                // Not toggling visibleProviders for day view — re-render with all providers
+                // (In day view we always show all providers, pills serve as visual cue)
+            });
+        });
+
+        // Slot item clicks (non-link area)
+        panelEl.querySelectorAll('.slot-item:not([data-disabled])').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.closest('a')) return;
+            });
+        });
     }
 }

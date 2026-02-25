@@ -273,21 +273,43 @@ class Settings extends BaseApiController
     public function update()
     {
         try {
-            // Try to get JSON payload first
-            $payload = $this->request->getJSON(true);
-            
-            // If JSON parsing fails or returns null, try form data
-            if ($payload === null || !is_array($payload)) {
-                $payload = $this->request->getPost();
-                if (!is_array($payload) || empty($payload)) {
-                    return $this->failValidationErrors('Invalid payload - must be JSON or form data');
-                }
+            $payload = null;
+            $jsonParseFailed = false;
+
+            // Try JSON first, but do not fail hard on malformed JSON.
+            try {
+                $payload = $this->request->getJSON(true);
+            } catch (\Throwable $jsonError) {
+                $jsonParseFailed = true;
+                log_message('warning', 'Settings update: JSON parse failed, attempting form fallback: {msg}', [
+                    'msg' => $jsonError->getMessage(),
+                ]);
             }
+
+            // If JSON is absent/invalid, fall back to form data.
+            if (!is_array($payload) || empty($payload)) {
+                $payload = $this->request->getPost();
+            }
+
+            if (!is_array($payload) || empty($payload)) {
+                if ($jsonParseFailed) {
+                    return $this->failValidationErrors('Invalid JSON payload');
+                }
+
+                return $this->failValidationErrors('Invalid payload - must be JSON or form data');
+            }
+
+            // Do not persist transport/CSRF keys as settings.
+            unset($payload['csrf_test_name'], $payload['form_source']);
 
             $userId = session()->get('user_id');
             $count = 0;
 
             foreach ($payload as $key => $value) {
+                if (!is_string($key) || $key === '') {
+                    continue;
+                }
+
                 // Infer type: JSON if array/object; boolean if true/false; else string
                 $type = is_array($value) ? 'json' : (is_bool($value) ? 'bool' : 'string');
                 if ($this->model->upsert($key, $value, $type, $userId)) {
