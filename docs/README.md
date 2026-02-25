@@ -1,160 +1,112 @@
-# 📘 xScheduler CI4 Documentation
+# WebSchedulr Documentation Index
 
-**Welcome to the xScheduler CI4 documentation hub.**  
-**Last Updated:** February 12, 2026
+Generated on: 2026-02-25 18:48:33 UTC
 
----
+## 📋 Documentation Structure
 
-## 🎯 Start Here
+- [WebSchedulr — Requirements Specification](REQUIREMENTS.md)
+- [Calendar UI Architecture](architecture/CALENDAR_UI_ARCHITECTURE.md)
+- [Multi-Tenant Implementation Plan for WebSchedulr](architecture/IMPLEMENTATION-PLAN.md)
+- [Material Design Dashboard Integration Guide](architecture/MATERIAL_DASHBOARD_GUIDE.md)
+- [Multi-Tenant SaaS Architecture for WebSchedulr](architecture/MULTI-TENANT-SAAS-ARCHITECTURE.md)
+- [Role-Based User Management System - Complete Implementation](architecture/ROLE_BASED_SYSTEM.md)
+- [# User & Customer Separation (Refactor Spec)](architecture/USER_CUSTOMER_SPLIT.md)
+- [/* ----------------------------------------------------------------------------](architecture/mastercontext.md)
+- [HIPAA-COMPLIANCE-ASSESSMENT](compliance/HIPAA-COMPLIANCE-ASSESSMENT.md)
+- [Environment Configuration Guide for WebSchedulr](configuration/ENV-CONFIGURATION-GUIDE.md)
+- [Localization Settings Update](configuration/LOCALIZATION_SETTINGS_UPDATE.md)
+- [Settings Contact Fields Implementation](configuration/SETTINGS_CONTACT_FIELDS.md)
+- [...existing content...](configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md)
+- [Setup-Driven Environment Configuration](configuration/SETUP-DRIVEN-ENV-CONFIG.md)
+- [Setup View Completion Report](configuration/SETUP_COMPLETION_REPORT.md)
+- [SQLite Zero-Config Setup Feature](configuration/SQLITE_ZERO_CONFIG_SETUP.md)
+- [WebSchedulr Dark Mode Implementation Guide](dark-mode/DARK_MODE_IMPLEMENTATION.md)
+- [Database Selection Guide](database/DATABASE_SELECTION_GUIDE.md)
+- [Database Prefix Best Practices](database/DB_PREFIX_BEST_PRACTICES.md)
+- [SQLite Migration Compatibility — COMPLETED](database/SQLITE_MIGRATION_COMPATIBILITY.md)
+- [Flexible Deployment Audit - Complete Report](deployment/FLEXIBLE_DEPLOYMENT_AUDIT.md)
+- [MySQL Test Connection Fix](deployment/MYSQL-TEST-CONNECTION-FIX.md)
+- [Packaging & Release Guide](deployment/PACKAGING_AND_RELEASE_GUIDE.md)
+- [Production URL Auto-Detection Fix](deployment/PRODUCTION-URL-AUTO-DETECTION.md)
+- [Production Deployment Fix Guide](deployment/PRODUCTION_FIX_GUIDE.md)
+- [Public Booking Deployment Guide](deployment/PUBLIC_BOOKING.md)
+- [Public Booking View - Flexible Deployment Fixes](deployment/PUBLIC_BOOKING_FIXES.md)
+- [Quick Release Guide](deployment/QUICK_RELEASE_GUIDE.md)
+- [Releasing xScheduler](deployment/RELEASING.md)
+- [URL Routing Fix — `/public/public/` Duplication](deployment/URL_ROUTING_FIX.md)
+- [Color Palette Analysis & Recommendation](design/COLOR-PALETTE-ANALYSIS.md)
+- [Material Icons Usage Guide](design/MATERIAL_ICONS_USAGE.md)
+- [Pre-Populated Availability System](design/PRELOADED_AVAILABILITY_SYSTEM.md)
+- [WebSchedulr UI Standards & Component Library](design/UI_STANDARDS.md)
+- [Appointment & Scheduling Code Investigation Report](development/APPOINTMENT_SCHEDULING_INVESTIGATION.md)
+- [Dashboard Landing View - Implementation Plan](development/DASHBOARD_LANDING_VIEW_IMPLEMENTATION.md)
+- [File Header Comment Template & Standards](development/FILE_HEADER_TEMPLATE.md)
+- [Global Layout System - Documentation](development/GLOBAL_LAYOUT_SYSTEM.md)
+- [High Priority Issues - Resolution Plan](development/HIGH_PRIORITY_ISSUES_RESOLUTION.md)
+- [Unified Layout System - Quick Reference](development/LAYOUT_QUICK_REFERENCE.md)
+- [WebSchedulr Codebase Quick Reference](development/QUICK_REFERENCE.md)
+- [Sample Scheduling Dataset](development/SAMPLE_DATA.md)
+- [Scheduler.php Legacy Controller - Deprecation & Removal Plan](development/SCHEDULER_DEPRECATION_PLAN.md)
+- [Unified Layout System Documentation](development/UNIFIED_LAYOUT_SYSTEM.md)
+- [Dynamic Customer Form Fields Implementation](development/dynamic-customer-fields.md)
+- [📝 File Naming Convention & Documentation Standards](development/file-naming-convention.md)
+- [Provider-First Selection Flow Implementation](development/provider-ux.md)
+- [👥 Provider & Staff Assignment System Guide](development/provider_system_guide.md)
+- [Schedule View Removal - Completion Summary](development/schedule-view.md)
+- [Setup-Driven Environment Configuration - Final Implementation](development/setup-workflow.md)
+- [Customer Appointment History Module](features/CUSTOMER_APPOINTMENT_HISTORY.md)
+- [Locations Feature — Complete Implementation](features/LOCATIONS_FEATURE.md)
+- [WebSchedulr Notifications – Implementation Checklist](features/NOTIFICATIONS_IMPLEMENTATION_CHECKLIST.md)
+- [Scheduling System Documentation](features/SCHEDULING_SYSTEM.md)
+- [End-to-End Encryption Status Assessment](security/ENCRYPTION-STATUS-ASSESSMENT.md)
+- [Hash-Based URL Security Implementation](security/HASH_BASED_URL_IMPLEMENTATION.md)
+- [Security Quick Fixes Implementation Summary](security/QUICK-FIXES-IMPLEMENTATION.md)
+- [Repository Security & IP Protection Guide](security/SECURITY_IMPLEMENTATION_GUIDE.md)
+- [WebSchedulr CI4 - Security & IP Protection Implementation](security/SECURITY_STATUS.md)
+- [Settings Page — Architecture Guide](settings-architecture.md)
+- [Settings Page — Refactor Audit Report](settings-refactor-audit.md)
+- [Comprehensive Audit — Services & Multi-Location Refactor (v93)](technical/AUDIT_SESSION_V93.md)
+- [Code Audit Report — Session v96](technical/AUDIT_SESSION_V96.md)
+- [WebSchedulr CSS Consolidation & Organization](technical/CSS_CONSOLIDATION_GUIDE.md)
+- [🎨 Icon Display Fix - Material Design Icons Issue](technical/ICON-DISPLAY-FIX.md)
+- [Multi-Location System – Full-Stack Audit](technical/MULTI_LOCATION_SYSTEM_AUDIT.md)
+- [🔧 Production URL Fix - Test Connection Issue](technical/PRODUCTION-URL-FIX.md)
+- [Provider Locations Component — Audit Report](technical/PROVIDER_LOCATIONS_AUDIT.md)
+- [Provider Schedule Component — Audit Report](technical/PROVIDER_SCHEDULE_AUDIT.md)
+- [Redirect Subdirectory Fix](technical/REDIRECT_SUBDIRECTORY_FIX.md)
+- [Refactor Proposal Audit – Provider Form & Location Handling](technical/REFACTOR_AUDIT_FINDINGS.md)
+- [SPA & Manual Refresh Audit Report](technical/SPA_REFRESH_AUDIT.md)
+- [SPA Settings Form Value Persistence Fix](technical/SPA_SETTINGS_FIX.md)
+- [User Management — Audit & Fix Report](technical/USER_MANAGEMENT_AUDIT.md)
+- [View Audit — Services, Settings, Notifications](technical/VIEW_AUDIT_500_FIXES.md)
+- [Technical Audit: SPA Initialization & Refresh-to-Work Issues](technical/audit-spa-initialization-2026-02-18.md)
+- [cd /opt/homebrew/opt/phpmyadmin/share/phpmyadmin && php -d error_reporting="E_ALL & ~E_DEPRECATED" -S localhost:8500](technical/command.md)
+- [v95 — Settings Page Audit & Fix Report](technical/v95-settings-audit.md)
+- [Calendar Settings Sync - Testing Guide](testing/calendar-settings-sync-test.md)
+- [Calendar Time Format Test Script](testing/calendar-time-format-test-script.md)
+- [ACCESS_CONTROL_MATRIX](user-management/ACCESS_CONTROL_MATRIX.md)
 
-**New to the project?**
+## 🏗️ Architecture Documentation
 
-1. **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
-2. **[Quick Reference](./development/QUICK_REFERENCE.md)** - Fast lookup for common tasks (10 min)
-3. **[Development Setup](./development/setup-workflow.md)** - Installation and configuration
+The main architectural documentation is maintained in:
+- [Master Context Document](architecture/mastercontext.md) - Complete project overview and development history
 
----
+## 🚀 Deployment Documentation
 
-## 📚 Documentation Structure
+Deployment guides and troubleshooting:
+- [FLEXIBLE DEPLOYMENT AUDIT](deployment/FLEXIBLE_DEPLOYMENT_AUDIT.md)
+- [MYSQL TEST CONNECTION FIX](deployment/MYSQL-TEST-CONNECTION-FIX.md)
+- [PACKAGING AND RELEASE GUIDE](deployment/PACKAGING_AND_RELEASE_GUIDE.md)
+- [PRODUCTION URL AUTO DETECTION](deployment/PRODUCTION-URL-AUTO-DETECTION.md)
+- [PRODUCTION FIX GUIDE](deployment/PRODUCTION_FIX_GUIDE.md)
+- [PUBLIC BOOKING](deployment/PUBLIC_BOOKING.md)
+- [PUBLIC BOOKING FIXES](deployment/PUBLIC_BOOKING_FIXES.md)
+- [QUICK RELEASE GUIDE](deployment/QUICK_RELEASE_GUIDE.md)
+- [RELEASING](deployment/RELEASING.md)
+- [URL ROUTING FIX](deployment/URL_ROUTING_FIX.md)
 
-### 🏗️ [Architecture](./architecture/)
-System design, patterns, and technical architecture
-- Master Context (complete system overview)
-- Role-Based Access Control
-- Multi-Tenant SaaS Architecture
-- Calendar UI Architecture
-- User-Customer Split Design
+## 📈 Project Status
 
-### 💻 [Development](./development/)
-Developer guides, conventions, and workflows
-- Setup workflow
-- Quick reference guide
-- Layout systems
-- File naming conventions
-- Provider system guide
-- Sample data
-
-### 🚀 [Deployment](./deployment/)
-Production deployment, releases, and URL configuration
-- Flexible deployment audit
-- Production URL auto-detection
-- Packaging and release guide
-- Quick release guide
-- Public booking fixes
-
-### 🗄️ [Database](./database/)
-Database design, migrations, and best practices
-- **Database Selection Guide** — Choose between SQLite (zero-config) or MySQL (enterprise)
-- **SQLite Migration Compatibility** — Cross-database migration patterns
-- **DB Prefix Best Practices** — Table naming and collision prevention
-
-### ⚙️ [Configuration](./configuration/)
-Environment configuration and settings
-- **SQLite Zero-Config Setup** — Instant deployment without database server
-- **ENV Configuration Guide** — Environment variables and setup
-- **Setup Completion Report** — Setup wizard features and workflow
-- **Localization Settings Update** — Multi-language support configuration
-
-### 🎨 [Design](./design/)
-UI/UX standards, color palettes, and design systems
-- UI standards
-- Color palette analysis
-- Material icons usage
-- Preloaded availability system
-
-### ✨ [Features](./features/)
-Feature documentation and implementation guides
-- Scheduling system
-- Notifications implementation
-- Customer appointment history
-
-### 🔒 [Security](./security/)
-Security implementation and compliance
-- Security status and implementation guide
-- Hash-based URL implementation
-- Encryption assessment
-- Quick security fixes
-
-### 🧪 [Testing](./testing/)
-Test suites, strategies, and documentation
-
-### 👥 [User Management](./user-management/)
-User roles, permissions, and management
-
-### 🔧 [Technical](./technical/)
-Technical references and specifications
-- OpenAPI specification
-- CSS consolidation guide
-- Command reference
-
-### 🌐 [Compliance](./compliance/)
-Regulatory compliance documentation
-
-### 🌙 [Dark Mode](./dark-mode/)
-Dark mode implementation
-
-### 📦 [Archive](./_archive/)
-Historical audits and completion reports (reference only)
-
----
-
-## 🔍 Quick Lookup
-
-### By Task
-- **Initial Setup** → [Setup Workflow](./development/setup-workflow.md)
-- **Choosing a Database** → [Database Selection Guide](./database/DATABASE_SELECTION_GUIDE.md)
-- **SQLite Zero-Config Setup** → [SQLite Zero-Config](./configuration/SQLITE_ZERO_CONFIG_SETUP.md)
-- **Calendar Implementation** → [Calendar UI Architecture](./architecture/CALENDAR_UI_ARCHITECTURE.md)
-- **Provider Management** → [Provider System Guide](./development/provider_system_guide.md)
-- **Deployment** → [Flexible Deployment Guide](./deployment/FLEXIBLE_DEPLOYMENT_AUDIT.md)
-- **Security** → [Security Implementation Guide](./security/SECURITY_IMPLEMENTATION_GUIDE.md)
-- **Database Migrations** → [SQLite Compatibility](./database/SQLITE_MIGRATION_COMPATIBILITY.md)
-
-### By Role
-- **Developers** → Start with Development + Architecture sections
-- **DevOps/Deployment** → Start with Deployment + Configuration sections
-- **Designers** → Start with Design + UI/UX sections
-- **Security/Compliance** → Start with Security + Compliance sections
-
----
-
-## 📖 Documentation Standards
-
-All documentation follows standardized naming conventions and organizational structure. See [File Naming Convention](./development/file-naming-convention.md) for guidelines on:
-- Filename format rules (lowercase, hyphens)
-- Folder structure organization
-- Link formatting standards
-- Content organization guidelines
-
----
-
-## 🆘 Getting Help
-
-- **Repository**: [github.com/niloc95/xscheduler_ci4](https://github.com/niloc95/xscheduler_ci4)
-- **Issues**: [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues)
-- **Email**: info@webschedulr.co.za
-
----
-
-## 📦 Archive
-
-Historical documentation has been moved to [_archive/](./_archive/) including:
-- Old development phase summaries (PHASE1-3)
-- Superseded project summaries
-- Outdated implementation guides
-
----
-
-## 📊 Documentation Statistics
-
-- **Active Documents:** 64 comprehensive guides (15 archived)
-- **Database Guides:** SQLite zero-config + MySQL options
-- **Last Major Update:** February 12, 2026 (Database documentation expansion)
-- **Coverage Areas:** 10 major categories + database selection guides
-- **Code Examples:** 100+ with syntax highlighting
-- **Status:** ✅ Complete & Current
-
----
-
-**Last Updated:** February 12, 2026  
-**Documentation Status:** ✅ Complete with Database Selection & Zero-Config Guides
+- **Current Version**: 1.1.0
+- **Build Status**: ![CI/CD](https://github.com/niloc95/webschedulr_ci4/workflows/WebSchedulr%20CI/CD%20Pipeline/badge.svg)
+- **Last Updated**: 2026-02-25
