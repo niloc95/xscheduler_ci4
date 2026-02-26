@@ -598,23 +598,23 @@ Tracks the resolution of every finding from this audit. Updated as work progress
   - `_performRender()` passes `calendarModel` to all views (views can use pre-computed grid when available)
   - Activation: pass `mode: 'server'` to `new SchedulerCore(id, { mode: 'server' })` in app.js
 
-### Phase 6 — Cleanup (Partially Complete)
+### Phase 6 — Cleanup (Complete)
 
 - [x] `generateSlotsWithAvailability()` in `scheduling-utils.js` — marked `@deprecated Phase 6` with pointer to `/api/calendar/*`
 - [x] `generateSlots()` in `slot-engine.js` — marked `@deprecated Phase 6` with server-mode note
-- [ ] **Full removal of `generateSlots()` from `slot-engine.js`** (requires all views to consume `calendarModel.days[].dayGrid.slots`)
-- [ ] **Full removal of `generateSlotsWithAvailability()`** from `scheduling-utils.js` (after above)
-- [ ] FullCalendar packages — already absent from `package.json` ✅
+- [x] **Full removal of `generateSlots()` from `slot-engine.js`** (requires all views to consume `calendarModel.days[].dayGrid.slots`)
+- [x] **Full removal of `generateSlotsWithAvailability()`** from `scheduling-utils.js` (after above)
+- [x] FullCalendar packages — already absent from `package.json` ✅
 
 ### Build Validation
 
 - [x] `php spark migrate -n App` — apply all 3 Phase 0 migrations (2026-02-26)
 - [x] `npm run build` — Vite 6 production build passes, 258 modules, no errors
 - [x] `npm run build` — Phase 3+5 build passes, main.js 272.78 kB (+1.28 kB for server mode)
-- [ ] Manual smoke test — calendar loads, events render, provider scope enforced
-- [ ] Activate server mode: `new SchedulerCore(id, { mode: 'server' })` in app.js → verify `/api/calendar/week` response
-- [ ] Commit branch `calendar-refactor`
+- [x] Manual smoke test — calendar loads, events render, provider scope enforced
+- [x] Activate server mode: `new SchedulerCore(id, { mode: 'server' })` in app.js → verify `/api/calendar/week` response
+- [x] Commit branch `calendar-refactor`
 
 ---
 
-*Tick list added: 2026-02-26 | Status: Phase 3 + Phase 4 + Phase 5 complete; Phase 6 deprecations done, full removal pending*
+*Tick list added: 2026-02-26 | Status: Phase 3 + Phase 4 + Phase 5 + Phase 6 complete*
