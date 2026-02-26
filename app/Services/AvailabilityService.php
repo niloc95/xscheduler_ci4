@@ -388,7 +388,7 @@ class AvailabilityService
         // Check custom schedules first
         $hasCustom = $this->providerScheduleModel
             ->where('day_of_week', $dayOfWeek)
-            ->where('is_working', 1)
+            ->where('is_active', 1)
             ->countAllResults() > 0;
 
         if ($hasCustom) {
@@ -420,7 +420,7 @@ class AvailabilityService
             // Provider-specific custom schedule
             $customRows = $this->providerScheduleModel
                 ->where('provider_id', $providerId)
-                ->where('is_working', 1)
+                ->where('is_active', 1)
                 ->findAll();
 
             if (!empty($customRows)) {
@@ -445,7 +445,7 @@ class AvailabilityService
 
         // No specific provider — check all custom schedules first
         $customRows = $this->providerScheduleModel
-            ->where('is_working', 1)
+            ->where('is_active', 1)
             ->findAll();
 
         if (!empty($customRows)) {
