@@ -26,6 +26,7 @@ export async function initAppointmentForm() {
     form.dataset.formSubmitWired = 'true';
 
     syncClientTimezoneFields(form);
+    attachVisibilityRefresh();
 
     // ── Form submission handler ───────────────────────────────────────
     form.addEventListener('submit', async function (e) {
@@ -144,13 +145,14 @@ function syncClientTimezoneFields(form) {
     if (offsetField) offsetField.value = getTimezoneOffset();
 }
 
-if (typeof document !== 'undefined') {
+function attachVisibilityRefresh() {
+    if (typeof document === 'undefined') return;
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             const form = document.querySelector('form[action*="/appointments/store"]');
             if (form) syncClientTimezoneFields(form);
         }
-    });
+    }, { once: false });
 }
 
 // ── Validation ────────────────────────────────────────────────────────

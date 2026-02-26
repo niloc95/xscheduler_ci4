@@ -7,6 +7,7 @@
  *
  * @module appointments/appointment-navigation
  */
+import { withBaseUrl } from '../../utils/url-helpers.js';
 
 /**
  * Navigate to create appointment page with pre-filled slot data
@@ -28,7 +29,7 @@ export function navigateToCreateAppointment(slotInfo) {
         params.append('provider_id', resource.id);
     }
 
-    const url = `/appointments/create?${params.toString()}`;
+    const url = withBaseUrl(`/appointments/create?${params.toString()}`);
     window.location.href = url;
 }
 

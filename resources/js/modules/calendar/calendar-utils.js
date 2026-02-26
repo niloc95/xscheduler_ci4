@@ -183,12 +183,4 @@ export function buildCalendarCacheKey(providerId, serviceId, startDate, excludeA
   return keyParts.join('|');
 }
 
-export default {
-  normalizeCalendarPayload,
-  slotTimeValue,
-  slotLabel,
-  getSlotsForDate,
-  formatDateShort,
-  selectAvailableDate,
-  buildCalendarCacheKey,
-};
+
