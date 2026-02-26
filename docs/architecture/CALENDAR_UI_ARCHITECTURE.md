@@ -137,12 +137,15 @@ resources/js/modules/scheduler/
 ├── scheduler-week-view.js      # Week view renderer
 ├── scheduler-day-view.js       # Day view renderer
 ├── scheduler-drag-drop.js      # Drag-and-drop manager
+├── scheduler-ui.js             # UI helpers (DOM construction)
 ├── settings-manager.js         # User settings handler
 ├── appointment-details-modal.js # Appointment details modal
 ├── appointment-colors.js       # Color utilities
-├── time-slots.js              # Time slot generation
-├── utils.js                   # Shared utilities
-└── logger.js                  # Logging utility
+├── slot-engine.js              # Slot rendering engine (client-side until API rebuild)
+├── constants.js                # Shared constants
+├── date-nav-label.js           # Date navigation label helpers
+├── logger.js                   # Logging utility
+└── stats/                      # Stats barrel module
 ```
 
 ---
@@ -281,24 +284,6 @@ For 6+ months of data, implement virtual scrolling to render only visible cells.
 - Keyboard navigation for time slot selection
 - Focus management in modals
 - High contrast mode support
-
----
-
-## File Audit Status
-
-### ✅ Files Refactored
-- `scheduler-core.js` - Main orchestrator
-- `scheduler-month-view.js` - Month view
-- `scheduler-week-view.js` - Week view
-- `scheduler-day-view.js` - Day view
-- `appointment-colors.js` - Color utilities
-- `time-slots.js` - Time slot generation
-- `utils.js` - Shared utilities
-
-### ❌ Redundancies Removed
-- Duplicate escapeHtml implementations → centralized in utils.js
-- Duplicate isDateBlocked functions → centralized in utils.js
-- Duplicate time slot generation → centralized in time-slots.js
 
 ### 🔄 Pending Improvements
 1. Implement template cloning for performance
