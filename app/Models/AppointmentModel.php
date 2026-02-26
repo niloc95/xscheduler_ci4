@@ -18,8 +18,8 @@
  * - service_id      : Service booked (FK to xs_services)
  * - provider_id     : Service provider (FK to xs_users)
  * - location_id     : Location if applicable (FK to xs_locations)
- * - start_time      : Appointment start (datetime)
- * - end_time        : Appointment end (datetime)
+ * - start_at       : Appointment start (datetime)
+ * - end_at         : Appointment end (datetime)
  * - status          : pending, confirmed, completed, cancelled, no-show
  * - notes           : Customer/staff notes
  * - hash            : Unique identifier for public URLs
@@ -76,8 +76,8 @@ class AppointmentModel extends BaseModel
         'location_contact',
         'appointment_date',
         'appointment_time',
-        'start_time',
-        'end_time',
+        'start_at',
+        'end_at',
         'status',
         'reminder_sent',
         'notes',
@@ -96,8 +96,8 @@ class AppointmentModel extends BaseModel
         'provider_id' => 'required|is_natural_no_zero',
         'service_id'  => 'required|is_natural_no_zero',
         // Accept either granular date/time or combined start/end timestamps depending on the callers
-        'start_time'  => 'permit_empty|valid_date',
-        'end_time'    => 'permit_empty|valid_date',
+        'start_at'  => 'permit_empty|valid_date',
+        'end_at'    => 'permit_empty|valid_date',
         'appointment_date' => 'permit_empty|valid_date',
         'appointment_time' => 'permit_empty',
         'status'      => 'required|in_list[pending,confirmed,completed,cancelled,no-show]'
@@ -181,9 +181,9 @@ class AppointmentModel extends BaseModel
             ->join('customers c', 'c.id = appointments.customer_id', 'left')
             ->join('services s', 's.id = appointments.service_id', 'left')
             ->where('provider_id', $providerId)
-            ->where('start_time >=', date('Y-m-d H:i:s'))
-            ->where('start_time <', date('Y-m-d H:i:s', strtotime("+{$days} days")))
-            ->orderBy('start_time','ASC')
+            ->where('start_at >=', date('Y-m-d H:i:s'))
+            ->where('start_at <', date('Y-m-d H:i:s', strtotime("+{$days} days")))
+            ->orderBy('start_at','ASC')
             ->get()->getResultArray();
     }
 
@@ -241,18 +241,18 @@ class AppointmentModel extends BaseModel
         return [
             'total'     => (int) $this->applyAllScopes($this->builder(), $context, $statusFilter)->countAllResults(),
             'today'     => (int) $this->applyAllScopes($this->builder()
-                ->where('start_time >=', $todayStart)
-                ->where('start_time <=', $todayEnd), $context, $statusFilter)->countAllResults(),
+                ->where('start_at >=', $todayStart)
+                ->where('start_at <=', $todayEnd), $context, $statusFilter)->countAllResults(),
             'upcoming'  => $this->countByStatus('upcoming', $context, $statusFilter),
             'pending'   => $this->countByStatus('pending', $context, $statusFilter),
             'completed' => $this->countByStatus('completed', $context, $statusFilter),
             'cancelled' => $this->countByStatus('cancelled', $context, $statusFilter),
             'this_week' => (int) $this->applyAllScopes($this->builder()
-                ->where('start_time >=', $weekStart)
-                ->where('start_time <=', $weekEnd), $context, $statusFilter)->countAllResults(),
+                ->where('start_at >=', $weekStart)
+                ->where('start_at <=', $weekEnd), $context, $statusFilter)->countAllResults(),
             'this_month'=> (int) $this->applyAllScopes($this->builder()
-                ->where('start_time >=', $monthStart)
-                ->where('start_time <=', $monthEnd), $context, $statusFilter)->countAllResults(),
+                ->where('start_at >=', $monthStart)
+                ->where('start_at <=', $monthEnd), $context, $statusFilter)->countAllResults(),
         ];
     }
 
@@ -274,8 +274,8 @@ class AppointmentModel extends BaseModel
         // Build base query with date range
         $baseQuery = function() use ($startDateTime, $endDateTime, $providerId, $table) {
             $builder = $this->db->table($table)
-                ->where("{$table}.start_time >=", $startDateTime)
-                ->where("{$table}.start_time <=", $endDateTime);
+                ->where("{$table}.start_at >=", $startDateTime)
+                ->where("{$table}.start_at <=", $endDateTime);
             
             if ($providerId) {
                 $builder->where("{$table}.provider_id", $providerId);
@@ -324,8 +324,8 @@ class AppointmentModel extends BaseModel
             ->distinct()
             ->select("{$table}.provider_id as id, u.name, u.color")
             ->join('xs_users as u', "u.id = {$table}.provider_id", 'left')
-            ->where("{$table}.start_time >=", $startDateTime)
-            ->where("{$table}.start_time <=", $endDateTime)
+            ->where("{$table}.start_at >=", $startDateTime)
+            ->where("{$table}.start_at <=", $endDateTime)
             ->orderBy('u.name', 'ASC')
             ->get()
             ->getResultArray();
@@ -389,10 +389,10 @@ class AppointmentModel extends BaseModel
 
         // Apply filters
         if (!empty($filters['start'])) {
-            $builder->where('xs_appointments.start_time >=', $filters['start']);
+            $builder->where('xs_appointments.start_at >=', $filters['start']);
         }
         if (!empty($filters['end'])) {
-            $builder->where('xs_appointments.start_time <=', $filters['end']);
+            $builder->where('xs_appointments.start_at <=', $filters['end']);
         }
         if (!empty($filters['provider_id'])) {
             $builder->where('xs_appointments.provider_id', (int)$filters['provider_id']);
@@ -409,7 +409,7 @@ class AppointmentModel extends BaseModel
             $builder->limit($limit, $offset);
         }
 
-        $builder->orderBy('xs_appointments.start_time', 'ASC');
+        $builder->orderBy('xs_appointments.start_at', 'ASC');
 
         return $builder->get()->getResultArray();
     }
@@ -430,7 +430,7 @@ class AppointmentModel extends BaseModel
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
-            ->orderBy('xs_appointments.start_time', 'ASC')
+            ->orderBy('xs_appointments.start_at', 'ASC')
             ->limit($limit);
 
         $this->applyStatusFilter($builder, $status);
@@ -451,7 +451,7 @@ class AppointmentModel extends BaseModel
         }
 
         if ($normalized === 'upcoming') {
-            $builder->where('xs_appointments.start_time >=', date('Y-m-d H:i:s'))
+            $builder->where('xs_appointments.start_at >=', date('Y-m-d H:i:s'))
                     ->whereIn('xs_appointments.status', ['pending', 'confirmed']);
             return $builder;
         }
@@ -524,15 +524,15 @@ class AppointmentModel extends BaseModel
         // Current month appointments
         $currentMonthStart = date('Y-m-01 00:00:00');
         $currentMonthEnd = date('Y-m-t 23:59:59');
-        $currentCount = $this->where('start_time >=', $currentMonthStart)
-                             ->where('start_time <=', $currentMonthEnd)
+        $currentCount = $this->where('start_at >=', $currentMonthStart)
+                             ->where('start_at <=', $currentMonthEnd)
                              ->countAllResults(false);
 
         // Previous month appointments
         $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
         $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
-        $prevCount = $this->where('start_time >=', $prevMonthStart)
-                          ->where('start_time <=', $prevMonthEnd)
+        $prevCount = $this->where('start_at >=', $prevMonthStart)
+                          ->where('start_at <=', $prevMonthEnd)
                           ->countAllResults(false);
 
         return $this->calculateTrendPercentage($currentCount, $prevCount);
@@ -546,15 +546,15 @@ class AppointmentModel extends BaseModel
         // Today's pending
         $todayStart = date('Y-m-d 00:00:00');
         $todayEnd = date('Y-m-d 23:59:59');
-        $todayCount = $this->where('start_time >=', $todayStart)
-                           ->where('start_time <=', $todayEnd)
+        $todayCount = $this->where('start_at >=', $todayStart)
+                           ->where('start_at <=', $todayEnd)
                            ->countAllResults(false);
 
         // Yesterday's count (same time comparison)
         $yesterdayStart = date('Y-m-d 00:00:00', strtotime('-1 day'));
         $yesterdayEnd = date('Y-m-d 23:59:59', strtotime('-1 day'));
-        $yesterdayCount = $this->where('start_time >=', $yesterdayStart)
-                               ->where('start_time <=', $yesterdayEnd)
+        $yesterdayCount = $this->where('start_at >=', $yesterdayStart)
+                               ->where('start_at <=', $yesterdayEnd)
                                ->countAllResults(false);
 
         return $this->calculateTrendPercentage($todayCount, $yesterdayCount);
@@ -763,14 +763,14 @@ class AppointmentModel extends BaseModel
         // Use getRealRevenue() for actual service prices
         $completed = $this->where('status', 'completed');
         if ($period === 'month') {
-            $completed->where('start_time >=', date('Y-m-01 00:00:00'))
-                      ->where('start_time <=', date('Y-m-t 23:59:59'));
+            $completed->where('start_at >=', date('Y-m-01 00:00:00'))
+                      ->where('start_at <=', date('Y-m-t 23:59:59'));
         } elseif ($period === 'week') {
-            $completed->where('start_time >=', date('Y-m-d 00:00:00', strtotime('monday this week')))
-                      ->where('start_time <=', date('Y-m-d 23:59:59', strtotime('sunday this week')));
+            $completed->where('start_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')))
+                      ->where('start_at <=', date('Y-m-d 23:59:59', strtotime('sunday this week')));
         } elseif ($period === 'today') {
-            $completed->where('start_time >=', date('Y-m-d 00:00:00'))
-                      ->where('start_time <=', date('Y-m-d 23:59:59'));
+            $completed->where('start_at >=', date('Y-m-d 00:00:00'))
+                      ->where('start_at <=', date('Y-m-d 23:59:59'));
         }
         $count = $completed->countAllResults();
         return $count * 50; // DEPRECATED: placeholder average revenue
@@ -790,13 +790,13 @@ class AppointmentModel extends BaseModel
         
         $periodCondition = '';
         if ($period === 'month') {
-            $periodCondition = "AND a.start_time >= '" . date('Y-m-01 00:00:00') . "' AND a.start_time <= '" . date('Y-m-t 23:59:59') . "'";
+            $periodCondition = "AND a.start_at >= '" . date('Y-m-01 00:00:00') . "' AND a.start_at <= '" . date('Y-m-t 23:59:59') . "'";
         } elseif ($period === 'week') {
-            $periodCondition = "AND a.start_time >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "' AND a.start_time <= '" . date('Y-m-d 23:59:59', strtotime('sunday this week')) . "'";
+            $periodCondition = "AND a.start_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "' AND a.start_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday this week')) . "'";
         } elseif ($period === 'today') {
-            $periodCondition = "AND a.start_time >= '" . date('Y-m-d 00:00:00') . "' AND a.start_time <= '" . date('Y-m-d 23:59:59') . "'";
+            $periodCondition = "AND a.start_at >= '" . date('Y-m-d 00:00:00') . "' AND a.start_at <= '" . date('Y-m-d 23:59:59') . "'";
         } elseif ($period === 'last_month') {
-            $periodCondition = "AND a.start_time >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND a.start_time <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'";
+            $periodCondition = "AND a.start_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND a.start_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'";
         }
         
         $query = $db->query("
@@ -829,8 +829,8 @@ class AppointmentModel extends BaseModel
                 FROM {$tableName} a
                 LEFT JOIN xs_services s ON a.service_id = s.id
                 WHERE a.status = 'completed'
-                AND a.start_time >= '{$dayStart}'
-                AND a.start_time <= '{$dayEnd}'
+                AND a.start_at >= '{$dayStart}'
+                AND a.start_at <= '{$dayEnd}'
             ");
             
             $result = $query->getRow();
@@ -862,8 +862,8 @@ class AppointmentModel extends BaseModel
                 FROM {$tableName} a
                 LEFT JOIN xs_services s ON a.service_id = s.id
                 WHERE a.status = 'completed'
-                AND a.start_time >= '{$monthStart}'
-                AND a.start_time <= '{$monthEnd}'
+                AND a.start_at >= '{$monthStart}'
+                AND a.start_at <= '{$monthEnd}'
             ");
             
             $result = $query->getRow();
@@ -920,8 +920,8 @@ class AppointmentModel extends BaseModel
         
         $query = $db->query("
             SELECT 
-                DATE_FORMAT(start_time, '%l:00 %p') as time_slot,
-                HOUR(start_time) as hour,
+                DATE_FORMAT(start_at, '%l:00 %p') as time_slot,
+                HOUR(start_at) as hour,
                 COUNT(*) as count
             FROM {$tableName}
             GROUP BY hour, time_slot
@@ -1029,8 +1029,8 @@ class AppointmentModel extends BaseModel
                     $hourStart = date('Y-m-d') . ' ' . sprintf('%02d:00:00', $hour);
                     $hourEnd = date('Y-m-d') . ' ' . sprintf('%02d:59:59', $hour);
                     
-                    $count = $this->where('start_time >=', $hourStart)
-                                  ->where('start_time <=', $hourEnd)
+                    $count = $this->where('start_at >=', $hourStart)
+                                  ->where('start_at <=', $hourEnd)
                                   ->countAllResults(false);
                     
                     $labels[] = date('ga', strtotime($hourStart)); // e.g., "9am"
@@ -1045,8 +1045,8 @@ class AppointmentModel extends BaseModel
                     $dayStart = date('Y-m-d 00:00:00', strtotime("$monday +{$i} days"));
                     $dayEnd = date('Y-m-d 23:59:59', strtotime("$monday +{$i} days"));
                     
-                    $count = $this->where('start_time >=', $dayStart)
-                                  ->where('start_time <=', $dayEnd)
+                    $count = $this->where('start_at >=', $dayStart)
+                                  ->where('start_at <=', $dayEnd)
                                   ->countAllResults(false);
                     
                     $dayLabel = date('D', strtotime("$monday +{$i} days"));
@@ -1073,8 +1073,8 @@ class AppointmentModel extends BaseModel
                         $monthEnd = date('Y-m-t 23:59:59', strtotime("+{$i} months"));
                     }
                     
-                    $count = $this->where('start_time >=', $monthStart)
-                                  ->where('start_time <=', $monthEnd)
+                    $count = $this->where('start_at >=', $monthStart)
+                                  ->where('start_at <=', $monthEnd)
                                   ->countAllResults(false);
                     
                     $monthLabel = date('M', strtotime($monthStart));
@@ -1097,8 +1097,8 @@ class AppointmentModel extends BaseModel
                     $weekStart = date('Y-m-d 00:00:00', strtotime("monday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
                     $weekEnd = date('Y-m-d 23:59:59', strtotime("sunday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
                     
-                    $count = $this->where('start_time >=', $weekStart)
-                                  ->where('start_time <=', $weekEnd)
+                    $count = $this->where('start_at >=', $weekStart)
+                                  ->where('start_at <=', $weekEnd)
                                   ->countAllResults(false);
                     
                     $weekNum = $i + 3; // Week 1, 2, 3, 4
@@ -1152,8 +1152,8 @@ class AppointmentModel extends BaseModel
             FROM {$tableName} a
             LEFT JOIN xs_users u ON a.provider_id = u.id
             WHERE u.name IS NOT NULL 
-              AND a.start_time >= '{$startDate}'
-              AND a.start_time <= '{$endDate}'
+              AND a.start_at >= '{$startDate}'
+              AND a.start_at <= '{$endDate}'
             GROUP BY a.provider_id, u.name
             ORDER BY total_appointments DESC
             LIMIT 10
@@ -1206,8 +1206,8 @@ class AppointmentModel extends BaseModel
             $monthEnd = date('Y-m-t 23:59:59', strtotime("-{$i} months"));
             $monthLabel = date('M', strtotime("-{$i} months"));
             
-            $count = $this->where('start_time >=', $monthStart)
-                          ->where('start_time <=', $monthEnd)
+            $count = $this->where('start_at >=', $monthStart)
+                          ->where('start_at <=', $monthEnd)
                           ->countAllResults(false);
             
             $labels[] = $monthLabel;

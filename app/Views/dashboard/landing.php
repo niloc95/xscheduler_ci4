@@ -223,7 +223,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                         <div class="appt-row">
                             <!-- Time -->
                             <div class="text-xs font-medium text-gray-900 dark:text-white">
-                                <?= esc($appt['start_time']) ?>
+                                <?= esc($appt['start_at']) ?>
                             </div>
                             
                             <!-- Customer & Service -->

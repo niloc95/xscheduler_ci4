@@ -149,32 +149,32 @@ class DashboardService
 
         // Total appointments today
         $total = $builder
-            ->where('DATE(start_time)', $today)
+            ->where('DATE(start_at)', $today)
             ->countAllResults(false);
 
         // Upcoming appointments (next 4 hours)
         $upcoming = $builder
-            ->where('DATE(start_time)', $today)
-            ->where('start_time >=', $now)
-            ->where('start_time <=', $upcomingWindow)
+            ->where('DATE(start_at)', $today)
+            ->where('start_at >=', $now)
+            ->where('start_at <=', $upcomingWindow)
             ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
             ->countAllResults(false);
 
         // Pending confirmation
         $pending = $builder
-            ->where('DATE(start_time)', $today)
+            ->where('DATE(start_at)', $today)
             ->where('xs_appointments.status', 'pending')
             ->countAllResults(false);
 
         // Cancelled/rescheduled today
         $cancelled = $builder
-            ->where('DATE(start_time)', $today)
+            ->where('DATE(start_at)', $today)
             ->whereIn('xs_appointments.status', ['cancelled', 'no-show'])
             ->countAllResults(false);
 
         // Confirmed today
         $confirmed = $builder
-            ->where('DATE(start_time)', $today)
+            ->where('DATE(start_at)', $today)
             ->where('xs_appointments.status', 'confirmed')
             ->countAllResults(false);
 
@@ -211,10 +211,10 @@ class DashboardService
         ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
         ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
         ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-        ->where('DATE(xs_appointments.start_time)', $today)
+        ->where('DATE(xs_appointments.start_at)', $today)
         ->whereIn('xs_appointments.status', ['pending', 'confirmed', 'completed'])
         ->orderBy('xs_appointments.provider_id', 'ASC')
-        ->orderBy('xs_appointments.start_time', 'ASC');
+        ->orderBy('xs_appointments.start_at', 'ASC');
 
         // Apply provider scope
         if ($providerId !== null) {
@@ -234,8 +234,8 @@ class DashboardService
             $schedule[$providerName][] = [
                 'id' => $appt['id'],
                 'hash' => $appt['hash'] ?? null,
-                'start_time' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['start_time']))),
-                'end_time' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['end_time']))),
+                'start_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['start_at']))),
+                'end_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['end_at']))),
                 'customer_name' => trim(($appt['first_name'] ?? '') . ' ' . ($appt['last_name'] ?? '')),
                 'service_name' => $appt['service_name'] ?? '',
                 'status' => $appt['status'],
@@ -270,7 +270,7 @@ class DashboardService
         
         $pendingCount = $builder
             ->where('xs_appointments.status', 'pending')
-            ->where('DATE(start_time) >=', date('Y-m-d'))
+            ->where('DATE(start_at) >=', date('Y-m-d'))
             ->countAllResults();
 
         if ($pendingCount > 0) {
@@ -336,10 +336,10 @@ class DashboardService
         ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
         ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
         ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-        ->where('DATE(xs_appointments.start_time) >=', $today)
-        ->where('DATE(xs_appointments.start_time) <=', $nextWeek)
+        ->where('DATE(xs_appointments.start_at) >=', $today)
+        ->where('DATE(xs_appointments.start_at) <=', $nextWeek)
         ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
-        ->orderBy('xs_appointments.start_time', 'ASC')
+        ->orderBy('xs_appointments.start_at', 'ASC')
         ->limit(10);
 
         // Apply provider scope
@@ -354,8 +354,8 @@ class DashboardService
         foreach ($appointments as $appt) {
             $formatted[] = [
                 'id' => $appt['id'],
-                'date' => date('Y-m-d', strtotime($appt['start_time'])),
-                'time' => date('H:i', strtotime($appt['start_time'])),
+                'date' => date('Y-m-d', strtotime($appt['start_at'])),
+                'time' => date('H:i', strtotime($appt['start_at'])),
                 'customer' => trim(($appt['first_name'] ?? '') . ' ' . ($appt['last_name'] ?? '')),
                 'provider' => $appt['provider_name'] ?? 'Unknown',
                 'service' => $appt['service_name'] ?? '',

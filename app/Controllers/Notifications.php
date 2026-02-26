@@ -114,7 +114,7 @@ class Notifications extends BaseController
             $logModel = new NotificationDeliveryLogModel();
             $logBuilder = $logModel->builder();
             
-            $logBuilder->select('xs_notification_delivery_logs.*, a.start_time as appointment_start, 
+            $logBuilder->select('xs_notification_delivery_logs.*, a.start_at as appointment_start, 
                                 c.first_name as customer_first_name, c.last_name as customer_last_name,
                                 s.name as service_name, u.name as provider_name')
                 ->join('xs_appointments a', 'a.id = xs_notification_delivery_logs.appointment_id', 'left')
@@ -147,7 +147,7 @@ class Notifications extends BaseController
             $queueModel = new NotificationQueueModel();
             $queueBuilder = $queueModel->builder();
             
-            $queueBuilder->select('xs_notification_queue.*, a.start_time as appointment_start,
+            $queueBuilder->select('xs_notification_queue.*, a.start_at as appointment_start,
                                   c.first_name as customer_first_name, c.last_name as customer_last_name,
                                   s.name as service_name, u.name as provider_name')
             ->join('xs_appointments a', 'a.id = xs_notification_queue.appointment_id', 'left')

@@ -118,7 +118,7 @@ class CustomerAppointmentService
         $total = $countBuilder->countAllResults(false);
 
         // Apply sorting and pagination
-        $builder->orderBy('xs_appointments.start_time', 'DESC')
+        $builder->orderBy('xs_appointments.start_at', 'DESC')
                 ->limit($perPage, ($page - 1) * $perPage);
 
         $appointments = $builder->get()->getResultArray();
@@ -155,9 +155,9 @@ class CustomerAppointmentService
             ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
             ->where('xs_appointments.customer_id', $customerId)
-            ->where('xs_appointments.start_time >=', date('Y-m-d H:i:s'))
+            ->where('xs_appointments.start_at >=', date('Y-m-d H:i:s'))
             ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
-            ->orderBy('xs_appointments.start_time', 'ASC')
+            ->orderBy('xs_appointments.start_at', 'ASC')
             ->limit($limit);
 
         $appointments = $builder->get()->getResultArray();
@@ -193,7 +193,7 @@ class CustomerAppointmentService
         
         $upcoming = $this->appointments
             ->where('customer_id', $customerId)
-            ->where('start_time >=', $now)
+            ->where('start_at >=', $now)
             ->whereIn('status', ['pending', 'confirmed'])
             ->countAllResults(false);
         
@@ -234,15 +234,15 @@ class CustomerAppointmentService
 
         // Get first and last appointment dates
         $firstAppointment = $this->appointments->builder()
-            ->select('MIN(start_time) as first_date')
+            ->select('MIN(start_at) as first_date')
             ->where('customer_id', $customerId)
             ->get()
             ->getRowArray();
 
         $lastAppointment = $this->appointments->builder()
-            ->select('MAX(start_time) as last_date')
+            ->select('MAX(start_at) as last_date')
             ->where('customer_id', $customerId)
-            ->where('start_time <', $now)
+            ->where('start_at <', $now)
             ->get()
             ->getRowArray();
 
@@ -368,7 +368,7 @@ class CustomerAppointmentService
         $total = $countBuilder->countAllResults(false);
 
         // Apply sorting and pagination
-        $builder->orderBy('xs_appointments.start_time', 'DESC')
+        $builder->orderBy('xs_appointments.start_at', 'DESC')
                 ->limit($perPage, ($page - 1) * $perPage);
 
         $appointments = $builder->get()->getResultArray();
@@ -397,11 +397,11 @@ class CustomerAppointmentService
         // Type filter (upcoming/past)
         if (!empty($filters['type'])) {
             if ($filters['type'] === 'upcoming') {
-                $builder->where('xs_appointments.start_time >=', $now)
+                $builder->where('xs_appointments.start_at >=', $now)
                         ->whereIn('xs_appointments.status', ['pending', 'confirmed']);
             } elseif ($filters['type'] === 'past') {
                 $builder->groupStart()
-                    ->where('xs_appointments.start_time <', $now)
+                    ->where('xs_appointments.start_at <', $now)
                     ->orWhereIn('xs_appointments.status', ['completed', 'cancelled', 'no-show'])
                 ->groupEnd();
             }
@@ -428,11 +428,11 @@ class CustomerAppointmentService
 
         // Date range filters
         if (!empty($filters['date_from'])) {
-            $builder->where('xs_appointments.start_time >=', $filters['date_from'] . ' 00:00:00');
+            $builder->where('xs_appointments.start_at >=', $filters['date_from'] . ' 00:00:00');
         }
 
         if (!empty($filters['date_to'])) {
-            $builder->where('xs_appointments.start_time <=', $filters['date_to'] . ' 23:59:59');
+            $builder->where('xs_appointments.start_at <=', $filters['date_to'] . ' 23:59:59');
         }
 
         // Customer ID filter (for admin search)
@@ -447,8 +447,8 @@ class CustomerAppointmentService
     protected function enrichAppointment(array $appointment): array
     {
         $now = time();
-        $startTime = strtotime($appointment['start_time'] ?? '');
-        $endTime = strtotime($appointment['end_time'] ?? '');
+        $startTime = strtotime($appointment['start_at'] ?? '');
+        $endTime = strtotime($appointment['end_at'] ?? '');
 
         // Compute duration if not set
         if (empty($appointment['duration_min']) && $startTime && $endTime) {

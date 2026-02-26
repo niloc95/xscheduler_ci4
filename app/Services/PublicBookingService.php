@@ -241,8 +241,8 @@ class PublicBookingService
             'customer_id' => $customerId,
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_time' => $slot['start']->format('Y-m-d H:i:s'),
-            'end_time' => $slot['end']->format('Y-m-d H:i:s'),
+            'start_at' => $slot['start']->format('Y-m-d H:i:s'),
+            'end_at' => $slot['end']->format('Y-m-d H:i:s'),
             'status' => 'pending',
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
             'public_token' => $token,
@@ -274,7 +274,7 @@ class PublicBookingService
     {
         $appointment = $this->fetchAppointmentByToken($token);
         $this->verifyContactAccess($appointment, $payload['email'] ?? null, $payload['phone'] ?? null);
-        $this->assertRescheduleWindow($appointment['start_time']);
+        $this->assertRescheduleWindow($appointment['start_at']);
 
         $providerId = (int) ($payload['provider_id'] ?? $appointment['provider_id']);
         $serviceId = (int) ($payload['service_id'] ?? $appointment['service_id']);
@@ -291,8 +291,8 @@ class PublicBookingService
         $updatePayload = [
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_time' => $slot['start']->format('Y-m-d H:i:s'),
-            'end_time' => $slot['end']->format('Y-m-d H:i:s'),
+            'start_at' => $slot['start']->format('Y-m-d H:i:s'),
+            'end_at' => $slot['end']->format('Y-m-d H:i:s'),
             'notes' => $this->sanitizeString($payload['notes'] ?? $appointment['notes'] ?? null, 1000),
             'public_token' => $newToken,
             'public_token_expires_at' => null,
@@ -425,7 +425,7 @@ class PublicBookingService
     private function normalizeSlotPayload(array $payload, int $durationMinutes): array
     {
         $timezone = new DateTimeZone($this->localization->getTimezone());
-        $rawStart = $payload['slot_start'] ?? $payload['start_time'] ?? null;
+        $rawStart = $payload['slot_start'] ?? $payload['start_time'] ?? $payload['start_at'] ?? null;
 
         if ($rawStart) {
             try {
@@ -643,8 +643,8 @@ class PublicBookingService
         }
 
         $timezone = new DateTimeZone($this->localization->getTimezone());
-        $start = new DateTimeImmutable($appointment['start_time'], $timezone);
-        $end = new DateTimeImmutable($appointment['end_time'], $timezone);
+        $start = new DateTimeImmutable($appointment['start_at'], $timezone);
+        $end = new DateTimeImmutable($appointment['end_at'], $timezone);
         $provider = $this->users->find((int) $appointment['provider_id']);
         $service = $this->services->find((int) $appointment['service_id']);
 

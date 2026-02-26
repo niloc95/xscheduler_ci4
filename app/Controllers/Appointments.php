@@ -412,9 +412,9 @@ class Appointments extends BaseController
         $appTimezone = $localizationService->getTimezone();
 
         // Check if appointment is in the past.
-        // DB stores times in app timezone — compare against current app-timezone time.
-        $appointmentTime = new \DateTime($appointment['start_time'], new \DateTimeZone($appTimezone));
-        $now = new \DateTime('now', new \DateTimeZone($appTimezone));
+        // DB stores times in UTC — convert to display timezone for comparison.
+        $appointmentTime = new \DateTime($appointment['start_at'], new \DateTimeZone('UTC'));
+        $now = new \DateTime('now', new \DateTimeZone('UTC'));
         $isPastAppointment = $appointmentTime < $now;
 
         // Get field configuration from settings
@@ -429,9 +429,10 @@ class Appointments extends BaseController
             }
         }
 
-        // Times are stored in app timezone — read directly, no UTC conversion.
-        if (!empty($appointment['start_time'])) {
-            $startDateTime = new \DateTime($appointment['start_time'], new \DateTimeZone($appTimezone));
+        // Times are stored in UTC — convert to display timezone for form fields.
+        if (!empty($appointment['start_at'])) {
+            $displayTime = \App\Services\TimezoneService::toDisplay($appointment['start_at'], $appTimezone);
+            $startDateTime = new \DateTime($displayTime, new \DateTimeZone($appTimezone));
             $appointment['date'] = $startDateTime->format('Y-m-d');
             $appointment['time'] = $startDateTime->format('H:i');
         }
@@ -599,8 +600,8 @@ class Appointments extends BaseController
         $appointmentData = [
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTimeStored,
-            'end_time' => $endTimeStored,
+            'start_at' => $startTimeStored,
+            'end_at' => $endTimeStored,
             'status' => $status,
             'notes' => $this->request->getPost('notes') ?? ''
         ];
@@ -622,7 +623,7 @@ class Appointments extends BaseController
             (new \App\Services\AppointmentNotificationService())
                 ->resetReminderSentIfTimeChanged(
                     (int) $appointmentId,
-                    (string) ($existingAppointment['start_time'] ?? ''),
+                    (string) ($existingAppointment['start_at'] ?? ''),
                     (string) ($startTimeStored ?? '')
                 );
         } catch (\Throwable $e) {

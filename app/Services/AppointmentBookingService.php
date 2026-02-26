@@ -186,8 +186,8 @@ class AppointmentBookingService
                 'customer_id' => $customerId,
                 'provider_id' => $data['provider_id'],
                 'service_id' => $data['service_id'],
-                'start_time' => $timeData['startUtc'],
-                'end_time' => $timeData['endUtc'],
+                'start_at' => $timeData['startUtc'],
+                'end_at' => $timeData['endUtc'],
                 'status' => $data['status'] ?? 'pending',
                 'notes' => $data['notes'] ?? '',
                 'location_id' => $resolvedLocationId,
@@ -299,8 +299,8 @@ class AppointmentBookingService
                     return $this->error($availabilityCheck['reason'] ?? 'Time slot not available');
                 }
 
-                $data['start_time'] = $timeData['startUtc'];
-                $data['end_time'] = $timeData['endUtc'];
+                $data['start_at'] = $timeData['startUtc'];
+                $data['end_at'] = $timeData['endUtc'];
                 $data['location_id'] = $resolvedLocationId;
             }
 
@@ -331,7 +331,7 @@ class AppointmentBookingService
             log_message('info', '[AppointmentBookingService] ✅ Appointment #' . $appointmentId . ' updated successfully');
 
             // Queue update notifications if status or time changed
-            if (isset($data['status']) || isset($data['start_time'])) {
+            if (isset($data['status']) || isset($data['start_at'])) {
                 $this->queueNotifications($appointmentId, ['email', 'whatsapp'], 'appointment_updated');
             }
 

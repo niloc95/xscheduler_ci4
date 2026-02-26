@@ -101,13 +101,13 @@
             <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div class="flex items-center gap-4">
                     <div class="text-center min-w-[60px]">
-                        <div class="text-sm font-semibold text-blue-600"><?= date('M', strtotime($appt['start_time'])) ?></div>
-                        <div class="text-2xl font-bold text-gray-800 dark:text-gray-200"><?= date('j', strtotime($appt['start_time'])) ?></div>
+                        <div class="text-sm font-semibold text-blue-600"><?= date('M', strtotime($appt['start_at'])) ?></div>
+                        <div class="text-2xl font-bold text-gray-800 dark:text-gray-200"><?= date('j', strtotime($appt['start_at'])) ?></div>
                     </div>
                     <div>
                         <div class="font-medium text-gray-800 dark:text-gray-200"><?= esc($appt['service_name'] ?? 'Service') ?></div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
-                            <?= date('l \a\t g:i A', strtotime($appt['start_time'])) ?>
+                            <?= date('l \a\t g:i A', strtotime($appt['start_at'])) ?>
                             • with <?= esc($appt['provider_name'] ?? 'Provider') ?>
                         </div>
                     </div>
@@ -212,12 +212,12 @@
                     <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td class="px-4 py-3">
                             <div class="font-medium text-gray-900 dark:text-gray-100">
-                                <?= date('M j, Y', strtotime($appt['start_time'])) ?>
+                                <?= date('M j, Y', strtotime($appt['start_at'])) ?>
                             </div>
                             <div class="text-xs text-gray-500 dark:text-gray-400">
-                                <?= date('g:i A', strtotime($appt['start_time'])) ?>
-                                <?php if (!empty($appt['end_time'])): ?>
-                                    - <?= date('g:i A', strtotime($appt['end_time'])) ?>
+                                <?= date('g:i A', strtotime($appt['start_at'])) ?>
+                                <?php if (!empty($appt['end_at'])): ?>
+                                    - <?= date('g:i A', strtotime($appt['end_at'])) ?>
                                 <?php endif; ?>
                             </div>
                         </td>

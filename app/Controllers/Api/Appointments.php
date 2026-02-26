@@ -30,7 +30,7 @@
  * - status      : Filter by status (pending, confirmed, completed, cancelled)
  * - page        : Page number (default: 1)
  * - length      : Items per page (default: 50, max: 1000 for calendar views)
- * - sort        : Sort field:direction (e.g., start_time:asc)
+ * - sort        : Sort field:direction (e.g., start_at:asc)
  * 
  * REQUEST BODY (POST/PUT):
  * -----------------------------------------------------------------------------
@@ -38,8 +38,8 @@
  *   "provider_id": 2,
  *   "service_id": 1,
  *   "customer_id": 5,        // or customer object for new customer
- *   "start_time": "2025-01-15 09:00:00",
- *   "end_time": "2025-01-15 10:00:00",
+ *   "start_at": "2025-01-15 09:00:00",
+ *   "end_at": "2025-01-15 10:00:00",
  *   "notes": "Special requests...",
  *   "status": "confirmed"
  * }
@@ -96,7 +96,7 @@ class Appointments extends BaseApiController
             $providerId = $this->request->getGet('provider_id') ?? $this->request->getGet('providerId');
             $serviceId  = $this->request->getGet('service_id') ?? $this->request->getGet('serviceId');
             $locationId = $this->request->getGet('location_id') ?? $this->request->getGet('locationId');
-            $sortParam  = $this->request->getGet('sort') ?? 'start_time:asc';
+            $sortParam  = $this->request->getGet('sort') ?? 'start_at:asc';
 
             // Pagination (calendar views may request up to 1000)
             $page   = max(1, (int) ($this->request->getGet('page') ?? 1));
@@ -192,10 +192,10 @@ class Appointments extends BaseApiController
                 'provider_color' => $appointment['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
                 'service_id' => $appointment['service_id'],
                 'service_name' => $appointment['service_name'] ?? 'N/A',
-                'start_time' => $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
-                'end_time' => $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
-                'start' => $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null),
-                'end' => $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null),
+                'start_time' => $this->formatIso($appointment['start_at'] ?? null) ?? ($appointment['start_at'] ?? null),
+                'end_time' => $this->formatIso($appointment['end_at'] ?? null) ?? ($appointment['end_at'] ?? null),
+                'start' => $this->formatIso($appointment['start_at'] ?? null) ?? ($appointment['start_at'] ?? null),
+                'end' => $this->formatIso($appointment['end_at'] ?? null) ?? ($appointment['end_at'] ?? null),
                 'service_duration' => $appointment['service_duration'], // Standardized field name
                 'service_price' => $appointment['service_price'],
                 'status' => $appointment['status'],
@@ -740,8 +740,8 @@ class Appointments extends BaseApiController
             }
 
             $update = [];
-            if (!empty($payload['start'])) $update['start_time'] = $payload['start'];
-            if (!empty($payload['end'])) $update['end_time'] = $payload['end'];
+            if (!empty($payload['start'])) $update['start_at'] = $payload['start'];
+            if (!empty($payload['end'])) $update['end_at'] = $payload['end'];
             if (!empty($payload['status'])) $update['status'] = $payload['status'];
             
             if (empty($update)) {
@@ -766,7 +766,7 @@ class Appointments extends BaseApiController
             }
 
             // Enqueue rescheduled notification if time was changed
-            if (!empty($update['start_time']) || !empty($update['end_time'])) {
+            if (!empty($update['start_at']) || !empty($update['end_at'])) {
                 $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_rescheduled', 'rescheduled appointment');
             }
             
@@ -907,8 +907,8 @@ class Appointments extends BaseApiController
         $model = new AppointmentModel();
         $builder = $model->builder();
         $builder->select('COUNT(*) AS c')
-                ->where('start_time >=', $start->format('Y-m-d H:i:s'))
-                ->where('start_time <=', $end->format('Y-m-d H:i:s'));
+                ->where('start_at >=', $start->format('Y-m-d H:i:s'))
+                ->where('start_at <=', $end->format('Y-m-d H:i:s'));
                 
         if ($providerId > 0) {
             $builder->where('provider_id', $providerId);
@@ -1016,7 +1016,7 @@ class Appointments extends BaseApiController
                 // Render template and send
                 $message = $templateSvc->renderForAppointment($businessId, 'sms', $eventType, (int) $id);
                 if (!$message) {
-                    $message = "Your appointment on " . ($appt['start_time'] ?? 'TBD') . " is " . ($appt['status'] ?? 'confirmed') . ".";
+                    $message = "Your appointment on " . ($appt['start_at'] ?? 'TBD') . " is " . ($appt['status'] ?? 'confirmed') . ".";
                 }
                 
                 $result = $smsSvc->sendSms($businessId, $appt['customer_phone'], $message);

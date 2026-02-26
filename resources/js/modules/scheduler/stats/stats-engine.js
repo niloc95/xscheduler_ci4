@@ -131,7 +131,7 @@ function parseAppointmentDateTime(apt) {
 
     // Handle various date formats from API
     const dateStr = apt.appointmentDate || apt.appointment_date || apt.date;
-    const timeStr = apt.start || apt.startTime || apt.start_time || apt.time || '00:00';
+    const timeStr = apt.start || apt.startTime || apt.start_at || apt.start_time || apt.time || '00:00';
     
     if (!dateStr) {
         return DateTime.now();

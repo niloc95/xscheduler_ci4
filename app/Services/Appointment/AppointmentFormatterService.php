@@ -67,8 +67,8 @@ class AppointmentFormatterService
             'id'              => (int) $row['id'],
             'hash'            => $row['hash'] ?? null,
             'title'           => $row['customer_name'] ?? ('Appointment #' . $row['id']),
-            'start'           => $this->toIso($row['start_time'] ?? null),
-            'end'             => $this->toIso($row['end_time']   ?? null),
+            'start'           => $this->toIso($row['start_at'] ?? null),
+            'end'             => $this->toIso($row['end_at']   ?? null),
             // Core foreign keys
             'provider_id'     => (int) $row['provider_id'],
             'service_id'      => (int) $row['service_id'],

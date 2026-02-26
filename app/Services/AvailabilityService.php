@@ -483,8 +483,8 @@ class AvailabilityService
         $appointmentsQuery = $this->appointmentModel
             ->where('provider_id', $providerId)
             ->where('status !=', 'cancelled')
-            ->where('start_time >=', $startOfDay)
-            ->where('start_time <=', $endOfDay)
+            ->where('start_at >=', $startOfDay)
+            ->where('start_at <=', $endOfDay)
             ->when($excludeAppointmentId !== null, function($builder) use ($excludeAppointmentId) {
                 $builder->where('id !=', $excludeAppointmentId);
             });
@@ -497,8 +497,8 @@ class AvailabilityService
         
         foreach ($appointments as $apt) {
             // Database stores times in local timezone, so create DateTime in local timezone
-            $start = new DateTime($apt['start_time'], $tz);
-            $end = new DateTime($apt['end_time'], $tz);
+            $start = new DateTime($apt['start_at'], $tz);
+            $end = new DateTime($apt['end_at'], $tz);
             
             // Add buffer time after appointment ends to prevent back-to-back bookings
             if ($bufferMinutes > 0) {
@@ -656,18 +656,18 @@ class AvailabilityService
                 ->groupStart()
                     // New starts during existing
                     ->groupStart()
-                        ->where('start_time <=', $startTime)
-                        ->where('end_time >', $startTime)
+                        ->where('start_at <=', $startTime)
+                        ->where('end_at >', $startTime)
                     ->groupEnd()
                     // New ends during existing
                     ->orGroupStart()
-                        ->where('start_time <', $endTime)
-                        ->where('end_time >=', $endTime)
+                        ->where('start_at <', $endTime)
+                        ->where('end_at >=', $endTime)
                     ->groupEnd()
                     // New contains existing
                     ->orGroupStart()
-                        ->where('start_time >=', $startTime)
-                        ->where('end_time <=', $endTime)
+                        ->where('start_at >=', $startTime)
+                        ->where('end_at <=', $endTime)
                     ->groupEnd()
                 ->groupEnd();
         

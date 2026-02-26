@@ -107,12 +107,12 @@ class AppointmentQueryService
     public function getForRange(string $startDate, string $endDate, array $filters = []): array
     {
         $builder = $this->buildBaseQuery();
-        $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00')
-                ->where('xs_appointments.start_time <=', $endDate   . ' 23:59:59');
+        $builder->where('xs_appointments.start_at >=', $startDate . ' 00:00:00')
+                ->where('xs_appointments.start_at <=', $endDate   . ' 23:59:59');
 
         $builder = $this->applyProviderScope($builder, $filters);
         $builder = $this->applyFilters($builder, $filters);
-        $builder->orderBy('xs_appointments.start_time', 'ASC');
+        $builder->orderBy('xs_appointments.start_at', 'ASC');
 
         return $builder->get()->getResultArray();
     }
@@ -129,7 +129,7 @@ class AppointmentQueryService
         $grouped = [];
 
         foreach ($rows as $row) {
-            $date = substr($row['start_time'], 0, 10); // Extract Y-m-d
+            $date = substr($row['start_at'], 0, 10); // Extract Y-m-d
             $grouped[$date][] = $row;
         }
 
@@ -147,7 +147,7 @@ class AppointmentQueryService
         $grouped = [];
 
         foreach ($rows as $row) {
-            $date       = substr($row['start_time'], 0, 10);
+            $date       = substr($row['start_at'], 0, 10);
             $providerId = (int) $row['provider_id'];
             $grouped[$date][$providerId][] = $row;
         }
@@ -199,10 +199,10 @@ class AppointmentQueryService
             $endDate   = $end   ? substr($end,   0, 10) : null;
 
             if ($startDate) {
-                $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00');
+                $builder->where('xs_appointments.start_at >=', $startDate . ' 00:00:00');
             }
             if ($endDate) {
-                $builder->where('xs_appointments.start_time <=', $endDate . ' 23:59:59');
+                $builder->where('xs_appointments.start_at <=', $endDate . ' 23:59:59');
             }
         }
 
@@ -255,16 +255,16 @@ class AppointmentQueryService
     }
 
     /**
-     * Apply sort (defaults to start_time ASC).
+     * Apply sort (defaults to start_at ASC).
      */
     private function applySort($builder, array $filters): \CodeIgniter\Database\BaseBuilder
     {
-        $validFields = ['id', 'start_time', 'end_time', 'provider_id', 'service_id', 'status'];
-        $sortParam   = $filters['sort'] ?? 'start_time:asc';
+        $validFields = ['id', 'start_at', 'end_at', 'provider_id', 'service_id', 'status'];
+        $sortParam   = $filters['sort'] ?? 'start_at:asc';
 
         [$field, $dir] = array_pad(explode(':', $sortParam), 2, 'asc');
         if (!in_array($field, $validFields, true)) {
-            $field = 'start_time';
+            $field = 'start_at';
         }
         $dir = strtoupper($dir) === 'DESC' ? 'DESC' : 'ASC';
 

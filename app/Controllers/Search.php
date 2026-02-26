@@ -112,7 +112,7 @@ class Search extends BaseController
                         ->orLike('xs_services.name', $q)
                         ->orLike('xs_appointments.notes', $q)
                     ->groupEnd()
-                    ->orderBy('xs_appointments.start_time', 'DESC')
+                    ->orderBy('xs_appointments.start_at', 'DESC')
                     ->limit(10);
                 
                 $appointments = $appointmentsQuery->findAll();

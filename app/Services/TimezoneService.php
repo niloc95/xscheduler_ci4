@@ -19,9 +19,15 @@
  * 
  * STORAGE STRATEGY:
  * -----------------------------------------------------------------------------
- * All datetimes are stored in UTC in the database.
+ * All datetimes are stored in UTC in the database (start_at, end_at columns).
  * User timezone is stored in session and used for display conversion.
  * This ensures consistent comparison and scheduling logic.
+ *
+ * CANONICAL GATEWAY METHODS (prefer these):
+ * -----------------------------------------------------------------------------
+ * toStorage($localTime, $tz)   – local → UTC before DB write
+ * toDisplay($utcTime, $tz)     – UTC → local for rendering
+ * toDisplayIso($utcTime, $tz)  – UTC → ISO 8601 with offset for APIs
  * 
  * KEY METHODS:
  * -----------------------------------------------------------------------------
@@ -269,7 +275,7 @@ class TimezoneService
      */
     public static function nowUTC()
     {
-        return date('Y-m-d H:i:s', time());
+        return gmdate('Y-m-d H:i:s');
     }
     
     /**
@@ -281,5 +287,63 @@ class TimezoneService
     public static function now($timezone)
     {
         return self::fromUTC(self::nowUTC(), $timezone);
+    }
+
+    // ------------------------------------------------------------------
+    //  Storage gateway — canonical entry points for all write / read
+    // ------------------------------------------------------------------
+
+    /**
+     * Convert a user-supplied local time to UTC for database storage.
+     *
+     * This is the SINGLE entry point every booking path should call before
+     * writing start_at / end_at to xs_appointments.
+     *
+     * @param string      $localDatetime  'Y-m-d H:i:s' in the user's local TZ
+     * @param string|null $timezone       IANA identifier; defaults to session TZ
+     * @return string     'Y-m-d H:i:s' in UTC
+     */
+    public static function toStorage(string $localDatetime, ?string $timezone = null): string
+    {
+        return self::toUTC($localDatetime, $timezone);
+    }
+
+    /**
+     * Convert a UTC database value to the user's display timezone.
+     *
+     * This is the SINGLE entry point every read/render path should call
+     * when presenting start_at / end_at to the user.
+     *
+     * @param string      $utcDatetime  'Y-m-d H:i:s' in UTC (from DB)
+     * @param string|null $timezone     IANA identifier; defaults to session TZ
+     * @return string     'Y-m-d H:i:s' in the target TZ
+     */
+    public static function toDisplay(string $utcDatetime, ?string $timezone = null): string
+    {
+        return self::fromUTC($utcDatetime, $timezone);
+    }
+
+    /**
+     * Format a UTC datetime as ISO 8601 with the display timezone offset.
+     *
+     * Useful for API responses that need to carry the offset, e.g.
+     * "2026-02-26T09:00:00+02:00" for Africa/Johannesburg display.
+     *
+     * @param string      $utcDatetime  'Y-m-d H:i:s' in UTC
+     * @param string|null $timezone     Target TZ; defaults to session TZ
+     * @return string     ISO 8601 with offset
+     */
+    public static function toDisplayIso(string $utcDatetime, ?string $timezone = null): string
+    {
+        $timezone = $timezone ?: self::getSessionTimezone();
+
+        try {
+            $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone($timezone));
+            return $dt->format('c'); // ISO 8601
+        } catch (\Exception $e) {
+            log_message('error', 'TimezoneService::toDisplayIso - Error: ' . $e->getMessage());
+            return $utcDatetime;
+        }
     }
 }

@@ -212,14 +212,14 @@ class Providers extends BaseApiController
             ->join('xs_customers c', 'c.id = a.customer_id', 'left')
             ->join('xs_services s', 's.id = a.service_id', 'left')
             ->where('a.provider_id', $id)
-            ->where('a.start_time >=', $startDate . ' 00:00:00')
-            ->where('a.start_time <=', $endDate . ' 23:59:59')
-            ->orderBy('a.start_time', 'ASC');
+            ->where('a.start_at >=', $startDate . ' 00:00:00')
+            ->where('a.start_at <=', $endDate . ' 23:59:59')
+            ->orderBy('a.start_at', 'ASC');
 
         // Apply optional filters
         if ($futureOnly) {
             $today = date('Y-m-d 00:00:00');
-            $builder->where('a.start_time >=', $today);
+            $builder->where('a.start_at >=', $today);
         }
 
         if ($status) {
@@ -250,8 +250,8 @@ class Providers extends BaseApiController
                 'serviceName' => $apt['service_name'] ?? 'Appointment',
                 'serviceDuration' => $apt['service_duration'] ? (int) $apt['service_duration'] : null,
                 'servicePrice' => $apt['service_price'] ? (float) $apt['service_price'] : null,
-                'start' => $apt['start_time'],
-                'end' => $apt['end_time'],
+                'start' => $apt['start_at'],
+                'end' => $apt['end_at'],
                 'status' => $apt['status'],
                 'notes' => $apt['notes'] ?? null,
                 'location' => $apt['location'] ?? null,

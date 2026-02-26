@@ -139,8 +139,8 @@ class AppointmentNotificationService
 
         $builder->select('xs_appointments.id');
         $builder->whereIn('xs_appointments.status', ['pending', 'confirmed']);
-        $builder->where('xs_appointments.start_time >', $now->format('Y-m-d H:i:s'));
-        $builder->where('xs_appointments.start_time <=', $windowEnd->format('Y-m-d H:i:s'));
+        $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
+        $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
         if ($hasReminderSent) {
             $builder->where('xs_appointments.reminder_sent', 0);
         }
@@ -155,13 +155,13 @@ class AppointmentNotificationService
             $appt = $this->getAppointmentContext($appointmentId);
             $stats['scanned']++;
 
-            if (!$appt || empty($appt['start_time'])) {
+            if (!$appt || empty($appt['start_at'])) {
                 $stats['skipped']++;
                 continue;
             }
 
             try {
-                $start = new \DateTimeImmutable((string) $appt['start_time']);
+                $start = new \DateTimeImmutable((string) $appt['start_at']);
             } catch (\Throwable $e) {
                 $stats['skipped']++;
                 continue;
@@ -270,7 +270,7 @@ class AppointmentNotificationService
 
         $providerName = (string) ($appt['provider_name'] ?? 'Provider');
         $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        $start = (string) ($appt['start_time'] ?? '');
+        $start = (string) ($appt['start_at'] ?? '');
 
         $subjectMap = [
             'appointment_confirmed' => 'Appointment Confirmed',

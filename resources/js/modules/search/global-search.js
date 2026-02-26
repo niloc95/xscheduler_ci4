@@ -144,7 +144,7 @@ function renderResults(container, data, query) {
         appointments.forEach(appt => {
             const customerName = appt.customer_name || 'Unknown customer';
             const serviceName = appt.service_name || 'Appointment';
-            const startTime = formatDateTime(appt.start_time);
+            const startTime = formatDateTime(appt.start_at || appt.start_time || appt.start);
             const hash = appt.hash || appt.id;
             const url = `${baseUrl}/appointments/edit/${hash}`;
 

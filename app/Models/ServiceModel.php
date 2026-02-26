@@ -184,9 +184,9 @@ class ServiceModel extends BaseModel
                 COUNT(a.id) as bookings,
                 COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) as revenue,
                 ROUND(
-                    ((COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) - 
-                      COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_time < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END)) /
-                     NULLIF(COUNT(CASE WHEN a.start_time >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_time < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END), 0)) * 100,
+                    ((COUNT(CASE WHEN a.start_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) - 
+                      COUNT(CASE WHEN a.start_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_at < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END)) /
+                     NULLIF(COUNT(CASE WHEN a.start_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND a.start_at < DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END), 0)) * 100,
                     1
                 ) as growth
             FROM xs_services s

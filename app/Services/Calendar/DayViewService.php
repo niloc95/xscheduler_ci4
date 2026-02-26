@@ -129,7 +129,7 @@ class DayViewService
 
     /**
      * Inject appointments into the appropriate time slots.
-     * An appointment goes into a slot when its start_time falls within that slot.
+     * An appointment goes into a slot when its start_at falls within that slot.
      *
      * Additionally computes topPx, heightPx, and leftPercent for multi-column
      * overlap layout — keys used directly by the day-view renderer.

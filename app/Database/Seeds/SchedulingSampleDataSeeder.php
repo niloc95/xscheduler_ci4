@@ -365,8 +365,8 @@ class SchedulingSampleDataSeeder extends Seeder
             $entries = [];
             foreach ($weeklyTemplate as $day => $config) {
                 $entries[$day] = [
-                    'start_time'  => $config['start'],
-                    'end_time'    => $config['end'],
+                    'start_at'  => $config['start'],
+                    'end_at'    => $config['end'],
                     'break_start' => $config['break_start'],
                     'break_end'   => $config['break_end'],
                     'is_active'   => $config['active'] ? 1 : 0,
@@ -389,8 +389,8 @@ class SchedulingSampleDataSeeder extends Seeder
                 $this->db->table('business_hours')->insert([
                     'provider_id' => $providerId,
                     'weekday'     => $weekday,
-                    'start_time'  => $config['start'],
-                    'end_time'    => $config['end'],
+                    'start_at'  => $config['start'],
+                    'end_at'    => $config['end'],
                     'breaks_json' => json_encode([
                         ['start' => $config['break_start'], 'end' => $config['break_end']],
                     ]),
@@ -408,13 +408,13 @@ class SchedulingSampleDataSeeder extends Seeder
             $start = $date . ' 00:00:00';
             $exists = $this->db->table('blocked_times')
                 ->where('provider_id', null)
-                ->where('start_time', $start)
+                ->where('start_at', $start)
                 ->countAllResults();
             if (!$exists) {
                 $this->db->table('blocked_times')->insert([
                     'provider_id' => null,
-                    'start_time'  => $start,
-                    'end_time'    => $date . ' 23:59:59',
+                    'start_at'  => $start,
+                    'end_at'    => $date . ' 23:59:59',
                     'reason'      => 'Public Holiday (SA): ' . $label,
                     'created_at'  => $now,
                 ]);
@@ -514,8 +514,8 @@ class SchedulingSampleDataSeeder extends Seeder
                         'provider_id'      => $providerId,
                         'customer_id'      => $customerId,
                         'service_id'       => $serviceId,
-                        'start_time'       => $startTime->format('Y-m-d H:i:s'),
-                        'end_time'         => $endTime->format('Y-m-d H:i:s'),
+                        'start_at'       => $startTime->format('Y-m-d H:i:s'),
+                        'end_at'         => $endTime->format('Y-m-d H:i:s'),
                         'status'           => $this->randomStatus($startTime),
                         'notes'            => 'Auto-generated sample appointment',
                         'hash'             => bin2hex(random_bytes(16)),

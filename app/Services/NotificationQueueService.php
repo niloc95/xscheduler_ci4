@@ -127,10 +127,10 @@ class NotificationQueueService
         $fields = $db->getFieldNames($model->table);
         $hasReminderSent = in_array('reminder_sent', $fields, true);
 
-        $builder->select('xs_appointments.id, xs_appointments.start_time');
+        $builder->select('xs_appointments.id, xs_appointments.start_at');
         $builder->whereIn('xs_appointments.status', ['pending', 'confirmed']);
-        $builder->where('xs_appointments.start_time >', $now->format('Y-m-d H:i:s'));
-        $builder->where('xs_appointments.start_time <=', $windowEnd->format('Y-m-d H:i:s'));
+        $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
+        $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
         if ($hasReminderSent) {
             $builder->where('xs_appointments.reminder_sent', 0);
         }
@@ -138,7 +138,7 @@ class NotificationQueueService
         $rows = $builder->get()->getResultArray();
         foreach ($rows as $row) {
             $appointmentId = (int) ($row['id'] ?? 0);
-            $startTime = (string) ($row['start_time'] ?? '');
+            $startTime = (string) ($row['start_at'] ?? '');
             if ($appointmentId <= 0 || $startTime === '') {
                 continue;
             }

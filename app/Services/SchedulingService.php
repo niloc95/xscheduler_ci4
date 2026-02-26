@@ -147,8 +147,8 @@ class SchedulingService
             'service_id' => $serviceId,
             'appointment_date' => $startDateTime->format('Y-m-d'),
             'appointment_time' => $startDateTime->format('H:i:s'),
-            'start_time' => $startLocal,  // Store in local timezone
-            'end_time' => $endLocal,      // Store in local timezone
+            'start_at' => $startLocal,  // TODO: convert to UTC via TimezoneService
+            'end_at' => $endLocal,      // TODO: convert to UTC via TimezoneService
             'status' => 'pending',
             'notes' => $payload['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),
