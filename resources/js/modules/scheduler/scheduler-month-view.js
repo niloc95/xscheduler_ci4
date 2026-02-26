@@ -34,7 +34,7 @@ export class MonthView {
     }
     
     render(container, data) {
-        const { currentDate, appointments, providers, config, settings } = data;
+        const { currentDate, appointments, providers, config, settings, calendarModel } = data;
         
         this.debugLog('🗓️ MonthView.render called');
         this.debugLog('   Current date:', currentDate.toISO());
@@ -59,6 +59,7 @@ export class MonthView {
         this.currentDate = currentDate;
         this.config = config;
         this.container = container;
+        this.calendarModel = calendarModel;
         
         // Business hours & slot config
         this.businessHours = {
@@ -806,6 +807,24 @@ export class MonthView {
     _renderDayCellAvailability(day, isCurrentMonth) {
         if (!isCurrentMonth) return '';
         
+        // If we have a server-side calendar model, use its pre-computed availability
+        if (this.calendarModel && this.calendarModel.weeks) {
+            const dateStr = day.toISODate();
+            for (const week of this.calendarModel.weeks) {
+                for (const cell of week) {
+                    if (cell.date === dateStr) {
+                        if (cell.hasAvailability) {
+                            // We know they have working hours. We could check if fully booked,
+                            // but for now just show open if they have hours.
+                            return '<div class="day-availability-bar day-availability-bar--open"></div>';
+                        }
+                        return '';
+                    }
+                }
+            }
+        }
+        
+        // Fallback to client-side computation
         const avail = computeDayAvailability({
             date: day,
             businessHours: this.businessHours,

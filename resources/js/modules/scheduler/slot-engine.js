@@ -70,47 +70,8 @@ function shortName(provider) {
  * @returns {Array}       slot objects with availableProviders / bookedProviders
  */
 export function generateSlots(opts) {
-    const {
-        date,
-        businessHours = { startTime: '08:00', endTime: '17:00' },
-        slotDuration = 30,
-        appointments = [],
-        providers = [],
-        blockedPeriods = [],
-        settings = null,
-        filterPast = true,
-    } = opts;
-
-    // Blocked day → no slots
-    if (isDateBlocked(date, blockedPeriods)) return [];
-
-    // Weekend → no slots (Luxon: 6=Sat, 7=Sun)
-    if (date.weekday === 6 || date.weekday === 7) return [];
-
-    if (!providers || providers.length === 0) return [];
-
-    // Build provider schedule map
-    const providerSchedules = new Map();
-    if (settings?.getProviderSchedule) {
-        providers.forEach(p => {
-            const schedule = settings.getProviderSchedule(p.id);
-            if (schedule) providerSchedules.set(String(p.id), schedule);
-        });
-    }
-
-    const now = DateTime.now();
-    const minDateTime = (filterPast && date.hasSame(now, 'day')) ? now.startOf('minute') : null;
-
-    return generateSlotsWithAvailability({
-        date,
-        businessHours,
-        slotDuration,
-        appointments,
-        providers,
-        providerSchedules,
-        minDateTime,
-        filterEmptyProviders: true,
-    });
+    console.warn('generateSlots is deprecated and should not be called in server mode.');
+    return [];
 }
 
 // ─── Lightweight Day Availability (for Month grid indicators) ─────────
@@ -122,38 +83,8 @@ export function generateSlots(opts) {
  * @returns {{ hasAppointments:boolean, hasOpenSlots:boolean, isFullyBooked:boolean, appointmentCount:number }}
  */
 export function computeDayAvailability(opts) {
-    const {
-        date,
-        businessHours = { startTime: '08:00', endTime: '17:00' },
-        slotDuration = 30,
-        appointments = [],
-        providers = [],
-        blockedPeriods = [],
-        settings = null,
-    } = opts;
-
-    const dayAppts = appointments.filter(a => a.startDateTime.hasSame(date, 'day'));
-    const hasAppointments = dayAppts.length > 0;
-
-    // Non-working day or blocked → no slots
-    if (isDateBlocked(date, blockedPeriods) || date.weekday === 6 || date.weekday === 7) {
-        return { hasAppointments, hasOpenSlots: false, isFullyBooked: false, appointmentCount: dayAppts.length };
-    }
-
-    if (!providers || providers.length === 0) {
-        return { hasAppointments, hasOpenSlots: false, isFullyBooked: false, appointmentCount: dayAppts.length };
-    }
-
-    // Generate slots (no past-time filter — we want daylight overview)
-    const slots = generateSlots({
-        date, businessHours, slotDuration, appointments, providers, blockedPeriods, settings,
-        filterPast: false,
-    });
-
-    const hasOpenSlots = slots.some(s => s.availableProviders.length > 0);
-    const isFullyBooked = slots.length > 0 && slots.every(s => s.availableProviders.length === 0);
-
-    return { hasAppointments, hasOpenSlots, isFullyBooked, appointmentCount: dayAppts.length };
+    console.warn('computeDayAvailability is deprecated and should not be called in server mode.');
+    return { hasAppointments: false, hasOpenSlots: false, isFullyBooked: false, appointmentCount: 0 };
 }
 
 // ─── Rendering Helpers ────────────────────────────────────────────────

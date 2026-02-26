@@ -50,6 +50,7 @@ namespace App\Services\Calendar;
 use App\Models\SettingModel;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
+use App\Services\AvailabilityService;
 
 class MonthViewService
 {
@@ -59,15 +60,18 @@ class MonthViewService
     private CalendarRangeService        $range;
     private AppointmentQueryService     $query;
     private AppointmentFormatterService $formatter;
+    private AvailabilityService         $availability;
 
     public function __construct(
         ?CalendarRangeService $range = null,
         ?AppointmentQueryService $query = null,
-        ?AppointmentFormatterService $formatter = null
+        ?AppointmentFormatterService $formatter = null,
+        ?AvailabilityService $availability = null
     ) {
-        $this->range     = $range     ?? new CalendarRangeService();
-        $this->query     = $query     ?? new AppointmentQueryService();
-        $this->formatter = $formatter ?? new AppointmentFormatterService();
+        $this->range        = $range        ?? new CalendarRangeService();
+        $this->query        = $query        ?? new AppointmentQueryService();
+        $this->formatter    = $formatter    ?? new AppointmentFormatterService();
+        $this->availability = $availability ?? new AvailabilityService();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -107,6 +111,8 @@ class MonthViewService
 
         // 4. Inject into grid cells
         $weeks = [];
+        $providerId = isset($filters['provider_id']) ? (int)$filters['provider_id'] : null;
+
         foreach ($grid['weeks'] as $week) {
             $row = [];
             foreach ($week as $cell) {
@@ -119,6 +125,7 @@ class MonthViewService
                 $cell['appointmentCount'] = $count;
                 $cell['hasMore']          = $hasMore;
                 $cell['moreCount']        = $hasMore ? ($count - $maxPerCell) : 0;
+                $cell['hasAvailability']  = $this->availability->hasWorkingHours($cell['date'], $providerId);
 
                 $row[] = $cell;
             }

@@ -108,7 +108,31 @@ class WeekViewService
         }
         $allFormatted = $this->formatter->formatManyForCalendar($allRows);
 
-        // 4. Build per-day structures with inline time grids
+        // 4. Group appointments by provider (for multi-column layout)
+        $providers = [];
+        $providerMap = [];
+        foreach ($allFormatted as $event) {
+            $pid = $event['providerId'] ?? 0;
+            if (!isset($providerMap[$pid])) {
+                $providerMap[$pid] = count($providers);
+                $providers[] = [
+                    'id' => $pid,
+                    'name' => $event['providerName'] ?? 'Unknown Provider',
+                    'appointments' => []
+                ];
+            }
+            $providers[$providerMap[$pid]]['appointments'][] = $event;
+        }
+
+        if (empty($providers)) {
+            $providers[] = [
+                'id' => 0,
+                'name' => 'All Providers',
+                'appointments' => []
+            ];
+        }
+
+        // 5. Build per-day structures with inline time grids
         $formattedByDate = [];
         foreach ($allFormatted as $event) {
             $d = substr($event['start'], 0, 10); // Y-m-d
@@ -120,17 +144,42 @@ class WeekViewService
             $d    = $day['date'];
             $dayEvents = $formattedByDate[$d] ?? [];
 
-            // Generate time grid and inject appointments
-            $slots = $this->range->generateDaySlots($d, $this->dayStart, $this->dayEnd, $this->resolution);
-            $slots['slots'] = $this->injectIntoSlots($slots['slots'], $dayEvents, $slots);
+            // Generate base time grid
+            $baseGrid = $this->range->generateDaySlots($d, $this->dayStart, $this->dayEnd, $this->resolution);
+            
+            // Inject appointments into matching time slots PER PROVIDER
+            $providerColumns = [];
+            foreach ($providers as $provider) {
+                $providerGrid = $baseGrid;
+                
+                // Filter events for this provider on this day
+                $providerDayEvents = array_filter($dayEvents, function($e) use ($provider) {
+                    $pid = $e['providerId'] ?? 0;
+                    return $pid == $provider['id'] || ($provider['id'] == 0 && empty($providers[1]));
+                });
+                
+                $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $providerDayEvents, $providerGrid);
+                
+                $providerColumns[] = [
+                    'provider' => [
+                        'id' => $provider['id'],
+                        'name' => $provider['name']
+                    ],
+                    'grid' => $providerGrid
+                ];
+            }
+
+            // Keep base grid for backward compatibility
+            $baseGrid['slots'] = $this->injectIntoSlots($baseGrid['slots'], $dayEvents, $baseGrid);
 
             $day['appointments'] = $dayEvents;
             $day['appointmentCount'] = count($dayEvents);
-            $day['dayGrid'] = $slots;
+            $day['dayGrid'] = $baseGrid;
+            $day['providerColumns'] = $providerColumns;
         }
         unset($day);
 
-        // 5. Week label  e.g. "Feb 23 – Mar 1, 2026"
+        // 6. Week label  e.g. "Feb 23 – Mar 1, 2026"
         $weekLabel = $this->buildWeekLabel($week['startDate'], $week['endDate']);
 
         return [

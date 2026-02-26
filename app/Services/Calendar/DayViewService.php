@@ -95,10 +95,49 @@ class DayViewService
         $rows      = $this->query->getForRange($date, $date, $filters);
         $formatted = $this->formatter->formatManyForCalendar($rows);
 
-        // 3. Inject appointments into matching time slots
-        $grid['slots'] = $this->injectIntoSlots($grid['slots'], $formatted, $grid);
+        // 3. Group appointments by provider
+        $providers = [];
+        $providerMap = []; // provider_id => index
+        
+        // First pass: identify unique providers
+        foreach ($formatted as $event) {
+            $pid = $event['providerId'] ?? 0;
+            if (!isset($providerMap[$pid])) {
+                $providerMap[$pid] = count($providers);
+                $providers[] = [
+                    'id' => $pid,
+                    'name' => $event['providerName'] ?? 'Unknown Provider',
+                    'appointments' => []
+                ];
+            }
+            $providers[$providerMap[$pid]]['appointments'][] = $event;
+        }
 
-        // 4. Build day metadata
+        // If no appointments, create a default empty provider column
+        if (empty($providers)) {
+            $providers[] = [
+                'id' => 0,
+                'name' => 'All Providers',
+                'appointments' => []
+            ];
+        }
+
+        // 4. Inject appointments into matching time slots PER PROVIDER
+        $providerColumns = [];
+        foreach ($providers as $provider) {
+            $providerGrid = $grid; // Clone base grid
+            $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $provider['appointments'], $providerGrid);
+            
+            $providerColumns[] = [
+                'provider' => [
+                    'id' => $provider['id'],
+                    'name' => $provider['name']
+                ],
+                'grid' => $providerGrid
+            ];
+        }
+
+        // 5. Build day metadata
         $dayInfo  = $this->range->normalizeDayOfWeek($date);
         $dateObj  = new \DateTimeImmutable($date);
         $today    = (new \DateTimeImmutable('today'))->format('Y-m-d');
@@ -117,7 +156,8 @@ class DayViewService
                 'startTime' => $this->dayStart,
                 'endTime'   => $this->dayEnd,
             ],
-            'grid'             => $grid,
+            'grid'             => $grid, // Keep base grid for backward compatibility
+            'providerColumns'  => $providerColumns, // New multi-column layout
             'appointments'     => $formatted,
             'totalAppointments'=> count($formatted),
         ];

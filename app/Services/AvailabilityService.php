@@ -62,6 +62,7 @@ use App\Models\ProviderScheduleModel;
 use App\Models\BlockedTimeModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
+use App\Services\ConflictService;
 use DateInterval;
 use DateTime;
 use DateTimeImmutable;
@@ -92,6 +93,7 @@ class AvailabilityService
     private ServiceModel $serviceModel;
     private SettingModel $settingModel;
     private LocalizationSettingsService $localizationService;
+    private ConflictService $conflictService;
     
     private array $cache = [];
 
@@ -105,6 +107,7 @@ class AvailabilityService
         $this->serviceModel = new ServiceModel();
         $this->settingModel = new SettingModel();
         $this->localizationService = new LocalizationSettingsService();
+        $this->conflictService = new ConflictService();
     }
 
     /**
@@ -298,7 +301,7 @@ class AvailabilityService
         $utcTz = new DateTimeZone('UTC');
         $startUtc = (clone $start)->setTimezone($utcTz)->format('Y-m-d H:i:s');
         $endUtc   = (clone $end)->setTimezone($utcTz)->format('Y-m-d H:i:s');
-        $conflicts = $this->getConflictingAppointments(
+        $conflicts = $this->conflictService->getConflictingAppointments(
             $providerId,
             $startUtc,
             $endUtc,
@@ -315,7 +318,7 @@ class AvailabilityService
         }
         
         // Check for blocked time periods
-        $blockedTimes = $this->getBlockedTimesForPeriod(
+        $blockedTimes = $this->conflictService->getBlockedTimesForPeriod(
             $providerId,
             $start->format('Y-m-d H:i:s'),
             $end->format('Y-m-d H:i:s')
@@ -365,6 +368,38 @@ class AvailabilityService
         }
         
         return false;
+    }
+
+    /**
+     * Check if a provider has working hours on a specific date.
+     * If no providerId is given, checks if ANY provider has working hours.
+     */
+    public function hasWorkingHours(string $date, ?int $providerId = null): bool
+    {
+        if ($providerId !== null) {
+            return $this->getProviderHoursForDate($providerId, $date) !== null;
+        }
+
+        // If no provider specified, check if any provider has hours
+        $dateTime = new DateTime($date);
+        $weekday = (int) $dateTime->format('w');
+        $dayOfWeek = strtolower($dateTime->format('l'));
+
+        // Check custom schedules first
+        $hasCustom = $this->providerScheduleModel
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_working', 1)
+            ->countAllResults() > 0;
+
+        if ($hasCustom) {
+            return true;
+        }
+
+        // Fallback to global business hours
+        return $this->businessHourModel
+            ->where('weekday', $weekday)
+            ->where('is_closed', 0)
+            ->countAllResults() > 0;
     }
 
     /**
@@ -644,78 +679,6 @@ class AvailabilityService
         // Use <= instead of < to prevent slots from starting exactly when busy period ends
         // This blocks appointments that would start at the exact moment another ends
         return $start1 <= $end2 && $end1 >= $start2;
-    }
-
-    /**
-     * Get conflicting appointments.
-     *
-     * IMPORTANT: $startTime and $endTime must be in UTC (matches DB storage).
-     */
-    private function getConflictingAppointments(
-        int $providerId,
-        string $startTime,
-        string $endTime,
-        ?int $excludeAppointmentId = null,
-        ?int $locationId = null
-    ): array {
-        $builder = $this->appointmentModel->builder();
-        
-        $builder->where('provider_id', $providerId)
-                ->where('status !=', 'cancelled')
-                ->groupStart()
-                    // New starts during existing
-                    ->groupStart()
-                        ->where('start_at <=', $startTime)
-                        ->where('end_at >', $startTime)
-                    ->groupEnd()
-                    // New ends during existing
-                    ->orGroupStart()
-                        ->where('start_at <', $endTime)
-                        ->where('end_at >=', $endTime)
-                    ->groupEnd()
-                    // New contains existing
-                    ->orGroupStart()
-                        ->where('start_at >=', $startTime)
-                        ->where('end_at <=', $endTime)
-                    ->groupEnd()
-                ->groupEnd();
-        
-        if ($excludeAppointmentId) {
-            $builder->where('id !=', $excludeAppointmentId);
-        }
-
-        if ($locationId !== null) {
-            $builder->where('location_id', $locationId);
-        }
-        
-        return $builder->get()->getResultArray();
-    }
-
-    /**
-     * Get blocked time periods that overlap with the given time range
-     */
-    private function getBlockedTimesForPeriod(
-        int $providerId,
-        string $startTime,
-        string $endTime
-    ): array {
-        return $this->blockedTimeModel
-            ->where('provider_id', $providerId)
-            ->groupStart()
-                ->groupStart()
-                    ->where('start_time <=', $startTime)
-                    ->where('end_time >', $startTime)
-                ->groupEnd()
-                ->orGroupStart()
-                    ->where('start_time <', $endTime)
-                    ->where('end_time >=', $endTime)
-                ->groupEnd()
-                ->orGroupStart()
-                    ->where('start_time >=', $startTime)
-                    ->where('end_time <=', $endTime)
-                ->groupEnd()
-            ->groupEnd()
-            ->findAll();
     }
 
     /**
