@@ -147,14 +147,14 @@ Historical documentation has been moved to [_archive/](./_archive/) including:
 
 ## 📊 Documentation Statistics
 
-- **Active Documents:** 64 comprehensive guides (15 archived)
+- **Active Documents:** 37 comprehensive guides
 - **Database Guides:** SQLite zero-config + MySQL options
-- **Last Major Update:** February 12, 2026 (Database documentation expansion)
+- **Last Major Update:** February 26, 2026 (Removed 27 outdated/superseded documents)
 - **Coverage Areas:** 10 major categories + database selection guides
 - **Code Examples:** 100+ with syntax highlighting
 - **Status:** ✅ Complete & Current
 
 ---
 
-**Last Updated:** February 12, 2026  
-**Documentation Status:** ✅ Complete with Database Selection & Zero-Config Guides
+**Last Updated:** February 26, 2026  
+**Documentation Status:** ✅ Current — archived/one-off docs removed
