@@ -103,12 +103,12 @@ class DayViewService
         
         // First pass: identify unique providers
         foreach ($formatted as $event) {
-            $pid = $event['providerId'] ?? 0;
+            $pid = $event['provider_id'] ?? 0;
             if (!isset($providerMap[$pid])) {
                 $providerMap[$pid] = count($providers);
                 $providers[] = [
                     'id' => $pid,
-                    'name' => $event['providerName'] ?? 'Unknown Provider',
+                    'name' => $event['provider_name'] ?? 'Unknown Provider',
                     'appointments' => []
                 ];
             }

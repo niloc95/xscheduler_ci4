@@ -88,5 +88,5 @@ class Autoload extends AutoloadConfig
      *
      * @var list<string>
      */
-    public $helpers = ['vite', 'setup', 'settings', 'booking'];
+    public $helpers = ['vite', 'setup', 'settings', 'booking', 'permissions', 'app'];
 }
