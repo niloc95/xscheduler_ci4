@@ -350,7 +350,7 @@ class Analytics extends BaseController
                 JOIN xs_users u ON a.provider_id = u.id
                 LEFT JOIN xs_services s ON a.service_id = s.id
                 WHERE a.status = 'completed'
-                AND a.start_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                AND a.start_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)
                 GROUP BY u.id, u.name
                 ORDER BY revenue DESC
                 LIMIT 10

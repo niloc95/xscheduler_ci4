@@ -172,6 +172,29 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Get a DateTime in the business-local timezone.
+     * Since PHP default TZ is UTC, we must explicitly use business TZ for
+     * calendar-aware concepts like "today", "this week", "this month".
+     */
+    private function localNow(): \DateTime
+    {
+        return new \DateTime('now', new \DateTimeZone(\App\Services\TimezoneService::businessTimezone()));
+    }
+
+    /**
+     * Convert a business-local datetime string to UTC for querying start_at/end_at.
+     * @param string $localDatetime  e.g. '2025-01-15 00:00:00' in business TZ
+     * @return string  UTC datetime string  e.g. '2025-01-14 22:00:00'
+     */
+    private function toUtc(string $localDatetime): string
+    {
+        $localTz = new \DateTimeZone(\App\Services\TimezoneService::businessTimezone());
+        return (new \DateTime($localDatetime, $localTz))
+            ->setTimezone(new \DateTimeZone('UTC'))
+            ->format('Y-m-d H:i:s');
+    }
+
+    /**
      * Upcoming appointments for provider
      */
     public function upcomingForProvider(int $providerId, int $days = 30): array
@@ -230,13 +253,15 @@ class AppointmentModel extends BaseModel
     public function getStats(array $context = [], ?string $statusFilter = null): array
     {
         $statusFilter = $this->normalizeStatusFilter($statusFilter);
-        $now        = date('Y-m-d H:i:s');
-        $todayStart = date('Y-m-d 00:00:00');
-        $todayEnd   = date('Y-m-d 23:59:59');
-        $weekStart  = date('Y-m-d 00:00:00', strtotime('monday this week'));
-        $weekEnd    = date('Y-m-d 23:59:59', strtotime('sunday this week'));
-        $monthStart = date('Y-m-01 00:00:00');
-        $monthEnd   = date('Y-m-t 23:59:59');
+        $now        = date('Y-m-d H:i:s'); // UTC now — correct for absolute comparisons
+        $local      = $this->localNow();
+        $todayLocal = $local->format('Y-m-d');
+        $todayStart = $this->toUtc($todayLocal . ' 00:00:00');
+        $todayEnd   = $this->toUtc($todayLocal . ' 23:59:59');
+        $weekStart  = $this->toUtc((clone $local)->modify('monday this week')->format('Y-m-d') . ' 00:00:00');
+        $weekEnd    = $this->toUtc((clone $local)->modify('sunday this week')->format('Y-m-d') . ' 23:59:59');
+        $monthStart = $this->toUtc($local->format('Y-m-01') . ' 00:00:00');
+        $monthEnd   = $this->toUtc($local->format('Y-m-t') . ' 23:59:59');
 
         return [
             'total'     => (int) $this->applyAllScopes($this->builder(), $context, $statusFilter)->countAllResults(),
@@ -267,8 +292,8 @@ class AppointmentModel extends BaseModel
      */
     public function getStatsForDateRange(string $startDate, string $endDate, ?int $providerId = null): array
     {
-        $startDateTime = $startDate . ' 00:00:00';
-        $endDateTime = $endDate . ' 23:59:59';
+        $startDateTime = $this->toUtc($startDate . ' 00:00:00');
+        $endDateTime = $this->toUtc($endDate . ' 23:59:59');
         $table = $this->table;
         
         // Build base query with date range
@@ -316,8 +341,8 @@ class AppointmentModel extends BaseModel
      */
     public function getProvidersWithAppointments(string $startDate, string $endDate): array
     {
-        $startDateTime = $startDate . ' 00:00:00';
-        $endDateTime = $endDate . ' 23:59:59';
+        $startDateTime = $this->toUtc($startDate . ' 00:00:00');
+        $endDateTime = $this->toUtc($endDate . ' 23:59:59');
         
         $table = $this->table;
         $result = $this->builder()
@@ -521,16 +546,18 @@ class AppointmentModel extends BaseModel
      */
     public function getTrend(): array
     {
-        // Current month appointments
-        $currentMonthStart = date('Y-m-01 00:00:00');
-        $currentMonthEnd = date('Y-m-t 23:59:59');
+        // Current month appointments (local TZ boundaries → UTC)
+        $local = $this->localNow();
+        $currentMonthStart = $this->toUtc($local->format('Y-m-01') . ' 00:00:00');
+        $currentMonthEnd = $this->toUtc($local->format('Y-m-t') . ' 23:59:59');
         $currentCount = $this->where('start_at >=', $currentMonthStart)
                              ->where('start_at <=', $currentMonthEnd)
                              ->countAllResults(false);
 
-        // Previous month appointments
-        $prevMonthStart = date('Y-m-01 00:00:00', strtotime('first day of last month'));
-        $prevMonthEnd = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+        // Previous month appointments (local TZ boundaries → UTC)
+        $prevLocal = (clone $local)->modify('first day of last month');
+        $prevMonthStart = $this->toUtc($prevLocal->format('Y-m-01') . ' 00:00:00');
+        $prevMonthEnd = $this->toUtc($prevLocal->format('Y-m-t') . ' 23:59:59');
         $prevCount = $this->where('start_at >=', $prevMonthStart)
                           ->where('start_at <=', $prevMonthEnd)
                           ->countAllResults(false);
@@ -543,16 +570,19 @@ class AppointmentModel extends BaseModel
      */
     public function getPendingTrend(): array
     {
-        // Today's pending
-        $todayStart = date('Y-m-d 00:00:00');
-        $todayEnd = date('Y-m-d 23:59:59');
+        // Today's pending (local TZ boundaries → UTC)
+        $local = $this->localNow();
+        $todayLocal = $local->format('Y-m-d');
+        $todayStart = $this->toUtc($todayLocal . ' 00:00:00');
+        $todayEnd = $this->toUtc($todayLocal . ' 23:59:59');
         $todayCount = $this->where('start_at >=', $todayStart)
                            ->where('start_at <=', $todayEnd)
                            ->countAllResults(false);
 
-        // Yesterday's count (same time comparison)
-        $yesterdayStart = date('Y-m-d 00:00:00', strtotime('-1 day'));
-        $yesterdayEnd = date('Y-m-d 23:59:59', strtotime('-1 day'));
+        // Yesterday's count (local TZ boundaries → UTC)
+        $yesterday = (clone $local)->modify('-1 day')->format('Y-m-d');
+        $yesterdayStart = $this->toUtc($yesterday . ' 00:00:00');
+        $yesterdayEnd = $this->toUtc($yesterday . ' 23:59:59');
         $yesterdayCount = $this->where('start_at >=', $yesterdayStart)
                                ->where('start_at <=', $yesterdayEnd)
                                ->countAllResults(false);
@@ -762,15 +792,16 @@ class AppointmentModel extends BaseModel
         // DEPRECATED: This uses placeholder pricing ($50 per appointment)
         // Use getRealRevenue() for actual service prices
         $completed = $this->where('status', 'completed');
+        $local = $this->localNow();
         if ($period === 'month') {
-            $completed->where('start_at >=', date('Y-m-01 00:00:00'))
-                      ->where('start_at <=', date('Y-m-t 23:59:59'));
+            $completed->where('start_at >=', $this->toUtc($local->format('Y-m-01') . ' 00:00:00'))
+                      ->where('start_at <=', $this->toUtc($local->format('Y-m-t') . ' 23:59:59'));
         } elseif ($period === 'week') {
-            $completed->where('start_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')))
-                      ->where('start_at <=', date('Y-m-d 23:59:59', strtotime('sunday this week')));
+            $completed->where('start_at >=', $this->toUtc((clone $local)->modify('monday this week')->format('Y-m-d') . ' 00:00:00'))
+                      ->where('start_at <=', $this->toUtc((clone $local)->modify('sunday this week')->format('Y-m-d') . ' 23:59:59'));
         } elseif ($period === 'today') {
-            $completed->where('start_at >=', date('Y-m-d 00:00:00'))
-                      ->where('start_at <=', date('Y-m-d 23:59:59'));
+            $completed->where('start_at >=', $this->toUtc($local->format('Y-m-d') . ' 00:00:00'))
+                      ->where('start_at <=', $this->toUtc($local->format('Y-m-d') . ' 23:59:59'));
         }
         $count = $completed->countAllResults();
         return $count * 50; // DEPRECATED: placeholder average revenue
@@ -788,15 +819,17 @@ class AppointmentModel extends BaseModel
         $db = \Config\Database::connect();
         $tableName = $this->table;
         
+        $local = $this->localNow();
         $periodCondition = '';
         if ($period === 'month') {
-            $periodCondition = "AND a.start_at >= '" . date('Y-m-01 00:00:00') . "' AND a.start_at <= '" . date('Y-m-t 23:59:59') . "'";
+            $periodCondition = "AND a.start_at >= '" . $this->toUtc($local->format('Y-m-01') . ' 00:00:00') . "' AND a.start_at <= '" . $this->toUtc($local->format('Y-m-t') . ' 23:59:59') . "'";
         } elseif ($period === 'week') {
-            $periodCondition = "AND a.start_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "' AND a.start_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday this week')) . "'";
+            $periodCondition = "AND a.start_at >= '" . $this->toUtc((clone $local)->modify('monday this week')->format('Y-m-d') . ' 00:00:00') . "' AND a.start_at <= '" . $this->toUtc((clone $local)->modify('sunday this week')->format('Y-m-d') . ' 23:59:59') . "'";
         } elseif ($period === 'today') {
-            $periodCondition = "AND a.start_at >= '" . date('Y-m-d 00:00:00') . "' AND a.start_at <= '" . date('Y-m-d 23:59:59') . "'";
+            $periodCondition = "AND a.start_at >= '" . $this->toUtc($local->format('Y-m-d') . ' 00:00:00') . "' AND a.start_at <= '" . $this->toUtc($local->format('Y-m-d') . ' 23:59:59') . "'";
         } elseif ($period === 'last_month') {
-            $periodCondition = "AND a.start_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND a.start_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'";
+            $prevLocal = (clone $local)->modify('first day of last month');
+            $periodCondition = "AND a.start_at >= '" . $this->toUtc($prevLocal->format('Y-m-01') . ' 00:00:00') . "' AND a.start_at <= '" . $this->toUtc($prevLocal->format('Y-m-t') . ' 23:59:59') . "'";
         }
         
         $query = $db->query("
@@ -819,10 +852,12 @@ class AppointmentModel extends BaseModel
         $tableName = $this->table;
         $data = [];
         
+        $local = $this->localNow();
         for ($i = $days - 1; $i >= 0; $i--) {
-            $date = date('Y-m-d', strtotime("-{$i} days"));
-            $dayStart = $date . ' 00:00:00';
-            $dayEnd = $date . ' 23:59:59';
+            $dayLocal = (clone $local)->modify("-{$i} days");
+            $date = $dayLocal->format('Y-m-d');
+            $dayStart = $this->toUtc($date . ' 00:00:00');
+            $dayEnd = $this->toUtc($date . ' 23:59:59');
             
             $query = $db->query("
                 SELECT COALESCE(SUM(s.price), 0) as revenue
@@ -852,10 +887,12 @@ class AppointmentModel extends BaseModel
         $tableName = $this->table;
         $data = [];
         
+        $local = $this->localNow();
         for ($i = $months - 1; $i >= 0; $i--) {
-            $monthStart = date('Y-m-01 00:00:00', strtotime("-{$i} months"));
-            $monthEnd = date('Y-m-t 23:59:59', strtotime("-{$i} months"));
-            $monthLabel = date('M', strtotime("-{$i} months"));
+            $monthLocal = (clone $local)->modify("-{$i} months");
+            $monthStart = $this->toUtc($monthLocal->format('Y-m-01') . ' 00:00:00');
+            $monthEnd = $this->toUtc($monthLocal->format('Y-m-t') . ' 23:59:59');
+            $monthLabel = $monthLocal->format('M');
             
             $query = $db->query("
                 SELECT COALESCE(SUM(s.price), 0) as revenue
@@ -918,10 +955,12 @@ class AppointmentModel extends BaseModel
         $db = \Config\Database::connect();
         $tableName = $this->table;
         
+        $localTz = \App\Services\TimezoneService::businessTimezone();
+        $offset = (new \DateTime('now', new \DateTimeZone($localTz)))->format('P'); // e.g. '+02:00'
         $query = $db->query("
             SELECT 
-                DATE_FORMAT(start_at, '%l:00 %p') as time_slot,
-                HOUR(start_at) as hour,
+                DATE_FORMAT(CONVERT_TZ(start_at, '+00:00', '{$offset}'), '%l:00 %p') as time_slot,
+                HOUR(CONVERT_TZ(start_at, '+00:00', '{$offset}')) as hour,
                 COUNT(*) as count
             FROM {$tableName}
             GROUP BY hour, time_slot
@@ -1025,33 +1064,39 @@ class AppointmentModel extends BaseModel
         switch ($period) {
             case 'day':
                 // Today: Show hours from 6am to 9pm (business hours focus)
+                $local = $this->localNow();
+                $todayLocal = $local->format('Y-m-d');
                 for ($hour = 6; $hour <= 21; $hour++) {
-                    $hourStart = date('Y-m-d') . ' ' . sprintf('%02d:00:00', $hour);
-                    $hourEnd = date('Y-m-d') . ' ' . sprintf('%02d:59:59', $hour);
+                    $hourStart = $this->toUtc($todayLocal . ' ' . sprintf('%02d:00:00', $hour));
+                    $hourEnd = $this->toUtc($todayLocal . ' ' . sprintf('%02d:59:59', $hour));
                     
                     $count = $this->where('start_at >=', $hourStart)
                                   ->where('start_at <=', $hourEnd)
                                   ->countAllResults(false);
                     
-                    $labels[] = date('ga', strtotime($hourStart)); // e.g., "9am"
+                    $labels[] = sprintf('%d%s', $hour > 12 ? $hour - 12 : ($hour ?: 12), $hour >= 12 ? 'pm' : 'am');
                     $data[] = $count;
                 }
                 break;
                 
             case 'week':
                 // Current week: Monday to Sunday
-                $monday = date('Y-m-d', strtotime('monday this week'));
+                $local = $this->localNow();
+                $mondayLocal = (clone $local)->modify('monday this week');
+                $todayLocal = $local->format('Y-m-d');
                 for ($i = 0; $i < 7; $i++) {
-                    $dayStart = date('Y-m-d 00:00:00', strtotime("$monday +{$i} days"));
-                    $dayEnd = date('Y-m-d 23:59:59', strtotime("$monday +{$i} days"));
+                    $dayLocal = (clone $mondayLocal)->modify("+{$i} days");
+                    $dayDate = $dayLocal->format('Y-m-d');
+                    $dayStart = $this->toUtc($dayDate . ' 00:00:00');
+                    $dayEnd = $this->toUtc($dayDate . ' 23:59:59');
                     
                     $count = $this->where('start_at >=', $dayStart)
                                   ->where('start_at <=', $dayEnd)
                                   ->countAllResults(false);
                     
-                    $dayLabel = date('D', strtotime("$monday +{$i} days"));
+                    $dayLabel = $dayLocal->format('D');
                     // Mark today
-                    if (date('Y-m-d', strtotime("$monday +{$i} days")) === date('Y-m-d')) {
+                    if ($dayDate === $todayLocal) {
                         $dayLabel .= '*';
                     }
                     $labels[] = $dayLabel;
@@ -1061,25 +1106,20 @@ class AppointmentModel extends BaseModel
                 
             case 'year':
                 // 12 months: 6 past + current + 5 future
+                $local = $this->localNow();
+                $currentYm = $local->format('Y-m');
                 for ($i = -6; $i <= 5; $i++) {
-                    if ($i < 0) {
-                        $monthStart = date('Y-m-01 00:00:00', strtotime("{$i} months"));
-                        $monthEnd = date('Y-m-t 23:59:59', strtotime("{$i} months"));
-                    } elseif ($i == 0) {
-                        $monthStart = date('Y-m-01 00:00:00');
-                        $monthEnd = date('Y-m-t 23:59:59');
-                    } else {
-                        $monthStart = date('Y-m-01 00:00:00', strtotime("+{$i} months"));
-                        $monthEnd = date('Y-m-t 23:59:59', strtotime("+{$i} months"));
-                    }
+                    $monthLocal = (clone $local)->modify("{$i} months");
+                    $monthStart = $this->toUtc($monthLocal->format('Y-m-01') . ' 00:00:00');
+                    $monthEnd = $this->toUtc($monthLocal->format('Y-m-t') . ' 23:59:59');
                     
                     $count = $this->where('start_at >=', $monthStart)
                                   ->where('start_at <=', $monthEnd)
                                   ->countAllResults(false);
                     
-                    $monthLabel = date('M', strtotime($monthStart));
+                    $monthLabel = $monthLocal->format('M');
                     // Mark current month
-                    if (date('Y-m', strtotime($monthStart)) === date('Y-m')) {
+                    if ($monthLocal->format('Y-m') === $currentYm) {
                         $monthLabel .= '*';
                     }
                     $labels[] = $monthLabel;
@@ -1090,12 +1130,13 @@ class AppointmentModel extends BaseModel
             case 'month':
             default:
                 // 4 weeks: 2 past + current + 1 future
-                $today = strtotime('today');
-                $startOfCurrentWeek = strtotime('monday this week');
+                $local = $this->localNow();
                 
                 for ($i = -2; $i <= 1; $i++) {
-                    $weekStart = date('Y-m-d 00:00:00', strtotime("monday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
-                    $weekEnd = date('Y-m-d 23:59:59', strtotime("sunday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"))));
+                    $mondayExpr = "monday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"));
+                    $sundayExpr = "sunday " . ($i < 0 ? "{$i} weeks" : ($i == 0 ? "this week" : "+{$i} weeks"));
+                    $weekStart = $this->toUtc((clone $local)->modify($mondayExpr)->format('Y-m-d') . ' 00:00:00');
+                    $weekEnd = $this->toUtc((clone $local)->modify($sundayExpr)->format('Y-m-d') . ' 23:59:59');
                     
                     $count = $this->where('start_at >=', $weekStart)
                                   ->where('start_at <=', $weekEnd)
@@ -1125,23 +1166,24 @@ class AppointmentModel extends BaseModel
         $tableName = $this->table;
         
         // Calculate date range based on period (rolling window centered on today)
+        $local = $this->localNow();
         switch ($period) {
             case 'day':
-                $startDate = date('Y-m-d 00:00:00');
-                $endDate = date('Y-m-d 23:59:59');
+                $startDate = $this->toUtc($local->format('Y-m-d') . ' 00:00:00');
+                $endDate = $this->toUtc($local->format('Y-m-d') . ' 23:59:59');
                 break;
             case 'week':
-                $startDate = date('Y-m-d 00:00:00', strtotime('monday this week'));
-                $endDate = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+                $startDate = $this->toUtc((clone $local)->modify('monday this week')->format('Y-m-d') . ' 00:00:00');
+                $endDate = $this->toUtc((clone $local)->modify('sunday this week')->format('Y-m-d') . ' 23:59:59');
                 break;
             case 'year':
-                $startDate = date('Y-m-d 00:00:00', strtotime('-6 months'));
-                $endDate = date('Y-m-d 23:59:59', strtotime('+5 months'));
+                $startDate = $this->toUtc((clone $local)->modify('-6 months')->format('Y-m-d') . ' 00:00:00');
+                $endDate = $this->toUtc((clone $local)->modify('+5 months')->format('Y-m-d') . ' 23:59:59');
                 break;
             case 'month':
             default:
-                $startDate = date('Y-m-d 00:00:00', strtotime('-2 weeks'));
-                $endDate = date('Y-m-d 23:59:59', strtotime('+1 week'));
+                $startDate = $this->toUtc((clone $local)->modify('-2 weeks')->format('Y-m-d') . ' 00:00:00');
+                $endDate = $this->toUtc((clone $local)->modify('+1 week')->format('Y-m-d') . ' 23:59:59');
                 break;
         }
         
@@ -1201,10 +1243,12 @@ class AppointmentModel extends BaseModel
         $labels = [];
         $data = [];
         
+        $local = $this->localNow();
         for ($i = $months - 1; $i >= 0; $i--) {
-            $monthStart = date('Y-m-01 00:00:00', strtotime("-{$i} months"));
-            $monthEnd = date('Y-m-t 23:59:59', strtotime("-{$i} months"));
-            $monthLabel = date('M', strtotime("-{$i} months"));
+            $monthLocal = (clone $local)->modify("-{$i} months");
+            $monthStart = $this->toUtc($monthLocal->format('Y-m-01') . ' 00:00:00');
+            $monthEnd = $this->toUtc($monthLocal->format('Y-m-t') . ' 23:59:59');
+            $monthLabel = $monthLocal->format('M');
             
             $count = $this->where('start_at >=', $monthStart)
                           ->where('start_at <=', $monthEnd)

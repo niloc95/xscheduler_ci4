@@ -57,6 +57,7 @@ namespace App\Controllers;
 
 use App\Models\CustomerModel;
 use App\Models\AppointmentModel;
+use App\Services\TimezoneService;
 
 class Search extends BaseController
 {
@@ -116,6 +117,17 @@ class Search extends BaseController
                     ->limit(10);
                 
                 $appointments = $appointmentsQuery->findAll();
+
+                // Convert UTC datetimes to local ISO for correct JS parsing
+                foreach ($appointments as &$appt) {
+                    if (!empty($appt['start_at'])) {
+                        $appt['start_at'] = TimezoneService::toDisplayIso($appt['start_at']);
+                    }
+                    if (!empty($appt['end_at'])) {
+                        $appt['end_at'] = TimezoneService::toDisplayIso($appt['end_at']);
+                    }
+                }
+                unset($appt);
             }
 
             // Return JSON response

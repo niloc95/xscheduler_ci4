@@ -57,6 +57,7 @@
 namespace App\Controllers\Api\V1;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
+use App\Services\TimezoneService;
 
 class Providers extends BaseApiController
 {
@@ -211,15 +212,25 @@ class Providers extends BaseApiController
                       s.price as service_price')
             ->join('xs_customers c', 'c.id = a.customer_id', 'left')
             ->join('xs_services s', 's.id = a.service_id', 'left')
-            ->where('a.provider_id', $id)
-            ->where('a.start_at >=', $startDate . ' 00:00:00')
-            ->where('a.start_at <=', $endDate . ' 23:59:59')
+            ->where('a.provider_id', $id);
+
+        // Convert local date boundaries to UTC for querying UTC-stored columns
+        $localTz = TimezoneService::businessTimezone();
+        $utcTz   = new \DateTimeZone('UTC');
+        $startUtc = (new \DateTime($startDate . ' 00:00:00', new \DateTimeZone($localTz)))
+            ->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endUtc   = (new \DateTime($endDate . ' 23:59:59', new \DateTimeZone($localTz)))
+            ->setTimezone($utcTz)->format('Y-m-d H:i:s');
+
+        $builder->where('a.start_at >=', $startUtc)
+            ->where('a.start_at <=', $endUtc)
             ->orderBy('a.start_at', 'ASC');
 
         // Apply optional filters
         if ($futureOnly) {
-            $today = date('Y-m-d 00:00:00');
-            $builder->where('a.start_at >=', $today);
+            $todayUtc = (new \DateTime('today', new \DateTimeZone($localTz)))
+                ->setTimezone($utcTz)->format('Y-m-d H:i:s');
+            $builder->where('a.start_at >=', $todayUtc);
         }
 
         if ($status) {
@@ -250,8 +261,8 @@ class Providers extends BaseApiController
                 'serviceName' => $apt['service_name'] ?? 'Appointment',
                 'serviceDuration' => $apt['service_duration'] ? (int) $apt['service_duration'] : null,
                 'servicePrice' => $apt['service_price'] ? (float) $apt['service_price'] : null,
-                'start' => $apt['start_at'],
-                'end' => $apt['end_at'],
+                'start' => TimezoneService::toDisplayIso($apt['start_at']),
+                'end'   => TimezoneService::toDisplayIso($apt['end_at']),
                 'status' => $apt['status'],
                 'notes' => $apt['notes'] ?? null,
                 'location' => $apt['location'] ?? null,

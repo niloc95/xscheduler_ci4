@@ -136,8 +136,12 @@ class SchedulingService
             throw new \RuntimeException('Time slot no longer available. ' . $reason);
         }
 
-        // Create appointment
-        // NOTE: Database stores times in LOCAL timezone (not UTC)
+        // Convert to UTC for DB storage
+        $utcTz = new \DateTimeZone('UTC');
+        $startUtc = (clone $startDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endUtc   = (clone $endDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+
+        // Create appointment — DB stores times in UTC
         $apptModel = new AppointmentModel();
         $id = $apptModel->insert([
             'customer_id' => $customerId,
@@ -147,8 +151,8 @@ class SchedulingService
             'service_id' => $serviceId,
             'appointment_date' => $startDateTime->format('Y-m-d'),
             'appointment_time' => $startDateTime->format('H:i:s'),
-            'start_at' => $startLocal,  // TODO: convert to UTC via TimezoneService
-            'end_at' => $endLocal,      // TODO: convert to UTC via TimezoneService
+            'start_at' => $startUtc,
+            'end_at' => $endUtc,
             'status' => 'pending',
             'notes' => $payload['notes'] ?? null,
             'created_at' => date('Y-m-d H:i:s'),

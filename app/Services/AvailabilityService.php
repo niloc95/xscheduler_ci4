@@ -294,11 +294,14 @@ class AvailabilityService
             }
         }
         
-        // Check for appointment conflicts
+        // Check for appointment conflicts (DB stores UTC — convert)
+        $utcTz = new DateTimeZone('UTC');
+        $startUtc = (clone $start)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endUtc   = (clone $end)->setTimezone($utcTz)->format('Y-m-d H:i:s');
         $conflicts = $this->getConflictingAppointments(
             $providerId,
-            $start->format('Y-m-d H:i:s'),
-            $end->format('Y-m-d H:i:s'),
+            $startUtc,
+            $endUtc,
             $excludeAppointmentId,
             $locationId
         );
@@ -467,24 +470,29 @@ class AvailabilityService
 
     /**
      * Get all busy periods for a provider on a specific date
-     * Returns array of ['start' => DateTime, 'end' => DateTime]
+     * Returns array of ['start' => DateTime (local TZ), 'end' => DateTime (local TZ)]
      */
     private function getBusyPeriods(int $providerId, string $date, string $timezone, int $bufferMinutes = 0, ?int $excludeAppointmentId = null, ?int $locationId = null): array
     {
         $busy = [];
         $tz = new DateTimeZone($timezone);
+        $utcTz = new DateTimeZone('UTC');
         
-        // Get appointments for this date (excluding cancelled)
-        // NOTE: Database stores times in LOCAL timezone (not UTC despite what code comments say)
-        // Query using local date boundaries
-        $startOfDay = $date . ' 00:00:00';
-        $endOfDay = $date . ' 23:59:59';
+        // Appointments are stored in UTC — convert local day boundaries to UTC for query
+        $localStartOfDay = new DateTime($date . ' 00:00:00', $tz);
+        $localEndOfDay   = new DateTime($date . ' 23:59:59', $tz);
+        $startOfDayUtc = (clone $localStartOfDay)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endOfDayUtc   = (clone $localEndOfDay)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        
+        // Also keep local boundaries for blocked_times (still stored in local TZ)
+        $startOfDayLocal = $date . ' 00:00:00';
+        $endOfDayLocal   = $date . ' 23:59:59';
         
         $appointmentsQuery = $this->appointmentModel
             ->where('provider_id', $providerId)
             ->where('status !=', 'cancelled')
-            ->where('start_at >=', $startOfDay)
-            ->where('start_at <=', $endOfDay)
+            ->where('start_at >=', $startOfDayUtc)
+            ->where('start_at <=', $endOfDayUtc)
             ->when($excludeAppointmentId !== null, function($builder) use ($excludeAppointmentId) {
                 $builder->where('id !=', $excludeAppointmentId);
             });
@@ -496,9 +504,9 @@ class AvailabilityService
         $appointments = $appointmentsQuery->findAll();
         
         foreach ($appointments as $apt) {
-            // Database stores times in local timezone, so create DateTime in local timezone
-            $start = new DateTime($apt['start_at'], $tz);
-            $end = new DateTime($apt['end_at'], $tz);
+            // DB stores UTC — parse as UTC, then convert to local for busy-period comparison
+            $start = (new DateTime($apt['start_at'], $utcTz))->setTimezone($tz);
+            $end   = (new DateTime($apt['end_at'], $utcTz))->setTimezone($tz);
             
             // Add buffer time after appointment ends to prevent back-to-back bookings
             if ($bufferMinutes > 0) {
@@ -512,16 +520,15 @@ class AvailabilityService
             ];
         }
         
-        // Get blocked times for this date
+        // Blocked times are still stored in local timezone
         $blockedTimes = $this->blockedTimeModel
             ->where('provider_id', $providerId)
-            // Blocked times are stored in local timezone, compare against local boundaries
-            ->where('start_time <=', $endOfDay)
-            ->where('end_time >=', $startOfDay)
+            ->where('start_time <=', $endOfDayLocal)
+            ->where('end_time >=', $startOfDayLocal)
             ->findAll();
         
         foreach ($blockedTimes as $block) {
-            // Database stores times in local timezone
+            // Blocked times stored in local timezone
             $blockStart = new DateTime($block['start_time'], $tz);
             $blockEnd = new DateTime($block['end_time'], $tz);
             
@@ -640,7 +647,9 @@ class AvailabilityService
     }
 
     /**
-     * Get conflicting appointments
+     * Get conflicting appointments.
+     *
+     * IMPORTANT: $startTime and $endTime must be in UTC (matches DB storage).
      */
     private function getConflictingAppointments(
         int $providerId,

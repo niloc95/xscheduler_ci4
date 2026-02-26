@@ -426,13 +426,19 @@ class CustomerAppointmentService
             $builder->where('xs_appointments.service_id', (int) $filters['service_id']);
         }
 
-        // Date range filters
+        // Date range filters — user-supplied dates are local; convert to UTC for DB query
         if (!empty($filters['date_from'])) {
-            $builder->where('xs_appointments.start_at >=', $filters['date_from'] . ' 00:00:00');
+            $localTz = (new LocalizationSettingsService())->getTimezone();
+            $fromUtc = (new \DateTime($filters['date_from'] . ' 00:00:00', new \DateTimeZone($localTz)))
+                ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            $builder->where('xs_appointments.start_at >=', $fromUtc);
         }
 
         if (!empty($filters['date_to'])) {
-            $builder->where('xs_appointments.start_at <=', $filters['date_to'] . ' 23:59:59');
+            $localTz = $localTz ?? (new LocalizationSettingsService())->getTimezone();
+            $toUtc = (new \DateTime($filters['date_to'] . ' 23:59:59', new \DateTimeZone($localTz)))
+                ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            $builder->where('xs_appointments.start_at <=', $toUtc);
         }
 
         // Customer ID filter (for admin search)
@@ -446,24 +452,28 @@ class CustomerAppointmentService
      */
     protected function enrichAppointment(array $appointment): array
     {
-        $now = time();
-        $startTime = strtotime($appointment['start_at'] ?? '');
-        $endTime = strtotime($appointment['end_at'] ?? '');
+        $nowUtc = time();
+        $startTimeUtc = strtotime($appointment['start_at'] ?? '');
+        $endTimeUtc = strtotime($appointment['end_at'] ?? '');
 
-        // Compute duration if not set
-        if (empty($appointment['duration_min']) && $startTime && $endTime) {
-            $appointment['duration_min'] = (int) (($endTime - $startTime) / 60);
+        // Compute duration if not set (UTC timestamps — difference is TZ-agnostic)
+        if (empty($appointment['duration_min']) && $startTimeUtc && $endTimeUtc) {
+            $appointment['duration_min'] = (int) (($endTimeUtc - $startTimeUtc) / 60);
         }
 
-        // Add human-readable date/time using app localization settings
-        if ($startTime) {
+        // Add human-readable date/time — convert UTC→local for display
+        if ($startTimeUtc) {
             $loc = new LocalizationSettingsService();
-            $timeFormatted = $loc->formatTimeForDisplay(date('H:i:s', $startTime));
-            $appointment['date_formatted']     = date('l, F j, Y', $startTime);
+            $localTz = $loc->getTimezone();
+            $localStart = TimezoneService::toDisplay($appointment['start_at'], $localTz);
+            $localStartTs = strtotime($localStart);
+            $localNowTs = strtotime(TimezoneService::toDisplay(gmdate('Y-m-d H:i:s'), $localTz));
+            $timeFormatted = $loc->formatTimeForDisplay(date('H:i:s', $localStartTs));
+            $appointment['date_formatted']     = date('l, F j, Y', $localStartTs);
             $appointment['time_formatted']     = $timeFormatted;
-            $appointment['datetime_formatted'] = date('M j, Y', $startTime) . ' at ' . $timeFormatted;
-            $appointment['is_past'] = $startTime < $now;
-            $appointment['is_today'] = date('Y-m-d', $startTime) === date('Y-m-d');
+            $appointment['datetime_formatted'] = date('M j, Y', $localStartTs) . ' at ' . $timeFormatted;
+            $appointment['is_past'] = $startTimeUtc < $nowUtc;
+            $appointment['is_today'] = date('Y-m-d', $localStartTs) === date('Y-m-d', $localNowTs);
         }
 
         // Status label

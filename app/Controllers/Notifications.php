@@ -59,6 +59,7 @@ use App\Models\NotificationQueueModel;
 use App\Models\AppointmentModel;
 use App\Services\LocalizationSettingsService;
 use App\Services\NotificationPhase1;
+use App\Services\TimezoneService;
 use CodeIgniter\Controller;
 
 class Notifications extends BaseController
@@ -318,8 +319,12 @@ class Notifications extends BaseController
         $error = $data['error'];
 
         $channelLabel = strtoupper($channel);
-        $timeStr = $appointmentStart
-            ? date('M j, Y', strtotime($appointmentStart)) . ' at ' . (new LocalizationSettingsService())->formatTimeForDisplay(date('H:i:s', strtotime($appointmentStart)))
+        // DB stores UTC — convert to local for admin display
+        $localStart = $appointmentStart
+            ? TimezoneService::toDisplay($appointmentStart)
+            : '';
+        $timeStr = $localStart
+            ? date('M j, Y', strtotime($localStart)) . ' at ' . (new LocalizationSettingsService())->formatTimeForDisplay(date('H:i:s', strtotime($localStart)))
             : '';
 
         if ($status === 'success') {

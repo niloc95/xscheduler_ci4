@@ -99,16 +99,26 @@ class AppointmentQueryService
      * Fetch appointments in a date range, returned raw (with JOIN data).
      * Used by CalendarRangeService / view services to inject into cells.
      *
-     * @param string $startDate Y-m-d
-     * @param string $endDate   Y-m-d
+     * Dates are local (user/business perspective). They are converted to UTC
+     * boundaries before querying the DB (which stores times in UTC).
+     *
+     * @param string $startDate Y-m-d (local)
+     * @param string $endDate   Y-m-d (local)
      * @param array  $filters   provider_id, service_id, location_id, status
      * @return array Flat array of appointment rows
      */
     public function getForRange(string $startDate, string $endDate, array $filters = []): array
     {
+        // Convert local day boundaries to UTC for DB query
+        $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
+        $tz    = new \DateTimeZone($localTz);
+        $utcTz = new \DateTimeZone('UTC');
+        $startUtc = (new \DateTime($startDate . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endUtc   = (new \DateTime($endDate   . ' 23:59:59', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+
         $builder = $this->buildBaseQuery();
-        $builder->where('xs_appointments.start_at >=', $startDate . ' 00:00:00')
-                ->where('xs_appointments.start_at <=', $endDate   . ' 23:59:59');
+        $builder->where('xs_appointments.start_at >=', $startUtc)
+                ->where('xs_appointments.start_at <=', $endUtc);
 
         $builder = $this->applyProviderScope($builder, $filters);
         $builder = $this->applyFilters($builder, $filters);
@@ -127,9 +137,12 @@ class AppointmentQueryService
     {
         $rows    = $this->getForRange($startDate, $endDate, $filters);
         $grouped = [];
+        $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
 
         foreach ($rows as $row) {
-            $date = substr($row['start_at'], 0, 10); // Extract Y-m-d
+            // Convert UTC start_at → local date for grouping
+            $localDate = \App\Services\TimezoneService::toDisplay($row['start_at'], $localTz);
+            $date = substr($localDate, 0, 10); // Extract Y-m-d from local
             $grouped[$date][] = $row;
         }
 
@@ -145,9 +158,11 @@ class AppointmentQueryService
     {
         $rows    = $this->getForRange($startDate, $endDate, $filters);
         $grouped = [];
+        $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
 
         foreach ($rows as $row) {
-            $date       = substr($row['start_at'], 0, 10);
+            $localDate  = \App\Services\TimezoneService::toDisplay($row['start_at'], $localTz);
+            $date       = substr($localDate, 0, 10);
             $providerId = (int) $row['provider_id'];
             $grouped[$date][$providerId][] = $row;
         }

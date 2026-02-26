@@ -117,7 +117,7 @@ class NotificationQueueService
             return $stats;
         }
 
-        $now = new \DateTimeImmutable('now');
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $windowEnd = $now->modify('+30 days');
 
         $model = new AppointmentModel();
@@ -146,7 +146,7 @@ class NotificationQueueService
             $stats['scanned']++;
 
             try {
-                $start = new \DateTimeImmutable($startTime);
+                $start = new \DateTimeImmutable($startTime, new \DateTimeZone('UTC'));
             } catch (\Throwable $e) {
                 $stats['skipped']++;
                 continue;

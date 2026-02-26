@@ -237,12 +237,15 @@ class PublicBookingService
             $locationSnapshot = $this->locations->getLocationSnapshot($locationId);
         }
 
+        // Convert slot times to UTC for DB storage
+        $utcTz = new DateTimeZone('UTC');
+
         $appointmentPayload = [
             'customer_id' => $customerId,
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_at' => $slot['start']->format('Y-m-d H:i:s'),
-            'end_at' => $slot['end']->format('Y-m-d H:i:s'),
+            'start_at' => $slot['start']->setTimezone($utcTz)->format('Y-m-d H:i:s'),
+            'end_at' => $slot['end']->setTimezone($utcTz)->format('Y-m-d H:i:s'),
             'status' => 'pending',
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
             'public_token' => $token,
@@ -291,8 +294,8 @@ class PublicBookingService
         $updatePayload = [
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_at' => $slot['start']->format('Y-m-d H:i:s'),
-            'end_at' => $slot['end']->format('Y-m-d H:i:s'),
+            'start_at' => $slot['start']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+            'end_at' => $slot['end']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
             'notes' => $this->sanitizeString($payload['notes'] ?? $appointment['notes'] ?? null, 1000),
             'public_token' => $newToken,
             'public_token_expires_at' => null,
@@ -643,8 +646,10 @@ class PublicBookingService
         }
 
         $timezone = new DateTimeZone($this->localization->getTimezone());
-        $start = new DateTimeImmutable($appointment['start_at'], $timezone);
-        $end = new DateTimeImmutable($appointment['end_at'], $timezone);
+        // DB stores UTC — parse as UTC, convert to local for display
+        $utcTz = new DateTimeZone('UTC');
+        $start = (new DateTimeImmutable($appointment['start_at'], $utcTz))->setTimezone($timezone);
+        $end = (new DateTimeImmutable($appointment['end_at'], $utcTz))->setTimezone($timezone);
         $provider = $this->users->find((int) $appointment['provider_id']);
         $service = $this->services->find((int) $appointment['service_id']);
 
@@ -753,8 +758,9 @@ class PublicBookingService
         }
 
         $timezone = new DateTimeZone($this->localization->getTimezone());
-        $start = new DateTimeImmutable($currentStart, $timezone);
-        $now = new DateTimeImmutable('now', $timezone);
+        // DB stores UTC — parse as UTC, then compare (both converted to same TZ)
+        $start = new DateTimeImmutable($currentStart, new DateTimeZone('UTC'));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
         if ($start <= $now) {
             throw new PublicBookingException('This appointment can no longer be rescheduled.', 403);

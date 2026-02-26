@@ -88,6 +88,39 @@ use DateTimeZone;
 class TimezoneService
 {
     /**
+     * Get the business-local timezone from settings.
+     *
+     * Falls back to 'Africa/Johannesburg' when the setting is not yet seeded.
+     * This is the IANA timezone that "today", "this week", "this month" should
+     * be evaluated in before converting boundaries to UTC for DB queries.
+     *
+     * @return string IANA timezone identifier
+     */
+    public static function businessTimezone(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        try {
+            $settingModel = new \App\Models\SettingModel();
+            $value = $settingModel->getValue('localization.timezone');
+            if ($value && \DateTimeZone::listIdentifiers(\DateTimeZone::ALL, 0) !== false) {
+                // Validate it's a real IANA identifier
+                new \DateTimeZone($value);
+                $cached = $value;
+                return $cached;
+            }
+        } catch (\Throwable $e) {
+            // Fall through to default
+        }
+
+        $cached = 'Africa/Johannesburg';
+        return $cached;
+    }
+
+    /**
      * Convert local time to UTC
      * 
      * Takes a datetime in the user's local timezone and converts it to UTC

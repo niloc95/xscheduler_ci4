@@ -136,9 +136,17 @@ class DashboardService
      */
     public function getTodayMetrics(?int $providerId = null): array
     {
-        $today = date('Y-m-d');
-        $now = date('Y-m-d H:i:s');
-        $upcomingWindow = date('Y-m-d H:i:s', strtotime('+4 hours'));
+        // Calculate local-today boundaries in UTC for correct business-day queries
+        $localTz = $this->localizationService->getTimezone();
+        $tz = new \DateTimeZone($localTz);
+        $utcTz = new \DateTimeZone('UTC');
+        $localNow = new \DateTime('now', $tz);
+        $localToday = $localNow->format('Y-m-d');
+        // Convert local day boundaries to UTC for DB query
+        $dayStartUtc = (new \DateTime($localToday . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $dayEndUtc   = (new \DateTime($localToday . ' 23:59:59', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $nowUtc = (clone $localNow)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $upcomingWindowUtc = (clone $localNow)->modify('+4 hours')->setTimezone($utcTz)->format('Y-m-d H:i:s');
 
         $builder = $this->appointmentModel->builder();
 
@@ -149,32 +157,35 @@ class DashboardService
 
         // Total appointments today
         $total = $builder
-            ->where('DATE(start_at)', $today)
+            ->where('start_at >=', $dayStartUtc)
+            ->where('start_at <=', $dayEndUtc)
             ->countAllResults(false);
 
         // Upcoming appointments (next 4 hours)
         $upcoming = $builder
-            ->where('DATE(start_at)', $today)
-            ->where('start_at >=', $now)
-            ->where('start_at <=', $upcomingWindow)
+            ->where('start_at >=', $nowUtc)
+            ->where('start_at <=', $upcomingWindowUtc)
             ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
             ->countAllResults(false);
 
         // Pending confirmation
         $pending = $builder
-            ->where('DATE(start_at)', $today)
+            ->where('start_at >=', $dayStartUtc)
+            ->where('start_at <=', $dayEndUtc)
             ->where('xs_appointments.status', 'pending')
             ->countAllResults(false);
 
         // Cancelled/rescheduled today
         $cancelled = $builder
-            ->where('DATE(start_at)', $today)
+            ->where('start_at >=', $dayStartUtc)
+            ->where('start_at <=', $dayEndUtc)
             ->whereIn('xs_appointments.status', ['cancelled', 'no-show'])
             ->countAllResults(false);
 
         // Confirmed today
         $confirmed = $builder
-            ->where('DATE(start_at)', $today)
+            ->where('start_at >=', $dayStartUtc)
+            ->where('start_at <=', $dayEndUtc)
             ->where('xs_appointments.status', 'confirmed')
             ->countAllResults(false);
 
@@ -198,7 +209,14 @@ class DashboardService
      */
     public function getTodaySchedule(?int $providerId = null): array
     {
-        $today = date('Y-m-d');
+        // Calculate local-today boundaries in UTC
+        $localTz = $this->localizationService->getTimezone();
+        $tz = new \DateTimeZone($localTz);
+        $utcTz = new \DateTimeZone('UTC');
+        $localNow = new \DateTime('now', $tz);
+        $localToday = $localNow->format('Y-m-d');
+        $dayStartUtc = (new \DateTime($localToday . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $dayEndUtc   = (new \DateTime($localToday . ' 23:59:59', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
         
         $builder = $this->appointmentModel->builder();
         $builder->select('
@@ -211,7 +229,8 @@ class DashboardService
         ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
         ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
         ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-        ->where('DATE(xs_appointments.start_at)', $today)
+        ->where('xs_appointments.start_at >=', $dayStartUtc)
+        ->where('xs_appointments.start_at <=', $dayEndUtc)
         ->whereIn('xs_appointments.status', ['pending', 'confirmed', 'completed'])
         ->orderBy('xs_appointments.provider_id', 'ASC')
         ->orderBy('xs_appointments.start_at', 'ASC');
@@ -231,11 +250,15 @@ class DashboardService
                 $schedule[$providerName] = [];
             }
 
+            // Convert UTC times to local timezone for display
+            $localStart = \App\Services\TimezoneService::toDisplay($appt['start_at'], $localTz);
+            $localEnd = \App\Services\TimezoneService::toDisplay($appt['end_at'], $localTz);
+
             $schedule[$providerName][] = [
                 'id' => $appt['id'],
                 'hash' => $appt['hash'] ?? null,
-                'start_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['start_at']))),
-                'end_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($appt['end_at']))),
+                'start_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($localStart))),
+                'end_at' => $this->localizationService->formatTimeForDisplay(date('H:i:s', strtotime($localEnd))),
                 'customer_name' => trim(($appt['first_name'] ?? '') . ' ' . ($appt['last_name'] ?? '')),
                 'service_name' => $appt['service_name'] ?? '',
                 'status' => $appt['status'],
@@ -268,9 +291,17 @@ class DashboardService
             $builder->where('provider_id', $providerId);
         }
         
+        // Use local-today boundary in UTC for alert cutoff
+        $localTz = $this->localizationService->getTimezone();
+        $tz = new \DateTimeZone($localTz);
+        $utcTz = new \DateTimeZone('UTC');
+        $localNow = new \DateTime('now', $tz);
+        $localToday = $localNow->format('Y-m-d');
+        $dayStartUtc = (new \DateTime($localToday . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+
         $pendingCount = $builder
             ->where('xs_appointments.status', 'pending')
-            ->where('DATE(start_at) >=', date('Y-m-d'))
+            ->where('start_at >=', $dayStartUtc)
             ->countAllResults();
 
         if ($pendingCount > 0) {
@@ -322,8 +353,15 @@ class DashboardService
      */
     public function getUpcomingAppointments(?int $providerId = null): array
     {
-        $today = date('Y-m-d');
-        $nextWeek = date('Y-m-d', strtotime('+7 days'));
+        // Calculate local today and next-week boundaries in UTC
+        $localTz = $this->localizationService->getTimezone();
+        $tz = new \DateTimeZone($localTz);
+        $utcTz = new \DateTimeZone('UTC');
+        $localNow = new \DateTime('now', $tz);
+        $localToday = $localNow->format('Y-m-d');
+        $localNextWeek = (clone $localNow)->modify('+7 days')->format('Y-m-d');
+        $dayStartUtc = (new \DateTime($localToday . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $weekEndUtc  = (new \DateTime($localNextWeek . ' 23:59:59', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
 
         $builder = $this->appointmentModel->builder();
         $builder->select('
@@ -336,8 +374,8 @@ class DashboardService
         ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
         ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
         ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-        ->where('DATE(xs_appointments.start_at) >=', $today)
-        ->where('DATE(xs_appointments.start_at) <=', $nextWeek)
+        ->where('xs_appointments.start_at >=', $dayStartUtc)
+        ->where('xs_appointments.start_at <=', $weekEndUtc)
         ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
         ->orderBy('xs_appointments.start_at', 'ASC')
         ->limit(10);
@@ -352,10 +390,13 @@ class DashboardService
         // Format for display
         $formatted = [];
         foreach ($appointments as $appt) {
+            // Convert UTC times to local timezone for display
+            $localStart = \App\Services\TimezoneService::toDisplay($appt['start_at'], $localTz);
+
             $formatted[] = [
                 'id' => $appt['id'],
-                'date' => date('Y-m-d', strtotime($appt['start_at'])),
-                'time' => date('H:i', strtotime($appt['start_at'])),
+                'date' => date('Y-m-d', strtotime($localStart)),
+                'time' => date('H:i', strtotime($localStart)),
                 'customer' => trim(($appt['first_name'] ?? '') . ' ' . ($appt['last_name'] ?? '')),
                 'provider' => $appt['provider_name'] ?? 'Unknown',
                 'service' => $appt['service_name'] ?? '',

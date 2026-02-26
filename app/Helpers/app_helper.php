@@ -50,6 +50,31 @@
 
 use App\Models\SettingModel;
 
+// ─────────────────────────────────────────────────────────────
+// Timezone helpers for views
+// ─────────────────────────────────────────────────────────────
+
+if (!function_exists('utc_to_local')) {
+    /**
+     * Convert a UTC datetime string (from DB) to a local-timezone timestamp.
+     *
+     * Usage in views:
+     *   date('M j, Y', utc_to_local($appt['start_at']))
+     *   date('g:i A', utc_to_local($appt['start_at']))
+     *
+     * @param  string|null $utcDatetime  Y-m-d H:i:s in UTC (from DB)
+     * @return int|false   Unix timestamp in the local timezone, or false if null
+     */
+    function utc_to_local(?string $utcDatetime)
+    {
+        if (empty($utcDatetime)) {
+            return false;
+        }
+        $local = \App\Services\TimezoneService::toDisplay($utcDatetime);
+        return strtotime($local);
+    }
+}
+
 if (!function_exists('setting')) {
     /**
      * Get a single setting value by key with optional default.

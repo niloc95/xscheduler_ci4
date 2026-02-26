@@ -270,7 +270,10 @@ class AppointmentNotificationService
 
         $providerName = (string) ($appt['provider_name'] ?? 'Provider');
         $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        $start = (string) ($appt['start_at'] ?? '');
+        // DB stores UTC — convert to local time for customer-facing notification
+        $start = !empty($appt['start_at'])
+            ? TimezoneService::toDisplay($appt['start_at'])
+            : '';
 
         $subjectMap = [
             'appointment_confirmed' => 'Appointment Confirmed',

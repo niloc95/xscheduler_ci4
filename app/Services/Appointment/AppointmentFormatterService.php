@@ -114,7 +114,11 @@ class AppointmentFormatterService
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * Convert a MySQL datetime string to ISO 8601.
+     * Convert a UTC MySQL datetime string to ISO 8601 with local timezone offset.
+     *
+     * DB stores UTC. Output includes the local TZ offset so JS calendar
+     * libraries (FullCalendar / Luxon) can display the correct wall-clock time.
+     *
      * Returns null if input is null/empty.
      */
     private function toIso(?string $datetime): ?string
@@ -123,8 +127,10 @@ class AppointmentFormatterService
             return null;
         }
         try {
-            $dt = new \DateTime($datetime);
-            return $dt->format('Y-m-d\TH:i:s');
+            $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
+            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            $dt->setTimezone(new \DateTimeZone($localTz));
+            return $dt->format('Y-m-d\TH:i:sP'); // e.g. 2026-02-23T16:00:00+02:00
         } catch (\Throwable $e) {
             return $datetime;
         }

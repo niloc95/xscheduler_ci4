@@ -636,10 +636,11 @@ class Appointments extends BaseApiController
         }
 
         try {
-            // DB stores times in app timezone — attach the correct offset so
-            // JavaScript / Luxon receives a proper absolute moment in time.
+            // DB stores times in UTC — parse as UTC, convert to local TZ for
+            // the ISO 8601 output so JS/Luxon receives the correct offset.
             $tz = (new LocalizationSettingsService())->getTimezone();
-            $dt = new \DateTime($datetime, new \DateTimeZone($tz));
+            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            $dt->setTimezone(new \DateTimeZone($tz));
             return $dt->format('Y-m-d\TH:i:sP'); // e.g. 2026-02-23T16:00:00+02:00
         } catch (\Exception $e) {
             return $datetime;

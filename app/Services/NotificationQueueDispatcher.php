@@ -334,7 +334,9 @@ class NotificationQueueDispatcher
             'customer_phone' => $appt['customer_phone'] ?? '',
             'service_name' => (string) ($appt['service_name'] ?? 'Service'),
             'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
-            'start_datetime' => (string) ($appt['start_at'] ?? ''),
+            'start_datetime' => !empty($appt['start_at'])
+                ? TimezoneService::toDisplay($appt['start_at'])
+                : '',
         ];
 
         // Render template with placeholders
@@ -366,7 +368,9 @@ class NotificationQueueDispatcher
             'customer_phone' => $to,
             'service_name' => (string) ($appt['service_name'] ?? 'Service'),
             'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
-            'start_datetime' => (string) ($appt['start_at'] ?? ''),
+            'start_datetime' => !empty($appt['start_at'])
+                ? TimezoneService::toDisplay($appt['start_at'])
+                : '',
         ];
 
         // Render template with placeholders
@@ -402,7 +406,9 @@ class NotificationQueueDispatcher
             'customer_phone' => $to,
             'service_name' => (string) ($appt['service_name'] ?? 'Service'),
             'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
-            'start_datetime' => (string) ($appt['start_at'] ?? ''),
+            'start_datetime' => !empty($appt['start_at'])
+                ? TimezoneService::toDisplay($appt['start_at'])
+                : '',
         ];
 
         // Render template with placeholders

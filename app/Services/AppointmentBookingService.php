@@ -344,17 +344,16 @@ class AppointmentBookingService
     }
 
     /**
-     * Calculate appointment start/end times using the app timezone.
+     * Calculate appointment start/end times and convert to UTC for storage.
      *
-     * DB stores times as app-local (no UTC conversion). Time input from the
-     * admin form is already in app timezone; public booking slots arrive with
-     * the correct offset from the API.
+     * Time input from admin/public forms arrives in local (app) timezone.
+     * DB stores times as UTC. This method converts local → UTC.
      *
      * @param string $date           Date in Y-m-d format
-     * @param string $time           Time in H:i format (app timezone)
+     * @param string $time           Time in H:i format (local/app timezone)
      * @param int    $durationMinutes Service duration
-     * @param string $timezone       Ignored — app timezone is always used (kept for BC)
-     * @return array DateTime objects and stored time strings
+     * @param string $timezone       Client TZ hint — falls back to app TZ (kept for BC)
+     * @return array DateTime objects (local) and UTC time strings for DB
      */
     protected function calculateAppointmentTimes(
         string $date,
@@ -362,7 +361,7 @@ class AppointmentBookingService
         int $durationMinutes,
         string $timezone
     ): array {
-        // Always use the app timezone regardless of what the client reports.
+        // Always use the app timezone for interpreting form input.
         $appTimezone = (new LocalizationSettingsService())->getTimezone();
         $startLocal  = $date . ' ' . $time . ':00';
 
@@ -377,23 +376,28 @@ class AppointmentBookingService
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . $durationMinutes . ' minutes');
 
-        // Store as app-local strings (no UTC conversion).
-        $startTime = $startDateTime->format('Y-m-d H:i:s');
-        $endTime   = $endDateTime->format('Y-m-d H:i:s');
+        // Convert to UTC for DB storage
+        $utcTz = new DateTimeZone('UTC');
+        $startUtcDt = (clone $startDateTime)->setTimezone($utcTz);
+        $endUtcDt   = (clone $endDateTime)->setTimezone($utcTz);
+        $startUtc = $startUtcDt->format('Y-m-d H:i:s');
+        $endUtc   = $endUtcDt->format('Y-m-d H:i:s');
 
         log_message('info', '[AppointmentBookingService] Time calculation:', [
-            'start'    => $startTime,
-            'end'      => $endTime,
-            'timezone' => $appTimezone,
+            'localStart' => $startDateTime->format('Y-m-d H:i:s'),
+            'localEnd'   => $endDateTime->format('Y-m-d H:i:s'),
+            'utcStart'   => $startUtc,
+            'utcEnd'     => $endUtc,
+            'timezone'   => $appTimezone,
         ]);
 
         return [
-            'startDateTime' => $startDateTime,
-            'endDateTime'   => $endDateTime,
-            'startUtc'      => $startTime, // legacy key — contains app-local value
-            'endUtc'        => $endTime,   // legacy key — contains app-local value
-            'startTime'     => $startTime,
-            'endTime'       => $endTime,
+            'startDateTime' => $startDateTime,  // local TZ — used for business-hours validation
+            'endDateTime'   => $endDateTime,     // local TZ — used for business-hours validation
+            'startUtc'      => $startUtc,        // UTC — for DB writes
+            'endUtc'        => $endUtc,          // UTC — for DB writes
+            'startTime'     => $startDateTime->format('Y-m-d H:i:s'), // local (BC alias)
+            'endTime'       => $endDateTime->format('Y-m-d H:i:s'),   // local (BC alias)
             'timezone'      => $appTimezone,
         ];
     }

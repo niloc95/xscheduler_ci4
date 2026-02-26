@@ -541,8 +541,8 @@ class Appointments extends BaseController
                 ->with('error', 'Invalid service selected');
         }
 
-        // Use app timezone consistently — form inputs are in app timezone.
-        // Times are stored as app-local values (no UTC conversion).
+        // Use app timezone consistently — form inputs are in local (app) timezone.
+        // Convert to UTC for DB storage.
         $appTimezone = (new LocalizationSettingsService())->getTimezone();
 
         // Construct start DateTime in app timezone
@@ -564,11 +564,12 @@ class Appointments extends BaseController
         $endDateTime = clone $startDateTime;
         $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
 
-        // Store in app timezone — no UTC conversion.
-        $startTimeStored = $startDateTime->format('Y-m-d H:i:s');
-        $endTimeStored   = $endDateTime->format('Y-m-d H:i:s');
+        // Convert to UTC for DB storage
+        $utcTz = new \DateTimeZone('UTC');
+        $startTimeStored = (clone $startDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $endTimeStored   = (clone $endDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
 
-        log_message('info', '[Appointments::update] Stored times (app tz): start=' . $startTimeStored . ', end=' . $endTimeStored);
+        log_message('info', '[Appointments::update] Stored times (UTC): start=' . $startTimeStored . ', end=' . $endTimeStored);
 
         // Update customer record
         $customerId = $existingAppointment['customer_id'];
