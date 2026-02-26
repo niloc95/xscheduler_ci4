@@ -22,6 +22,9 @@
  *       date, dayNumber, monthName, fullDate, weekday, weekdayName,
  *       isToday, isPast,
  *       dayGrid: { slots: [...] },   // time grid with appointments injected
+ *       providerColumns: [           // per-provider grids for multi-column layout
+ *         { provider: { id, name }, grid: { slots: [...] } }, ...
+ *       ],
  *       appointments: [...formatted]
  *     },
  *     ...  (7 days)
@@ -47,6 +50,7 @@ use App\Services\Appointment\AppointmentFormatterService;
 
 class WeekViewService
 {
+    use SlotInjectionTrait;
     private CalendarRangeService        $range;
     private AppointmentQueryService     $query;
     private AppointmentFormatterService $formatter;
@@ -153,12 +157,12 @@ class WeekViewService
                 $providerGrid = $baseGrid;
                 
                 // Filter events for this provider on this day
-                $providerDayEvents = array_filter($dayEvents, function($e) use ($provider) {
+                $providerDayEvents = array_values(array_filter($dayEvents, function($e) use ($provider, $providers) {
                     $pid = $e['providerId'] ?? 0;
-                    return $pid == $provider['id'] || ($provider['id'] == 0 && empty($providers[1]));
-                });
-                
-                $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $providerDayEvents, $providerGrid);
+                    return $pid === $provider['id'] || ($provider['id'] === 0 && count($providers) === 1);
+                }));
+
+                $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $providerDayEvents, $providerGrid, $this->resolution);
                 
                 $providerColumns[] = [
                     'provider' => [
@@ -168,9 +172,6 @@ class WeekViewService
                     'grid' => $providerGrid
                 ];
             }
-
-            // Keep base grid for backward compatibility
-            $baseGrid['slots'] = $this->injectIntoSlots($baseGrid['slots'], $dayEvents, $baseGrid);
 
             $day['appointments'] = $dayEvents;
             $day['appointmentCount'] = count($dayEvents);
@@ -202,53 +203,6 @@ class WeekViewService
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * Inject formatted appointments into the matching time slots of a day grid.
-     * Mirrors DayViewService::injectIntoSlots for per-day use in the week grid.
-     */
-    private function injectIntoSlots(array $slots, array $events, array $grid): array
-    {
-        if (empty($events)) {
-            return $slots;
-        }
-
-        $startMinutes    = $this->timeToMinutes($grid['dayStart']);
-        $pixelsPerMinute = $grid['pixelsPerMinute'];
-
-        $positioned = array_map(function (array $event) use ($startMinutes, $pixelsPerMinute) {
-            $eventStart = substr($event['start'] ?? '', 11, 5);
-            $eventEnd   = substr($event['end']   ?? '', 11, 5);
-            $startMin   = $this->timeToMinutes($eventStart);
-            $endMin     = $this->timeToMinutes($eventEnd);
-            $duration   = max($endMin - $startMin, 15);
-
-            $event['_topPx']    = ($startMin - $startMinutes) * $pixelsPerMinute;
-            $event['_heightPx'] = $duration * $pixelsPerMinute;
-            $event['_startMin'] = $startMin;
-            $event['_endMin']   = $startMin + $duration;
-
-            return $event;
-        }, $events);
-
-        $slotMap = [];
-        foreach ($slots as $i => $slot) {
-            $slotMap[$slot['time']] = $i;
-        }
-
-        foreach ($positioned as $event) {
-            $slotTime = substr($event['start'] ?? '', 11, 5);
-            $startMin = $this->timeToMinutes($slotTime);
-            $slotMin  = $startMin - ($startMin % $this->resolution);
-            $slotKey  = sprintf('%02d:%02d', intdiv($slotMin, 60), $slotMin % 60);
-
-            if (isset($slotMap[$slotKey])) {
-                $slots[$slotMap[$slotKey]]['appointments'][] = $event;
-            }
-        }
-
-        return $slots;
-    }
-
-    /**
      * Build a human-readable week range label.
      * Same month  → "Feb 23 – Mar 1, 2026"
      */
@@ -266,9 +220,4 @@ class WeekViewService
         return $s->format('M j, Y') . ' – ' . $e->format('M j, Y');
     }
 
-    private function timeToMinutes(string $time): int
-    {
-        [$h, $m] = array_map('intval', explode(':', $time . ':00'));
-        return $h * 60 + $m;
-    }
 }

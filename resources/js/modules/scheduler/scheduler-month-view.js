@@ -853,6 +853,47 @@ export class MonthView {
         const providers = this.providers || [];
         if (providers.length === 0) return '';
 
+        // In server mode the slot engine is not used — the month model contains
+        // only per-cell appointment counts; detailed slot availability requires
+        // the day-view endpoint.  Render the day's appointments from the model.
+        if (this.calendarModel) {
+            const dateStr = date.toFormat('yyyy-MM-dd');
+            const cell = this.calendarModel.weeks?.flat?.()?.find(c => c.date === dateStr);
+            const dayAppts = cell?.appointments ?? [];
+
+            const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+
+            const apptItems = dayAppts.length
+                ? dayAppts.map(a => {
+                    const timeLabel = a.start
+                        ? DateTime.fromISO(a.start).toFormat(timeFormat)
+                        : (a.startTime || '');
+                    return `<div class="slot-panel__slot-item">
+                        <span class="slot-panel__slot-time">${escapeHtml(timeLabel)}</span>
+                        <span class="slot-panel__slot-label">${escapeHtml(a.title || a.customerName || 'Appointment')}</span>
+                    </div>`;
+                }).join('')
+                : '<p class="slot-panel__empty">No appointments on this day.</p>';
+
+            return `<div class="slot-panel" id="month-slot-panel-inner">
+                <div class="slot-panel__header">
+                    <h3 class="slot-panel__title">
+                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
+                        Appointments — ${date.toFormat('EEE, MMM d')}
+                    </h3>
+                    <div class="slot-panel__provider-count">
+                        <span class="material-symbols-outlined text-sm">group</span>
+                        <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+                <div class="slot-panel__slots">
+                    <div class="slot-panel__slot-list" id="month-slot-list">
+                        ${apptItems}
+                    </div>
+                </div>
+            </div>`;
+        }
+
         const slots = generateSlots({
             date,
             businessHours: this.businessHours,

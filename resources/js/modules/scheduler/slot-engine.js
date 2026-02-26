@@ -5,18 +5,17 @@
  * reusable module consumed by Day, Week, and Month views.
  * 
  * Exports:
- *   - generateSlots(opts)        → slot array with provider availability
+ *   - generateSlots(opts)        → stub (deprecated; client-side generation replaced by server model)
  *   - renderSlotPanel(opts)      → full HTML panel (header, pills, slots, legend)
  *   - renderSlotList(opts)       → just the slot items HTML
  *   - renderProviderFilterPills  → provider filter pill row
  *   - renderSlotLegend()         → compact status legend
- *   - computeDayAvailability()   → lightweight per-day summary for month grid
+ *   - computeDayAvailability()   → stub (deprecated; availability comes from server model)
  *   - escapeHtml(text)           → XSS-safe text helper
  */
 
 import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
-import { generateSlotsWithAvailability } from '../../utils/scheduling-utils.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -48,8 +47,7 @@ function shortName(provider) {
 
 /**
  * Generate availability slots for a date.
- * Wraps scheduling-utils' generateSlotsWithAvailability with sensible
- * defaults and the blocked-period / weekend guard used by every view.
+ * Previously wrapped scheduling-utils' generateSlotsWithAvailability.
  *
  * @deprecated Phase 6 — Client-side slot generation is superseded by the
  *   server-side CalendarController endpoints (/api/calendar/day|week|month).

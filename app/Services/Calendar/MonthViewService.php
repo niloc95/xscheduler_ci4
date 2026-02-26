@@ -47,7 +47,6 @@
 
 namespace App\Services\Calendar;
 
-use App\Models\SettingModel;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 use App\Services\AvailabilityService;
@@ -113,6 +112,9 @@ class MonthViewService
         $weeks = [];
         $providerId = isset($filters['provider_id']) ? (int)$filters['provider_id'] : null;
 
+        // Pre-fetch working weekdays once (2 queries max) to avoid an N+1 per cell.
+        $workingWeekdays = $this->availability->getWorkingWeekdays($providerId);
+
         foreach ($grid['weeks'] as $week) {
             $row = [];
             foreach ($week as $cell) {
@@ -121,11 +123,13 @@ class MonthViewService
                 $visible    = array_slice($cellEvents, 0, $maxPerCell);
                 $hasMore    = $count > $maxPerCell;
 
+                $weekdayNum = (int)(new \DateTime($cell['date']))->format('w');
+
                 $cell['appointments']     = $visible;
                 $cell['appointmentCount'] = $count;
                 $cell['hasMore']          = $hasMore;
                 $cell['moreCount']        = $hasMore ? ($count - $maxPerCell) : 0;
-                $cell['hasAvailability']  = $this->availability->hasWorkingHours($cell['date'], $providerId);
+                $cell['hasAvailability']  = in_array($weekdayNum, $workingWeekdays, true);
 
                 $row[] = $cell;
             }

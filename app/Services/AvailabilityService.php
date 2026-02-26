@@ -403,6 +403,71 @@ class AvailabilityService
     }
 
     /**
+     * Return the set of weekday numbers (0=Sun … 6=Sat) that have working hours.
+     *
+     * Executes at most 2 DB queries regardless of the date range, making it safe
+     * to call once before iterating over a 42-cell month grid instead of calling
+     * hasWorkingHours() per cell (which would trigger up to 42 queries).
+     *
+     * @param int|null $providerId  null = check global business hours / any provider
+     * @return int[]  e.g. [1, 2, 3, 4, 5]
+     */
+    public function getWorkingWeekdays(?int $providerId = null): array
+    {
+        $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+        if ($providerId !== null) {
+            // Provider-specific custom schedule
+            $customRows = $this->providerScheduleModel
+                ->where('provider_id', $providerId)
+                ->where('is_working', 1)
+                ->findAll();
+
+            if (!empty($customRows)) {
+                $nums = [];
+                foreach ($customRows as $row) {
+                    $idx = array_search($row['day_of_week'], $dayNames, true);
+                    if ($idx !== false) {
+                        $nums[] = $idx;
+                    }
+                }
+                return array_values(array_unique($nums));
+            }
+
+            // Fall back to global business hours for this provider
+            $rows = $this->businessHourModel
+                ->where('provider_id', $providerId)
+                ->where('is_closed', 0)
+                ->findAll();
+
+            return array_values(array_unique(array_column($rows, 'weekday')));
+        }
+
+        // No specific provider — check all custom schedules first
+        $customRows = $this->providerScheduleModel
+            ->where('is_working', 1)
+            ->findAll();
+
+        if (!empty($customRows)) {
+            $nums = [];
+            foreach ($customRows as $row) {
+                $idx = array_search($row['day_of_week'], $dayNames, true);
+                if ($idx !== false) {
+                    $nums[] = $idx;
+                }
+            }
+            return array_values(array_unique($nums));
+        }
+
+        // Fall back to global business hours (no provider_id filter)
+        $rows = $this->businessHourModel
+            ->where('is_closed', 0)
+            ->findAll();
+
+        return array_values(array_unique(array_column($rows, 'weekday')));
+    }
+
+    /**
      * Get provider's working hours for a specific date
      * Returns array with start_time, end_time, and breaks, or null if not working
      */
