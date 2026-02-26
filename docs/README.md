@@ -1,7 +1,7 @@
 # 📘 xScheduler CI4 Documentation
 
 **Welcome to the xScheduler CI4 documentation hub.**  
-**Last Updated:** February 12, 2026
+**Last Updated:** February 26, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 1. **[System Requirements](./REQUIREMENTS.md)** - Technical requirements and specifications
 2. **[Quick Reference](./development/QUICK_REFERENCE.md)** - Fast lookup for common tasks (10 min)
-3. **[Development Setup](./development/setup-workflow.md)** - Installation and configuration
+3. **[Environment Configuration](./configuration/ENV-CONFIGURATION-GUIDE.md)** - Installation and configuration
 
 ---
 
@@ -101,7 +101,7 @@ Historical audits and completion reports (reference only)
 ## 🔍 Quick Lookup
 
 ### By Task
-- **Initial Setup** → [Setup Workflow](./development/setup-workflow.md)
+- **Initial Setup** → [Environment Configuration Guide](./configuration/ENV-CONFIGURATION-GUIDE.md)
 - **Choosing a Database** → [Database Selection Guide](./database/DATABASE_SELECTION_GUIDE.md)
 - **SQLite Zero-Config Setup** → [SQLite Zero-Config](./configuration/SQLITE_ZERO_CONFIG_SETUP.md)
 - **Calendar Implementation** → [Calendar UI Architecture](./architecture/CALENDAR_UI_ARCHITECTURE.md)
@@ -147,7 +147,7 @@ Historical documentation has been moved to [_archive/](./_archive/) including:
 
 ## 📊 Documentation Statistics
 
-- **Active Documents:** 28 comprehensive guides
+- **Active Documents:** 26 comprehensive guides
 - **Database Guides:** SQLite zero-config + MySQL options
 - **Last Major Update:** February 26, 2026 (Removed 36 outdated/superseded/stale documents)
 - **Coverage Areas:** 10 major categories + database selection guides
