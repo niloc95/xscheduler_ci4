@@ -13,11 +13,10 @@ import {
     initServiceDistributionChart 
 } from './modules/analytics/analytics-charts.js';
 
-import { attachTimezoneHeaders } from './utils/timezone-helper.js';
 import { getBaseUrl } from './utils/url-helpers.js';
 
-// Import dynamic color utility
-import { applyDynamicColors } from './utils/dynamic-colors.js';
+// Import dynamic color utility (auto-initialises; side-effect import only)
+import './utils/dynamic-colors.js';
 
 // Import global search
 import { initGlobalSearch } from './modules/search/global-search.js';
