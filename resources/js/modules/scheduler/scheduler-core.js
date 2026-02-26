@@ -18,9 +18,7 @@ import { formatDateNavLabel, syncDateNavLabel } from './date-nav-label.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 // Stats System - following Car Analogy architecture
-import { getStatsForView } from './stats/stats-engine.js';
-import { STATUS_DEFINITIONS, getStatusDef } from './stats/stats-definitions.js';
-import { getViewTitle } from './stats/stats-view-configs.js';
+import { getStatsForView, STATUS_DEFINITIONS, getStatusDef, getViewTitle } from './stats/index.js';
 
 export class SchedulerCore {
     constructor(containerId, options = {}) {

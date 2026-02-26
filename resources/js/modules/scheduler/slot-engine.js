@@ -11,6 +11,8 @@
  *   - renderProviderFilterPills  → provider filter pill row
  *   - renderSlotLegend()         → compact status legend
  *   - computeDayAvailability()   → stub (deprecated; availability comes from server model)
+ *   - isDateBlocked(date, blockedPeriods)       → boolean
+ *   - getBlockedPeriodInfo(date, blockedPeriods) → period object or null
  *   - escapeHtml(text)           → XSS-safe text helper
  */
 
@@ -368,6 +370,12 @@ export function isDateBlocked(date, blockedPeriods) {
     if (!blockedPeriods || blockedPeriods.length === 0) return false;
     const checkDate = date.toISODate();
     return blockedPeriods.some(p => checkDate >= p.start && checkDate <= p.end);
+}
+
+export function getBlockedPeriodInfo(date, blockedPeriods) {
+    if (!blockedPeriods || blockedPeriods.length === 0) return null;
+    const checkDate = date.toISODate();
+    return blockedPeriods.find(p => checkDate >= p.start && checkDate <= p.end) || null;
 }
 
 /**

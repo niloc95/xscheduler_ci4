@@ -16,6 +16,9 @@ import {
     renderSlotList,
     renderProviderFilterPills,
     renderSlotLegend,
+    escapeHtml,
+    isDateBlocked,
+    getBlockedPeriodInfo,
 } from './slot-engine.js';
 
 export class DayView {
@@ -50,8 +53,8 @@ export class DayView {
         
         // Check if this date is blocked
         const blockedPeriods = this.blockedPeriods;
-        const isBlocked = this.isDateBlocked(currentDate, blockedPeriods);
-        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(currentDate, blockedPeriods) : null;
+        const isBlocked = isDateBlocked(currentDate, blockedPeriods);
+        const blockedInfo = isBlocked ? getBlockedPeriodInfo(currentDate, blockedPeriods) : null;
         
         // Check if this is a non-working day
         const isNonWorkingDay = settings?.isWorkingDay ? !settings.isWorkingDay(currentDate.weekday % 7) : false;
@@ -83,7 +86,7 @@ export class DayView {
                             <div class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                                 <div class="flex items-center gap-2 text-red-600 dark:text-red-400">
                                     <span class="material-symbols-outlined text-lg">block</span>
-                                    <span class="text-sm font-medium">${this.escapeHtml(blockedInfo?.notes || 'This day is blocked for appointments')}</span>
+                                    <span class="text-sm font-medium">${escapeHtml(blockedInfo?.notes || 'This day is blocked for appointments')}</span>
                                 </div>
                             </div>
                         ` : ''}
@@ -162,7 +165,7 @@ export class DayView {
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm"
                          data-bg-color="${providerColor}"
-                         title="${this.escapeHtml(providerName)}">
+                         title="${escapeHtml(providerName)}">
                         ${providerInitial}
                     </div>
                 </div>
@@ -171,7 +174,7 @@ export class DayView {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         <h4 class="font-semibold text-gray-900 dark:text-white truncate">
-                            ${this.escapeHtml(customerName)}
+                            ${escapeHtml(customerName)}
                         </h4>
                         <span class="px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0"
                             data-bg-color="${statusColors.bg}"
@@ -192,13 +195,13 @@ export class DayView {
                             <!-- Location -->
                             <div class="flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-base">location_on</span>
-                                <span class="truncate max-w-[150px]">${this.escapeHtml(location)}</span>
+                                <span class="truncate max-w-[150px]">${escapeHtml(location)}</span>
                             </div>
                         ` : `
                             <!-- Service -->
                             <div class="flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-base">spa</span>
-                                <span class="truncate max-w-[150px]">${this.escapeHtml(serviceName)}</span>
+                                <span class="truncate max-w-[150px]">${escapeHtml(serviceName)}</span>
                             </div>
                         `}
                     </div>
@@ -420,7 +423,7 @@ export class DayView {
                                     <div class="flex items-center justify-between text-sm">
                                         <div class="flex items-center gap-2">
                                             <span class="w-2 h-2 rounded-full" data-bg-color="${color}"></span>
-                                            <span class="text-gray-600 dark:text-gray-400 truncate max-w-[120px]">${this.escapeHtml(name)}</span>
+                                            <span class="text-gray-600 dark:text-gray-400 truncate max-w-[120px]">${escapeHtml(name)}</span>
                                         </div>
                                         <span class="font-medium text-gray-900 dark:text-white">${count}</span>
                                     </div>
@@ -508,27 +511,6 @@ export class DayView {
             case 3: return 'rd';
             default: return 'th';
         }
-    }
-
-    isDateBlocked(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return false;
-        const checkDate = date.toISODate();
-        return blockedPeriods.some(period => {
-            return checkDate >= period.start && checkDate <= period.end;
-        });
-    }
-    
-    getBlockedPeriodInfo(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return null;
-        const checkDate = date.toISODate();
-        return blockedPeriods.find(p => checkDate >= p.start && checkDate <= p.end) || null;
-    }
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     // ── Available Slots helpers ───────────────────────────────────────

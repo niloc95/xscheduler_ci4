@@ -13,6 +13,9 @@ import {
     renderProviderFilterPills,
     renderSlotLegend,
     computeDayAvailability,
+    escapeHtml,
+    isDateBlocked,
+    getBlockedPeriodInfo,
 } from './slot-engine.js';
 
 export class MonthView {
@@ -188,8 +191,8 @@ export class MonthView {
         const isPast = day < DateTime.now().startOf('day');
         const dayAppointments = this.getAppointmentsForDay(day);
         const isWorkingDay = settings?.isWorkingDay ? settings.isWorkingDay(day) : true;
-        const isBlocked = this.isDateBlocked(day);
-        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day) : null;
+        const isBlocked = isDateBlocked(day, this.blockedPeriods);
+        const blockedInfo = isBlocked ? getBlockedPeriodInfo(day, this.blockedPeriods) : null;
         const isSelected = this.selectedDate && day.hasSame(this.selectedDate, 'day');
         
         // Day number badge styles — minimal, matching date picker
@@ -232,8 +235,8 @@ export class MonthView {
                     ${day.day}${isBlocked ? ' <span class="text-[10px] leading-none">🚫</span>' : ''}
                 </div>
                 ${isBlocked && blockedInfo ? `
-                    <div class="text-[10px] text-red-600 dark:text-red-400 font-medium mb-1 truncate" title="${this.escapeHtml(blockedInfo.notes || 'Blocked')}">
-                        ${this.escapeHtml(blockedInfo.notes || 'Blocked')}
+                    <div class="text-[10px] text-red-600 dark:text-red-400 font-medium mb-1 truncate" title="${escapeHtml(blockedInfo.notes || 'Blocked')}">
+                        ${escapeHtml(blockedInfo.notes || 'Blocked')}
                     </div>
                 ` : ''}
                 <div class="day-appointments flex-1 space-y-1">
@@ -272,7 +275,7 @@ export class MonthView {
                  data-appointment-id="${appointment.id}"
                  title="${title} at ${time}${ampm} - ${appointment.status}">
                 <span class="font-semibold flex-shrink-0 tabular-nums">${time}${ampm ? `<span class="font-normal opacity-70">${ampm}</span>` : ''}</span>
-                <span class="truncate">${this.escapeHtml(title)}</span>
+                <span class="truncate">${escapeHtml(title)}</span>
             </div>
         `;
     }
@@ -394,7 +397,7 @@ export class MonthView {
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <h4 class="font-semibold text-gray-900 dark:text-white truncate">
-                                        ${this.escapeHtml(provider.name)}
+                                        ${escapeHtml(provider.name)}
                                     </h4>
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
                                         ${providerAppointments.length} ${providerAppointments.length === 1 ? 'appointment' : 'appointments'} this month
@@ -443,10 +446,10 @@ export class MonthView {
                                     </span>
                                 </div>
                                 <h5 class="font-semibold text-sm mb-1 truncate">
-                                    ${this.escapeHtml(customerName)}
+                                    ${escapeHtml(customerName)}
                                 </h5>
                                 <p class="text-xs opacity-80 truncate">
-                                    ${this.escapeHtml(serviceName)}
+                                    ${escapeHtml(serviceName)}
                                 </p>
                             </div>
                         `;
@@ -656,42 +659,6 @@ export class MonthView {
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         
         return luminance > 0.5 ? '#000000' : '#FFFFFF';
-    }
-
-    /**
-     * Check if a date falls within a blocked period
-     */
-    isDateBlocked(date) {
-        if (!this.blockedPeriods || this.blockedPeriods.length === 0) return false;
-        
-        const checkDate = date.toISODate();
-        
-        return this.blockedPeriods.some(period => {
-            const start = period.start;
-            const end = period.end;
-            return checkDate >= start && checkDate <= end;
-        });
-    }
-
-    /**
-     * Get blocked period information for a date
-     */
-    getBlockedPeriodInfo(date) {
-        if (!this.blockedPeriods || this.blockedPeriods.length === 0) return null;
-        
-        const checkDate = date.toISODate();
-        
-        const period = this.blockedPeriods.find(p => {
-            return checkDate >= p.start && checkDate <= p.end;
-        });
-        
-        return period || null;
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     /**

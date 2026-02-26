@@ -16,6 +16,8 @@ import {
     renderSlotList,
     renderProviderFilterPills as renderSharedFilterPills,
     renderSlotLegend,
+    escapeHtml,
+    isDateBlocked,
 } from './slot-engine.js';
 
 export class WeekView {
@@ -493,7 +495,7 @@ export class WeekView {
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <span class="font-semibold text-sm text-gray-900 dark:text-white truncate">${this.escapeHtml(customerName)}</span>
+                            <span class="font-semibold text-sm text-gray-900 dark:text-white truncate">${escapeHtml(customerName)}</span>
                             <span class="px-1.5 py-0.5 text-[10px] font-medium rounded"
                                                                     data-bg-color="${statusColors.bg}"
                                                                     data-text-color="${statusColors.text}">
@@ -501,12 +503,12 @@ export class WeekView {
                             </span>
                         </div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            <span class="font-medium">${time}</span> • ${this.escapeHtml(serviceName)}
+                            <span class="font-medium">${time}</span> • ${escapeHtml(serviceName)}
                         </div>
                         ${apt.locationName ? `
                         <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1 truncate">
                             <span class="material-symbols-outlined text-xs">location_on</span>
-                            ${this.escapeHtml(apt.locationName)}
+                            ${escapeHtml(apt.locationName)}
                         </div>` : ''}
                     </div>
                     <span class="material-symbols-outlined text-gray-400 text-lg">chevron_right</span>
@@ -561,21 +563,6 @@ export class WeekView {
      */
     getAppointmentsForDate(date) {
         return this.appointments.filter(apt => apt.startDateTime.hasSame(date, 'day'));
-    }
-
-    /**
-     * Check if a date falls within a blocked period
-     */
-    isDateBlocked(date, blockedPeriods) {
-        if (!blockedPeriods || blockedPeriods.length === 0) return false;
-        
-        const checkDate = date.toISODate();
-        
-        return blockedPeriods.some(period => {
-            const start = period.start;
-            const end = period.end;
-            return checkDate >= start && checkDate <= end;
-        });
     }
 
     async ensureProviderSchedulesLoaded(providers) {
@@ -911,12 +898,6 @@ export class WeekView {
         }
     }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
     /**
      * Render weekly appointments section showing provider schedules for the week
      */
@@ -977,7 +958,7 @@ export class WeekView {
             const statusColors = getStatusColors(appointment.status, darkModeEnabled);
             const provider = providers.find(candidate => candidate.id === appointment.providerId);
             const providerColor = getProviderColor(provider);
-            const title = this.escapeHtml(appointment.customerName || appointment.title || 'Appointment');
+            const title = escapeHtml(appointment.customerName || appointment.title || 'Appointment');
             const timeText = startDateTime.toFormat(is24Hour ? 'HH:mm' : 'h:mma').toLowerCase();
 
             return `

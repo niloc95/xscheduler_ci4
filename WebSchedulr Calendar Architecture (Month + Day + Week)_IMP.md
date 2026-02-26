@@ -320,3 +320,195 @@ Then test via CLI or Postman before building UI.
 
 Once those are correct:
 You can safely build Day & Week rendering.
+
+
+
+Please compare the rebuild /refactor.md files vs audit report, and complete phase approch to start our rebuild. 
+
+Key I want to standardize timezone to UTC
+
+Note we still in development phase: 
+
+🧠 The Correct Order To Rebuild (Non-Negotiable)
+Phase 1 — Controlled Extraction (Stabilize System)
+
+DO NOT start building new calendar yet.
+
+1️⃣ Freeze Current Calendar
+
+Disable new feature additions
+
+Mark legacy calendar as deprecated
+
+Add feature flag if needed
+
+2️⃣ Database Review & Hardening
+
+Before touching rendering:
+
+Normalize appointment table
+
+Confirm foreign keys:
+
+provider_id
+
+service_id
+
+customer_id
+
+Ensure proper datetime fields:
+
+start_at (UTC)
+
+end_at (UTC)
+
+Index:
+
+provider_id + start_at
+
+start_at
+
+status
+
+You cannot build a correct engine on weak schema.
+
+3️⃣ Extract Core Logic Into Services
+
+Move logic OUT of:
+
+Controllers
+
+Views
+
+AJAX handlers
+
+Create:
+
+App\Services\
+    AvailabilityService.php
+    ConflictService.php
+    CalendarQueryService.php
+    BookingService.php
+    NotificationService.php
+
+Controllers must become thin.
+
+4️⃣ Centralize Booking Pipeline
+
+All bookings (Admin + Public) must flow through:
+
+BookingService → ConflictService → AvailabilityService → Save → NotificationService
+
+No exceptions.
+
+5️⃣ Lock Down User Roles
+
+Enforce:
+
+Admin → full access
+
+Receptionist → limited provider scope
+
+Provider → own appointments only
+
+Enforce at:
+
+Query level
+
+Not just UI hiding
+
+6️⃣ Integration Review
+
+Identify where appointments touch:
+
+Email system
+
+SMS (if exists)
+
+Webhooks
+
+Google/External calendars
+
+Reporting modules
+
+Replace direct calls with:
+
+Event-driven pattern:
+
+AppointmentCreatedEvent
+AppointmentUpdatedEvent
+AppointmentCancelledEvent
+
+NotificationService listens to events.
+
+7️⃣ Public Booking Flow Validation
+
+Public booking must:
+
+Call AvailabilityService
+
+Call ConflictService
+
+Respect:
+
+working hours
+
+breaks
+
+blocked periods
+
+future booking limits
+
+cancellation limits
+
+Right now some of this is bypassed.
+
+That must stop.
+
+🚫 What NOT To Do
+
+Do NOT:
+
+Start redesigning UI first
+
+Build Day/Week grid first
+
+Refactor Tailwind styling first
+
+Add new features before core is stabilized
+
+Architecture first. UI second.
+
+🏗 Correct Build Order After Cleanup
+
+Once extraction & hardening is complete:
+
+Availability Engine (core logic)
+
+Conflict Detection (enforcement layer)
+
+CalendarQueryService (data shaping)
+
+Month View (read-only first)
+
+Day View engine
+
+Week View engine
+
+Drag/drop interactions
+
+Real-time updates
+
+Performance optimization
+
+🎯 Final Recommendation
+
+You are currently in:
+
+Pre-Engine Refactor Stage
+
+Do this:
+
+Step 1: Complete DB + service extraction
+Step 2: Stabilize booking pipeline
+Step 3: Then build new calendar engine
