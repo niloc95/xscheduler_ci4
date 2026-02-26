@@ -65,6 +65,8 @@ use App\Models\LocationModel;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
 use App\Services\SchedulingService;
+use App\Services\Appointment\AppointmentQueryService;
+use App\Services\Appointment\AppointmentFormatterService;
 
 /**
  * Appointments API Controller
@@ -76,137 +78,74 @@ class Appointments extends BaseApiController
     private const DEFAULT_PROVIDER_COLOR = '#3B82F6';
 
     /**
-     * List appointments with pagination, filtering, and date range support
-     * GET /api/appointments?start=&end=&providerId=&serviceId=&page=&length=&sort=
+     * List appointments with pagination, filtering, and date range support.
+     * GET /api/appointments?start=&end=&provider_id=&service_id=&page=&length=&sort=
+     *
+     * Provider scoping is enforced automatically:
+     * - role=provider: always restricted to their own appointments (RISK-06 fix)
+     * - role=admin/staff: sees all appointments
      */
     public function index()
     {
         $response = $this->response->setHeader('Content-Type', 'application/json');
-        
-        try {
-            // Get query parameters
-            $start = $this->request->getGet('start');
-            $end = $this->request->getGet('end');
-            $providerId = $this->request->getGet('provider_id') ?? $this->request->getGet('providerId');
-            $serviceId = $this->request->getGet('service_id') ?? $this->request->getGet('serviceId');
-            $locationId = $this->request->getGet('location_id') ?? $this->request->getGet('locationId');
-            
-            // Pagination parameters
-            // For calendar views, allow up to 1000 per page to load all appointments
-            $page = max(1, (int)($this->request->getGet('page') ?? 1));
-            $length = min(1000, max(1, (int)($this->request->getGet('length') ?? 50)));
-            $offset = ($page - 1) * $length;
-            
-            // Sort parameters (default: start_time ASC)
-            $sortParam = $this->request->getGet('sort') ?? 'start_time:asc';
-            [$sortField, $sortDir] = array_pad(explode(':', $sortParam), 2, 'asc');
-            $validSortFields = ['id', 'start_time', 'end_time', 'provider_id', 'service_id', 'status'];
-            if (!in_array($sortField, $validSortFields)) {
-                $sortField = 'start_time';
-            }
-            $sortDir = strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC';
-            
-            $model = new AppointmentModel();
-            $builder = $model->builder();
-            
-            // Select appointments with related data including provider color
-            $builder->select('xs_appointments.*, 
-                             CONCAT(c.first_name, " ", COALESCE(c.last_name, "")) as customer_name,
-                             c.email as customer_email,
-                             c.phone as customer_phone,
-                             s.name as service_name,
-                             s.duration_min as service_duration,
-                             s.price as service_price,
-                             u.name as provider_name,
-                             u.color as provider_color')
-                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
-                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
-                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
-                    ->orderBy('xs_appointments.' . $sortField, $sortDir);
-            
-            // Apply date range filter
-            if ($start || $end) {
-                // Custom scheduler sends ISO 8601 dates (e.g., 2025-10-23T00:00:00Z or 2025-10-23)
-                // Parse into DateTimeImmutable for consistent handling
-                $startDate = substr($start, 0, 10); // Get YYYY-MM-DD
-                $endDate = substr($end, 0, 10);     // Get YYYY-MM-DD
-                
-                $builder->where('xs_appointments.start_time >=', $startDate . ' 00:00:00')
-                        ->where('xs_appointments.start_time <=', $endDate . ' 23:59:59');
-            }
-            
-            // Apply optional filters
-            if ($providerId) {
-                $builder->where('xs_appointments.provider_id', (int)$providerId);
-            }
-            
-            if ($serviceId) {
-                $builder->where('xs_appointments.service_id', (int)$serviceId);
-            }
-            
-            if ($locationId) {
-                $builder->where('xs_appointments.location_id', (int)$locationId);
-            }
-            
-            // Get total count for pagination
-            $countBuilder = clone $builder;
-            $totalCount = $countBuilder->countAllResults(false);
-            
-            // Apply pagination
-            $appointments = $builder->limit($length, $offset)->get()->getResultArray();
-            
-            // Transform data for scheduler clients (canonical snake_case)
-            $events = array_map(function($appointment) {
-                $startIso = $this->formatIso($appointment['start_time'] ?? null) ?? ($appointment['start_time'] ?? null);
-                $endIso = $this->formatIso($appointment['end_time'] ?? null) ?? ($appointment['end_time'] ?? null);
 
-                return [
-                    'id' => (int)$appointment['id'],
-                    'hash' => $appointment['hash'] ?? null, // Hash for secure URLs
-                    'title' => $appointment['customer_name'] ?? 'Appointment #' . $appointment['id'],
-                    'start' => $startIso,
-                    'end' => $endIso,
-                    'provider_id' => (int)$appointment['provider_id'],
-                    'service_id' => (int)$appointment['service_id'],
-                    'customer_id' => (int)$appointment['customer_id'],
-                    'status' => $appointment['status'],
-                    'name' => $appointment['customer_name'] ?? null,
-                    'service_name' => $appointment['service_name'] ?? null,
-                    'provider_name' => $appointment['provider_name'] ?? null,
-                    'provider_color' => $appointment['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
-                    'service_duration' => $appointment['service_duration'] ? (int)$appointment['service_duration'] : null,
-                    'service_price' => $appointment['service_price'] ? (float)$appointment['service_price'] : null,
-                    'email' => $appointment['customer_email'] ?? null,
-                    'phone' => $appointment['customer_phone'] ?? null,
-                    'notes' => $appointment['notes'] ?? null,
-                    'location_id' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
-                    'location_name' => $appointment['location_name'] ?? null,
-                    'location_address' => $appointment['location_address'] ?? null,
-                    'location_contact' => $appointment['location_contact'] ?? null,
-                    // Note: start_time/end_time removed - use 'start'/'end' instead (ISO 8601)
-                ];
-            }, $appointments);
-            
+        try {
+            // Query parameters
+            $start      = $this->request->getGet('start');
+            $end        = $this->request->getGet('end');
+            $providerId = $this->request->getGet('provider_id') ?? $this->request->getGet('providerId');
+            $serviceId  = $this->request->getGet('service_id') ?? $this->request->getGet('serviceId');
+            $locationId = $this->request->getGet('location_id') ?? $this->request->getGet('locationId');
+            $sortParam  = $this->request->getGet('sort') ?? 'start_time:asc';
+
+            // Pagination (calendar views may request up to 1000)
+            $page   = max(1, (int) ($this->request->getGet('page') ?? 1));
+            $length = min(1000, max(1, (int) ($this->request->getGet('length') ?? 50)));
+
+            // Session-based role scoping (fixes RISK-06)
+            $userRole      = current_user_role();
+            $scopeToUserId = session()->get('user_id');
+
+            $queryService = new AppointmentQueryService();
+            $formatter    = new AppointmentFormatterService();
+
+            $result = $queryService->getForCalendar([
+                'start'            => $start,
+                'end'              => $end,
+                'provider_id'      => $providerId ? (int) $providerId : null,
+                'service_id'       => $serviceId  ? (int) $serviceId  : null,
+                'location_id'      => $locationId ? (int) $locationId : null,
+                'sort'             => $sortParam,
+                'page'             => $page,
+                'length'           => $length,
+                'user_role'        => $userRole,
+                'scope_to_user_id' => $scopeToUserId,
+            ]);
+
+            $events = $formatter->formatManyForCalendar($result['rows']);
+
             return $response->setJSON([
                 'data' => $events,
                 'meta' => [
-                    'total' => (int) $totalCount,
+                    'total'   => $result['total'],
+                    'page'    => $result['page'],
+                    'length'  => $result['length'],
                     'filters' => [
-                        'start' => $start,
-                        'end' => $end,
+                        'start'       => $start,
+                        'end'         => $end,
                         'provider_id' => $providerId,
-                        'service_id' => $serviceId,
-                        'location_id' => $locationId
-                    ]
-                ]
+                        'service_id'  => $serviceId,
+                        'location_id' => $locationId,
+                    ],
+                ],
             ]);
-            
+
         } catch (\Exception $e) {
             return $response->setStatusCode(500)->setJSON([
                 'error' => [
                     'message' => 'Failed to fetch appointments',
-                    'details' => $e->getMessage()
-                ]
+                    'details' => $e->getMessage(),
+                ],
             ]);
         }
     }

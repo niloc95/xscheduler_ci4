@@ -200,16 +200,8 @@ $routes->group('help', function($routes) {
     //       chat, status, keyboard-shortcuts, api-docs, community) - methods don't exist
 });
 
-// Scheduler Routes
-// Admin/staff dashboard-facing scheduler (requires setup + auth)
-$routes->group('scheduler', ['filter' => 'setup'], function($routes) {
-    // Default scheduler page
-    $routes->get('', 'Scheduler::index', ['filter' => 'auth']);
-});
-
-// Public/client-facing booking view (legacy)
-$routes->get('book', 'Scheduler::client', ['filter' => 'setup']);
-
+// Public booking experience
+// Note: Legacy /scheduler and GET /book routes removed (deprecated since v2.0, sunset 2026-03-01)
 // New dedicated public booking experience (Option B)
 $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
@@ -237,11 +229,8 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->get('users', 'UserManagement::apiList', ['filter' => 'role:admin,provider']);
     $routes->get('user-counts', 'UserManagement::apiCounts', ['filter' => 'role:admin,provider']);
 
-    // Legacy simple endpoints
-    $routes->get('slots', 'Scheduler::slots');
-    $routes->post('book', 'Scheduler::book');
-
-    // Calendar prototype routes removed (archived)
+    // Note: Legacy GET /api/slots and POST /api/book removed (deprecated since v2.0, sunset 2026-03-01)
+    // Use GET /api/availability/slots and POST /api/appointments instead
 
     // Customer Appointments API (history, stats, autofill)
     $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1');
@@ -268,6 +257,12 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1');
     $routes->get('appointments', 'Api\\Appointments::index');
     // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)
+
+    // Calendar API — pre-computed server-side render models (Phase 3+ rebuild)
+    // Replaces client-side slot-engine.js computation
+    $routes->get('calendar/day',   'Api\\CalendarController::day',   ['filter' => 'auth']);
+    $routes->get('calendar/week',  'Api\\CalendarController::week',  ['filter' => 'auth']);
+    $routes->get('calendar/month', 'Api\\CalendarController::month', ['filter' => 'auth']);
 
     // Availability API - Comprehensive slot availability calculation
     $routes->get('availability/slots', 'Api\\Availability::slots');

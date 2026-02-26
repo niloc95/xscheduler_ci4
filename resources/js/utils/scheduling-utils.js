@@ -178,6 +178,12 @@ export function isSlotAvailableForProvider(appointments, slotStart, slotEnd, pro
  * @param {DateTime} options.minDateTime - Optional minimum DateTime (filter past slots)
  * @param {boolean} options.filterEmptyProviders - Remove slots with no working providers
  * @returns {Array} Array of slot objects with availability info
+ *
+ * @deprecated Phase 6 — Slot generation moved server-side.
+ *   Use GET /api/calendar/{day|week|month}?date=... (CalendarController) to get
+ *   pre-computed slots from CalendarRangeService + DayViewService/WeekViewService.
+ *   This function is kept for backward-compat with client mode; it will be removed
+ *   once all scheduler views consume the server-provided calendarModel.
  */
 export function generateSlotsWithAvailability(options) {
     const {

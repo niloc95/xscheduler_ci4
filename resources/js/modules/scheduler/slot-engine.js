@@ -51,6 +51,13 @@ function shortName(provider) {
  * Wraps scheduling-utils' generateSlotsWithAvailability with sensible
  * defaults and the blocked-period / weekend guard used by every view.
  *
+ * @deprecated Phase 6 — Client-side slot generation is superseded by the
+ *   server-side CalendarController endpoints (/api/calendar/day|week|month).
+ *   When SchedulerCore runs in mode='server', this function is never called —
+ *   the view receives pre-computed slots from calendarModel.days[].dayGrid.slots.
+ *   This function is retained for backward-compat with mode='client' and will
+ *   be removed in Phase 6 once all views consume the server-provided model.
+ *
  * @param {Object} opts
  * @param {DateTime}      opts.date
  * @param {Object}        opts.businessHours  { startTime, endTime }

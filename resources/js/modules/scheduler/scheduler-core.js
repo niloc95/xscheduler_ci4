@@ -35,6 +35,10 @@ export class SchedulerCore {
         this.appointments = [];
         this.providers = [];
         this.visibleProviders = new Set();
+
+        // Server-side render model (populated when mode = 'server')
+        // Contains pre-computed grid + appointments from /api/calendar/{view}
+        this.calendarModel = null;
         
         // Debouncing for render operations
         this.renderDebounceTimer = null;
@@ -104,7 +108,7 @@ export class SchedulerCore {
             await Promise.all([
                 this.loadCalendarConfig(),
                 this.loadProviders(),
-                this.loadAppointments()
+                this.loadData()
             ]);
             this.debugLog('✅ Data loaded');
 
@@ -181,6 +185,68 @@ export class SchedulerCore {
         } catch (error) {
             console.error('Failed to load providers:', error);
             this.providers = [];
+        }
+    }
+
+    /**
+     * Unified data loader — uses server-side calendar API when mode='server',
+     * otherwise falls back to the legacy /api/appointments endpoint.
+     *
+     * All internal navigation (changeView, navigateToDate, navigateNext, etc.) call
+     * this method so the mode is respected consistently.
+     */
+    async loadData(start = null, end = null) {
+        if (this.options.mode === 'server') {
+            return await this.loadCalendarModel();
+        }
+        return await this.loadAppointments(start, end);
+    }
+
+    /**
+     * Fetch the pre-computed render model from /api/calendar/{view}.
+     * Sets this.calendarModel and syncs this.appointments from the model.
+     * Falls back to loadAppointments() on error.
+     */
+    async loadCalendarModel() {
+        try {
+            const baseUrl = this.options.apiCalendarBaseUrl ?? `${getBaseUrl()}/api/calendar`;
+            const date    = this.currentDate.toISODate();
+            const view    = this.currentView;
+
+            let url;
+            if (view === 'month') {
+                url = `${baseUrl}/month?year=${this.currentDate.year}&month=${this.currentDate.month}`;
+            } else {
+                url = `${baseUrl}/${view}?date=${date}`;
+            }
+
+            // Append active filter params
+            const f = this.activeFilters || {};
+            if (f.providerId) url += `&provider_id=${f.providerId}`;
+            if (f.serviceId)  url += `&service_id=${f.serviceId}`;
+            if (f.locationId) url += `&location_id=${f.locationId}`;
+            if (f.status)     url += `&status=${f.status}`;
+
+            this.debugLog('🗓️ Loading calendar model from:', url);
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Calendar model fetch failed: ${response.status}`);
+
+            const data = await response.json();
+            this.calendarModel = data.data || data;
+
+            // Sync flat appointments array so client-side views still work
+            if (Array.isArray(this.calendarModel?.appointments)) {
+                this.appointments = this.calendarModel.appointments.map(
+                    a => this.normalizeAppointment(a)
+                );
+            }
+
+            this.debugLog('📊 Calendar model loaded:', this.calendarModel);
+            return this.calendarModel;
+        } catch (error) {
+            console.error('❌ Failed to load calendar model — falling back to /api/appointments:', error);
+            this.calendarModel = null;
+            return await this.loadAppointments();
         }
     }
 
@@ -426,11 +492,11 @@ export class SchedulerCore {
         }
 
         this.currentView = viewName;
-        
+
         // Toggle visibility of daily provider appointments section based on view
         this.toggleDailyAppointmentsSection();
-        
-        await this.loadAppointments();
+
+        await this.loadData();
         this.render();
     }
 
@@ -444,7 +510,7 @@ export class SchedulerCore {
             : DateTime.fromISO(String(targetDate), { zone: this.options.timezone });
 
         this.currentDate = normalized.setZone(this.options.timezone);
-        await this.loadAppointments();
+        await this.loadData();
         this.render();
     }
 
@@ -519,6 +585,9 @@ export class SchedulerCore {
                 providers: this.providers,
                 config: this.calendarConfig,
                 settings: this.settingsManager, // Pass settings manager
+                // Pre-computed server-side model (null in client mode, populated in server mode)
+                // Views can use this.calendarModel.days/.grid/.weeks for zero-compute rendering.
+                calendarModel: this.calendarModel,
                 onAppointmentClick: this.handleAppointmentClick.bind(this)
             });
 

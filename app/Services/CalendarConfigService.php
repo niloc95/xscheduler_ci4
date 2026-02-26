@@ -52,6 +52,7 @@
 
 namespace App\Services;
 
+use App\Models\BusinessHourModel;
 use App\Models\SettingModel;
 
 /**
@@ -214,42 +215,45 @@ class CalendarConfigService
 
     /**
      * Get business hours configuration for scheduler
-     * Fetches from business_hours table and formats for scheduler component
-     * 
-     * For now, aggregates all provider business hours.
-     * In the future, this can be filtered by provider_id for provider-specific views.
+     * Fetches from xs_business_hours table via BusinessHourModel and formats
+     * for the scheduler component.
+     *
+     * Aggregates across all providers (earliest start / latest end per weekday).
+     * Pass $providerId to scope to a single provider.
+     *
+     * weekday: 0=Sunday, 1=Monday, …, 6=Saturday
      */
-    public function getBusinessHoursForCalendar(): array
+    public function getBusinessHoursForCalendar(?int $providerId = null): array
     {
-        $db = \Config\Database::connect();
-        
-        // Get all business hours grouped by weekday
-        // weekday: 0=Sunday, 1=Monday, ..., 6=Saturday (matches FullCalendar)
-        $businessHours = $db->table('business_hours')
-            ->select('weekday, MIN(start_time) as start_time, MAX(end_time) as end_time')
+        $model = new BusinessHourModel();
+        $builder = $model->select('weekday, MIN(start_time) as start_time, MAX(end_time) as end_time');
+
+        if ($providerId !== null) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        $businessHours = $builder
             ->groupBy('weekday')
             ->orderBy('weekday', 'ASC')
-            ->get()
-            ->getResultArray();
+            ->findAll();
 
         if (empty($businessHours)) {
-            // Default business hours: Monday-Friday 9 AM - 5 PM
+            // Default business hours: Monday–Friday 09:00–17:00
             return [
                 [
-                    'daysOfWeek' => [1, 2, 3, 4, 5], // Monday - Friday
-                    'startTime' => '09:00',
-                    'endTime' => '17:00'
+                    'daysOfWeek' => [1, 2, 3, 4, 5],
+                    'startTime'  => '09:00',
+                    'endTime'    => '17:00',
                 ]
             ];
         }
 
-        // Convert database format to FullCalendar format
         $result = [];
         foreach ($businessHours as $hours) {
             $result[] = [
                 'daysOfWeek' => [(int) $hours['weekday']],
-                'startTime' => substr($hours['start_time'], 0, 5), // HH:MM
-                'endTime' => substr($hours['end_time'], 0, 5),     // HH:MM
+                'startTime'  => substr($hours['start_time'], 0, 5), // HH:MM
+                'endTime'    => substr($hours['end_time'],   0, 5), // HH:MM
             ];
         }
 
@@ -257,11 +261,11 @@ class CalendarConfigService
     }
 
     /**
-     * Get calendar view preferences
+     * Get calendar view preferences — returns 'day', 'week', or 'month'
      */
     public function getDefaultView(): string
     {
-        return $this->getSetting('calendar.default_view') ?? 'timeGridWeek';
+        return $this->getSetting('calendar.default_view') ?? 'week';
     }
 
     /**
@@ -304,37 +308,25 @@ class CalendarConfigService
     }
 
     /**
-     * Get all calendar/scheduler-related settings for JavaScript
-     * This is the main method to use when initializing the scheduler
-     * 
-     * Note: Configuration keys may need adjustment for custom scheduler component
+     * Get all calendar/scheduler-related settings for JavaScript.
+     * Keyed for the custom WebSchedulr scheduler component (not FullCalendar).
+     *
+     * @param int|null $providerId  Optional: scope business hours to one provider
      */
-    public function getJavaScriptConfig(): array
+    public function getJavaScriptConfig(?int $providerId = null): array
     {
         return [
-            'initialView' => $this->getDefaultView(),
-            'firstDay' => $this->getFirstDayOfWeek(),
-            'slotDuration' => $this->getSlotDuration(),
-            'slotMinTime' => $this->getSlotMinTime(),
-            'slotMaxTime' => $this->getSlotMaxTime(),
-            'slotLabelFormat' => $this->getSlotLabelFormat(),
-            'eventTimeFormat' => $this->getEventTimeFormat(),
-            'weekends' => $this->shouldShowWeekends(),
-            'height' => $this->getCalendarHeight(),
-            'businessHours' => $this->getBusinessHoursForCalendar(),
+            'defaultView'    => $this->getDefaultView(),
+            'firstDay'       => $this->getFirstDayOfWeek(),
+            'slotDuration'   => $this->getSlotDuration(),
+            'slotMinTime'    => $this->getSlotMinTime(),
+            'slotMaxTime'    => $this->getSlotMaxTime(),
+            'timeFormat'     => $this->getTimeFormat(),
+            'showWeekends'   => $this->shouldShowWeekends(),
+            'businessHours'  => $this->getBusinessHoursForCalendar($providerId),
             'blockedPeriods' => $this->getBlockedPeriods(),
-            'timeZone' => $this->getTimezone(),
-            'locale' => $this->getLocale(),
-            'headerToolbar' => [
-                'left' => 'prev,next today',
-                'center' => 'title',
-                'right' => 'dayGridMonth,timeGridWeek,timeGridDay'
-            ],
-            'navLinks' => true,
-            'editable' => true,
-            'selectable' => true,
-            'selectMirror' => true,
-            'dayMaxEvents' => true,
+            'timezone'       => $this->getTimezone(),
+            'locale'         => $this->getLocale(),
         ];
     }
 
