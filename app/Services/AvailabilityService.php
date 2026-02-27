@@ -317,11 +317,11 @@ class AvailabilityService
             ];
         }
         
-        // Check for blocked time periods
+        // Check for blocked time periods (DB now stores UTC)
         $blockedTimes = $this->conflictService->getBlockedTimesForPeriod(
             $providerId,
-            $start->format('Y-m-d H:i:s'),
-            $end->format('Y-m-d H:i:s')
+            $startUtc,
+            $endUtc
         );
         
         if (!empty($blockedTimes)) {
@@ -584,10 +584,6 @@ class AvailabilityService
         $startOfDayUtc = (clone $localStartOfDay)->setTimezone($utcTz)->format('Y-m-d H:i:s');
         $endOfDayUtc   = (clone $localEndOfDay)->setTimezone($utcTz)->format('Y-m-d H:i:s');
         
-        // Also keep local boundaries for blocked_times (still stored in local TZ)
-        $startOfDayLocal = $date . ' 00:00:00';
-        $endOfDayLocal   = $date . ' 23:59:59';
-        
         $appointmentsQuery = $this->appointmentModel
             ->where('provider_id', $providerId)
             ->where('status !=', 'cancelled')
@@ -620,17 +616,20 @@ class AvailabilityService
             ];
         }
         
-        // Blocked times are still stored in local timezone
+        // Blocked times are now stored in UTC — query with UTC boundaries
         $blockedTimes = $this->blockedTimeModel
-            ->where('provider_id', $providerId)
-            ->where('start_time <=', $endOfDayLocal)
-            ->where('end_time >=', $startOfDayLocal)
+            ->groupStart()
+                ->where('provider_id', $providerId)
+                ->orWhere('provider_id', null)
+            ->groupEnd()
+            ->where('start_at <=', $endOfDayUtc)
+            ->where('end_at >=',   $startOfDayUtc)
             ->findAll();
         
         foreach ($blockedTimes as $block) {
-            // Blocked times stored in local timezone
-            $blockStart = new DateTime($block['start_time'], $tz);
-            $blockEnd = new DateTime($block['end_time'], $tz);
+            // Blocked times stored in UTC — convert to local for comparison
+            $blockStart = (new DateTime($block['start_at'], $utcTz))->setTimezone($tz);
+            $blockEnd   = (new DateTime($block['end_at'],   $utcTz))->setTimezone($tz);
             
             $busy[] = [
                 'start' => $blockStart,

@@ -129,35 +129,38 @@ class ConflictService
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * Return blocked time entries that overlap the given time range.
+     * Return blocked time entries that overlap the given UTC time range.
      *
-     * NOTE: blocked_times are still stored in LOCAL timezone (not UTC).
-     * Callers must pass local-TZ boundaries when querying blocked times.
+     * Returns both provider-specific blocks (matching $providerId) and
+     * global blocks (provider_id IS NULL), e.g. public holidays.
      *
      * @param int    $providerId
-     * @param string $startLocal  Local datetime 'Y-m-d H:i:s'
-     * @param string $endLocal    Local datetime 'Y-m-d H:i:s'
+     * @param string $startUtc   UTC datetime 'Y-m-d H:i:s'
+     * @param string $endUtc     UTC datetime 'Y-m-d H:i:s'
      * @return array Blocked time rows
      */
     public function getBlockedTimesForPeriod(
         int $providerId,
-        string $startLocal,
-        string $endLocal
+        string $startUtc,
+        string $endUtc
     ): array {
         return $this->blockedTimeModel
-            ->where('provider_id', $providerId)
+            ->groupStart()
+                ->where('provider_id', $providerId)
+                ->orWhere('provider_id', null)
+            ->groupEnd()
             ->groupStart()
                 ->groupStart()
-                    ->where('start_time <=', $startLocal)
-                    ->where('end_time >', $startLocal)
+                    ->where('start_at <=', $startUtc)
+                    ->where('end_at >',   $startUtc)
                 ->groupEnd()
                 ->orGroupStart()
-                    ->where('start_time <', $endLocal)
-                    ->where('end_time >=', $endLocal)
+                    ->where('start_at <',  $endUtc)
+                    ->where('end_at >=',   $endUtc)
                 ->groupEnd()
                 ->orGroupStart()
-                    ->where('start_time >=', $startLocal)
-                    ->where('end_time <=', $endLocal)
+                    ->where('start_at >=', $startUtc)
+                    ->where('end_at <=',   $endUtc)
                 ->groupEnd()
             ->groupEnd()
             ->findAll();

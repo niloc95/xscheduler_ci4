@@ -13,9 +13,9 @@
  * -----------------------------------------------------------------------------
  * Columns:
  * - id              : Primary key
- * - provider_id     : FK to xs_users (provider)
- * - start_time      : Block start datetime
- * - end_time        : Block end datetime
+ * - provider_id     : FK to xs_users (provider); NULL = global block
+ * - start_at        : Block start datetime (UTC)
+ * - end_at          : Block end datetime (UTC)
  * - reason          : Why time is blocked (vacation, meeting, etc.)
  * - created_at      : Creation timestamp
  * - updated_at      : Last update timestamp
@@ -62,7 +62,7 @@ class BlockedTimeModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'provider_id', 'start_time', 'end_time', 'reason'
+        'provider_id', 'start_at', 'end_at', 'reason'
     ];
 
     protected $useTimestamps = true;
