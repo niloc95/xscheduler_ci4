@@ -48,6 +48,7 @@ namespace App\Controllers\Api;
 use App\Services\Calendar\DayViewService;
 use App\Services\Calendar\WeekViewService;
 use App\Services\Calendar\MonthViewService;
+use App\Models\SettingModel;
 
 class CalendarController extends BaseApiController
 {
@@ -63,6 +64,9 @@ class CalendarController extends BaseApiController
     public function day()
     {
         try {
+            if ($resp = $this->ensureCalendarEnabled()) {
+                return $resp;
+            }
             $date = $this->resolveDate($this->request->getGet('date'));
 
             $service = new DayViewService();
@@ -91,6 +95,9 @@ class CalendarController extends BaseApiController
     public function week()
     {
         try {
+            if ($resp = $this->ensureCalendarEnabled()) {
+                return $resp;
+            }
             $date = $this->resolveDate($this->request->getGet('date'));
 
             $service = new WeekViewService();
@@ -120,6 +127,9 @@ class CalendarController extends BaseApiController
     public function month()
     {
         try {
+            if ($resp = $this->ensureCalendarEnabled()) {
+                return $resp;
+            }
             // Accept year+month or date string
             $dateParam = $this->request->getGet('date');
             if ($dateParam) {
@@ -166,6 +176,19 @@ class CalendarController extends BaseApiController
         } catch (\Throwable $e) {
             return date('Y-m-d');
         }
+    }
+
+    /**
+     * Guard calendar endpoints behind rebuild flag.
+     */
+    private function ensureCalendarEnabled()
+    {
+        $settings = (new SettingModel())->getByKeys(['calendar.rebuild_enabled']);
+        $enabled = $settings['calendar.rebuild_enabled'] ?? true;
+        if (!$enabled) {
+            return $this->error(503, 'Calendar rebuild in progress', 'CALENDAR_REBUILD_DISABLED');
+        }
+        return null;
     }
 
     /**

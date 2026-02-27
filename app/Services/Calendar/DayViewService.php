@@ -40,7 +40,6 @@
 
 namespace App\Services\Calendar;
 
-use App\Models\SettingModel;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 
@@ -50,29 +49,18 @@ class DayViewService
     private CalendarRangeService      $range;
     private AppointmentQueryService   $query;
     private AppointmentFormatterService $formatter;
-    private string $dayStart;
-    private string $dayEnd;
-    private int    $resolution;
+    private TimeGridService $timeGrid;
 
     public function __construct(
         ?CalendarRangeService $range = null,
         ?AppointmentQueryService $query = null,
-        ?AppointmentFormatterService $formatter = null
+        ?AppointmentFormatterService $formatter = null,
+        ?TimeGridService $timeGrid = null
     ) {
         $this->range     = $range     ?? new CalendarRangeService();
         $this->query     = $query     ?? new AppointmentQueryService();
         $this->formatter = $formatter ?? new AppointmentFormatterService();
-
-        // Read calendar slot settings
-        $settings = (new SettingModel())->getByKeys([
-            'calendar.day_start',
-            'calendar.day_end',
-            'booking.time_resolution',
-        ]);
-
-        $this->dayStart   = $settings['calendar.day_start']       ?? '08:00';
-        $this->dayEnd     = $settings['calendar.day_end']         ?? '18:00';
-        $this->resolution = (int) ($settings['booking.time_resolution'] ?? 30);
+        $this->timeGrid  = $timeGrid ?? new TimeGridService($this->range);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -80,24 +68,24 @@ class DayViewService
     /**
      * Build the day view render model.
      *
-     * @param string $date    Y-m-d
-     * @param array  $filters provider_id, service_id, location_id, status,
-     *                         user_role, scope_to_user_id
+     * @param string     $date    Y-m-d
+     * @param array      $filters provider_id, service_id, location_id, status,
+     *                            user_role, scope_to_user_id
+     * @param array|null $appointments Pre-formatted appointment rows (optional)
      * @return array Full render model (JSON-safe)
      */
-    public function build(string $date, array $filters = []): array
+    public function build(string $date, array $filters = [], ?array $appointments = null): array
     {
         // 1. Generate time grid
-        $grid = $this->range->generateDaySlots(
-            $date,
-            $this->dayStart,
-            $this->dayEnd,
-            $this->resolution
-        );
+        $grid = $this->timeGrid->generateDayGrid($date);
 
         // 2. Fetch appointments for the day
-        $rows      = $this->query->getForRange($date, $date, $filters);
-        $formatted = $this->formatter->formatManyForCalendar($rows);
+        if ($appointments === null) {
+            $rows      = $this->query->getForRange($date, $date, $filters);
+            $formatted = $this->formatter->formatManyForCalendar($rows);
+        } else {
+            $formatted = $appointments;
+        }
 
         // 3. Group appointments by provider
         $providers = [];
@@ -130,7 +118,12 @@ class DayViewService
         $providerColumns = [];
         foreach ($providers as $provider) {
             $providerGrid = $grid;
-            $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $provider['appointments'], $providerGrid, $this->resolution);
+            $providerGrid['slots'] = $this->injectIntoSlots(
+                $providerGrid['slots'],
+                $provider['appointments'],
+                $providerGrid,
+                $this->timeGrid->getResolution()
+            );
             
             $providerColumns[] = [
                 'provider' => [
@@ -157,8 +150,8 @@ class DayViewService
             'isToday'          => $isToday,
             'isPast'           => $isPast,
             'businessHours'    => [
-                'startTime' => $this->dayStart,
-                'endTime'   => $this->dayEnd,
+                'startTime' => $this->timeGrid->getDayStart(),
+                'endTime'   => $this->timeGrid->getDayEnd(),
             ],
             'grid'             => $grid, // Keep base grid for backward compatibility
             'providerColumns'  => $providerColumns, // New multi-column layout

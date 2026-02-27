@@ -44,38 +44,29 @@
 
 namespace App\Services\Calendar;
 
-use App\Models\SettingModel;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 
 class WeekViewService
 {
-    use SlotInjectionTrait;
     private CalendarRangeService        $range;
     private AppointmentQueryService     $query;
     private AppointmentFormatterService $formatter;
-    private string $dayStart;
-    private string $dayEnd;
-    private int    $resolution;
+    private TimeGridService             $timeGrid;
+    private DayViewService              $dayView;
 
     public function __construct(
         ?CalendarRangeService $range = null,
         ?AppointmentQueryService $query = null,
-        ?AppointmentFormatterService $formatter = null
+        ?AppointmentFormatterService $formatter = null,
+        ?TimeGridService $timeGrid = null,
+        ?DayViewService $dayView = null
     ) {
         $this->range     = $range     ?? new CalendarRangeService();
         $this->query     = $query     ?? new AppointmentQueryService();
         $this->formatter = $formatter ?? new AppointmentFormatterService();
-
-        $settings = (new SettingModel())->getByKeys([
-            'calendar.day_start',
-            'calendar.day_end',
-            'booking.time_resolution',
-        ]);
-
-        $this->dayStart   = $settings['calendar.day_start']       ?? '08:00';
-        $this->dayEnd     = $settings['calendar.day_end']         ?? '18:00';
-        $this->resolution = (int) ($settings['booking.time_resolution'] ?? 30);
+        $this->timeGrid  = $timeGrid ?? new TimeGridService($this->range);
+        $this->dayView   = $dayView ?? new DayViewService($this->range, $this->query, $this->formatter, $this->timeGrid);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -109,31 +100,7 @@ class WeekViewService
         }
         $allFormatted = $this->formatter->formatManyForCalendar($allRows);
 
-        // 4. Group appointments by provider (for multi-column layout)
-        $providers = [];
-        $providerMap = [];
-        foreach ($allFormatted as $event) {
-            $pid = $event['provider_id'] ?? 0;
-            if (!isset($providerMap[$pid])) {
-                $providerMap[$pid] = count($providers);
-                $providers[] = [
-                    'id' => $pid,
-                    'name' => $event['provider_name'] ?? 'Unknown Provider',
-                    'appointments' => []
-                ];
-            }
-            $providers[$providerMap[$pid]]['appointments'][] = $event;
-        }
-
-        if (empty($providers)) {
-            $providers[] = [
-                'id' => 0,
-                'name' => 'All Providers',
-                'appointments' => []
-            ];
-        }
-
-        // 5. Build per-day structures with inline time grids
+        // 4. Build per-day structures via DayViewService
         $formattedByDate = [];
         foreach ($allFormatted as $event) {
             $d = substr($event['start'], 0, 10); // Y-m-d
@@ -144,36 +111,12 @@ class WeekViewService
         foreach ($days as &$day) {
             $d    = $day['date'];
             $dayEvents = $formattedByDate[$d] ?? [];
+            $dayModel  = $this->dayView->build($d, $filters, $dayEvents);
 
-            // Generate base time grid
-            $baseGrid = $this->range->generateDaySlots($d, $this->dayStart, $this->dayEnd, $this->resolution);
-            
-            // Inject appointments into matching time slots PER PROVIDER
-            $providerColumns = [];
-            foreach ($providers as $provider) {
-                $providerGrid = $baseGrid;
-                
-                // Filter events for this provider on this day
-                $providerDayEvents = array_values(array_filter($dayEvents, function($e) use ($provider, $providers) {
-                    $pid = $e['provider_id'] ?? 0;
-                    return $pid === $provider['id'] || ($provider['id'] === 0 && count($providers) === 1);
-                }));
-
-                $providerGrid['slots'] = $this->injectIntoSlots($providerGrid['slots'], $providerDayEvents, $providerGrid, $this->resolution);
-                
-                $providerColumns[] = [
-                    'provider' => [
-                        'id' => $provider['id'],
-                        'name' => $provider['name']
-                    ],
-                    'grid' => $providerGrid
-                ];
-            }
-
-            $day['appointments'] = $dayEvents;
-            $day['appointmentCount'] = count($dayEvents);
-            $day['dayGrid'] = $baseGrid;
-            $day['providerColumns'] = $providerColumns;
+            $day['appointments'] = $dayModel['appointments'];
+            $day['appointmentCount'] = $dayModel['totalAppointments'];
+            $day['dayGrid'] = $dayModel['grid'];
+            $day['providerColumns'] = $dayModel['providerColumns'];
         }
         unset($day);
 
@@ -185,10 +128,10 @@ class WeekViewService
             'endDate'            => $week['endDate'],
             'weekLabel'          => $weekLabel,
             'businessHours'      => [
-                'startTime' => $this->dayStart,
-                'endTime'   => $this->dayEnd,
+                'startTime' => $this->timeGrid->getDayStart(),
+                'endTime'   => $this->timeGrid->getDayEnd(),
             ],
-            'slotDuration'       => $this->resolution,
+            'slotDuration'       => $this->timeGrid->getResolution(),
             'days'               => $days,
             'appointments'       => $allFormatted,
             'totalAppointments'  => count($allFormatted),
