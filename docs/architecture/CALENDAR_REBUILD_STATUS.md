@@ -12,11 +12,11 @@
 - Standardized blocked times to UTC (`start_at`/`end_at`) and aligned conflict/availability queries.
 - Removed client-side scheduling engines and switched availability panels to API-driven slots.
 - Centralized booking pipeline for admin/public/API create through `AppointmentBookingService`.
+- Normalized provider schedule weekday handling for string/int inputs.
 
 ## What Is Still Pending
 
-1. Normalize provider schedule weekday representation (enum strings vs integer weekdays).
-2. Harden appointment schema per audit (customer_id not null, confirm indexes aligned to `start_at`).
+1. Harden appointment schema per audit (customer_id not null, confirm indexes aligned to `start_at`).
 
 ## Rebuild Flag
 
