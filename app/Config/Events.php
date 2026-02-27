@@ -2,6 +2,8 @@
 
 namespace Config;
 
+use App\Services\NotificationPhase1;
+use App\Services\NotificationQueueService;
 use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
 use CodeIgniter\HotReloader\HotReloader;
@@ -51,5 +53,30 @@ Events::on('pre_system', static function (): void {
                 (new HotReloader())->run();
             });
         }
+    }
+});
+
+Events::on('appointment.event', static function (array $payload): void {
+    $appointmentId = (int) ($payload['appointment_id'] ?? 0);
+    $eventType = trim((string) ($payload['event_type'] ?? ''));
+    $channels = $payload['channels'] ?? [];
+    $businessId = (int) ($payload['business_id'] ?? NotificationPhase1::BUSINESS_ID_DEFAULT);
+
+    if ($appointmentId <= 0 || $eventType === '') {
+        return;
+    }
+
+    if (!is_array($channels) || empty($channels)) {
+        $channels = ['email', 'whatsapp'];
+    }
+
+    $channels = array_values(array_intersect($channels, NotificationPhase1::CHANNELS));
+    if (empty($channels)) {
+        return;
+    }
+
+    $queue = new NotificationQueueService();
+    foreach ($channels as $channel) {
+        $queue->enqueueAppointmentEvent($businessId, $channel, $eventType, $appointmentId);
     }
 });

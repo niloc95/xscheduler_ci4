@@ -13,10 +13,12 @@
 - Removed client-side scheduling engines and switched availability panels to API-driven slots.
 - Centralized booking pipeline for admin/public/API create through `AppointmentBookingService`.
 - Normalized provider schedule weekday handling for string/int inputs.
+- Enforced staff role scoping via assigned provider access in `AppointmentQueryService`.
+- Routed appointment notifications through event-driven enqueueing.
 
 ## What Is Still Pending
 
-1. Harden appointment schema per audit (customer_id not null, confirm indexes aligned to `start_at`).
+- No remaining items in this phase.
 
 ## Rebuild Flag
 

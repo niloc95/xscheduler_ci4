@@ -81,9 +81,10 @@ class Appointments extends BaseApiController
      * List appointments with pagination, filtering, and date range support.
      * GET /api/appointments?start=&end=&provider_id=&service_id=&page=&length=&sort=
      *
-     * Provider scoping is enforced automatically:
-     * - role=provider: always restricted to their own appointments (RISK-06 fix)
-     * - role=admin/staff: sees all appointments
+    * Role scoping is enforced automatically:
+    * - role=provider: always restricted to their own appointments (RISK-06 fix)
+    * - role=staff: restricted to assigned providers
+    * - role=admin: sees all appointments
      */
     public function index()
     {
@@ -1075,12 +1076,9 @@ class Appointments extends BaseApiController
     private function queueAppointmentNotifications(int $appointmentId, array $channels, string $eventType, string $context = 'appointment'): void
     {
         try {
-            $queue = new \App\Services\NotificationQueueService();
+            $events = new \App\Services\AppointmentEventService();
             $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-
-            foreach ($channels as $channel) {
-                $queue->enqueueAppointmentEvent($businessId, $channel, $eventType, $appointmentId);
-            }
+            $events->dispatch($eventType, $appointmentId, $channels, $businessId);
         } catch (\Throwable $e) {
             log_message('error', 'Notification enqueue failed for {context} {id}: {msg}', [
                 'context' => $context,

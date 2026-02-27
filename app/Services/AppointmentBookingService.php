@@ -91,7 +91,6 @@ class AppointmentBookingService
     protected ServiceModel $serviceModel;
     protected BusinessHoursService $businessHoursService;
     protected AvailabilityService $availabilityService;
-    protected NotificationQueueService $notificationService;
     protected TimezoneService $timezoneService;
 
     public function __construct()
@@ -101,7 +100,6 @@ class AppointmentBookingService
         $this->serviceModel = new ServiceModel();
         $this->businessHoursService = new BusinessHoursService();
         $this->availabilityService = new AvailabilityService();
-        $this->notificationService = new NotificationQueueService();
         $this->timezoneService = new TimezoneService();
     }
 
@@ -539,14 +537,8 @@ class AppointmentBookingService
     protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
     {
         try {
-            foreach ($types as $type) {
-                $this->notificationService->enqueueAppointmentEvent(
-                    NotificationPhase1::BUSINESS_ID_DEFAULT,
-                    $type,
-                    $event,
-                    $appointmentId
-                );
-            }
+            $events = new AppointmentEventService();
+            $events->dispatch($event, $appointmentId, $types, NotificationPhase1::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications: ' . implode(', ', $types));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());

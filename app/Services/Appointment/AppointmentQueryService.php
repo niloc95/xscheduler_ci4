@@ -34,6 +34,7 @@
 namespace App\Services\Appointment;
 
 use App\Models\AppointmentModel;
+use App\Models\ProviderStaffModel;
 
 class AppointmentQueryService
 {
@@ -225,9 +226,10 @@ class AppointmentQueryService
     }
 
     /**
-     * Enforce provider scoping:
-     * - If user_role = 'provider', restrict to scope_to_user_id (their own appointments)
-     * - If provider_id filter is explicitly set, honour it (admin override)
+     * Enforce role scoping:
+     * - provider: restrict to scope_to_user_id (their own appointments)
+     * - staff: restrict to assigned providers (optionally narrowed by provider_id)
+     * - admin: honours explicit provider_id filter
      *
      * Fixes RISK-06: provider could previously see all appointments by omitting provider_id.
      */
@@ -238,11 +240,35 @@ class AppointmentQueryService
         $filterPid   = $filters['provider_id']      ?? null;
 
         if ($userRole === 'provider' && $scopeUserId) {
-            // Provider can only see their own appointments
-            // An explicit provider_id filter that matches their own ID is allowed;
-            // any other provider_id is silently replaced with their own.
+            // Provider can only see their own appointments.
             $builder->where('xs_appointments.provider_id', (int) $scopeUserId);
-        } elseif ($filterPid) {
+            return $builder;
+        }
+
+        if ($userRole === 'staff' && $scopeUserId) {
+            $assignments = new ProviderStaffModel();
+            $providers = $assignments->getProvidersForStaff((int) $scopeUserId, 'active');
+            $providerIds = array_map('intval', array_column($providers, 'id'));
+
+            if ($filterPid) {
+                if (in_array((int) $filterPid, $providerIds, true)) {
+                    $builder->where('xs_appointments.provider_id', (int) $filterPid);
+                } else {
+                    $builder->where('xs_appointments.provider_id', 0);
+                }
+                return $builder;
+            }
+
+            if (!empty($providerIds)) {
+                $builder->whereIn('xs_appointments.provider_id', $providerIds);
+            } else {
+                $builder->where('xs_appointments.provider_id', 0);
+            }
+
+            return $builder;
+        }
+
+        if ($filterPid) {
             $builder->where('xs_appointments.provider_id', (int) $filterPid);
         }
 
