@@ -7,16 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
-import {
-    generateSlots,
-    renderSlotList,
-    renderProviderFilterPills,
-    renderSlotLegend,
-    computeDayAvailability,
-    escapeHtml,
-    isDateBlocked,
-    getBlockedPeriodInfo,
-} from './slot-engine.js';
+import { withBaseUrl } from '../../utils/url-helpers.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -110,7 +101,7 @@ export class MonthView {
         // Simpler approach: just complete 6 weeks from grid start
         const gridEnd = gridStart.plus({ days: 41 }); // 6 weeks - 1 day
         
-        // Generate weeks
+        // Generate weeks (fallback when server model is missing)
         const weeks = [];
         let current = gridStart;
         
@@ -122,6 +113,8 @@ export class MonthView {
             }
             weeks.push(week);
         }
+
+        const modelWeeks = calendarModel?.weeks || null;
 
         // Group appointments by date
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
@@ -137,8 +130,10 @@ export class MonthView {
 
                 <!-- Calendar Grid -->
                 <div class="grid grid-cols-7 grid-rows-6 gap-px px-1 pb-1">
-                    ${weeks.map(week => week.map(day => 
-                        this.renderDayCell(day, monthStart.month, settings)
+                    ${(modelWeeks || weeks).map(week => week.map(day => 
+                        modelWeeks
+                            ? this.renderDayCellFromModel(day, settings)
+                            : this.renderDayCell(day, monthStart.month, settings)
                     ).join('')).join('')}
                 </div>
                 
@@ -167,6 +162,7 @@ export class MonthView {
         
         // Attach slot panel listeners
         this._attachMonthSlotListeners();
+        this._refreshMonthSlotPanel();
     }
 
     renderDayHeaders(config, settings) {
@@ -191,8 +187,8 @@ export class MonthView {
         const isPast = day < DateTime.now().startOf('day');
         const dayAppointments = this.getAppointmentsForDay(day);
         const isWorkingDay = settings?.isWorkingDay ? settings.isWorkingDay(day) : true;
-        const isBlocked = isDateBlocked(day, this.blockedPeriods);
-        const blockedInfo = isBlocked ? getBlockedPeriodInfo(day, this.blockedPeriods) : null;
+        const isBlocked = this.isDateBlocked(day, this.blockedPeriods);
+        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, this.blockedPeriods) : null;
         const isSelected = this.selectedDate && day.hasSame(this.selectedDate, 'day');
         
         // Day number badge styles — minimal, matching date picker
@@ -790,25 +786,8 @@ export class MonthView {
                 }
             }
         }
-        
-        // Fallback to client-side computation
-        const avail = computeDayAvailability({
-            date: day,
-            businessHours: this.businessHours,
-            slotDuration: this.slotDuration,
-            appointments: this.appointments,
-            providers: this.providers,
-            blockedPeriods: this.blockedPeriods,
-            settings: this.settings,
-        });
 
-        if (avail.hasOpenSlots) {
-            return '<div class="day-availability-bar day-availability-bar--open"></div>';
-        }
-        if (avail.isFullyBooked) {
-            return '<div class="day-availability-bar day-availability-bar--full"></div>';
-        }
-        return ''; // Non-working / weekend / no providers
+        return '';
     }
 
     /**
@@ -817,89 +796,23 @@ export class MonthView {
      */
     _renderMonthSlotPanel() {
         const date = this.selectedDate || DateTime.now();
-        const providers = this.providers || [];
-        if (providers.length === 0) return '';
-
-        // In server mode the slot engine is not used — the month model contains
-        // only per-cell appointment counts; detailed slot availability requires
-        // the day-view endpoint.  Render the day's appointments from the model.
-        if (this.calendarModel) {
-            const dateStr = date.toFormat('yyyy-MM-dd');
-            const cell = this.calendarModel.weeks?.flat?.()?.find(c => c.date === dateStr);
-            const dayAppts = cell?.appointments ?? [];
-
-            const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-
-            const apptItems = dayAppts.length
-                ? dayAppts.map(a => {
-                    const timeLabel = a.start
-                        ? DateTime.fromISO(a.start).toFormat(timeFormat)
-                        : (a.startTime || '');
-                    return `<div class="slot-panel__slot-item">
-                        <span class="slot-panel__slot-time">${escapeHtml(timeLabel)}</span>
-                        <span class="slot-panel__slot-label">${escapeHtml(a.title || a.customerName || 'Appointment')}</span>
-                    </div>`;
-                }).join('')
-                : '<p class="slot-panel__empty">No appointments on this day.</p>';
-
-            return `<div class="slot-panel" id="month-slot-panel-inner">
-                <div class="slot-panel__header">
-                    <h3 class="slot-panel__title">
-                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
-                        Appointments — ${date.toFormat('EEE, MMM d')}
-                    </h3>
-                    <div class="slot-panel__provider-count">
-                        <span class="material-symbols-outlined text-sm">group</span>
-                        <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
-                    </div>
-                </div>
-                <div class="slot-panel__slots">
-                    <div class="slot-panel__slot-list" id="month-slot-list">
-                        ${apptItems}
-                    </div>
-                </div>
-            </div>`;
-        }
-
-        const slots = generateSlots({
-            date,
-            businessHours: this.businessHours,
-            slotDuration: this.slotDuration,
-            appointments: this.appointments,
-            providers,
-            blockedPeriods: this.blockedPeriods,
-            settings: this.settings,
-        });
-
-        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-
         return `<div class="slot-panel" id="month-slot-panel-inner">
             <div class="slot-panel__header">
                 <h3 class="slot-panel__title">
                     <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
                     Available Slots — ${date.toFormat('EEE, MMM d')}
                 </h3>
-                <div class="slot-panel__provider-count">
-                    <span class="material-symbols-outlined text-sm">group</span>
-                    <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
-                </div>
-            </div>
-            <div class="slot-panel__filters">
-                <span class="slot-panel__filter-label">Filter by Provider</span>
-                <div class="slot-panel__pills" id="month-provider-pills">
-                    ${renderProviderFilterPills(providers)}
-                </div>
+                <div class="slot-panel__provider-count" id="month-slot-provider-count"></div>
             </div>
             <div class="slot-panel__slots">
                 <div class="slot-panel__slots-header">
                     <span class="slot-panel__slots-label">Time Slots</span>
-                    <span class="slot-panel__slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
+                    <span class="slot-panel__slot-count" id="month-slot-count"></span>
                 </div>
                 <div class="slot-panel__slot-list" id="month-slot-list">
-                    ${renderSlotList({ date, slots, providers, timeFormat })}
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Loading availability...</div>
                 </div>
             </div>
-            ${renderSlotLegend()}
         </div>`;
     }
 
@@ -911,21 +824,194 @@ export class MonthView {
         if (!panelEl) return;
         panelEl.innerHTML = this._renderMonthSlotPanel();
         this._attachMonthSlotListeners();
+        this._refreshMonthSlotPanel();
     }
 
     /**
      * Attach event listeners to the month slot panel
      */
     _attachMonthSlotListeners() {
-        const panelEl = this.container?.querySelector('#month-slot-panel');
-        if (!panelEl) return;
+        // no-op: slot panel is API-driven
+    }
 
-        panelEl.querySelectorAll('.provider-filter-pill').forEach(el => {
-            el.addEventListener('click', () => {
-                const isActive = el.dataset.active === 'true';
-                el.dataset.active = String(!isActive);
-                el.classList.toggle('provider-filter-pill--inactive', isActive);
-            });
+    _getAvailabilityContext() {
+        const serviceId = this.scheduler?.activeFilters?.serviceId ?? null;
+        let providerId = this.scheduler?.activeFilters?.providerId ?? null;
+
+        if (!providerId && this.scheduler?.visibleProviders?.size === 1) {
+            providerId = Array.from(this.scheduler.visibleProviders)[0];
+        }
+
+        if (!providerId) {
+            return { ready: false, message: 'Select a provider to see availability.' };
+        }
+        if (!serviceId) {
+            return { ready: false, message: 'Select a service to see availability.' };
+        }
+
+        return {
+            ready: true,
+            providerId,
+            serviceId,
+            locationId: this.scheduler?.activeFilters?.locationId ?? null,
+            timezone: this.scheduler?.options?.timezone,
+        };
+    }
+
+    async _refreshMonthSlotPanel() {
+        const listEl = this.container?.querySelector('#month-slot-list');
+        const countEl = this.container?.querySelector('#month-slot-count');
+        const providerCountEl = this.container?.querySelector('#month-slot-provider-count');
+        if (!listEl) return;
+
+        const context = this._getAvailabilityContext();
+        if (!context.ready) {
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>`;
+            if (countEl) countEl.textContent = '';
+            if (providerCountEl) providerCountEl.textContent = '';
+            return;
+        }
+
+        if (providerCountEl) {
+            providerCountEl.innerHTML = `<span class="material-symbols-outlined text-sm">group</span><span>1 provider</span>`;
+        }
+
+        const date = (this.selectedDate || DateTime.now()).toISODate();
+        const params = new URLSearchParams({
+            provider_id: String(context.providerId),
+            service_id: String(context.serviceId),
+            date,
+            timezone: context.timezone || 'UTC',
+        });
+        if (context.locationId) params.append('location_id', String(context.locationId));
+
+        try {
+            const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), { cache: 'no-store' });
+            const data = await response.json();
+            if (!response.ok) {
+                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>`;
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            const slots = data?.data?.slots || [];
+            if (countEl) countEl.textContent = `${slots.length} slot${slots.length !== 1 ? 's' : ''}`;
+            listEl.innerHTML = this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId);
+        } catch (error) {
+            console.error('Failed to load availability slots:', error);
+            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>`;
+            if (countEl) countEl.textContent = '';
+        }
+    }
+
+    _renderSlotListFromApi(slots, date, providerId, serviceId) {
+        if (!slots.length) {
+            return `<div class="text-sm text-gray-500 dark:text-gray-400">No available slots</div>`;
+        }
+
+        return slots.map(slot => {
+            const label = `${slot.start} - ${slot.end}`;
+            const url = withBaseUrl(`/appointments/create?date=${date}&time=${slot.start}&provider_id=${providerId}&service_id=${serviceId}`);
+            return `<div class="slot-item flex items-center justify-between gap-3 py-2">
+                <span class="text-sm text-gray-700 dark:text-gray-200">${label}</span>
+                <a class="text-xs text-blue-600 hover:underline" href="${url}">Book</a>
+            </div>`;
+        }).join('');
+    }
+
+    renderDayCellFromModel(cell, settings) {
+        const day = DateTime.fromISO(cell.date, { zone: this.scheduler?.options?.timezone || undefined });
+        const isToday = !!cell.isToday;
+        const isCurrentMonth = !!cell.isCurrentMonth;
+        const isPast = !!cell.isPast;
+        const dayAppointments = this.getAppointmentsForDay(day);
+        const isWorkingDay = settings?.isWorkingDay ? settings.isWorkingDay(day) : true;
+        const isBlocked = this.isDateBlocked(day, this.blockedPeriods);
+        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(day, this.blockedPeriods) : null;
+        const isSelected = this.selectedDate && day.hasSame(this.selectedDate, 'day');
+
+        const dayNumBase = 'inline-flex items-center justify-center w-7 h-7 rounded-full text-sm leading-none';
+        const dayNumColor = isToday
+            ? 'bg-blue-600 text-white font-bold'
+            : isSelected
+                ? 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 font-semibold'
+                : isCurrentMonth
+                    ? isBlocked ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-900 dark:text-white font-medium'
+                    : 'text-gray-400 dark:text-gray-500 font-normal';
+
+        const cellClasses = [
+            'scheduler-day-cell',
+            'min-h-[110px]',
+            'h-full',
+            'p-2',
+            'rounded-lg',
+            'relative',
+            '!overflow-hidden',
+            'flex',
+            'flex-col',
+            'cursor-pointer',
+            'transition-all',
+            'duration-150',
+            isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50',
+            isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900' : '',
+            isPast ? 'opacity-75' : ''
+        ].join(' ');
+
+        const maxChips = 3;
+        const hasMore = dayAppointments.length > maxChips;
+        const moreCount = hasMore ? (dayAppointments.length - maxChips) : 0;
+
+        const appointmentChips = dayAppointments.slice(0, maxChips).map(apt => {
+            const provider = this.providers.find(p => p.id === apt.providerId);
+            const providerColor = getProviderColor(provider);
+            const statusColors = getStatusColors(apt.status, isDarkMode());
+
+            return `
+                <div class="appointment-chip group flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium text-white shadow-sm" data-appointment-id="${apt.id}" style="background: ${providerColor}">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full" style="background: ${statusColors.bg}"></span>
+                    <span class="truncate">${escapeHtml(apt.customerName || apt.title || 'Appointment')}</span>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="${cellClasses}" data-date="${cell.date}">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">${day.toFormat('ccc')}</span>
+                    <span class="${dayNumBase} ${dayNumColor}">${day.day}</span>
+                </div>
+                <div class="flex-1 space-y-1">
+                    ${appointmentChips}
+                    ${hasMore ? `<div class="text-[10px] text-gray-400 dark:text-gray-500">+${moreCount} more</div>` : ''}
+                </div>
+                ${isBlocked ? `<div class="absolute bottom-1 right-2 text-[10px] text-red-500">${escapeHtml(blockedInfo?.label || 'Blocked')}</div>` : ''}
+                ${this._renderDayCellAvailability(day, isCurrentMonth)}
+            </div>
+        `;
+    }
+
+    isDateBlocked(date, periods = []) {
+        if (!Array.isArray(periods) || periods.length === 0) return false;
+        const target = date.toISODate ? date.toISODate() : String(date);
+        return periods.some(period => {
+            if (!period?.start || !period?.end) return false;
+            return target >= period.start && target <= period.end;
         });
     }
+
+    getBlockedPeriodInfo(date, periods = []) {
+        if (!Array.isArray(periods) || periods.length === 0) return null;
+        const target = date.toISODate ? date.toISODate() : String(date);
+        return periods.find(period => period?.start && period?.end && target >= period.start && target <= period.end) || null;
+    }
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

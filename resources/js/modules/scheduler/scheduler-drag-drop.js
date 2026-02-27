@@ -6,7 +6,6 @@
  */
 
 import { DateTime } from 'luxon';
-import { checkForConflicts } from '../../utils/scheduling-utils.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class DragDropManager {
@@ -157,7 +156,7 @@ export class DragDropManager {
         const newEndDateTime = newStartDateTime.plus({ minutes: duration });
 
         // Validate the move
-        const validation = this.validateReschedule(newStartDateTime, newEndDateTime);
+        const validation = await this.validateReschedule(newStartDateTime, newEndDateTime);
         if (!validation.valid) {
             this.showError(validation.message);
             this.resetDrag();
@@ -196,7 +195,7 @@ export class DragDropManager {
         });
     }
 
-    validateReschedule(newStart, newEnd) {
+    async validateReschedule(newStart, newEnd) {
         // Check if in the past
         const now = DateTime.now().setZone(this.scheduler.options.timezone);
         if (newStart < now) {
@@ -205,38 +204,59 @@ export class DragDropManager {
                 message: 'Cannot schedule appointments in the past'
             };
         }
-
-        // Check business hours
-        const config = this.scheduler.calendarConfig;
-        if (config?.businessHours) {
-            const [startHour] = config.businessHours.startTime.split(':').map(Number);
-            const [endHour] = config.businessHours.endTime.split(':').map(Number);
-            
-            if (newStart.hour < startHour || newEnd.hour > endHour) {
-                return {
-                    valid: false,
-                    message: `Appointments must be within business hours (${config.businessHours.startTime} - ${config.businessHours.endTime})`
-                };
-            }
-        }
-
-        // Use centralized conflict detection for consistent overlap logic
-        const conflictCheck = checkForConflicts(
-            this.scheduler.appointments,
-            newStart,
-            newEnd,
-            this.draggedAppointment.providerId,
-            this.draggedAppointment.id // Exclude current appointment from conflict check
-        );
-
-        if (conflictCheck.hasConflict) {
+        const availability = await this.checkAvailability(newStart, newEnd);
+        if (!availability.available) {
             return {
                 valid: false,
-                message: conflictCheck.message
+                message: availability.message || 'Selected time is not available'
             };
         }
 
         return { valid: true };
+    }
+
+    async checkAvailability(newStart, newEnd) {
+        const providerId = this.draggedAppointment?.providerId;
+        if (!providerId) {
+            return { available: false, message: 'Provider is required to reschedule' };
+        }
+
+        try {
+            const timezone = this.scheduler.options.timezone;
+            const payload = {
+                provider_id: providerId,
+                start_time: newStart.toFormat('yyyy-MM-dd HH:mm:ss'),
+                end_time: newEnd.toFormat('yyyy-MM-dd HH:mm:ss'),
+                timezone,
+                exclude_appointment_id: this.draggedAppointment?.id ?? null,
+                location_id: this.draggedAppointment?.locationId ?? null,
+            };
+
+            const response = await fetch(withBaseUrl('/api/availability/check'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                return {
+                    available: false,
+                    message: data?.error?.message || 'Availability check failed',
+                };
+            }
+
+            return {
+                available: !!data?.data?.available,
+                message: data?.data?.reason || '',
+            };
+        } catch (error) {
+            console.error('Availability check failed:', error);
+            return { available: false, message: 'Availability check failed' };
+        }
     }
 
     async confirmReschedule(appointment, newStart, newEnd) {

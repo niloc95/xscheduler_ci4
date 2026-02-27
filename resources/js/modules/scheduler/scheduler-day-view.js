@@ -11,15 +11,6 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
-import {
-    generateSlots,
-    renderSlotList,
-    renderProviderFilterPills,
-    renderSlotLegend,
-    escapeHtml,
-    isDateBlocked,
-    getBlockedPeriodInfo,
-} from './slot-engine.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -53,8 +44,8 @@ export class DayView {
         
         // Check if this date is blocked
         const blockedPeriods = this.blockedPeriods;
-        const isBlocked = isDateBlocked(currentDate, blockedPeriods);
-        const blockedInfo = isBlocked ? getBlockedPeriodInfo(currentDate, blockedPeriods) : null;
+        const isBlocked = this.isDateBlocked(currentDate, blockedPeriods);
+        const blockedInfo = isBlocked ? this.getBlockedPeriodInfo(currentDate, blockedPeriods) : null;
         
         // Check if this is a non-working day
         const isNonWorkingDay = settings?.isWorkingDay ? !settings.isWorkingDay(currentDate.weekday % 7) : false;
@@ -128,6 +119,7 @@ export class DayView {
 
         // Attach event listeners
         this.attachEventListeners(container, data);
+        this._refreshDaySlotPanel();
         
         // Hide the daily-provider-appointments section in Day View (redundant)
         const dailySection = document.getElementById('daily-provider-appointments');
@@ -519,54 +511,23 @@ export class DayView {
      * Render the full Available Slots panel for the current day
      */
     _renderDaySlotPanel() {
-        const providers = this.providers || [];
-        if (providers.length === 0) return '';
-
-        const slots = generateSlots({
-            date: this.currentDate,
-            businessHours: this.businessHours,
-            slotDuration: this.slotDuration,
-            appointments: this.appointments,
-            providers,
-            blockedPeriods: this.blockedPeriods,
-            settings: this.settings,
-        });
-
-        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-        const slotListHtml = renderSlotList({
-            date: this.currentDate,
-            slots,
-            providers,
-            timeFormat,
-        });
-
         return `<div class="slot-panel" id="day-slot-panel-inner">
             <div class="slot-panel__header">
                 <h3 class="slot-panel__title">
                     <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
                     Available Slots
                 </h3>
-                <div class="slot-panel__provider-count">
-                    <span class="material-symbols-outlined text-sm">group</span>
-                    <span>${providers.length} provider${providers.length !== 1 ? 's' : ''}</span>
-                </div>
-            </div>
-            <div class="slot-panel__filters">
-                <span class="slot-panel__filter-label">Filter by Provider</span>
-                <div class="slot-panel__pills" id="day-provider-pills">
-                    ${renderProviderFilterPills(providers)}
-                </div>
+                <div class="slot-panel__provider-count" id="day-slot-provider-count"></div>
             </div>
             <div class="slot-panel__slots">
                 <div class="slot-panel__slots-header">
                     <span class="slot-panel__slots-label">Time Slots</span>
-                    <span class="slot-panel__slot-count">${slots.length} slot${slots.length !== 1 ? 's' : ''}</span>
+                    <span class="slot-panel__slot-count" id="day-slot-count"></span>
                 </div>
                 <div class="slot-panel__slot-list" id="day-slot-list">
-                    ${slotListHtml}
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Loading availability...</div>
                 </div>
             </div>
-            ${renderSlotLegend()}
         </div>`;
     }
 
@@ -577,34 +538,124 @@ export class DayView {
         const panelEl = this.container?.querySelector('#day-slot-panel');
         if (!panelEl) return;
         panelEl.innerHTML = this._renderDaySlotPanel();
-        this._attachSlotPanelListeners();
+        this._refreshDaySlotPanel();
     }
 
     /**
      * Attach event listeners to the slot panel inside the Day view.
      */
     _attachSlotPanelListeners() {
-        const panelEl = this.container?.querySelector('#day-slot-panel');
-        if (!panelEl) return;
+        // no-op: slot panel is API-driven
+    }
 
-        // Provider filter pills
-        panelEl.querySelectorAll('.provider-filter-pill').forEach(el => {
-            el.addEventListener('click', () => {
-                const providerId = parseInt(el.dataset.providerId, 10);
-                const isActive = el.dataset.active === 'true';
-                const newState = !isActive;
-                el.dataset.active = String(newState);
-                el.classList.toggle('provider-filter-pill--inactive', !newState);
-                // Not toggling visibleProviders for day view — re-render with all providers
-                // (In day view we always show all providers, pills serve as visual cue)
-            });
+    _getAvailabilityContext() {
+        const serviceId = this.scheduler?.activeFilters?.serviceId ?? null;
+        let providerId = this.scheduler?.activeFilters?.providerId ?? null;
+
+        if (!providerId && this.scheduler?.visibleProviders?.size === 1) {
+            providerId = Array.from(this.scheduler.visibleProviders)[0];
+        }
+
+        if (!providerId) {
+            return { ready: false, message: 'Select a provider to see availability.' };
+        }
+        if (!serviceId) {
+            return { ready: false, message: 'Select a service to see availability.' };
+        }
+
+        return {
+            ready: true,
+            providerId,
+            serviceId,
+            locationId: this.scheduler?.activeFilters?.locationId ?? null,
+            timezone: this.scheduler?.options?.timezone,
+        };
+    }
+
+    async _refreshDaySlotPanel() {
+        const listEl = this.container?.querySelector('#day-slot-list');
+        const countEl = this.container?.querySelector('#day-slot-count');
+        const providerCountEl = this.container?.querySelector('#day-slot-provider-count');
+        if (!listEl) return;
+
+        const context = this._getAvailabilityContext();
+        if (!context.ready) {
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>`;
+            if (countEl) countEl.textContent = '';
+            if (providerCountEl) providerCountEl.textContent = '';
+            return;
+        }
+
+        if (providerCountEl) {
+            providerCountEl.innerHTML = `<span class="material-symbols-outlined text-sm">group</span><span>1 provider</span>`;
+        }
+
+        const date = this.currentDate.toISODate();
+        const params = new URLSearchParams({
+            provider_id: String(context.providerId),
+            service_id: String(context.serviceId),
+            date,
+            timezone: context.timezone || 'UTC',
         });
+        if (context.locationId) params.append('location_id', String(context.locationId));
 
-        // Slot item clicks (non-link area)
-        panelEl.querySelectorAll('.slot-item:not([data-disabled])').forEach(el => {
-            el.addEventListener('click', (e) => {
-                if (e.target.closest('a')) return;
-            });
+        try {
+            const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), { cache: 'no-store' });
+            const data = await response.json();
+            if (!response.ok) {
+                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>`;
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            const slots = data?.data?.slots || [];
+            if (countEl) countEl.textContent = `${slots.length} slot${slots.length !== 1 ? 's' : ''}`;
+
+            listEl.innerHTML = this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId);
+        } catch (error) {
+            console.error('Failed to load availability slots:', error);
+            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>`;
+            if (countEl) countEl.textContent = '';
+        }
+    }
+
+    _renderSlotListFromApi(slots, date, providerId, serviceId) {
+        if (!slots.length) {
+            return `<div class="text-sm text-gray-500 dark:text-gray-400">No available slots</div>`;
+        }
+
+        return slots.map(slot => {
+            const label = `${slot.start} - ${slot.end}`;
+            const url = withBaseUrl(`/appointments/create?date=${date}&time=${slot.start}&provider_id=${providerId}&service_id=${serviceId}`);
+            return `<div class="slot-item flex items-center justify-between gap-3 py-2">
+                <span class="text-sm text-gray-700 dark:text-gray-200">${label}</span>
+                <a class="text-xs text-blue-600 hover:underline" href="${url}">Book</a>
+            </div>`;
+        }).join('');
+    }
+
+    isDateBlocked(date, periods = []) {
+        if (!Array.isArray(periods) || periods.length === 0) return false;
+        const target = date.toISODate ? date.toISODate() : String(date);
+        return periods.some(period => {
+            if (!period?.start || !period?.end) return false;
+            return target >= period.start && target <= period.end;
         });
     }
+
+    getBlockedPeriodInfo(date, periods = []) {
+        if (!Array.isArray(periods) || periods.length === 0) return null;
+        const target = date.toISODate ? date.toISODate() : String(date);
+        return periods.find(period => period?.start && period?.end && target >= period.start && target <= period.end) || null;
+    }
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

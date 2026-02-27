@@ -11,14 +11,6 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
-import {
-    generateSlots,
-    renderSlotList,
-    renderProviderFilterPills as renderSharedFilterPills,
-    renderSlotLegend,
-    escapeHtml,
-    isDateBlocked,
-} from './slot-engine.js';
 
 export class WeekView {
     constructor(scheduler) {
@@ -226,12 +218,9 @@ export class WeekView {
                             </div>
                         </div>
                         
-                        <!-- Provider Filter Pills -->
+                        <!-- Provider filter note -->
                         <div class="slot-panel__filters">
-                            <span class="slot-panel__filter-label">Filter by Provider</span>
-                            <div class="slot-panel__pills" id="provider-filter-pills">
-                                ${this._renderFilterPills()}
-                            </div>
+                            ${this._renderFilterPills()}
                         </div>
                         
                         <!-- Time Slot List -->
@@ -245,8 +234,6 @@ export class WeekView {
                             </div>
                         </div>
                         
-                        <!-- Legend -->
-                        ${renderSlotLegend()}
                     </div>
                 </div>
             </div>
@@ -254,6 +241,7 @@ export class WeekView {
 
         // Attach event listeners
         this.attachEventListeners(container, data);
+        this._refreshSlotPanel();
         
         // Render the weekly schedule section below
         this.renderWeeklyAppointmentsSection(days, appointments, providers, data);
@@ -518,44 +506,18 @@ export class WeekView {
     }
     
     /**
-     * Render provider filter pills using shared slot-engine
+     * Render provider filter note for API-driven availability
      */
     _renderFilterPills() {
-        const providersToShow = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
-        return renderSharedFilterPills(providersToShow);
+        const providerCount = this.visibleProviders.length > 0 ? this.visibleProviders.length : this.providers.length;
+        return `<span class="text-xs text-gray-500 dark:text-gray-400">Availability requires a provider + service filter (${providerCount} providers visible).</span>`;
     }
 
     /**
-     * Render time slot list using shared slot-engine
+     * Render time slot list placeholder (filled by API)
      */
-    _renderSlots(date) {
-        const providersToShow = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
-        const slots = this._generateSlots(date);
-        const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-        return renderSlotList({ date, slots, providers: providersToShow, timeFormat });
-    }
-    
-    /**
-     * Generate availability slots for a specific date using shared slot-engine
-     */
-    _generateSlots(date) {
-        const providersToUse = this.visibleProviders.length > 0 ? this.visibleProviders : this.providers;
-        this.debugLog('🔧 _generateSlots for', date.toISODate(), '| providers:', providersToUse?.length);
-
-        if (!providersToUse || providersToUse.length === 0) return [];
-
-        // Ensure schedules are loaded in background
-        this.ensureProviderSchedulesLoaded(providersToUse);
-
-        return generateSlots({
-            date,
-            businessHours: this.businessHours,
-            slotDuration: this.slotDuration,
-            appointments: this.appointments,
-            providers: providersToUse,
-            blockedPeriods: this.blockedPeriods,
-            settings: this.settings,
-        });
+    _renderSlots() {
+        return `<div class="text-sm text-gray-500 dark:text-gray-400">Loading availability...</div>`;
     }
     
     /**
@@ -565,50 +527,8 @@ export class WeekView {
         return this.appointments.filter(apt => apt.startDateTime.hasSame(date, 'day'));
     }
 
-    async ensureProviderSchedulesLoaded(providers) {
-        if (!this.settings?.loadProviderSchedule || !this.settings?.getProviderSchedule) return;
-        if (!providers || providers.length === 0) return;
-
-        const missingProviders = providers.filter(provider => {
-            if (this.settings.getProviderSchedule(provider.id)) return false;
-            if (this._scheduleLoadFailed.has(provider.id)) return false;
-            const attempts = this._scheduleLoadAttempts.get(provider.id) || 0;
-            return attempts < 2;
-        });
-
-        if (missingProviders.length === 0) return;
-
-        const loadPromises = missingProviders.map(provider => {
-            if (this._scheduleLoadInFlight.has(provider.id)) return null;
-            this._scheduleLoadInFlight.add(provider.id);
-            this._scheduleLoadAttempts.set(
-                provider.id,
-                (this._scheduleLoadAttempts.get(provider.id) || 0) + 1
-            );
-            return this.settings.loadProviderSchedule(provider.id)
-                .then(schedule => ({ providerId: provider.id, schedule }))
-                .catch(() => ({ providerId: provider.id, schedule: null }))
-                .finally(() => this._scheduleLoadInFlight.delete(provider.id));
-        }).filter(Boolean);
-
-        if (loadPromises.length === 0) return;
-
-        const results = await Promise.all(loadPromises);
-        let loadedAny = false;
-        results.forEach(result => {
-            if (!result) return;
-            if (result.schedule) {
-                loadedAny = true;
-                return;
-            }
-            this._scheduleLoadFailed.add(result.providerId);
-        });
-
-        if (loadedAny) {
-            this.updateSlotDateDisplay();
-            this.updateTimeSlotEngine();
-            this.updateAppointmentSummary();
-        }
+    async ensureProviderSchedulesLoaded() {
+        // no-op: client-side scheduling removed
     }
     
     /**
@@ -881,21 +801,87 @@ export class WeekView {
             countLabel.textContent = `${this.visibleProviders.length} provider${this.visibleProviders.length !== 1 ? 's' : ''}`;
         }
         
-        // Re-render time slots
-        const slotEngine = this.container.querySelector('#time-slot-engine');
-        if (slotEngine) {
-            slotEngine.innerHTML = this._renderSlots(this.selectedDate);
-            
-            // Re-attach slot click handlers
-            slotEngine.querySelectorAll('.slot-item:not([data-disabled])').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    if (e.target.closest('a')) return;
-                    const time = el.dataset.slotTime;
-                    const date = el.dataset.date;
-                    this.debugLog('Selected slot:', time, 'on', date);
-                });
-            });
+        // Refresh slot list via API
+        this._refreshSlotPanel();
+    }
+
+    _getAvailabilityContext() {
+        const serviceId = this.scheduler?.activeFilters?.serviceId ?? null;
+        let providerId = this.scheduler?.activeFilters?.providerId ?? null;
+
+        if (!providerId && this.visibleProviders.length === 1) {
+            providerId = this.visibleProviders[0].id;
         }
+
+        if (!providerId) {
+            return { ready: false, message: 'Select a provider to see availability.' };
+        }
+        if (!serviceId) {
+            return { ready: false, message: 'Select a service to see availability.' };
+        }
+
+        return {
+            ready: true,
+            providerId,
+            serviceId,
+            locationId: this.scheduler?.activeFilters?.locationId ?? null,
+            timezone: this.scheduler?.options?.timezone,
+        };
+    }
+
+    async _refreshSlotPanel() {
+        const slotEngine = this.container?.querySelector('#time-slot-engine');
+        const countLabel = this.container?.querySelector('#slot-count-label');
+        if (!slotEngine) return;
+
+        const context = this._getAvailabilityContext();
+        if (!context.ready) {
+            slotEngine.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>`;
+            if (countLabel) countLabel.textContent = '';
+            return;
+        }
+
+        const date = this.selectedDate.toISODate();
+        const params = new URLSearchParams({
+            provider_id: String(context.providerId),
+            service_id: String(context.serviceId),
+            date,
+            timezone: context.timezone || 'UTC',
+        });
+        if (context.locationId) params.append('location_id', String(context.locationId));
+
+        try {
+            const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), { cache: 'no-store' });
+            const data = await response.json();
+            if (!response.ok) {
+                slotEngine.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>`;
+                if (countLabel) countLabel.textContent = '';
+                return;
+            }
+
+            const slots = data?.data?.slots || [];
+            if (countLabel) countLabel.textContent = `${slots.length} slot${slots.length !== 1 ? 's' : ''}`;
+            slotEngine.innerHTML = this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId);
+        } catch (error) {
+            console.error('Failed to load availability slots:', error);
+            slotEngine.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>`;
+            if (countLabel) countLabel.textContent = '';
+        }
+    }
+
+    _renderSlotListFromApi(slots, date, providerId, serviceId) {
+        if (!slots.length) {
+            return `<div class="text-sm text-gray-500 dark:text-gray-400">No available slots</div>`;
+        }
+
+        return slots.map(slot => {
+            const label = `${slot.start} - ${slot.end}`;
+            const url = withBaseUrl(`/appointments/create?date=${date}&time=${slot.start}&provider_id=${providerId}&service_id=${serviceId}`);
+            return `<div class="slot-item flex items-center justify-between gap-3 py-2">
+                <span class="text-sm text-gray-700 dark:text-gray-200">${label}</span>
+                <a class="text-xs text-blue-600 hover:underline" href="${url}">Book</a>
+            </div>`;
+        }).join('');
     }
 
     /**
@@ -1057,4 +1043,14 @@ export class WeekView {
             });
         });
     }
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
