@@ -448,8 +448,8 @@ PHASE 5 — Swap Views
 
 PHASE 6 — Cleanup
 ────────────────────────────────────────────────────────
-  [ ] Remove: WebSchedulr Calendar Architecture (Month + Day + Week).md from root
-  [ ] Move: to docs/architecture/
+  [x] Move: WebSchedulr Calendar Architecture (Month + Day + Week).md from root to docs/architecture/
+  [x] Move: WebSchedulr Calendar Architecture (Month + Day + Week)_IMP.md from root to docs/architecture/
   [ ] Run full test suite
   [ ] Verify all notification paths still functional
 ```

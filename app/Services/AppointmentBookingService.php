@@ -352,9 +352,9 @@ class AppointmentBookingService
 
             log_message('info', '[AppointmentBookingService] ✅ Appointment #' . $appointmentId . ' updated successfully');
 
-            // Queue update notifications if status or time changed
+            // Queue notifications when status or time changed
             if (isset($data['status']) || isset($data['start_at'])) {
-                $event = $notificationEvent ?? 'appointment_updated';
+                $event = $notificationEvent ?? 'appointment_rescheduled';
                 if ($event !== '') {
                     $types = $notificationTypes ?? ['email', 'whatsapp'];
                     $this->queueNotifications($appointmentId, $types, $event);
@@ -532,7 +532,7 @@ class AppointmentBookingService
      *
      * @param int $appointmentId Appointment ID
      * @param array $types Notification types (email, sms, whatsapp)
-     * @param string $event Event type (appointment_confirmed, appointment_updated, etc.)
+    * @param string $event Event type (appointment_confirmed, appointment_rescheduled, etc.)
      */
     protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
     {
