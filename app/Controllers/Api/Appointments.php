@@ -50,7 +50,7 @@
  * Error:   { "error": { "message": "...", "code": "..." } }
  * 
  * @see         app/Models/AppointmentModel.php for data layer
- * @see         app/Services/SchedulingService.php for business logic
+ * @see         app/Services/AppointmentBookingService.php for booking logic
  * @package     App\Controllers\Api
  * @extends     BaseApiController
  * @author      WebSchedulr Team
@@ -64,7 +64,7 @@ use App\Models\AppointmentModel;
 use App\Models\LocationModel;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
-use App\Services\SchedulingService;
+use App\Services\AppointmentBookingService;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 
@@ -671,34 +671,41 @@ class Appointments extends BaseApiController
                 ]);
             }
             
-            $svc = new SchedulingService();
-            
-            try {
-                $res = $svc->createAppointment($payload);
+            $booking = new AppointmentBookingService();
 
-                // Phase 5: enqueue confirmation notifications
-                if (!empty($res['appointmentId'])) {
-                    $this->queueAppointmentNotifications((int) $res['appointmentId'], ['email', 'whatsapp'], 'appointment_confirmed');
-                }
-                
-                return $response->setStatusCode(201)->setJSON([
-                    'data' => $res,
-                    'message' => 'Appointment created successfully'
-                ]);
-            } catch (\InvalidArgumentException $e) {
-                return $response->setStatusCode(400)->setJSON([
+            $bookingPayload = [
+                'provider_id' => (int) ($payload['providerId'] ?? $payload['provider_id'] ?? 0),
+                'service_id' => (int) ($payload['serviceId'] ?? $payload['service_id'] ?? 0),
+                'appointment_date' => $payload['date'] ?? null,
+                'appointment_time' => $payload['start'] ?? null,
+                'customer_first_name' => $payload['name'] ?? '',
+                'customer_last_name' => '',
+                'customer_email' => $payload['email'] ?? '',
+                'customer_phone' => $payload['phone'] ?? '',
+                'notes' => $payload['notes'] ?? null,
+                'notification_types' => ['email', 'whatsapp'],
+            ];
+
+            if (!empty($payload['location_id'])) {
+                $bookingPayload['location_id'] = (int) $payload['location_id'];
+            }
+
+            $timezone = $payload['timezone'] ?? null;
+            $res = $booking->createAppointment($bookingPayload, $timezone ?: 'UTC');
+
+            if (!$res['success']) {
+                return $response->setStatusCode(409)->setJSON([
                     'error' => [
-                        'message' => $e->getMessage()
-                    ]
-                ]);
-            } catch (\RuntimeException $e) {
-                $status = $e->getMessage() === 'Service not found' ? 404 : 409;
-                return $response->setStatusCode($status)->setJSON([
-                    'error' => [
-                        'message' => $e->getMessage()
+                        'message' => $res['message'] ?? 'Unable to create appointment',
+                        'details' => $res['errors'] ?? [],
                     ]
                 ]);
             }
+
+            return $response->setStatusCode(201)->setJSON([
+                'data' => $res,
+                'message' => 'Appointment created successfully'
+            ]);
         } catch (\Exception $e) {
             return $response->setStatusCode(500)->setJSON([
                 'error' => [

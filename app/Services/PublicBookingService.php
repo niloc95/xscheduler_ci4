@@ -220,49 +220,46 @@ class PublicBookingService
         $service = $this->resolveService((int) ($payload['service_id'] ?? 0));
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
         $locationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? null);
-        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], null, $locationId);
 
-        $customerId = $this->storeCustomer($payload);
+        $fieldConfig = $this->bookingSettings->getFieldConfiguration();
+        $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
+        $customerFields = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
+
         $token = $this->generateToken();
 
-        // Get location snapshot if location_id provided
-        $locationSnapshot = [
-            'location_id' => null,
-            'location_name' => null,
-            'location_address' => null,
-            'location_contact' => null,
-        ];
-        
-        if ($locationId !== null) {
-            $locationSnapshot = $this->locations->getLocationSnapshot($locationId);
-        }
-
-        // Convert slot times to UTC for DB storage
-        $utcTz = new DateTimeZone('UTC');
-
-        $appointmentPayload = [
-            'customer_id' => $customerId,
+        $bookingPayload = [
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_at' => $slot['start']->setTimezone($utcTz)->format('Y-m-d H:i:s'),
-            'end_at' => $slot['end']->setTimezone($utcTz)->format('Y-m-d H:i:s'),
+            'location_id' => $locationId,
+            'appointment_date' => $slot['date'],
+            'appointment_time' => $slot['start']->format('H:i'),
             'status' => 'pending',
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
             'public_token' => $token,
             'public_token_expires_at' => null,
-            // Location snapshot
-            'location_id' => $locationSnapshot['location_id'],
-            'location_name' => $locationSnapshot['location_name'],
-            'location_address' => $locationSnapshot['location_address'],
-            'location_contact' => $locationSnapshot['location_contact'],
+            'notification_types' => ['email', 'whatsapp'],
+            'customer_first_name' => $customerFields['first_name'] ?? '',
+            'customer_last_name' => $customerFields['last_name'] ?? '',
+            'customer_email' => $customerFields['email'] ?? '',
+            'customer_phone' => $customerFields['phone'] ?? '',
+            'customer_address' => $customerFields['address'] ?? '',
+            'customer_notes' => $customerFields['notes'] ?? '',
         ];
 
-        $appointmentId = $this->appointments->insert($appointmentPayload, true);
-        if (!$appointmentId) {
-            throw new PublicBookingException('Unable to create appointment at this time.');
+        if (!empty($customerFields['custom_fields'])) {
+            $decoded = json_decode($customerFields['custom_fields'], true) ?: [];
+            foreach ($decoded as $key => $value) {
+                $bookingPayload[$key] = $value;
+            }
         }
 
-        $appointment = $this->appointments->find($appointmentId);
+        $booking = new AppointmentBookingService();
+        $result = $booking->createAppointment($bookingPayload, $this->localization->getTimezone());
+        if (!$result['success']) {
+            throw new PublicBookingException($result['message'] ?? 'Unable to create appointment at this time.');
+        }
+
+        $appointment = $this->appointments->find((int) $result['appointmentId']);
         return $this->formatPublicAppointment($appointment, $token);
     }
 
@@ -286,7 +283,6 @@ class PublicBookingService
         $service = $this->resolveService($serviceId);
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
         $newLocationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? ($appointment['location_id'] ?? null));
-        $this->assertSlotAvailable($provider['id'], $slot['start'], $slot['end'], (int) $appointment['id'], $newLocationId);
 
         $customerId = $this->storeCustomer($payload, (int) $appointment['customer_id']);
         $newToken = $this->generateToken();
@@ -294,37 +290,26 @@ class PublicBookingService
         $updatePayload = [
             'provider_id' => $provider['id'],
             'service_id' => $service['id'],
-            'start_at' => $slot['start']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
-            'end_at' => $slot['end']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+            'appointment_date' => $slot['date'],
+            'appointment_time' => $slot['start']->format('H:i'),
             'notes' => $this->sanitizeString($payload['notes'] ?? $appointment['notes'] ?? null, 1000),
             'public_token' => $newToken,
             'public_token_expires_at' => null,
             'customer_id' => $customerId,
+            'location_id' => $newLocationId,
         ];
 
-        // Re-resolve location snapshot for the new date (may differ from original)
-        if ($newLocationId) {
-            $locationSnapshot = $this->locations->getLocationSnapshot($newLocationId);
-            if ($locationSnapshot['location_id'] !== null) {
-                $updatePayload['location_id'] = $locationSnapshot['location_id'];
-                $updatePayload['location_name'] = $locationSnapshot['location_name'];
-                $updatePayload['location_address'] = $locationSnapshot['location_address'];
-                $updatePayload['location_contact'] = $locationSnapshot['location_contact'];
-            }
-        }
+        $booking = new AppointmentBookingService();
+        $result = $booking->updateAppointment(
+            (int) $appointment['id'],
+            $updatePayload,
+            $this->localization->getTimezone(),
+            'appointment_rescheduled',
+            ['email', 'whatsapp']
+        );
 
-        if (!$this->appointments->update((int) $appointment['id'], $updatePayload)) {
-            throw new PublicBookingException('Unable to reschedule appointment. Please try again later.');
-        }
-
-        // Enqueue rescheduled notification
-        try {
-            $queue = new NotificationQueueService();
-            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
-            $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_rescheduled', (int) $appointment['id']);
-            $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_rescheduled', (int) $appointment['id']);
-        } catch (Throwable $e) {
-            log_message('error', '[PublicBookingService::reschedule] Notification enqueue failed: ' . $e->getMessage());
+        if (!$result['success']) {
+            throw new PublicBookingException($result['message'] ?? 'Unable to reschedule appointment. Please try again later.');
         }
 
         $updated = $this->appointments->find((int) $appointment['id']);

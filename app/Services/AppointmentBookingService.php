@@ -193,6 +193,11 @@ class AppointmentBookingService
                 'location_id' => $resolvedLocationId,
             ];
 
+            if (!empty($data['public_token'])) {
+                $appointmentData['public_token'] = $data['public_token'];
+                $appointmentData['public_token_expires_at'] = $data['public_token_expires_at'] ?? null;
+            }
+
             // Snapshot location data if location_id provided
             if (!empty($resolvedLocationId)) {
                 $locationModel = new \App\Models\LocationModel();
@@ -233,7 +238,13 @@ class AppointmentBookingService
      * @param string $timezone Client timezone
      * @return array ['success' => bool, 'message' => string, 'errors' => array]
      */
-    public function updateAppointment(int $appointmentId, array $data, string $timezone = 'UTC'): array
+    public function updateAppointment(
+        int $appointmentId,
+        array $data,
+        string $timezone = 'UTC',
+        ?string $notificationEvent = null,
+        ?array $notificationTypes = null
+    ): array
     {
         log_message('info', '[AppointmentBookingService::updateAppointment] Updating appointment #' . $appointmentId);
         
@@ -302,6 +313,13 @@ class AppointmentBookingService
                 $data['start_at'] = $timeData['startUtc'];
                 $data['end_at'] = $timeData['endUtc'];
                 $data['location_id'] = $resolvedLocationId;
+                unset($data['appointment_date'], $data['appointment_time']);
+
+                if (!empty($resolvedLocationId)) {
+                    $locationModel = new \App\Models\LocationModel();
+                    $snapshot = $locationModel->getLocationSnapshot((int) $resolvedLocationId);
+                    $data = array_merge($data, $snapshot);
+                }
             }
 
             // Validate location/provider context for updates even when slot time is unchanged
@@ -317,6 +335,12 @@ class AppointmentBookingService
                     return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
                 }
                 $data['location_id'] = $locationContext['location_id'];
+
+                if (!empty($data['location_id'])) {
+                    $locationModel = new \App\Models\LocationModel();
+                    $snapshot = $locationModel->getLocationSnapshot((int) $data['location_id']);
+                    $data = array_merge($data, $snapshot);
+                }
             }
 
             // Update appointment
@@ -332,7 +356,11 @@ class AppointmentBookingService
 
             // Queue update notifications if status or time changed
             if (isset($data['status']) || isset($data['start_at'])) {
-                $this->queueNotifications($appointmentId, ['email', 'whatsapp'], 'appointment_updated');
+                $event = $notificationEvent ?? 'appointment_updated';
+                if ($event !== '') {
+                    $types = $notificationTypes ?? ['email', 'whatsapp'];
+                    $this->queueNotifications($appointmentId, $types, $event);
+                }
             }
 
             return $this->success($appointmentId, 'Appointment updated successfully!');

@@ -27,7 +27,7 @@
  * SCHEDULE STRUCTURE:
  * -----------------------------------------------------------------------------
  * Each provider has 7 day records (Mon-Sun) containing:
- * - day_of_week: 0=Sunday through 6=Saturday
+ * - day_of_week: monday through sunday
  * - is_working: boolean (works on this day)
  * - start_time: HH:MM format
  * - end_time: HH:MM format
@@ -168,16 +168,20 @@ class ProviderSchedule extends BaseController
      */
     protected function validateEntries(array $entries): array
     {
-        $validDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-        $clean     = [];
-        $errors    = [];
+        $clean  = [];
+        $errors = [];
 
-        foreach ($validDays as $day) {
-            if (!isset($entries[$day])) {
+        foreach ($entries as $key => $row) {
+            $day = ProviderScheduleModel::normalizeDayKey($key);
+            if ($day === null) {
+                $errors[$key] = 'Invalid weekday key.';
                 continue;
             }
 
-            $row = $entries[$day];
+            $clean[$day] = $row;
+        }
+
+        foreach ($clean as $day => $row) {
             $isActive = !empty($row['is_active']);
 
             if (!$isActive) {

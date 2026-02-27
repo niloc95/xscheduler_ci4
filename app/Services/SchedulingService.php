@@ -62,10 +62,7 @@
 
 namespace App\Services;
 
-use App\Models\AppointmentModel;
-use App\Models\ServiceModel;
-use App\Models\UserModel;
-use App\Models\CustomerModel;
+
 
 class SchedulingService
 {
@@ -84,92 +81,31 @@ class SchedulingService
             }
         }
 
-        $providerId = (int)$payload['providerId'];
-        $serviceId  = (int)$payload['serviceId'];
-        $date       = $payload['date'];
-        $start      = $payload['start'];
+        $booking = new AppointmentBookingService();
 
-        $service = (new ServiceModel())->find($serviceId);
-        if (!$service) {
-            throw new \RuntimeException('Service not found');
+        $bookingPayload = [
+            'provider_id' => (int) $payload['providerId'],
+            'service_id' => (int) $payload['serviceId'],
+            'appointment_date' => $payload['date'],
+            'appointment_time' => $payload['start'],
+            'customer_first_name' => $payload['name'],
+            'customer_last_name' => '',
+            'customer_email' => $payload['email'],
+            'customer_phone' => $payload['phone'] ?? '',
+            'notes' => $payload['notes'] ?? null,
+            'notification_types' => ['email', 'whatsapp'],
+        ];
+
+        if (!empty($payload['location_id'])) {
+            $bookingPayload['location_id'] = (int) $payload['location_id'];
         }
-        $duration = (int)($service['duration_min'] ?? 30);
 
         $timezone = $payload['timezone'] ?? null;
-        if (!$timezone || !TimezoneService::isValidTimezone($timezone)) {
-            $timezone = (new LocalizationSettingsService())->getTimezone();
+        $result = $booking->createAppointment($bookingPayload, $timezone ?: 'UTC');
+        if (!$result['success']) {
+            throw new \RuntimeException($result['message'] ?? 'Failed to create appointment');
         }
 
-        try {
-            $startDateTime = new \DateTime($date . ' ' . $start, new \DateTimeZone($timezone));
-        } catch (\Exception $e) {
-            $startDateTime = new \DateTime($date . ' ' . $start, new \DateTimeZone('UTC'));
-            $timezone = 'UTC';
-        }
-
-        $endDateTime = clone $startDateTime;
-        $endDateTime->modify('+' . $duration . ' minutes');
-
-        // Find or create customer - using helper method
-        $custModel = new CustomerModel();
-        $customerId = $custModel->findOrCreateByEmail(
-            $payload['email'],
-            $payload['name'],
-            $payload['phone'] ?? null
-        );
-
-        // Check availability using proper validation method
-        $availabilityService = new AvailabilityService();
-        $startLocal = $startDateTime->format('Y-m-d H:i:s');
-        $endLocal = $endDateTime->format('Y-m-d H:i:s');
-        
-        $availabilityCheck = $availabilityService->isSlotAvailable(
-            $providerId,
-            $startLocal,
-            $endLocal,
-            $timezone
-        );
-        
-        if (!$availabilityCheck['available']) {
-            $reason = $availabilityCheck['reason'] ?? 'Time slot not available';
-            log_message('warning', '[SchedulingService::createAppointment] Slot unavailable: ' . $reason);
-            throw new \RuntimeException('Time slot no longer available. ' . $reason);
-        }
-
-        // Convert to UTC for DB storage
-        $utcTz = new \DateTimeZone('UTC');
-        $startUtc = (clone $startDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
-        $endUtc   = (clone $endDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
-
-        // Create appointment — DB stores times in UTC
-        $apptModel = new AppointmentModel();
-        $id = $apptModel->insert([
-            'customer_id' => $customerId,
-            // Maintain NOT NULL user_id by pointing to provider (system user)
-            'user_id' => $providerId,
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'appointment_date' => $startDateTime->format('Y-m-d'),
-            'appointment_time' => $startDateTime->format('H:i:s'),
-            'start_at' => $startUtc,
-            'end_at' => $endUtc,
-            'status' => 'pending',
-            'notes' => $payload['notes'] ?? null,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        log_message('info', '[SchedulingService::createAppointment] Created appointment #' . $id . ' for provider ' . $providerId . ' at ' . $startLocal);
-
-        // Phase 5: enqueue notifications (dispatch handled by cron via notifications:dispatch-queue)
-        try {
-            $queue = new NotificationQueueService();
-            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
-            $queue->enqueueAppointmentEvent($businessId, 'email', 'appointment_confirmed', (int) $id);
-            $queue->enqueueAppointmentEvent($businessId, 'whatsapp', 'appointment_confirmed', (int) $id);
-        } catch (\Throwable $e) {
-            log_message('error', '[SchedulingService::createAppointment] Notification enqueue failed: {msg}', ['msg' => $e->getMessage()]);
-        }
-        
-        return ['appointmentId' => $id];
+        return ['appointmentId' => $result['appointmentId']];
     }
 }

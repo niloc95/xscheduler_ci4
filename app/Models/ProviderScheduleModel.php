@@ -56,6 +56,16 @@ use App\Services\LocalizationSettingsService;
 
 class ProviderScheduleModel extends Model
 {
+    public const DAY_NAMES = [
+        0 => 'sunday',
+        1 => 'monday',
+        2 => 'tuesday',
+        3 => 'wednesday',
+        4 => 'thursday',
+        5 => 'friday',
+        6 => 'saturday',
+    ];
+
     protected $table            = 'xs_provider_schedules';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
@@ -92,6 +102,37 @@ class ProviderScheduleModel extends Model
         'is_active'   => 'in_list[0,1]',
     ];
 
+    public static function normalizeDayKey($day): ?string
+    {
+        if (is_int($day) || (is_string($day) && ctype_digit($day))) {
+            $index = (int) $day;
+            return self::DAY_NAMES[$index] ?? null;
+        }
+
+        if (is_string($day)) {
+            $day = strtolower(trim($day));
+            return in_array($day, self::DAY_NAMES, true) ? $day : null;
+        }
+
+        return null;
+    }
+
+    public static function normalizeDayIndex($day): ?int
+    {
+        if (is_int($day) || (is_string($day) && ctype_digit($day))) {
+            $index = (int) $day;
+            return array_key_exists($index, self::DAY_NAMES) ? $index : null;
+        }
+
+        if (is_string($day)) {
+            $day = strtolower(trim($day));
+            $index = array_search($day, self::DAY_NAMES, true);
+            return $index === false ? null : $index;
+        }
+
+        return null;
+    }
+
     /**
      * Get weekly schedule grouped by day for a provider.
      */
@@ -122,6 +163,11 @@ class ProviderScheduleModel extends Model
         $this->where('provider_id', $providerId)->delete();
 
         foreach ($entries as $day => $data) {
+            $dayKey = self::normalizeDayKey($day);
+            if ($dayKey === null) {
+                continue;
+            }
+
             if (empty($data['is_active'])) {
                 continue;
             }
@@ -133,7 +179,7 @@ class ProviderScheduleModel extends Model
 
             $record = [
                 'provider_id' => $providerId,
-                'day_of_week' => $day,
+                'day_of_week' => $dayKey,
                 'start_time'  => $start,
                 'end_time'    => $end,
                 'break_start' => $breakStart,

@@ -11,12 +11,12 @@
 - Refactored `WeekViewService` to loop `DayViewService` (no duplicate grid logic).
 - Standardized blocked times to UTC (`start_at`/`end_at`) and aligned conflict/availability queries.
 - Removed client-side scheduling engines and switched availability panels to API-driven slots.
+- Centralized booking pipeline for admin/public/API create through `AppointmentBookingService`.
 
 ## What Is Still Pending
 
-1. Centralize booking pipeline so Admin + Public booking go through a single service path.
-2. Normalize provider schedule weekday representation (enum strings vs integer weekdays).
-3. Harden appointment schema per audit (customer_id not null, confirm indexes aligned to `start_at`).
+1. Normalize provider schedule weekday representation (enum strings vs integer weekdays).
+2. Harden appointment schema per audit (customer_id not null, confirm indexes aligned to `start_at`).
 
 ## Rebuild Flag
 
@@ -26,4 +26,4 @@
 ## Notes
 
 - Month/Day/Week view models are server generated under `/api/calendar/*`.
-- JS scheduler still contains client-side availability logic; removal is required to reach 100% alignment with IMP.md.
+- Availability UI and drag-drop now rely on API slot checks.

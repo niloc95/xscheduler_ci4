@@ -414,8 +414,6 @@ class AvailabilityService
      */
     public function getWorkingWeekdays(?int $providerId = null): array
     {
-        $dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
         if ($providerId !== null) {
             // Provider-specific custom schedule
             $customRows = $this->providerScheduleModel
@@ -426,8 +424,8 @@ class AvailabilityService
             if (!empty($customRows)) {
                 $nums = [];
                 foreach ($customRows as $row) {
-                    $idx = array_search($row['day_of_week'], $dayNames, true);
-                    if ($idx !== false) {
+                    $idx = \App\Models\ProviderScheduleModel::normalizeDayIndex($row['day_of_week']);
+                    if ($idx !== null) {
                         $nums[] = $idx;
                     }
                 }
@@ -451,8 +449,8 @@ class AvailabilityService
         if (!empty($customRows)) {
             $nums = [];
             foreach ($customRows as $row) {
-                $idx = array_search($row['day_of_week'], $dayNames, true);
-                if ($idx !== false) {
+                $idx = \App\Models\ProviderScheduleModel::normalizeDayIndex($row['day_of_week']);
+                if ($idx !== null) {
                     $nums[] = $idx;
                 }
             }
