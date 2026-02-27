@@ -72,7 +72,6 @@ export function prefillAppointmentForm() {
                 if (option.value && !availableIds.includes(parseInt(option.value, 10))) {
                     if (!option.text.includes('(busy')) {
                         option.text += ' (busy at this time)';
-                        option.classList.add('text-gray-400');
                     }
                 }
             });

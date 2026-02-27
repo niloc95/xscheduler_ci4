@@ -46,7 +46,8 @@ export async function initAppointmentForm() {
         try {
             if (submitButton) {
                 submitButton.disabled = true;
-                submitButton.textContent = '⏳ Creating appointment...';
+                const isUpdate = form.getAttribute('action')?.includes('/update');
+                submitButton.textContent = isUpdate ? '⏳ Updating appointment...' : '⏳ Creating appointment...';
             }
 
             const formData = new FormData(form);
@@ -217,7 +218,7 @@ function showValidationErrors(errors) {
             if (!errorEl) {
                 errorEl = document.createElement('p');
                 errorEl.id = `${error.field}_error`;
-                errorEl.className = 'mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1';
+                errorEl.className = 'mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1 field-error-dynamic';
                 fieldElement.parentNode.appendChild(errorEl);
             }
             errorEl.innerHTML = `<span class="material-symbols-outlined text-sm">error</span>${error.message}`;

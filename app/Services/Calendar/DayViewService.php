@@ -15,6 +15,8 @@
  *   date:             'Y-m-d',
  *   dayName:          'Thursday',
  *   dayLabel:         'Thursday, February 26, 2026',
+ *   weekdayName:      'thursday',       // lowercase day name string
+ *   weekday:          int,              // 0=Sun … 6=Sat
  *   isToday:          bool,
  *   isPast:           bool,
  *   businessHours:    { startTime: 'HH:MM', endTime: 'HH:MM' },

@@ -54,7 +54,6 @@ class WeekViewService
     private CalendarRangeService        $range;
     private AppointmentQueryService     $query;
     private AppointmentFormatterService $formatter;
-    private DayViewService              $dayView;
     private string $dayStart;
     private string $dayEnd;
     private int    $resolution;
@@ -62,13 +61,11 @@ class WeekViewService
     public function __construct(
         ?CalendarRangeService $range = null,
         ?AppointmentQueryService $query = null,
-        ?AppointmentFormatterService $formatter = null,
-        ?DayViewService $dayView = null
+        ?AppointmentFormatterService $formatter = null
     ) {
         $this->range     = $range     ?? new CalendarRangeService();
         $this->query     = $query     ?? new AppointmentQueryService();
         $this->formatter = $formatter ?? new AppointmentFormatterService();
-        $this->dayView   = $dayView   ?? new DayViewService($this->range, $this->query, $this->formatter);
 
         $settings = (new SettingModel())->getByKeys([
             'calendar.day_start',
@@ -158,7 +155,7 @@ class WeekViewService
                 
                 // Filter events for this provider on this day
                 $providerDayEvents = array_values(array_filter($dayEvents, function($e) use ($provider, $providers) {
-                    $pid = $e['providerId'] ?? 0;
+                    $pid = $e['provider_id'] ?? 0;
                     return $pid === $provider['id'] || ($provider['id'] === 0 && count($providers) === 1);
                 }));
 
