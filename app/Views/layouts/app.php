@@ -108,7 +108,7 @@
                             <p class="text-xs text-gray-400 dark:text-gray-500 hidden sm:flex items-center gap-1.5 leading-none mb-0.5">
                                 <span><?= date('l, F j, Y') ?></span>
                                 <span class="text-gray-300 dark:text-gray-600">·</span>
-                                <span id="header-live-clock" class="text-blue-600 dark:text-blue-400 font-mono"><?= date('H:i:s') ?></span>
+                                <span id="header-live-clock" class="text-blue-600 dark:text-blue-400 font-mono">--:--:--</span>
                             </p>
                             <h1 id="header-title" class="text-lg lg:text-xl font-bold text-gray-900 dark:text-white truncate leading-tight">
                                 <?= esc($resolvedHeaderTitle) ?>
@@ -121,12 +121,21 @@
                             <script>
                                 (function() {
                                     const clockEl = document.getElementById('header-live-clock');
-                                    if (clockEl) {
-                                        setInterval(() => {
-                                            const now = new Date();
-                                            clockEl.textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                                        }, 1000);
-                                    }
+                                    if (!clockEl) return;
+
+                                    const formatTime = () => {
+                                        const timezone = window.appTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                        const now = new Date();
+                                        clockEl.textContent = now.toLocaleTimeString('en-GB', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            timeZone: timezone
+                                        });
+                                    };
+
+                                    formatTime();
+                                    setInterval(formatTime, 1000);
                                 })();
                             </script>
                         </div>
