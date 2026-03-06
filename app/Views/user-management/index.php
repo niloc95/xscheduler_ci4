@@ -25,10 +25,13 @@
                 <h2 id="users-dynamic-title" class="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200">Total Users</h2>
                
                 <?php if (($canCreateAdmin ?? false) || ($canCreateProvider ?? false) || ($canCreateStaff ?? false)): ?>
-                <a href="<?= base_url('user-management/create') ?>" class="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg items-center space-x-2 transition-colors duration-200">
-                    <span class="material-symbols-outlined">person_add</span>
-                    <span>Add New User</span>
-                </a>
+                <?= view('components/button', [
+                    'tag' => 'a',
+                    'href' => base_url('user-management/create'),
+                    'label' => 'Add New User',
+                    'icon' => 'person_add',
+                    'variant' => 'filled',
+                ]) ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -67,9 +70,10 @@
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= get_status_badge_classes($user['is_active'] ?? true) ?>">
-                                <?= ($user['is_active'] ?? true) ? 'Active' : 'Inactive' ?>
-                            </span>
+                            <?= view('components/status_badge', [
+                                'status' => ($user['is_active'] ?? true) ? 'active' : 'inactive',
+                                'label' => ($user['is_active'] ?? true) ? 'Active' : 'Inactive',
+                            ]) ?>
                         </td>
                         <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
                             <?php if (!empty($user['assignments'])): ?>

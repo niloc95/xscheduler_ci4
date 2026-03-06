@@ -53,12 +53,8 @@ class DarkModeManager {
      */
     applyTheme(theme) {
         this.theme = theme;
-        
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+
+        document.documentElement.setAttribute('data-theme', theme);
 
         // Update theme-color meta tag
         this.updateThemeColor(theme);

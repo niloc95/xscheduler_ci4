@@ -9,8 +9,11 @@
  */
 
 import { DateTime } from 'luxon';
-import { getStatusColors, getProviderColor, getProviderInitials, getStatusLabel, isDarkMode } from './appointment-colors.js';
+import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { buildAvailabilityContext, isAvailabilityDebugMode, renderAvailabilityDebugPayload, renderAvailabilitySlotList } from './availability-panel-shared.js';
+import { buildAppointmentCountsByDate, buildMonthGridDays, getRotatedWeekdayInitials } from './calendar-grid-shared.js';
+import { renderAvailabilityBlock, renderAppointmentCard, renderProviderPanel, renderSchedulerHeader, renderTimeColumn } from './day-view-components.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -55,23 +58,29 @@ export class DayView {
             apt.startDateTime.hasSame(currentDate, 'day')
         ).sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
 
+        const schedulerHeader = renderSchedulerHeader({ currentDate, isBlocked, isNonWorkingDay });
+        const timeColumn = renderTimeColumn({
+            startTime: this.businessHours.startTime,
+            endTime: this.businessHours.endTime,
+            slotDuration: this.slotDuration,
+        });
+        const availabilityBlock = renderAvailabilityBlock({ panelHtml: this._renderDaySlotPanel() });
+        const providerPanel = renderProviderPanel({
+            miniCalendarHtml: this.renderMiniCalendar(),
+            addAppointmentUrl: withBaseUrl(`/appointments/create?date=${this.currentDate.toISODate()}`),
+            daySummaryHtml: this.renderDaySummary(dayAppointments),
+            timeColumnHtml: timeColumn,
+            availabilityBlockHtml: availabilityBlock,
+        });
+
         // Render the two-panel layout - Right panel first in DOM for proper layout
         container.innerHTML = `
-            <div class="scheduler-day-view bg-white dark:bg-gray-800 rounded-lg">
+            <div class="scheduler-day-view bg-surface-0 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div class="flex flex-col-reverse md:flex-row gap-4 p-4">
                     
                     <!-- Left Panel: Appointments List (appears second in mobile, first in desktop) -->
                     <div class="flex-1 min-w-0 order-2 md:order-1">
-                        <div class="mb-4">
-                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                ${currentDate.toFormat('EEEE')}'s Appointments
-                            </h2>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                ${currentDate.toFormat('MMMM d, yyyy')}
-                                ${isBlocked ? ' • <span class="text-red-500">🚫 Blocked</span>' : ''}
-                                ${isNonWorkingDay && !isBlocked ? ' • <span class="text-gray-500">Non-working day</span>' : ''}
-                            </p>
-                        </div>
+                        ${schedulerHeader}
                         
                         ${isBlocked ? `
                             <div class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -83,7 +92,7 @@ export class DayView {
                         ` : ''}
                         
                         <!-- Appointments List with scrollable area -->
-                        <div class="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto" id="day-view-appointments-list">
+                        <div class="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto bg-surface-1 dark:bg-gray-700/40 rounded-xl p-2" id="day-view-appointments-list">
                             ${dayAppointments.length > 0 ? 
                                 dayAppointments.map((apt, idx) => this.renderAppointmentRow(apt, idx === dayAppointments.length - 1)).join('') :
                                 this.renderEmptyState(isBlocked, isNonWorkingDay)
@@ -91,28 +100,8 @@ export class DayView {
                         </div>
                     </div>
                     
-                    <!-- Right Panel: Mini Calendar (appears first in mobile, second in desktop) -->
-                    <div class="w-full md:w-80 flex-shrink-0 order-1 md:order-2">
-                        <div class="md:sticky md:top-4">
-                            ${this.renderMiniCalendar()}
-                            
-                            <!-- Add Event Button - Links to appointments/create like main New Appointment button -->
-                            <a href="${withBaseUrl(`/appointments/create?date=${this.currentDate.toISODate()}`)}"
-                               id="day-view-add-event-btn"
-                               class="w-full mt-3 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined text-lg">add</span>
-                                Add Appointment
-                            </a>
-                            
-                            <!-- Day Summary Card -->
-                            ${this.renderDaySummary(dayAppointments)}
-                            
-                            <!-- Available Slots Panel -->
-                            <div class="mt-3" id="day-slot-panel">
-                                ${this._renderDaySlotPanel()}
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Right Panel: Provider/Availability -->
+                    ${providerPanel}
                 </div>
             </div>
         `;
@@ -137,7 +126,6 @@ export class DayView {
         const statusColors = getStatusColors(appointment.status, darkMode);
         const providerColor = getProviderColor(provider);
         
-        const customerName = appointment.customerName || appointment.title || 'Unknown';
         const serviceName = appointment.serviceName || 'Appointment';
         const location = appointment.locationName || '';
         
@@ -148,70 +136,18 @@ export class DayView {
         
         const providerInitial = getProviderInitials(provider?.name);
         const providerName = provider?.name || 'Unknown Provider';
-        
-        return `
-            <div class="appointment-row group flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors cursor-pointer"
-                 data-appointment-id="${appointment.id}">
-                
-                <!-- Provider Avatar -->
-                <div class="flex-shrink-0">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg shadow-sm"
-                         data-bg-color="${providerColor}"
-                         title="${escapeHtml(providerName)}">
-                        ${providerInitial}
-                    </div>
-                </div>
-                
-                <!-- Appointment Details -->
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                        <h4 class="font-semibold text-gray-900 dark:text-white truncate">
-                            ${escapeHtml(customerName)}
-                        </h4>
-                        <span class="px-2 py-0.5 text-[10px] font-medium rounded-full flex-shrink-0"
-                            data-bg-color="${statusColors.bg}"
-                            data-text-color="${statusColors.text}"
-                            data-border-color="${statusColors.border}">
-                            ${getStatusLabel(appointment.status)}
-                        </span>
-                    </div>
-                    
-                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
-                        <!-- Date/Time -->
-                        <div class="flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-base">calendar_today</span>
-                            <span>${dateTimeDisplay}</span>
-                        </div>
-                        
-                        ${location ? `
-                            <!-- Location -->
-                            <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-base">location_on</span>
-                                <span class="truncate max-w-[150px]">${escapeHtml(location)}</span>
-                            </div>
-                        ` : `
-                            <!-- Service -->
-                            <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-base">spa</span>
-                                <span class="truncate max-w-[150px]">${escapeHtml(serviceName)}</span>
-                            </div>
-                        `}
-                    </div>
-                </div>
-                
-                <!-- Actions Menu -->
-                <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button type="button" 
-                            class="appointment-menu-btn p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                            data-appointment-id="${appointment.id}"
-                            title="More options">
-                        <span class="material-symbols-outlined text-gray-500 dark:text-gray-400">more_horiz</span>
-                    </button>
-                </div>
-            </div>
-            
-            ${!isLast ? '<div class="border-b border-gray-200 dark:border-gray-700 mx-4"></div>' : ''}
-        `;
+
+        return renderAppointmentCard({
+            appointment,
+            providerColor,
+            statusColors,
+            dateTimeDisplay,
+            serviceName,
+            location,
+            providerInitial,
+            providerName,
+            isLast,
+        });
     }
 
     /**
@@ -247,39 +183,16 @@ export class DayView {
      */
     renderMiniCalendar() {
         const currentMonth = this.currentDate.startOf('month');
-        const monthEnd = this.currentDate.endOf('month');
         
         // Get first day of week setting
         const firstDayOfWeek = this.settings?.getFirstDayOfWeek?.() || 0;
-        
-        // Calculate grid start
-        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
-        const monthStartWeekday = currentMonth.weekday;
-        let daysBack = monthStartWeekday - luxonFirstDay;
-        if (daysBack < 0) daysBack += 7;
-        const gridStart = currentMonth.minus({ days: daysBack });
-        
-        // Generate 6 weeks of days
-        const days = [];
-        let current = gridStart;
-        for (let i = 0; i < 42; i++) {
-            days.push(current);
-            current = current.plus({ days: 1 });
-        }
-        
-        // Day headers
-        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-        const rotatedDays = [...dayNames.slice(firstDayOfWeek), ...dayNames.slice(0, firstDayOfWeek)];
-        
-        // Get appointments count per day for indicators
-        const appointmentCounts = {};
-        this.appointments.forEach(apt => {
-            const dateKey = apt.startDateTime.toISODate();
-            appointmentCounts[dateKey] = (appointmentCounts[dateKey] || 0) + 1;
-        });
+
+        const days = buildMonthGridDays(currentMonth, firstDayOfWeek);
+        const rotatedDays = getRotatedWeekdayInitials(firstDayOfWeek);
+        const appointmentCounts = buildAppointmentCountsByDate(this.appointments);
         
         return `
-            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+            <div class="bg-surface-1 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                 <!-- Month Navigation -->
                 <div class="flex items-center justify-between mb-4">
                     <button type="button" 
@@ -376,7 +289,7 @@ export class DayView {
         if (dayAppointments.length === 0) return '';
         
         return `
-            <div class="mt-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+            <div class="mt-4 bg-surface-1 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Day Summary</h4>
                 
                 <!-- Total -->
@@ -549,27 +462,22 @@ export class DayView {
     }
 
     _getAvailabilityContext() {
-        const serviceId = this.scheduler?.activeFilters?.serviceId ?? null;
-        let providerId = this.scheduler?.activeFilters?.providerId ?? null;
+        const visibleProviderIds = this.scheduler?.visibleProviders
+            ? Array.from(this.scheduler.visibleProviders)
+            : [];
 
-        if (!providerId && this.scheduler?.visibleProviders?.size === 1) {
-            providerId = Array.from(this.scheduler.visibleProviders)[0];
-        }
+        return buildAvailabilityContext({
+            activeFilters: this.scheduler?.activeFilters,
+            visibleProviderIds,
+        });
+    }
 
-        if (!providerId) {
-            return { ready: false, message: 'Select a provider to see availability.' };
-        }
-        if (!serviceId) {
-            return { ready: false, message: 'Select a service to see availability.' };
-        }
+    _isDebugMode() {
+        return isAvailabilityDebugMode(this.scheduler);
+    }
 
-        return {
-            ready: true,
-            providerId,
-            serviceId,
-            locationId: this.scheduler?.activeFilters?.locationId ?? null,
-            timezone: this.scheduler?.options?.timezone,
-        };
+    _renderDebugPayload(payload = null) {
+        return renderAvailabilityDebugPayload(this.scheduler, payload);
     }
 
     async _refreshDaySlotPanel() {
@@ -580,7 +488,7 @@ export class DayView {
 
         const context = this._getAvailabilityContext();
         if (!context.ready) {
-            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>`;
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>${this._renderDebugPayload(null)}`;
             if (countEl) countEl.textContent = '';
             if (providerCountEl) providerCountEl.textContent = '';
             return;
@@ -590,12 +498,24 @@ export class DayView {
             providerCountEl.innerHTML = `<span class="material-symbols-outlined text-sm">group</span><span>1 provider</span>`;
         }
 
-        const date = this.currentDate.toISODate();
+        const date = this.currentDate?.toISODate?.();
+        if (!date) {
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">Select a date to see availability.</div>${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: context.locationId ?? null,
+                date: null,
+                timezone: 'UTC',
+            })}`;
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
         const params = new URLSearchParams({
             provider_id: String(context.providerId),
             service_id: String(context.serviceId),
             date,
-            timezone: context.timezone || 'UTC',
+            timezone: 'UTC',
         });
         if (context.locationId) params.append('location_id', String(context.locationId));
 
@@ -603,7 +523,13 @@ export class DayView {
             const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), { cache: 'no-store' });
             const data = await response.json();
             if (!response.ok) {
-                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>`;
+                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>${this._renderDebugPayload({
+                    providerId: context.providerId,
+                    serviceId: context.serviceId,
+                    locationId: context.locationId ?? null,
+                    date,
+                    timezone: 'UTC',
+                })}`;
                 if (countEl) countEl.textContent = '';
                 return;
             }
@@ -611,27 +537,28 @@ export class DayView {
             const slots = data?.data?.slots || [];
             if (countEl) countEl.textContent = `${slots.length} slot${slots.length !== 1 ? 's' : ''}`;
 
-            listEl.innerHTML = this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId);
+            listEl.innerHTML = `${this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId)}${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: data?.data?.location_id ?? context.locationId ?? null,
+                date,
+                timezone: data?.data?.timezone ?? 'UTC',
+            })}`;
         } catch (error) {
             console.error('Failed to load availability slots:', error);
-            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>`;
+            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: context.locationId ?? null,
+                date,
+                timezone: 'UTC',
+            })}`;
             if (countEl) countEl.textContent = '';
         }
     }
 
     _renderSlotListFromApi(slots, date, providerId, serviceId) {
-        if (!slots.length) {
-            return `<div class="text-sm text-gray-500 dark:text-gray-400">No available slots</div>`;
-        }
-
-        return slots.map(slot => {
-            const label = `${slot.start} - ${slot.end}`;
-            const url = withBaseUrl(`/appointments/create?date=${date}&time=${slot.start}&provider_id=${providerId}&service_id=${serviceId}`);
-            return `<div class="slot-item flex items-center justify-between gap-3 py-2">
-                <span class="text-sm text-gray-700 dark:text-gray-200">${label}</span>
-                <a class="text-xs text-blue-600 hover:underline" href="${url}">Book</a>
-            </div>`;
-        }).join('');
+        return renderAvailabilitySlotList(slots, date, providerId, serviceId);
     }
 
     isDateBlocked(date, periods = []) {

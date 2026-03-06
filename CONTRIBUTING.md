@@ -139,6 +139,26 @@ Before submitting a PR:
 - [ ] Keep changes focused and small
 - [ ] Avoid debug logs (`console.log`, `var_dump`)
 - [ ] Reference related issue(s) in PR description
+- [ ] **Design System compliance** (if UI changes - see below)
+
+### 🎨 Design System Requirements (UI Changes Only)
+
+If your PR modifies views, components, or styles, ensure:
+
+- [ ] **No inline `style=` attributes** in app-facing views (emails/errors exempt)
+- [ ] **No hardcoded colors** - use semantic classes (`bg-primary`, `text-on-surface`) or components
+- [ ] **Use existing components** - check `app/Views/components/` before creating custom markup
+  - Button: Use `view('components/button')` instead of `<button>` tags
+  - Input: Use `view('components/input')` instead of `<input>` tags
+  - Select: Use `view('components/select')` instead of `<select>` tags
+  - Status Badge: Use `view('components/status_badge')` for statuses
+- [ ] **Include dark mode support** - add `dark:*` classes for all color/background utilities
+- [ ] **Follow typography scale** - use Tailwind `text-*` classes, not custom font sizes
+- [ ] **Use Tailwind spacing** - use standard spacing scale (e.g., `mt-4`, `gap-6`), avoid arbitrary values
+- [ ] **Test in dark mode** - toggle theme and verify visual correctness
+- [ ] **Build passes** - run `npm run build` with no errors
+
+**📚 Design System Reference:** See [docs/design/DESIGN_SYSTEM.md](docs/design/DESIGN_SYSTEM.md) for complete guidelines, component usage, and anti-patterns.
 
 ---
 

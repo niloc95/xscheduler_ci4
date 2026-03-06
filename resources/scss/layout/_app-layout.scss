@@ -324,7 +324,7 @@
     justify-content: space-between;
   }
   
-  html.dark & {
+  [data-theme="dark"] & {
     border-bottom-color: var(--xs-border, #374151);
   }
 }
@@ -398,15 +398,15 @@
 // BODY BACKGROUND
 // =============================================================================
 
-html:not(.dark) body {
+html:not([data-theme="dark"]) body {
   background-color: #f3f4f6; // gray-100
 }
 
-html.dark body {
+[data-theme="dark"] body {
   background-color: #111827; // gray-900
 }
 
-html:not(.dark) .main-content-container {
+html:not([data-theme="dark"]) .main-content-container {
   background-color: #f3f4f6;
 }
 
@@ -434,7 +434,7 @@ html:not(.dark) .main-content-container {
   }
 }
 
-html.dark .xs-menu-item:hover {
+[data-theme="dark"] .xs-menu-item:hover {
   color: #f9fafb;
   background: linear-gradient(135deg, rgba(255, 179, 102, 0.1), rgba(255, 209, 102, 0.08));
 }

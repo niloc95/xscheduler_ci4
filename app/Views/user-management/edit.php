@@ -234,16 +234,20 @@
 					</div>
 
 					<div class="card-footer flex flex-col gap-3 sm:flex-row sm:justify-end">
-						<a href="<?= base_url('user-management') ?>" 
-						   class="btn btn-secondary">
-							<span class="material-symbols-outlined mr-2">cancel</span>
-							Cancel
-						</a>
-						<button type="submit" 
-								class="btn btn-primary">
-							<span class="material-symbols-outlined mr-2">save</span>
-							Update User
-						</button>
+						<?= view('components/button', [
+							'text' => 'Cancel',
+							'href' => base_url('user-management'),
+							'variant' => 'outlined',
+							'size' => 'md',
+							'icon' => 'cancel'
+						]) ?>
+						<?= view('components/button', [
+							'text' => 'Update User',
+							'type' => 'submit',
+							'variant' => 'filled',
+							'size' => 'md',
+							'icon' => 'save'
+						]) ?>
 					</div>
 
 				</form>

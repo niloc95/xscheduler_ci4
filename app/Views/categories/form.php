@@ -54,8 +54,12 @@
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                    <input type="text" name="name" value="<?= esc(old('name', $data['name'] ?? '')) ?>" required class="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    <?= view('components/input', [
+                        'name' => 'name',
+                        'label' => 'Name',
+                        'value' => old('name', $data['name'] ?? ''),
+                        'required' => true,
+                    ]) ?>
                 </div>
 
                 <div>
@@ -76,8 +80,17 @@
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
-                <a href="<?= base_url('/services?tab=categories') ?>" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600">Cancel</a>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"><?= $isEdit ? 'Save Changes' : 'Create Category' ?></button>
+                <?= view('components/button', [
+                    'tag' => 'a',
+                    'href' => base_url('/services?tab=categories'),
+                    'label' => 'Cancel',
+                    'variant' => 'outlined',
+                ]) ?>
+                <?= view('components/button', [
+                    'type' => 'submit',
+                    'label' => $isEdit ? 'Save Changes' : 'Create Category',
+                    'variant' => 'filled',
+                ]) ?>
             </div>
         </form>
     </div>

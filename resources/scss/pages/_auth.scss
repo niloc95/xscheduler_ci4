@@ -260,7 +260,7 @@
 }
 
 // Dark mode adaptations
-html.dark {
+[data-theme="dark"] {
   .auth-page {
     background: linear-gradient(135deg, $dark-bg-primary 0%, $dark-bg-secondary 100%);
     
@@ -284,7 +284,7 @@ html.dark {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.dark .login-card {
+[data-theme="dark"] .login-card {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 

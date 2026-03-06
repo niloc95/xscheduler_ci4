@@ -28,15 +28,18 @@
         (function() {
             const theme = localStorage.getItem('xs-theme') || 
                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            if (theme === 'dark') document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
     
     <!-- Stylesheets -->
-    <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
+    <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>
+    <link rel="stylesheet" href="<?= $css ?>">
+    <?php endforeach; ?>
     
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <script type="module" src="<?= vite_js('resources/js/material-web.js') ?>"></script>
     
     <?= $this->renderSection('head') ?>
 </head>
@@ -84,7 +87,7 @@
         </div>
     </div>
     
-    <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
+    <script type="module" src="<?= vite_js('resources/js/dark-mode.js') ?>"></script>
     <?= $this->renderSection('scripts') ?>
 </body>
 </html>

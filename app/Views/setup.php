@@ -18,7 +18,7 @@ window.appConfig = {
     csrfHeaderName: '<?= csrf_header() ?>'
 };
 </script>
-<script type="module" src="<?= base_url('build/assets/setup.js') ?>"></script>
+<script type="module" src="<?= vite_js('resources/js/setup.js') ?>"></script>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>

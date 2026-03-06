@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class', // Enable class-based dark mode
+  darkMode: ['selector', '[data-theme="dark"]'], // Canonical dark mode selector
   content: [
     "./app/Views/**/*.php",
     "./resources/**/*.{js,ts,jsx,tsx,vue}",
@@ -9,6 +9,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        surface: {
+          DEFAULT: 'var(--md-sys-color-surface)',
+          0: '#f8fafc',
+          1: '#f1f5f9',
+          2: '#e2e8f0',
+          3: '#cbd5e1',
+        },
+
+        // MD3 token bridge (semantic classes)
+        background: 'var(--md-sys-color-background)',
+        'on-background': 'var(--md-sys-color-on-background)',
+        'on-surface': 'var(--md-sys-color-on-surface)',
+        'on-surface-variant': 'var(--md-sys-color-on-surface-variant)',
+        'surface-variant': 'var(--md-sys-color-surface-variant)',
+        outline: 'var(--md-sys-color-outline)',
+        'outline-variant': 'var(--md-sys-color-outline-variant)',
+        'on-primary': 'var(--md-sys-color-on-primary)',
+        'on-secondary': 'var(--md-sys-color-on-secondary)',
+        'on-tertiary': 'var(--md-sys-color-on-tertiary)',
+        'on-error': 'var(--md-sys-color-on-error)',
+        tertiary: {
+          DEFAULT: 'var(--md-sys-color-tertiary)',
+          container: 'var(--md-sys-color-tertiary-container)',
+        },
+
         // Your NEW brand palette
         brand: {
           'ocean': '#003049',      // Primary - Deep, trustworthy blue
@@ -20,6 +45,8 @@ module.exports = {
         
         // Semantic color system for better UX
         primary: {
+          DEFAULT: 'var(--md-sys-color-primary)',
+          container: 'var(--md-sys-color-primary-container)',
           50: '#f0f9ff',
           100: '#e0f2fe', 
           200: '#bae6fd',
@@ -33,6 +60,8 @@ module.exports = {
         },
         
         secondary: {
+          DEFAULT: 'var(--md-sys-color-secondary)',
+          container: 'var(--md-sys-color-secondary-container)',
           50: '#fff7ed',
           100: '#ffedd5',
           200: '#fed7aa',
@@ -59,6 +88,8 @@ module.exports = {
         },
         
         error: {
+          DEFAULT: 'var(--md-sys-color-error)',
+          container: 'var(--md-sys-color-error-container)',
           50: '#fef2f2',
           100: '#fee2e2',
           200: '#fecaca',

@@ -32,19 +32,26 @@
         (function() {
             const theme = localStorage.getItem('xs-theme') || 
                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            if (theme === 'dark') document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
     
-    <!-- Stylesheets (all layout/component styles are now in SCSS) -->
-    <link rel="stylesheet" href="<?= base_url('build/assets/style.css') ?>">
-    <link rel="stylesheet" href="<?= base_url('build/assets/main.css') ?>">
+    <!-- Stylesheets (resolved from Vite manifest) -->
+    <?php
+    $layoutStyles = array_values(array_unique(array_merge(
+        vite_css('resources/scss/app-consolidated.scss'),
+        vite_css('resources/js/app.js')
+    )));
+    foreach ($layoutStyles as $css):
+    ?>
+    <link rel="stylesheet" href="<?= $css ?>">
+    <?php endforeach; ?>
     
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     
     <!-- Material Web Components -->
-    <script type="module" src="<?= base_url('build/assets/materialWeb.js') ?>"></script>
+    <script type="module" src="<?= vite_js('resources/js/material-web.js') ?>"></script>
     
     <!-- Global Config -->
     <script>
@@ -290,11 +297,11 @@
     <!-- Toast Container -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
     
-    <!-- Scripts -->
-    <script type="module" src="<?= base_url('build/assets/main.js') ?>"></script>
-    <script type="module" src="<?= base_url('build/assets/dark-mode.js') ?>"></script>
-    <script type="module" src="<?= base_url('build/assets/spa.js') ?>"></script>
-    <script type="module" src="<?= base_url('build/assets/unified-sidebar.js') ?>"></script>
+    <!-- Scripts (resolved from Vite manifest) -->
+    <script type="module" src="<?= vite_js('resources/js/app.js') ?>"></script>
+    <script type="module" src="<?= vite_js('resources/js/dark-mode.js') ?>"></script>
+    <script type="module" src="<?= vite_js('resources/js/spa.js') ?>"></script>
+    <script type="module" src="<?= vite_js('resources/js/unified-sidebar.js') ?>"></script>
     
     <!-- Layout JavaScript -->
     <script>

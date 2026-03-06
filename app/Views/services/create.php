@@ -12,10 +12,13 @@
 
 <?= $this->section('content') ?>
 <div class="mb-6">
-        <a href="<?= base_url('/services') ?>" class="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-            <span class="material-symbols-outlined mr-1">arrow_back</span>
-            Back to Services
-        </a>
+        <?= view('components/button', [
+            'text' => 'Back to Services',
+            'href' => base_url('/services'),
+            'variant' => 'text',
+            'size' => 'sm',
+            'icon' => 'arrow_back'
+        ]) ?>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -32,14 +35,21 @@
                 </div>
 
                 <div class="card-footer flex flex-wrap justify-end gap-3">
-                    <button type="button" id="openCategoryModal" class="btn btn-secondary">
-                        <span class="material-symbols-outlined">add</span>
-                        New Category
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-outlined">save</span>
-                        Save Service
-                    </button>
+                    <?= view('components/button', [
+                        'text' => 'New Category',
+                        'type' => 'button',
+                        'id' => 'openCategoryModal',
+                        'variant' => 'outlined',
+                        'size' => 'md',
+                        'icon' => 'add'
+                    ]) ?>
+                    <?= view('components/button', [
+                        'text' => 'Save Service',
+                        'type' => 'submit',
+                        'variant' => 'filled',
+                        'size' => 'md',
+                        'icon' => 'save'
+                    ]) ?>
                 </div>
             </form>
         </div>
@@ -82,8 +92,19 @@
                 </div>
             </div>
             <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" class="btn btn-ghost" id="cancelCategoryModal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Create</button>
+                <?= view('components/button', [
+                    'text' => 'Cancel',
+                    'type' => 'button',
+                    'id' => 'cancelCategoryModal',
+                    'variant' => 'text',
+                    'size' => 'md'
+                ]) ?>
+                <?= view('components/button', [
+                    'text' => 'Create',
+                    'type' => 'submit',
+                    'variant' => 'filled',
+                    'size' => 'md'
+                ]) ?>
             </div>
         </form>
     </div>
@@ -96,7 +117,13 @@
         <h3 id="resultTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2"></h3>
         <p id="resultMessage" class="text-sm text-gray-700 dark:text-gray-300"></p>
         <div class="mt-6 flex justify-end">
-            <button type="button" class="btn btn-primary" id="closeResultModal">Close</button>
+            <?= view('components/button', [
+                'text' => 'Close',
+                'type' => 'button',
+                'id' => 'closeResultModal',
+                'variant' => 'filled',
+                'size' => 'md'
+            ]) ?>
         </div>
     </div>
 </div>

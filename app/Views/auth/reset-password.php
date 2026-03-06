@@ -55,10 +55,13 @@
             <?php endif; ?>
         </div>
 
-        <button type="submit" class="btn-brand w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200">
-            <span class="material-symbols-outlined mr-2">check_circle</span>
-            Update Password
-        </button>
+        <?= view('components/button', [
+            'label' => 'Update Password',
+            'variant' => 'filled',
+            'type' => 'submit',
+            'icon' => 'check_circle',
+            'class' => 'w-full btn-brand',
+        ]) ?>
     </form>
 
     <div class="mt-8 text-center">
@@ -70,6 +73,3 @@
     </div>
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
-    <script src="<?= base_url('/build/assets/materialWeb.js') ?>"></script>
-<?= $this->endSection() ?>

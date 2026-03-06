@@ -52,6 +52,33 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
     // Store all services for "All Providers" view
     const allServicesOptions = serviceSelect ? serviceSelect.innerHTML : '';
 
+    const getFilterValues = () => ({
+        status: statusSelect?.value || '',
+        providerId: providerSelect?.value || '',
+        serviceId: serviceSelect?.value || '',
+        locationId: locationSelect?.value || ''
+    });
+
+    const applyCurrentFilters = async ({ showFeedback = false } = {}) => {
+        const { status, providerId, serviceId, locationId } = getFilterValues();
+
+        await scheduler.setFilters({ status, providerId, serviceId, locationId });
+
+        if (typeof renderProviderLegend === 'function') {
+            renderProviderLegend(scheduler);
+        }
+
+        const hasActiveFilters = status || providerId || serviceId || locationId;
+        updateFilterIndicator(toggleBtn, hasActiveFilters);
+
+        if (showFeedback && applyBtn) {
+            applyBtn.textContent = 'Applied!';
+            setTimeout(() => {
+                applyBtn.innerHTML = '<span class="material-symbols-outlined text-base">filter_alt</span> Apply';
+            }, 1000);
+        }
+    };
+
     if (!toggleBtn || !filterPanel) {
         return; // Panel elements not present
     }
@@ -65,6 +92,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
                 // No provider selected - show all services
                 serviceSelect.innerHTML = allServicesOptions;
                 serviceSelect.disabled = false;
+                await applyCurrentFilters();
                 return;
             }
 
@@ -87,14 +115,40 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
 
                 serviceSelect.innerHTML = optionsHtml;
                 serviceSelect.disabled = false;
+                await applyCurrentFilters();
             } catch (error) {
                 console.error('Failed to load provider services:', error);
                 // Fallback to all services on error
                 serviceSelect.innerHTML = allServicesOptions;
                 serviceSelect.disabled = false;
+                await applyCurrentFilters();
             }
         });
     }
+
+    statusSelect?.addEventListener('change', async () => {
+        try {
+            await applyCurrentFilters();
+        } catch (error) {
+            console.error('Failed to apply status filter:', error);
+        }
+    });
+
+    serviceSelect?.addEventListener('change', async () => {
+        try {
+            await applyCurrentFilters();
+        } catch (error) {
+            console.error('Failed to apply service filter:', error);
+        }
+    });
+
+    locationSelect?.addEventListener('change', async () => {
+        try {
+            await applyCurrentFilters();
+        } catch (error) {
+            console.error('Failed to apply location filter:', error);
+        }
+    });
 
     // Toggle panel visibility
     toggleBtn.addEventListener('click', () => {
@@ -119,28 +173,8 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
     // Apply filters
     if (applyBtn) {
         applyBtn.addEventListener('click', async () => {
-            const status = statusSelect?.value || '';
-            const providerId = providerSelect?.value || '';
-            const serviceId = serviceSelect?.value || '';
-            const locationId = locationSelect?.value || '';
-
             try {
-                await scheduler.setFilters({ status, providerId, serviceId, locationId });
-
-                // Re-render provider legend to reflect filter state
-                if (typeof renderProviderLegend === 'function') {
-                    renderProviderLegend(scheduler);
-                }
-
-                // Show success feedback
-                applyBtn.textContent = 'Applied!';
-                setTimeout(() => {
-                    applyBtn.innerHTML = '<span class="material-symbols-outlined text-base">filter_alt</span> Apply';
-                }, 1000);
-
-                // Update filter indicator on toggle button
-                const hasActiveFilters = status || providerId || serviceId || locationId;
-                updateFilterIndicator(toggleBtn, hasActiveFilters);
+                await applyCurrentFilters({ showFeedback: true });
             } catch (error) {
                 console.error('Failed to apply filters:', error);
             }
@@ -162,14 +196,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
             }
 
             try {
-                await scheduler.setFilters({ status: '', providerId: '', serviceId: '', locationId: '' });
-
-                // Re-render provider legend to reflect cleared state
-                if (typeof renderProviderLegend === 'function') {
-                    renderProviderLegend(scheduler);
-                }
-
-                updateFilterIndicator(toggleBtn, false);
+                await applyCurrentFilters();
             } catch (error) {
                 console.error('Failed to clear filters:', error);
             }

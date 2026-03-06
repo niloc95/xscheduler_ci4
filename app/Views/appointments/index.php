@@ -13,34 +13,8 @@
  *
  * Sections are injected into the main dashboard layout.
  */
-
-$calendarPrototypeAssets = null;
-if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])) {
-    $manifestPath = FCPATH . 'build/.vite/manifest.json';
-    if (is_file($manifestPath)) {
-        helper('vite');
-        $prototypeEntry = 'resources/js/calendar-prototype.js';
-        try {
-            $calendarPrototypeAssets = [
-                'js' => vite_js($prototypeEntry),
-                'css' => vite_css($prototypeEntry),
-            ];
-        } catch (\Throwable $exception) {
-            log_message('error', 'Calendar prototype assets unavailable: ' . $exception->getMessage());
-            $calendarPrototypeAssets = null;
-        }
-    }
-}
 ?>
 <?= $this->extend('layouts/dashboard') ?>
-
-<?php if (!empty($calendarPrototypeAssets['css'])): ?>
-<?= $this->section('head') ?>
-    <?php foreach ($calendarPrototypeAssets['css'] as $href): ?>
-        <link rel="stylesheet" href="<?= esc($href) ?>">
-    <?php endforeach; ?>
-<?= $this->endSection() ?>
-<?php endif; ?>
 
 <?php // Override stats grid to two responsive columns ?>
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 gap-6<?= $this->endSection() ?>
@@ -70,14 +44,50 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
     <?php $completedCount = $stats['completed'] ?? 0; ?>
     <?php $cancelledCount = $stats['cancelled'] ?? 0; ?>
     <?php $noshowCount = $stats['noshow'] ?? 0; ?>
+    <?php
+    $statusOptions = [
+        ['value' => '', 'label' => 'All'],
+        ['value' => 'pending', 'label' => 'Pending'],
+        ['value' => 'confirmed', 'label' => 'Confirmed'],
+        ['value' => 'completed', 'label' => 'Completed'],
+        ['value' => 'cancelled', 'label' => 'Cancelled'],
+        ['value' => 'no-show', 'label' => 'No Show'],
+    ];
+
+    $providerOptions = [['value' => '', 'label' => 'All']];
+    foreach ($allProviders ?? [] as $provider) {
+        $providerOptions[] = [
+            'value' => (string) ($provider['id'] ?? ''),
+            'label' => (string) ($provider['name'] ?? ''),
+        ];
+    }
+
+    $serviceOptions = [['value' => '', 'label' => 'All']];
+    foreach ($allServices ?? [] as $service) {
+        $serviceOptions[] = [
+            'value' => (string) ($service['id'] ?? ''),
+            'label' => (string) ($service['name'] ?? ''),
+        ];
+    }
+
+    $locationOptions = [['value' => '', 'label' => 'All']];
+    foreach ($allLocations ?? [] as $location) {
+        $locationOptions[] = [
+            'value' => (string) ($location['id'] ?? ''),
+            'label' => (string) ($location['name'] ?? ''),
+        ];
+    }
+    ?>
 
     <!-- Row 1: View Toggles | Centered Date Nav | Filters + New -->
     <div class="flex items-center gap-2">
         <!-- View Toggle Buttons -->
-        <div class="flex items-center gap-1.5" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
-            <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Today</button>
-            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors" data-view="week">Week</button>
-            <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors" data-view="month">Month</button>
+        <div class="flex items-center p-1 bg-surface-1 dark:bg-gray-800/50 rounded-xl" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
+            <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-700 transition-colors">Today</button>
+            <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="day">Day</button>
+            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-600 text-white shadow-sm hover:bg-primary-700 transition-colors" data-view="week">Week</button>
+            <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="month">Month</button>
         </div>
 
         <!-- Centered Date Navigation -->
@@ -119,26 +129,11 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
              data-initial-completed="<?= $completedCount ?>"
              data-initial-cancelled="<?= $cancelledCount ?>"
              data-initial-noshow="<?= $noshowCount ?>">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                <span class="font-medium"><?= $pendingCount ?></span> Pending
-            </span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                <span class="font-medium"><?= $confirmedCount ?></span> Confirmed
-            </span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-600 dark:text-emerald-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span class="font-medium"><?= $completedCount ?></span> Done
-            </span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-600 dark:text-red-200">
-                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                <span class="font-medium"><?= $cancelledCount ?></span> Cancelled
-            </span>
-            <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs bg-gray-50 border-gray-200 text-gray-600 dark:bg-gray-700/50 dark:border-gray-600 dark:text-gray-300">
-                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                <span class="font-medium"><?= $noshowCount ?></span> No-Show
-            </span>
+            <?= view('components/status_badge', ['status' => 'pending', 'label' => 'Pending', 'count' => $pendingCount]) ?>
+            <?= view('components/status_badge', ['status' => 'confirmed', 'label' => 'Confirmed', 'count' => $confirmedCount]) ?>
+            <?= view('components/status_badge', ['status' => 'completed', 'label' => 'Done', 'count' => $completedCount]) ?>
+            <?= view('components/status_badge', ['status' => 'cancelled', 'label' => 'Cancelled', 'count' => $cancelledCount]) ?>
+            <?= view('components/status_badge', ['status' => 'noshow', 'label' => 'No-Show', 'count' => $noshowCount, 'class' => 'hidden sm:inline-flex']) ?>
         </div>
         <div class="flex-1"></div>
         <!-- Provider Legend (populated by JavaScript) -->
@@ -149,51 +144,56 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
     <div id="advanced-filter-panel" class="hidden mt-2 p-3 bg-gray-50/80 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Status</label>
-                <select id="filter-status" class="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
-                    <option value="">All</option>
-                    <option value="pending" <?= ($currentFilters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
-                    <option value="confirmed" <?= ($currentFilters['status'] ?? '') === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
-                    <option value="completed" <?= ($currentFilters['status'] ?? '') === 'completed' ? 'selected' : '' ?>>Completed</option>
-                    <option value="cancelled" <?= ($currentFilters['status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                    <option value="no-show" <?= ($currentFilters['status'] ?? '') === 'no-show' ? 'selected' : '' ?>>No Show</option>
-                </select>
+                <?= view('components/select', [
+                    'id' => 'filter-status',
+                    'name' => 'filter_status',
+                    'label' => 'Status',
+                    'options' => $statusOptions,
+                    'value' => (string) ($currentFilters['status'] ?? ''),
+                ]) ?>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Provider</label>
-                <select id="filter-provider" class="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
-                    <option value="">All</option>
-                    <?php foreach ($allProviders ?? [] as $provider): ?>
-                        <option value="<?= esc($provider['id']) ?>" <?= ($currentFilters['provider_id'] ?? '') == $provider['id'] ? 'selected' : '' ?>><?= esc($provider['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <?= view('components/select', [
+                    'id' => 'filter-provider',
+                    'name' => 'filter_provider',
+                    'label' => 'Provider',
+                    'options' => $providerOptions,
+                    'value' => (string) ($currentFilters['provider_id'] ?? ''),
+                ]) ?>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Service</label>
-                <select id="filter-service" class="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
-                    <option value="">All</option>
-                    <?php foreach ($allServices ?? [] as $service): ?>
-                        <option value="<?= esc($service['id']) ?>" <?= ($currentFilters['service_id'] ?? '') == $service['id'] ? 'selected' : '' ?>><?= esc($service['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <?= view('components/select', [
+                    'id' => 'filter-service',
+                    'name' => 'filter_service',
+                    'label' => 'Service',
+                    'options' => $serviceOptions,
+                    'value' => (string) ($currentFilters['service_id'] ?? ''),
+                ]) ?>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Location</label>
-                <select id="filter-location" class="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm">
-                    <option value="">All</option>
-                    <?php foreach ($allLocations ?? [] as $location): ?>
-                        <option value="<?= esc($location['id']) ?>" <?= ($currentFilters['location_id'] ?? '') == $location['id'] ? 'selected' : '' ?>><?= esc($location['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <?= view('components/select', [
+                    'id' => 'filter-location',
+                    'name' => 'filter_location',
+                    'label' => 'Location',
+                    'options' => $locationOptions,
+                    'value' => (string) ($currentFilters['location_id'] ?? ''),
+                ]) ?>
             </div>
             <div class="flex items-end gap-2 col-span-2 md:col-span-1 lg:col-span-2">
-                <button type="button" id="apply-filters-btn" class="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium inline-flex items-center justify-center gap-1 transition-colors">
-                    <span class="material-symbols-outlined text-base">filter_alt</span>
-                    Apply
-                </button>
-                <button type="button" id="clear-filters-btn" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-md text-sm font-medium transition-colors">
-                    Clear
-                </button>
+                <?= view('components/button', [
+                    'label' => 'Apply',
+                    'icon' => 'filter_alt',
+                    'variant' => 'filled',
+                    'size' => 'sm',
+                    'class' => 'flex-1',
+                    'attrs' => ['id' => 'apply-filters-btn'],
+                ]) ?>
+                <?= view('components/button', [
+                    'label' => 'Clear',
+                    'variant' => 'tonal',
+                    'size' => 'sm',
+                    'attrs' => ['id' => 'clear-filters-btn'],
+                ]) ?>
             </div>
         </div>
     </div>
@@ -219,28 +219,3 @@ if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstra
         </div>
     </div>
 <?= $this->endSection() ?>
-
-<?php if (!empty($calendarPrototype['enabled']) && !empty($calendarPrototype['bootstrap'])): ?>
-<?= $this->section('scripts') ?>
-<script>
-    window.__calendarPrototype = {
-        enabled: true,
-        feature: <?= json_encode($calendarPrototype['featureKey'] ?? 'calendar_prototype') ?>,
-        endpoints: <?= json_encode($calendarPrototype['endpoints'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>,
-    };
-    window.__calendarBootstrap = <?= json_encode($calendarPrototype['bootstrap'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-
-    <?php if (!empty($calendarPrototypeAssets['js'])): ?>
-    // Dynamic import — works in both regular page loads and SPA-injected scripts
-    (async function initCalendarPrototype() {
-        try {
-            const module = await import('<?= esc($calendarPrototypeAssets['js']) ?>');
-            if (typeof module.default === 'function') module.default();
-        } catch (err) {
-            // Silently skip when prototype bundle is unavailable in this environment.
-        }
-    })();
-    <?php endif; ?>
-</script>
-<?= $this->endSection() ?>
-<?php endif; ?>

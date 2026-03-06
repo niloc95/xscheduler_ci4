@@ -8,6 +8,21 @@
 <?= $this->section('page_subtitle') ?>Browse and manage available services<?= $this->endSection() ?>
 
 <?php $activeTab = $activeTab ?? 'services'; ?>
+<?php
+$serviceStatusOptions = [
+    ['value' => '', 'label' => 'All statuses'],
+    ['value' => 'active', 'label' => 'Active'],
+    ['value' => 'inactive', 'label' => 'Inactive'],
+];
+
+$serviceCategoryOptions = [['value' => '', 'label' => 'All categories']];
+foreach ($categories as $category) {
+    $serviceCategoryOptions[] = [
+        'value' => (string) ($category['id'] ?? ''),
+        'label' => (string) ($category['name'] ?? ''),
+    ];
+}
+?>
 
 <?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6<?= $this->endSection() ?>
 
@@ -84,14 +99,20 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_actions') ?>
-    <a href="<?= base_url('/services?tab=categories') ?>" class="btn btn-secondary">
-        <span class="material-symbols-outlined text-base">category</span>
-        Manage Categories
-    </a>
-    <a href="<?= base_url('/services/create') ?>" class="btn btn-primary">
-        <span class="material-symbols-outlined text-base">add</span>
-        Add Service
-    </a>
+    <?= view('components/button', [
+        'tag' => 'a',
+        'href' => base_url('/services?tab=categories'),
+        'label' => 'Manage Categories',
+        'icon' => 'category',
+        'variant' => 'outlined',
+    ]) ?>
+    <?= view('components/button', [
+        'tag' => 'a',
+        'href' => base_url('/services/create'),
+        'label' => 'Add Service',
+        'icon' => 'add',
+        'variant' => 'filled',
+    ]) ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_content_top') ?>
@@ -133,26 +154,29 @@
             <div class="flex flex-1 flex-col gap-3 md:flex-row">
                 <div class="flex-1">
                     <label for="filterCategory" class="sr-only">Filter by category</label>
-                    <select id="filterCategory" name="category" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="">All categories</option>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?= $category['id'] ?>" <?= (($filters['category'] ?? '') == $category['id']) ? 'selected' : '' ?>><?= esc($category['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?= view('components/select', [
+                        'id' => 'filterCategory',
+                        'name' => 'category',
+                        'options' => $serviceCategoryOptions,
+                        'value' => (string) ($filters['category'] ?? ''),
+                    ]) ?>
                 </div>
                 <div class="flex-1">
                     <label for="filterStatus" class="sr-only">Filter by status</label>
-                    <select id="filterStatus" name="status" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="">All statuses</option>
-                        <option value="active" <?= (($filters['status'] ?? '') === 'active') ? 'selected' : '' ?>>Active</option>
-                        <option value="inactive" <?= (($filters['status'] ?? '') === 'inactive') ? 'selected' : '' ?>>Inactive</option>
-                    </select>
+                    <?= view('components/select', [
+                        'id' => 'filterStatus',
+                        'name' => 'status',
+                        'options' => $serviceStatusOptions,
+                        'value' => (string) ($filters['status'] ?? ''),
+                    ]) ?>
                 </div>
             </div>
             <div class="flex justify-end md:w-auto">
-                <button type="submit" class="btn btn-primary">
-                    Apply
-                </button>
+                <?= view('components/button', [
+                    'type' => 'submit',
+                    'label' => 'Apply',
+                    'variant' => 'filled',
+                ]) ?>
             </div>
         </form>
     <?php endif; ?>
@@ -224,28 +248,31 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200"><?= $service['bookings_count'] ?></td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <?php if ($service['status'] === 'active'): ?>
-                                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                                                    Active
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                                    Inactive
-                                                </span>
-                                            <?php endif; ?>
+                                            <?= view('components/status_badge', [
+                                                'status' => (string) ($service['status'] ?? 'inactive'),
+                                                'label' => ucfirst((string) ($service['status'] ?? 'inactive')),
+                                            ]) ?>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right">
                                             <div class="flex items-center justify-end gap-2">
-                                                <a href="<?= base_url('/services/edit/' . $service['id']) ?>" class="btn btn-secondary btn-sm">
-                                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                                    Edit
-                                                </a>
+                                                <?= view('components/button', [
+                                                    'tag' => 'a',
+                                                    'href' => base_url('/services/edit/' . $service['id']),
+                                                    'label' => 'Edit',
+                                                    'icon' => 'edit',
+                                                    'variant' => 'outlined',
+                                                    'size' => 'sm',
+                                                ]) ?>
                                                 <form action="<?= site_url('services/delete/' . $service['id']) ?>" method="post" onsubmit="return confirm('Delete this service?');">
                                                     <?= csrf_field() ?>
-                                                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                                                        <span class="material-symbols-outlined text-sm">delete</span>
-                                                        Delete
-                                                    </button>
+                                                    <?= view('components/button', [
+                                                        'type' => 'submit',
+                                                        'label' => 'Delete',
+                                                        'icon' => 'delete',
+                                                        'variant' => 'text',
+                                                        'size' => 'sm',
+                                                        'class' => 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300',
+                                                    ]) ?>
                                                 </form>
                                             </div>
                                         </td>
@@ -275,10 +302,12 @@
                             <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
                         </div>
                         <div class="flex justify-end md:justify-start">
-                            <button type="submit" class="btn btn-primary">
-                                <span class="material-symbols-outlined text-base">add</span>
-                                Add Category
-                            </button>
+                            <?= view('components/button', [
+                                'type' => 'submit',
+                                'label' => 'Add Category',
+                                'icon' => 'add',
+                                'variant' => 'filled',
+                            ]) ?>
                         </div>
                     </form>
 
@@ -313,43 +342,58 @@
                                                 <?= (int)($category['services_count'] ?? 0) ?>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <?php if (!empty($category['active'])): ?>
-                                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">Active</span>
-                                                <?php else: ?>
-                                                    <span class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
-                                                <?php endif; ?>
+                                                <?= view('components/status_badge', [
+                                                    'status' => !empty($category['active']) ? 'active' : 'inactive',
+                                                    'label' => !empty($category['active']) ? 'Active' : 'Inactive',
+                                                ]) ?>
                                             </td>
                                             <td class="px-6 py-4">
                                                 <div class="flex flex-wrap items-center justify-end gap-2">
-                                                    <a href="<?= site_url('services/categories/edit/' . (int)$category['id']) ?>" class="btn btn-secondary btn-sm">
-                                                        <span class="material-symbols-outlined text-sm">edit</span>
-                                                        Edit
-                                                    </a>
+                                                    <?= view('components/button', [
+                                                        'tag' => 'a',
+                                                        'href' => site_url('services/categories/edit/' . (int)$category['id']),
+                                                        'label' => 'Edit',
+                                                        'icon' => 'edit',
+                                                        'variant' => 'outlined',
+                                                        'size' => 'sm',
+                                                    ]) ?>
 
                                                     <?php if (!empty($category['active'])): ?>
                                                         <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
                                                             <?= csrf_field() ?>
-                                                            <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">
-                                                                <span class="material-symbols-outlined text-sm">pause</span>
-                                                                Deactivate
-                                                            </button>
+                                                            <?= view('components/button', [
+                                                                'type' => 'submit',
+                                                                'label' => 'Deactivate',
+                                                                'icon' => 'pause',
+                                                                'variant' => 'text',
+                                                                'size' => 'sm',
+                                                                'class' => 'text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200',
+                                                            ]) ?>
                                                         </form>
                                                     <?php else: ?>
                                                         <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Activate this category?');">
                                                             <?= csrf_field() ?>
-                                                            <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
-                                                                <span class="material-symbols-outlined text-sm">play_arrow</span>
-                                                                Activate
-                                                            </button>
+                                                            <?= view('components/button', [
+                                                                'type' => 'submit',
+                                                                'label' => 'Activate',
+                                                                'icon' => 'play_arrow',
+                                                                'variant' => 'text',
+                                                                'size' => 'sm',
+                                                                'class' => 'text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200',
+                                                            ]) ?>
                                                         </form>
                                                     <?php endif; ?>
 
                                                     <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
                                                         <?= csrf_field() ?>
-                                                        <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                                                            <span class="material-symbols-outlined text-sm">delete</span>
-                                                            Delete
-                                                        </button>
+                                                        <?= view('components/button', [
+                                                            'type' => 'submit',
+                                                            'label' => 'Delete',
+                                                            'icon' => 'delete',
+                                                            'variant' => 'text',
+                                                            'size' => 'sm',
+                                                            'class' => 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
+                                                        ]) ?>
                                                     </form>
                                                 </div>
                                             </td>

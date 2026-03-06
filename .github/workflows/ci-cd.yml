@@ -120,13 +120,39 @@ jobs:
           echo "database.tests.username = test_user" >> .env
           echo "database.tests.password = test_password" >> .env
           echo "database.tests.DBDriver = MySQLi" >> .env
+          echo "database.tests.DBPrefix = xs_" >> .env
           echo "database.tests.port = 3306" >> .env
+
+      - name: Wait for MySQL readiness
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h127.0.0.1 -utest_user -ptest_password --silent && break
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Enforce UTC timezone in MySQL
+        run: |
+          mysql -h127.0.0.1 -utest_user -ptest_password -Dwebschedulr_test -e "SET GLOBAL time_zone = '+00:00'; SET time_zone = '+00:00';"
+
+      - name: Fresh migrate test schema
+        run: |
+          php spark migrate:refresh -n App --all
+
+      - name: Seed baseline availability integration data
+        run: |
+          php spark db:seed AvailabilityIntegrationSeeder
           
       - name: Run PHPUnit tests
-        run: vendor/bin/phpunit --testdox --colors=always
+        run: vendor/bin/phpunit -c phpunit.mysql.xml.dist --testdox --colors=always
+
+      - name: Run availability MySQL regression test
+        run: vendor/bin/phpunit -c phpunit.mysql.xml.dist --filter AvailabilitySlotsLocationFallbackTest --colors=always
         
       - name: Generate coverage report
-        run: vendor/bin/phpunit --coverage-text --coverage-html coverage/
+        run: |
+          set -o pipefail
+          vendor/bin/phpunit -c phpunit.mysql.xml.dist --coverage-text --coverage-html coverage/ | tee coverage-summary.txt
         
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -138,7 +164,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           echo "Checking test coverage..."
-          COVERAGE=$(vendor/bin/phpunit --coverage-text | grep "Lines:" | awk '{print $2}' | sed 's/%//')
+          COVERAGE=$(grep "Lines:" coverage-summary.txt | awk '{print $2}' | sed 's/%//')
           echo "Current coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 40" | bc -l) )); then
             echo "⚠️ Coverage is below 40% threshold"

@@ -39,11 +39,13 @@ $pageSubtitle = $isEditMode
 <div class="max-w-4xl mx-auto">
     <!-- Back Button -->
     <div class="mb-6">
-        <a href="<?= base_url('/appointments') ?>" 
-           class="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
-            <span class="material-symbols-outlined text-base mr-1">arrow_back</span>
-            Back to Appointments
-        </a>
+        <?= view('components/button', [
+            'text' => 'Back to Appointments',
+            'href' => base_url('/appointments'),
+            'variant' => 'text',
+            'size' => 'sm',
+            'icon' => 'arrow_back'
+        ]) ?>
     </div>
 
     <!-- Validation Errors -->
@@ -540,14 +542,18 @@ $pageSubtitle = $isEditMode
 
             <!-- Form Actions -->
             <div class="mt-8 flex items-center justify-<?= $isEditMode ? 'between' : 'end' ?> gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <a href="<?= base_url('appointments') ?>" 
-                   class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                    Cancel
-                </a>
-                <button type="submit" 
-                        class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition-colors">
-                    <?= $isEditMode ? 'Save Changes' : 'Book Appointment' ?>
-                </button>
+                <?= view('components/button', [
+                    'text' => 'Cancel',
+                    'href' => base_url('appointments'),
+                    'variant' => 'outlined',
+                    'size' => 'md'
+                ]) ?>
+                <?= view('components/button', [
+                    'text' => $isEditMode ? 'Save Changes' : 'Book Appointment',
+                    'type' => 'submit',
+                    'variant' => 'filled',
+                    'size' => 'md'
+                ]) ?>
             </div>
         </form>
     </div>

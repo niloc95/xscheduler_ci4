@@ -13,7 +13,7 @@
   position: relative;
 }
 
-.dark .card {
+[data-theme="dark"] .card {
   background-color: #1f2937;
   border-color: #374151;
 }
@@ -27,7 +27,7 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.dark .card-header {
+[data-theme="dark"] .card-header {
   border-color: #374151;
 }
 
@@ -38,7 +38,7 @@
   color: #111827;
 }
 
-.dark .card-title {
+[data-theme="dark"] .card-title {
   color: #f3f4f6;
 }
 
@@ -47,7 +47,7 @@
   color: #6b7280;
 }
 
-.dark .card-subtitle {
+[data-theme="dark"] .card-subtitle {
   color: #9ca3af;
 }
 
@@ -56,7 +56,7 @@
   color: #374151;
 }
 
-.dark .card-body {
+[data-theme="dark"] .card-body {
   color: #d1d5db;
 }
 
@@ -64,7 +64,7 @@
   color: #6b7280;
 }
 
-.dark .card-body-muted {
+[data-theme="dark"] .card-body-muted {
   color: #9ca3af;
 }
 
@@ -79,7 +79,7 @@
   background-color: rgba(249, 250, 251, 0.85);
 }
 
-.dark .card-footer {
+[data-theme="dark"] .card-footer {
   border-color: #374151;
   background-color: rgba(17, 24, 39, 0.6);
 }
@@ -108,7 +108,7 @@
   background-color: #f9fafb;
 }
 
-.dark .card.card-muted {
+[data-theme="dark"] .card.card-muted {
   background-color: rgba(17, 24, 39, 0.7);
 }
 
@@ -117,7 +117,7 @@
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
-.dark .auth-card {
+[data-theme="dark"] .auth-card {
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4);
 }
 

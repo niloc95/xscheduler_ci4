@@ -8,6 +8,9 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { buildAvailabilityContext, isAvailabilityDebugMode, renderAvailabilityDebugPayload, renderAvailabilitySlotList } from './availability-panel-shared.js';
+import { buildMonthGridWeeks, getRotatedWeekdayShortNames } from './calendar-grid-shared.js';
+import { renderMonthAppointmentBlock, renderMonthEmptyState, renderMonthModelAppointmentChip, renderMonthShell } from './month-view-components.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -74,45 +77,11 @@ export class MonthView {
         
         // Get calendar grid data
         const monthStart = currentDate.startOf('month');
-        const monthEnd = currentDate.endOf('month');
         
         // Use first day of week from settings (0=Sunday, 1=Monday, etc.)
         const firstDayOfWeek = settings?.getFirstDayOfWeek?.() || 0;
-        
-        // Calculate grid start: find the first day of the week containing month start
-        // Luxon weekday: 1=Mon, 7=Sun. We need to convert our firstDayOfWeek (0=Sun) to Luxon format
-        const luxonFirstDay = firstDayOfWeek === 0 ? 7 : firstDayOfWeek;
-        const monthStartWeekday = monthStart.weekday; // 1-7 (Mon-Sun)
-        
-        // Calculate days to go back to reach the first day of the week
-        let daysBack = monthStartWeekday - luxonFirstDay;
-        if (daysBack < 0) daysBack += 7;
-        
-        const gridStart = monthStart.minus({ days: daysBack });
-        
-        // Calculate grid end: find the last day of the week containing month end
-        const monthEndWeekday = monthEnd.weekday;
-        const lastDayOfWeek = luxonFirstDay === 1 ? 7 : luxonFirstDay - 1; // Last day is one before first
-        let daysForward = (lastDayOfWeek === 7 ? 7 : lastDayOfWeek) - monthEndWeekday;
-        if (daysForward < 0) daysForward += 7;
-        if (daysForward === 0 && monthEndWeekday !== (luxonFirstDay === 1 ? 7 : luxonFirstDay - 1)) {
-            // We're not on the last day of week, so we need to complete the week
-        }
-        // Simpler approach: just complete 6 weeks from grid start
-        const gridEnd = gridStart.plus({ days: 41 }); // 6 weeks - 1 day
-        
-        // Generate weeks (fallback when server model is missing)
-        const weeks = [];
-        let current = gridStart;
-        
-        while (current <= gridEnd) {
-            const week = [];
-            for (let i = 0; i < 7; i++) {
-                week.push(current);
-                current = current.plus({ days: 1 });
-            }
-            weeks.push(week);
-        }
+
+        const weeks = buildMonthGridWeeks(currentDate, firstDayOfWeek);
 
         const modelWeeks = calendarModel?.weeks || null;
 
@@ -120,39 +89,21 @@ export class MonthView {
         this.appointmentsByDate = this.groupAppointmentsByDate(appointments);
         this.debugLog('📅 Appointments grouped by date:', this.appointmentsByDate);
 
-        // Render HTML
-        container.innerHTML = `
-            <div class="scheduler-month-view rounded-xl overflow-hidden bg-white dark:bg-gray-900">
-                <!-- Day Headers -->
-                <div class="grid grid-cols-7 px-1 pt-2 pb-1">
-                    ${this.renderDayHeaders(config, settings)}
-                </div>
+        const calendarGridHtml = (modelWeeks || weeks).map(week => week.map(day => 
+            modelWeeks
+                ? this.renderDayCellFromModel(day, settings)
+                : this.renderDayCell(day, monthStart.month, settings)
+        ).join('')).join('');
 
-                <!-- Calendar Grid -->
-                <div class="grid grid-cols-7 grid-rows-6 gap-px px-1 pb-1">
-                    ${(modelWeeks || weeks).map(week => week.map(day => 
-                        modelWeeks
-                            ? this.renderDayCellFromModel(day, settings)
-                            : this.renderDayCell(day, monthStart.month, settings)
-                    ).join('')).join('')}
-                </div>
-                
-                ${appointments.length === 0 ? `
-                <div class="px-6 py-8 text-center">
-                    <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 text-5xl mb-3">event_available</span>
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Appointments</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                        Click on any day to create a new appointment
-                    </p>
-                </div>
-                ` : ''}
-                
-                <!-- Available Slots Panel (always visible) -->
-                <div class="p-3 md:p-4 border-t border-gray-100 dark:border-gray-800" id="month-slot-panel">
-                    ${this._renderMonthSlotPanel()}
-                </div>
-            </div>
-        `;
+        const emptyStateHtml = appointments.length === 0 ? renderMonthEmptyState() : '';
+
+        // Render HTML
+        container.innerHTML = renderMonthShell({
+            dayHeadersHtml: this.renderDayHeaders(config, settings),
+            calendarGridHtml,
+            emptyStateHtml,
+            slotPanelHtml: this._renderMonthSlotPanel(),
+        });
 
         // Add event listeners
         this.attachEventListeners(container, data);
@@ -167,12 +118,7 @@ export class MonthView {
 
     renderDayHeaders(config, settings) {
         const firstDay = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 0;
-        const firstWeekday = firstDay === 0 ? 7 : firstDay;
-        const weekAnchor = (this.currentDate || DateTime.now()).startOf('week').set({ weekday: firstWeekday });
-
-        const shortDays = Array.from({ length: 7 }, (_, index) => {
-            return weekAnchor.plus({ days: index }).toFormat('ccc');
-        });
+        const shortDays = getRotatedWeekdayShortNames(this.currentDate || DateTime.now(), firstDay);
 
         return shortDays.map(day => `
             <div class="text-center py-1.5">
@@ -262,18 +208,15 @@ export class MonthView {
         const is24Hour = this.settings?.getTimeFormat?.() === '24h';
         const time = appointment.startDateTime.toFormat(is24Hour ? 'HH:mm' : 'h:mm');
         const ampm = is24Hour ? '' : appointment.startDateTime.toFormat('a').toLowerCase();
-        const title = appointment.customerName || appointment.title || 'Appointment';
         const hiddenClass = isHidden ? 'hidden' : '';
 
-        return `
-            <div class="scheduler-appointment text-[11px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 transition-all truncate border-l-2 flex items-center gap-1 text-gray-800 dark:text-gray-200 ${hiddenClass}"
-                 data-border-left-color="${providerColor}"
-                 data-appointment-id="${appointment.id}"
-                 title="${title} at ${time}${ampm} - ${appointment.status}">
-                <span class="font-semibold flex-shrink-0 tabular-nums">${time}${ampm ? `<span class="font-normal opacity-70">${ampm}</span>` : ''}</span>
-                <span class="truncate">${escapeHtml(title)}</span>
-            </div>
-        `;
+        return renderMonthAppointmentBlock({
+            appointment,
+            providerColor,
+            time,
+            ampm,
+            hiddenClass,
+        });
     }
     
     getAppointmentsForDay(day) {
@@ -835,27 +778,22 @@ export class MonthView {
     }
 
     _getAvailabilityContext() {
-        const serviceId = this.scheduler?.activeFilters?.serviceId ?? null;
-        let providerId = this.scheduler?.activeFilters?.providerId ?? null;
+        const visibleProviderIds = this.scheduler?.visibleProviders
+            ? Array.from(this.scheduler.visibleProviders)
+            : [];
 
-        if (!providerId && this.scheduler?.visibleProviders?.size === 1) {
-            providerId = Array.from(this.scheduler.visibleProviders)[0];
-        }
+        return buildAvailabilityContext({
+            activeFilters: this.scheduler?.activeFilters,
+            visibleProviderIds,
+        });
+    }
 
-        if (!providerId) {
-            return { ready: false, message: 'Select a provider to see availability.' };
-        }
-        if (!serviceId) {
-            return { ready: false, message: 'Select a service to see availability.' };
-        }
+    _isDebugMode() {
+        return isAvailabilityDebugMode(this.scheduler);
+    }
 
-        return {
-            ready: true,
-            providerId,
-            serviceId,
-            locationId: this.scheduler?.activeFilters?.locationId ?? null,
-            timezone: this.scheduler?.options?.timezone,
-        };
+    _renderDebugPayload(payload = null) {
+        return renderAvailabilityDebugPayload(this.scheduler, payload);
     }
 
     async _refreshMonthSlotPanel() {
@@ -866,7 +804,7 @@ export class MonthView {
 
         const context = this._getAvailabilityContext();
         if (!context.ready) {
-            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>`;
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>${this._renderDebugPayload(null)}`;
             if (countEl) countEl.textContent = '';
             if (providerCountEl) providerCountEl.textContent = '';
             return;
@@ -876,12 +814,24 @@ export class MonthView {
             providerCountEl.innerHTML = `<span class="material-symbols-outlined text-sm">group</span><span>1 provider</span>`;
         }
 
-        const date = (this.selectedDate || DateTime.now()).toISODate();
+        const date = (this.selectedDate || DateTime.now())?.toISODate?.();
+        if (!date) {
+            listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">Select a date to see availability.</div>${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: context.locationId ?? null,
+                date: null,
+                timezone: 'UTC',
+            })}`;
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
         const params = new URLSearchParams({
             provider_id: String(context.providerId),
             service_id: String(context.serviceId),
             date,
-            timezone: context.timezone || 'UTC',
+            timezone: 'UTC',
         });
         if (context.locationId) params.append('location_id', String(context.locationId));
 
@@ -889,34 +839,41 @@ export class MonthView {
             const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`), { cache: 'no-store' });
             const data = await response.json();
             if (!response.ok) {
-                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>`;
+                listEl.innerHTML = `<div class="text-sm text-red-500">${data?.error?.message || 'Failed to load slots'}</div>${this._renderDebugPayload({
+                    providerId: context.providerId,
+                    serviceId: context.serviceId,
+                    locationId: context.locationId ?? null,
+                    date,
+                    timezone: 'UTC',
+                })}`;
                 if (countEl) countEl.textContent = '';
                 return;
             }
 
             const slots = data?.data?.slots || [];
             if (countEl) countEl.textContent = `${slots.length} slot${slots.length !== 1 ? 's' : ''}`;
-            listEl.innerHTML = this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId);
+            listEl.innerHTML = `${this._renderSlotListFromApi(slots, date, context.providerId, context.serviceId)}${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: data?.data?.location_id ?? context.locationId ?? null,
+                date,
+                timezone: data?.data?.timezone ?? 'UTC',
+            })}`;
         } catch (error) {
             console.error('Failed to load availability slots:', error);
-            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>`;
+            listEl.innerHTML = `<div class="text-sm text-red-500">Failed to load slots</div>${this._renderDebugPayload({
+                providerId: context.providerId,
+                serviceId: context.serviceId,
+                locationId: context.locationId ?? null,
+                date,
+                timezone: 'UTC',
+            })}`;
             if (countEl) countEl.textContent = '';
         }
     }
 
     _renderSlotListFromApi(slots, date, providerId, serviceId) {
-        if (!slots.length) {
-            return `<div class="text-sm text-gray-500 dark:text-gray-400">No available slots</div>`;
-        }
-
-        return slots.map(slot => {
-            const label = `${slot.start} - ${slot.end}`;
-            const url = withBaseUrl(`/appointments/create?date=${date}&time=${slot.start}&provider_id=${providerId}&service_id=${serviceId}`);
-            return `<div class="slot-item flex items-center justify-between gap-3 py-2">
-                <span class="text-sm text-gray-700 dark:text-gray-200">${label}</span>
-                <a class="text-xs text-blue-600 hover:underline" href="${url}">Book</a>
-            </div>`;
-        }).join('');
+        return renderAvailabilitySlotList(slots, date, providerId, serviceId);
     }
 
     renderDayCellFromModel(cell, settings) {
@@ -966,12 +923,12 @@ export class MonthView {
             const providerColor = getProviderColor(provider);
             const statusColors = getStatusColors(apt.status, isDarkMode());
 
-            return `
-                <div class="appointment-chip group flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium text-white shadow-sm" data-appointment-id="${apt.id}" style="background: ${providerColor}">
-                    <span class="inline-block w-1.5 h-1.5 rounded-full" style="background: ${statusColors.bg}"></span>
-                    <span class="truncate">${escapeHtml(apt.customerName || apt.title || 'Appointment')}</span>
-                </div>
-            `;
+            return renderMonthModelAppointmentChip({
+                appointmentId: apt.id,
+                providerColor,
+                statusColor: statusColors.bg,
+                customerName: apt.customerName || apt.title || 'Appointment',
+            });
         }).join('');
 
         return `

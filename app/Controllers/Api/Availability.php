@@ -588,6 +588,22 @@ class Availability extends BaseApiController
             return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
         }
 
-        return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required for providers with active locations'];
+        $defaultLocation = null;
+        foreach ($activeLocations as $location) {
+            if ((int) ($location['is_primary'] ?? 0) === 1) {
+                $defaultLocation = (int) ($location['id'] ?? 0);
+                break;
+            }
+        }
+
+        if (!$defaultLocation) {
+            $defaultLocation = (int) ($activeLocations[0]['id'] ?? 0);
+        }
+
+        if ($defaultLocation <= 0) {
+            return ['valid' => false, 'location_id' => null, 'reason' => 'No active provider location available'];
+        }
+
+        return ['valid' => true, 'location_id' => $defaultLocation, 'reason' => null];
     }
 }

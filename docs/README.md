@@ -23,7 +23,14 @@ System design, patterns, and technical architecture
 - Role-Based Access Control
 - Multi-Tenant SaaS Architecture
 - Calendar UI Architecture
+- Availability Fix Validation & Hardening (2026-03-02)
 - User-Customer Split Design
+- Scheduler UI Architecture
+- Component Structure
+- Availability Rendering Logic
+- Material 3 Design System
+- Naming Conventions
+- Scheduler UI Audit (2026-03-02)
 
 ### 💻 [Development](./development/)
 Developer guides, conventions, and workflows

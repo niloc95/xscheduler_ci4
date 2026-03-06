@@ -533,7 +533,7 @@ class AvailabilityService
      *
     * Rules:
     * - No active locations => location not required.
-    * - Any active locations => explicit location is required.
+    * - Active locations with omitted location_id => primary active location, otherwise first active location.
     * - Provided location must be active and owned by provider.
      *
      * @return array{valid:bool, location_id:?int, reason:?string}
@@ -559,10 +559,30 @@ class AvailabilityService
             return ['valid' => true, 'location_id' => $locationId, 'reason' => null];
         }
 
+        $defaultLocationId = null;
+        foreach ($activeLocations as $location) {
+            if ((int) ($location['is_primary'] ?? 0) === 1) {
+                $defaultLocationId = (int) ($location['id'] ?? 0);
+                break;
+            }
+        }
+
+        if (!$defaultLocationId) {
+            $defaultLocationId = (int) ($activeLocations[0]['id'] ?? 0);
+        }
+
+        if ($defaultLocationId <= 0) {
+            return [
+                'valid' => false,
+                'location_id' => null,
+                'reason' => 'No active provider location available'
+            ];
+        }
+
         return [
-            'valid' => false,
-            'location_id' => null,
-            'reason' => 'location_id is required for providers with active locations'
+            'valid' => true,
+            'location_id' => $defaultLocationId,
+            'reason' => null
         ];
     }
 
