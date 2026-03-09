@@ -41,13 +41,13 @@ class TimeGridService
         $this->range = $range ?? new CalendarRangeService();
 
         $settings = (new SettingModel())->getByKeys([
-            'calendar.day_start',
-            'calendar.day_end',
+            'booking.day_start',
+            'booking.day_end',
             'booking.time_resolution',
         ]);
 
-        $this->dayStart   = $settings['calendar.day_start']       ?? '08:00';
-        $this->dayEnd     = $settings['calendar.day_end']         ?? '18:00';
+        $this->dayStart   = $settings['booking.day_start']       ?? '08:00';
+        $this->dayEnd     = $settings['booking.day_end']         ?? '17:00';
         $this->resolution = (int) ($settings['booking.time_resolution'] ?? 30);
     }
 

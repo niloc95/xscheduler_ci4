@@ -112,16 +112,17 @@ class AppointmentQueryService
      */
     public function getForRange(string $startDate, string $endDate, array $filters = []): array
     {
-        // Convert local day boundaries to UTC for DB query
+        // Convert local day boundaries to UTC for DB query using canonical resolver.
         $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
-        $tz    = new \DateTimeZone($localTz);
-        $utcTz = new \DateTimeZone('UTC');
-        $startUtc = (new \DateTime($startDate . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
-        $endUtc   = (new \DateTime($endDate   . ' 23:59:59', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
+        $boundaries = $this->resolveUtcBoundaries($startDate, $endDate, $localTz);
 
         $builder = $this->buildBaseQuery();
-        $builder->where('xs_appointments.start_at >=', $startUtc)
-                ->where('xs_appointments.start_at <=', $endUtc);
+        if (!empty($boundaries['start'])) {
+            $builder->where('xs_appointments.start_at >=', $boundaries['start']);
+        }
+        if (!empty($boundaries['end'])) {
+            $builder->where('xs_appointments.start_at <=', $boundaries['end']);
+        }
 
         $builder = $this->applyProviderScope($builder, $filters);
         $builder = $this->applyFilters($builder, $filters);

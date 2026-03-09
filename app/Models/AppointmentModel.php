@@ -46,7 +46,7 @@
  * - afterDelete:  invalidateDashboardCache
  * 
  * @see         app/Controllers/Api/Appointments.php for API layer
- * @see         app/Services/SchedulingService.php for business logic
+ * @see         app/Services/AppointmentBookingService.php for booking business logic
  * @package     App\Models
  * @extends     BaseModel
  * @author      WebSchedulr Team

@@ -157,16 +157,11 @@ class CalendarConfigService
 
     /**
      * Get earliest time to display on calendar
-     * Reads from business.work_start setting
+     * Reads from canonical booking.day_start setting
      */
     public function getSlotMinTime(): string
     {
-        // Try business.work_start first (from Business Hours settings)
-        $value = $this->getSetting('business.work_start');
-        
-        if (!$value) {
-            $value = $this->getSetting('calendar.slot_min_time');
-        }
+        $value = $this->getSetting('booking.day_start');
         
         if ($value && strlen($value) >= 5) {
             // Already in HH:MM or HH:MM:SS format, just return first 5 chars
@@ -178,23 +173,18 @@ class CalendarConfigService
 
     /**
      * Get latest time to display on calendar
-     * Reads from business.work_end setting
+     * Reads from canonical booking.day_end setting
      */
     public function getSlotMaxTime(): string
     {
-        // Try business.work_end first (from Business Hours settings)
-        $value = $this->getSetting('business.work_end');
-        
-        if (!$value) {
-            $value = $this->getSetting('calendar.slot_max_time');
-        }
+        $value = $this->getSetting('booking.day_end');
         
         if ($value && strlen($value) >= 5) {
             // Already in HH:MM or HH:MM:SS format, just return first 5 chars
             return substr($value, 0, 5);
         }
 
-        return '18:00'; // Default 6 PM
+        return '17:00'; // Default 5 PM
     }
 
     /**
@@ -349,12 +339,10 @@ class CalendarConfigService
                 'localization.timezone',
                 'localization.first_day',
                 'localization.locale',
-                'business.work_start',
-                'business.work_end',
+                'booking.day_start',
+                'booking.day_end',
                 'business.blocked_periods',
                 'calendar.slot_duration',
-                'calendar.slot_min_time',
-                'calendar.slot_max_time',
                 'calendar.default_view',
                 'calendar.show_weekends',
                 'calendar.height',

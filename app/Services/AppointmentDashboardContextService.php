@@ -108,15 +108,17 @@ class AppointmentDashboardContextService
                 break;
                 
             case 'customer':
-                // Customer sees only their own appointments
-                $context['customer_id'] = $user['customer_id'] ?? $userId;
+                // Future phase: customer dashboard context is not active yet.
+                // Scope to no results until customer role is fully implemented.
+                $context['customer_id'] = 0;
                 $context['filter_by_customer'] = true;
                 break;
                 
             default:
-                // Guest or unknown role - no access
+                // Future phase: guest/unknown role dashboard context is not active yet.
+                // Scope to no results until role-specific access is implemented.
                 $context['filter_by_customer'] = true;
-                $context['customer_id'] = 0; // Will return no results
+                $context['customer_id'] = 0;
                 break;
         }
 

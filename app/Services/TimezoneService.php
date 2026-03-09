@@ -88,6 +88,40 @@ use DateTimeZone;
 class TimezoneService
 {
     /**
+     * Resolve timezone using canonical chain: Settings DB -> Session -> Config.
+     */
+    private static function resolvePreferredTimezone(): string
+    {
+        // 1) Settings DB
+        try {
+            $settingModel = new \App\Models\SettingModel();
+            $settingTz = (string) ($settingModel->getValue('localization.timezone') ?? '');
+            if ($settingTz !== '' && self::isValidTimezone($settingTz)) {
+                return $settingTz;
+            }
+        } catch (\Throwable $e) {
+            // Ignore and continue down fallback chain.
+        }
+
+        // 2) Session
+        try {
+            $session = session();
+            if ($session && $session->has('client_timezone')) {
+                $sessionTz = (string) $session->get('client_timezone');
+                if ($sessionTz !== '' && self::isValidTimezone($sessionTz)) {
+                    return $sessionTz;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore and continue down fallback chain.
+        }
+
+        // 3) App config
+        $configTz = (string) (config('App')->appTimezone ?? 'UTC');
+        return self::isValidTimezone($configTz) ? $configTz : 'UTC';
+    }
+
+    /**
      * Get the business-local timezone from settings.
      *
      * Falls back to 'Africa/Johannesburg' when the setting is not yet seeded.
@@ -103,20 +137,7 @@ class TimezoneService
             return $cached;
         }
 
-        try {
-            $settingModel = new \App\Models\SettingModel();
-            $value = $settingModel->getValue('localization.timezone');
-            if ($value && \DateTimeZone::listIdentifiers(\DateTimeZone::ALL, 0) !== false) {
-                // Validate it's a real IANA identifier
-                new \DateTimeZone($value);
-                $cached = $value;
-                return $cached;
-            }
-        } catch (\Throwable $e) {
-            // Fall through to default
-        }
-
-        $cached = 'Africa/Johannesburg';
+        $cached = self::resolvePreferredTimezone();
         return $cached;
     }
 
@@ -235,19 +256,9 @@ class TimezoneService
      */
     private static function getSessionTimezone()
     {
-        $session = session();
-        
-        // Check if client timezone was detected and stored
-        if ($session && $session->has('client_timezone')) {
-            $tz = (string) $session->get('client_timezone');
-            log_message('debug', "[TimezoneService] Using session timezone: {$tz}");
-            return $tz;
-        }
-        
-        // Fallback to app timezone
-        $fallback = config('App')->appTimezone ?? 'UTC';
-        log_message('debug', "[TimezoneService] Using fallback timezone: {$fallback}");
-        return $fallback;
+        $tz = self::resolvePreferredTimezone();
+        log_message('debug', "[TimezoneService] Using resolved timezone chain: {$tz}");
+        return $tz;
     }
     
     /**

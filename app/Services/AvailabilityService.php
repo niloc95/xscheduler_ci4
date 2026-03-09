@@ -62,7 +62,7 @@ use App\Models\ProviderScheduleModel;
 use App\Models\BlockedTimeModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
-use App\Services\Appointment\AppointmentConflictService;
+use App\Services\ConflictService;
 use DateInterval;
 use DateTime;
 use DateTimeImmutable;
@@ -93,7 +93,7 @@ class AvailabilityService
     private ServiceModel $serviceModel;
     private SettingModel $settingModel;
     private LocalizationSettingsService $localizationService;
-    private AppointmentConflictService $conflictService;
+    private ConflictService $conflictService;
     
     private array $cache = [];
 
@@ -107,7 +107,7 @@ class AvailabilityService
         $this->serviceModel = new ServiceModel();
         $this->settingModel = new SettingModel();
         $this->localizationService = new LocalizationSettingsService();
-        $this->conflictService = new AppointmentConflictService();
+        $this->conflictService = new ConflictService();
     }
 
     /**

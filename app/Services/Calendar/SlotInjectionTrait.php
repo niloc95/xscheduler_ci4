@@ -51,8 +51,24 @@ trait SlotInjectionTrait
             return $event;
         }, $events);
 
-        // Resolve N-column overlap layout (simple sweep-line)
-        $positioned = $this->resolveOverlapColumns($positioned);
+        // EventLayoutService already resolves overlap metadata. Keep fields in sync
+        // for renderers expecting either legacy or canonical keys.
+        $positioned = array_map(function (array $event) {
+            if (isset($event['_column'])) {
+                $event['_colIndex'] = (int) $event['_column'];
+            }
+            if (isset($event['_columns_total'])) {
+                $event['_colCount'] = (int) $event['_columns_total'];
+            }
+            if (isset($event['_column_width_pct'])) {
+                $event['_widthPct'] = (float) $event['_column_width_pct'];
+            }
+            if (isset($event['_column_left_pct'])) {
+                $event['_leftPct'] = (float) $event['_column_left_pct'];
+            }
+
+            return $event;
+        }, $positioned);
 
         // Build reverse lookup: slot time → index
         $slotMap = [];
@@ -73,49 +89,6 @@ trait SlotInjectionTrait
         }
 
         return $slots;
-    }
-
-    /**
-     * Resolve N-column overlap layout for events that overlap in time.
-     * Sets `_colIndex` (0-based) and `_colCount` (total columns in group),
-     * plus CSS-ready `_widthPct` and `_leftPct`.
-     */
-    protected function resolveOverlapColumns(array $events): array
-    {
-        if (empty($events)) {
-            return $events;
-        }
-
-        usort($events, fn($a, $b) => $a['_startMin'] <=> $b['_startMin']);
-
-        $groups = [];
-        $active = [];
-
-        foreach ($events as &$event) {
-            $active = array_filter($active, fn($e) => $e['_endMin'] > $event['_startMin']);
-
-            if (empty($active)) {
-                $groups[] = [&$event];
-            } else {
-                $groups[count($groups) - 1][] = &$event;
-            }
-            $active[] = &$event;
-        }
-        unset($event);
-
-        foreach ($groups as &$group) {
-            $colCount = count($group);
-            foreach ($group as $col => &$e) {
-                $e['_colIndex'] = $col;
-                $e['_colCount'] = $colCount;
-                $e['_widthPct'] = round(100 / $colCount, 2);
-                $e['_leftPct']  = round(($col / $colCount) * 100, 2);
-            }
-            unset($e);
-        }
-        unset($group);
-
-        return $events;
     }
 
     /**

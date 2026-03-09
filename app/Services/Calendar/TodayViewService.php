@@ -79,6 +79,7 @@ use App\Models\ProviderScheduleModel;
 class TodayViewService
 {
     use SlotInjectionTrait;
+    use ProviderWorkingHoursTrait;
 
     private CalendarRangeService $range;
     private TimeGridService $timeGrid;
@@ -258,54 +259,4 @@ class TodayViewService
         return $schedule ? (bool) $schedule['is_active'] : true;
     }
 
-    /**
-     * Get provider's working hours for a specific day.
-     * Falls back to business hours if no provider schedule exists.
-     *
-     * @param int $providerId
-     * @param int $weekday
-     * @return array Working hours { startTime, endTime, breakStart, breakEnd, source, isActive }
-     */
-    private function getProviderWorkingHours(int $providerId, int $weekday): array
-    {
-        // Try provider-specific schedule first
-        $schedule = $this->providerSchedule
-            ->where('provider_id', $providerId)
-            ->where('day_of_week', $weekday)
-            ->first();
-
-        if ($schedule) {
-            return [
-                'startTime'  => substr($schedule['start_time'], 0, 5),
-                'endTime'    => substr($schedule['end_time'], 0, 5),
-                'breakStart' => $schedule['break_start'] ? substr($schedule['break_start'], 0, 5) : null,
-                'breakEnd'   => $schedule['break_end'] ? substr($schedule['break_end'], 0, 5) : null,
-                'source'     => 'provider_schedule',
-                'isActive'   => (bool) $schedule['is_active'],
-            ];
-        }
-
-        // Fall back to business hours
-        return $this->getBusinessHours();
-    }
-
-    /**
-     * Get default business hours.
-     *
-     * @return array { startTime, endTime, source }
-     */
-    private function getBusinessHours(): array
-    {
-        // Get from SettingModel
-        $settingModel = new \App\Models\SettingModel();
-
-        return [
-            'startTime'  => $settingModel->getValue('booking.day_start', '08:00'),
-            'endTime'    => $settingModel->getValue('booking.day_end', '17:00'),
-            'breakStart' => $settingModel->getValue('booking.break_start', '12:00'),
-            'breakEnd'   => $settingModel->getValue('booking.break_end', '13:00'),
-            'source'     => 'business_hours',
-            'isActive'   => true,
-        ];
-    }
 }

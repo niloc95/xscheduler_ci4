@@ -4,7 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Models\AppointmentModel;
 use App\Models\BlockedTimeModel;
-use App\Services\Appointment\AppointmentConflictService;
+use App\Services\ConflictService;
 use CodeIgniter\Test\CIUnitTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
@@ -15,8 +15,8 @@ final class AppointmentConflictServiceTest extends CIUnitTestCase
 {
     public function testHasConflictUsesConflictingAppointments(): void
     {
-        /** @var AppointmentConflictService&MockObject $service */
-        $service = $this->getMockBuilder(AppointmentConflictService::class)
+        /** @var ConflictService&MockObject $service */
+        $service = $this->getMockBuilder(ConflictService::class)
             ->onlyMethods(['getConflictingAppointments'])
             ->getMock();
 
@@ -49,7 +49,7 @@ final class AppointmentConflictServiceTest extends CIUnitTestCase
             ->onlyMethods(['builder'])
             ->getMock();
 
-        $service = new AppointmentConflictService($appointmentModel, $blockedModel);
+        $service = new ConflictService($appointmentModel, $blockedModel);
 
         $result = $service->getBlockedTimesForPeriod(2, '2026-02-27 08:00:00', '2026-02-27 09:00:00');
 
@@ -119,7 +119,7 @@ final class AppointmentConflictServiceTest extends CIUnitTestCase
             ->onlyMethods(['groupStart', 'where', 'orWhere', 'groupEnd', 'findAll'])
             ->getMock();
 
-        $service = new AppointmentConflictService($appointmentModel, $blockedModel);
+        $service = new ConflictService($appointmentModel, $blockedModel);
 
         $result = $service->getConflictingAppointments(3, '2026-02-27 08:00:00', '2026-02-27 09:00:00');
 

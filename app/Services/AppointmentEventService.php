@@ -26,6 +26,7 @@ use CodeIgniter\Events\Events;
 
 class AppointmentEventService
 {
+    public const DEFAULT_BUSINESS_ID = 1;
     public const DEFAULT_CHANNELS = ['email', 'whatsapp'];
 
     /**
@@ -35,7 +36,7 @@ class AppointmentEventService
         string $eventType,
         int $appointmentId,
         array $channels = self::DEFAULT_CHANNELS,
-        int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT
+        int $businessId = self::DEFAULT_BUSINESS_ID
     ): void {
         $channels = array_values(array_filter($channels, 'is_string'));
 

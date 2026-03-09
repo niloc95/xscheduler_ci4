@@ -47,6 +47,7 @@ use App\Models\ProviderScheduleModel;
 class DayViewService
 {
     use SlotInjectionTrait;
+    use ProviderWorkingHoursTrait;
     private CalendarRangeService      $range;
     private AppointmentQueryService   $query;
     private AppointmentFormatterService $formatter;
@@ -180,60 +181,6 @@ class DayViewService
             'providerColumns'  => $providerColumns, // New multi-column layout with EventLayoutService positioning
             'appointments'     => $formatted,
             'totalAppointments'=> count($formatted),
-        ];
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-
-    /**
-     * Get provider working hours for a specific day.
-     * Falls back to business hours if provider schedule not found.
-     *
-     * Priority:
-     * 1. ProviderScheduleModel (provider-specific)
-     * 2. BusinessHourModel (business-wide)
-     * 3. CalendarConfigService (defaults)
-     *
-     * @param int    $providerId   Provider ID
-     * @param int    $dayOfWeek    Day number (0=Sun, 6=Sat)
-     * @return array { startTime: 'HH:MM', endTime: 'HH:MM', breakStart?, breakEnd?, source: 'provider'|'business', isActive: bool }
-     */
-    private function getProviderWorkingHours(int $providerId, int $dayOfWeek): array
-    {
-        // Skip lookup for providerId 0 (All Providers placeholder)
-        if ($providerId === 0) {
-            return [
-                'startTime' => $this->timeGrid->getDayStart(),
-                'endTime'   => $this->timeGrid->getDayEnd(),
-                'source'    => 'business',
-                'isActive'  => true,
-            ];
-        }
-
-        // Query provider schedule for this day
-        $schedule = $this->providerScheduleModel
-            ->where('provider_id', $providerId)
-            ->where('day_of_week', $dayOfWeek)
-            ->first();
-
-        if ($schedule && $schedule['is_active']) {
-            // Provider has working hours for this day
-            return [
-                'startTime'  => substr($schedule['start_time'], 0, 5), // 'HH:MM' format
-                'endTime'    => substr($schedule['end_time'], 0, 5),
-                'breakStart' => $schedule['break_start'] ? substr($schedule['break_start'], 0, 5) : null,
-                'breakEnd'   => $schedule['break_end'] ? substr($schedule['break_end'], 0, 5) : null,
-                'source'     => 'provider_schedule',
-                'isActive'   => true,
-            ];
-        }
-
-        // Fallback: Use business hours
-        return [
-            'startTime' => $this->timeGrid->getDayStart(),
-            'endTime'   => $this->timeGrid->getDayEnd(),
-            'source'    => 'business_hours',
-            'isActive'  => false,
         ];
     }
 
