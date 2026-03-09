@@ -16,9 +16,21 @@ import { escapeHtml } from '../../utils/html.js';
 export class RightPanel {
     constructor(scheduler) {
         this.scheduler = scheduler;
-        this._slotCache = new Map(); // Cache: `${providerId}:${serviceId}:${date}` → slots[]
+        this._slotCache = new Map(); // Cache: `${providerId}:${serviceId}:${date}:${locationId}` → slots[]
+        this._providerServiceCache = new Map();
+        this._providerLocationCache = new Map();
         this._currentView = null;
         this._currentDate = null;
+        this._lastRenderState = null;
+
+        // Independent panel controls state.
+        this._panelDateIso = null;
+        this._panelServiceId = null;
+        this._panelProviderId = null;
+        this._panelLocationId = null;
+
+        this._providerServices = [];
+        this._providerLocations = [];
     }
 
     /**
@@ -38,6 +50,8 @@ export class RightPanel {
 
         this._currentView = state.currentView;
         this._currentDate = state.currentDate;
+        this._lastRenderState = state;
+        await this._syncPanelState(state);
 
         // Update header
         if (header) {
@@ -49,19 +63,22 @@ export class RightPanel {
 
         // Render provider cards
         const providerCardsHtml = this._renderProviderCards(state);
-        
+
+        // Render panel controls
+        const controlsHtml = this._renderPanelControls(state);
+
         // Render slot panel
         const slotPanelHtml = await this._renderSlotPanel(state);
 
         container.innerHTML = `
             <div class="space-y-4">
-                <!-- Provider Cards Section -->
+                <!-- Slot Controls Section -->
                 <div>
                     <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                        Providers (${state.visibleProviders?.size || 0})
+                        Availability Controls
                     </h4>
-                    <div class="space-y-2" id="provider-cards-container">
-                        ${providerCardsHtml}
+                    <div id="rp-controls-container">
+                        ${controlsHtml}
                     </div>
                 </div>
 
@@ -72,6 +89,16 @@ export class RightPanel {
                     </h4>
                     <div id="slot-panel-container">
                         ${slotPanelHtml}
+                    </div>
+                </div>
+
+                <!-- Provider Cards Section -->
+                <div>
+                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                        Providers (${state.visibleProviders?.size || 0})
+                    </h4>
+                    <div class="space-y-2" id="provider-cards-container">
+                        ${providerCardsHtml}
                     </div>
                 </div>
             </div>
@@ -163,7 +190,7 @@ export class RightPanel {
             return `
                 <div class="provider-card" data-provider-id="${provider.id}">
                     <div class="provider-card-header">
-                        <div class="provider-avatar" style="background-color: ${providerColor};">
+                        <div class="provider-avatar" data-bg-color="${escapeHtml(providerColor)}">
                             ${providerInitials}
                         </div>
                         <div class="flex-1 min-w-0">
@@ -188,14 +215,13 @@ export class RightPanel {
      * Shows slots for the current date (or first day of current view).
      */
     async _renderSlotPanel(state) {
-        const { currentDate, currentView, visibleProviders } = state;
-        
-        // Determine target date for slot display
-        const targetDate = this._getSlotTargetDate(currentView, currentDate);
-        
-        // Resolve selected service from active filters first, then UI control fallback.
-        const selectedService = this._resolveSelectedServiceId();
-        
+        const { visibleProviders } = state;
+        const timezone = this.scheduler?.options?.timezone || 'UTC';
+        const targetDate = DateTime.fromISO(String(this._panelDateIso), { zone: timezone }).startOf('day');
+        const selectedService = this._panelServiceId || this._resolveSelectedServiceId();
+        const selectedProvider = this._panelProviderId || null;
+        const selectedLocation = this._panelLocationId || null;
+
         if (!selectedService) {
             return `
                 <div class="p-4 bg-surface-0 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-center">
@@ -204,13 +230,17 @@ export class RightPanel {
                         Select a service to view available time slots
                     </p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        Use the service filter above
+                        Use the panel service control
                     </p>
                 </div>
             `;
         }
-        
-        if (!visibleProviders || visibleProviders.size === 0) {
+
+        const providerIds = selectedProvider
+            ? [selectedProvider]
+            : Array.from(visibleProviders || []);
+
+        if (!providerIds.length) {
             return `
                 <div class="p-4 bg-surface-0 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-center">
                     <span class="material-symbols-outlined text-3xl text-gray-400 dark:text-gray-500">person_off</span>
@@ -218,22 +248,23 @@ export class RightPanel {
                         No providers selected
                     </p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        Use filters to select providers
+                        Select a provider in the panel or use global filters
                     </p>
                 </div>
             `;
         }
-        
+
         // Fetch slots for all visible providers
         const slotsByProvider = await this._fetchSlotsForProviders(
-            Array.from(visibleProviders),
+            providerIds,
             targetDate,
-            selectedService
+            selectedService,
+            selectedLocation
         );
-        
+
         // Merge and group slots by hour
         const groupedSlots = this._groupSlotsByHour(slotsByProvider);
-        
+
         if (Object.keys(groupedSlots).length === 0) {
             return `
                 <div class="p-4 bg-surface-0 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-center">
@@ -247,9 +278,12 @@ export class RightPanel {
                 </div>
             `;
         }
-        
+
         // Render slot grid grouped by hour
-        return this._renderSlotGrid(groupedSlots, slotsByProvider, targetDate);
+        return this._renderSlotGrid(groupedSlots, targetDate, {
+            serviceId: selectedService,
+            locationId: selectedLocation,
+        });
     }
     
     /**
@@ -285,44 +319,53 @@ export class RightPanel {
     /**
      * Fetch available slots for multiple providers (with caching).
      */
-    async _fetchSlotsForProviders(providerIds, date, serviceId) {
+    async _fetchSlotsForProviders(providerIds, date, serviceId, locationId = null) {
         const dateKey = date.toFormat('yyyy-MM-dd');
         const slotsByProvider = {};
-        
+
         const fetchPromises = providerIds.map(async (providerId) => {
-            const cacheKey = `${providerId}:${serviceId}:${dateKey}`;
-            
+            const normalizedLocationId = Number(locationId || 0) || 0;
+            const cacheKey = `${providerId}:${serviceId}:${dateKey}:${normalizedLocationId}`;
+
             // Check cache first
             if (this._slotCache.has(cacheKey)) {
                 slotsByProvider[providerId] = this._slotCache.get(cacheKey);
                 return;
             }
-            
+
             // Fetch from API
             try {
                 const provider = this.scheduler.providers.find(p => Number(p.id) === Number(providerId));
-                const url = withBaseUrl(`/api/availability/slots?provider_id=${providerId}&date=${dateKey}&service_id=${serviceId}`);
-                
+                const params = new URLSearchParams({
+                    provider_id: String(providerId),
+                    date: dateKey,
+                    service_id: String(serviceId),
+                });
+                if (normalizedLocationId > 0) {
+                    params.set('location_id', String(normalizedLocationId));
+                }
+
+                const url = withBaseUrl(`/api/availability/slots?${params.toString()}`);
                 const response = await fetch(url);
                 if (!response.ok) {
                     console.warn(`Failed to fetch slots for provider ${providerId}:`, response.status);
                     slotsByProvider[providerId] = { provider, slots: [] };
                     return;
                 }
-                
+
                 const data = await response.json();
                 const slots = data.data?.slots || [];
-                
+
                 // Store in cache
                 this._slotCache.set(cacheKey, { provider, slots });
                 slotsByProvider[providerId] = { provider, slots };
-                
+
             } catch (error) {
                 console.error(`Error fetching slots for provider ${providerId}:`, error);
                 slotsByProvider[providerId] = { provider: null, slots: [] };
             }
         });
-        
+
         await Promise.all(fetchPromises);
         return slotsByProvider;
     }
@@ -377,35 +420,37 @@ export class RightPanel {
     /**
      * Render slot grid grouped by hour.
      */
-    _renderSlotGrid(groupedSlots, slotsByProvider, targetDate) {
+    _renderSlotGrid(groupedSlots, targetDate, context = {}) {
         const sortedHours = Object.keys(groupedSlots).sort((a, b) => parseInt(a) - parseInt(b));
-        
+
         const slotsHtml = sortedHours.map(hourKey => {
             const group = groupedSlots[hourKey];
-            
+
             // Get unique hour label (use first slot's formatted time)
-            const hourLabel = group.slots.length > 0 
+            const hourLabel = group.slots.length > 0
                 ? DateTime.fromISO(group.slots[0].startTime, { setZone: true }).setZone(this.scheduler.options.timezone).toFormat('h a')
                 : `${hourKey}:00`;
-            
+
             const slotsInHour = group.slots.map(slot => {
                 const providerColor = getProviderColor(slot.provider);
                 const startTime = DateTime.fromISO(slot.startTime, { setZone: true }).setZone(this.scheduler.options.timezone);
                 const timeLabel = startTime.toFormat('h:mm a');
-                
+
                 return `
-                    <button class="slot-button" 
+                    <button class="slot-button"
                             data-provider-id="${slot.providerId}"
+                            data-service-id="${context.serviceId || ''}"
+                            data-location-id="${context.locationId || ''}"
                             data-start-time="${slot.startTime}"
                             data-date="${targetDate.toFormat('yyyy-MM-dd')}"
-                            style="border-color: ${providerColor};"
+                            data-border-color="${escapeHtml(providerColor)}"
                             title="${slot.provider?.name || 'Provider'} - ${timeLabel}">
                         <span class="slot-time">${startTime.toFormat('h:mm')}</span>
-                        <span class="slot-provider-dot" style="background-color: ${providerColor};"></span>
+                        <span class="slot-provider-dot" data-bg-color="${escapeHtml(providerColor)}"></span>
                     </button>
                 `;
             }).join('');
-            
+
             return `
                 <div class="slot-hour-group">
                     <div class="slot-hour-label">${hourLabel}</div>
@@ -433,6 +478,70 @@ export class RightPanel {
         `;
     }
 
+    _renderPanelControls(state) {
+        const visibleProviders = this._getVisibleProviders(state);
+        const serviceOptions = this._getPanelServiceOptions();
+        const hasProvider = Boolean(this._panelProviderId);
+
+        const providerOptions = visibleProviders.map(provider => {
+            const selected = Number(this._panelProviderId || 0) === Number(provider.id) ? 'selected' : '';
+            const label = escapeHtml(provider.name || provider.username || `Provider ${provider.id}`);
+            return `<option value="${provider.id}" ${selected}>${label}</option>`;
+        }).join('');
+
+        const serviceOptionsHtml = serviceOptions.map(service => {
+            const selected = Number(this._panelServiceId || 0) === Number(service.id) ? 'selected' : '';
+            const label = escapeHtml(service.label || service.name || `Service ${service.id}`);
+            return `<option value="${service.id}" ${selected}>${label}</option>`;
+        }).join('');
+
+        const locationOptionsHtml = this._providerLocations.map(location => {
+            const selected = Number(this._panelLocationId || 0) === Number(location.id) ? 'selected' : '';
+            const label = escapeHtml(location.name || `Location ${location.id}`);
+            return `<option value="${location.id}" ${selected}>${label}</option>`;
+        }).join('');
+
+        return `
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 space-y-3">
+                <div class="grid grid-cols-1 gap-3">
+                    <label class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Date
+                        <input
+                            type="date"
+                            id="rp-date-input"
+                            class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 px-2 py-1.5"
+                            value="${escapeHtml(this._panelDateIso || '')}"
+                        />
+                    </label>
+
+                    <label class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Provider
+                        <select id="rp-provider-select" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 px-2 py-1.5">
+                            <option value="">All visible providers</option>
+                            ${providerOptions}
+                        </select>
+                    </label>
+
+                    <label class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Service
+                        <select id="rp-service-select" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 px-2 py-1.5">
+                            <option value="">Select a service</option>
+                            ${serviceOptionsHtml}
+                        </select>
+                    </label>
+
+                    <label class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Location
+                        <select id="rp-location-select" class="mt-1 w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 px-2 py-1.5" ${hasProvider ? '' : 'disabled'}>
+                            <option value="">${hasProvider ? 'Any location' : 'Select a provider first'}</option>
+                            ${locationOptionsHtml}
+                        </select>
+                    </label>
+                </div>
+            </div>
+        `;
+    }
+
     /**
      * Attach event listeners to provider cards and slot buttons.
      */
@@ -444,36 +553,131 @@ export class RightPanel {
                 this._handleProviderToggle(providerId, state);
             });
         });
-        
-        // Slot button clicks (navigate to booking)
+
+        this._attachSlotListeners(container);
+
+        this._attachControlListeners(container, state);
+    }
+
+    _attachControlListeners(container, state) {
+        if (!container) {
+            return;
+        }
+
+        const dateInput = container.querySelector('#rp-date-input');
+        const providerSelect = container.querySelector('#rp-provider-select');
+        const serviceSelect = container.querySelector('#rp-service-select');
+        const locationSelect = container.querySelector('#rp-location-select');
+
+        if (dateInput) {
+            dateInput.addEventListener('change', async () => {
+                this._panelDateIso = dateInput.value || this._panelDateIso;
+                await this._refreshSlotsOnly(state);
+            });
+        }
+
+        if (serviceSelect) {
+            serviceSelect.addEventListener('change', async () => {
+                this._panelServiceId = this._parseOptionalInt(serviceSelect.value);
+                await this._refreshSlotsOnly(state);
+            });
+        }
+
+        if (locationSelect) {
+            locationSelect.addEventListener('change', async () => {
+                this._panelLocationId = this._parseOptionalInt(locationSelect.value);
+                await this._refreshSlotsOnly(state);
+            });
+        }
+
+        if (providerSelect) {
+            providerSelect.addEventListener('change', async () => {
+                this._panelProviderId = this._parseOptionalInt(providerSelect.value);
+                this._panelLocationId = null;
+                this._providerLocations = [];
+
+                if (this._panelProviderId) {
+                    await this._loadProviderLookups(this._panelProviderId);
+                } else {
+                    this._providerServices = this._getGlobalServiceOptions();
+                }
+
+                // Provider changes can impact service/location option sets.
+                await this._refreshControlsAndSlots(state);
+            });
+        }
+    }
+
+    _attachSlotListeners(container) {
         container.querySelectorAll('.slot-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 const providerId = parseInt(button.dataset.providerId, 10);
                 const startTime = button.dataset.startTime;
                 const date = button.dataset.date;
-                this._handleSlotClick(providerId, date, startTime);
+                const serviceId = this._parseOptionalInt(button.dataset.serviceId) || this._panelServiceId || this._resolveSelectedServiceId();
+                const locationId = this._parseOptionalInt(button.dataset.locationId) || this._panelLocationId;
+                this._handleSlotClick(providerId, date, startTime, serviceId, locationId);
             });
         });
+    }
+
+    async _refreshSlotsOnly(state) {
+        const slotContainer = document.getElementById('slot-panel-container');
+        if (!slotContainer) {
+            return;
+        }
+
+        slotContainer.innerHTML = `
+            <div class="p-4 bg-surface-0 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-center">
+                <div class="loading-spinner mx-auto mb-2"></div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Refreshing slots...</p>
+            </div>
+        `;
+
+        const html = await this._renderSlotPanel(state);
+        slotContainer.innerHTML = html;
+        this._attachSlotListeners(document.getElementById('rp-body') || slotContainer);
+    }
+
+    async _refreshControlsAndSlots(state) {
+        const controlsContainer = document.getElementById('rp-controls-container');
+        if (controlsContainer) {
+            controlsContainer.innerHTML = this._renderPanelControls(state);
+        }
+
+        const body = document.getElementById('rp-body');
+        this._attachControlListeners(body, state);
+
+        await this._refreshSlotsOnly(state);
     }
     
     /**
      * Handle slot button click - navigate to booking form.
      */
-    _handleSlotClick(providerId, date, startTime) {
-        const serviceId = this.scheduler.selectedServiceId;
-        
+    _handleSlotClick(providerId, date, startTime, serviceId, locationId = null) {
         if (!serviceId) {
             console.warn('No service selected for booking');
             return;
         }
-        
+
         // Parse ISO time to get time component
         const dateTime = DateTime.fromISO(startTime);
         const timeString = dateTime.toFormat('HH:mm');
-        
+
+        const params = new URLSearchParams({
+            provider_id: String(providerId),
+            service_id: String(serviceId),
+            date,
+            time: timeString,
+        });
+
+        if (locationId) {
+            params.set('location_id', String(locationId));
+        }
+
         // Navigate to appointment creation form with pre-filled params
-        const url = withBaseUrl(`/appointments/create?provider=${providerId}&date=${date}&time=${timeString}&service=${serviceId}`);
+        const url = withBaseUrl(`/appointments/create?${params.toString()}`);
         window.location.href = url;
     }
     
@@ -493,9 +697,9 @@ export class RightPanel {
      * Handle provider visibility toggle (Phase 4 will rerender both panes).
      */
     _handleProviderToggle(providerId, state) {
-        console.log('Provider toggle clicked:', providerId);
-        // Phase 4: Toggle visibility in scheduler.visibleProviders and re-render
-        // For now, just log the action
+        if (typeof this.scheduler?.toggleProvider === 'function') {
+            this.scheduler.toggleProvider(providerId);
+        }
     }
 
     /**
@@ -542,6 +746,155 @@ export class RightPanel {
             default:
                 return 1;
         }
+    }
+
+    async _syncPanelState(state) {
+        const fallbackDate = this._getSlotTargetDate(state.currentView, state.currentDate)
+            .setZone(this.scheduler?.options?.timezone || 'UTC')
+            .toISODate();
+
+        if (!this._panelDateIso) {
+            this._panelDateIso = fallbackDate;
+        }
+
+        const active = this.scheduler?.activeFilters || {};
+        if (!this._panelProviderId && active.providerId) {
+            this._panelProviderId = this._parseOptionalInt(active.providerId);
+        }
+
+        if (!this._panelServiceId && active.serviceId) {
+            this._panelServiceId = this._parseOptionalInt(active.serviceId);
+        }
+
+        if (!this._panelLocationId && active.locationId) {
+            this._panelLocationId = this._parseOptionalInt(active.locationId);
+        }
+
+        if (this._panelProviderId) {
+            await this._loadProviderLookups(this._panelProviderId);
+        } else {
+            this._providerServices = this._getGlobalServiceOptions();
+            this._providerLocations = [];
+            this._panelLocationId = null;
+        }
+    }
+
+    _getVisibleProviders(state) {
+        const visible = state?.visibleProviders || new Set();
+        return (state?.providers || []).filter(provider => visible.has(Number(provider.id)));
+    }
+
+    _getGlobalServiceOptions() {
+        const serviceSelect = document.getElementById('service-filter') || document.querySelector('[name="service_id"]');
+        if (!serviceSelect) {
+            return [];
+        }
+
+        return Array.from(serviceSelect.options || [])
+            .map(option => {
+                const id = this._parseOptionalInt(option.value);
+                if (!id) {
+                    return null;
+                }
+                return {
+                    id,
+                    label: option.textContent?.trim() || `Service ${id}`,
+                };
+            })
+            .filter(Boolean);
+    }
+
+    _getPanelServiceOptions() {
+        if (this._panelProviderId) {
+            return this._providerServices;
+        }
+        return this._providerServices?.length ? this._providerServices : this._getGlobalServiceOptions();
+    }
+
+    async _loadProviderLookups(providerId) {
+        const id = this._parseOptionalInt(providerId);
+        if (!id) {
+            this._providerServices = this._getGlobalServiceOptions();
+            this._providerLocations = [];
+            return;
+        }
+
+        const [services, locations] = await Promise.all([
+            this._fetchProviderServices(id),
+            this._fetchProviderLocations(id),
+        ]);
+
+        this._providerServices = services;
+        this._providerLocations = locations;
+
+        const serviceStillValid = this._providerServices.some(s => Number(s.id) === Number(this._panelServiceId));
+        if (!serviceStillValid) {
+            this._panelServiceId = null;
+        }
+
+        const locationStillValid = this._providerLocations.some(l => Number(l.id) === Number(this._panelLocationId));
+        if (!locationStillValid) {
+            this._panelLocationId = null;
+        }
+    }
+
+    async _fetchProviderServices(providerId) {
+        if (this._providerServiceCache.has(providerId)) {
+            return this._providerServiceCache.get(providerId);
+        }
+
+        try {
+            const response = await fetch(withBaseUrl(`/api/v1/providers/${providerId}/services`));
+            if (!response.ok) {
+                return [];
+            }
+
+            const data = await response.json();
+            const services = (data?.data || []).map(service => ({
+                id: Number(service.id),
+                name: service.name,
+                label: service.price != null
+                    ? `${service.name} - $${Number(service.price).toFixed(2)}`
+                    : service.name,
+            }));
+
+            this._providerServiceCache.set(providerId, services);
+            return services;
+        } catch (error) {
+            console.error('[right-panel] Failed to load provider services:', error);
+            return [];
+        }
+    }
+
+    async _fetchProviderLocations(providerId) {
+        if (this._providerLocationCache.has(providerId)) {
+            return this._providerLocationCache.get(providerId);
+        }
+
+        try {
+            const response = await fetch(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`));
+            if (!response.ok) {
+                return [];
+            }
+
+            const data = await response.json();
+            const locations = (data?.data || []).map(location => ({
+                id: Number(location.id),
+                name: location.name,
+                address: location.address || '',
+            }));
+
+            this._providerLocationCache.set(providerId, locations);
+            return locations;
+        } catch (error) {
+            console.error('[right-panel] Failed to load provider locations:', error);
+            return [];
+        }
+    }
+
+    _parseOptionalInt(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
 }

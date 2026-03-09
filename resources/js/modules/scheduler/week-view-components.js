@@ -1,190 +1,100 @@
 import { escapeHtml } from '../../utils/html.js';
 
-export function renderWeekHeader({ weekStart, weekEnd }) {
+export function renderWeekShell({ dayHeadersHtml, weekGridHtml, slotPanelHtml }) {
     return `
-        <div class="mb-3">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                Week of ${weekStart.toFormat('MMMM d')}
-            </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                ${weekStart.toFormat('MMM d')} - ${weekEnd.toFormat('MMM d, yyyy')}
-            </p>
+        <div class="scheduler-month-view rounded-xl overflow-hidden bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <div class="grid grid-cols-7 px-1 pt-2 pb-1">
+                ${dayHeadersHtml}
+            </div>
+
+            <div class="grid grid-cols-7 grid-rows-1 gap-px px-1 pb-1">
+                ${weekGridHtml}
+            </div>
+
+            <div class="p-3 md:p-4 border-t border-gray-100 dark:border-gray-800 bg-surface-1 dark:bg-gray-800/40" id="week-slot-panel">
+                ${slotPanelHtml}
+            </div>
         </div>
     `;
 }
 
-export function renderWeekLeftPanel({
-    weekHeaderHtml,
-    miniCalendarHtml,
+export function renderWeekDayCell({
+    dateIso,
+    dayNumber,
+    dayNumberClass,
+    cellClasses,
+    appointmentChipsHtml,
+    overflowLabel = '',
+}) {
+    return `
+        <div class="${cellClasses}" data-week-date="${dateIso}">
+            <button type="button" class="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm leading-none ${dayNumberClass}" data-week-select-day="${dateIso}">
+                ${dayNumber}
+            </button>
+            <div class="day-appointments flex-1 space-y-1 mt-1" data-week-date="${dateIso}">
+                ${appointmentChipsHtml}
+                ${overflowLabel ? `<div class="text-[10px] text-blue-600 dark:text-blue-400 font-medium">${escapeHtml(overflowLabel)}</div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+export function renderWeekSlotPanel({
     selectedDateLabel,
     appointmentCount,
-    appointmentSummaryHtml,
-    addAppointmentUrl,
+    appointmentListHtml,
+    slotsHtml,
 }) {
     return `
-        <div class="week-left-panel border-r-0 md:border-r border-gray-200 dark:border-gray-700 p-3 md:p-4 order-1 bg-surface-1 dark:bg-gray-800/50">
-            ${weekHeaderHtml}
-            ${miniCalendarHtml}
-            <div class="mt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                        Appointments for ${selectedDateLabel}
-                    </h3>
-                    <span class="text-xs text-gray-500 dark:text-gray-400" id="appointment-count">
-                        ${appointmentCount} appointments
-                    </span>
-                </div>
-                <div id="appointment-summary-list" class="space-y-2 max-h-[250px] overflow-y-auto">
-                    ${appointmentSummaryHtml}
-                </div>
-            </div>
-            <a href="${addAppointmentUrl}"
-               id="week-view-add-btn"
-               class="w-full mt-3 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined text-lg">add</span>
-                Add Appointment
-            </a>
-        </div>
-    `;
-}
-
-export function renderWeekSlotEngineHeader({ selectedDate, providerCount, slotDatePickerHtml }) {
-    return `
-        <div class="mb-3">
-            <div class="flex items-start justify-between gap-3">
-                <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
-                        Available Slots
-                    </h3>
-                </div>
-                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-surface-2 dark:bg-gray-700 px-2 py-1 rounded-full" id="provider-count-badge">
-                    <span class="material-symbols-outlined text-sm">group</span>
-                    <span id="provider-count-label">${providerCount} provider${providerCount !== 1 ? 's' : ''}</span>
-                </div>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">${escapeHtml(selectedDateLabel)}</h3>
+                <span class="text-xs text-gray-500 dark:text-gray-400">${appointmentCount} appointment${appointmentCount === 1 ? '' : 's'}</span>
             </div>
 
-            <div class="mt-2 flex items-center gap-2">
-                <button type="button"
-                        id="prev-slot-date"
-                        class="p-1.5 rounded-lg hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors"
-                        title="Previous day">
-                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">chevron_left</span>
-                </button>
+            <div>
+                <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Appointments</h4>
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">${appointmentListHtml}</div>
+            </div>
 
-                <div class="relative flex-1">
-                    <button type="button"
-                            id="slot-date-picker-toggle"
-                            class="w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm hover:border-blue-400 dark:hover:border-blue-500 transition-all group">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">calendar_today</span>
-                            <div class="text-left">
-                                <div class="text-sm font-semibold text-gray-900 dark:text-white" id="slot-engine-weekday">
-                                    ${selectedDate.toFormat('EEEE')}
-                                </div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400" id="slot-engine-date">
-                                    ${selectedDate.toFormat('MMMM d, yyyy')}
-                                </div>
-                            </div>
-                        </div>
-                        <span class="material-symbols-outlined text-gray-400 group-hover:text-blue-500 transition-colors" id="date-picker-chevron">expand_more</span>
-                    </button>
-
-                    <div id="slot-date-picker-dropdown"
-                         class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-50 hidden">
-                        <div class="p-3" id="slot-mini-calendar-container">
-                            ${slotDatePickerHtml}
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button"
-                        id="next-slot-date"
-                        class="p-1.5 rounded-lg hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors"
-                        title="Next day">
-                    <span class="material-symbols-outlined text-gray-600 dark:text-gray-300">chevron_right</span>
-                </button>
-
-                <button type="button"
-                        id="today-slot-date"
-                        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                        title="Go to today">
-                    Today
-                </button>
+            <div>
+                <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Available Slots</h4>
+                <div class="space-y-1.5 max-h-48 overflow-y-auto">${slotsHtml}</div>
             </div>
         </div>
     `;
 }
 
-export function renderWeekRightPanel({ slotEngineHeaderHtml, filterPillsHtml, slotsHtml }) {
+export function renderWeekAppointmentRow({ appointmentId, timeLabel, providerName, serviceName }) {
     return `
-        <div class="week-right-panel p-3 md:p-4 order-2 bg-surface-1 dark:bg-gray-800/50">
-            ${slotEngineHeaderHtml}
-            <div class="slot-panel__filters">
-                ${filterPillsHtml}
-            </div>
-            <div class="slot-panel__slots">
-                <div class="slot-panel__slots-header">
-                    <span class="slot-panel__slots-label">Time Slots</span>
-                    <span class="slot-panel__slot-count" id="slot-count-label"></span>
-                </div>
-                <div id="time-slot-engine" class="slot-panel__slot-list">
-                    ${slotsHtml}
-                </div>
-            </div>
+        <button type="button" class="w-full text-left px-2.5 py-2 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-surface-2 dark:hover:bg-gray-700/60 transition-colors" data-appointment-id="${appointmentId}">
+            <div class="text-xs font-semibold text-gray-900 dark:text-white">${escapeHtml(timeLabel)}</div>
+            <div class="text-[11px] text-gray-600 dark:text-gray-300 truncate">${escapeHtml(providerName)}${serviceName ? ` • ${escapeHtml(serviceName)}` : ''}</div>
+        </button>
+    `;
+}
+
+export function renderWeekAppointmentEmptyState() {
+    return `
+        <div class="text-xs text-gray-500 dark:text-gray-400 px-2 py-2 rounded-md bg-gray-50 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700">
+            No appointments for this day.
         </div>
     `;
 }
 
-export function renderAppointmentSummaryCard({
-    appointmentId,
-    providerColor,
-    providerInitials,
-    customerName,
-    status,
-    statusColors,
-    time,
-    serviceName,
-    locationName,
-}) {
+export function renderWeekSlotRow({ providerName, timeLabel }) {
     return `
-        <div class="appointment-summary-item flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-surface-2 dark:hover:bg-gray-700 transition-all"
-             data-appointment-id="${appointmentId}"
-             data-border-left-color="${providerColor}">
-            <div class="flex-shrink-0">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                     data-bg-color="${providerColor}">
-                    ${providerInitials}
-                </div>
-            </div>
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <span class="font-semibold text-sm text-gray-900 dark:text-white truncate">${escapeHtml(customerName)}</span>
-                    <span class="px-1.5 py-0.5 text-[10px] font-medium rounded"
-                        data-bg-color="${statusColors.bg}"
-                        data-text-color="${statusColors.text}">
-                        ${status}
-                    </span>
-                </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    <span class="font-medium">${time}</span> • ${escapeHtml(serviceName)}
-                </div>
-                ${locationName ? `
-                <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1 truncate">
-                    <span class="material-symbols-outlined text-xs">location_on</span>
-                    ${escapeHtml(locationName)}
-                </div>` : ''}
-            </div>
-            <span class="material-symbols-outlined text-gray-400 text-lg">chevron_right</span>
+        <div class="px-2.5 py-2 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div class="text-xs font-semibold text-gray-900 dark:text-white">${escapeHtml(timeLabel)}</div>
+            <div class="text-[11px] text-gray-600 dark:text-gray-300 truncate">${escapeHtml(providerName)}</div>
         </div>
     `;
 }
 
-export function renderAppointmentSummaryEmptyState() {
+export function renderWeekSlotEmptyState(message = 'No slots available for this day.') {
     return `
-        <div class="text-center py-6 text-gray-500 dark:text-gray-400">
-            <span class="material-symbols-outlined text-3xl mb-2 block">event_available</span>
-            <p class="text-sm">No appointments scheduled</p>
+        <div class="text-xs text-gray-500 dark:text-gray-400 px-2 py-2 rounded-md bg-gray-50 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700">
+            ${escapeHtml(message)}
         </div>
     `;
 }
