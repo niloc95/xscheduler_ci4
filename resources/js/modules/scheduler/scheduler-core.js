@@ -7,9 +7,11 @@
  */
 
 import { DateTime } from 'luxon';
+import { TodayView } from './scheduler-today-view.js';
 import { MonthView } from './scheduler-month-view.js';
 import { WeekView } from './scheduler-week-view.js';
 import { DayView } from './scheduler-day-view.js';
+import { RightPanel } from './right-panel.js';
 import { DragDropManager } from './scheduler-drag-drop.js';
 import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
@@ -29,7 +31,7 @@ export class SchedulerCore {
         }
         
         this.currentDate = DateTime.now();
-        this.currentView = 'week'; // 'day', 'week', or 'month' - Week view is default
+        this.currentView = 'week'; // 'today', 'day', 'week', or 'month' - Week view is default
         this.appointments = [];
         this.providers = [];
         this.visibleProviders = new Set();
@@ -47,12 +49,16 @@ export class SchedulerCore {
         // Initialize settings manager
         this.settingsManager = new SettingsManager();
         
-        // Initialize views
+        // Initialize views (all four views now available)
         this.views = {
+            today: new TodayView(this),
             month: new MonthView(this),
             week: new WeekView(this),
             day: new DayView(this)
         };
+        
+        // Initialize right panel module
+        this.rightPanel = new RightPanel(this);
         
         // Initialize drag-drop manager
         this.dragDropManager = new DragDropManager(this);
@@ -277,6 +283,10 @@ export class SchedulerCore {
 
             this.debugLog('📅 Appointments loaded:', this.appointments.length);
             this.debugLog('📋 Appointment details:', this.appointments);
+            
+            // Invalidate caches since appointments changed
+            this.invalidateCaches();
+            
             return this.appointments;
         } catch (error) {
             console.error('❌ Failed to load appointments:', error);
@@ -327,9 +337,19 @@ export class SchedulerCore {
             return null;
         }
 
-        const isoDateTime = DateTime.fromISO(String(value), { zone: this.options.timezone });
+        const isoDateTimeUtc = DateTime.fromISO(String(value), { zone: 'utc', setZone: true });
+        if (isoDateTimeUtc.isValid) {
+            return isoDateTimeUtc.setZone(this.options.timezone);
+        }
+
+        const isoDateTime = DateTime.fromISO(String(value), { zone: this.options.timezone, setZone: true });
         if (isoDateTime.isValid) {
             return isoDateTime;
+        }
+
+        const sqlDateTimeUtc = DateTime.fromSQL(String(value), { zone: 'utc' });
+        if (sqlDateTimeUtc.isValid) {
+            return sqlDateTimeUtc.setZone(this.options.timezone);
         }
 
         const sqlDateTime = DateTime.fromSQL(String(value), { zone: this.options.timezone });
@@ -478,7 +498,31 @@ export class SchedulerCore {
         // Re-render with new filters
         this.render();
         
+        // Invalidate slot cache when service filter changes
+        if (this.rightPanel) {
+            this.rightPanel.invalidateCache();
+        }
+        
         return true;
+    }
+    
+    /**
+     * Get currently selected service ID from filters.
+     * @returns {number|null}
+     */
+    get selectedServiceId() {
+        return this.activeFilters?.serviceId || null;
+    }
+    
+    /**
+     * Invalidate caches after appointment mutations.
+     * Called after create/update/delete operations.
+     */
+    invalidateCaches() {
+        if (this.rightPanel) {
+            this.rightPanel.invalidateCache();
+            this.debugLog('🔄 Right panel cache invalidated');
+        }
     }
     
     /**
@@ -486,7 +530,7 @@ export class SchedulerCore {
      */
 
     async changeView(viewName) {
-        if (!['week', 'month'].includes(viewName)) {
+        if (!['today', 'day', 'week', 'month'].includes(viewName)) {
             console.error('Invalid view:', viewName);
             return;
         }
@@ -577,6 +621,7 @@ export class SchedulerCore {
         // Update date display in toolbar
         this.updateDateDisplay();
 
+        // Render calendar view (left pane)
         const view = this.views[this.currentView];
         if (view && typeof view.render === 'function') {
             view.render(this.container, {
@@ -598,6 +643,20 @@ export class SchedulerCore {
             
             // Update stats bar with current data (uses Stats Engine)
             this.updateStatsBar();
+            
+            // Render right panel (provider cards + slot grid)
+            if (this.rightPanel) {
+                this.rightPanel.render({
+                    currentView: this.currentView,
+                    currentDate: this.currentDate,
+                    appointments: filteredAppointments,
+                    providers: this.providers,
+                    visibleProviders: this.visibleProviders,
+                    config: this.calendarConfig,
+                }).catch(err => {
+                    console.error('Failed to render right panel:', err);
+                });
+            }
 
             // Emit date-change for external listeners (status filters, summaries)
             this.emitDateChange();

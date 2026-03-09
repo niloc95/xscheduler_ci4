@@ -63,6 +63,7 @@ use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
+use App\Services\AppointmentBookingService;
 use CodeIgniter\Controller;
 
 class Appointments extends BaseController
@@ -281,13 +282,30 @@ class Appointments extends BaseController
 
         log_message('info', '[Appointments::store] Validation passed');
 
+        $clientTimezone = $this->resolveClientTimezone();
+        $normalizedStart = $this->normalizeFormDateTimeBoundary(
+            (string) $this->request->getPost('appointment_date'),
+            (string) $this->request->getPost('appointment_time'),
+            $clientTimezone
+        );
+        if (!$normalizedStart['success']) {
+            $message = $normalizedStart['message'] ?? 'Invalid appointment date/time.';
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => $message,
+                ]);
+            }
+            return redirect()->back()->withInput()->with('error', $message);
+        }
+
         // Prepare booking data from form
         $bookingData = [
             'provider_id' => $this->request->getPost('provider_id'),
             'service_id' => $this->request->getPost('service_id'),
             'location_id' => $this->request->getPost('location_id'),
-            'appointment_date' => $this->request->getPost('appointment_date'),
-            'appointment_time' => $this->request->getPost('appointment_time'),
+            'appointment_date' => $normalizedStart['app_date'],
+            'appointment_time' => $normalizedStart['app_time'],
             'customer_id' => $customerId,
             'customer_first_name' => $this->request->getPost('customer_first_name'),
             'customer_last_name' => $this->request->getPost('customer_last_name'),
@@ -308,9 +326,8 @@ class Appointments extends BaseController
         }
 
         // Use AppointmentBookingService for all booking logic
-        $bookingService = new \App\Services\AppointmentBookingService();
-        $clientTimezone = $this->resolveClientTimezone();
-        $result = $bookingService->createAppointment($bookingData, $clientTimezone);
+        $bookingService = new AppointmentBookingService();
+        $result = $bookingService->createAppointment($bookingData, 'UTC');
 
         // Handle result
         if (!$result['success']) {
@@ -367,6 +384,36 @@ class Appointments extends BaseController
         }
 
         return $timezoneCandidate;
+    }
+
+    /**
+     * Normalize form date/time at the controller boundary.
+     * Converts input timezone -> UTC canonical, then UTC -> app-local booking fields.
+     */
+    private function normalizeFormDateTimeBoundary(string $date, string $time, string $inputTimezone): array
+    {
+        try {
+            $inputTz = TimezoneService::isValidTimezone($inputTimezone)
+                ? new \DateTimeZone($inputTimezone)
+                : new \DateTimeZone(TimezoneService::businessTimezone());
+            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
+
+            $local = new \DateTimeImmutable(sprintf('%s %s:00', $date, $time), $inputTz);
+            $utc = $local->setTimezone(new \DateTimeZone('UTC'));
+            $appLocal = $utc->setTimezone($appTz);
+
+            return [
+                'success' => true,
+                'utc_start' => $utc->format('Y-m-d H:i:s'),
+                'app_date' => $appLocal->format('Y-m-d'),
+                'app_time' => $appLocal->format('H:i'),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Unable to parse appointment date/time.',
+            ];
+        }
     }
 
     /**
@@ -541,35 +588,24 @@ class Appointments extends BaseController
                 ->with('error', 'Invalid service selected');
         }
 
-        // Use app timezone consistently — form inputs are in local (app) timezone.
-        // Convert to UTC for DB storage.
-        $appTimezone = (new LocalizationSettingsService())->getTimezone();
-
-        // Construct start DateTime in app timezone
-        $startTimeLocal = $appointmentDate . ' ' . $appointmentTime . ':00';
-
-        log_message('info', '[Appointments::update] Updating appointment #' . $appointmentId);
-        log_message('info', '[Appointments::update] Input: date=' . $appointmentDate . ', time=' . $appointmentTime);
-        log_message('info', '[Appointments::update] App timezone: ' . $appTimezone);
-
-        try {
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone($appTimezone));
-        } catch (\Exception $e) {
-            log_message('error', '[Appointments::update] DateTime error: ' . $e->getMessage());
-            $startDateTime = new \DateTime($startTimeLocal, new \DateTimeZone('UTC'));
-            $appTimezone = 'UTC';
+        // Normalize input at controller boundary (input timezone -> UTC canonical).
+        $clientTimezone = $this->resolveClientTimezone();
+        $normalizedStart = $this->normalizeFormDateTimeBoundary($appointmentDate, $appointmentTime, $clientTimezone);
+        if (!$normalizedStart['success']) {
+            $message = $normalizedStart['message'] ?? 'Invalid appointment date/time input.';
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => $message,
+                ]);
+            }
+            return redirect()->back()->withInput()->with('error', $message);
         }
 
-        // Calculate end time based on service duration
-        $endDateTime = clone $startDateTime;
-        $endDateTime->modify('+' . (int) $service['duration_min'] . ' minutes');
+        $appTimezone = (new LocalizationSettingsService())->getTimezone();
+        $startTimeStored = $normalizedStart['utc_start'];
 
-        // Convert to UTC for DB storage
-        $utcTz = new \DateTimeZone('UTC');
-        $startTimeStored = (clone $startDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
-        $endTimeStored   = (clone $endDateTime)->setTimezone($utcTz)->format('Y-m-d H:i:s');
-
-        log_message('info', '[Appointments::update] Stored times (UTC): start=' . $startTimeStored . ', end=' . $endTimeStored);
+        log_message('info', '[Appointments::update] Stored start time (UTC): ' . $startTimeStored);
 
         // Update customer record
         $customerId = $existingAppointment['customer_id'];
@@ -597,27 +633,30 @@ class Appointments extends BaseController
 
         $this->customerModel->update($customerId, $customerData);
 
-        // Update appointment
+        // Update appointment through centralized booking pipeline.
+        $locationId = $this->request->getPost('location_id');
         $appointmentData = [
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'start_at' => $startTimeStored,
-            'end_at' => $endTimeStored,
+            'provider_id' => (int) $providerId,
+            'service_id' => (int) $serviceId,
+            'appointment_date' => $normalizedStart['app_date'],
+            'appointment_time' => $normalizedStart['app_time'],
             'status' => $status,
-            'notes' => $this->request->getPost('notes') ?? ''
+            'notes' => $this->request->getPost('notes') ?? '',
+            'location_id' => ($locationId !== null && $locationId !== '') ? (int) $locationId : null,
         ];
 
-        // Snapshot location data (or clear if none selected)
-        $locationId = $this->request->getPost('location_id');
-        $locationModel = new \App\Models\LocationModel();
-        $snapshot = $locationId
-            ? $locationModel->getLocationSnapshot((int) $locationId)
-            : ['location_id' => null, 'location_name' => null, 'location_address' => null, 'location_contact' => null];
-        $appointmentData = array_merge($appointmentData, $snapshot);
-        
-        log_message('info', '[Appointments::update] Appointment data to save: ' . json_encode($appointmentData));
+        log_message('info', '[Appointments::update] Appointment data to pipeline: ' . json_encode($appointmentData));
 
-        $updated = $this->appointmentModel->update($appointmentId, $appointmentData);
+        $bookingService = new AppointmentBookingService();
+        $event = ($status === 'cancelled') ? 'appointment_cancelled' : 'appointment_rescheduled';
+        $result = $bookingService->updateAppointment(
+            (int) $appointmentId,
+            $appointmentData,
+            'UTC',
+            $event,
+            ['email', 'whatsapp']
+        );
+        $updated = (bool) ($result['success'] ?? false);
 
         // If the appointment time changed, reset reminder_sent so reminders can re-send.
         try {
@@ -632,15 +671,17 @@ class Appointments extends BaseController
         }
 
         if (!$updated) {
+            $errorMessage = $result['message'] ?? 'Failed to update appointment. Please try again.';
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(400)->setJSON([
                     'success' => false,
-                    'message' => 'Failed to update appointment. Please try again.'
+                    'message' => $errorMessage,
+                    'errors' => $result['errors'] ?? []
                 ]);
             }
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to update appointment. Please try again.');
+                ->with('error', $errorMessage);
         }
 
         log_message('info', '[Appointments::update] Successfully updated appointment #' . $appointmentId);

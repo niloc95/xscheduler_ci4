@@ -338,7 +338,7 @@ DO NOT start building new calendar yet.
 
 Disable new feature additions
 
-Mark legacy calendar as deprecated
+Mark legacy calendar as transitional during migration (phase-scoped), not fully deprecated yet
 
 Add feature flag if needed
 

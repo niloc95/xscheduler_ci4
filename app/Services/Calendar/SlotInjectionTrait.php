@@ -36,8 +36,8 @@ trait SlotInjectionTrait
 
         // Pre-compute absolute position for each event
         $positioned = array_map(function (array $event) use ($startMinutes, $pixelsPerMinute) {
-            $eventStart = substr($event['start'] ?? '', 11, 5);   // HH:MM
-            $eventEnd   = substr($event['end']   ?? '', 11, 5);
+            $eventStart = $this->extractLocalTimeHHMM($event['start'] ?? null);
+            $eventEnd   = $this->extractLocalTimeHHMM($event['end'] ?? null);
 
             $startMin = $this->timeToMinutes($eventStart);
             $endMin   = $this->timeToMinutes($eventEnd);
@@ -62,7 +62,7 @@ trait SlotInjectionTrait
 
         // Assign each event to its nearest earlier slot boundary
         foreach ($positioned as $event) {
-            $slotTime = substr($event['start'] ?? '', 11, 5);
+            $slotTime = $this->extractLocalTimeHHMM($event['start'] ?? null);
             $startMin = $this->timeToMinutes($slotTime);
             $slotMin  = $startMin - ($startMin % $resolution);
             $slotKey  = sprintf('%02d:%02d', intdiv($slotMin, 60), $slotMin % 60);
@@ -125,5 +125,34 @@ trait SlotInjectionTrait
     {
         [$h, $m] = array_map('intval', explode(':', $time . ':00'));
         return $h * 60 + $m;
+    }
+
+    /**
+     * Convert any datetime string into HH:MM in business-local timezone.
+     *
+     * Supports:
+     * - ISO UTC/offset strings (e.g. 2026-03-10T09:00:00Z)
+     * - SQL UTC strings (e.g. 2026-03-10 09:00:00)
+     */
+    protected function extractLocalTimeHHMM(?string $datetime): string
+    {
+        if (!$datetime) {
+            return '00:00';
+        }
+
+        try {
+            $businessTz = new \DateTimeZone(\App\Services\TimezoneService::businessTimezone());
+
+            // If timezone info exists in the string, DateTimeImmutable will honor it.
+            // Otherwise we treat input as UTC per storage contract.
+            $hasTzInfo = (bool) preg_match('/(Z|[+\-]\d{2}:?\d{2})$/', trim($datetime));
+            $dt = $hasTzInfo
+                ? new \DateTimeImmutable($datetime)
+                : new \DateTimeImmutable($datetime, new \DateTimeZone('UTC'));
+
+            return $dt->setTimezone($businessTz)->format('H:i');
+        } catch (\Throwable $e) {
+            return substr((string) $datetime, 11, 5) ?: '00:00';
+        }
     }
 }

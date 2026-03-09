@@ -10,6 +10,15 @@
  *              Wraps CalendarRangeService::generateDaySlots with shared
  *              calendar settings (day start/end + resolution).
  *
+ * PRIORITY FOR TIME BOUNDARIES:
+ * ─────────────────────────────────────────────────────────────────
+ * 1. ProviderScheduleModel (provider-specific override)
+ * 2. BusinessHourModel (business-wide setting)
+ * 3. CalendarConfigService (fallback defaults)
+ *
+ * This ensures that provider-specific hours always take precedence
+ * over business-wide defaults.
+ *
  * @package     App\Services\Calendar
  * @author      WebSchedulr Team
  * @copyright   2024-2026 WebSchedulr
@@ -42,12 +51,48 @@ class TimeGridService
         $this->resolution = (int) ($settings['booking.time_resolution'] ?? 30);
     }
 
+    /**
+     * Generate day grid using default business hours.
+     *
+     * @param string $date Y-m-d format
+     * @return array Grid with slots
+     */
     public function generateDayGrid(string $date): array
     {
         return $this->range->generateDaySlots(
             $date,
             $this->dayStart,
             $this->dayEnd,
+            $this->resolution
+        );
+    }
+
+    /**
+     * Generate day grid using provider-specific working hours.
+     *
+     * Priority:
+     * 1. Provider schedule (if available and isActive=true)
+     * 2. Business hours (fallback)
+     *
+     * @param string $date Y-m-d format
+     * @param array $providerHours { startTime, endTime, breakStart?, breakEnd?, isActive }
+     * @return array Grid with slots
+     */
+    public function generateDayGridWithProviderHours(string $date, array $providerHours): array
+    {
+        // Use provider hours if active, otherwise fall back to business hours
+        $startTime = (false === $providerHours['isActive'])
+            ? $this->dayStart
+            : ($providerHours['startTime'] ?? $this->dayStart);
+
+        $endTime = (false === $providerHours['isActive'])
+            ? $this->dayEnd
+            : ($providerHours['endTime'] ?? $this->dayEnd);
+
+        return $this->range->generateDaySlots(
+            $date,
+            $startTime,
+            $endTime,
             $this->resolution
         );
     }

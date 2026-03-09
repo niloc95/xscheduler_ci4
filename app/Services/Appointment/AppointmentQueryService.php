@@ -93,6 +93,8 @@ class AppointmentQueryService
         return [
             'rows'  => $rows,
             'total' => (int) $total,
+            'page'  => $page,
+            'length'=> $length,
         ];
     }
 
@@ -209,20 +211,61 @@ class AppointmentQueryService
     {
         $start = $filters['start'] ?? null;
         $end   = $filters['end']   ?? null;
+        $timezone = $filters['timezone'] ?? \App\Services\TimezoneService::businessTimezone();
 
         if ($start || $end) {
-            $startDate = $start ? substr($start, 0, 10) : null;
-            $endDate   = $end   ? substr($end,   0, 10) : null;
+            $boundaries = $this->resolveUtcBoundaries($start, $end, $timezone);
 
-            if ($startDate) {
-                $builder->where('xs_appointments.start_at >=', $startDate . ' 00:00:00');
+            if (!empty($boundaries['start'])) {
+                $builder->where('xs_appointments.start_at >=', $boundaries['start']);
             }
-            if ($endDate) {
-                $builder->where('xs_appointments.start_at <=', $endDate . ' 23:59:59');
+            if (!empty($boundaries['end'])) {
+                $builder->where('xs_appointments.start_at <=', $boundaries['end']);
             }
         }
 
         return $builder;
+    }
+
+    /**
+     * Resolve incoming range params into UTC DB boundaries.
+     *
+     * Accepted input examples:
+     * - Y-m-d (interpreted in provided timezone)
+     * - ISO datetime with offset/Z (respected as-is)
+     */
+    private function resolveUtcBoundaries(?string $start, ?string $end, string $timezone): array
+    {
+        $utc = new \DateTimeZone('UTC');
+        $sourceTz = new \DateTimeZone($timezone);
+
+        $toUtc = static function (?string $value, bool $isEnd) use ($utc, $sourceTz): ?string {
+            if (!$value) {
+                return null;
+            }
+
+            $trimmed = trim($value);
+
+            try {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmed)) {
+                    $local = new \DateTime($trimmed . ($isEnd ? ' 23:59:59' : ' 00:00:00'), $sourceTz);
+                    $local->setTimezone($utc);
+                    return $local->format('Y-m-d H:i:s');
+                }
+
+                $dt = new \DateTime($trimmed);
+                $dt->setTimezone($utc);
+                return $dt->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {
+                log_message('warning', '[AppointmentQueryService] Invalid date range value: ' . $trimmed);
+                return null;
+            }
+        };
+
+        return [
+            'start' => $toUtc($start, false),
+            'end'   => $toUtc($end, true),
+        ];
     }
 
     /**

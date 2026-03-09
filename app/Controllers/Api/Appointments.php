@@ -98,6 +98,13 @@ class Appointments extends BaseApiController
             $serviceId  = $this->request->getGet('service_id') ?? $this->request->getGet('serviceId');
             $locationId = $this->request->getGet('location_id') ?? $this->request->getGet('locationId');
             $sortParam  = $this->request->getGet('sort') ?? 'start_at:asc';
+            $timezone   = $this->request->getGet('timezone')
+                ?: $this->request->getHeaderLine('X-Client-Timezone')
+                ?: TimezoneService::businessTimezone();
+
+            if (!TimezoneService::isValidTimezone($timezone)) {
+                $timezone = TimezoneService::businessTimezone();
+            }
 
             // Pagination (calendar views may request up to 1000)
             $page   = max(1, (int) ($this->request->getGet('page') ?? 1));
@@ -121,6 +128,7 @@ class Appointments extends BaseApiController
                 'length'           => $length,
                 'user_role'        => $userRole,
                 'scope_to_user_id' => $scopeToUserId,
+                'timezone'         => $timezone,
             ]);
 
             $events = $formatter->formatManyForCalendar($result['rows']);
@@ -137,6 +145,7 @@ class Appointments extends BaseApiController
                         'provider_id' => $providerId,
                         'service_id'  => $serviceId,
                         'location_id' => $locationId,
+                        'timezone'    => $timezone,
                     ],
                 ],
             ]);
@@ -473,7 +482,7 @@ class Appointments extends BaseApiController
                 ]);
             }
             
-            // Update appointment
+            // Verify appointment exists
             $model = new AppointmentModel();
             $appointment = $model->find($id);
             
@@ -488,47 +497,38 @@ class Appointments extends BaseApiController
             
             log_message('info', "Updating appointment status: ID={$id}, Old={$appointment['status']}, New={$newStatus}");
             
-            $updateData = [
-                'status' => $newStatus,
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-            
-            $updated = $model->update($id, $updateData);
-            
-            log_message('info', "Update result: " . ($updated ? 'SUCCESS' : 'FAILED'));
-            
-            if ($model->errors()) {
-                log_message('error', "Model validation errors: " . json_encode($model->errors()));
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => 'Validation failed',
-                        'validation_errors' => $model->errors()
-                    ]
-                ]);
-            }
-            
-            if (!$updated) {
-                log_message('error', "Failed to update appointment status: ID={$id}, Status={$newStatus}");
-                return $response->setStatusCode(500)->setJSON([
-                    'error' => [
-                        'message' => 'Failed to update appointment status'
-                    ]
-                ]);
-            }
-
-            // Phase 5: enqueue notifications on status changes (dispatch via cron)
+            $booking = new AppointmentBookingService();
+            $notificationEvent = '';
             if ($newStatus === 'confirmed') {
-                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_confirmed');
+                $notificationEvent = 'appointment_confirmed';
             }
             if ($newStatus === 'cancelled') {
-                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_cancelled');
+                $notificationEvent = 'appointment_cancelled';
+            }
+
+            $result = $booking->updateAppointment(
+                (int) $id,
+                ['status' => $newStatus],
+                TimezoneService::businessTimezone(),
+                $notificationEvent,
+                ['email', 'whatsapp']
+            );
+
+            if (!$result['success']) {
+                log_message('error', 'Failed to update appointment status via pipeline: ' . json_encode($result));
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => $result['message'] ?? 'Failed to update appointment status',
+                        'details' => $result['errors'] ?? []
+                    ]
+                ]);
             }
             
             return $response->setJSON([
                 'data' => [
                     'id' => $id,
                     'status' => $newStatus,
-                    'updated_at' => $updateData['updated_at']
+                    'updated_at' => date('Y-m-d H:i:s')
                 ],
                 'message' => 'Appointment status updated successfully'
             ]);
@@ -585,28 +585,21 @@ class Appointments extends BaseApiController
             
             log_message('info', "Updating appointment notes: ID={$id}");
             
-            $updateData = [
-                'notes' => $newNotes,
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-            
-            $updated = $model->update($id, $updateData);
-            
-            if ($model->errors()) {
-                log_message('error', "Model validation errors: " . json_encode($model->errors()));
+            $booking = new AppointmentBookingService();
+            $result = $booking->updateAppointment(
+                (int) $id,
+                ['notes' => $newNotes],
+                TimezoneService::businessTimezone(),
+                '',
+                []
+            );
+
+            if (!$result['success']) {
+                log_message('error', 'Failed to update appointment notes via pipeline: ' . json_encode($result));
                 return $response->setStatusCode(422)->setJSON([
                     'error' => [
-                        'message' => 'Validation failed',
-                        'validation_errors' => $model->errors()
-                    ]
-                ]);
-            }
-            
-            if (!$updated) {
-                log_message('error', "Failed to update appointment notes: ID={$id}");
-                return $response->setStatusCode(500)->setJSON([
-                    'error' => [
-                        'message' => 'Failed to update appointment notes'
+                        'message' => $result['message'] ?? 'Failed to update appointment notes',
+                        'details' => $result['errors'] ?? []
                     ]
                 ]);
             }
@@ -615,7 +608,7 @@ class Appointments extends BaseApiController
                 'data' => [
                     'id' => $id,
                     'notes' => $newNotes,
-                    'updated_at' => $updateData['updated_at']
+                    'updated_at' => date('Y-m-d H:i:s')
                 ],
                 'message' => 'Appointment notes updated successfully'
             ]);
@@ -674,11 +667,26 @@ class Appointments extends BaseApiController
             
             $booking = new AppointmentBookingService();
 
+            $inputTimezone = $this->resolveApiInputTimezone($payload);
+            $normalizedStart = $this->normalizeDateAndTimeToUtc(
+                (string) ($payload['date'] ?? ''),
+                (string) ($payload['start'] ?? ''),
+                $inputTimezone
+            );
+            if (!$normalizedStart['success']) {
+                return $response->setStatusCode(400)->setJSON([
+                    'error' => [
+                        'message' => $normalizedStart['message'] ?? 'Invalid appointment datetime',
+                    ]
+                ]);
+            }
+
             $bookingPayload = [
                 'provider_id' => (int) ($payload['providerId'] ?? $payload['provider_id'] ?? 0),
                 'service_id' => (int) ($payload['serviceId'] ?? $payload['service_id'] ?? 0),
-                'appointment_date' => $payload['date'] ?? null,
-                'appointment_time' => $payload['start'] ?? null,
+                // Use normalized app-local date/time derived from UTC canonical input.
+                'appointment_date' => $normalizedStart['app_date'],
+                'appointment_time' => $normalizedStart['app_time'],
                 'customer_first_name' => $payload['name'] ?? '',
                 'customer_last_name' => '',
                 'customer_email' => $payload['email'] ?? '',
@@ -691,8 +699,8 @@ class Appointments extends BaseApiController
                 $bookingPayload['location_id'] = (int) $payload['location_id'];
             }
 
-            $timezone = $payload['timezone'] ?? null;
-            $res = $booking->createAppointment($bookingPayload, $timezone ?: 'UTC');
+            // Send UTC to service after controller canonicalization.
+            $res = $booking->createAppointment($bookingPayload, 'UTC');
 
             if (!$res['success']) {
                 return $response->setStatusCode(409)->setJSON([
@@ -749,9 +757,58 @@ class Appointments extends BaseApiController
             }
 
             $update = [];
-            if (!empty($payload['start'])) $update['start_at'] = $payload['start'];
-            if (!empty($payload['end'])) $update['end_at'] = $payload['end'];
-            if (!empty($payload['status'])) $update['status'] = $payload['status'];
+            if (!empty($payload['status'])) {
+                $update['status'] = $payload['status'];
+            }
+            if (array_key_exists('notes', $payload)) {
+                $update['notes'] = (string) ($payload['notes'] ?? '');
+            }
+            if (!empty($payload['providerId']) || !empty($payload['provider_id'])) {
+                $update['provider_id'] = (int) ($payload['providerId'] ?? $payload['provider_id']);
+            }
+            if (!empty($payload['serviceId']) || !empty($payload['service_id'])) {
+                $update['service_id'] = (int) ($payload['serviceId'] ?? $payload['service_id']);
+            }
+            if (array_key_exists('location_id', $payload)) {
+                $update['location_id'] = $payload['location_id'] === null || $payload['location_id'] === ''
+                    ? null
+                    : (int) $payload['location_id'];
+            }
+
+            // For time changes, normalize to UTC at controller boundary.
+            if (!empty($payload['start'])) {
+                $inputTimezone = $this->resolveApiInputTimezone($payload);
+
+                if (!empty($payload['date']) && preg_match('/^\d{2}:\d{2}$/', (string) $payload['start'])) {
+                    $normalizedStart = $this->normalizeDateAndTimeToUtc(
+                        (string) $payload['date'],
+                        (string) $payload['start'],
+                        $inputTimezone
+                    );
+                } else {
+                    $normalizedStart = $this->normalizeDateTimeStringToUtc((string) $payload['start'], $inputTimezone);
+                }
+
+                if (!$normalizedStart['success']) {
+                    return $response->setStatusCode(400)->setJSON([
+                        'error' => ['message' => $normalizedStart['message'] ?? 'Invalid start datetime']
+                    ]);
+                }
+
+                $update['appointment_date'] = $normalizedStart['app_date'];
+                $update['appointment_time'] = $normalizedStart['app_time'];
+            }
+
+            // Normalize optional end datetime when supplied (DST/offset validation at boundary).
+            if (!empty($payload['end'])) {
+                $inputTimezone = $this->resolveApiInputTimezone($payload);
+                $normalizedEnd = $this->normalizeDateTimeStringToUtc((string) $payload['end'], $inputTimezone);
+                if (!$normalizedEnd['success']) {
+                    return $response->setStatusCode(400)->setJSON([
+                        'error' => ['message' => $normalizedEnd['message'] ?? 'Invalid end datetime']
+                    ]);
+                }
+            }
             
             if (empty($update)) {
                 return $response->setStatusCode(400)->setJSON([
@@ -765,18 +822,32 @@ class Appointments extends BaseApiController
                     'error' => ['message' => 'Appointment not found']
                 ]);
             }
-            
-            $ok = $model->update($id, $update);
-            
-            if (!$ok) {
-                return $response->setStatusCode(500)->setJSON([
-                    'error' => ['message' => 'Update failed']
-                ]);
+
+            $notificationEvent = '';
+            if (!empty($update['appointment_date']) || !empty($update['appointment_time'])) {
+                $notificationEvent = 'appointment_rescheduled';
+            } elseif (($update['status'] ?? null) === 'confirmed') {
+                $notificationEvent = 'appointment_confirmed';
+            } elseif (($update['status'] ?? null) === 'cancelled') {
+                $notificationEvent = 'appointment_cancelled';
             }
 
-            // Enqueue rescheduled notification if time was changed
-            if (!empty($update['start_at']) || !empty($update['end_at'])) {
-                $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_rescheduled', 'rescheduled appointment');
+            $booking = new AppointmentBookingService();
+            $result = $booking->updateAppointment(
+                (int) $id,
+                $update,
+                TimezoneService::businessTimezone(),
+                $notificationEvent,
+                ['email', 'whatsapp']
+            );
+
+            if (!$result['success']) {
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => $result['message'] ?? 'Update failed',
+                        'details' => $result['errors'] ?? []
+                    ]
+                ]);
             }
             
             return $response->setJSON([
@@ -809,24 +880,30 @@ class Appointments extends BaseApiController
         
         try {
             $model = new AppointmentModel();
-            
+
             if (!$model->find($id)) {
                 return $response->setStatusCode(404)->setJSON([
                     'error' => ['message' => 'Appointment not found']
                 ]);
             }
-            
-            // Soft cancel instead of hard delete
-            $ok = $model->update($id, ['status' => 'cancelled']);
-            
-            if (!$ok) {
-                return $response->setStatusCode(500)->setJSON([
-                    'error' => ['message' => 'Delete failed']
+
+            $booking = new AppointmentBookingService();
+            $result = $booking->updateAppointment(
+                (int) $id,
+                ['status' => 'cancelled'],
+                TimezoneService::businessTimezone(),
+                'appointment_cancelled',
+                ['email', 'whatsapp']
+            );
+
+            if (!$result['success']) {
+                return $response->setStatusCode(422)->setJSON([
+                    'error' => [
+                        'message' => $result['message'] ?? 'Delete failed',
+                        'details' => $result['errors'] ?? []
+                    ]
                 ]);
             }
-
-            // Phase 5: enqueue cancellation notifications
-            $this->queueAppointmentNotifications((int) $id, ['email', 'whatsapp'], 'appointment_cancelled');
             
             return $response->setJSON([
                 'data' => ['ok' => true],
@@ -839,6 +916,73 @@ class Appointments extends BaseApiController
                     'details' => $e->getMessage()
                 ]
             ]);
+        }
+    }
+
+    /**
+     * Resolve timezone hint from payload/header with business timezone fallback.
+     */
+    private function resolveApiInputTimezone(array $payload): string
+    {
+        $tz = (string) ($payload['timezone']
+            ?? $this->request->getHeaderLine('X-Client-Timezone')
+            ?? TimezoneService::businessTimezone());
+
+        return TimezoneService::isValidTimezone($tz) ? $tz : TimezoneService::businessTimezone();
+    }
+
+    /**
+     * Normalize date+time input into UTC canonical value and app-local booking fields.
+     */
+    private function normalizeDateAndTimeToUtc(string $date, string $time, string $inputTimezone): array
+    {
+        try {
+            $inputTz = new \DateTimeZone($inputTimezone);
+            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
+            $utcTz = new \DateTimeZone('UTC');
+
+            $local = new \DateTimeImmutable(sprintf('%s %s:00', $date, $time), $inputTz);
+            $utc = $local->setTimezone($utcTz);
+            $appLocal = $utc->setTimezone($appTz);
+
+            return [
+                'success' => true,
+                'utc' => $utc->format('Y-m-d H:i:s'),
+                'app_date' => $appLocal->format('Y-m-d'),
+                'app_time' => $appLocal->format('H:i'),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Invalid appointment date/time input',
+            ];
+        }
+    }
+
+    /**
+     * Normalize an arbitrary datetime string to UTC and app-local booking fields.
+     */
+    private function normalizeDateTimeStringToUtc(string $dateTime, string $fallbackTimezone): array
+    {
+        try {
+            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
+            $utcTz = new \DateTimeZone('UTC');
+
+            $dt = new \DateTimeImmutable($dateTime, new \DateTimeZone($fallbackTimezone));
+            $utc = $dt->setTimezone($utcTz);
+            $appLocal = $utc->setTimezone($appTz);
+
+            return [
+                'success' => true,
+                'utc' => $utc->format('Y-m-d H:i:s'),
+                'app_date' => $appLocal->format('Y-m-d'),
+                'app_time' => $appLocal->format('H:i'),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Invalid datetime input',
+            ];
         }
     }
 

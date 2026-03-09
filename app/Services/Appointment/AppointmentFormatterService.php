@@ -69,6 +69,8 @@ class AppointmentFormatterService
             'title'           => $row['customer_name'] ?? ('Appointment #' . $row['id']),
             'start'           => $this->toIso($row['start_at'] ?? null),
             'end'             => $this->toIso($row['end_at']   ?? null),
+            'start_utc'       => $this->toIso($row['start_at'] ?? null),
+            'end_utc'         => $this->toIso($row['end_at']   ?? null),
             // Core foreign keys
             'provider_id'     => (int) $row['provider_id'],
             'service_id'      => (int) $row['service_id'],
@@ -114,10 +116,10 @@ class AppointmentFormatterService
     // ─────────────────────────────────────────────────────────────────
 
     /**
-     * Convert a UTC MySQL datetime string to ISO 8601 with local timezone offset.
-     *
-     * DB stores UTC. Output includes the local TZ offset so JS calendar
-     * libraries (FullCalendar / Luxon) can display the correct wall-clock time.
+    * Convert a UTC MySQL datetime string to UTC ISO 8601 (Zulu).
+    *
+    * Phase 0.5 hardening: keep the transport layer timezone-agnostic by always
+    * returning UTC from the backend. UI layers may convert for display.
      *
      * Returns null if input is null/empty.
      */
@@ -127,10 +129,9 @@ class AppointmentFormatterService
             return null;
         }
         try {
-            $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
             $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
-            $dt->setTimezone(new \DateTimeZone($localTz));
-            return $dt->format('Y-m-d\TH:i:sP'); // e.g. 2026-02-23T16:00:00+02:00
+            $dt->setTimezone(new \DateTimeZone('UTC'));
+            return $dt->format('Y-m-d\TH:i:s\Z');
         } catch (\Throwable $e) {
             return $datetime;
         }

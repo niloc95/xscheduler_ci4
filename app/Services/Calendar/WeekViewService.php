@@ -53,6 +53,7 @@ class WeekViewService
     private AppointmentQueryService     $query;
     private AppointmentFormatterService $formatter;
     private TimeGridService             $timeGrid;
+    private EventLayoutService          $eventLayout;
     private DayViewService              $dayView;
 
     public function __construct(
@@ -60,13 +61,21 @@ class WeekViewService
         ?AppointmentQueryService $query = null,
         ?AppointmentFormatterService $formatter = null,
         ?TimeGridService $timeGrid = null,
+        ?EventLayoutService $eventLayout = null,
         ?DayViewService $dayView = null
     ) {
         $this->range     = $range     ?? new CalendarRangeService();
         $this->query     = $query     ?? new AppointmentQueryService();
         $this->formatter = $formatter ?? new AppointmentFormatterService();
         $this->timeGrid  = $timeGrid ?? new TimeGridService($this->range);
-        $this->dayView   = $dayView ?? new DayViewService($this->range, $this->query, $this->formatter, $this->timeGrid);
+        $this->eventLayout = $eventLayout ?? new EventLayoutService();
+        $this->dayView   = $dayView ?? new DayViewService(
+            $this->range, 
+            $this->query, 
+            $this->formatter, 
+            $this->timeGrid,
+            $this->eventLayout
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────

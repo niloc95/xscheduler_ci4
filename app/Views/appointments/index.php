@@ -199,20 +199,51 @@
     </div>
 <?= $this->endSection() ?>
 
-<?php // Calendar and appointments content (scrollable area below fixed header) ?>
+<?php // Split-panel scheduler content (new layout) ?>
 <?= $this->section('dashboard_content') ?>
-    <!-- Calendar Container -->
-    <div class="rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-        <div
-            id="appointments-inline-calendar"
-            class="w-full"
-            data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
-            data-active-status="<?= esc($activeStatusFilter ?? '') ?>"
-        ></div>
+    <!-- Scheduler Shell: Split-panel Layout -->
+    <div class="scheduler-shell rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        
+        <!-- Content Split: 62% Left (scrollable) + 38% Right (fixed) -->
+        <div class="content-split">
+            
+            <!-- Left Pane: Calendar View (Today/Day/Week/Month) -->
+            <div class="cal-pane" id="appointments-inline-calendar"
+                 data-initial-date="<?= esc($selectedDate ?? date('Y-m-d')) ?>"
+                 data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
+                <!-- Calendar content injected by SchedulerCore -->
+                <div class="p-8 text-center">
+                    <div class="loading-spinner mx-auto mb-3"></div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Loading scheduler...</p>
+                </div>
+            </div>
+            
+            <!-- Right Panel: Provider Cards + Slot Grid -->
+            <div class="right-panel" id="scheduler-right-panel">
+                <!-- Header Section -->
+                <div class="rp-header">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white" id="rp-title">
+                        Providers
+                    </h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="rp-subtitle">
+                        Select a provider to view availability
+                    </p>
+                </div>
+                
+                <!-- Body Section (Scrollable) -->
+                <div class="rp-body" id="rp-body">
+                    <!-- Provider cards + slot grid injected by RightPanel module -->
+                    <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+            
+        </div>
     </div>
 
-    <!-- Daily Appointments Section -->
-    <div id="daily-provider-appointments" class="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- Daily Appointments Section (kept for backward compatibility) -->
+    <div id="daily-provider-appointments" class="hidden rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mt-4">
         <div class="p-8 text-center">
             <div class="loading-spinner mx-auto mb-3"></div>
             <p class="text-sm text-gray-500 dark:text-gray-400">Loading appointments...</p>

@@ -102,7 +102,7 @@ export class MonthView {
             dayHeadersHtml: this.renderDayHeaders(config, settings),
             calendarGridHtml,
             emptyStateHtml,
-            slotPanelHtml: this._renderMonthSlotPanel(),
+            slotPanelHtml: '', // Slot panel removed - click day cell to navigate to day view
         });
 
         // Add event listeners
@@ -110,10 +110,6 @@ export class MonthView {
         
         // Render daily appointments section for the selected day
         this.renderDailySection(data);
-        
-        // Attach slot panel listeners
-        this._attachMonthSlotListeners();
-        this._refreshMonthSlotPanel();
     }
 
     renderDayHeaders(config, settings) {
@@ -189,11 +185,11 @@ export class MonthView {
                              data-expand-day="${day.toISODate()}"
                              data-expanded="false"
                              title="View all ${dayAppointments.length} appointments">
-                            +${dayAppointments.length - 2} more
+                            <span class="expand-text">+${dayAppointments.length - 2} more</span>
                         </button>
                     ` : ''}
                 </div>
-                ${this._renderDayCellAvailability(day, isCurrentMonth)}
+                ${this._renderProviderDotsAndAvailability(day, dayAppointments, isCurrentMonth)}
             </div>
         `;
     }
@@ -544,7 +540,7 @@ export class MonthView {
             });
         });
 
-        // Day cell click handlers (for day selection and creating new appointments)
+        // Day cell click handlers (navigate to day view)
         container.querySelectorAll('[data-select-day]').forEach(el => {
             el.addEventListener('click', (e) => {
                 // Check if click was on an appointment or action button
@@ -555,22 +551,12 @@ export class MonthView {
                 }
                 
                 const date = el.dataset.selectDay;
-                this.debugLog('Day cell clicked:', date);
+                this.debugLog('Day cell clicked:', date, '- Navigating to day view');
                 
-                // Update selected date
-                this.selectedDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });
-                
-                // Update visual selection in calendar grid
-                container.querySelectorAll('.scheduler-day-cell').forEach(cell => {
-                    cell.classList.remove('ring-2', 'ring-blue-500', 'ring-inset', 'bg-blue-50', 'dark:bg-blue-900/20');
-                });
-                el.classList.add('ring-2', 'ring-blue-500', 'ring-inset', 'bg-blue-50', 'dark:bg-blue-900/20');
-                
-                // Update daily appointments section
-                this.updateDailySection(container);
-                
-                // Update the available slots panel for the selected date
-                this._updateMonthSlotPanel();
+                // Navigate to day view for this date
+                const targetDate = DateTime.fromISO(date, { zone: this.scheduler.options.timezone });
+                this.scheduler.navigateToDate(targetDate);
+                this.scheduler.changeView('day');
             });
         });
     }
@@ -682,10 +668,15 @@ export class MonthView {
             if (icon) {
                 icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12M6 12h12" />';
             }
+            // Update button text
             const textSpan = buttonEl.querySelector('.expand-text');
             if (textSpan) {
                 const totalHidden = Math.max(0, allAppointments.length - maxVisible);
                 textSpan.textContent = `+${totalHidden} more`;
+            } else {
+                // Fallback: update button text directly if no span found
+                const totalHidden = Math.max(0, allAppointments.length - maxVisible);
+                buttonEl.textContent = `+${totalHidden} more`;
             }
         } else {
             // Expand - show all appointments
@@ -697,9 +688,13 @@ export class MonthView {
             if (icon) {
                 icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />';
             }
+            // Update button text
             const textSpan = buttonEl.querySelector('.expand-text');
             if (textSpan) {
                 textSpan.textContent = 'Show less';
+            } else {
+                // Fallback: update button text directly if no span found
+                buttonEl.textContent = 'Show less';
             }
         }
     }
@@ -734,10 +729,89 @@ export class MonthView {
     }
 
     /**
-     * Render the full Available Slots panel below the month grid.
-     * Shows slots for the currently selected date (defaults to today).
+     * Escape HTML to prevent XSS.
      */
-    _renderMonthSlotPanel() {
+    _escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Render provider presence dots + availability bar for a day cell.
+     * - Dots show which providers have appointments (filled) or are available (ring)
+     * - Bar shows overall availability: green > 50%, amber 50-75%, red < 75%
+     */
+    _renderProviderDotsAndAvailability(day, dayAppointments, isCurrentMonth) {
+        if (!isCurrentMonth) return '';
+
+        // Get unique provider IDs with appointments on this day
+        const providerIdsWithAppts = new Set(dayAppointments.map(apt => apt.providerId));
+
+        // Get visible providers
+        const visibleProviders = this.providers.filter(p => 
+            this.scheduler.visibleProviders.has(p.id)
+        );
+
+        // Render provider dots (max 5, then "+N")
+        const maxDots = 5;
+        const dotsToShow = visibleProviders.slice(0, maxDots);
+        const remainingCount = Math.max(0, visibleProviders.length - maxDots);
+
+        const dotsHtml = dotsToShow.map(provider => {
+            const hasAppt = providerIdsWithAppts.has(provider.id);
+            const color = getProviderColor(provider);
+            
+            if (hasAppt) {
+                // Filled dot (has appointment)
+                return `<div class="w-2 h-2 rounded-full" style="background-color: ${color};" title="${this._escapeHtml(provider.name || provider.username)}"></div>`;
+            } else {
+                // Ring only (no appointment, but available)
+                return `<div class="w-2 h-2 rounded-full border border-current" style="color: ${color};" title="${this._escapeHtml(provider.name || provider.username)} (available)"></div>`;
+            }
+        }).join('');
+
+        const remainingHtml = remainingCount > 0 ? `<span class="text-[9px] text-gray-500 dark:text-gray-400">+${remainingCount}</span>` : '';
+
+        // Calculate availability percentage
+        // Assume 8 working hours * 2 slots per hour = 16 possible slots per day per provider
+        const slotsPerProvider = 16;
+        const totalSlots = visibleProviders.length * slotsPerProvider;
+        const usedSlots = dayAppointments.filter(apt => 
+            !['cancelled', 'noshow'].includes(apt.status)
+        ).length;
+        const availableSlots = Math.max(0, totalSlots - usedSlots);
+        const availabilityPercent = totalSlots > 0 ? (availableSlots / totalSlots) * 100 : 0;
+
+        // Color-code availability bar
+        let barColorClass = 'bg-green-500 dark:bg-green-600'; // > 50%
+        if (availabilityPercent < 25) {
+            barColorClass = 'bg-red-500 dark:bg-red-600';
+        } else if (availabilityPercent < 50) {
+            barColorClass = 'bg-amber-500 dark:bg-amber-600';
+        }
+
+        return `
+            <div class="mt-auto pt-1 space-y-1">
+                <!-- Provider Dots -->
+                <div class="flex items-center gap-1 min-h-[8px]">
+                    ${dotsHtml}
+                    ${remainingHtml}
+                </div>
+                <!-- Availability Bar -->
+                <div class="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full ${barColorClass} transition-all" style="width: ${availabilityPercent}%;" title="${Math.round(availabilityPercent)}% available"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * REMOVED: _renderMonthSlotPanel() - Month view no longer shows inline slot panel.
+     * Click day cell to navigate to day view instead.
+     */
+    _renderMonthSlotPanel_REMOVED() {
         const date = this.selectedDate || DateTime.now();
         return `<div class="slot-panel" id="month-slot-panel-inner">
             <div class="slot-panel__header">
@@ -802,6 +876,8 @@ export class MonthView {
         const providerCountEl = this.container?.querySelector('#month-slot-provider-count');
         if (!listEl) return;
 
+        const schedulerTz = this.scheduler?.options?.timezone || this.settings?.getTimezone?.() || 'UTC';
+
         const context = this._getAvailabilityContext();
         if (!context.ready) {
             listEl.innerHTML = `<div class="text-sm text-gray-500 dark:text-gray-400">${context.message}</div>${this._renderDebugPayload(null)}`;
@@ -821,7 +897,7 @@ export class MonthView {
                 serviceId: context.serviceId,
                 locationId: context.locationId ?? null,
                 date: null,
-                timezone: 'UTC',
+                timezone: schedulerTz,
             })}`;
             if (countEl) countEl.textContent = '';
             return;
@@ -831,7 +907,7 @@ export class MonthView {
             provider_id: String(context.providerId),
             service_id: String(context.serviceId),
             date,
-            timezone: 'UTC',
+            timezone: schedulerTz,
         });
         if (context.locationId) params.append('location_id', String(context.locationId));
 
@@ -844,7 +920,7 @@ export class MonthView {
                     serviceId: context.serviceId,
                     locationId: context.locationId ?? null,
                     date,
-                    timezone: 'UTC',
+                    timezone: schedulerTz,
                 })}`;
                 if (countEl) countEl.textContent = '';
                 return;
@@ -857,7 +933,7 @@ export class MonthView {
                 serviceId: context.serviceId,
                 locationId: data?.data?.location_id ?? context.locationId ?? null,
                 date,
-                timezone: data?.data?.timezone ?? 'UTC',
+                timezone: data?.data?.timezone ?? schedulerTz,
             })}`;
         } catch (error) {
             console.error('Failed to load availability slots:', error);
@@ -866,7 +942,7 @@ export class MonthView {
                 serviceId: context.serviceId,
                 locationId: context.locationId ?? null,
                 date,
-                timezone: 'UTC',
+                timezone: schedulerTz,
             })}`;
             if (countEl) countEl.textContent = '';
         }
@@ -914,7 +990,7 @@ export class MonthView {
             isPast ? 'opacity-75' : ''
         ].join(' ');
 
-        const maxChips = 3;
+        const maxChips = 2;
         const hasMore = dayAppointments.length > maxChips;
         const moreCount = hasMore ? (dayAppointments.length - maxChips) : 0;
 
@@ -931,15 +1007,36 @@ export class MonthView {
             });
         }).join('');
 
+        // Render hidden appointments
+        const hiddenAppointments = dayAppointments.slice(maxChips).map(apt => {
+            const provider = this.providers.find(p => p.id === apt.providerId);
+            const providerColor = getProviderColor(provider);
+            const statusColors = getStatusColors(apt.status, isDarkMode());
+
+            return renderMonthModelAppointmentChip({
+                appointmentId: apt.id,
+                providerColor,
+                statusColor: statusColors.bg,
+                customerName: apt.customerName || apt.title || 'Appointment',
+                isHidden: true,
+            });
+        }).join('');
+
         return `
-            <div class="${cellClasses}" data-date="${cell.date}">
+            <div class="${cellClasses}" data-date="${cell.date}" data-select-day="${cell.date}">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">${day.toFormat('ccc')}</span>
                     <span class="${dayNumBase} ${dayNumColor}">${day.day}</span>
                 </div>
-                <div class="flex-1 space-y-1">
+                <div class="day-appointments flex-1 space-y-1">
                     ${appointmentChips}
-                    ${hasMore ? `<div class="text-[10px] text-gray-400 dark:text-gray-500">+${moreCount} more</div>` : ''}
+                    ${hiddenAppointments}
+                    ${hasMore ? `<button type="button" class="expand-day-btn w-full text-[10px] font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:text-blue-700 dark:hover:text-blue-300 rounded px-1 py-0.5 flex items-center justify-center transition-colors" 
+                         data-expand-day="${cell.date}"
+                         data-expanded="false"
+                         title="View all ${dayAppointments.length} appointments">
+                        <span class="expand-text">+${moreCount} more</span>
+                    </button>` : ''}
                 </div>
                 ${isBlocked ? `<div class="absolute bottom-1 right-2 text-[10px] text-red-500">${escapeHtml(blockedInfo?.label || 'Blocked')}</div>` : ''}
                 ${this._renderDayCellAvailability(day, isCurrentMonth)}
