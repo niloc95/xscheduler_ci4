@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/html.js';
 import { getStatusLabel } from './appointment-colors.js';
 
 export function renderSchedulerHeader({ currentDate, isBlocked, isNonWorkingDay }) {
@@ -129,14 +130,4 @@ export function renderAvailabilityBlock({ panelHtml }) {
             ${panelHtml}
         </div>
     `;
-}
-
-function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }

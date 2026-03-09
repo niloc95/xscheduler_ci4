@@ -21,7 +21,6 @@ export default defineConfig({
         spa: path.resolve(process.cwd(), 'resources/js/spa.js'),
         'unified-sidebar': path.resolve(process.cwd(), 'resources/js/unified-sidebar.js'),
         charts: path.resolve(process.cwd(), 'resources/js/charts.js'),
-        'time-format-handler': path.resolve(process.cwd(), 'resources/js/time-format-handler.js'),
         'public-booking': path.resolve(process.cwd(), 'resources/js/public-booking.js'),
       },
       output: {

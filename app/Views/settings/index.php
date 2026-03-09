@@ -1151,20 +1151,6 @@
 
         // NOTE: initCustomFieldToggles is called from initSettingsApi(), no separate listeners needed
 
-        // ─── Time Format Handler ────────────────────────────────
-            // Dynamic import works in both regular and SPA-injected scripts
-            (async function initTimeFormatting() {
-                try {
-                    const module = await import('<?= base_url('build/assets/time-format-handler.js') ?>');
-                    const timeFormatHandler = module.default || module;
-                    await timeFormatHandler.init();
-                    timeFormatHandler.addFormattedDisplays();
-                    xsDebugLog('[Settings] Time format handler initialized with format:', timeFormatHandler.getFormat());
-                } catch (err) {
-                    console.warn('[Settings] Time format handler unavailable:', err.message);
-                }
-            })();
-
         // ─── Database Settings Tab ──────────────────────────────
         (function initDatabaseSettingsTab() {
             const backupToggle = document.getElementById('backup-enabled-toggle');

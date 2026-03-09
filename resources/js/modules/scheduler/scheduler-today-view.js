@@ -12,6 +12,8 @@
 import { DateTime } from 'luxon';
 import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { escapeHtml } from '../../utils/html.js';
+import { getBusinessHours } from './time-grid-utils.js';
 
 export class TodayView {
     constructor(scheduler) {
@@ -134,9 +136,8 @@ export class TodayView {
 
         // Simplified free slots calculation
         // Assume 8 working hours * 2 slots per hour = 16 possible slots
-        const businessHours = config?.businessHours || { startTime: '08:00', endTime: '17:00' };
-        const startHour = parseInt(businessHours.startTime.split(':')[0], 10);
-        const endHour = parseInt(businessHours.endTime.split(':')[0], 10);
+        const businessHoursConfig = config?.businessHours || { startTime: '08:00', endTime: '17:00' };
+        const { startHour, endHour } = getBusinessHours({ businessHours: businessHoursConfig });
         const hoursPerDay = endHour - startHour;
         const slotsPerHour = 2; // 30-minute slots
         const totalSlots = hoursPerDay * slotsPerHour;
@@ -191,21 +192,21 @@ export class TodayView {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-2 mb-1">
                             <div class="font-medium text-gray-900 dark:text-white truncate">
-                                ${this._escapeHtml(customerName)}
+                                ${escapeHtml(customerName)}
                             </div>
                             <span class="px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${statusColors.bgClass} ${statusColors.textClass}">
                                 ${appointment.status}
                             </span>
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            ${this._escapeHtml(serviceName)}
+                            ${escapeHtml(serviceName)}
                         </div>
                         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                             <span class="material-symbols-outlined text-sm">schedule</span>
                             <span>${startTime}${endTime ? ` - ${endTime}` : ''}</span>
                             ${provider?.name ? `
                                 <span class="mx-1">•</span>
-                                <span>${this._escapeHtml(provider.name)}</span>
+                                <span>${escapeHtml(provider.name)}</span>
                             ` : ''}
                         </div>
                     </div>
@@ -245,15 +246,5 @@ export class TodayView {
                 }
             });
         });
-    }
-
-    /**
-     * Escape HTML to prevent XSS.
-     */
-    _escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }

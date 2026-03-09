@@ -11,6 +11,7 @@
 import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { escapeHtml } from '../../utils/html.js';
 
 export class RightPanel {
     constructor(scheduler) {
@@ -167,7 +168,7 @@ export class RightPanel {
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                ${this._escapeHtml(provider.name || provider.username)}
+                                ${escapeHtml(provider.name || provider.username)}
                             </div>
                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                 ${appointmentCount} appt${appointmentCount !== 1 ? 's' : ''} • ${Math.round(loadPercentage)}% load
@@ -541,15 +542,6 @@ export class RightPanel {
             default:
                 return 1;
         }
-    }
-
-    /**
-     * Escape HTML to prevent XSS.
-     */
-    _escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
 }

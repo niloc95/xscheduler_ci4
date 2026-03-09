@@ -3,106 +3,17 @@
  * 
  * Common utilities for time-grid-based views (Week, Day).
  * Handles:
- * - Overlap resolution (sweep-line algorithm)
  * - Position & size calculations (topPx, heightPx)
  * - Shared constants (business hours, hour height)
+ * 
+ * Overlap resolution is performed server-side by EventLayoutService.
+ * Frontend consumes backend layout metadata (_widthPct, _leftPct, _colIndex).
  */
 
 // Shared Constants
 export const HOUR_HEIGHT_PX = 60;           // Height of 1 hour row in pixels
 export const MIN_APPOINTMENT_HEIGHT_PX = 20; // Minimum height for very short appointments
 export const HOUR_TO_MIN_MARGIN_PX = 3;    // Margin between appointment and grid line
-
-/**
- * Resolves overlapping appointments using a sweep-line algorithm.
- * Adds `_col` (column index) and `_colCount` (total columns needed) to each appointment.
- * 
- * @param {Array} appointments - Array of appointment objects with startDateTime, endDateTime
- * @returns {Array} - Same appointments array with overlap metadata added
- */
-export function resolveOverlaps(appointments) {
-    if (!appointments || appointments.length === 0) {
-        return appointments;
-    }
-
-    // Sort by start time, then by end time (ascending)
-    const sorted = [...appointments].sort((a, b) => {
-        const startCmp = a.startDateTime.toMillis() - b.startDateTime.toMillis();
-        if (startCmp !== 0) return startCmp;
-        return a.endDateTime.toMillis() - b.endDateTime.toMillis();
-    });
-
-    // Sweep-line: track active intervals at each position
-    const events = [];
-    sorted.forEach((apt, idx) => {
-        events.push({
-            time: apt.startDateTime.toMillis(),
-            type: 'start',
-            aptIndex: idx,
-            apt,
-        });
-        events.push({
-            time: apt.endDateTime.toMillis(),
-            type: 'end',
-            aptIndex: idx,
-            apt,
-        });
-    });
-
-    // Sort events by time, with 'end' events before 'start' events at same time
-    events.sort((a, b) => {
-        const timeCmp = a.time - b.time;
-        if (timeCmp !== 0) return timeCmp;
-        return a.type === 'end' ? -1 : 1;
-    });
-
-    // Process events and assign columns
-    const activeIntervals = [];
-    const appointmentColumns = new Map(); // aptIndex -> column
-
-    events.forEach((event) => {
-        if (event.type === 'start') {
-            // Find the lowest available column
-            let col = 0;
-            outer: while (true) {
-                for (const active of activeIntervals) {
-                    if (appointmentColumns.get(active) === col) {
-                        col++;
-                        continue outer;
-                    }
-                }
-                break; // Found an available column
-            }
-            appointmentColumns.set(event.aptIndex, col);
-            activeIntervals.push(event.aptIndex);
-        } else {
-            // Remove from active intervals
-            const idx = activeIntervals.indexOf(event.aptIndex);
-            if (idx >= 0) {
-                activeIntervals.splice(idx, 1);
-            }
-        }
-    });
-
-    // Find max column count (total number of overlapping columns needed)
-    let maxCol = 0;
-    appointmentColumns.forEach((col) => {
-        maxCol = Math.max(maxCol, col);
-    });
-    const totalCols = maxCol + 1;
-
-    // Calculate column width and position for each appointment
-    const colWidth = 100 / totalCols; // Percentage width per column
-
-    sorted.forEach((apt, idx) => {
-        apt._col = appointmentColumns.get(idx) || 0;
-        apt._colCount = totalCols;
-        apt._colWidth = colWidth; // % width
-        apt._colLeft = apt._col * colWidth; // % left position
-    });
-
-    return sorted;
-}
 
 /**
  * Calculate top position (px) for an appointment based on start time.

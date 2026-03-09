@@ -1,5 +1,23 @@
-import { attachTimezoneHeaders, getBrowserTimezone, getTimezoneOffset } from '../../utils/timezone-helper.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+
+function getBrowserTimezone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+        return 'UTC';
+    }
+}
+
+function getTimezoneOffset() {
+    return new Date().getTimezoneOffset();
+}
+
+function attachTimezoneHeaders() {
+    return {
+        'X-Client-Timezone': getBrowserTimezone(),
+        'X-Client-Offset': String(getTimezoneOffset()),
+    };
+}
 
 /**
  * Appointments Booking Form Module

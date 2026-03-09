@@ -14,7 +14,8 @@
 
 import { DateTime } from 'luxon';
 import { getProviderColor } from './appointment-colors.js';
-import { resolveOverlaps, topPx, heightPx, weekStart, getBusinessHours } from './time-grid-utils.js';
+import { topPx, heightPx, weekStart, getBusinessHours } from './time-grid-utils.js';
+import { escapeHtml } from '../../utils/html.js';
 
 export class WeekView {
     constructor(scheduler) {
@@ -201,9 +202,9 @@ export class WeekView {
                     ${startTime}
                 </div>
                 <div class="text-xs font-semibold truncate text-gray-900 dark:text-white">
-                    ${this._escapeHtml(customerName)}
+                    ${escapeHtml(customerName)}
                 </div>
-                ${serviceName ? `<div class="text-xs truncate text-gray-600 dark:text-gray-400">${this._escapeHtml(serviceName)}</div>` : ''}
+                ${serviceName ? `<div class="text-xs truncate text-gray-600 dark:text-gray-400">${escapeHtml(serviceName)}</div>` : ''}
             </div>
         `;
     }
@@ -238,10 +239,7 @@ export class WeekView {
     _resolveBusinessHours(config, calendarModel) {
         const fromModel = calendarModel?.businessHours;
         if (fromModel?.startTime && fromModel?.endTime) {
-            return {
-                startHour: parseInt(fromModel.startTime.split(':')[0], 10),
-                endHour: parseInt(fromModel.endTime.split(':')[0], 10),
-            };
+            return getBusinessHours({ businessHours: fromModel });
         }
         return getBusinessHours(config);
     }
@@ -268,12 +266,14 @@ export class WeekView {
             return fromModel;
         }
 
+        // Backend-provided appointments already include layout metadata from EventLayoutService.
+        // No client-side overlap resolution needed.
         const weekAppointments = data.appointments.filter(apt => apt.startDateTime >= this.weekStart && apt.startDateTime <= this.weekEnd);
         const appointmentsByDay = {};
         days.forEach(day => {
             const dateKey = day.toISODate();
             const dayAppts = weekAppointments.filter(apt => apt.startDateTime.hasSame(day, 'day'));
-            appointmentsByDay[dateKey] = resolveOverlaps(dayAppts);
+            appointmentsByDay[dateKey] = dayAppts;
         });
         return appointmentsByDay;
     }
@@ -383,15 +383,5 @@ export class WeekView {
             const top = topPx(now, startHour);
             nowLine.style.top = `${top}px`;
         }, 60000); // Update every minute
-    }
-
-    /**
-     * Escape HTML to prevent XSS.
-     */
-    _escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }

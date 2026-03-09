@@ -9,6 +9,8 @@
  * - Maintains backwards compatibility with existing bg/border/text/dot
  */
 
+import { DEFAULT_PROVIDER_COLOR } from './constants.js';
+
 /**
  * Status color mapping
  * Background colors for appointment cards based on their status
@@ -146,7 +148,7 @@ export function getStatusColors(status, darkMode = false) {
  * @returns {string} Hex color code
  */
 export function getProviderColor(provider) {
-    return provider?.color || '#3B82F6'; // Default to blue-500
+    return provider?.color || DEFAULT_PROVIDER_COLOR;
 }
 
 /**
@@ -325,6 +327,6 @@ export const PROVIDER_THEMES = {
  * @returns {object} Object with Tailwind class strings
  */
 export function getProviderTheme(provider) {
-    const color = provider?.color || '#3B82F6';
-    return PROVIDER_THEMES[color] || PROVIDER_THEMES['#3B82F6']; // Default to blue
+    const color = provider?.color || DEFAULT_PROVIDER_COLOR;
+    return PROVIDER_THEMES[color] || PROVIDER_THEMES[DEFAULT_PROVIDER_COLOR];
 }

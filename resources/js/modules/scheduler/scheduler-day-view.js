@@ -14,8 +14,9 @@
 
 import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
-import { resolveOverlaps, topPx, heightPx, getBusinessHours } from './time-grid-utils.js';
+import { topPx, heightPx, getBusinessHours } from './time-grid-utils.js';
 import { generateTimeSlots, calculateRangeHeight } from './utils/timeRangeGenerator.js';
+import { escapeHtml } from '../../utils/html.js';
 
 export class DayView {
     constructor(scheduler) {
@@ -113,7 +114,7 @@ export class DayView {
                             ${initials}
                         </div>
                         <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-full px-1">
-                            ${this._escapeHtml(provider.name || provider.username)}
+                            ${escapeHtml(provider.name || provider.username)}
                         </div>
                         <div class="text-xs text-gray-500 dark:text-gray-400">
                             ${apptCount} appt${apptCount !== 1 ? 's' : ''}
@@ -246,9 +247,9 @@ export class DayView {
                     ${startTime}${endTime ? ` - ${endTime}` : ''}
                 </div>
                 <div class="text-xs font-semibold truncate text-gray-900 dark:text-white">
-                    ${this._escapeHtml(customerName)}
+                    ${escapeHtml(customerName)}
                 </div>
-                ${serviceName ? `<div class="text-xs truncate text-gray-600 dark:text-gray-400">${this._escapeHtml(serviceName)}</div>` : ''}
+                ${serviceName ? `<div class="text-xs truncate text-gray-600 dark:text-gray-400">${escapeHtml(serviceName)}</div>` : ''}
             </div>
         `;
     }
@@ -276,10 +277,7 @@ export class DayView {
     _resolveBusinessHours(config, calendarModel) {
         const fromModel = calendarModel?.businessHours;
         if (fromModel?.startTime && fromModel?.endTime) {
-            return {
-                startHour: parseInt(fromModel.startTime.split(':')[0], 10),
-                endHour: parseInt(fromModel.endTime.split(':')[0], 10),
-            };
+            return getBusinessHours({ businessHours: fromModel });
         }
         return getBusinessHours(config);
     }
@@ -290,11 +288,13 @@ export class DayView {
             return fromModel;
         }
 
+        // Backend-provided appointments already include layout metadata from EventLayoutService.
+        // No client-side overlap resolution needed.
         const dayAppointments = data.appointments.filter(apt => apt.startDateTime.hasSame(data.currentDate, 'day'));
         const appointmentsByProvider = {};
         visibleProviders.forEach(provider => {
             const providerAppts = dayAppointments.filter(apt => Number(apt.providerId) === Number(provider.id));
-            appointmentsByProvider[provider.id] = resolveOverlaps(providerAppts);
+            appointmentsByProvider[provider.id] = providerAppts;
         });
         return appointmentsByProvider;
     }
@@ -420,16 +420,6 @@ export class DayView {
             const top = topPx(now, startHour);
             nowLine.style.top = `${top}px`;
         }, 60000); // Update every minute
-    }
-
-    /**
-     * Escape HTML to prevent XSS.
-     */
-    _escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     /**

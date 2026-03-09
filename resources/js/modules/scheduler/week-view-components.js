@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../utils/html.js';
+
 export function renderWeekHeader({ weekStart, weekEnd }) {
     return `
         <div class="mb-3">
@@ -185,14 +187,4 @@ export function renderAppointmentSummaryEmptyState() {
             <p class="text-sm">No appointments scheduled</p>
         </div>
     `;
-}
-
-function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }

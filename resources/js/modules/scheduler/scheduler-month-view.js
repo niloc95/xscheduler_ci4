@@ -11,6 +11,7 @@ import { withBaseUrl } from '../../utils/url-helpers.js';
 import { buildAvailabilityContext, isAvailabilityDebugMode, renderAvailabilityDebugPayload, renderAvailabilitySlotList } from './availability-panel-shared.js';
 import { buildMonthGridWeeks, getRotatedWeekdayShortNames } from './calendar-grid-shared.js';
 import { renderMonthAppointmentBlock, renderMonthEmptyState, renderMonthModelAppointmentChip, renderMonthShell } from './month-view-components.js';
+import { escapeHtml } from '../../utils/html.js';
 
 export class MonthView {
     constructor(scheduler) {
@@ -729,16 +730,6 @@ export class MonthView {
     }
 
     /**
-     * Escape HTML to prevent XSS.
-     */
-    _escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    /**
      * Render provider presence dots + availability bar for a day cell.
      * - Dots show which providers have appointments (filled) or are available (ring)
      * - Bar shows overall availability: green > 50%, amber 50-75%, red < 75%
@@ -765,10 +756,10 @@ export class MonthView {
             
             if (hasAppt) {
                 // Filled dot (has appointment)
-                return `<div class="w-2 h-2 rounded-full" style="background-color: ${color};" title="${this._escapeHtml(provider.name || provider.username)}"></div>`;
+                return `<div class="w-2 h-2 rounded-full" style="background-color: ${color};" title="${escapeHtml(provider.name || provider.username)}"></div>`;
             } else {
                 // Ring only (no appointment, but available)
-                return `<div class="w-2 h-2 rounded-full border border-current" style="color: ${color};" title="${this._escapeHtml(provider.name || provider.username)} (available)"></div>`;
+                return `<div class="w-2 h-2 rounded-full border border-current" style="color: ${color};" title="${escapeHtml(provider.name || provider.username)} (available)"></div>`;
             }
         }).join('');
 
@@ -1058,14 +1049,4 @@ export class MonthView {
         const target = date.toISODate ? date.toISODate() : String(date);
         return periods.find(period => period?.start && period?.end && target >= period.start && target <= period.end) || null;
     }
-}
-
-function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }

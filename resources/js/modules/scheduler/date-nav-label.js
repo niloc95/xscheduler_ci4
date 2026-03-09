@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon';
+import { weekStart as getWeekStart } from './time-grid-utils.js';
 
 function toSchedulerDateTime(value, timezone) {
     if (DateTime.isDateTime(value)) {
@@ -20,7 +21,7 @@ export function formatDateNavLabel({ date, view = 'month', timezone = 'UTC' } = 
         case 'day':
             return currentDate.toFormat('EEEE, MMMM d, yyyy');
         case 'week': {
-            const weekStart = currentDate.startOf('week');
+            const weekStart = getWeekStart(currentDate, 1);
             const weekEnd = weekStart.plus({ days: 6 });
 
             if (weekStart.month === weekEnd.month) {

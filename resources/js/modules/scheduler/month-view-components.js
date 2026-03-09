@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../utils/html.js';
+
 export function renderMonthShell({ dayHeadersHtml, calendarGridHtml, emptyStateHtml, slotPanelHtml }) {
     return `
         <div class="scheduler-month-view rounded-xl overflow-hidden bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
@@ -52,14 +54,4 @@ export function renderMonthModelAppointmentChip({ appointmentId, providerColor, 
             <span class="truncate">${escapeHtml(customerName)}</span>
         </div>
     `;
-}
-
-function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }
