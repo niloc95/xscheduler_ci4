@@ -193,7 +193,7 @@ async function initScheduler() {
             mode: 'server',
             initialView: 'day',
             initialDate: initialDate,
-            timezone: window.appTimezone || 'America/New_York',
+            timezone: window.appTimezone,
             apiBaseUrl: `${getBaseUrl()}/api/appointments`,
             apiCalendarBaseUrl: `${getBaseUrl()}/api/calendar`,
             statusFilter: activeStatusFilter || null,
