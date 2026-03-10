@@ -17,9 +17,7 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 // Dark mode detection
-const isDarkMode = () => {
-    return document.documentElement.classList.contains('dark');
-};
+import { isDarkMode } from '../../utils/dark-mode-detector.js';
 
 // Get theme-aware colors
 const getChartColors = () => {
@@ -301,7 +299,10 @@ export function refreshChartsOnThemeChange() {
 
 /**
  * Initialize all analytics charts on page
+ * Consolidates chart initialization into a single entry point
  */
 export function initAnalyticsCharts() {
-    // Analytics charts initialization
+    // Individual chart functions (initRevenueTrendChart, initTimeSlotChart, initServiceDistributionChart)
+    // are called directly from PHP template views for better granularity.
+    // This function can be expanded later if need a unified initialization pattern.
 }

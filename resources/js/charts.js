@@ -4,6 +4,7 @@
  */
 import Chart from 'chart.js/auto';
 import { getBaseUrl } from './utils/url-helpers.js';
+import { isDarkMode } from './utils/dark-mode-detector.js';
 
 // Store chart instances to prevent duplicates
 const chartInstances = {};
@@ -21,7 +22,7 @@ const DEBOUNCE_DELAY = 300;
 let currentPeriod = 'month';
 
 // Dark mode detection
-const isDarkMode = () => document.documentElement.classList.contains('dark');
+const isDarkModeStyle = isDarkMode;
 
 /**
  * Get computed CSS variable value

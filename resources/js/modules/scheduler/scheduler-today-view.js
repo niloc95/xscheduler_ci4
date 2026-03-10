@@ -195,7 +195,7 @@ export class TodayView {
                                 ${escapeHtml(customerName)}
                             </div>
                             <span class="px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${statusColors.bgClass} ${statusColors.textClass}">
-                                ${appointment.status}
+                                ${escapeHtml(appointment.status)}
                             </span>
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">

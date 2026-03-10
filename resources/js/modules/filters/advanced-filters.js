@@ -43,6 +43,12 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
     const applyBtn = document.getElementById('apply-filters-btn');
     const clearBtn = document.getElementById('clear-filters-btn');
 
+    // Guard against double initialization (listeners stacking on SPA navigation)
+    if (filterPanel?.dataset.advancedFilterSetup === 'true') {
+        return;
+    }
+    filterPanel?.setAttribute('data-advanced-filter-setup', 'true');
+
     // Filter dropdowns
     const statusSelect = document.getElementById('filter-status');
     const providerSelect = document.getElementById('filter-provider');

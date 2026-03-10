@@ -14,18 +14,7 @@
  */
 
 import { getBaseUrl } from '../../utils/url-helpers.js';
-
-/**
- * Escape HTML to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped HTML
- */
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+import { escapeHtml } from '../../utils/html.js';
 
 /**
  * Format date/time for display
@@ -266,6 +255,10 @@ export function initGlobalSearch() {
     function bindInput(target) {
         const { input } = target;
         if (!input) return;
+        
+        // Guard: only bind if not already bound (prevents stacking on SPA navigation)
+        if (input.dataset.searchEventsBound === 'true') return;
+        input.dataset.searchEventsBound = 'true';
 
         // Handle input with debouncing
         input.addEventListener('input', (e) => {

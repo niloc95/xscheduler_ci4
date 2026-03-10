@@ -462,6 +462,16 @@ export class SchedulerCore {
      * Set filters for status, provider, and service
      * This is the unified filter mechanism used by the Advanced Filter Panel
      */
+    /**
+     * Set status filter only
+     * Convenience method for when only status needs to change
+     * @param {string|null} status - Status to filter by
+     * @returns {boolean} Success
+     */
+    async setStatusFilter(status) {
+        return this.setFilters({ status });
+    }
+
     async setFilters({ status = '', providerId = '', serviceId = '', locationId = '' }) {
         this.debugLog('📊 setFilters called with:', { status, providerId, serviceId, locationId });
 
