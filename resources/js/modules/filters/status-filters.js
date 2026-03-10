@@ -550,12 +550,7 @@ export function initViewToggleHandlers() {
     }
 }
 
-/**
- * Initialize all status filter components
- */
-export function initAllFilters() {
-    initStatusFilterControls();
-    initSummaryCardFilters();
-    initViewToggleHandlers();
-}
+// Note: initAllFilters() was a convenience wrapper that called the three init functions.
+// It's not imported anywhere in app.js, which calls them individually.
+// Keep implementation available for legacy code if needed, but not exported as public API.
 
