@@ -34,6 +34,19 @@ export class RightPanel {
         this._providerLocations = [];
     }
 
+    _formatCurrency(amount) {
+        if (this.scheduler?.settingsManager && typeof this.scheduler.settingsManager.formatCurrency === 'function') {
+            return this.scheduler.settingsManager.formatCurrency(amount);
+        }
+
+        if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
+            return window.currencyFormatter.format(amount);
+        }
+
+        const numericAmount = parseFloat(amount) || 0;
+        return `R${numericAmount.toFixed(2)}`;
+    }
+
     /**
      * Render the right panel based on current scheduler state.
      * 
@@ -803,7 +816,7 @@ export class RightPanel {
                 id: Number(service.id),
                 name: service.name,
                 label: service.price != null
-                    ? `${service.name} - $${Number(service.price).toFixed(2)}`
+                    ? `${service.name} - ${this._formatCurrency(service.price)}`
                     : service.name,
             }));
 

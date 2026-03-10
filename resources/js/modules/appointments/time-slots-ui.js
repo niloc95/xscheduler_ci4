@@ -13,6 +13,16 @@ import {
 } from '../calendar/calendar-utils.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
+function formatLocalizedCurrency(amount) {
+  if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
+    return window.currencyFormatter.format(amount);
+  }
+
+  const fallbackSymbol = window.appCurrencySymbol || 'R';
+  const numericAmount = parseFloat(amount) || 0;
+  return `${fallbackSymbol}${numericAmount.toFixed(2)}`;
+}
+
 /**
  * Initialize the time slots UI
  * @param {Object} options
@@ -286,7 +296,9 @@ export function initTimeSlotsUI(options) {
       services.forEach(svc => {
         const opt = document.createElement('option');
         opt.value = svc.id;
-        opt.textContent = `${svc.name} - $${parseFloat(svc.price).toFixed(2)}`;
+        opt.textContent = svc.price != null && svc.price !== ''
+          ? `${svc.name} - ${formatLocalizedCurrency(svc.price)}`
+          : svc.name;
         opt.dataset.duration = svc.durationMin || svc.duration_min;
         opt.dataset.price = svc.price;
         if (preselectServiceId && String(preselectServiceId) === String(svc.id)) {

@@ -38,10 +38,20 @@ const getChartColors = () => {
     };
 };
 
+function formatLocalizedCurrency(amount, currencySymbol = null, decimals = 2) {
+    if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
+        return window.currencyFormatter.format(amount, decimals);
+    }
+
+    const symbol = currencySymbol || window.currencyFormatter?.getSymbol?.() || 'R';
+    const numericAmount = parseFloat(amount) || 0;
+    return `${symbol}${numericAmount.toFixed(decimals)}`;
+}
+
 /**
  * Initialize revenue trend chart
  */
-export function initRevenueTrendChart(canvasId, revenueData, type = 'daily', currencySymbol = '$') {
+export function initRevenueTrendChart(canvasId, revenueData, type = 'daily', currencySymbol = null) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
 
@@ -99,7 +109,7 @@ export function initRevenueTrendChart(canvasId, revenueData, type = 'daily', cur
                     displayColors: false,
                     callbacks: {
                         label: function(context) {
-                            return currencySymbol + context.parsed.y.toFixed(2);
+                            return formatLocalizedCurrency(context.parsed.y, currencySymbol, 2);
                         }
                     }
                 }
@@ -124,7 +134,7 @@ export function initRevenueTrendChart(canvasId, revenueData, type = 'daily', cur
                     ticks: {
                         color: colors.text,
                         callback: function(value) {
-                            return currencySymbol + value.toFixed(0);
+                            return formatLocalizedCurrency(value, currencySymbol, 0);
                         }
                     }
                 }

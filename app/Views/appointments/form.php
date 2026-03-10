@@ -929,7 +929,7 @@ function initAppointmentForm() {
                     ? service.dataset.duration + ' minutes' 
                     : '-';
                 document.getElementById('summary-price').textContent = service.dataset.price 
-                    ? currencySymbol + parseFloat(service.dataset.price).toFixed(2) 
+                    ? (window.currencyFormatter?.format?.(service.dataset.price) || (currencySymbol + parseFloat(service.dataset.price).toFixed(2))) 
                     : '-';
             } else {
                 summaryDiv.classList.add('hidden');

@@ -57,6 +57,16 @@ function bootstrapPublicBooking() {
     },
   };
 
+  function formatLocalizedCurrency(amount) {
+    if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
+      return window.currencyFormatter.format(amount);
+    }
+
+    const symbol = context.currencySymbol || context.currency_symbol || 'R';
+    const numericAmount = parseFloat(amount) || 0;
+    return `${symbol}${numericAmount.toFixed(2)}`;
+  }
+
   render();
   if (state.booking.providerId && state.booking.serviceId) {
     if (hasInitialCalendar) {
@@ -331,7 +341,7 @@ function bootstrapPublicBooking() {
         duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
         durationMinutes: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
-        formattedPrice: svc.price ? `$${parseFloat(svc.price).toFixed(2)}` : '',
+        formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
       }));
 
       updateDraft(target, prev => ({
