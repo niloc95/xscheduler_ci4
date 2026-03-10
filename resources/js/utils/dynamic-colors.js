@@ -12,6 +12,17 @@
 
 let observerInitialized = false;
 
+// Common selector used by both functions
+const DYNAMIC_COLOR_SELECTOR = [
+    '[data-color]',
+    '[data-bg-color]',
+    '[data-text-color]',
+    '[data-border-color]',
+    '[data-border-left-color]',
+    '[data-provider-color]',
+    '[data-pill-color]',
+].join(',');
+
 /**
  * Apply dynamic color attributes to a single element
  *
@@ -59,17 +70,7 @@ function applyDynamicColorsToElement(element) {
  * Apply dynamic colors to all supported elements
  */
 function applyDynamicColors() {
-    const selector = [
-        '[data-color]',
-        '[data-bg-color]',
-        '[data-text-color]',
-        '[data-border-color]',
-        '[data-border-left-color]',
-        '[data-provider-color]',
-        '[data-pill-color]',
-    ].join(',');
-
-    document.querySelectorAll(selector).forEach(applyDynamicColorsToElement);
+    document.querySelectorAll(DYNAMIC_COLOR_SELECTOR).forEach(applyDynamicColorsToElement);
 }
 
 function observeDynamicColorNodes() {
@@ -86,15 +87,7 @@ function observeDynamicColorNodes() {
 
                 applyDynamicColorsToElement(node);
                 if (typeof node.querySelectorAll === 'function') {
-                    node.querySelectorAll([
-                        '[data-color]',
-                        '[data-bg-color]',
-                        '[data-text-color]',
-                        '[data-border-color]',
-                        '[data-border-left-color]',
-                        '[data-provider-color]',
-                        '[data-pill-color]',
-                    ].join(',')).forEach(applyDynamicColorsToElement);
+                    node.querySelectorAll(DYNAMIC_COLOR_SELECTOR).forEach(applyDynamicColorsToElement);
                 }
             });
         });
@@ -115,10 +108,10 @@ if (document.readyState === 'loading') {
     observeDynamicColorNodes();
 }
 
-// Re-apply colors after SPA navigation
-document.addEventListener('spa:navigated', applyDynamicColors);
+// Note: No spa:navigated listener needed — MutationObserver already handles DOM changes
+// Including both would cause colors to be applied twice on each navigation
 
-// Re-apply colors after dynamic content is added
+// Re-apply colors after dynamic content is added (for explicit updates)
 document.addEventListener('xs:content-updated', applyDynamicColors);
 
 // Export for manual triggering

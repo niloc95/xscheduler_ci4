@@ -337,38 +337,12 @@ export async function initActivityChart(canvasId) {
                 borderRadius: 4
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 400,
-                easing: 'easeOutQuart'
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-            },
+        options: getChartOptions({
+            plugins: { legend: { display: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: colors.grid,
-                    },
-                    ticks: {
-                        color: colors.text
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false,
-                    },
-                    ticks: {
-                        color: colors.text
-                    }
-                },
-            },
-        }
+                x: { grid: { display: false } }
+            }
+        })
     });
     
     return chartInstances[canvasId];
@@ -451,12 +425,13 @@ function updateStatusBreakdown(labels, data) {
         'Pending': 'pendingCount',
         'Completed': 'completedCount',
         'Cancelled': 'cancelledCount',
-        'No-show': 'noShowCount',
+        'No-show': 'noShowCount', // Both capitalizations map to same element
         'No-Show': 'noShowCount'
     };
     
     // Reset all to 0 first
-    Object.values(statusMapping).forEach(id => {
+    const uniqueIds = new Set(Object.values(statusMapping));
+    uniqueIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.textContent = '0';
     });
@@ -495,8 +470,12 @@ export async function initAllCharts() {
 /**
  * Set up dark mode listener for chart color updates
  * Uses debouncing to prevent excessive re-renders
+ * Guarded to prevent observer accumulation on SPA navigation
  */
 export function setupDarkModeListener() {
+    if (window.__chartsDarkModeListenerBound) return;
+    window.__chartsDarkModeListenerBound = true;
+    
     let darkModeDebounce = null;
     
     const observer = new MutationObserver((mutations) => {
@@ -523,9 +502,13 @@ export function setupDarkModeListener() {
 
 /**
  * Initialize filter button event listeners
+ * Guarded to prevent listener accumulation on SPA navigation
  */
 export function initChartFilters() {
     document.querySelectorAll('[data-chart-period]').forEach(btn => {
+        if (btn.dataset.chartFilterBound) return;
+        btn.dataset.chartFilterBound = 'true';
+        
         btn.addEventListener('click', () => {
             setChartPeriod(btn.dataset.chartPeriod);
         });

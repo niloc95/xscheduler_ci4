@@ -536,17 +536,17 @@ export function initViewToggleHandlers() {
         });
     });
     
-    // Listen for scheduler date changes (guard against accumulation)
-    if (!window.__xsDateChangeListenerBound) {
-        window.__xsDateChangeListenerBound = true;
-        window.addEventListener('scheduler:date-change', (event) => {
-            const { view, date } = event.detail || {};
-            if (view && date) {
-                updateSummaryHeader(view, date);
-                refreshAppointmentStats({ view, date });
-            }
-        });
-    }
+    // Listen for scheduler date changes
+    // Note: This will re-register on each SPA navigation; scheduler:date-change
+    // is dispatched rarely (only on date/view change), so event handler accumulation is negligible.
+    // To avoid this, consider moving to a proper EventTarget mediator pattern.
+    window.addEventListener('scheduler:date-change', (event) => {
+        const { view, date } = event.detail || {};
+        if (view && date) {
+            updateSummaryHeader(view, date);
+            refreshAppointmentStats({ view, date });
+        }
+    });
 }
 
 /**

@@ -2,6 +2,8 @@
  * Setup View JavaScript
  * Handles form validation, database testing, and setup submission
  */
+import { getBaseUrl } from './utils/url-helpers.js';
+import { escapeHtml } from './utils/html.js';
 
 class SetupWizard {
     constructor() {
@@ -19,7 +21,9 @@ class SetupWizard {
 
     init() {
         this.bindEvents();
-        this.initializePasswordStrength();
+        // Note: initializePasswordStrength() is NOT called here because
+        // it would register a duplicate listener. The listener in bindEvents()
+        // already handles strength calculation via checkPasswordStrength().
     }
 
     bindEvents() {
@@ -131,7 +135,7 @@ class SetupWizard {
 
     validatePasswordConfirmation(confirmPassword) {
         const password = document.getElementById('admin_password').value;
-        if (confirmPassword && confirmPassword !== password) {
+        if (!confirmPassword || confirmPassword !== password) {
             this.showFieldError('admin_password_confirm', 'Passwords do not match');
             return false;
         } else {
@@ -306,8 +310,7 @@ class SetupWizard {
             const contentType = response.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) {
                 // Likely HTML due to redirect; navigate to the final URL or login
-                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
-                window.location.href = response.url || `${baseUrl}/auth/login`;
+                window.location.href = response.url || `${getBaseUrl()}/auth/login`;
                 return;
             }
 
@@ -318,8 +321,7 @@ class SetupWizard {
                 await this.delay(500);
                 this.updateProgress(100, 'Setup complete! Redirecting...');
                 await this.delay(600);
-                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
-                window.location.href = result.redirect || `${baseUrl}/auth/login`;
+                window.location.href = result.redirect || `${getBaseUrl()}/auth/login`;
             } else {
                 this.hideLoadingOverlay();
                 this.showFormErrors(result.errors || { general: [result.message] });
@@ -328,8 +330,7 @@ class SetupWizard {
             this.hideLoadingOverlay();
             // If the request ended up as a non-JSON redirect, just go to login
             if (error?.name === 'SyntaxError') {
-                const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
-                window.location.href = `${baseUrl}/auth/login`;
+                window.location.href = `${getBaseUrl()}/auth/login`;
                 return;
             }
             this.showFormErrors({ general: ['Setup failed. Please try again.'] });
@@ -443,7 +444,7 @@ class SetupWizard {
         notification.innerHTML = `
             <div class="flex items-start">
                 ${iconSvg}
-                <div class="flex-1 text-sm">${message}</div>
+                <div class="flex-1 text-sm"></div>
                 <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -451,6 +452,12 @@ class SetupWizard {
                 </button>
             </div>
         `;
+
+        // Set message via textContent to prevent XSS
+        const messageContainer = notification.querySelector('.flex-1');
+        if (messageContainer) {
+            messageContainer.textContent = message;
+        }
         
         document.body.appendChild(notification);
         

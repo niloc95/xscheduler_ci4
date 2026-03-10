@@ -128,9 +128,9 @@ const SPA = (() => {
     const href = a.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return false;
     if (!sameOrigin(href)) return false;
-  // Do not intercept FullCalendar internal navigation links
-  if (a.hasAttribute('data-navlink')) return false;
-  if (a.closest('.fc')) return false;
+    // Do not intercept FullCalendar internal navigation links
+    if (a.hasAttribute('data-navlink')) return false;
+    if (a.closest('.fc')) return false;
     // opt-out
     if (a.dataset?.noSpa === 'true' || a.classList.contains('no-spa')) return false;
     return true;
@@ -150,11 +150,15 @@ const SPA = (() => {
     const doc = parser.parseFromString(text, 'text/html');
     const spaContentEl = doc.querySelector('#spa-content');
     
+    if (!spaContentEl) {
+      throw new Error('Server response missing #spa-content element');
+    }
+    
     // Get page title from multiple sources
-    let pageTitle = spaContentEl?.getAttribute('data-page-title');
+    let pageTitle = spaContentEl.getAttribute('data-page-title');
     
     // Also check for child element with data-page-title (dashboard layout uses this)
-    if (!pageTitle && spaContentEl) {
+    if (!pageTitle) {
       const titleEl = spaContentEl.querySelector('[data-page-title]');
       pageTitle = titleEl?.getAttribute('data-page-title');
     }
@@ -162,7 +166,7 @@ const SPA = (() => {
 
     // Return object with SPA content, page title, and optional header controls
     return {
-      html: spaContentEl?.innerHTML ?? text,
+      html: spaContentEl.innerHTML,
       pageTitle: pageTitle || null,
       headerControlsHtml: headerControlsEl?.innerHTML ?? null,
       hasHeaderControls: Boolean(headerControlsEl)
@@ -176,14 +180,21 @@ const SPA = (() => {
     el.classList.toggle('opacity-50', busy);
   };
 
+  const runViewInitializers = () => {
+    if (window.xsViewInitializers) {
+      window.xsViewInitializers.forEach(fn => {
+        try { fn(); } catch (e) { console.error('View initializer error:', e); }
+      });
+    }
+  };
+
   const navigate = async (url, push = true) => {
     const el = content();
     if (!el) return;
     try {
-      const targetPath = normalizePathname(url);
-      // If navigating to the same path (ignoring hash), do nothing
       const dest = new URL(url, window.location.href);
       const cur = new URL(window.location.href);
+      const targetPath = dest.pathname;
       if (dest.pathname === cur.pathname && dest.search === cur.search) {
         if (push && dest.hash !== cur.hash) {
           history.pushState({ spa: true }, '', dest.href);
@@ -234,13 +245,9 @@ const SPA = (() => {
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
       // Also trigger per-view init functions if registered
-      if (window.xsViewInitializers) {
-        window.xsViewInitializers.forEach(fn => {
-          try { fn(); } catch (e) { console.error('View initializer error:', e); }
-        });
-      }
-  // Always reset scroll position to top when switching views
-  focusMain(true);
+      runViewInitializers();
+      // Always reset scroll position to top when switching views
+      focusMain(true);
     } catch (e) {
       console.error('SPA navigation failed:', e);
       window.location.href = url; // graceful fallback
@@ -287,15 +294,8 @@ const SPA = (() => {
       try {
         data = JSON.parse(text);
       } catch (e) {
-        // If not JSON, treat as HTML content and navigate
-        el.innerHTML = text;
-        document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url: action } }));
-        if (window.xsViewInitializers) {
-          window.xsViewInitializers.forEach(fn => {
-            try { fn(); } catch (e) { console.error('View initializer error:', e); }
-          });
-        }
-        focusMain(true);
+        // If not JSON, treat as HTML content and navigate to the response URL
+        await navigate(res.url || action, false);
         return;
       }
 
@@ -398,17 +398,18 @@ const SPA = (() => {
 // XSNotify — global toast API that bridges to xs:flash events
 window.XSNotify = {
   toast({ type = 'info', title = '', message = '', autoClose = true, duration = 5000 } = {}) {
-    const text = message || title;
+    // Combine title and message if both provided
+    const text = message ? (title ? `${title}: ${message}` : message) : title;
     if (!text) return;
     document.dispatchEvent(new CustomEvent('xs:flash', {
-      detail: { type, message: text }
+      detail: { type, message: text, autoClose, duration }
     }));
   }
 };
 
 // Flash message handler - listen for xs:flash events
 document.addEventListener('xs:flash', (e) => {
-  const { type = 'info', message = '' } = e.detail;
+  const { type = 'info', message = '', autoClose = true, duration = 5000 } = e.detail;
   if (!message) return;
 
   // Find or create flash messages container
@@ -445,7 +446,7 @@ document.addEventListener('xs:flash', (e) => {
   alert.className += ' ' + (colors[type] || colors.info);
 
   // Escape message to prevent XSS
-  const safeMessage = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const safeMessage = window.xsEscapeHtml ? window.xsEscapeHtml(message) : message;
 
   alert.innerHTML = `
     <span class="material-symbols-outlined flex-shrink-0 text-lg">${icons[type] || icons.info}</span>
@@ -455,11 +456,13 @@ document.addEventListener('xs:flash', (e) => {
 
   container.appendChild(alert);
 
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    alert.classList.add('xs-fade-out');
-    setTimeout(() => alert.remove(), 300);
-  }, 5000);
+  // Auto-dismiss if enabled
+  if (autoClose) {
+    setTimeout(() => {
+      alert.classList.add('xs-fade-out');
+      setTimeout(() => alert.remove(), 300);
+    }, duration);
+  }
 });
 
 // Initialize on DOM ready

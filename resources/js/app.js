@@ -1,5 +1,3 @@
-// (CoreUI components are no longer used for the sidebar. Keep charts init only.)
-
 // Import appointment booking form functionality
 import { initAppointmentForm } from './modules/appointments/appointments-form.js';
 
@@ -52,18 +50,13 @@ window.xsEscapeHtml = window.xsEscapeHtml || function(str) {
 
 // Export shared time-slot UI initializer to window so PHP views can call it
 import { initTimeSlotsUI } from './modules/appointments/time-slots-ui.js';
-if (typeof window !== 'undefined') {
-    window.initTimeSlotsUI = initTimeSlotsUI;
-}
+window.initTimeSlotsUI = initTimeSlotsUI;
 
-// Export analytics chart functions to window for PHP views
-if (typeof window !== 'undefined') {
-    window.initRevenueTrendChart = initRevenueTrendChart;
-    window.initTimeSlotChart = initTimeSlotChart;
-    window.initServiceDistributionChart = initServiceDistributionChart;
-}
+// Export analytics chart functions for PHP views
+window.initRevenueTrendChart = initRevenueTrendChart;
+window.initTimeSlotChart = initTimeSlotChart;
+window.initServiceDistributionChart = initServiceDistributionChart;
 
-// Also export as ES6 modules
 export { 
     initRevenueTrendChart, 
     initTimeSlotChart, 
@@ -80,7 +73,7 @@ export {
  */
 function initializeComponents() {
     // Initialize charts and dashboard widgets
-    if (typeof Charts !== 'undefined') {
+    if (Charts) {
         Charts.initAllCharts();
         Charts.setupDarkModeListener();
         Charts.initChartFilters();
@@ -89,7 +82,7 @@ function initializeComponents() {
     // Initialize custom scheduler
     initScheduler();
 
-    // Wire up dashboard filters
+    // Wire up dashboard filters (with deduplication guards)
     initStatusFilterControls();
     
     // Wire up summary card filters (clickable status cards)
@@ -133,28 +126,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Re-initialize after SPA navigation
 document.addEventListener('spa:navigated', function(e) {
+    // Reset scheduler init attempts on each navigation
+    schedulerInitAttempts = 0;
+    
     initializeComponents();
     // Only refresh stats on pages that have dashboard stat elements
     if (document.getElementById('upcomingCount') || document.getElementById('completedCount')) {
         refreshAppointmentStats();
     }
-
 });
 
-if (!window.__xsSchedulerSettingsSavedBound) {
-    window.__xsSchedulerSettingsSavedBound = true;
-    document.addEventListener('settingsSaved', async () => {
-        if (!window.scheduler || !window.scheduler.settingsManager) return;
-        await window.scheduler.settingsManager.refresh();
-        await window.scheduler.loadAppointments();
-        window.scheduler.render();
-    });
-}
+// Listen for settings changes and refresh scheduler
+document.addEventListener('settingsSaved', async () => {
+    if (!window.scheduler || !window.scheduler.settingsManager) return;
+    await window.scheduler.settingsManager.refresh();
+    await window.scheduler.loadAppointments();
+    window.scheduler.render();
+}, { once: false });
 
-if (typeof window !== 'undefined') {
-    window.refreshAppointmentStats = refreshAppointmentStats;
-    window.emitAppointmentsUpdated = emitAppointmentsUpdated;
-}
+window.refreshAppointmentStats = refreshAppointmentStats;
+window.emitAppointmentsUpdated = emitAppointmentsUpdated;
 
 /**
  * Initialize custom scheduler
@@ -237,8 +228,3 @@ async function initScheduler() {
         `;
     }
 }
-
-// ============================================
-// PAGE INITIALIZATION
-// ============================================
-

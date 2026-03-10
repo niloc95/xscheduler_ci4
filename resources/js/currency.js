@@ -4,6 +4,7 @@
  * Provides currency formatting functionality based on application settings.
  * Can be used independently or integrated with the settings manager.
  */
+import { getBaseUrl } from './utils/url-helpers.js';
 
 class CurrencyFormatter {
     constructor() {
@@ -19,8 +20,8 @@ class CurrencyFormatter {
         if (this.loaded) return;
         
         try {
-            const baseUrl = String(window.__BASE_URL__ || '').replace(/\/+$/, '');
-            const url = baseUrl ? `${baseUrl}/api/v1/settings/localization` : '/api/v1/settings/localization';
+            const baseUrl = getBaseUrl();
+            const url = `${baseUrl}/api/v1/settings/localization`;
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();

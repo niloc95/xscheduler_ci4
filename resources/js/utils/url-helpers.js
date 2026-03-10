@@ -57,12 +57,6 @@ export function buildUrl(path, params = {}) {
     return url.toString();
 }
 
-/**
- * Build an API URL
- * @param {string} endpoint - API endpoint (without /api prefix)
- * @returns {string} The full API URL
- */
-export function apiUrl(endpoint) {
-    const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
-    return withBaseUrl('/api' + path);
-}
+// Note: apiUrl() helper was removed as it was unused across the codebase.
+// All consumers use inline template literals: `${getBaseUrl()}/api/...`
+// If API URL construction needs to be centralized later, add it back with clear documentation.

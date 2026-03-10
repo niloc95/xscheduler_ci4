@@ -1636,14 +1636,12 @@ function bootstrapPublicBooking() {
     return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  function formatDatePillLabel(dateStr) {
-    return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
+  // Alias for consistency - both use same formatting
+  const formatDatePillLabel = formatDateSelectLabel;
 
   /**
-   * Resolve the provider location for a given date.
-   * Matches the date's day-of-week (0=Sun..6=Sat) against the provider's
-   * configured location days from ctx.providers[].locations[].days[].
+   * Helper: Find the matching location object for a given providerId + date string.
+   * Checks configured location days from ctx.providers[].locations[].days[].
    * Returns the matching location object or null.
    */
   function resolveLocationForDate(providerId, dateStr) {
@@ -1825,16 +1823,4 @@ class SubmissionError extends Error {
     super(message);
     this.details = details;
   }
-}
-
-function escapeHtml(value) {
-  if (value === undefined || value === null) {
-    return '';
-  }
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
