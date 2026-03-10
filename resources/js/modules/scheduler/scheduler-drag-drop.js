@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class DragDropManager {
@@ -310,11 +311,7 @@ export class DragDropManager {
                     appointmentId
                 };
 
-                if (typeof window.emitAppointmentsUpdated === 'function') {
-                    window.emitAppointmentsUpdated(detail);
-                } else {
-                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
-                }
+                emitAppointmentsUpdated(detail);
             }
         } catch (error) {
             console.error('❌ Reschedule failed:', error);

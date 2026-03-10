@@ -19,6 +19,7 @@
 import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { getStatusColors, isDarkMode } from './appointment-colors.js';
+import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class AppointmentDetailsModal {
@@ -561,11 +562,7 @@ export class AppointmentDetailsModal {
                     status: newStatus
                 };
 
-                if (typeof window.emitAppointmentsUpdated === 'function') {
-                    window.emitAppointmentsUpdated(detail);
-                } else {
-                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
-                }
+                emitAppointmentsUpdated(detail);
             }
             
         } catch (error) {
@@ -698,11 +695,7 @@ export class AppointmentDetailsModal {
                     status: 'cancelled'
                 };
 
-                if (typeof window.emitAppointmentsUpdated === 'function') {
-                    window.emitAppointmentsUpdated(detail);
-                } else {
-                    window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
-                }
+                emitAppointmentsUpdated(detail);
             }
             
         } catch (error) {

@@ -71,11 +71,20 @@ export class SettingsManager {
             if (!response.ok) throw new Error('Failed to load localization settings');
             
             const data = await response.json();
-            this.settings.localization = data.data || data;
+            const raw = data.data || data;
+            
+            // Normalize to camelCase (API may return snake_case)
+            this.settings.localization = {
+                timezone: raw.timezone || raw.time_zone,
+                timeFormat: raw.timeFormat || raw.time_format || '12h',
+                dateFormat: raw.dateFormat || raw.date_format || 'MM/DD/YYYY',
+                firstDayOfWeek: raw.firstDayOfWeek ?? raw.first_day_of_week ?? 0,
+                first_day: raw.first_day // Keep for legacy string-based lookup
+            };
             
             // Apply timezone globally
-            if (this.settings.localization.time_zone) {
-                window.appTimezone = this.settings.localization.time_zone;
+            if (this.settings.localization.timezone) {
+                window.appTimezone = this.settings.localization.timezone;
             }
             
             return this.settings.localization;
@@ -85,13 +94,10 @@ export class SettingsManager {
             const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
             this.settings.localization = {
                 timezone: browserTimezone,
-                time_zone: browserTimezone, // Keep both for compatibility
                 timeFormat: '12h',
-                time_format: '12h',
                 dateFormat: 'MM/DD/YYYY',
-                date_format: 'MM/DD/YYYY',
                 firstDayOfWeek: 0,
-                first_day_of_week: 0
+                first_day: undefined
             };
             return this.settings.localization;
         }
@@ -99,28 +105,21 @@ export class SettingsManager {
 
     getTimezone() {
         return this.settings.localization?.timezone || 
-               this.settings.localization?.time_zone || 
                Intl.DateTimeFormat().resolvedOptions().timeZone || 
                'UTC';
     }
 
     getTimeFormat() {
-        // Check both camelCase (from API) and snake_case (legacy) formats
-        return this.settings.localization?.timeFormat || 
-               this.settings.localization?.time_format || 
-               '12h';
+        return this.settings.localization?.timeFormat || '12h';
     }
 
     getDateFormat() {
-        return this.settings.localization?.date_format || 'MM/DD/YYYY';
+        return this.settings.localization?.dateFormat || 'MM/DD/YYYY';
     }
 
     getFirstDayOfWeek() {
         // Check for numeric value first (preferred format: 0-6)
-        // Try camelCase from API first, then snake_case from context
-        const numericValue = this.settings.localization?.firstDayOfWeek ?? 
-                            this.settings.localization?.first_day_of_week ??
-                            this.settings.localization?.context?.first_day_of_week;
+        const numericValue = this.settings.localization?.firstDayOfWeek;
         if (typeof numericValue === 'number') {
             logger.debug(`📅 First day of week from settings: ${numericValue} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][numericValue]})`);
             return numericValue;
