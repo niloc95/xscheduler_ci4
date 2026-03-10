@@ -8,17 +8,13 @@
  */
 
 import { syncDateNavLabel } from './date-nav-label.js';
+import { applyDynamicColors } from '../../utils/dynamic-colors.js';
 
 /**
  * Update the date display in the toolbar
  * @param {object} scheduler - Scheduler instance
  */
 function updateDateDisplay(scheduler) {
-    if (typeof scheduler.updateDateDisplay === 'function') {
-        scheduler.updateDateDisplay();
-        return;
-    }
-
     const displayEl = document.getElementById('scheduler-date-display');
     syncDateNavLabel(displayEl, {
         date: scheduler.currentDate,
@@ -54,12 +50,15 @@ export function renderProviderLegend(scheduler) {
         `;
     }).join('');
 
+    applyDynamicColors();
+
     // Add click handlers for toggling providers
     legendEl.querySelectorAll('.provider-legend-item').forEach(btn => {
         btn.addEventListener('click', () => {
             const providerId = parseInt(btn.dataset.providerId);
             scheduler.toggleProvider(providerId);
             renderProviderLegend(scheduler); // Re-render to update styles
+            applyDynamicColors();
         });
     });
 }

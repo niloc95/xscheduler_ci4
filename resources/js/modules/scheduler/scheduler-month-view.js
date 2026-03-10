@@ -10,7 +10,8 @@ import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } fr
 import { withBaseUrl } from '../../utils/url-helpers.js';
 import { buildAvailabilityContext, isAvailabilityDebugMode, renderAvailabilityDebugPayload, renderAvailabilitySlotList } from './availability-panel-shared.js';
 import { buildMonthGridWeeks, getRotatedWeekdayShortNames } from './calendar-grid-shared.js';
-import { renderMonthAppointmentBlock, renderMonthEmptyState, renderMonthModelAppointmentChip, renderMonthShell } from './month-view-components.js';
+import { renderMonthAppointmentBlock, renderMonthEmptyState, renderMonthShell } from './month-view-components.js';
+import { renderAppointmentChip } from './appointment-chip.js';
 import { escapeHtml } from '../../utils/html.js';
 
 export class MonthView {
@@ -990,7 +991,7 @@ export class MonthView {
             const providerColor = getProviderColor(provider);
             const statusColors = getStatusColors(apt.status, isDarkMode());
 
-            return renderMonthModelAppointmentChip({
+            return renderAppointmentChip({
                 appointmentId: apt.id,
                 providerColor,
                 statusColor: statusColors.bg,
@@ -1004,7 +1005,7 @@ export class MonthView {
             const providerColor = getProviderColor(provider);
             const statusColors = getStatusColors(apt.status, isDarkMode());
 
-            return renderMonthModelAppointmentChip({
+            return renderAppointmentChip({
                 appointmentId: apt.id,
                 providerColor,
                 statusColor: statusColors.bg,

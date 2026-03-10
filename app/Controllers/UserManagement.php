@@ -63,6 +63,7 @@
 namespace App\Controllers;
 
 use App\Models\LocationModel;
+use App\Models\AppointmentModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
@@ -704,7 +705,55 @@ class UserManagement extends BaseController
     }
 
     /**
-     * Delete user (hard delete, admin only)
+     * Delete preview payload for role-aware confirmation modal.
+     */
+    public function deletePreview(int $userId)
+    {
+        $currentUserId = session()->get('user_id');
+        $currentUser = session()->get('user');
+
+        if (!$currentUserId || !$currentUser) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ]);
+        }
+
+        if (($currentUser['role'] ?? '') !== 'admin') {
+            return $this->response->setStatusCode(403)->setJSON([
+                'success' => false,
+                'message' => 'Only administrators can delete users.',
+            ]);
+        }
+
+        $targetUser = $this->userModel->find($userId);
+        if (!$targetUser) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'success' => false,
+                'message' => 'User not found.',
+            ]);
+        }
+
+        $impact = $this->buildDeleteImpact($targetUser);
+        $blockCode = $this->getDeleteBlockCode((int) $currentUserId, $targetUser, $impact);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'allowed' => $blockCode === null,
+            'blockCode' => $blockCode,
+            'typedConfirmationRequired' => ($targetUser['role'] ?? '') === 'provider',
+            'target' => [
+                'id' => (int) $targetUser['id'],
+                'name' => $targetUser['name'] ?? 'Unknown',
+                'email' => $targetUser['email'] ?? null,
+                'role' => $targetUser['role'] ?? null,
+            ],
+            'impact' => $impact,
+        ]);
+    }
+
+    /**
+     * Delete user with role-aware safety checks and transactional cleanup.
      */
     public function delete(int $userId)
     {
@@ -715,28 +764,15 @@ class UserManagement extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        // Only admins can delete users
-        if ($currentUser['role'] !== 'admin') {
+        if (($currentUser['role'] ?? '') !== 'admin') {
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(403)->setJSON([
                     'success' => false,
-                    'message' => 'Only administrators can delete users.'
+                    'message' => 'Only administrators can delete users.',
                 ]);
             }
             return redirect()->to(base_url('user-management'))
-                           ->with('error', 'Only administrators can delete users.');
-        }
-
-        // Cannot delete yourself
-        if ($currentUserId === $userId) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'success' => false,
-                    'message' => 'You cannot delete your own account.'
-                ]);
-            }
-            return redirect()->to(base_url('user-management'))
-                           ->with('error', 'You cannot delete your own account.');
+                ->with('error', 'Only administrators can delete users.');
         }
 
         $targetUser = $this->userModel->find($userId);
@@ -744,34 +780,96 @@ class UserManagement extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(404)->setJSON([
                     'success' => false,
-                    'message' => 'User not found.'
+                    'message' => 'User not found.',
                 ]);
             }
             return redirect()->to(base_url('user-management'))
-                           ->with('error', 'User not found.');
+                ->with('error', 'User not found.');
         }
 
-        // Perform the delete
-        if ($this->userModel->delete($userId)) {
+        $impact = $this->buildDeleteImpact($targetUser);
+        $blockCode = $this->getDeleteBlockCode((int) $currentUserId, $targetUser, $impact);
+        if ($blockCode !== null) {
+            $message = $blockCode === 'LAST_ADMIN'
+                ? 'Cannot delete the last active administrator. Promote another admin first.'
+                : 'You cannot delete this user.';
+
             if ($this->request->isAJAX()) {
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'User "' . esc($targetUser['name']) . '" deleted successfully.',
-                    'redirect' => base_url('user-management')
+                return $this->response->setStatusCode(422)->setJSON([
+                    'success' => false,
+                    'message' => $message,
+                    'blockCode' => $blockCode,
                 ]);
             }
-            return redirect()->to(base_url('user-management'))
-                           ->with('success', 'User "' . esc($targetUser['name']) . '" deleted successfully.');
-        } else {
+
+            return redirect()->to(base_url('user-management'))->with('error', $message);
+        }
+
+        $db = $this->userModel->db;
+        $db->transStart();
+
+        $role = $targetUser['role'] ?? '';
+        if ($role === 'provider') {
+            $this->cancelProviderUpcomingAppointments((int) $userId, (int) $currentUserId);
+
+            $db->table($db->prefixTable('providers_services'))->where('provider_id', $userId)->delete();
+            $db->table($db->prefixTable('provider_staff_assignments'))->where('provider_id', $userId)->delete();
+            $db->table($db->prefixTable('provider_schedules'))->where('provider_id', $userId)->delete();
+
+            if ($this->tableExists('receptionist_providers')) {
+                $db->table($db->prefixTable('receptionist_providers'))->where('provider_id', $userId)->delete();
+            }
+
+            if ($this->tableExists('locations')) {
+                $db->table($db->prefixTable('locations'))->where('provider_id', $userId)->delete();
+            }
+
+            $this->cleanupProviderNotificationLinks((int) $userId);
+        } elseif ($role === 'staff') {
+            $db->table($db->prefixTable('provider_staff_assignments'))->where('staff_id', $userId)->delete();
+            if ($this->tableExists('receptionist_providers')) {
+                $db->table($db->prefixTable('receptionist_providers'))->where('receptionist_id', $userId)->delete();
+            }
+        }
+
+        $deleted = $this->userModel->delete($userId);
+        $db->transComplete();
+
+        if (!$deleted || !$db->transStatus()) {
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(500)->setJSON([
                     'success' => false,
-                    'message' => 'Failed to delete user. Please try again.'
+                    'message' => 'Failed to delete user. Please try again.',
                 ]);
             }
             return redirect()->to(base_url('user-management'))
-                           ->with('error', 'Failed to delete user. Please try again.');
+                ->with('error', 'Failed to delete user. Please try again.');
         }
+
+        $this->auditModel->log(
+            'user_deleted',
+            (int) $currentUserId,
+            'user',
+            (int) $userId,
+            null,
+            [
+                'name' => $targetUser['name'] ?? null,
+                'role' => $role,
+                'impact' => $impact,
+            ]
+        );
+
+        $successMessage = 'User "' . ($targetUser['name'] ?? 'Unknown') . '" deleted successfully.';
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $successMessage,
+                'redirect' => base_url('user-management'),
+            ]);
+        }
+
+        return redirect()->to(base_url('user-management'))
+            ->with('success', $successMessage);
     }
 
     // =========================================================================
@@ -847,6 +945,161 @@ class UserManagement extends BaseController
     }
 
     // Helper methods
+
+    private function buildDeleteImpact(array $targetUser): array
+    {
+        $db = $this->userModel->db;
+        $userId = (int) ($targetUser['id'] ?? 0);
+        $role = $targetUser['role'] ?? '';
+
+        $impact = [
+            'role' => $role,
+            'adminCount' => (int) $this->userModel->where('role', 'admin')->where('is_active', 1)->countAllResults(),
+            'servicesLinked' => 0,
+            'staffLinked' => 0,
+            'appointmentsTotal' => 0,
+            'appointmentsUpcoming' => 0,
+            'appointmentsPast' => 0,
+            'locations' => 0,
+            'notificationsQueued' => 0,
+            'notificationsDelivered' => 0,
+            'providerLinks' => 0,
+            'providerNames' => [],
+            'upcomingCustomerAppointments' => 0,
+        ];
+
+        if ($role === 'provider') {
+            $impact['servicesLinked'] = (int) $db->table($db->prefixTable('providers_services'))->where('provider_id', $userId)->countAllResults();
+            $impact['staffLinked'] = (int) $db->table($db->prefixTable('provider_staff_assignments'))->where('provider_id', $userId)->countAllResults();
+
+            if ($this->tableExists('locations')) {
+                $impact['locations'] = (int) $db->table($db->prefixTable('locations'))->where('provider_id', $userId)->countAllResults();
+            }
+
+            $appointmentsTable = $db->prefixTable('appointments');
+            $nowUtc = gmdate('Y-m-d H:i:s');
+            $impact['appointmentsTotal'] = (int) $db->table($appointmentsTable)->where('provider_id', $userId)->countAllResults();
+            $impact['appointmentsUpcoming'] = (int) $db->table($appointmentsTable)
+                ->where('provider_id', $userId)
+                ->where('start_at >=', $nowUtc)
+                ->countAllResults();
+            $impact['appointmentsPast'] = max(0, $impact['appointmentsTotal'] - $impact['appointmentsUpcoming']);
+
+            if ($this->tableExists('notification_queue')) {
+                $impact['notificationsQueued'] = (int) $db->table($db->prefixTable('notification_queue') . ' nq')
+                    ->join($appointmentsTable . ' a', 'a.id = nq.appointment_id', 'inner')
+                    ->where('a.provider_id', $userId)
+                    ->countAllResults();
+            }
+
+            if ($this->tableExists('notification_delivery_logs')) {
+                $impact['notificationsDelivered'] = (int) $db->table($db->prefixTable('notification_delivery_logs') . ' ndl')
+                    ->join($appointmentsTable . ' a', 'a.id = ndl.appointment_id', 'inner')
+                    ->where('a.provider_id', $userId)
+                    ->countAllResults();
+            }
+        } elseif ($role === 'staff') {
+            $assignments = $db->table($db->prefixTable('provider_staff_assignments') . ' psa')
+                ->select('p.name')
+                ->join($db->prefixTable('users') . ' p', 'p.id = psa.provider_id', 'left')
+                ->where('psa.staff_id', $userId)
+                ->get()
+                ->getResultArray();
+
+            $impact['providerLinks'] = count($assignments);
+            $impact['providerNames'] = array_values(array_filter(array_map(static function ($row) {
+                return $row['name'] ?? null;
+            }, $assignments)));
+        } elseif ($role === 'customer') {
+            $impact['upcomingCustomerAppointments'] = (int) $db->table($db->prefixTable('appointments'))
+                ->where('customer_id', $userId)
+                ->where('start_at >=', gmdate('Y-m-d H:i:s'))
+                ->countAllResults();
+        }
+
+        return $impact;
+    }
+
+    private function getDeleteBlockCode(int $currentUserId, array $targetUser, array $impact): ?string
+    {
+        $targetUserId = (int) ($targetUser['id'] ?? 0);
+        if ($currentUserId === $targetUserId) {
+            return 'SELF_DELETE';
+        }
+
+        if (($targetUser['role'] ?? '') === 'admin' && ((int) ($impact['adminCount'] ?? 0)) <= 1) {
+            return 'LAST_ADMIN';
+        }
+
+        return null;
+    }
+
+    private function cancelProviderUpcomingAppointments(int $providerId, int $actorId): void
+    {
+        $appointmentModel = new AppointmentModel();
+        $nowUtc = gmdate('Y-m-d H:i:s');
+
+        $appointments = $appointmentModel
+            ->where('provider_id', $providerId)
+            ->where('start_at >=', $nowUtc)
+            ->whereNotIn('status', ['cancelled', 'completed', 'no-show'])
+            ->findAll();
+
+        foreach ($appointments as $appointment) {
+            $existingNotes = trim((string) ($appointment['notes'] ?? ''));
+            $deletionNote = '[system] Appointment cancelled due to provider account deletion.';
+            $newNotes = $existingNotes !== '' ? ($existingNotes . PHP_EOL . $deletionNote) : $deletionNote;
+
+            $appointmentModel->update((int) $appointment['id'], [
+                'status' => 'cancelled',
+                'notes' => $newNotes,
+            ]);
+        }
+
+        if (!empty($appointments)) {
+            $this->auditModel->log(
+                'provider_delete_cancelled_appointments',
+                $actorId,
+                'user',
+                $providerId,
+                null,
+                ['count' => count($appointments)]
+            );
+        }
+    }
+
+    private function cleanupProviderNotificationLinks(int $providerId): void
+    {
+        $db = $this->userModel->db;
+        $appointmentIds = $db->table($db->prefixTable('appointments'))
+            ->select('id')
+            ->where('provider_id', $providerId)
+            ->get()
+            ->getResultArray();
+
+        $appointmentIds = array_values(array_map(static function ($row) {
+            return (int) ($row['id'] ?? 0);
+        }, $appointmentIds));
+        $appointmentIds = array_values(array_filter($appointmentIds));
+
+        if (empty($appointmentIds)) {
+            return;
+        }
+
+        if ($this->tableExists('notification_queue')) {
+            $db->table($db->prefixTable('notification_queue'))->whereIn('appointment_id', $appointmentIds)->delete();
+        }
+
+        if ($this->tableExists('notification_delivery_logs')) {
+            $db->table($db->prefixTable('notification_delivery_logs'))->whereIn('appointment_id', $appointmentIds)->delete();
+        }
+    }
+
+    private function tableExists(string $table): bool
+    {
+        $db = $this->userModel->db;
+        return $db->tableExists($db->prefixTable($table)) || $db->tableExists($table);
+    }
 
     private function getUsersBasedOnRole(int $currentUserId): array
     {

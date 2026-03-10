@@ -235,14 +235,15 @@
 
 					<div class="card-footer flex flex-col gap-3 sm:flex-row sm:justify-end">
 						<?= view('components/button', [
-							'text' => 'Cancel',
+							'tag' => 'a',
+							'label' => 'Cancel',
 							'href' => base_url('user-management'),
 							'variant' => 'outlined',
 							'size' => 'md',
 							'icon' => 'cancel'
 						]) ?>
 						<?= view('components/button', [
-							'text' => 'Update User',
+							'label' => 'Update User',
 							'type' => 'submit',
 							'variant' => 'filled',
 							'size' => 'md',

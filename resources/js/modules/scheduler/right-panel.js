@@ -12,6 +12,7 @@ import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
 import { escapeHtml } from '../../utils/html.js';
+import { fetchSlotsForDate, groupSlotsByHour } from './availability-slots.js';
 
 export class RightPanel {
     constructor(scheduler) {
@@ -321,53 +322,18 @@ export class RightPanel {
      */
     async _fetchSlotsForProviders(providerIds, date, serviceId, locationId = null) {
         const dateKey = date.toFormat('yyyy-MM-dd');
-        const slotsByProvider = {};
-
-        const fetchPromises = providerIds.map(async (providerId) => {
-            const normalizedLocationId = Number(locationId || 0) || 0;
-            const cacheKey = `${providerId}:${serviceId}:${dateKey}:${normalizedLocationId}`;
-
-            // Check cache first
-            if (this._slotCache.has(cacheKey)) {
-                slotsByProvider[providerId] = this._slotCache.get(cacheKey);
-                return;
-            }
-
-            // Fetch from API
-            try {
-                const provider = this.scheduler.providers.find(p => Number(p.id) === Number(providerId));
-                const params = new URLSearchParams({
-                    provider_id: String(providerId),
-                    date: dateKey,
-                    service_id: String(serviceId),
-                });
-                if (normalizedLocationId > 0) {
-                    params.set('location_id', String(normalizedLocationId));
-                }
-
-                const url = withBaseUrl(`/api/availability/slots?${params.toString()}`);
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Failed to fetch slots for provider ${providerId}:`, response.status);
-                    slotsByProvider[providerId] = { provider, slots: [] };
-                    return;
-                }
-
-                const data = await response.json();
-                const slots = data.data?.slots || [];
-
-                // Store in cache
-                this._slotCache.set(cacheKey, { provider, slots });
-                slotsByProvider[providerId] = { provider, slots };
-
-            } catch (error) {
-                console.error(`Error fetching slots for provider ${providerId}:`, error);
-                slotsByProvider[providerId] = { provider: null, slots: [] };
-            }
+        const slots = await fetchSlotsForDate({
+            providerIds,
+            dateIso: dateKey,
+            serviceId,
+            locationId,
         });
 
-        await Promise.all(fetchPromises);
-        return slotsByProvider;
+        return slots.map(({ providerId, slot }) => ({
+            providerId,
+            provider: this.scheduler.providers.find((p) => Number(p.id) === Number(providerId)) || null,
+            slot,
+        }));
     }
 
     /**
@@ -389,32 +355,7 @@ export class RightPanel {
      * Group slots by hour for display.
      */
     _groupSlotsByHour(slotsByProvider) {
-        const grouped = {};
-        
-        Object.entries(slotsByProvider).forEach(([providerId, { provider, slots }]) => {
-            slots.forEach(slot => {
-                // Parse start time to get hour
-                const startTime = DateTime.fromISO(slot.startTime, { setZone: true }).setZone(this.scheduler.options.timezone);
-                const hourKey = startTime.hour; // 0-23
-                const hourLabel = startTime.toFormat('h:mm a');
-                
-                if (!grouped[hourKey]) {
-                    grouped[hourKey] = {
-                        hour: hourKey,
-                        label: hourLabel,
-                        slots: []
-                    };
-                }
-                
-                grouped[hourKey].slots.push({
-                    ...slot,
-                    providerId: parseInt(providerId, 10),
-                    provider
-                });
-            });
-        });
-        
-        return grouped;
+        return groupSlotsByHour(slotsByProvider, this.scheduler.options.timezone);
     }
     
     /**
@@ -428,12 +369,12 @@ export class RightPanel {
 
             // Get unique hour label (use first slot's formatted time)
             const hourLabel = group.slots.length > 0
-                ? DateTime.fromISO(group.slots[0].startTime, { setZone: true }).setZone(this.scheduler.options.timezone).toFormat('h a')
+                ? DateTime.fromISO(group.slots[0].start, { setZone: true }).setZone(this.scheduler.options.timezone).toFormat('h a')
                 : `${hourKey}:00`;
 
             const slotsInHour = group.slots.map(slot => {
                 const providerColor = getProviderColor(slot.provider);
-                const startTime = DateTime.fromISO(slot.startTime, { setZone: true }).setZone(this.scheduler.options.timezone);
+                const startTime = DateTime.fromISO(slot.start, { setZone: true }).setZone(this.scheduler.options.timezone);
                 const timeLabel = startTime.toFormat('h:mm a');
 
                 return `
@@ -441,7 +382,7 @@ export class RightPanel {
                             data-provider-id="${slot.providerId}"
                             data-service-id="${context.serviceId || ''}"
                             data-location-id="${context.locationId || ''}"
-                            data-start-time="${slot.startTime}"
+                            data-start-time="${slot.start}"
                             data-date="${targetDate.toFormat('yyyy-MM-dd')}"
                             data-border-color="${escapeHtml(providerColor)}"
                             title="${slot.provider?.name || 'Provider'} - ${timeLabel}">
@@ -638,6 +579,14 @@ export class RightPanel {
         const html = await this._renderSlotPanel(state);
         slotContainer.innerHTML = html;
         this._attachSlotListeners(document.getElementById('rp-body') || slotContainer);
+    }
+
+    async refreshSlotsFromExternal(serviceId = null) {
+        this._panelServiceId = this._parseOptionalInt(serviceId);
+        if (!this._lastRenderState) {
+            return;
+        }
+        await this._refreshSlotsOnly(this._lastRenderState);
     }
 
     async _refreshControlsAndSlots(state) {

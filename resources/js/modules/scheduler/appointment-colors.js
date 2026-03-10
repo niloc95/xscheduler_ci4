@@ -137,7 +137,11 @@ export const STATUS_COLORS_DARK = {
  * @returns {object} Color scheme for the status
  */
 export function getStatusColors(status, darkMode = false) {
-    const normalizedStatus = status?.toLowerCase() || 'pending';
+    const rawStatus = status?.toLowerCase() || 'pending';
+    const normalizedStatus = {
+        noshow: 'no-show',
+        no_show: 'no-show',
+    }[rawStatus] || rawStatus;
     const colors = darkMode ? STATUS_COLORS_DARK : STATUS_COLORS;
     return colors[normalizedStatus] || colors.pending;
 }
@@ -221,34 +225,6 @@ export function isDarkMode() {
     
     // Final fallback: system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
-/**
- * Get CSS styles for appointment card
- * @param {object} appointment - Appointment object
- * @param {object} provider - Provider object
- * @returns {string} CSS style string
- */
-export function getAppointmentStyles(appointment, provider) {
-    const darkMode = isDarkMode();
-    const statusColors = getStatusColors(appointment.status, darkMode);
-    
-    return `
-        background-color: ${statusColors.bg};
-        border-color: ${statusColors.border};
-        color: ${statusColors.text};
-    `.trim();
-}
-
-/**
- * Get provider dot HTML
- * @param {object} provider - Provider object
- * @param {string} size - Size class (e.g., 'w-3 h-3')
- * @returns {string} HTML for provider color dot
- */
-export function getProviderDotHtml(provider, size = 'w-3 h-3') {
-    const color = getProviderColor(provider);
-    return `<span class="inline-block ${size} rounded-full" data-bg-color="${color}" title="${provider?.name || 'Provider'}"></span>`;
 }
 
 /**

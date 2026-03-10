@@ -1,4 +1,5 @@
 import { normalizeCalendarPayload } from './modules/calendar/calendar-utils.js';
+import { escapeHtml } from './utils/html.js';
 
 const root = document.getElementById('public-booking-root');
 
@@ -1636,8 +1637,10 @@ function bootstrapPublicBooking() {
     return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  // Alias for consistency - both use same formatting
-  const formatDatePillLabel = formatDateSelectLabel;
+  // Keep as a function declaration (not const alias) to avoid TDZ during first render.
+  function formatDatePillLabel(dateStr) {
+    return formatDateSelectLabel(dateStr);
+  }
 
   /**
    * Helper: Find the matching location object for a given providerId + date string.

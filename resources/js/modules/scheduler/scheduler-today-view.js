@@ -14,18 +14,12 @@ import { getStatusColors, getProviderColor, getProviderInitials, isDarkMode } fr
 import { withBaseUrl } from '../../utils/url-helpers.js';
 import { escapeHtml } from '../../utils/html.js';
 import { getBusinessHours } from './time-grid-utils.js';
+import { createDebugLogger } from './scheduler-debug.js';
 
 export class TodayView {
     constructor(scheduler) {
         this.scheduler = scheduler;
-    }
-
-    debugLog(...args) {
-        if (this.scheduler?.debugLog) {
-            this.scheduler.debugLog(...args);
-        } else if (typeof window !== 'undefined' && window.appConfig?.debug) {
-            console.log(...args);
-        }
+        this.debugLog = createDebugLogger(() => this.scheduler);
     }
 
     render(container, data) {
@@ -140,7 +134,8 @@ export class TodayView {
         const { startHour, endHour } = getBusinessHours({ businessHours: businessHoursConfig });
         const hoursPerDay = endHour - startHour;
         const slotsPerHour = 2; // 30-minute slots
-        const totalSlots = hoursPerDay * slotsPerHour;
+        const providerCount = Math.max(1, this.scheduler?.visibleProviders?.size || this.providers?.length || 1);
+        const totalSlots = hoursPerDay * slotsPerHour * providerCount;
         const usedSlots = todayAppointments.filter(apt => !['cancelled', 'noshow'].includes(apt.status)).length;
         const freeSlots = Math.max(0, totalSlots - usedSlots);
 
@@ -184,7 +179,7 @@ export class TodayView {
                 <div class="flex items-start gap-3">
                     <!-- Provider Avatar -->
                     <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                         style="background-color: ${providerColor};">
+                        data-bg-color="${providerColor}">
                         ${providerInitials}
                     </div>
                     

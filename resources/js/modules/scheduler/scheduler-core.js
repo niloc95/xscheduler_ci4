@@ -523,6 +523,46 @@ export class SchedulerCore {
     get selectedServiceId() {
         return this.activeFilters?.serviceId || null;
     }
+
+    /**
+     * Set selected service ID without forcing a full scheduler re-render.
+     * Used by week view slot panel service selector.
+     * @param {number|null|string} value
+     */
+    set selectedServiceId(value) {
+        this.activeFilters = this.activeFilters || {};
+        this.activeFilters.serviceId = this.parseOptionalInteger(value);
+
+        if (this.rightPanel) {
+            this.rightPanel.invalidateCache();
+            if (typeof this.rightPanel.refreshSlotsFromExternal === 'function') {
+                this.rightPanel.refreshSlotsFromExternal(this.activeFilters.serviceId);
+            }
+        }
+    }
+
+    /**
+     * Public service list API for child views (week/day slot selectors).
+     * Falls back to filter DOM options when provider-specific list is not loaded.
+     * @returns {Array<{id:number,label:string,name?:string}>}
+     */
+    get services() {
+        const serviceSelect = document.getElementById('service-filter') || document.querySelector('[name="service_id"]');
+        if (!serviceSelect) {
+            return [];
+        }
+
+        return Array.from(serviceSelect.options || [])
+            .map((option) => {
+                const id = this.parseOptionalInteger(option.value);
+                if (!id) return null;
+                return {
+                    id,
+                    label: option.textContent?.trim() || `Service ${id}`,
+                };
+            })
+            .filter(Boolean);
+    }
     
     /**
      * Invalidate caches after appointment mutations.

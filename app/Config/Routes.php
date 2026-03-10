@@ -90,6 +90,7 @@ $routes->group('user-management', ['filter' => 'setup'], function($routes) {
     $routes->post('update/(:num)', 'UserManagement::update/$1', ['filter' => 'role:admin,provider']);
     $routes->post('deactivate/(:num)', 'UserManagement::deactivate/$1', ['filter' => 'role:admin,provider']);
     $routes->post('activate/(:num)', 'UserManagement::activate/$1', ['filter' => 'role:admin,provider']);
+    $routes->get('delete-preview/(:num)', 'UserManagement::deletePreview/$1', ['filter' => 'role:admin']);
     $routes->post('delete/(:num)', 'UserManagement::delete/$1', ['filter' => 'role:admin']);
 });
 

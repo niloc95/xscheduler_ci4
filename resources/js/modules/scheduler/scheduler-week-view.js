@@ -3,19 +3,20 @@
  */
 
 import { DateTime } from 'luxon';
-import { getProviderColor, getStatusColors } from './appointment-colors.js';
+import { getProviderColor, getProviderInitials, getStatusColors, getStatusLabel } from './appointment-colors.js';
 import { weekStart } from './time-grid-utils.js';
 import { getRotatedWeekdayShortNames } from './calendar-grid-shared.js';
-import { renderMonthModelAppointmentChip } from './month-view-components.js';
+import { renderAppointmentChip } from './appointment-chip.js';
 import {
     renderWeekShell,
     renderWeekDayCell,
     renderWeekSlotPanel,
     renderWeekAppointmentRow,
-    renderWeekAppointmentEmptyState,
     renderWeekSlotRow,
-    renderWeekSlotEmptyState,
+    renderEmptyState,
 } from './week-view-components.js';
+import { fetchSlotsForDate } from './availability-slots.js';
+import { createDebugLogger } from './scheduler-debug.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
 
 export class WeekView {
@@ -24,14 +25,7 @@ export class WeekView {
         this.selectedDate = null;
         this._slotRequestToken = 0;
         this._appointmentById = new Map();
-    }
-
-    debugLog(...args) {
-        if (this.scheduler?.debugLog) {
-            this.scheduler.debugLog(...args);
-        } else if (typeof window !== 'undefined' && window.appConfig?.debug) {
-            console.log(...args);
-        }
+        this.debugLog = createDebugLogger(() => this.scheduler);
     }
 
     async render(container, data) {
@@ -60,7 +54,7 @@ export class WeekView {
         container.innerHTML = renderWeekShell({
             dayHeadersHtml,
             weekGridHtml,
-            slotPanelHtml: this._renderSlotPanelSkeleton(),
+            slotPanelHtml: '<div class="text-xs text-gray-500 dark:text-gray-400">Loading day details...</div>',
         });
 
         this._attachListeners(container);
@@ -95,7 +89,9 @@ export class WeekView {
 
         const cellClasses = [
             'scheduler-day-cell',
-            'min-h-[160px]',
+            'min-h-[80px]',
+            'sm:min-h-[120px]',
+            'md:min-h-[160px]',
             'h-full',
             'p-2',
             'rounded-lg',
@@ -113,13 +109,14 @@ export class WeekView {
                   : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]',
         ].join(' ');
 
-        const chips = dayAppointments.slice(0, 3).map((appointment) => {
+        const maxChips = window.matchMedia('(max-width: 639px)').matches ? 2 : 3;
+        const chips = dayAppointments.slice(0, maxChips).map((appointment) => {
             const provider = this.providers.find((p) => Number(p.id) === Number(appointment.providerId));
             const providerColor = getProviderColor(provider);
             const statusColor = getStatusColors(appointment.status, false).dot;
             const customerName = appointment.customerName || appointment.title || 'Appointment';
 
-            return renderMonthModelAppointmentChip({
+            return renderAppointmentChip({
                 appointmentId: appointment.id,
                 providerColor,
                 statusColor,
@@ -134,16 +131,7 @@ export class WeekView {
             dayNumberClass: dayNumColor,
             cellClasses,
             appointmentChipsHtml: chips,
-            overflowLabel: dayAppointments.length > 3 ? `+${dayAppointments.length - 3} more` : '',
-        });
-    }
-
-    _renderSlotPanelSkeleton() {
-        return renderWeekSlotPanel({
-            selectedDateLabel: this.selectedDate.toFormat('EEEE, MMMM d, yyyy'),
-            appointmentCount: 0,
-            appointmentListHtml: renderWeekAppointmentEmptyState(),
-            slotsHtml: renderWeekSlotEmptyState('Loading slots...'),
+            overflowLabel: dayAppointments.length > maxChips ? `+${dayAppointments.length - maxChips} more` : '',
         });
     }
 
@@ -151,97 +139,155 @@ export class WeekView {
         const slotPanel = container.querySelector('#week-slot-panel');
         if (!slotPanel) return;
 
-        const appointmentListHtml = selectedAppointments.length
-            ? selectedAppointments
-                  .slice()
-                  .sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis())
-                  .map((appointment) =>
-                      renderWeekAppointmentRow({
-                          appointmentId: appointment.id,
-                          timeLabel: this._formatAppointmentTime(appointment),
-                          providerName: this._providerNameFor(appointment.providerId),
-                          serviceName: appointment.serviceName || '',
-                      }),
-                  )
-                  .join('')
-            : renderWeekAppointmentEmptyState();
+        const appointmentListHtml = this._renderAppointmentList(selectedAppointments);
 
         slotPanel.innerHTML = renderWeekSlotPanel({
             selectedDateLabel: this.selectedDate.toFormat('EEEE, MMMM d, yyyy'),
             appointmentCount: selectedAppointments.length,
             appointmentListHtml,
-            slotsHtml: renderWeekSlotEmptyState('Loading slots...'),
+            slotsHtml: renderEmptyState('Loading slots...'),
+            serviceSelectorHtml: '',
         });
 
         this._attachPanelListeners(slotPanel);
 
-        const slotsHtml = await this._loadSlotsHtml();
-        slotPanel.innerHTML = renderWeekSlotPanel({
-            selectedDateLabel: this.selectedDate.toFormat('EEEE, MMMM d, yyyy'),
-            appointmentCount: selectedAppointments.length,
-            appointmentListHtml,
-            slotsHtml,
-        });
+        const requestToken = ++this._slotRequestToken;
+        const { slotsHtml, serviceSelectorHtml } = await this._loadSlotsHtml();
+        if (requestToken !== this._slotRequestToken) {
+            return;
+        }
 
-        this._attachPanelListeners(slotPanel);
+        const slotsElement = slotPanel.querySelector('[data-week-slots-content]');
+        if (slotsElement) {
+            slotsElement.innerHTML = slotsHtml;
+        }
+
+        const selectorElement = slotPanel.querySelector('[data-week-service-selector]');
+        if (selectorElement) {
+            selectorElement.innerHTML = serviceSelectorHtml;
+        }
+    }
+
+    _renderAppointmentList(selectedAppointments) {
+        if (!selectedAppointments.length) {
+            return renderEmptyState('No appointments for this day.');
+        }
+
+        return selectedAppointments
+            .slice()
+            .sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis())
+            .map((appointment) => {
+                const provider = this.providers.find((p) => Number(p.id) === Number(appointment.providerId));
+                const providerColor = getProviderColor(provider);
+                const statusColors = getStatusColors(appointment.status, false);
+
+                return renderWeekAppointmentRow({
+                    appointmentId: appointment.id,
+                    timeLabel: this._formatAppointmentTime(appointment),
+                    providerName: this._providerNameFor(appointment.providerId),
+                    serviceName: appointment.serviceName || '',
+                    providerInitials: getProviderInitials(provider?.name || provider?.username),
+                    providerColor,
+                    statusLabel: getStatusLabel(appointment.status),
+                    statusDotColor: statusColors.dot,
+                });
+            })
+            .join('');
     }
 
     async _loadSlotsHtml() {
         const selectedServiceId = Number(this.scheduler?.selectedServiceId || 0);
+        const serviceOptions = this._getServiceOptions();
+
         if (!selectedServiceId) {
-            return renderWeekSlotEmptyState('Select a service to view available slots.');
+            return {
+                slotsHtml: renderEmptyState('Select a service to view available slots.'),
+                serviceSelectorHtml: this._renderServiceSelector(serviceOptions),
+            };
         }
 
         const providerIds = Array.from(this.scheduler?.visibleProviders || []);
         if (!providerIds.length) {
-            return renderWeekSlotEmptyState('No providers selected.');
+            return {
+                slotsHtml: renderEmptyState('No providers selected.'),
+                serviceSelectorHtml: this._renderServiceSelector(serviceOptions),
+            };
         }
 
-        const requestToken = ++this._slotRequestToken;
         const dateKey = this.selectedDate.toFormat('yyyy-MM-dd');
-        const slots = [];
-
-        await Promise.all(
-            providerIds.map(async (providerId) => {
-                try {
-                    const response = await fetch(
-                        withBaseUrl(`/api/availability/slots?provider_id=${providerId}&date=${dateKey}&service_id=${selectedServiceId}`),
-                    );
-                    if (!response.ok) return;
-                    const data = await response.json();
-                    const rawSlots = data?.data?.slots || [];
-                    rawSlots.forEach((slot) => {
-                        slots.push({ providerId, slot });
-                    });
-                } catch {
-                    // Ignore provider fetch failures; partial slots are still useful.
-                }
-            }),
-        );
-
-        if (requestToken !== this._slotRequestToken) {
-            return renderWeekSlotEmptyState('Loading slots...');
-        }
-
-        if (!slots.length) {
-            return renderWeekSlotEmptyState('No available slots for this day.');
-        }
-
-        slots.sort((a, b) => {
-            const at = DateTime.fromISO(a.slot.start).toMillis();
-            const bt = DateTime.fromISO(b.slot.start).toMillis();
-            return at - bt;
+        const slots = await fetchSlotsForDate({
+            providerIds,
+            dateIso: dateKey,
+            serviceId: selectedServiceId,
         });
 
-        return slots
+        if (!slots.length) {
+            return {
+                slotsHtml: renderEmptyState('No available slots for this day.'),
+                serviceSelectorHtml: this._renderServiceSelector(serviceOptions),
+            };
+        }
+
+        const slotsHtml = slots
             .slice(0, 30)
             .map(({ providerId, slot }) =>
                 renderWeekSlotRow({
+                    providerId,
                     providerName: this._providerNameFor(providerId),
                     timeLabel: slot.label || this._formatSlotLabel(slot),
+                    slotStart: slot.start,
+                    slotEnd: slot.end,
                 }),
             )
             .join('');
+
+        return {
+            slotsHtml,
+            serviceSelectorHtml: this._renderServiceSelector(serviceOptions),
+        };
+    }
+
+    _renderServiceSelector(serviceOptions) {
+        if (!serviceOptions.length) {
+            return '<span class="text-[11px] text-gray-500 dark:text-gray-400">No services available</span>';
+        }
+
+        const currentServiceId = Number(this.scheduler?.selectedServiceId || 0);
+        const optionsHtml = serviceOptions
+            .map((service) => {
+                const selected = Number(service.id) === currentServiceId ? 'selected' : '';
+                return `<option value="${service.id}" ${selected}>${service.label || service.name || `Service ${service.id}`}</option>`;
+            })
+            .join('');
+
+        return `
+            <select class="text-[11px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1" data-week-service-select>
+                <option value="">Select service</option>
+                ${optionsHtml}
+            </select>
+        `;
+    }
+
+    _getServiceOptions() {
+        if (Array.isArray(this.scheduler?.services) && this.scheduler.services.length) {
+            return this.scheduler.services;
+        }
+
+        const serviceSelect = document.getElementById('service-filter') || document.querySelector('[name="service_id"]');
+        if (!serviceSelect) {
+            return [];
+        }
+
+        return Array.from(serviceSelect.options || [])
+            .map((option) => {
+                const id = Number(option.value || 0);
+                if (!id) return null;
+                return {
+                    id,
+                    label: option.textContent?.trim() || `Service ${id}`,
+                };
+            })
+            .filter(Boolean);
     }
 
     _providerNameFor(providerId) {
@@ -249,16 +295,18 @@ export class WeekView {
         return provider?.name || provider?.username || 'Provider';
     }
 
+    _timeFormatter() {
+        return this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
+    }
+
     _formatAppointmentTime(appointment) {
-        const is24 = this.settings?.getTimeFormat?.() === '24h';
-        const fmt = is24 ? 'HH:mm' : 'h:mm a';
+        const fmt = this._timeFormatter();
         return `${appointment.startDateTime.toFormat(fmt)} - ${appointment.endDateTime.toFormat(fmt)}`;
     }
 
     _formatSlotLabel(slot) {
         try {
-            const is24 = this.settings?.getTimeFormat?.() === '24h';
-            const fmt = is24 ? 'HH:mm' : 'h:mm a';
+            const fmt = this._timeFormatter();
             const s = DateTime.fromISO(slot.start).setZone(this.scheduler.options.timezone);
             const e = DateTime.fromISO(slot.end).setZone(this.scheduler.options.timezone);
             return `${s.toFormat(fmt)} - ${e.toFormat(fmt)}`;
@@ -274,7 +322,6 @@ export class WeekView {
                 const dateIso = button.dataset.weekSelectDay;
                 this.selectedDate = DateTime.fromISO(dateIso, { zone: this.scheduler.options.timezone }).startOf('day');
 
-                // Re-render to refresh selected-day highlight + chips + slot panel.
                 await this.render(container, {
                     currentDate: this.currentDate,
                     appointments: this.scheduler.getFilteredAppointments(),
@@ -285,19 +332,66 @@ export class WeekView {
                 });
             });
         });
-
-        this._attachPanelListeners(container);
     }
 
     _attachPanelListeners(scopeElement) {
-        scopeElement.querySelectorAll('[data-appointment-id]').forEach((el) => {
-            el.addEventListener('click', () => {
-                const appointmentId = Number(el.dataset.appointmentId);
+        scopeElement.addEventListener('click', (event) => {
+            const appointmentElement = event.target.closest('[data-appointment-id]');
+            if (appointmentElement) {
+                const appointmentId = Number(appointmentElement.dataset.appointmentId);
                 const appointment = this._appointmentById.get(appointmentId);
                 if (appointment && this.scheduler?.handleAppointmentClick) {
                     this.scheduler.handleAppointmentClick(appointment);
                 }
-            });
+                return;
+            }
+
+            const slotElement = event.target.closest('[data-slot-start]');
+            if (slotElement) {
+                const providerId = Number(slotElement.dataset.providerId || 0);
+                const start = slotElement.dataset.slotStart;
+                const date = this.selectedDate.toISODate();
+                const serviceId = Number(this.scheduler?.selectedServiceId || 0);
+
+                if (!providerId || !start || !serviceId) {
+                    return;
+                }
+
+                const timeString = DateTime.fromISO(start).setZone(this.scheduler.options.timezone).toFormat('HH:mm');
+                const params = new URLSearchParams({
+                    provider_id: String(providerId),
+                    service_id: String(serviceId),
+                    date,
+                    time: timeString,
+                });
+
+                window.location.href = withBaseUrl(`/appointments/create?${params.toString()}`);
+            }
+        });
+
+        scopeElement.addEventListener('change', async (event) => {
+            const selector = event.target.closest('[data-week-service-select]');
+            if (!selector) {
+                return;
+            }
+
+            const selectedId = Number(selector.value || 0) || null;
+            this.scheduler.selectedServiceId = selectedId;
+
+            const slotsElement = scopeElement.querySelector('[data-week-slots-content]');
+            if (slotsElement) {
+                slotsElement.innerHTML = renderEmptyState('Loading slots...');
+            }
+
+            const requestToken = ++this._slotRequestToken;
+            const { slotsHtml } = await this._loadSlotsHtml();
+            if (requestToken !== this._slotRequestToken) {
+                return;
+            }
+
+            if (slotsElement) {
+                slotsElement.innerHTML = slotsHtml;
+            }
         });
     }
 
