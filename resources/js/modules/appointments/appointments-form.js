@@ -1,4 +1,5 @@
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 
 function getBrowserTimezone() {
     try {
@@ -146,16 +147,6 @@ export async function initAppointmentForm() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-function emitAppointmentsUpdated(action) {
-    if (typeof window === 'undefined') return;
-    const detail = { source: 'appointment-form', action };
-    if (typeof window.emitAppointmentsUpdated === 'function') {
-        window.emitAppointmentsUpdated(detail);
-    } else {
-        window.dispatchEvent(new CustomEvent('appointments-updated', { detail }));
-    }
-}
 
 function syncClientTimezoneFields(form) {
     const tzField = form?.querySelector('#client_timezone');

@@ -18,6 +18,7 @@
 
 import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
+import { getStatusColors, isDarkMode } from './appointment-colors.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class AppointmentDetailsModal {
@@ -494,18 +495,17 @@ export class AppointmentDetailsModal {
     
     /**
      * Update status select styling based on status value
+     * Uses canonical color definitions from appointment-colors.js
      */
     updateStatusSelectStyling(selectElement, status) {
-        const statusColors = {
-            confirmed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-            completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-            'no-show': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-        };
+        const darkMode = isDarkMode();
+        const colors = getStatusColors(status, darkMode);
         
-        const colorClass = statusColors[status] || statusColors.pending;
-        selectElement.className = `text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
+        // Build Tailwind classes from color object (use chipBg, chipBorder, chipText)
+        const bgClass = darkMode ? 'bg-opacity-20' : '';
+        const colorClass = `${colors.chipBg} ${colors.chipText} ${colors.chipBorder}`;
+        
+        selectElement.className = `text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
     }
     
     /**
