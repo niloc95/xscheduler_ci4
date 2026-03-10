@@ -195,10 +195,10 @@ class EventLayoutService
         $clusterMap = []; // idx => cluster_col_count
 
         foreach (array_keys($events) as $idx) {
+            $event = $events[$idx];
             // Check canonical 'start'/'end' keys first (from AppointmentFormatterService)
             $eventStart = $this->toMillis($event['start'] ?? $event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
-            $eventEnd = $this->toMillis($event['end'] ?? s($event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
-            $eventEnd = $this->toMillis($event['end_at'] ?? $event['end_datetime'] ?? $event['endDateTime']);
+            $eventEnd = $this->toMillis($event['end'] ?? $event['end_at'] ?? $event['end_datetime'] ?? $event['endDateTime']);
 
             // Find all events that overlap with this event
             $maxCol = $columnMap[$idx];
@@ -208,10 +208,10 @@ class EventLayoutService
                     continue;
                 }
 
+                $otherEvent = $events[$otherIdx];
                 // Check canonical 'start'/'end' keys first (from AppointmentFormatterService)
                 $otherStart = $this->toMillis($otherEvent['start'] ?? $otherEvent['start_at'] ?? $otherEvent['start_datetime'] ?? $otherEvent['startDateTime']);
-                $otherEnd = $this->toMillis($otherEvent['end'] ?? s($otherEvent['start_at'] ?? $otherEvent['start_datetime'] ?? $otherEvent['startDateTime']);
-                $otherEnd = $this->toMillis($otherEvent['end_at'] ?? $otherEvent['end_datetime'] ?? $otherEvent['endDateTime']);
+                $otherEnd = $this->toMillis($otherEvent['end'] ?? $otherEvent['end_at'] ?? $otherEvent['end_datetime'] ?? $otherEvent['endDateTime']);
 
                 // Check if overlap
                 if ($eventStart < $otherEnd && $otherStart < $eventEnd) {
