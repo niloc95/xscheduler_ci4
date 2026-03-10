@@ -191,7 +191,7 @@ async function initScheduler() {
         // Create scheduler instance
         const scheduler = new SchedulerCore('appointments-inline-calendar', {
             mode: 'server',
-            initialView: 'week',
+            initialView: 'day',
             initialDate: initialDate,
             timezone: window.appTimezone || 'America/New_York',
             apiBaseUrl: `${getBaseUrl()}/api/appointments`,

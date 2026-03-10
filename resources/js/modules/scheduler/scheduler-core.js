@@ -31,7 +31,7 @@ export class SchedulerCore {
         }
         
         this.currentDate = DateTime.now();
-        this.currentView = 'week'; // 'today', 'day', 'week', or 'month' - Week view is default
+        this.currentView = 'day'; // 'today', 'day', 'week', or 'month' - Day view is default
         this.appointments = [];
         this.providers = [];
         this.visibleProviders = new Set();
@@ -96,7 +96,7 @@ export class SchedulerCore {
             this.currentDate = this.currentDate.setZone(this.options.timezone);
             this.debugLog(`🌍 Timezone: ${this.options.timezone}`);
 
-            if (this.options?.initialView && ['week', 'month'].includes(this.options.initialView)) {
+            if (this.options?.initialView && ['day', 'week', 'month'].includes(this.options.initialView)) {
                 this.currentView = this.options.initialView;
             }
 

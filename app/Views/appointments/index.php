@@ -85,8 +85,8 @@
         <div class="flex items-center p-1 bg-surface-1 dark:bg-gray-800/50 rounded-xl" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
             <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-700 transition-colors">Today</button>
             <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="day">Day</button>
-            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-600 text-white shadow-sm hover:bg-primary-700 transition-colors" data-view="week">Week</button>
+            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-600 text-white shadow-sm hover:bg-primary-700 transition-colors" data-view="day">Day</button>
+            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="week">Week</button>
             <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="month">Month</button>
         </div>
 
