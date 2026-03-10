@@ -166,6 +166,11 @@ function syncClientTimezoneFields(form) {
 
 function attachVisibilityRefresh() {
     if (typeof document === 'undefined') return;
+    
+    // Guard: prevent listener accumulation on SPA navigation
+    if (document.body?.dataset.visibilityRefreshBound === 'true') return;
+    if (document.body) document.body.dataset.visibilityRefreshBound = 'true';
+    
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             const form = document.querySelector('form[action*="/appointments/store"]');

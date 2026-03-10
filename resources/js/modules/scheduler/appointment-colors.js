@@ -211,8 +211,16 @@ export function getContrastColor(hexColor) {
  * @returns {boolean}
  */
 export function isDarkMode() {
-    return document.documentElement.classList.contains('dark') ||
-           window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Check data-theme attribute first (primary dark mode indicator)
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (theme === 'dark') return true;
+    if (theme === 'light') return false;
+    
+    // Fallback: check .dark class if data-theme not set
+    if (document.documentElement.classList.contains('dark')) return true;
+    
+    // Final fallback: system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 /**
@@ -328,5 +336,7 @@ export const PROVIDER_THEMES = {
  */
 export function getProviderTheme(provider) {
     const color = provider?.color || DEFAULT_PROVIDER_COLOR;
-    return PROVIDER_THEMES[color] || PROVIDER_THEMES[DEFAULT_PROVIDER_COLOR];
+    // Normalize hex color to uppercase for case-insensitive matching
+    const normalizedColor = typeof color === 'string' ? color.toUpperCase() : color;
+    return PROVIDER_THEMES[normalizedColor] || PROVIDER_THEMES[DEFAULT_PROVIDER_COLOR];
 }

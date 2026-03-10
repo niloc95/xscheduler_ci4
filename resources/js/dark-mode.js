@@ -55,6 +55,13 @@ class DarkModeManager {
         this.theme = theme;
 
         document.documentElement.setAttribute('data-theme', theme);
+        
+        // Add/remove .dark class for Tailwind's dark mode utilities
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
 
         // Update theme-color meta tag
         this.updateThemeColor(theme);

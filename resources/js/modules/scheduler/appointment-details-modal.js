@@ -541,17 +541,17 @@ export class AppointmentDetailsModal {
             this.currentAppointment.status = newStatus;
             
             // Show success message
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast('Status updated successfully', 'success');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'success', message: 'Status updated successfully' }
+            }));
             
             // Hide save button
             saveBtn.classList.add('hidden');
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save';
             
-            // Refresh calendar to show updated status
-            await this.scheduler.loadAppointments();
+            // Refresh calendar to show updated status (respects server mode)
+            await this.scheduler.loadData();
             this.scheduler.render();
 
             if (typeof window !== 'undefined') {
@@ -580,11 +580,9 @@ export class AppointmentDetailsModal {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save';
             
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast(error.message || 'Failed to update status', 'error');
-            } else {
-                alert(error.message || 'Failed to update status. Please try again.');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'error', message: error.message || 'Failed to update status. Please try again.' }
+            }));
         }
     }
     
@@ -621,9 +619,9 @@ export class AppointmentDetailsModal {
             this.originalNotes = newNotes;
             
             // Show success message
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast('Notes updated successfully', 'success');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'success', message: 'Notes updated successfully' }
+            }));
             
             // Hide save button
             saveBtn.classList.add('hidden');
@@ -637,11 +635,9 @@ export class AppointmentDetailsModal {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Notes';
             
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast(error.message || 'Failed to update notes', 'error');
-            } else {
-                alert(error.message || 'Failed to update notes. Please try again.');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'error', message: error.message || 'Failed to update notes. Please try again.' }
+            }));
         }
     }
     
@@ -686,13 +682,13 @@ export class AppointmentDetailsModal {
             }
             
             // Show success message
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast('Appointment cancelled successfully', 'success');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'success', message: 'Appointment cancelled successfully' }
+            }));
             
             // Refresh calendar
             this.close();
-            await this.scheduler.loadAppointments();
+            await this.scheduler.loadData();
             this.scheduler.render();
 
             if (typeof window !== 'undefined') {
@@ -711,11 +707,9 @@ export class AppointmentDetailsModal {
             
         } catch (error) {
             console.error('Error cancelling appointment:', error);
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast('Failed to cancel appointment', 'error');
-            } else {
-                alert('Failed to cancel appointment. Please try again.');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'error', message: error.message || 'Failed to cancel appointment. Please try again.' }
+            }));
         }
     }
     
@@ -727,11 +721,9 @@ export class AppointmentDetailsModal {
         const phone = appointment.customerPhone || '';
         
         if (!phone) {
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast('No phone number available for this customer', 'error');
-            } else {
-                alert('No phone number available for this customer.');
-            }
+            document.dispatchEvent(new CustomEvent('xs:flash', {
+                detail: { type: 'error', message: 'No phone number available for this customer' }
+            }));
             return;
         }
         
@@ -788,9 +780,9 @@ export class AppointmentDetailsModal {
         window.open(waUrl, '_blank');
         
         // Show feedback
-        if (this.scheduler.dragDropManager) {
-            this.scheduler.dragDropManager.showToast('Opening WhatsApp...', 'info');
-        }
+        document.dispatchEvent(new CustomEvent('xs:flash', {
+            detail: { type: 'info', message: 'Opening WhatsApp...' }
+        }));
     }
     
     /**
@@ -807,11 +799,9 @@ export class AppointmentDetailsModal {
         if (channel === 'email') {
             const email = appointment.customerEmail || '';
             if (!email) {
-                if (this.scheduler.dragDropManager) {
-                    this.scheduler.dragDropManager.showToast('No email address available for this customer', 'error');
-                } else {
-                    alert('No email address available for this customer.');
-                }
+                document.dispatchEvent(new CustomEvent('xs:flash', {
+                    detail: { type: 'error', message: 'No email address available for this customer' }
+                }));
                 return;
             }
         } else if (channel === 'sms') {

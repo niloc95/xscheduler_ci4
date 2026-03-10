@@ -178,11 +178,21 @@ function initUnifiedSidebar() {
 
 // Auto-initialize
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initUnifiedSidebar);
+    document.addEventListener('DOMContentLoaded', () => {
+        initUnifiedSidebar();
+        // Assign instance after creation
+        if (unifiedSidebar instanceof UnifiedSidebar) {
+            window.unifiedSidebar = unifiedSidebar;
+        }
+    });
 } else {
     initUnifiedSidebar();
+    // Assign instance after creation
+    if (unifiedSidebar instanceof UnifiedSidebar) {
+        window.unifiedSidebar = unifiedSidebar;
+    }
 }
 
 // Export for global access
 window.UnifiedSidebar = UnifiedSidebar;
-window.unifiedSidebar = unifiedSidebar;
+window.unifiedSidebar = null; // Assigned after initUnifiedSidebar() runs
