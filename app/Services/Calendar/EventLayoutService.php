@@ -111,15 +111,17 @@ class EventLayoutService
         $sorted = $events;
 
         usort($sorted, function ($a, $b) {
-            $aStart = $this->toMillis($a['start_at'] ?? $a['start_datetime'] ?? $a['startDateTime']);
-            $bStart = $this->toMillis($b['start_at'] ?? $b['start_datetime'] ?? $b['startDateTime']);
+            // Check canonical 'start' key first (from AppointmentFormatterService), then fallback to raw DB fields
+            $aStart = $this->toMillis($a['start'] ?? $a['start_at'] ?? $a['start_datetime'] ?? $a['startDateTime']);
+            $bStart = $this->toMillis($b['start'] ?? $b['start_at'] ?? $b['start_datetime'] ?? $b['startDateTime']);
 
             if ($aStart !== $bStart) {
                 return $aStart - $bStart;
             }
 
-            $aEnd = $this->toMillis($a['end_at'] ?? $a['end_datetime'] ?? $a['endDateTime']);
-            $bEnd = $this->toMillis($b['end_at'] ?? $b['end_datetime'] ?? $b['endDateTime']);
+            // Check canonical 'end' key first, then fallback to raw DB fields
+            $aEnd = $this->toMillis($a['end'] ?? $a['end_at'] ?? $a['end_datetime'] ?? $a['endDateTime']);
+            $bEnd = $this->toMillis($b['end'] ?? $b['end_at'] ?? $b['end_datetime'] ?? $b['endDateTime']);
 
             return $aEnd - $bEnd;
         });
@@ -145,8 +147,9 @@ class EventLayoutService
         $timeline = [];
         foreach (array_keys($events) as $idx) {
             $event = $events[$idx];
-            $start = $this->toMillis($event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
-            $end = $this->toMillis($event['end_at'] ?? $event['end_datetime'] ?? $event['endDateTime']);
+            // Check canonical 'start'/'end' keys first (from AppointmentFormatterService)
+            $start = $this->toMillis($event['start'] ?? $event['start_at'] ?? $event['start_datetime']  ?? $event['startDateTime']);
+            $end = $this->toMillis($event['end'] ?? $event['end_at'] ?? $event['end_datetime'] ?? $event['endDateTime']);
 
             $timeline[] = ['time' => $start, 'type' => 'start', 'idx' => $idx];
             $timeline[] = ['time' => $end, 'type' => 'end', 'idx' => $idx];
@@ -192,8 +195,9 @@ class EventLayoutService
         $clusterMap = []; // idx => cluster_col_count
 
         foreach (array_keys($events) as $idx) {
-            $event = $events[$idx];
-            $eventStart = $this->toMillis($event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
+            // Check canonical 'start'/'end' keys first (from AppointmentFormatterService)
+            $eventStart = $this->toMillis($event['start'] ?? $event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
+            $eventEnd = $this->toMillis($event['end'] ?? s($event['start_at'] ?? $event['start_datetime'] ?? $event['startDateTime']);
             $eventEnd = $this->toMillis($event['end_at'] ?? $event['end_datetime'] ?? $event['endDateTime']);
 
             // Find all events that overlap with this event
@@ -204,8 +208,9 @@ class EventLayoutService
                     continue;
                 }
 
-                $otherEvent = $events[$otherIdx];
-                $otherStart = $this->toMillis($otherEvent['start_at'] ?? $otherEvent['start_datetime'] ?? $otherEvent['startDateTime']);
+                // Check canonical 'start'/'end' keys first (from AppointmentFormatterService)
+                $otherStart = $this->toMillis($otherEvent['start'] ?? $otherEvent['start_at'] ?? $otherEvent['start_datetime'] ?? $otherEvent['startDateTime']);
+                $otherEnd = $this->toMillis($otherEvent['end'] ?? s($otherEvent['start_at'] ?? $otherEvent['start_datetime'] ?? $otherEvent['startDateTime']);
                 $otherEnd = $this->toMillis($otherEvent['end_at'] ?? $otherEvent['end_datetime'] ?? $otherEvent['endDateTime']);
 
                 // Check if overlap
