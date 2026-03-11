@@ -77,6 +77,7 @@ export class RightPanel {
 
         // Render provider cards
         const providerCardsHtml = this._renderProviderCards(state);
+        const showAvailabilitySections = state.currentView !== 'week';
 
         // Render panel controls
         const controlsHtml = this._renderPanelControls(state);
@@ -86,25 +87,25 @@ export class RightPanel {
 
         container.innerHTML = `
             <div class="space-y-4">
-                <!-- Slot Controls Section -->
-                <div>
-                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                        Availability Controls
-                    </h4>
-                    <div id="rp-controls-container">
-                        ${controlsHtml}
+                ${showAvailabilitySections ? `
+                    <div>
+                        <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                            Availability Controls
+                        </h4>
+                        <div id="rp-controls-container">
+                            ${controlsHtml}
+                        </div>
                     </div>
-                </div>
 
-                <!-- Slot Panel Section -->
-                <div>
-                    <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                        Available Slots
-                    </h4>
-                    <div id="slot-panel-container">
-                        ${slotPanelHtml}
+                    <div>
+                        <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                            Available Slots
+                        </h4>
+                        <div id="slot-panel-container">
+                            ${slotPanelHtml}
+                        </div>
                     </div>
-                </div>
+                ` : ''}
 
                 <!-- Provider Cards Section -->
                 <div>
