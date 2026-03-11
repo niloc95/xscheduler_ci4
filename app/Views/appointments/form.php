@@ -40,7 +40,8 @@ $pageSubtitle = $isEditMode
     <!-- Back Button -->
     <div class="mb-6">
         <?= view('components/button', [
-            'text' => 'Back to Appointments',
+            'tag' => 'a',
+            'label' => 'Back to Appointments',
             'href' => base_url('/appointments'),
             'variant' => 'text',
             'size' => 'sm',
@@ -543,13 +544,14 @@ $pageSubtitle = $isEditMode
             <!-- Form Actions -->
             <div class="mt-8 flex items-center justify-<?= $isEditMode ? 'between' : 'end' ?> gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <?= view('components/button', [
-                    'text' => 'Cancel',
+                    'tag' => 'a',
+                    'label' => 'Cancel',
                     'href' => base_url('appointments'),
                     'variant' => 'outlined',
                     'size' => 'md'
                 ]) ?>
                 <?= view('components/button', [
-                    'text' => $isEditMode ? 'Save Changes' : 'Book Appointment',
+                    'label' => $isEditMode ? 'Save Changes' : 'Book Appointment',
                     'type' => 'submit',
                     'variant' => 'filled',
                     'size' => 'md'

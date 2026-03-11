@@ -245,6 +245,13 @@ export class DayView {
         const startTime = appointment.startDateTime.toFormat(timeFormat);
         const endTime = appointment.endDateTime?.toFormat(timeFormat) ?? '';
         const durationMin = appointment.endDateTime.diff(appointment.startDateTime, 'minutes').minutes;
+        const compactStatusPill = `
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold flex-shrink-0 ${meta.bg} ${meta.text}">
+                <span class="w-1.5 h-1.5 rounded-full ${meta.dot}"></span>
+                ${meta.label}
+            </span>
+        `;
+        const statusDot = `<span class="w-2 h-2 rounded-full flex-shrink-0 ${meta.dot}" title="${meta.label}"></span>`;
 
         const lightBg = `${providerColor}18`;
         const borderCol = providerColor;
@@ -255,20 +262,27 @@ export class DayView {
             innerHtml = `
                 <div class="flex items-center gap-1 h-full overflow-hidden px-1.5">
                     <span class="text-[10px] font-semibold leading-none whitespace-nowrap" style="color:${providerColor};">${startTime}</span>
+                    ${statusDot}
                     <span class="text-[10px] font-medium truncate text-gray-700 dark:text-gray-200 leading-none">${escapeHtml(customerName)}</span>
                 </div>
             `;
         } else if (height < TIER_NAME) {
             innerHtml = `
                 <div class="flex flex-col justify-center h-full overflow-hidden px-2 py-1 gap-0.5">
-                    <div class="text-[10px] font-semibold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                    <div class="flex items-center justify-between gap-1">
+                        <div class="text-[10px] font-semibold leading-none truncate" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                        ${statusDot}
+                    </div>
                     <div class="text-xs font-semibold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
                 </div>
             `;
         } else if (height < TIER_SERVICE) {
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-2 py-1.5 gap-1">
-                    <div class="text-[10px] font-semibold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                    <div class="flex items-center justify-between gap-1.5">
+                        <div class="text-[10px] font-semibold leading-none truncate" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                        ${compactStatusPill}
+                    </div>
                     <div class="text-xs font-bold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
                     ${serviceName ? `<div class="text-[11px] truncate text-gray-500 dark:text-gray-400 leading-none flex items-center gap-1"><span class="material-symbols-outlined text-[11px]">spa</span>${escapeHtml(serviceName)}</div>` : ''}
                 </div>
@@ -278,10 +292,7 @@ export class DayView {
                 <div class="flex flex-col h-full overflow-hidden px-2.5 py-2 gap-1.5">
                     <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-semibold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</span>
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold flex-shrink-0 ${meta.bg} ${meta.text}">
-                            <span class="w-1.5 h-1.5 rounded-full ${meta.dot}"></span>
-                            ${meta.label}
-                        </span>
+                        ${compactStatusPill}
                     </div>
                     <div class="text-sm font-bold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
                     ${serviceName ? `<div class="text-xs truncate text-gray-500 dark:text-gray-400 flex items-center gap-1"><span class="material-symbols-outlined text-xs">spa</span>${escapeHtml(serviceName)}</div>` : ''}
@@ -298,10 +309,7 @@ export class DayView {
                     <div class="flex items-center justify-between px-2.5 py-1.5 flex-shrink-0" style="background-color:${providerColor}28;">
                         <span class="text-xs font-bold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</span>
                         <div class="flex items-center gap-1.5">
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.bg} ${meta.text}">
-                                <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${meta.dot}"></span>
-                                ${meta.label}
-                            </span>
+                            ${compactStatusPill.replace('text-[9px]', 'text-[10px]').replace('px-1.5 py-0.5', 'px-2 py-0.5')}
                             <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">${durationLabel}</span>
                         </div>
                     </div>
