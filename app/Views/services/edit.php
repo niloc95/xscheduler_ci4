@@ -12,7 +12,8 @@
 <?= $this->section('content') ?>
 <div class="mb-6">
         <?= view('components/button', [
-            'text' => 'Back to Services',
+            'label' => 'Back to Services',
+            'tag' => 'a',
             'href' => base_url('/services'),
             'variant' => 'text',
             'size' => 'sm',
@@ -35,15 +36,15 @@
 
         <div class="card-footer flex flex-wrap justify-end gap-3">
           <?= view('components/button', [
-              'text' => 'New Category',
+              'label' => 'New Category',
               'type' => 'button',
-              'id' => 'openCategoryModal',
+              'attrs' => ['id' => 'openCategoryModal'],
               'variant' => 'outlined',
               'size' => 'md',
               'icon' => 'add'
           ]) ?>
           <?= view('components/button', [
-              'text' => 'Save Changes',
+              'label' => 'Save Changes',
               'type' => 'submit',
               'variant' => 'filled',
               'size' => 'md',
@@ -90,14 +91,14 @@
       </div>
       <div class="mt-6 flex justify-end space-x-3">
         <?= view('components/button', [
-            'text' => 'Cancel',
+            'label' => 'Cancel',
             'type' => 'button',
-            'id' => 'cancelCategoryModal',
+            'attrs' => ['id' => 'cancelCategoryModal'],
             'variant' => 'text',
             'size' => 'md'
         ]) ?>
         <?= view('components/button', [
-            'text' => 'Create',
+            'label' => 'Create',
             'type' => 'submit',
             'variant' => 'filled',
             'size' => 'md'
@@ -114,9 +115,9 @@
     <p id="resultMessage" class="text-sm text-gray-700 dark:text-gray-300"></p>
     <div class="mt-6 flex justify-end">
       <?= view('components/button', [
-          'text' => 'Close',
+          'label' => 'Close',
           'type' => 'button',
-          'id' => 'closeResultModal',
+          'attrs' => ['id' => 'closeResultModal'],
           'variant' => 'filled',
           'size' => 'md'
       ]) ?>

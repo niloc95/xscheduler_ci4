@@ -12,6 +12,7 @@ import {
     renderWeekDayCell,
     renderWeekSlotPanel,
     renderWeekAppointmentRow,
+    renderWeekProviderAccordionSection,
     renderEmptyState,
 } from './week-view-components.js';
 import { createDebugLogger } from './scheduler-debug.js';
@@ -179,10 +180,40 @@ export class WeekView {
             return renderEmptyState('No appointments for this day.');
         }
 
-        return selectedAppointments
+        const sortedAppointments = selectedAppointments
             .slice()
             .sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis())
-            .map((appointment) => {
+            ;
+
+        const groupedByProvider = new Map();
+        sortedAppointments.forEach((appointment) => {
+            const providerId = Number(appointment.providerId || 0);
+            if (!groupedByProvider.has(providerId)) {
+                groupedByProvider.set(providerId, []);
+            }
+            groupedByProvider.get(providerId).push(appointment);
+        });
+
+        const providerOrder = this.providers
+            .filter((provider) => groupedByProvider.has(Number(provider.id)))
+            .map((provider) => Number(provider.id));
+
+        // Include any provider IDs not present in providers list as a fallback.
+        Array.from(groupedByProvider.keys()).forEach((providerId) => {
+            if (!providerOrder.includes(providerId)) {
+                providerOrder.push(providerId);
+            }
+        });
+
+        return providerOrder
+            .map((providerId, index) => {
+                const providerAppointments = groupedByProvider.get(providerId) || [];
+                const provider = this.providers.find((p) => Number(p.id) === Number(providerId));
+                const providerColor = getProviderColor(provider);
+                const providerName = this._providerNameFor(providerId);
+                const providerInitials = getProviderInitials(provider?.name || provider?.username || providerName);
+
+                const appointmentsHtml = providerAppointments.map((appointment) => {
                 const provider = this.providers.find((p) => Number(p.id) === Number(appointment.providerId));
                 const providerColor = getProviderColor(provider);
                 const statusColors = getStatusColors(appointment.status, false);
@@ -196,6 +227,17 @@ export class WeekView {
                     providerColor,
                     statusLabel: getStatusLabel(appointment.status),
                     statusDotColor: statusColors.dot,
+                });
+                }).join('');
+
+                return renderWeekProviderAccordionSection({
+                    providerId,
+                    providerName,
+                    providerInitials,
+                    providerColor,
+                    appointmentCount: providerAppointments.length,
+                    appointmentsHtml,
+                    expanded: false,
                 });
             })
             .join('');
@@ -244,6 +286,13 @@ export class WeekView {
 
     _attachPanelListeners(scopeElement) {
         scopeElement.addEventListener('click', (event) => {
+            const providerToggle = event.target.closest('[data-week-provider-toggle]');
+            if (providerToggle) {
+                event.preventDefault();
+                this._toggleProviderAccordion(scopeElement, providerToggle);
+                return;
+            }
+
             const appointmentElement = event.target.closest('[data-appointment-id]');
             if (appointmentElement) {
                 const appointmentId = Number(appointmentElement.dataset.appointmentId);
@@ -254,6 +303,31 @@ export class WeekView {
                 return;
             }
         });
+    }
+
+    _toggleProviderAccordion(scopeElement, toggleElement) {
+        const providerId = toggleElement.dataset.weekProviderToggle;
+        if (!providerId) {
+            return;
+        }
+
+        const body = scopeElement.querySelector(`[data-week-provider-body="${providerId}"]`);
+        const caret = scopeElement.querySelector(`[data-week-provider-caret="${providerId}"]`);
+        if (!body || !caret) {
+            return;
+        }
+
+        const isExpanded = toggleElement.dataset.expanded === 'true';
+        if (isExpanded) {
+            toggleElement.dataset.expanded = 'false';
+            body.classList.add('hidden');
+            caret.textContent = '+';
+            return;
+        }
+
+        toggleElement.dataset.expanded = 'true';
+        body.classList.remove('hidden');
+        caret.textContent = '-';
     }
 
     _toggleDayExpansion(buttonElement) {

@@ -2,7 +2,7 @@ import { escapeHtml } from '../../utils/html.js';
 
 export function renderWeekShell({ dayHeadersHtml, weekGridHtml, slotPanelHtml }) {
     return `
-        <div class="scheduler-month-view rounded-xl bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+        <div class="scheduler-month-view scheduler-week-view rounded-xl bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-7 px-1 pt-2 pb-1">
                 ${dayHeadersHtml}
             </div>
@@ -86,6 +86,44 @@ export function renderWeekAppointmentRow({
             </div>
             </div>
         </button>
+    `;
+}
+
+export function renderWeekProviderAccordionSection({
+    providerId,
+    providerName,
+    providerInitials,
+    providerColor,
+    appointmentCount,
+    appointmentsHtml,
+    expanded = false,
+}) {
+    const expandedAttr = expanded ? 'true' : 'false';
+    const hiddenClass = expanded ? '' : 'hidden';
+    const caret = expanded ? '-' : '+';
+
+    return `
+        <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/70" data-week-provider-section="${providerId}">
+            <button
+                type="button"
+                class="w-full flex items-center justify-between gap-3 px-2.5 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors rounded-t-lg"
+                data-week-provider-toggle="${providerId}"
+                data-expanded="${expandedAttr}"
+            >
+                <span class="flex items-center gap-2 min-w-0">
+                    <span class="w-7 h-7 rounded-full text-[10px] font-semibold text-white inline-flex items-center justify-center flex-shrink-0" data-bg-color="${providerColor}">${providerInitials}</span>
+                    <span class="min-w-0">
+                        <span class="block text-xs font-semibold text-gray-900 dark:text-white truncate">${escapeHtml(providerName)}</span>
+                        <span class="block text-[11px] text-gray-500 dark:text-gray-400">${appointmentCount} appointment${appointmentCount === 1 ? '' : 's'}</span>
+                    </span>
+                </span>
+                <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 text-lg font-bold leading-none border border-blue-200 dark:border-blue-700 shadow-sm" data-week-provider-caret="${providerId}">${caret}</span>
+            </button>
+
+            <div class="px-2.5 pb-2 space-y-1.5 ${hiddenClass}" data-week-provider-body="${providerId}">
+                ${appointmentsHtml}
+            </div>
+        </section>
     `;
 }
 

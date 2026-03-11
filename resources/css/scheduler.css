@@ -127,6 +127,24 @@
     scrollbar-width: thin;
 }
 
+/* Week view should expand naturally without clipping provider sections. */
+.scheduler-week-view {
+    overflow: visible;
+}
+
+.scheduler-week-view .scheduler-day-cell {
+    overflow: visible;
+}
+
+.scheduler-week-view .scheduler-day-cell .day-appointments {
+    overflow: visible;
+    max-height: none;
+}
+
+.scheduler-week-view #week-slot-panel {
+    overflow: visible;
+}
+
 /* P0-3 FIX: Webkit scrollbar styling for appointments overflow */
 .scheduler-day-cell .day-appointments::-webkit-scrollbar {
     width: 4px;
