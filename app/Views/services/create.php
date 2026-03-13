@@ -24,7 +24,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
-            <form id="createServiceForm" action="<?= base_url('services/store') ?>" method="post" class="card card-spacious">
+            <form id="createServiceForm" action="<?= base_url('services/store') ?>" method="post" data-no-spa="true" class="card card-spacious">
                 <?= csrf_field() ?>
                 <div class="card-header flex-col items-start gap-2">
                     <h2 class="card-title text-xl">Service Details</h2>
@@ -36,21 +36,18 @@
                 </div>
 
                 <div class="card-footer flex flex-wrap justify-end gap-3">
-                    <?= view('components/button', [
-                        'label' => 'New Category',
-                        'type' => 'button',
-                        'attrs' => ['id' => 'openCategoryModal'],
-                        'variant' => 'outlined',
-                        'size' => 'md',
-                        'icon' => 'add'
-                    ]) ?>
-                    <?= view('components/button', [
-                        'label' => 'Save Service',
-                        'type' => 'submit',
-                        'variant' => 'filled',
-                        'size' => 'md',
-                        'icon' => 'save'
-                    ]) ?>
+                    <button id="openCategoryModal"
+                            type="button"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm border border-outline text-on-surface hover:bg-surface-variant">
+                        <span class="material-symbols-outlined text-base">add</span>
+                        <span>New Category</span>
+                    </button>
+                    <button id="saveServiceButton"
+                            type="submit"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm bg-primary text-on-primary hover:bg-primary-600 shadow-sm">
+                        <span class="material-symbols-outlined text-base">save</span>
+                        <span>Save Service</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -70,13 +67,12 @@
             </div>
         </div>
     </div>
-</div>
 
 <!-- Category Modal -->
 <div id="categoryModal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md p-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create Category</h3>
-        <form id="createCategoryForm">
+        <form id="createCategoryForm" action="<?= base_url('services/categories') ?>" method="post" data-no-spa="true">
             <?= csrf_field() ?>
             <div class="space-y-3">
                 <div>
@@ -111,119 +107,9 @@
     </div>
 </div>
 
-<!-- Result Modal -->
-<div id="resultModal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md p-6">
-        <div id="resultIcon" class="mb-3"></div>
-        <h3 id="resultTitle" class="text-lg font-semibold text-gray-900 dark:text-white mb-2"></h3>
-        <p id="resultMessage" class="text-sm text-gray-700 dark:text-gray-300"></p>
-        <div class="mt-6 flex justify-end">
-            <?= view('components/button', [
-                'label' => 'Close',
-                'type' => 'button',
-                'attrs' => ['id' => 'closeResultModal'],
-                'variant' => 'filled',
-                'size' => 'md'
-            ]) ?>
-        </div>
-    </div>
-</div>
-
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script>
-(function() {
-  const form = document.getElementById('createServiceForm');
-  if (!form || form.dataset.initialized === 'true') return;
-  form.dataset.initialized = 'true';
-  void form;
-  const categorySelect = document.getElementById('categorySelect');
-  const categoryModal = document.getElementById('categoryModal');
-  const openCategoryModal = document.getElementById('openCategoryModal');
-  const cancelCategoryModal = document.getElementById('cancelCategoryModal');
-  const createCategoryForm = document.getElementById('createCategoryForm');
-  const resultModal = document.getElementById('resultModal');
-  const resultTitle = document.getElementById('resultTitle');
-  const resultMessage = document.getElementById('resultMessage');
-  const closeResultModal = document.getElementById('closeResultModal');
-
-  function show(el) { if (el) { el.classList.remove('hidden'); el.classList.add('flex'); } }
-  function hide(el) { if (el) { el.classList.add('hidden'); el.classList.remove('flex'); } }
-
-  if (openCategoryModal) openCategoryModal.addEventListener('click', () => show(categoryModal));
-  if (cancelCategoryModal) cancelCategoryModal.addEventListener('click', () => hide(categoryModal));
-
-  if (createCategoryForm) createCategoryForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(createCategoryForm);
-    try {
-      const res = await fetch('<?= base_url('services/categories') ?>', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-        body: fd
-      });
-      const data = await res.json();
-      if (data && data.success) {
-        const opt = document.createElement('option');
-        opt.value = data.id;
-        opt.textContent = data.name || fd.get('name');
-        if (categorySelect) {
-          categorySelect.appendChild(opt);
-          categorySelect.value = String(data.id);
-        }
-        hide(categoryModal);
-        return;
-      }
-      throw new Error((data && data.error) || 'Could not create category');
-    } catch (err) {
-      if (resultTitle) resultTitle.textContent = 'Category error';
-      if (resultMessage) resultMessage.textContent = err.message;
-      show(resultModal);
-    }
-  });
-
-  let lastSubmitSuccess = false;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    lastSubmitSuccess = false;
-    const fd = new FormData(form);
-    try {
-      const res = await fetch('<?= base_url('services/store') ?>', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-        body: fd
-      });
-      const data = await res.json();
-      if (data && data.success) {
-        lastSubmitSuccess = true;
-        if (resultTitle) resultTitle.textContent = 'Service created';
-        if (resultMessage) resultMessage.textContent = 'Your service was saved successfully.';
-        show(resultModal);
-      } else {
-        if (resultTitle) resultTitle.textContent = 'Could not save service';
-        if (resultMessage) resultMessage.textContent = (data && (data.error || data.message || (data.details && JSON.stringify(data.details)))) || 'Unknown error.';
-        show(resultModal);
-      }
-    } catch (err) {
-      if (resultTitle) resultTitle.textContent = 'Network error';
-      if (resultMessage) resultMessage.textContent = err.message;
-      show(resultModal);
-    }
-  });
-
-  if (closeResultModal) closeResultModal.addEventListener('click', () => {
-    hide(resultModal);
-    if (lastSubmitSuccess) {
-      const url = '<?= base_url('/services') ?>';
-      if (window.xsSPA) {
-        window.xsSPA.navigate(url);
-      } else {
-        window.location.href = url;
-      }
-    }
-  });
-})();
-</script>
+    <?= $this->include('services/_category_modal_script') ?>
 <?= $this->endSection() ?>
+

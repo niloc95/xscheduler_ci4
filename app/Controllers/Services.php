@@ -70,28 +70,11 @@ class Services extends BaseController
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
+        $this->userModel    = new UserModel();
         $this->serviceModel = new ServiceModel();
-        $this->categoryModel = new CategoryModel();
+        $this->categoryModel = new CategoryModel(); // used for category dropdowns in service forms
         $this->providerServicePivotTable = $this->serviceModel->db->prefixTable('providers_services');
         helper('permissions');
-    }
-
-    /**
-     * Ensure the current user can manage categories.
-     * Returns a redirect response if authentication is missing.
-     */
-    private function ensureCategoryAccess()
-    {
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to(base_url('auth/login'));
-        }
-
-        if (!has_role(['admin', 'provider'])) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
-        }
-
-        return null;
     }
 
     /**
@@ -272,9 +255,7 @@ class Services extends BaseController
         $categories = $this->categoryModel->orderBy('name','ASC')->findAll();
 
         // Get currently linked providers
-        $linked = $this->serviceModel->db->table($this->providerServicePivotTable)
-            ->where('service_id', $serviceId)->get()->getResultArray();
-        $linkedProviders = array_map(fn($r) => (int)$r['provider_id'], $linked);
+        $linkedProviders = $this->serviceModel->getLinkedProviderIds((int) $serviceId);
 
         $data = [
             'title' => 'Edit Service',
@@ -290,234 +271,6 @@ class Services extends BaseController
         ];
 
         return view('services/edit', $data);
-    }
-
-    /**
-     * Categories management
-     */
-    public function categories()
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        return redirect()->to(base_url('services?tab=categories'));
-    }
-
-    /**
-     * Render create category form.
-     */
-    public function createCategory()
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        return view('categories/create', [
-            'title' => 'Create Category',
-            'current_page' => 'services',
-            'action_url' => site_url('services/categories'),
-            'data' => [],
-        ]);
-    }
-
-    /**
-     * Render edit category form.
-     */
-    public function editCategory($id)
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        $category = $this->categoryModel->find((int)$id);
-        if (!$category) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Category not found');
-        }
-
-        return view('categories/edit', [
-            'title' => 'Edit Category',
-            'current_page' => 'services',
-            'action_url' => site_url('services/categories/update/' . (int)$id),
-            'data' => $category,
-        ]);
-    }
-
-    /**
-     * Create a category (AJAX)
-     */
-    public function storeCategory()
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        $name = trim((string)$this->request->getPost('name'));
-        $description = $this->request->getPost('description');
-        $color = $this->request->getPost('color') ?: '#3B82F6';
-        $active = $this->request->getPost('active');
-
-        if ($name === '') {
-            $errorMessage = 'Name is required';
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON(['error' => $errorMessage]);
-            }
-            return redirect()->back()->withInput()->with('error', $errorMessage);
-        }
-
-        $categoryData = [
-            'name' => $name,
-            'description' => $description ?: null,
-            'color' => $color,
-            'active' => $active === null ? 1 : (int)!!$active,
-        ];
-
-        if (!$this->categoryModel->insert($categoryData, true)) {
-            $errors = $this->categoryModel->errors();
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $errors,
-                ]);
-            }
-
-            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
-        }
-
-        $id = (int)$this->categoryModel->getInsertID();
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Category created',
-                'redirect' => base_url('services?tab=categories'),
-                'id' => (int)$id,
-                'name' => $name
-            ]);
-        }
-
-        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category created');
-    }
-
-    /** Update category */
-    public function updateCategory($id)
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        $payload = [
-            'name' => trim((string)$this->request->getPost('name')),
-            'color' => $this->request->getPost('color') ?: '#3B82F6',
-            'description' => $this->request->getPost('description') ?: null,
-            'active' => (int)!!$this->request->getPost('active'),
-        ];
-
-        if ($payload['name'] === '') {
-            $errorMessage = 'Name is required';
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON(['error' => $errorMessage]);
-            }
-            return redirect()->back()->withInput()->with('error', $errorMessage);
-        }
-
-        if (!$this->categoryModel->update((int)$id, $payload)) {
-            $errors = $this->categoryModel->errors();
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $errors,
-                ]);
-            }
-
-            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
-        }
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Category updated',
-                'redirect' => base_url('services?tab=categories')
-            ]);
-        }
-
-        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category updated');
-    }
-
-    /** Deactivate category */
-    public function deactivateCategory($id)
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        $this->categoryModel->deactivate((int)$id);
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Category deactivated',
-                'redirect' => base_url('services?tab=categories')
-            ]);
-        }
-
-        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category deactivated');
-    }
-
-    /** Activate category */
-    public function activateCategory($id)
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        $this->categoryModel->activate((int)$id);
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Category activated',
-                'redirect' => base_url('services?tab=categories')
-            ]);
-        }
-
-        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category activated');
-    }
-
-    /** Delete a category (hard delete) */
-    public function deleteCategory($id)
-    {
-        if ($response = $this->ensureCategoryAccess()) {
-            return $response;
-        }
-
-        // Clear category references for services before deleting.
-        $this->serviceModel->where('category_id', (int)$id)->set('category_id', null)->update();
-
-        if (!$this->categoryModel->delete((int)$id)) {
-            $errors = $this->categoryModel->errors();
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Unable to delete category',
-                    'errors' => $errors,
-                ]);
-            }
-
-            return redirect()->back()->with('error', 'Unable to delete category')->with('errors', $errors ?? []);
-        }
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Category deleted',
-                'redirect' => base_url('services?tab=categories')
-            ]);
-        }
-
-        return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category deleted');
     }
 
     /**
@@ -558,18 +311,26 @@ class Services extends BaseController
         }
 
         $serviceId = (int)$this->serviceModel->getInsertID();
-        $providerIds = $this->normalizeProviderIds($this->request->getPost('provider_ids'));
+        $providerIds = $this->extractPostedProviderIds($input);
         $this->serviceModel->setProviders($serviceId, (array)$providerIds);
+        $assignedCount = count($providerIds);
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Service created',
+                'message' => $assignedCount > 0
+                    ? "Your service has been saved with {$assignedCount} provider(s)."
+                    : 'Your service has been saved.',
                 'redirect' => base_url('services'),
                 'id' => $serviceId
             ]);
         }
-        return redirect()->to(base_url('services'))->with('message', 'Service created');
+        return redirect()->to(base_url('services'))->with(
+            'message',
+            $assignedCount > 0
+                ? "Your service has been saved with {$assignedCount} provider(s)."
+                : 'Your service has been saved.'
+        );
     }
 
     /**
@@ -616,7 +377,7 @@ class Services extends BaseController
         }
 
         // Handle provider IDs
-        $providerIds = $this->normalizeProviderIds($this->request->getPost('provider_ids'));
+        $providerIds = $this->extractPostedProviderIds($input);
         
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service update - Provider IDs: ' . json_encode($providerIds));
@@ -624,14 +385,33 @@ class Services extends BaseController
         
         $this->serviceModel->setProviders((int)$serviceId, (array)$providerIds);
 
+        if (ENVIRONMENT === 'development') {
+            $savedLinks = $this->serviceModel->db->table($this->providerServicePivotTable)
+                ->select('provider_id')
+                ->where('service_id', (int)$serviceId)
+                ->orderBy('provider_id', 'ASC')
+                ->get()
+                ->getResultArray();
+            log_message('debug', 'Service update - Saved provider links: ' . json_encode(array_column($savedLinks, 'provider_id')));
+        }
+
+        $assignedCount = count($providerIds);
+
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Service updated',
+                'message' => $assignedCount > 0
+                    ? "Your changes have been saved with {$assignedCount} provider(s)."
+                    : 'Your changes have been saved.',
                 'redirect' => base_url('services')
             ]);
         }
-        return redirect()->to(base_url('services'))->with('message', 'Service updated');
+        return redirect()->to(base_url('services'))->with(
+            'message',
+            $assignedCount > 0
+                ? "Your changes have been saved with {$assignedCount} provider(s)."
+                : 'Your changes have been saved.'
+        );
     }
 
     /**
@@ -679,5 +459,26 @@ class Services extends BaseController
         }
 
         return [];
+    }
+
+    private function extractPostedProviderIds(array $input): array
+    {
+        // Standard PHP array field name: provider_ids[] => $_POST['provider_ids']
+        if (array_key_exists('provider_ids', $input)) {
+            return $this->normalizeProviderIds($input['provider_ids']);
+        }
+
+        // Fallback for environments that keep the bracketed key
+        if (array_key_exists('provider_ids[]', $input)) {
+            return $this->normalizeProviderIds($input['provider_ids[]']);
+        }
+
+        // Final fallback to direct request reads
+        $fromRequest = $this->request->getPost('provider_ids');
+        if ($fromRequest === null) {
+            $fromRequest = $this->request->getPost('provider_ids[]');
+        }
+
+        return $this->normalizeProviderIds($fromRequest);
     }
 }

@@ -255,24 +255,16 @@ foreach ($categories as $category) {
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right">
                                             <div class="flex items-center justify-end gap-2">
-                                                <?= view('components/button', [
-                                                    'tag' => 'a',
-                                                    'href' => base_url('/services/edit/' . $service['id']),
-                                                    'label' => 'Edit',
-                                                    'icon' => 'edit',
-                                                    'variant' => 'outlined',
-                                                    'size' => 'sm',
-                                                ]) ?>
-                                                <form action="<?= site_url('services/delete/' . $service['id']) ?>" method="post" onsubmit="return confirm('Delete this service?');">
+                                                <a href="<?= site_url('services/edit/' . (int) $service['id']) ?>" class="btn btn-secondary btn-sm">
+                                                    <span class="material-symbols-outlined text-sm">edit</span>
+                                                    Edit
+                                                </a>
+                                                <form action="<?= site_url('services/delete/' . (int) $service['id']) ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Delete this service?');">
                                                     <?= csrf_field() ?>
-                                                    <?= view('components/button', [
-                                                        'type' => 'submit',
-                                                        'label' => 'Delete',
-                                                        'icon' => 'delete',
-                                                        'variant' => 'text',
-                                                        'size' => 'sm',
-                                                        'class' => 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300',
-                                                    ]) ?>
+                                                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                                        <span class="material-symbols-outlined text-sm">delete</span>
+                                                        Delete
+                                                    </button>
                                                 </form>
                                             </div>
                                         </td>
@@ -290,7 +282,7 @@ foreach ($categories as $category) {
                 </div>
             <?php else: ?>
                 <div class="space-y-6">
-                    <form id="quickCategoryForm" action="<?= site_url('services/categories') ?>" method="post" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
+                    <form id="quickCategoryForm" action="<?= site_url('services/categories') ?>" method="post" data-no-spa="true" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
                         <?= csrf_field() ?>
                         <input type="hidden" name="active" value="1" />
                         <div class="flex-1">
@@ -302,12 +294,11 @@ foreach ($categories as $category) {
                             <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
                         </div>
                         <div class="flex justify-end md:justify-start">
-                            <?= view('components/button', [
-                                'type' => 'submit',
-                                'label' => 'Add Category',
-                                'icon' => 'add',
-                                'variant' => 'filled',
-                            ]) ?>
+                            <button type="submit"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm bg-primary text-on-primary hover:bg-primary-600 shadow-sm">
+                                <span class="material-symbols-outlined text-base">add</span>
+                                <span>Add Category</span>
+                            </button>
                         </div>
                     </form>
 

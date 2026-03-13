@@ -80,19 +80,27 @@ if (!function_exists('vite_asset')) {
         
         $entryData = $manifest[$entry];
         $assets = [];
+
+        $toAssetUrl = static function (string $relativePath): string {
+            $publicPath = 'build/' . ltrim($relativePath, '/');
+            $absolutePath = FCPATH . $publicPath;
+            $version = is_file($absolutePath) ? (string) filemtime($absolutePath) : (string) filemtime(FCPATH . 'build/.vite/manifest.json');
+
+            return base_url($publicPath) . '?v=' . rawurlencode($version);
+        };
         
         // Add the main file
-        $assets['file'] = base_url('build/' . $entryData['file']);
+        $assets['file'] = $toAssetUrl($entryData['file']);
         
         // For CSS entries, the file IS the CSS file
         if (str_ends_with($entryData['file'], '.css')) {
-            $assets['css'] = [base_url('build/' . $entryData['file'])];
+            $assets['css'] = [$toAssetUrl($entryData['file'])];
         }
         // For JS entries, check if there are associated CSS files
         elseif (isset($entryData['css'])) {
             $assets['css'] = [];
             foreach ($entryData['css'] as $css) {
-                $assets['css'][] = base_url('build/' . $css);
+                $assets['css'][] = $toAssetUrl($css);
             }
         }
         

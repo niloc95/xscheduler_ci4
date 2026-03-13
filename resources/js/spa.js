@@ -270,7 +270,7 @@ const SPA = (() => {
 
   const submitForm = async (form) => {
     const el = content();
-    if (!el) return;
+    if (!el) { console.error('[XS-SPA] submitForm: #spa-content not found!'); return; }
 
     try {
       setBusy(true);
@@ -284,69 +284,90 @@ const SPA = (() => {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      // Try to parse JSON response
-      let data;
+      // Read body once for both OK and error responses
       const text = await res.text();
+      let data;
       try {
         data = JSON.parse(text);
-      } catch (e) {
-        // If not JSON, treat as HTML content and navigate to the response URL
+      } catch (_) {
+        data = null;
+      }
+
+      if (!res.ok) {
+        // Use parsed JSON error details when available
+        const errMsg = (data && (data.message || data.error)) || `HTTP ${res.status}`;
+        const flashEvent = new CustomEvent('xs:flash', {
+          detail: { type: 'error', message: errMsg }
+        });
+        document.dispatchEvent(flashEvent);
+
+        // Inject validation errors into the form if present
+        if (data && data.errors && typeof data.errors === 'object') {
+          injectValidationErrors(form, data.errors);
+        }
+        return;
+      }
+
+      if (!data) {
+        // Non-JSON OK response — treat as HTML and navigate
         await navigate(res.url || action, false);
         return;
       }
 
       // Handle JSON response from controller
       if (data.success) {
-        // Show success message if provided
-        if (data.message) {
-          const flashEvent = new CustomEvent('xs:flash', {
-            detail: { type: 'success', message: data.message }
-          });
-          document.dispatchEvent(flashEvent);
-        }
-
-        // Navigate to redirect URL if provided
+        // Navigate first, then show flash so it isn't wiped by content swap
         if (data.redirect) {
           await navigate(data.redirect);
         } else {
-          // If no redirect, refresh current page
           await navigate(window.location.pathname + window.location.search);
+        }
+
+        // Show success message AFTER navigation so the toast survives
+        if (data.message) {
+          document.dispatchEvent(new CustomEvent('xs:flash', {
+            detail: { type: 'success', message: data.message }
+          }));
         }
       } else {
         // Handle error response
-        const flashEvent = new CustomEvent('xs:flash', {
+        document.dispatchEvent(new CustomEvent('xs:flash', {
           detail: { type: 'error', message: data.message || 'An error occurred' }
-        });
-        document.dispatchEvent(flashEvent);
+        }));
 
-        // If validation errors, inject them into the form
+        // Inject validation errors into the form
         if (data.errors && typeof data.errors === 'object') {
-          Object.entries(data.errors).forEach(([field, errors]) => {
-            const input = form.querySelector(`[name="${field}"]`);
-            if (input) {
-              input.classList.add('border-red-500', 'dark:border-red-400');
-              const errorMsg = Array.isArray(errors) ? errors[0] : errors;
-              const errorEl = document.createElement('p');
-              errorEl.className = 'text-red-500 dark:text-red-400 text-sm mt-1';
-              errorEl.textContent = errorMsg;
-              input.parentElement?.appendChild(errorEl);
-            }
-          });
+          injectValidationErrors(form, data.errors);
         }
       }
     } catch (e) {
       console.error('Form submission failed:', e);
-      const flashEvent = new CustomEvent('xs:flash', {
+      document.dispatchEvent(new CustomEvent('xs:flash', {
         detail: { type: 'error', message: 'Form submission failed: ' + e.message }
-      });
-      document.dispatchEvent(flashEvent);
+      }));
     } finally {
       setBusy(false);
     }
+  };
+
+  const injectValidationErrors = (form, errors) => {
+    // Clear any previous validation markers
+    form.querySelectorAll('.spa-validation-error').forEach(el => el.remove());
+    form.querySelectorAll('.border-red-500').forEach(el => {
+      el.classList.remove('border-red-500', 'dark:border-red-400');
+    });
+
+    Object.entries(errors).forEach(([field, msgs]) => {
+      const input = form.querySelector(`[name="${field}"]`);
+      if (input) {
+        input.classList.add('border-red-500', 'dark:border-red-400');
+        const errorMsg = Array.isArray(msgs) ? msgs[0] : msgs;
+        const errorEl = document.createElement('p');
+        errorEl.className = 'spa-validation-error text-red-500 dark:text-red-400 text-sm mt-1';
+        errorEl.textContent = errorMsg;
+        input.parentElement?.appendChild(errorEl);
+      }
+    });
   };
 
   const clickHandler = (e) => {
@@ -383,6 +404,20 @@ const SPA = (() => {
     if ('scrollRestoration' in history) {
       try { history.scrollRestoration = 'manual'; } catch (_) {}
     }
+
+    // Bypass HTML5 client-side validation on all forms. When a <button type="submit">
+    // is clicked, the browser checks validity BEFORE dispatching the submit event.
+    // If any constraint fails (required, min, pattern, etc.) the submit event never
+    // fires and our handlers are silently skipped. Setting noValidate in the capture
+    // phase of the click ensures the subsequent native submit step skips validation.
+    // Server-side validation handles all constraint checking.
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[type="submit"]');
+      if (!btn) return;
+      const form = btn.closest('form');
+      if (form) form.noValidate = true;
+    }, true);
+
     document.addEventListener('click', clickHandler);
     document.addEventListener('submit', submitHandler);
     window.addEventListener('popstate', popstateHandler);
@@ -417,12 +452,8 @@ document.addEventListener('xs:flash', (e) => {
   if (!container) {
     container = document.createElement('div');
     container.setAttribute('data-flash-messages', '');
-    const spaContent = document.getElementById('spa-content');
-    if (spaContent) {
-      spaContent.insertAdjacentElement('afterbegin', container);
-    } else {
-      document.body.insertAdjacentElement('afterbegin', container);
-    }
+    container.className = 'fixed top-4 right-4 z-[9999] w-full max-w-sm space-y-2';
+    document.body.appendChild(container);
   }
 
   // Create message element

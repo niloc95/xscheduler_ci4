@@ -114,14 +114,14 @@ $routes->group('services', ['filter' => ['setup', 'auth']], function($routes) {
     $routes->get('edit/(:num)', 'Services::edit/$1');
     $routes->post('update/(:num)', 'Services::update/$1');
     $routes->post('delete/(:num)', 'Services::delete/$1');
-    $routes->get('categories', 'Services::categories');
-    $routes->get('categories/create', 'Services::createCategory');
-    $routes->post('categories', 'Services::storeCategory');
-    $routes->get('categories/edit/(:num)', 'Services::editCategory/$1');
-    $routes->post('categories/update/(:num)', 'Services::updateCategory/$1');
-    $routes->post('categories/(:num)/activate', 'Services::activateCategory/$1');
-    $routes->post('categories/(:num)/deactivate', 'Services::deactivateCategory/$1');
-    $routes->post('categories/(:num)/delete', 'Services::deleteCategory/$1');
+    $routes->get('categories', 'ServiceCategories::index');
+    $routes->get('categories/create', 'ServiceCategories::create');
+    $routes->post('categories', 'ServiceCategories::store');
+    $routes->get('categories/edit/(:num)', 'ServiceCategories::edit/$1');
+    $routes->post('categories/update/(:num)', 'ServiceCategories::update/$1');
+    $routes->post('categories/(:num)/activate', 'ServiceCategories::activate/$1');
+    $routes->post('categories/(:num)/deactivate', 'ServiceCategories::deactivate/$1');
+    $routes->post('categories/(:num)/delete', 'ServiceCategories::delete/$1');
 });
 
 // Analytics Routes (admin and provider access)

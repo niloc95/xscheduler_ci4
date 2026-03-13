@@ -151,6 +151,27 @@ class ServiceModel extends BaseModel
     }
 
     /**
+     * Get the IDs of all providers currently linked to a service.
+     *
+     * Used by the edit controller to pre-populate the provider checkbox picker.
+     *
+     * @param  int   $serviceId
+     * @return int[]  Plain array of integer provider IDs
+     */
+    public function getLinkedProviderIds(int $serviceId): array
+    {
+        $table = $this->db->prefixTable('providers_services');
+
+        $rows = $this->db->table($table)
+            ->select('provider_id')
+            ->where('service_id', $serviceId)
+            ->get()
+            ->getResultArray();
+
+        return array_values(array_map(static fn($r) => (int) $r['provider_id'], $rows));
+    }
+
+    /**
      * Link a service to one or more providers
      */
     public function setProviders(int $serviceId, array $providerIds): void
