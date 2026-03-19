@@ -469,19 +469,41 @@ export class SchedulerCore {
      * @returns {boolean} Success
      */
     async setStatusFilter(status) {
-        return this.setFilters({ status });
+        const normalizedStatus = status || null;
+        const result = await this.setFilters({ status: normalizedStatus || '' });
+
+        // Store on instance/window for compatibility with existing modules
+        this.statusFilter = normalizedStatus;
+
+        window.dispatchEvent(new CustomEvent('scheduler:status-filter-changed', {
+            detail: { status: normalizedStatus }
+        }));
+
+        return result;
     }
 
-    async setFilters({ status = '', providerId = '', serviceId = '', locationId = '' }) {
-        this.debugLog('📊 setFilters called with:', { status, providerId, serviceId, locationId });
+    async setFilters({ status, providerId, serviceId, locationId } = {}) {
+        const current = this.activeFilters || {};
 
-        const parsedProviderId = this.parseOptionalInteger(providerId);
-        const parsedServiceId = this.parseOptionalInteger(serviceId);
-        const parsedLocationId = this.parseOptionalInteger(locationId);
+        const resolvedStatus = status !== undefined ? status : (current.status || '');
+        const resolvedProviderId = providerId !== undefined ? providerId : (current.providerId || '');
+        const resolvedServiceId = serviceId !== undefined ? serviceId : (current.serviceId || '');
+        const resolvedLocationId = locationId !== undefined ? locationId : (current.locationId || '');
+
+        this.debugLog('📊 setFilters called with:', {
+            status: resolvedStatus,
+            providerId: resolvedProviderId,
+            serviceId: resolvedServiceId,
+            locationId: resolvedLocationId,
+        });
+
+        const parsedProviderId = this.parseOptionalInteger(resolvedProviderId);
+        const parsedServiceId = this.parseOptionalInteger(resolvedServiceId);
+        const parsedLocationId = this.parseOptionalInteger(resolvedLocationId);
         
         // Store filter values
         this.activeFilters = {
-            status: status || null,
+            status: resolvedStatus || null,
             providerId: parsedProviderId,
             serviceId: parsedServiceId,
             locationId: parsedLocationId
@@ -938,29 +960,6 @@ export class SchedulerCore {
                 <span class="text-xs font-bold">${count}</span>
             </button>
         `;
-    }
-    
-    /**
-     * Set status filter and re-render
-     * @param {string|null} status - Status to filter by, or null to clear
-     */
-    setStatusFilter(status) {
-        this.debugLog('📊 setStatusFilter called:', status);
-        
-        // Update active filters
-        this.activeFilters = this.activeFilters || {};
-        this.activeFilters.status = status || null;
-        
-        // Store on window for external access (status-filters.js compatibility)
-        this.statusFilter = status || null;
-        
-        // Re-render with new filter
-        this.render();
-        
-        // Dispatch event for other components
-        window.dispatchEvent(new CustomEvent('scheduler:status-filter-changed', {
-            detail: { status: status || null }
-        }));
     }
     
     /**

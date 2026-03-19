@@ -11,15 +11,28 @@ if ($oldProviderIds === null) {
 
 $selectedProviderIds = $oldProviderIds !== null ? (array) $oldProviderIds : (array) $linkedProviders;
 $selectedProviderIds = array_values(array_unique(array_map('intval', array_filter($selectedProviderIds, static fn($id) => $id !== null && $id !== ''))));
+
+$serviceName = old('name', $service['name'] ?? '');
+$serviceDuration = old('duration_min', $service['duration_min'] ?? '');
+$servicePrice = old('price', $service['price'] ?? '');
+$serviceCategoryId = old('category_id', $service['category_id'] ?? '');
+$serviceDescription = old('description', $service['description'] ?? '');
+
+$oldActive = old('active');
+if ($oldActive !== null) {
+    $serviceIsActive = (string) $oldActive === '1';
+} else {
+    $serviceIsActive = empty($service) || !array_key_exists('active', $service) || (bool) $service['active'];
+}
 ?>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div>
         <label class="form-label">Name</label>
-        <input type="text" name="name" value="<?= esc($service['name'] ?? '') ?>" required class="form-input" />
+        <input type="text" name="name" value="<?= esc($serviceName) ?>" required class="form-input" />
     </div>
     <div>
         <label class="form-label">Duration (min)</label>
-        <input type="number" name="duration_min" value="<?= (int)($service['duration_min'] ?? 0) ?>" min="1" required class="form-input" />
+        <input type="number" name="duration_min" value="<?= esc((string) $serviceDuration) ?>" min="1" required class="form-input" />
     </div>
     <div>
         <label class="form-label">Price</label>
@@ -29,7 +42,7 @@ $selectedProviderIds = array_values(array_unique(array_map('intval', array_filte
                     <?php helper('currency'); echo get_app_currency_symbol(); ?>
                 </span>
             </div>
-            <input type="number" step="0.01" name="price" value="<?= esc($service['price'] ?? '') ?>" 
+            <input type="number" step="0.01" name="price" value="<?= esc((string) $servicePrice) ?>" 
                    class="form-input pl-8" 
                    placeholder="0.00" />
         </div>
@@ -39,13 +52,13 @@ $selectedProviderIds = array_values(array_unique(array_map('intval', array_filte
         <select name="category_id" id="categorySelect" class="form-select">
             <option value="">Uncategorized</option>
             <?php foreach ($categories as $c): ?>
-                <option value="<?= (int)$c['id'] ?>" <?= (isset($service['category_id']) && (int)$service['category_id'] === (int)$c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
+                <option value="<?= (int)$c['id'] ?>" <?= (string) $serviceCategoryId === (string) ((int) $c['id']) ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
     <div class="md:col-span-2">
         <label class="form-label">Description</label>
-        <textarea name="description" rows="3" class="form-input"><?= esc($service['description'] ?? '') ?></textarea>
+        <textarea name="description" rows="3" class="form-input"><?= esc($serviceDescription) ?></textarea>
     </div>
     <fieldset class="md:col-span-2" data-provider-picker>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -100,7 +113,7 @@ $selectedProviderIds = array_values(array_unique(array_map('intval', array_filte
     </fieldset>
     <div class="flex items-center space-x-2 md:col-span-2">
         <input type="hidden" name="active" value="0" />
-        <input id="activeCheckbox" type="checkbox" name="active" value="1" <?= empty($service) || !array_key_exists('active', $service) || $service['active'] ? 'checked' : '' ?> class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+        <input id="activeCheckbox" type="checkbox" name="active" value="1" <?= $serviceIsActive ? 'checked' : '' ?> class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
         <label for="activeCheckbox" class="text-sm text-gray-700 dark:text-gray-300">Active</label>
     </div>
 </div>

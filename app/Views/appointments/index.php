@@ -91,19 +91,19 @@
         </div>
 
         <!-- Centered Date Navigation -->
-        <div class="flex-1 flex items-center justify-center gap-1">
+        <div class="flex-1 flex items-center justify-center gap-2">
             <button type="button" data-calendar-action="prev"
-                    class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     title="Previous">
-                <span class="material-symbols-outlined text-xl">chevron_left</span>
+                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'wght' 600;">chevron_left</span>
             </button>
-            <div id="scheduler-date-display" class="text-sm font-semibold text-gray-900 dark:text-white min-w-[160px] text-center select-none">
+            <div id="scheduler-date-display" class="text-base font-bold text-gray-900 dark:text-white min-w-[180px] text-center select-none tracking-tight">
                 <?= date('F Y') ?>
             </div>
             <button type="button" data-calendar-action="next"
-                    class="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     title="Next">
-                <span class="material-symbols-outlined text-xl">chevron_right</span>
+                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'wght' 600;">chevron_right</span>
             </button>
         </div>
 

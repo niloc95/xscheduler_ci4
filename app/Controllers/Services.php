@@ -286,7 +286,16 @@ class Services extends BaseController
         }
 
         $input = $this->request->getPost();
+
+        if (ENVIRONMENT === 'development') {
+            log_message('debug', 'Service store - POST data: ' . json_encode($input));
+        }
+
         $serviceData = $this->buildServicePayload($input, true);
+
+        if (ENVIRONMENT === 'development') {
+            log_message('debug', 'Service store - Prepared data: ' . json_encode($serviceData));
+        }
 
         // Inline category creation if provided
         $newCategoryName = trim($input['new_category_name'] ?? '');
@@ -300,14 +309,20 @@ class Services extends BaseController
         }
 
         if (!$this->serviceModel->insert($serviceData)) {
+            $errors = $this->serviceModel->errors();
+
+            if (ENVIRONMENT === 'development') {
+                log_message('debug', 'Service store - Validation errors: ' . json_encode($errors));
+            }
+
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(422)->setJSON([
                     'success' => false,
                     'message' => 'Validation failed',
-                    'errors' => $this->serviceModel->errors()
+                    'errors' => $errors
                 ]);
             }
-            return redirect()->back()->with('error', 'Validation failed')->withInput();
+            return redirect()->back()->with('error', 'Validation failed')->with('errors', $errors)->withInput();
         }
 
         $serviceId = (int)$this->serviceModel->getInsertID();

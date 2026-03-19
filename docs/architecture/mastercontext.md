@@ -482,6 +482,86 @@ $routes->get('appointments/create', 'Appointments::create');
 $routes->get('appointments/(:num)/edit', 'Appointments::edit/$1');
 ```
 
+### API Architecture And Data Access
+
+The application uses a mixed API surface under `/api` and `/api/v1`. In practice, the browser reaches database-backed data primarily through API controllers, CodeIgniter models, and scheduling/settings services rather than direct SQL in the frontend.
+
+#### Active API Route Groups
+- `/api/*` : unversioned operational and scheduler endpoints
+- `/api/v1/*` : versioned settings, providers, and services endpoints
+- `/api/database-backup/*` : admin-only operational endpoints
+
+#### Important Route Reality
+- `GET /api/users` does **not** use `App\Controllers\Api\Users`
+- The live route points to `UserManagement::apiList`
+- `GET /api/user-counts` points to `UserManagement::apiCounts`
+- `app/Controllers/Api/Users.php` currently exists as a legacy/alternate controller but is not the active route target in `app/Config/Routes.php`
+
+#### Primary API Controllers That Reach The Database
+- `Api\Appointments` : appointment CRUD, status, notes, notifications
+  Uses `AppointmentModel` and `LocationModel`
+- `Api\CustomerAppointments` : customer appointment history, stats, autofill
+  Uses `CustomerModel` and appointment/customer data access
+- `Api\Locations` : provider locations CRUD and availability-by-location
+  Uses `LocationModel`
+- `Api\Availability` : slot lookup and availability checks
+  Uses `AvailabilityService` and related schedule/location dependencies
+- `Api\CalendarController` : pre-computed server-side calendar render models
+  Used by the scheduler instead of client-side slot grid construction
+- `Api\V1\Providers` : provider lists, schedules, provider services
+  Uses `UserModel` and `ProviderScheduleModel`
+- `Api\V1\Services` : service catalog and category-aware service queries
+  Uses `ServiceModel` and `CategoryModel`
+- `Api\V1\Settings` : application settings, branding assets, booking/localization config
+  Uses `SettingModel`, `SettingFileModel`, and settings services
+- `Api\DatabaseBackup` : database backup operations and status
+
+#### Main Frontend/API Consumers
+
+Scheduler and dashboard:
+- `resources/js/modules/scheduler/scheduler-core.js`
+  Calls `/api/calendar/*`, `/api/appointments`, `/api/providers`, `/api/v1/settings/calendar-config`
+- `resources/js/modules/scheduler/right-panel.js`
+  Calls `/api/v1/providers/{id}/services` and `/api/locations`
+- `resources/js/modules/scheduler/appointment-details-modal.js`
+  Calls `/api/appointments/{id}/status`, `/api/appointments/{id}/notes`, `/api/appointments/{id}/notify`
+- `resources/js/modules/scheduler/availability-slots.js`
+  Calls `/api/availability/slots`
+- `resources/js/modules/scheduler/scheduler-month-view.js`
+  Calls `/api/availability/slots`
+
+Public booking:
+- `resources/js/public-booking.js`
+  Calls provider-services, booking calendar, and booking slots endpoints under `/api/v1` and booking-related public endpoints
+
+Settings UI:
+- `app/Views/settings/index.php`
+  Calls `/api/v1/settings`, `/api/v1/settings/logo`, `/api/v1/settings/icon`
+- `app/Views/settings/tabs/*.php`
+  Posts directly to `/api/v1/settings`
+
+User management:
+- `app/Views/user-management/index.php`
+  Calls `/api/user-counts`
+- `app/Views/user-management/components/provider-locations.php`
+  Calls `/api/locations`, `/api/locations/{id}`, `/api/locations/{id}/set-primary`
+
+#### API/Data Flow Pattern
+```text
+Browser UI
+  -> fetch('/api/...')
+  -> Route in app/Config/Routes.php
+  -> Controller method in app/Controllers/Api/* or UserManagement
+  -> Model or Service
+  -> Database tables (xs_*)
+```
+
+#### Practical Guidance
+- For user-count and user-list investigations, start in `UserManagement::apiCounts()` and `UserManagement::apiList()`, not `Api\Users`
+- For scheduler data issues, inspect `Api\CalendarController`, `Api\Appointments`, and `Api\Availability` together
+- For booking/provider-service issues, inspect `Api\V1\Providers::services()` and `Api\V1\Services`
+- For settings persistence, inspect `Api\V1\Settings` and `SettingModel`
+
 ### Environment Configuration
 ```ini
 # Development

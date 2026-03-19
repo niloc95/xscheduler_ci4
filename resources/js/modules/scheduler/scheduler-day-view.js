@@ -517,7 +517,14 @@ export class DayView {
     _buildAppointmentsByProvider(visibleProviders, data) {
         const fromModel = this._extractFromDayModel(data.calendarModel, visibleProviders);
         if (fromModel && this._hasAnyAppointments(fromModel)) {
-            return fromModel;
+            // data.appointments has already been filtered by the core (status, service, etc.)
+            // Cross-reference to ensure the same filters apply to model-sourced appointments
+            const allowedIds = new Set(data.appointments.map((a) => Number(a.id)));
+            const filtered = {};
+            for (const [pid, apts] of Object.entries(fromModel)) {
+                filtered[pid] = apts.filter((apt) => allowedIds.has(Number(apt.id)));
+            }
+            return filtered;
         }
 
         const dayAppointments = data.appointments.filter((apt) => apt.startDateTime.hasSame(data.currentDate, 'day'));

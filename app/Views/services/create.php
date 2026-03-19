@@ -11,6 +11,26 @@
 <?= $this->section('header_title') ?>Create Service<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<?php $validationErrors = session()->getFlashdata('errors') ?? []; ?>
+<?php if ($message = session()->getFlashdata('message')): ?>
+    <div class="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200">
+        <?= esc($message) ?>
+    </div>
+<?php endif; ?>
+<?php if ($error = session()->getFlashdata('error')): ?>
+    <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
+        <?= esc($error) ?>
+    </div>
+<?php endif; ?>
+<?php if (!empty($validationErrors)): ?>
+    <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
+        <ul class="list-disc space-y-1 pl-5">
+            <?php foreach ((array) $validationErrors as $field => $errorText): ?>
+                <li><?= esc(is_array($errorText) ? implode(', ', $errorText) : $errorText) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
 <div class="mb-6">
         <?= view('components/button', [
             'label' => 'Back to Services',

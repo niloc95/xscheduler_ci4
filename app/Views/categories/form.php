@@ -64,7 +64,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <textarea name="description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"><?= esc(old('description', $data['description'] ?? '')) ?></textarea>
+                        <textarea name="description" rows="3" class="form-input"><?= esc(old('description', $data['description'] ?? '')) ?></textarea>
                 </div>
 
                 <div>
