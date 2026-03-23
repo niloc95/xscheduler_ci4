@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test:integration:mysql": "bash scripts/run-mysql-integration-tests.sh",
     "package": "npm run build && node scripts/package.js",
     "package:archive": "npm run build && node scripts/package.js --archive-logs",
     "package:local": "node scripts/package.js",
@@ -30,9 +31,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@coreui/coreui": "^5.4.0",
     "@coreui/icons": "^3.0.1",
-    "@headlessui/tailwindcss": "^0.2.2",
     "@material-tailwind/html": "^3.0.0-beta.7",
     "@material/button": "^14.0.0",
     "@material/card": "^14.0.0",
@@ -44,7 +43,6 @@
     "@material/web": "^2.4.1-nightly.5099541.0",
     "chart.js": "^4.5.0",
     "luxon": "^3.7.2",
-    "material-icons": "^1.13.14",
     "sass": "^1.89.2",
     "vite": "^6.3.5"
   },

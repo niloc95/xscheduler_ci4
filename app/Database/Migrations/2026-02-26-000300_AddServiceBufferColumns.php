@@ -51,7 +51,11 @@ class AddServiceBufferColumns extends MigrationBase
     public function down(): void
     {
         if ($this->db->fieldExists('buffer_before', 'services')) {
-            $this->forge->dropColumn('services', ['buffer_before', 'buffer_after']);
+            try {
+                $this->forge->dropColumn('services', ['buffer_before', 'buffer_after']);
+            } catch (\Throwable $e) {
+                // Columns may already be absent on some refresh paths.
+            }
         }
     }
 }

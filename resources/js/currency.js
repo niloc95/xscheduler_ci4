@@ -6,10 +6,23 @@
  */
 import { getBaseUrl } from './utils/url-helpers.js';
 
+const DEFAULT_CURRENCY = 'ZAR';
+const DEFAULT_SYMBOL = 'R';
+
+function normalizeAmount(amount) {
+    return parseFloat(amount) || 0;
+}
+
+function formatWithSymbol(amount, symbol, decimals = 2) {
+    const numAmount = normalizeAmount(amount);
+    const formatted = numAmount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${symbol}${formatted}`;
+}
+
 class CurrencyFormatter {
     constructor() {
-        this.currency = 'ZAR';
-        this.symbol = 'R';
+        this.currency = DEFAULT_CURRENCY;
+        this.symbol = DEFAULT_SYMBOL;
         this.loaded = false;
     }
 
@@ -26,8 +39,8 @@ class CurrencyFormatter {
             if (response.ok) {
                 const data = await response.json();
                 const context = data.data?.context || data.data;
-                this.currency = context.currency || 'ZAR';
-                this.symbol = context.currency_symbol || 'R';
+                this.currency = context.currency || DEFAULT_CURRENCY;
+                this.symbol = context.currency_symbol || DEFAULT_SYMBOL;
                 this.loaded = true;
             }
         } catch (error) {
@@ -57,9 +70,7 @@ class CurrencyFormatter {
      * @returns {string} Formatted currency string
      */
     format(amount, decimals = 2) {
-        const numAmount = parseFloat(amount) || 0;
-        const formatted = numAmount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return `${this.symbol}${formatted}`;
+        return formatWithSymbol(amount, this.symbol, decimals);
     }
 
     /**
@@ -74,14 +85,35 @@ class CurrencyFormatter {
     }
 }
 
-// Create global instance
-window.currencyFormatter = new CurrencyFormatter();
+export const currencyFormatter = window.currencyFormatter || new CurrencyFormatter();
 
-// Auto-initialize on DOM ready
+export function getCurrencySymbol(fallbackSymbol = DEFAULT_SYMBOL) {
+    return currencyFormatter.getSymbol?.() || fallbackSymbol;
+}
+
+export function formatCurrency(amount, options = {}) {
+    const {
+        decimals = 2,
+        currencySymbol = null,
+    } = options;
+
+    if (currencySymbol) {
+        return formatWithSymbol(amount, currencySymbol, decimals);
+    }
+
+    if (currencyFormatter && typeof currencyFormatter.format === 'function') {
+        return currencyFormatter.format(amount, decimals);
+    }
+
+    return formatWithSymbol(amount, getCurrencySymbol(), decimals);
+}
+
+window.currencyFormatter = currencyFormatter;
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => window.currencyFormatter.init());
+    document.addEventListener('DOMContentLoaded', () => currencyFormatter.init());
 } else {
-    window.currencyFormatter.init();
+    currencyFormatter.init();
 }
 
 // Export for module usage

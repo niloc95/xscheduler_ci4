@@ -467,7 +467,7 @@
 
                                         $previewService = null;
                                         try {
-                                            $previewService = new \App\Services\NotificationPhase1();
+                                            $previewService = new \App\Services\NotificationPolicyService();
                                         } catch (\Throwable $e) {
                                             // Service unavailable — previews will be empty
                                         }

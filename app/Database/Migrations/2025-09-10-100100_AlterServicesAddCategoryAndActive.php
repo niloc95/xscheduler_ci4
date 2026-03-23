@@ -32,7 +32,12 @@ class AlterServicesAddCategoryAndActive extends MigrationBase
 
     public function down()
     {
-        $this->forge->dropColumn('services', 'category_id');
-        $this->forge->dropColumn('services', 'active');
+        if ($this->db->tableExists('services') && $this->db->fieldExists('category_id', 'services')) {
+            $this->forge->dropColumn('services', 'category_id');
+        }
+
+        if ($this->db->tableExists('services') && $this->db->fieldExists('active', 'services')) {
+            $this->forge->dropColumn('services', 'active');
+        }
     }
 }

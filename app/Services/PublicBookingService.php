@@ -97,6 +97,7 @@ class PublicBookingService
     private LocalizationSettingsService $localization;
     private SettingModel $settings;
     private LocationModel $locations;
+    private AppointmentBookingService $bookingService;
 
     public function __construct(
         ?BookingSettingsService $bookingSettings = null,
@@ -108,6 +109,7 @@ class PublicBookingService
         ?LocalizationSettingsService $localization = null,
         ?SettingModel $settings = null,
         ?LocationModel $locations = null,
+        ?AppointmentBookingService $bookingService = null,
     ) {
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->availability = $availability ?? new AvailabilityService();
@@ -118,6 +120,7 @@ class PublicBookingService
         $this->localization = $localization ?? new LocalizationSettingsService();
         $this->settings = $settings ?? new SettingModel();
         $this->locations = $locations ?? new LocationModel();
+        $this->bookingService = $bookingService ?? new AppointmentBookingService();
     }
 
     public function buildViewContext(): array
@@ -253,8 +256,7 @@ class PublicBookingService
             }
         }
 
-        $booking = new AppointmentBookingService();
-        $result = $booking->createAppointment($bookingPayload, $this->localization->getTimezone());
+        $result = $this->bookingService->createAppointment($bookingPayload, $this->localization->getTimezone());
         if (!$result['success']) {
             throw new PublicBookingException($result['message'] ?? 'Unable to create appointment at this time.');
         }
@@ -299,8 +301,7 @@ class PublicBookingService
             'location_id' => $newLocationId,
         ];
 
-        $booking = new AppointmentBookingService();
-        $result = $booking->updateAppointment(
+        $result = $this->bookingService->updateAppointment(
             (int) $appointment['id'],
             $updatePayload,
             $this->localization->getTimezone(),

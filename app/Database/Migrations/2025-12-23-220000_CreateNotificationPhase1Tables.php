@@ -4,6 +4,14 @@ namespace App\Database\Migrations;
 
 use App\Database\MigrationBase;
 
+/**
+ * Historical migration name retained intentionally.
+ *
+ * This migration was authored when the notification policy surface was still
+ * called "NotificationPhase1". The runtime service has since been replaced by
+ * NotificationPolicyService, but the applied migration class/file name must
+ * remain stable for migration history compatibility across deployed databases.
+ */
 class CreateNotificationPhase1Tables extends MigrationBase
 {
     public function up()

@@ -44,16 +44,13 @@ class AddHashToAppointments extends MigrationBase
         }
 
         // Now make hash column NOT NULL after all records have hashes
-        // Skip on SQLite — modifyColumn triggers table recreation that can fail
-        if (!$this->isSQLite()) {
-            $this->forge->modifyColumn('appointments', [
-                'hash' => [
-                    'type'       => 'VARCHAR',
-                    'constraint' => 64,
-                    'null'       => false,
-                ],
-            ]);
-        }
+        $this->forge->modifyColumn('appointments', [
+            'hash' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 64,
+                'null'       => false,
+            ],
+        ]);
     }
 
     public function down()
@@ -71,7 +68,11 @@ class AddHashToAppointments extends MigrationBase
         
         // Remove hash column
         if ($this->db->fieldExists('hash', 'appointments')) {
-            $this->forge->dropColumn('appointments', 'hash');
+            try {
+                $this->forge->dropColumn('appointments', 'hash');
+            } catch (\Throwable $e) {
+                // Legacy refresh paths may already have removed the column.
+            }
         }
     }
 }

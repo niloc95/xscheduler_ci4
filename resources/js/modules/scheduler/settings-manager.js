@@ -7,6 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { logger } from './logger.js';
+import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class SettingsManager {
@@ -206,10 +207,10 @@ export class SettingsManager {
      * @returns {string} Formatted currency string
      */
     formatCurrency(amount, decimals = 2) {
-        const numAmount = parseFloat(amount) || 0;
-        const symbol = this.getCurrencySymbol();
-        const formatted = numAmount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return `${symbol}${formatted}`;
+        return formatCurrency(amount, {
+            decimals,
+            currencySymbol: this.getCurrencySymbol(),
+        });
     }
 
     // ============================================

@@ -28,9 +28,8 @@ class AddCompositeIndexesToAppointments extends MigrationBase
 
         $table = 'appointments';
 
-        // Drop indexes if they exist
-        $this->dropIndexIfExists($table, 'idx_appts_provider_start');
-        $this->dropIndexIfExists($table, 'idx_appts_service_start');
+        // Keep provider/service composite indexes in place because MySQL may
+        // rely on them to satisfy foreign key index requirements.
         $this->dropIndexIfExists($table, 'idx_appts_status_start');
     }
 }

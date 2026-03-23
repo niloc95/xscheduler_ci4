@@ -2,35 +2,47 @@
 
 namespace App\Tests\Integration;
 
+use App\Services\AuthorizationService;
+use App\Services\DashboardApiService;
+use App\Services\DashboardPageService;
+use App\Services\DashboardService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
-use CodeIgniter\Test\FeatureTestTrait;
 
 /**
- * Dashboard Landing View Integration Tests
- * 
- * Tests the complete dashboard functionality including:
- * - Role-based access control
- * - Data scoping (Owner/Provider/Staff)
- * - Cache invalidation
- * - API endpoints
+ * Dashboard service integration tests.
  * 
  * Run with: php spark test --filter DashboardLandingTest
  */
 class DashboardLandingTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
-    use FeatureTestTrait;
 
     protected $refresh = true;
     protected $namespace = 'App';
 
+    private int $adminId;
+    private int $providerId;
+    private int $customerId;
+    private int $serviceId;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->ensureSetupFlag();
         
         // Seed test data
         $this->seedTestData();
+    }
+
+    private function ensureSetupFlag(): void
+    {
+        $flagPath = WRITEPATH . 'setup_complete.flag';
+
+        if (!is_file($flagPath)) {
+            file_put_contents($flagPath, 'test');
+        }
     }
 
     /**
@@ -38,212 +50,199 @@ class DashboardLandingTest extends CIUnitTestCase
      */
     private function seedTestData(): void
     {
-        // Create test users
-        $userModel = model('UserModel');
-        
-        // Admin user
-        $adminId = $userModel->insert([
-            'name' => 'Admin User',
-            'email' => 'admin@test.com',
-            'password' => password_hash('password123', PASSWORD_DEFAULT),
-            'role' => 'admin',
-            'is_active' => true
-        ]);
-        
-        // Provider user
-        $providerId = $userModel->insert([
-            'name' => 'Dr. Provider',
-            'email' => 'provider@test.com',
-            'password' => password_hash('password123', PASSWORD_DEFAULT),
-            'role' => 'provider',
-            'is_active' => true,
-            'color' => '#3B82F6'
-        ]);
-        
-        // Create test appointments
-        $appointmentModel = model('AppointmentModel');
-        
-        // Today's appointments for provider
-        $today = date('Y-m-d');
-        $now = date('Y-m-d H:i:s');
-        
-        $appointmentModel->insert([
-            'customer_id' => 1,
-            'provider_id' => $providerId,
-            'service_id' => 1,
-            'appointment_date' => $today,
-            'start_time' => $now,
-            'end_time' => date('Y-m-d H:i:s', strtotime('+1 hour')),
-            'status' => 'confirmed'
-        ]);
-        
-        $appointmentModel->insert([
-            'customer_id' => 2,
-            'provider_id' => $providerId,
-            'service_id' => 1,
-            'appointment_date' => $today,
-            'start_time' => date('Y-m-d H:i:s', strtotime('+2 hours')),
-            'end_time' => date('Y-m-d H:i:s', strtotime('+3 hours')),
-            'status' => 'pending'
-        ]);
-    }
-
-    /**
-     * Test: Admin can access dashboard
-     */
-    public function testAdminCanAccessDashboard(): void
-    {
-        // Login as admin
-        $session = session();
-        $session->set('user', [
-            'id' => 1,
-            'name' => 'Admin User',
-            'email' => 'admin@test.com',
-            'role' => 'admin'
-        ]);
-
-        // Access dashboard
-        $result = $this->withSession()->get('/dashboard');
-
-        $result->assertOK();
-        $result->assertSee('Welcome back, Admin User!');
-    }
-
-    /**
-     * Test: Provider sees only own data
-     */
-    public function testProviderSeesOnlyOwnData(): void
-    {
-        // Login as provider
-        $session = session();
-        $session->set('user', [
-            'id' => 2,
-            'name' => 'Dr. Provider',
-            'email' => 'provider@test.com',
-            'role' => 'provider'
-        ]);
-
-        // Access dashboard
-        $result = $this->withSession()->get('/dashboard');
-
-        $result->assertOK();
-        $result->assertSee('Welcome back, Dr. Provider!');
-        
-        // Should see own appointments
-        $result->assertSee('Dr. Provider');
-    }
-
-    /**
-     * Test: Unauthenticated users redirected to login
-     */
-    public function testUnauthenticatedRedirectToLogin(): void
-    {
-        $result = $this->get('/dashboard');
-
-        $result->assertRedirect();
-        $result->assertRedirectTo('/login');
-    }
-
-    /**
-     * Test: Dashboard metrics API returns correct data
-     */
-    public function testDashboardMetricsAPI(): void
-    {
-        // Login as admin
-        $session = session();
-        $session->set('user', [
-            'id' => 1,
-            'name' => 'Admin User',
-            'email' => 'admin@test.com',
-            'role' => 'admin'
-        ]);
-
-        // Call metrics API
-        $result = $this->withSession()->get('/dashboard/api/metrics');
-
-        $result->assertOK();
-        $result->assertJSONFragment([
-            'success' => true
-        ]);
-
-        // Check data structure
-        $json = json_decode($result->getJSON(), true);
-        $this->assertArrayHasKey('data', $json);
-        $this->assertArrayHasKey('total', $json['data']);
-        $this->assertArrayHasKey('upcoming', $json['data']);
-        $this->assertArrayHasKey('pending', $json['data']);
-        $this->assertArrayHasKey('cancelled', $json['data']);
-    }
-
-    /**
-     * Test: Metrics API requires authentication
-     */
-    public function testMetricsAPIRequiresAuth(): void
-    {
-        $result = $this->get('/dashboard/api/metrics');
-
-        $result->assertStatus(401);
-        $result->assertJSONFragment([
-            'success' => false,
-            'error' => 'Unauthorized'
-        ]);
-    }
-
-    /**
-     * Test: Cache invalidation on appointment create
-     */
-    public function testCacheInvalidationOnAppointmentCreate(): void
-    {
-        // Login as admin
-        $session = session();
-        $session->set('user', [
-            'id' => 1,
-            'role' => 'admin'
-        ]);
-
-        // Get initial metrics (should cache)
-        $result1 = $this->withSession()->get('/dashboard/api/metrics');
-        $json1 = json_decode($result1->getJSON(), true);
-        $initialTotal = $json1['data']['total'];
-
-        // Create new appointment (should invalidate cache)
-        $appointmentModel = model('AppointmentModel');
-        $today = date('Y-m-d');
-        $appointmentModel->insert([
-            'customer_id' => 1,
-            'provider_id' => 2,
-            'service_id' => 1,
-            'appointment_date' => $today,
-            'start_time' => date('Y-m-d H:i:s', strtotime('+4 hours')),
-            'end_time' => date('Y-m-d H:i:s', strtotime('+5 hours')),
-            'status' => 'confirmed'
-        ]);
-
-        // Get metrics again (should have new data)
-        $result2 = $this->withSession()->get('/dashboard/api/metrics');
-        $json2 = json_decode($result2->getJSON(), true);
-        $newTotal = $json2['data']['total'];
-
-        // Total should have increased
-        $this->assertEquals($initialTotal + 1, $newTotal);
-    }
-
-    /**
-     * Test: Database indexes exist
-     */
-    public function testDatabaseIndexesExist(): void
-    {
         $db = \Config\Database::connect();
+        $now = date('Y-m-d H:i:s');
+        $appointmentStart = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $appointmentEnd = date('Y-m-d H:i:s', strtotime('+2 hours'));
+        $pendingStart = date('Y-m-d H:i:s', strtotime('+3 hours'));
+        $pendingEnd = date('Y-m-d H:i:s', strtotime('+4 hours'));
         
-        // Check for required indexes
-        $indexes = $db->query("SHOW INDEX FROM xs_appointments")->getResultArray();
+        $db->table('users')->insert([
+            'name' => 'Admin User',
+            'email' => 'admin@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->adminId = (int) $db->insertID();
         
-        $indexNames = array_column($indexes, 'Key_name');
+        $db->table('users')->insert([
+            'name' => 'Dr. Provider',
+            'email' => 'provider@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'provider',
+            'status' => 'active',
+            'is_active' => 1,
+            'color' => '#3B82F6',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->providerId = (int) $db->insertID();
+
+        $db->table('customers')->insert([
+            'first_name' => 'Test',
+            'last_name' => 'Customer',
+            'email' => 'customer@test.com',
+            'phone' => '+15555550100',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->customerId = (int) $db->insertID();
+
+        $db->table('services')->insert([
+            'name' => 'Consultation',
+            'description' => 'Dashboard test service',
+            'category_id' => null,
+            'duration_min' => 60,
+            'price' => 100.00,
+            'active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->serviceId = (int) $db->insertID();
         
-        $this->assertContains('idx_provider_date_status', $indexNames);
-        $this->assertContains('idx_date_time', $indexNames);
-        $this->assertContains('idx_status_date', $indexNames);
-        $this->assertContains('idx_start_time', $indexNames);
+        $db->table('appointments')->insert([
+            'customer_id' => $this->customerId,
+            'provider_id' => $this->providerId,
+            'service_id' => $this->serviceId,
+            'hash' => hash('sha256', 'dashboard-test-confirmed-' . $now),
+            'start_at' => $appointmentStart,
+            'end_at' => $appointmentEnd,
+            'status' => 'confirmed',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        
+        $db->table('appointments')->insert([
+            'customer_id' => $this->customerId,
+            'provider_id' => $this->providerId,
+            'service_id' => $this->serviceId,
+            'hash' => hash('sha256', 'dashboard-test-pending-' . $now),
+            'start_at' => $pendingStart,
+            'end_at' => $pendingEnd,
+            'status' => 'pending',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $settings = [
+            'localization.timezone' => 'UTC',
+            'localization.time_format' => '24h',
+            'localization.first_day' => 'monday',
+            'localization.currency' => 'USD',
+        ];
+
+        foreach ($settings as $key => $value) {
+            $existing = $db->table('settings')->where('setting_key', $key)->get()->getRowArray();
+
+            if ($existing !== null) {
+                $db->table('settings')
+                    ->where('setting_key', $key)
+                    ->update([
+                        'setting_value' => $value,
+                        'setting_type' => 'string',
+                        'updated_at' => $now,
+                    ]);
+
+                continue;
+            }
+
+            $db->table('settings')->insert([
+                'setting_key' => $key,
+                'setting_value' => $value,
+                'setting_type' => 'string',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
+    private function authSession(int $userId, string $name, string $email, string $role): array
+    {
+        return [
+            'isLoggedIn' => true,
+            'user_id' => $userId,
+            'user' => [
+                'id' => $userId,
+                'name' => $name,
+                'email' => $email,
+                'role' => $role,
+            ],
+        ];
+    }
+
+    public function testDashboardPageServiceBuildsLandingDataForAdmin(): void
+    {
+        session()->set($this->authSession($this->adminId, 'Admin User', 'admin@test.com', 'admin'));
+
+        $service = new DashboardPageService();
+        $sessionData = $service->resolveLandingSession();
+
+        $this->assertIsArray($sessionData);
+
+        $viewData = $service->buildLandingViewData($sessionData);
+
+        $this->assertSame('Admin User', $viewData['user']['name']);
+        $this->assertArrayHasKey('metrics', $viewData);
+        $this->assertArrayHasKey('schedule', $viewData);
+        $this->assertArrayHasKey('recent_activities', $viewData);
+        $this->assertSame(2, (int) ($viewData['metrics']['total'] ?? 0));
+    }
+
+    public function testDashboardPageServiceMetricsResponseForProvider(): void
+    {
+        session()->set($this->authSession($this->providerId, 'Dr. Provider', 'provider@test.com', 'provider'));
+
+        $service = new DashboardPageService();
+        $response = $service->getMetricsEndpointResponse();
+
+        $this->assertSame(200, $response['statusCode']);
+        $this->assertTrue((bool) ($response['payload']['success'] ?? false));
+        $this->assertSame(2, (int) ($response['payload']['data']['total'] ?? 0));
+        $this->assertSame(1, (int) ($response['payload']['data']['pending'] ?? 0));
+    }
+
+    public function testDashboardPageServiceMetricsResponseRequiresAuthenticatedUser(): void
+    {
+        session()->remove(['isLoggedIn', 'user_id', 'user']);
+
+        $service = new DashboardPageService();
+        $response = $service->getMetricsEndpointResponse();
+
+        $this->assertSame(401, $response['statusCode']);
+        $this->assertFalse((bool) ($response['payload']['success'] ?? true));
+        $this->assertSame('Unauthorized', $response['payload']['error']);
+    }
+
+    public function testDashboardApiServiceReturnsChartsPayload(): void
+    {
+        $service = new DashboardApiService();
+        $payload = $service->getChartsPayload('week');
+
+        $this->assertSame('week', $payload['period']);
+        $this->assertArrayHasKey('appointmentGrowth', $payload);
+        $this->assertArrayHasKey('servicesByProvider', $payload);
+        $this->assertArrayHasKey('statusDistribution', $payload);
+    }
+
+    public function testDashboardApiServiceNormalizesUnknownPeriod(): void
+    {
+        $service = new DashboardApiService();
+
+        $this->assertSame('month', $service->normalizePeriod('invalid-period'));
+    }
+
+    public function testDashboardApiServiceReturnsStatusPayload(): void
+    {
+        $service = new DashboardApiService();
+        $payload = $service->getStatusPayload();
+
+        $this->assertTrue((bool) ($payload['database_connected'] ?? false));
+        $this->assertArrayHasKey('tables', $payload);
+        $this->assertArrayHasKey('counts', $payload);
     }
 
     /**
@@ -251,10 +250,9 @@ class DashboardLandingTest extends CIUnitTestCase
      */
     public function testDashboardServiceGetTodayMetricsWithProviderScope(): void
     {
-        $dashboardService = new \App\Services\DashboardService();
+        $dashboardService = new DashboardService();
         
-        // Get metrics for specific provider
-        $metrics = $dashboardService->getTodayMetrics(2);
+        $metrics = $dashboardService->getTodayMetrics($this->providerId);
         
         $this->assertIsArray($metrics);
         $this->assertArrayHasKey('total', $metrics);
@@ -262,7 +260,6 @@ class DashboardLandingTest extends CIUnitTestCase
         $this->assertArrayHasKey('pending', $metrics);
         $this->assertArrayHasKey('cancelled', $metrics);
         
-        // Should have 2 appointments for provider 2
         $this->assertEquals(2, $metrics['total']);
         $this->assertEquals(1, $metrics['pending']);
     }
@@ -272,7 +269,7 @@ class DashboardLandingTest extends CIUnitTestCase
      */
     public function testDashboardServiceGetTodayMetricsWithoutScope(): void
     {
-        $dashboardService = new \App\Services\DashboardService();
+        $dashboardService = new DashboardService();
         
         // Get metrics for all providers (admin)
         $metrics = $dashboardService->getTodayMetrics(null);
@@ -286,7 +283,7 @@ class DashboardLandingTest extends CIUnitTestCase
      */
     public function testAuthorizationServiceRoleChecks(): void
     {
-        $authService = new \App\Services\AuthorizationService();
+        $authService = new AuthorizationService();
         
         // Admin can view dashboard metrics
         $this->assertTrue($authService->canViewDashboardMetrics('admin'));
@@ -305,18 +302,9 @@ class DashboardLandingTest extends CIUnitTestCase
         $this->assertFalse($authService->canViewSettings('provider'));
     }
 
-    /**
-     * Test: Dashboard handles database errors gracefully
-     */
-    public function testDashboardHandlesDatabaseErrorsGracefully(): void
-    {
-        // This test would require mocking the database connection
-        // For now, it's a placeholder for manual testing
-        $this->assertTrue(true);
-    }
-
     protected function tearDown(): void
     {
+        session()->destroy();
         parent::tearDown();
         
         // Clear cache

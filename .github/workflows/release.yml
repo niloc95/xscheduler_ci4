@@ -72,7 +72,7 @@ jobs:
             git log --pretty=format:"- %s" $LAST_TAG..HEAD >> changelog.md
           else
             echo "### Initial Release Features:" >> changelog.md
-            echo "- ✅ Complete setup wizard with MySQL/SQLite support" >> changelog.md
+            echo "- ✅ Complete setup wizard with MySQL/MariaDB support" >> changelog.md
             echo "- ✅ Production URL auto-detection" >> changelog.md
             echo "- ✅ Zero-configuration deployment" >> changelog.md
             echo "- ✅ Material Design 3.0 interface" >> changelog.md
@@ -90,7 +90,7 @@ jobs:
           echo "## System Requirements" >> changelog.md
           echo "- PHP 7.4 or higher" >> changelog.md
           echo "- Apache/Nginx with mod_rewrite" >> changelog.md
-          echo "- MySQL 5.7+ or SQLite 3.x" >> changelog.md
+          echo "- MySQL 5.7+ or MariaDB 10.2+" >> changelog.md
           echo "- 50MB disk space minimum" >> changelog.md
           echo "" >> changelog.md
           echo "## Support" >> changelog.md

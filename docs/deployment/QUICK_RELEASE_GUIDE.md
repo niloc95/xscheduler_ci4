@@ -38,7 +38,7 @@ npm run release:dry
 1. ✅ Builds production assets (`npm run build`)
 2. ✅ Creates deployment package (`node scripts/package.js`)
 3. ✅ Bumps version in `package.json`
-4. ✅ Updates `CHANGELOG.md`
+4. ✅ Updates `docs/changelog.md`
 5. ✅ Creates git commit and tag
 6. ✅ Pushes to GitHub
 7. ✅ Triggers GitHub Actions
@@ -117,7 +117,7 @@ git push origin main v1.0.1
 ## Release Checklist
 
 - [ ] All tests passing
-- [ ] CHANGELOG.md updated
+- [ ] `docs/changelog.md` updated
 - [ ] Version bumped in Constants.php
 - [ ] Documentation updated
 - [ ] No open critical bugs
@@ -150,11 +150,11 @@ git push origin v1.0.1
 
 ## Resources
 
-- **Full Guide**: [docs/RELEASING.md](RELEASING.md)
+- **Full Guide**: [releasing.md](./releasing.md)
 - **Releases**: https://github.com/niloc95/xscheduler_ci4/releases
-- **Changelog**: [CHANGELOG.md](../CHANGELOG.md)
+- **Changelog**: [changelog.md](../changelog.md)
 - **Workflow**: [.github/workflows/release.yml](../.github/workflows/release.yml)
 
 ---
 
-**Need Help?** See [RELEASING.md](RELEASING.md) for detailed instructions.
+**Need Help?** See [releasing.md](./releasing.md) for detailed instructions.

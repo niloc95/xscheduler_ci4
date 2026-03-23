@@ -357,8 +357,8 @@ export class SchedulerCore {
     }
 
     normalizeAppointment(rawAppointment = {}) {
-        const start = rawAppointment.start ?? rawAppointment.start_at ?? rawAppointment.start_time ?? rawAppointment.startTime ?? null;
-        const end = rawAppointment.end ?? rawAppointment.end_at ?? rawAppointment.end_time ?? rawAppointment.endTime ?? null;
+        const start = rawAppointment.start ?? rawAppointment.start_at ?? rawAppointment.start_time ?? rawAppointment.startTime ?? rawAppointment.startDateTime ?? null;
+        const end = rawAppointment.end ?? rawAppointment.end_at ?? rawAppointment.end_time ?? rawAppointment.endTime ?? rawAppointment.endDateTime ?? null;
         const customerName = rawAppointment.customerName ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
         const customerEmail = rawAppointment.customerEmail ?? rawAppointment.customer_email ?? rawAppointment.email ?? null;
         const customerPhone = rawAppointment.customerPhone ?? rawAppointment.customer_phone ?? rawAppointment.phone ?? null;

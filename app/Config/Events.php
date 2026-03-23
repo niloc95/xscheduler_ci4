@@ -2,7 +2,7 @@
 
 namespace Config;
 
-use App\Services\NotificationPhase1;
+use App\Services\NotificationCatalog;
 use App\Services\NotificationQueueService;
 use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
@@ -60,7 +60,7 @@ Events::on('appointment.event', static function (array $payload): void {
     $appointmentId = (int) ($payload['appointment_id'] ?? 0);
     $eventType = trim((string) ($payload['event_type'] ?? ''));
     $channels = $payload['channels'] ?? [];
-    $businessId = (int) ($payload['business_id'] ?? NotificationPhase1::BUSINESS_ID_DEFAULT);
+    $businessId = (int) ($payload['business_id'] ?? NotificationCatalog::BUSINESS_ID_DEFAULT);
 
     if ($appointmentId <= 0 || $eventType === '') {
         return;
@@ -70,7 +70,7 @@ Events::on('appointment.event', static function (array $payload): void {
         $channels = ['email', 'whatsapp'];
     }
 
-    $channels = array_values(array_intersect($channels, NotificationPhase1::CHANNELS));
+    $channels = NotificationCatalog::normalizeChannels($channels);
     if (empty($channels)) {
         return;
     }

@@ -55,19 +55,15 @@
 
 namespace App\Controllers;
 
-use App\Models\CustomerModel;
-use App\Models\AppointmentModel;
-use App\Services\TimezoneService;
+use App\Services\GlobalSearchService;
 
 class Search extends BaseController
 {
-    protected $customerModel;
-    protected $appointmentModel;
+    protected GlobalSearchService $globalSearchService;
 
     public function __construct()
     {
-        $this->customerModel = new CustomerModel();
-        $this->appointmentModel = new AppointmentModel();
+        $this->globalSearchService = new GlobalSearchService();
     }
 
     /**
@@ -86,60 +82,17 @@ class Search extends BaseController
                 ->setJSON(['error' => 'Unauthorized', 'success' => false]);
         }
 
-        // Get search query from request
         $q = trim((string) $this->request->getGet('q'));
+        $limit = (int) ($this->request->getGet('limit') ?? 10);
         
         try {
-            $customers = [];
-            $appointments = [];
-            
-            // Only search if query is not empty
-            if ($q !== '') {
-                // Search customers (first name, last name, email, phone)
-                $customers = $this->customerModel->search(['q' => $q, 'limit' => 10]);
-                
-                // Search appointments - search by customer name, service name, or notes
-                $appointmentsQuery = $this->appointmentModel
-                    ->select('xs_appointments.*, 
-                             CONCAT(xs_customers.first_name, " ", xs_customers.last_name) as customer_name,
-                             xs_customers.email as customer_email,
-                             xs_services.name as service_name')
-                    ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
-                    ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
-                    ->groupStart()
-                        ->like('xs_customers.first_name', $q)
-                        ->orLike('xs_customers.last_name', $q)
-                        ->orLike('xs_customers.email', $q)
-                        ->orLike('xs_services.name', $q)
-                        ->orLike('xs_appointments.notes', $q)
-                    ->groupEnd()
-                    ->orderBy('xs_appointments.start_at', 'DESC')
-                    ->limit(10);
-                
-                $appointments = $appointmentsQuery->findAll();
+            $results = $this->globalSearchService->search($q, $limit);
 
-                // Convert UTC datetimes to local ISO for correct JS parsing
-                foreach ($appointments as &$appt) {
-                    if (!empty($appt['start_at'])) {
-                        $appt['start_at'] = TimezoneService::toDisplayIso($appt['start_at']);
-                    }
-                    if (!empty($appt['end_at'])) {
-                        $appt['end_at'] = TimezoneService::toDisplayIso($appt['end_at']);
-                    }
-                }
-                unset($appt);
-            }
-
-            // Return JSON response
             return $this->response->setJSON([
                 'success' => true,
-                'customers' => $customers,
-                'appointments' => $appointments,
-                'counts' => [
-                    'customers' => count($customers),
-                    'appointments' => count($appointments),
-                    'total' => count($customers) + count($appointments)
-                ]
+                'customers' => $results['customers'],
+                'appointments' => $results['appointments'],
+                'counts' => $results['counts'],
             ]);
         } catch (\Exception $e) {
             log_message('error', '[Search::index] Error: ' . $e->getMessage());

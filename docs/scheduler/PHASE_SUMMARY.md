@@ -16,7 +16,7 @@ Successfully refactored the Day View Scheduler to achieve perfect timeline-grid 
 
 ### ✅ Phase 1: Audit Day Scheduler Components
 
-**Findings:** [See PHASE1_AUDIT_FINDINGS.md](./PHASE1_AUDIT_FINDINGS.md)
+**Findings:** [See phase1_audit_findings.md](./phase1_audit_findings.md)
 
 - Timeline used static hour loops (8 AM - 5 PM)
 - No provider schedule integration
@@ -111,14 +111,14 @@ Successfully refactored the Day View Scheduler to achieve perfect timeline-grid 
 - UI design needed for debug overlay
 - Non-blocking for core alignment fix
 
-**Placeholder:** Documentation includes debug panel spec in DAY_VIEW_ARCHITECTURE.md
+**Placeholder:** Documentation includes debug panel spec in `day_view_architecture.md`
 
 ### ✅ Phase 10: Update Documentation
 
 **Created:**
-- `/docs/scheduler/PHASE1_AUDIT_FINDINGS.md` — Comprehensive audit report
-- `/docs/scheduler/DAY_VIEW_ARCHITECTURE.md` — Complete architecture documentation
-- `/docs/scheduler/PHASE_SUMMARY.md` — This file
+- `/docs/scheduler/phase1_audit_findings.md` — Comprehensive audit report
+- `/docs/scheduler/day_view_architecture.md` — Complete architecture documentation
+- `/docs/scheduler/phase_summary.md` — This file
 
 ---
 
@@ -137,9 +137,9 @@ Successfully refactored the Day View Scheduler to achieve perfect timeline-grid 
 | File | Purpose |
 |------|---------|
 | `resources/js/modules/scheduler/utils/timeRangeGenerator.js` | Time slot generation & calculations |
-| `docs/scheduler/PHASE1_AUDIT_FINDINGS.md` | Detailed audit findings |
-| `docs/scheduler/DAY_VIEW_ARCHITECTURE.md` | Architecture documentation |
-| `docs/scheduler/PHASE_SUMMARY.md` | This phase summary |
+| `docs/scheduler/phase1_audit_findings.md` | Detailed audit findings |
+| `docs/scheduler/day_view_architecture.md` | Architecture documentation |
+| `docs/scheduler/phase_summary.md` | This phase summary |
 
 ---
 
@@ -275,8 +275,8 @@ const timeSlots = generateTimeSlots({
 
 ## References
 
-- [Phase 1 Audit Findings](./PHASE1_AUDIT_FINDINGS.md)
-- [Day View Architecture](./DAY_VIEW_ARCHITECTURE.md)
+- [Phase 1 Audit Findings](./phase1_audit_findings.md)
+- [Day View Architecture](./day_view_architecture.md)
 - [Provider Schedule Model](../../app/Models/ProviderScheduleModel.php)
 - [Time Range Generator Utility](../../resources/js/modules/scheduler/utils/timeRangeGenerator.js)
 

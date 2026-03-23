@@ -12,7 +12,7 @@ class UpdateAppointmentStatusEnum extends MigrationBase
             return;
         }
 
-        // Modify the status column to use new enum values (skips on SQLite)
+        // Modify the status column to use new enum values
         $this->modifyEnumColumn('appointments', [
             'status' => [
                 'type'       => 'ENUM',
@@ -32,7 +32,7 @@ class UpdateAppointmentStatusEnum extends MigrationBase
             return;
         }
 
-        // Revert to old enum values (skips on SQLite)
+        // Revert to old enum values
         $this->modifyEnumColumn('appointments', [
             'status' => [
                 'type'       => 'ENUM',

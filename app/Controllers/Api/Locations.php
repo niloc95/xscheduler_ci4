@@ -101,16 +101,10 @@ class Locations extends BaseApiController
                 }
             }
             
-            return $this->response->setJSON([
-                'status' => 'ok',
-                'data'   => $locations,
-            ]);
+            return $this->ok($locations);
         } catch (\Throwable $e) {
             log_message('error', 'Location API error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to fetch locations',
-            ]);
+            return $this->serverError('Failed to fetch locations', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -125,22 +119,13 @@ class Locations extends BaseApiController
             $location = $this->locationModel->getLocationWithDays($id);
             
             if (!$location) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Location not found',
-                ]);
+                return $this->notFound('Location not found', ['location_id' => $id]);
             }
             
-            return $this->response->setJSON([
-                'status' => 'ok',
-                'data'   => $location,
-            ]);
+            return $this->ok($location);
         } catch (\Throwable $e) {
             log_message('error', 'Location API error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to fetch location',
-            ]);
+            return $this->serverError('Failed to fetch location', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -159,10 +144,7 @@ class Locations extends BaseApiController
             $required = ['provider_id', 'name'];
             foreach ($required as $field) {
                 if (empty($data[$field])) {
-                    return $this->response->setStatusCode(400)->setJSON([
-                        'status'  => 'error',
-                        'message' => "Field '{$field}' is required",
-                    ]);
+                    return $this->badRequest("Field '{$field}' is required", ['field' => $field]);
                 }
             }
 
@@ -173,10 +155,10 @@ class Locations extends BaseApiController
             // Enforce max locations per provider (Location A + Location B)
             $existingCount = count($this->locationModel->getProviderLocations((int) $data['provider_id']));
             if ($existingCount >= \App\Models\LocationModel::MAX_LOCATIONS_PER_PROVIDER) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Maximum of ' . \App\Models\LocationModel::MAX_LOCATIONS_PER_PROVIDER . ' locations per provider allowed',
-                ]);
+                return $this->badRequest(
+                    'Maximum of ' . \App\Models\LocationModel::MAX_LOCATIONS_PER_PROVIDER . ' locations per provider allowed',
+                    ['provider_id' => (int) $data['provider_id']]
+                );
             }
             
             $days = $data['days'] ?? [];
@@ -188,26 +170,15 @@ class Locations extends BaseApiController
             $locationId = $this->locationModel->createWithDays($data, $days);
             
             if (!$locationId) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Failed to create location',
-                    'errors'  => $this->locationModel->errors(),
-                ]);
+                return $this->validationError($this->locationModel->errors());
             }
             
             $location = $this->locationModel->getLocationWithDays($locationId);
             
-            return $this->response->setStatusCode(201)->setJSON([
-                'status'  => 'ok',
-                'message' => 'Location created successfully',
-                'data'    => $location,
-            ]);
+            return $this->created($location, ['message' => 'Location created successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location create error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to create location',
-            ]);
+            return $this->serverError('Failed to create location', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -222,10 +193,7 @@ class Locations extends BaseApiController
             $existing = $this->locationModel->find($id);
             
             if (!$existing) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Location not found',
-                ]);
+                return $this->notFound('Location not found', ['location_id' => $id]);
             }
             
             $data = $this->request->getJSON(true) ?? $this->request->getPost();
@@ -240,17 +208,10 @@ class Locations extends BaseApiController
             
             $location = $this->locationModel->getLocationWithDays($id);
             
-            return $this->response->setJSON([
-                'status'  => 'ok',
-                'message' => 'Location updated successfully',
-                'data'    => $location,
-            ]);
+            return $this->ok($location, ['message' => 'Location updated successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location update error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to update location',
-            ]);
+            return $this->serverError('Failed to update location', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -265,25 +226,16 @@ class Locations extends BaseApiController
             $existing = $this->locationModel->find($id);
             
             if (!$existing) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Location not found',
-                ]);
+                return $this->notFound('Location not found', ['location_id' => $id]);
             }
             
             // Soft delete by setting is_active = 0
             $this->locationModel->update($id, ['is_active' => 0]);
             
-            return $this->response->setJSON([
-                'status'  => 'ok',
-                'message' => 'Location deleted successfully',
-            ]);
+            return $this->ok(['location_id' => $id], ['message' => 'Location deleted successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location delete error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to delete location',
-            ]);
+            return $this->serverError('Failed to delete location', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -298,24 +250,15 @@ class Locations extends BaseApiController
             $existing = $this->locationModel->find($id);
             
             if (!$existing) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'Location not found',
-                ]);
+                return $this->notFound('Location not found', ['location_id' => $id]);
             }
             
             $this->locationModel->setPrimary($id);
             
-            return $this->response->setJSON([
-                'status'  => 'ok',
-                'message' => 'Primary location updated',
-            ]);
+            return $this->ok(['location_id' => $id], ['message' => 'Primary location updated']);
         } catch (\Throwable $e) {
             log_message('error', 'Location setPrimary error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to set primary location',
-            ]);
+            return $this->serverError('Failed to set primary location', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -332,10 +275,7 @@ class Locations extends BaseApiController
             $date = $this->request->getGet('date');
             
             if (!$providerId || !$date) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'provider_id and date are required',
-                ]);
+                return $this->badRequest('provider_id and date are required', ['required' => ['provider_id', 'date']]);
             }
             
             $dayOfWeek = (int) date('w', strtotime($date));
@@ -352,16 +292,10 @@ class Locations extends BaseApiController
                 ];
             }, $locations);
             
-            return $this->response->setJSON([
-                'status' => 'ok',
-                'data'   => $publicLocations,
-            ]);
+            return $this->ok($publicLocations);
         } catch (\Throwable $e) {
             log_message('error', 'Location forDate error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to fetch locations for date',
-            ]);
+            return $this->serverError('Failed to fetch locations for date', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -379,24 +313,15 @@ class Locations extends BaseApiController
             $endDate = $this->request->getGet('end_date') ?? date('Y-m-d', strtotime('+30 days'));
             
             if (!$locationId) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'status'  => 'error',
-                    'message' => 'location_id is required',
-                ]);
+                return $this->badRequest('location_id is required', ['required' => ['location_id']]);
             }
             
             $dates = $this->locationModel->getAvailableDates((int) $locationId, $startDate, $endDate);
             
-            return $this->response->setJSON([
-                'status' => 'ok',
-                'data'   => $dates,
-            ]);
+            return $this->ok($dates);
         } catch (\Throwable $e) {
             log_message('error', 'Location availableDates error: ' . $e->getMessage());
-            return $this->response->setStatusCode(500)->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to fetch available dates',
-            ]);
+            return $this->serverError('Failed to fetch available dates', ['exception' => $e->getMessage()]);
         }
     }
 }

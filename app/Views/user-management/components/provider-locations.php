@@ -104,7 +104,6 @@ $overLimit    = count($locations) > $maxLocations;
                             </label>
                             <input type="text"
                                    value="<?= esc($location['name']) ?>"
-                                   required
                                    placeholder="e.g., Melrose Practice"
                                    class="form-input"
                                    onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'name', this.value)">
@@ -362,7 +361,7 @@ window.LocationManager = {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="form-label">Location Name <span class="text-red-500">*</span></label>
-                    <input type="text" value="${this._esc(loc.name)}" required
+                    <input type="text" value="${this._esc(loc.name)}"
                            placeholder="e.g., Melrose Practice" class="form-input"
                            onchange="LocationManager.updateLocation(${loc.id}, 'name', this.value)">
                 </div>

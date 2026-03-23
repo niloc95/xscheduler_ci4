@@ -2,6 +2,7 @@
 
 namespace App\Services\Calendar;
 
+use App\Models\ProviderScheduleModel;
 use App\Models\SettingModel;
 
 /**
@@ -86,9 +87,14 @@ trait ProviderWorkingHoursTrait
             return null;
         }
 
+        $dayKey = ProviderScheduleModel::normalizeDayKey($dayOfWeek);
+        if ($dayKey === null) {
+            return null;
+        }
+
         $row = $model
             ->where('provider_id', $providerId)
-            ->where('day_of_week', $dayOfWeek)
+            ->where('day_of_week', $dayKey)
             ->first();
 
         return is_array($row) ? $row : null;

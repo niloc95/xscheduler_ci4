@@ -71,12 +71,26 @@
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;
+use App\Services\Concerns\HandlesNotificationIntegrations;
+use App\Services\NotificationCatalog;
 
 class NotificationSmsService
 {
+    use HandlesNotificationIntegrations;
+
     public const CHANNEL = 'sms';
 
     public const PROVIDERS = ['clickatell', 'twilio'];
+
+    protected function integrationEncryptionLabel(): string
+    {
+        return 'SMS';
+    }
+
+    protected function integrationDecryptContext(): string
+    {
+        return 'NotificationSmsService';
+    }
 
     /**
      * Returns a safe-to-render subset of the stored SMS integration.
@@ -86,7 +100,7 @@ class NotificationSmsService
      * Returns a safe-to-render subset of the stored SMS integration.
      * Secrets are never returned. decrypt_error is set if key mismatch.
      */
-    public function getPublicIntegration(int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT): array
+    public function getPublicIntegration(int $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT): array
     {
         $integration = $this->getIntegrationRow($businessId);
         if (!$integration) {
@@ -393,53 +407,6 @@ class NotificationSmsService
             return [];
         }
         return $this->decryptConfig($integration['encrypted_config']);
-    }
-
-    private function getIntegrationRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'NotificationSmsService::getIntegrationRow — table unavailable: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    private function encryptConfig(array $config): string
-    {
-        helper('notification');
-        return notification_encrypt_config($config, 'SMS');
-    }
-
-    /**
-     * Decrypt config, returning ['data' => array, 'error' => string|null].
-     */
-    private function decryptConfig($encrypted, bool $returnError = false): array
-    {
-        helper('notification');
-        return notification_decrypt_config($encrypted, $returnError, 'NotificationSmsService');
-    }
-
-    private function updateHealth(BusinessIntegrationModel $model, array $integration, string $healthStatus, string $testedAt): void
-    {
-        $payload = [
-            'health_status' => $healthStatus,
-            'last_tested_at' => $testedAt,
-        ];
-        if (!empty($integration['id'])) {
-            $model->update((int) $integration['id'], $payload);
-        }
-    }
-
-    private function isValidE164(string $phone): bool
-    {
-        return (bool) preg_match('/^\+[1-9]\d{7,14}$/', $phone);
     }
 
     private function isValidSender(string $sender): bool

@@ -72,9 +72,9 @@ class BookingSettingsService
     private ?array $fieldConfigCache = null;
     private ?array $customFieldConfigCache = null;
 
-    public function __construct()
+    public function __construct(?SettingModel $settingModel = null)
     {
-        $this->settingModel = new SettingModel();
+        $this->settingModel = $settingModel ?? new SettingModel();
     }
 
     /**

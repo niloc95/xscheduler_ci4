@@ -260,7 +260,9 @@ const SPA = (() => {
     if (e.defaultPrevented) return;
     const form = e.target.closest('form');
     if (!form) return;
-    if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) return;
+    if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) {
+      return;
+    }
     if (form.method.toUpperCase() !== 'POST' && form.method.toUpperCase() !== 'PUT') return;
     if (!sameOrigin(form.action)) return;
 
@@ -415,7 +417,11 @@ const SPA = (() => {
       const btn = e.target.closest('button[type="submit"]');
       if (!btn) return;
       const form = btn.closest('form');
-      if (form) form.noValidate = true;
+      if (!form) return;
+      if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) {
+        return;
+      }
+      form.noValidate = true;
     }, true);
 
     document.addEventListener('click', clickHandler);

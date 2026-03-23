@@ -41,7 +41,7 @@ function formatDateTime(value) {
  * @param {string} text - Response text
  * @returns {object|null} Parsed JSON or null
  */
-function extractJSON(text) {
+export function extractJSON(text) {
     // Strategy 1: Try parsing as-is
     try {
         return JSON.parse(text);

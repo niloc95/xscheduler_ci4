@@ -107,8 +107,8 @@ final class WeekViewServiceIntegrationTest extends CIUnitTestCase
         
         // Find the two overlapping appointments (Monday, provider 1)
         $mondayProvider1Apts = array_filter($appointments, function ($apt) use ($provider1Id) {
-            return $apt['providerId'] === $provider1Id 
-                && str_starts_with($apt['start_at'], '2026-03-09');
+            return $apt['provider_id'] === $provider1Id 
+                && str_starts_with($apt['start'], '2026-03-09');
         });
         
         $this->assertCount(2, $mondayProvider1Apts);
@@ -213,7 +213,7 @@ final class WeekViewServiceIntegrationTest extends CIUnitTestCase
         
         // Verify each appointment is on a different day
         $appointmentDates = array_map(function ($apt) {
-            return substr($apt['start_at'], 0, 10);
+            return substr($apt['start'], 0, 10);
         }, $result['appointments']);
         
         $this->assertCount(5, array_unique($appointmentDates));
@@ -282,20 +282,32 @@ final class WeekViewServiceIntegrationTest extends CIUnitTestCase
 
     protected function seedCustomer(string $name): int
     {
-        return model('CustomerModel')->insert([
-            'name' => $name,
+        [$firstName, $lastName] = array_pad(explode(' ', $name, 2), 2, 'Customer');
+
+        $table = $this->db->table('xs_customers');
+        $data = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => strtolower(str_replace(' ', '', $name)) . '@customer.com',
             'phone' => '+1234567890',
-        ]);
+        ];
+
+        if ($this->db->fieldExists('hash', 'xs_customers')) {
+            $data['hash'] = hash('sha256', uniqid('customer_', true));
+        }
+
+        $table->insert($data);
+
+        return (int) $this->db->insertID();
     }
 
     protected function seedService(string $name, int $duration): int
     {
         return model('ServiceModel')->insert([
             'name' => $name,
-            'duration' => $duration,
+            'duration_min' => $duration,
             'price' => 100.00,
-            'is_active' => 1,
+            'active' => 1,
         ]);
     }
 

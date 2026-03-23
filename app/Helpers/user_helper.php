@@ -57,25 +57,7 @@
  * =============================================================================
  */
 
-if (!function_exists('get_role_display_name')) {
-    /**
-     * Get display name for user role
-     * 
-     * @param string $role User role key
-     * @return string Display name
-     */
-    function get_role_display_name(string $role): string
-    {
-        $roleNames = [
-            'admin' => 'Admin',
-            'provider' => 'Provider',
-            'staff' => 'Staff',
-            'customer' => 'Customer',
-        ];
-
-        return $roleNames[$role] ?? ucfirst($role);
-    }
-}
+require_once APPPATH . 'Helpers/app_helper.php';
 
 if (!function_exists('get_role_badge_classes')) {
     /**

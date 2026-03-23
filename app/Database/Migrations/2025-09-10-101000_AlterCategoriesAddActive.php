@@ -19,6 +19,12 @@ class AlterCategoriesAddActive extends MigrationBase
 
     public function down()
     {
-        $this->forge->dropColumn('categories', 'active');
+        if ($this->db->tableExists('categories') && $this->db->fieldExists('active', 'categories')) {
+            try {
+                $this->forge->dropColumn('categories', 'active');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some rollback paths
+            }
+        }
     }
 }

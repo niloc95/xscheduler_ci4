@@ -103,7 +103,7 @@ Only runs packaging script without rebuilding assets.
    - ❌ Removes `setup_completed.flag` (forces fresh install)
    - ❌ Removes `*.log` files from `writable/logs/`
    - ❌ Removes `*.json` files from `writable/debugbar/`
-   - ❌ Removes SQLite database files (`.db`)
+   - ❌ Removes leftover generated database artifacts from packaging output
    - ❌ Excludes `app/Views/test/` directory
    - ✅ Preserves directory structure with `.gitkeep` files
 
@@ -180,12 +180,12 @@ When you run `npm run release`, the script:
 
 5. **Update Files** 📝
    - Bumps version in `package.json`
-   - Updates `CHANGELOG.md` with new version section
+   - Updates `docs/changelog.md` with new version section
    - Adds release date
 
 6. **Git Operations** 🔖
    ```bash
-   git add package.json CHANGELOG.md
+   git add package.json docs/changelog.md
    git commit -m "chore: release vX.X.X"
    git tag -a vX.X.X -m "Release X.X.X"
    git push origin main
@@ -317,7 +317,7 @@ Only does version bump and git operations. GitHub Actions creates package.
 After running release:
 
 - [ ] Local `package.json` shows new version
-- [ ] `CHANGELOG.md` updated with new version and date
+- [ ] `docs/changelog.md` updated with new version and date
 - [ ] Git commit created: `chore: release vX.X.X`
 - [ ] Git tag created: `vX.X.X`
 - [ ] Tag pushed to GitHub
@@ -368,8 +368,8 @@ This is expected if you ran release with `--skip-package`. GitHub Actions always
 
 ## 📚 Related Documentation
 
-- [RELEASING.md](RELEASING.md) - Detailed release process
-- [QUICK_RELEASE_GUIDE.md](QUICK_RELEASE_GUIDE.md) - Fast reference
+- [releasing.md](./releasing.md) - Detailed release process
+- [quick_release_guide.md](./quick_release_guide.md) - Fast reference
 - [../scripts/release.js](../scripts/release.js) - Release script
 - [../scripts/package.js](../scripts/package.js) - Packaging script
 - [../.github/workflows/release.yml](../.github/workflows/release.yml) - GitHub Actions workflow

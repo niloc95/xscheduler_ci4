@@ -73,6 +73,8 @@ namespace App\Services;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
+use App\Services\Appointment\AppointmentStatus;
+use App\Services\NotificationCatalog;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -92,15 +94,31 @@ class AppointmentBookingService
     protected BusinessHoursService $businessHoursService;
     protected AvailabilityService $availabilityService;
     protected TimezoneService $timezoneService;
+    protected LocalizationSettingsService $localizationSettingsService;
+    protected \App\Models\LocationModel $locationModel;
+    protected AppointmentEventService $appointmentEventService;
 
-    public function __construct()
+    public function __construct(
+        ?AppointmentModel $appointmentModel = null,
+        ?CustomerModel $customerModel = null,
+        ?ServiceModel $serviceModel = null,
+        ?BusinessHoursService $businessHoursService = null,
+        ?AvailabilityService $availabilityService = null,
+        ?TimezoneService $timezoneService = null,
+        ?LocalizationSettingsService $localizationSettingsService = null,
+        ?\App\Models\LocationModel $locationModel = null,
+        ?AppointmentEventService $appointmentEventService = null,
+    )
     {
-        $this->appointmentModel = new AppointmentModel();
-        $this->customerModel = new CustomerModel();
-        $this->serviceModel = new ServiceModel();
-        $this->businessHoursService = new BusinessHoursService();
-        $this->availabilityService = new AvailabilityService();
-        $this->timezoneService = new TimezoneService();
+        $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
+        $this->customerModel = $customerModel ?? new CustomerModel();
+        $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->businessHoursService = $businessHoursService ?? new BusinessHoursService();
+        $this->availabilityService = $availabilityService ?? new AvailabilityService();
+        $this->timezoneService = $timezoneService ?? new TimezoneService();
+        $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
+        $this->locationModel = $locationModel ?? new \App\Models\LocationModel();
+        $this->appointmentEventService = $appointmentEventService ?? new AppointmentEventService();
     }
 
     /**
@@ -124,7 +142,7 @@ class AppointmentBookingService
 
             // Step 2: Resolve timezone
             if (!TimezoneService::isValidTimezone($timezone)) {
-                $timezone = (new LocalizationSettingsService())->getTimezone();
+                $timezone = $this->localizationSettingsService->getTimezone();
             }
             
             // Step 3: Calculate appointment times
@@ -180,13 +198,20 @@ class AppointmentBookingService
             $customerId = $customerResult['customerId'];
 
             // Step 7: Create appointment record
+            $status = array_key_exists('status', $data)
+                ? AppointmentStatus::normalize((string) $data['status'])
+                : AppointmentStatus::PENDING;
+            if ($status === null) {
+                return $this->error('Invalid appointment status', ['errors' => ['status' => 'invalid']]);
+            }
+
             $appointmentData = [
                 'customer_id' => $customerId,
                 'provider_id' => $data['provider_id'],
                 'service_id' => $data['service_id'],
                 'start_at' => $timeData['startUtc'],
                 'end_at' => $timeData['endUtc'],
-                'status' => $data['status'] ?? 'pending',
+                'status' => $status,
                 'notes' => $data['notes'] ?? '',
                 'location_id' => $resolvedLocationId,
             ];
@@ -198,8 +223,7 @@ class AppointmentBookingService
 
             // Snapshot location data if location_id provided
             if (!empty($resolvedLocationId)) {
-                $locationModel = new \App\Models\LocationModel();
-                $snapshot = $locationModel->getLocationSnapshot((int) $resolvedLocationId);
+                $snapshot = $this->locationModel->getLocationSnapshot((int) $resolvedLocationId);
                 $appointmentData = array_merge($appointmentData, $snapshot);
             }
 
@@ -314,8 +338,7 @@ class AppointmentBookingService
                 unset($data['appointment_date'], $data['appointment_time']);
 
                 if (!empty($resolvedLocationId)) {
-                    $locationModel = new \App\Models\LocationModel();
-                    $snapshot = $locationModel->getLocationSnapshot((int) $resolvedLocationId);
+                    $snapshot = $this->locationModel->getLocationSnapshot((int) $resolvedLocationId);
                     $data = array_merge($data, $snapshot);
                 }
             }
@@ -335,10 +358,18 @@ class AppointmentBookingService
                 $data['location_id'] = $locationContext['location_id'];
 
                 if (!empty($data['location_id'])) {
-                    $locationModel = new \App\Models\LocationModel();
-                    $snapshot = $locationModel->getLocationSnapshot((int) $data['location_id']);
+                    $snapshot = $this->locationModel->getLocationSnapshot((int) $data['location_id']);
                     $data = array_merge($data, $snapshot);
                 }
+            }
+
+            if (array_key_exists('status', $data)) {
+                $normalizedStatus = AppointmentStatus::normalize((string) $data['status']);
+                if ($normalizedStatus === null) {
+                    return $this->error('Invalid appointment status', ['errors' => ['status' => 'invalid']]);
+                }
+
+                $data['status'] = $normalizedStatus;
             }
 
             // Update appointment
@@ -353,8 +384,19 @@ class AppointmentBookingService
             log_message('info', '[AppointmentBookingService] ✅ Appointment #' . $appointmentId . ' updated successfully');
 
             // Queue notifications when status or time changed
-            if (isset($data['status']) || isset($data['start_at'])) {
-                $event = $notificationEvent ?? 'appointment_rescheduled';
+            $statusChanged = array_key_exists('status', $data)
+                && (string) $data['status'] !== (string) ($existing['status'] ?? '');
+            $timeChanged = isset($data['start_at'])
+                && (string) $data['start_at'] !== (string) ($existing['start_at'] ?? '');
+
+            if ($statusChanged || $timeChanged) {
+                $event = $notificationEvent;
+                if ($event === null) {
+                    $event = $timeChanged
+                        ? 'appointment_rescheduled'
+                        : AppointmentStatus::notificationEvent($data['status'] ?? null, '');
+                }
+
                 if ($event !== '') {
                     $types = $notificationTypes ?? ['email', 'whatsapp'];
                     $this->queueNotifications($appointmentId, $types, $event);
@@ -388,7 +430,7 @@ class AppointmentBookingService
         string $timezone
     ): array {
         // Always use the app timezone for interpreting form input.
-        $appTimezone = (new LocalizationSettingsService())->getTimezone();
+        $appTimezone = $this->localizationSettingsService->getTimezone();
         $startLocal  = $date . ' ' . $time . ':00';
 
         try {
@@ -497,8 +539,7 @@ class AppointmentBookingService
      */
     protected function resolveBookingLocationContext(int $providerId, ?int $requestedLocationId): array
     {
-        $locationModel = new \App\Models\LocationModel();
-        $activeLocations = $locationModel->getProviderLocations($providerId, true);
+        $activeLocations = $this->locationModel->getProviderLocations($providerId, true);
 
         if (empty($activeLocations)) {
             return ['success' => true, 'location_id' => null, 'message' => null, 'errors' => []];
@@ -537,8 +578,7 @@ class AppointmentBookingService
     protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
     {
         try {
-            $events = new AppointmentEventService();
-            $events->dispatch($event, $appointmentId, $types, NotificationPhase1::BUSINESS_ID_DEFAULT);
+            $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications: ' . implode(', ', $types));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());

@@ -23,13 +23,21 @@ class MigrateCustomFieldsNaming extends MigrationBase
             return;
         }
 
+        if (!$this->db->fieldExists('custom_fields', 'customers')) {
+            return;
+        }
+
         // Get all customers with custom_fields data
         $builder = $this->db->table('customers');
-        $customers = $builder->select('id, custom_fields')
-                             ->where('custom_fields IS NOT NULL')
-                             ->where('custom_fields !=', '')
-                             ->get()
-                             ->getResultArray();
+        try {
+            $customers = $builder->select('id, custom_fields')
+                                 ->where('custom_fields IS NOT NULL')
+                                 ->where('custom_fields !=', '')
+                                 ->get()
+                                 ->getResultArray();
+        } catch (\Throwable $e) {
+            return;
+        }
 
         $updated = 0;
         $skipped = 0;
@@ -91,13 +99,21 @@ class MigrateCustomFieldsNaming extends MigrationBase
             return;
         }
 
+        if (!$this->db->fieldExists('custom_fields', 'customers')) {
+            return;
+        }
+
         // Get all customers with custom_fields data
         $builder = $this->db->table('customers');
-        $customers = $builder->select('id, custom_fields')
-                             ->where('custom_fields IS NOT NULL')
-                             ->where('custom_fields !=', '')
-                             ->get()
-                             ->getResultArray();
+        try {
+            $customers = $builder->select('id, custom_fields')
+                                 ->where('custom_fields IS NOT NULL')
+                                 ->where('custom_fields !=', '')
+                                 ->get()
+                                 ->getResultArray();
+        } catch (\Throwable $e) {
+            return;
+        }
 
         $reverted = 0;
 

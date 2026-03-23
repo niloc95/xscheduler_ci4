@@ -43,7 +43,7 @@
  * 2. For each channel with enabled rule, queue notification
  * 3. Respect customer opt-outs per channel
  * 
- * @see         app/Services/NotificationPhase1.php for rule processing
+ * @see         app/Services/NotificationPolicyService.php for rule processing
  * @see         app/Controllers/Settings.php for admin rule config
  * @package     App\Models
  * @extends     BaseModel

@@ -11,7 +11,7 @@
  * 
  * ROUTES HANDLED:
  * -----------------------------------------------------------------------------
- * GET  /app                          : Main application entry point
+ * GET  /                             : Main application entry point
  * 
  * PURPOSE:
  * -----------------------------------------------------------------------------
@@ -22,8 +22,8 @@
  * 
  * ROUTING LOGIC:
  * -----------------------------------------------------------------------------
- * ┌─────────────────┐
- * │  User visits /app │
+ * ┌───────────────┐
+ * │ User visits / │
  * └────────┬────────┘
  *          │
  *          ▼
@@ -39,12 +39,6 @@
  *           ▼       ▼
  *      /dashboard  /login
  * 
- * SIMILAR TO:
- * -----------------------------------------------------------------------------
- * - Home controller (routes from /)
- * - Provides alternative entry point at /app
- * 
- * @see         app/Controllers/Home.php for root URL handler
  * @see         app/Helpers/setup_helper.php for is_setup_completed()
  * @package     App\Controllers
  * @extends     BaseController
@@ -58,7 +52,7 @@ namespace App\Controllers;
 class AppFlow extends BaseController
 {
     /**
-     * Handle application entry point and route users correctly
+     * Handle the root entry point and route users correctly.
      */
     public function index()
     {

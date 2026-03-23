@@ -68,10 +68,24 @@
 namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;
+use App\Services\Concerns\HandlesNotificationIntegrations;
+use App\Services\NotificationCatalog;
 
 class NotificationEmailService
 {
+    use HandlesNotificationIntegrations;
+
     public const CHANNEL = 'email';
+
+    protected function integrationEncryptionLabel(): string
+    {
+        return 'SMTP';
+    }
+
+    protected function integrationDecryptContext(): string
+    {
+        return 'NotificationEmailService';
+    }
 
     /**
      * Send an email using the stored SMTP integration for the business.
@@ -139,7 +153,7 @@ class NotificationEmailService
      * Password is never returned.
      * If decryption fails (key mismatch), returns 'decrypt_error' => 'encryption_key_mismatch'.
      */
-    public function getPublicIntegration(int $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT): array
+    public function getPublicIntegration(int $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT): array
     {
         $integration = $this->getIntegrationRow($businessId);
         if (!$integration) {
@@ -356,46 +370,4 @@ class NotificationEmailService
         }
     }
 
-    private function getIntegrationRow(int $businessId): ?array
-    {
-        try {
-            $model = new BusinessIntegrationModel();
-            $row = $model
-                ->where('business_id', $businessId)
-                ->where('channel', self::CHANNEL)
-                ->first();
-
-            return is_array($row) ? $row : null;
-        } catch (\Throwable $e) {
-            log_message('debug', 'NotificationEmailService::getIntegrationRow — table unavailable: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    private function encryptConfig(array $config): string
-    {
-        helper('notification');
-        return notification_encrypt_config($config, 'SMTP');
-    }
-
-    /**
-     * Decrypt config, returning ['data' => array, 'error' => string|null].
-     * Use decryptConfigSafe() for backward-compatible array-only return.
-     */
-    private function decryptConfig($encrypted, bool $returnError = false): array
-    {
-        helper('notification');
-        return notification_decrypt_config($encrypted, $returnError, 'NotificationEmailService');
-    }
-
-    private function updateHealth(BusinessIntegrationModel $model, array $integration, string $healthStatus, string $testedAt): void
-    {
-        $payload = [
-            'health_status' => $healthStatus,
-            'last_tested_at' => $testedAt,
-        ];
-        if (!empty($integration['id'])) {
-            $model->update((int) $integration['id'], $payload);
-        }
-    }
 }

@@ -229,20 +229,32 @@ final class DayViewServiceIntegrationTest extends CIUnitTestCase
 
     protected function seedCustomer(string $name): int
     {
-        return model('CustomerModel')->insert([
-            'name' => $name,
+        [$firstName, $lastName] = array_pad(explode(' ', $name, 2), 2, 'Customer');
+
+        $table = $this->db->table('xs_customers');
+        $data = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => strtolower(str_replace(' ', '', $name)) . '@customer.com',
             'phone' => '+1234567890',
-        ]);
+        ];
+
+        if ($this->db->fieldExists('hash', 'xs_customers')) {
+            $data['hash'] = hash('sha256', uniqid('customer_', true));
+        }
+
+        $table->insert($data);
+
+        return (int) $this->db->insertID();
     }
 
     protected function seedService(string $name, int $duration): int
     {
         return model('ServiceModel')->insert([
             'name' => $name,
-            'duration' => $duration,
+            'duration_min' => $duration,
             'price' => 100.00,
-            'is_active' => 1,
+            'active' => 1,
         ]);
     }
 

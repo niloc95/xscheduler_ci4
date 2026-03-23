@@ -32,18 +32,7 @@ class UpdateUsersAndAppointmentsSplit extends MigrationBase
         }
 
         if (!$haveStatus) {
-            if ($this->isSQLite()) {
-                $this->forge->addColumn('users', [
-                    'status' => [
-                        'type'       => 'VARCHAR',
-                        'constraint' => 16,
-                        'default'    => 'active',
-                        'null'       => false,
-                    ],
-                ]);
-            } else {
-                $db->query("ALTER TABLE `{$usersTable}` ADD `status` ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active'");
-            }
+            $db->query("ALTER TABLE `{$usersTable}` ADD `status` ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active'");
         }
 
         if (!$haveLastLogin) {
@@ -55,7 +44,6 @@ class UpdateUsersAndAppointmentsSplit extends MigrationBase
             ]);
         }
 
-        // Use modifyEnumColumn for cross-database compatibility (skips on SQLite)
         $this->modifyEnumColumn('users', [
             'role' => [
                 'type' => 'ENUM',
@@ -67,8 +55,7 @@ class UpdateUsersAndAppointmentsSplit extends MigrationBase
 
         $hasCustomerUsers = $db->query("SELECT COUNT(*) AS c FROM `{$usersTable}` WHERE role = 'customer'")->getFirstRow();
 
-        // Data migration from users→customers is MySQL-specific (uses SUBSTRING_INDEX, JOIN UPDATE)
-        if (!$this->isSQLite() && $hasCustomerUsers && (int) $hasCustomerUsers->c > 0 && $db->tableExists('customers')) {
+        if ($hasCustomerUsers && (int) $hasCustomerUsers->c > 0 && $db->tableExists('customers')) {
             $insertSql = <<<SQL
 INSERT INTO `{$customersTable}` (first_name, last_name, email, phone, address, notes, created_at, updated_at)
 SELECT
@@ -112,8 +99,7 @@ SQL;
                     ],
                 ]));
 
-                // Data migration (MySQL-specific JOIN UPDATE syntax)
-                if (!$this->isSQLite() && $hasCustomerUsers && (int) $hasCustomerUsers->c > 0) {
+                if ($hasCustomerUsers && (int) $hasCustomerUsers->c > 0) {
                     $updateSql = <<<SQL
 UPDATE `{$appointmentsTable}` a
 JOIN `{$usersTable}` u ON a.user_id = u.id AND u.role = 'customer'
@@ -140,16 +126,13 @@ SQL;
 
             if ($haveUserId) {
                 try {
-                    // Drop FK constraint (MySQL only — information_schema not available on SQLite)
-                    if (!$this->isSQLite()) {
-                        $constraint = $db->query(
-                            "SELECT CONSTRAINT_NAME AS name FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'user_id' AND REFERENCED_TABLE_NAME = ?",
-                            [$appointmentsTable, $usersTable]
-                        )->getFirstRow();
+                    $constraint = $db->query(
+                        "SELECT CONSTRAINT_NAME AS name FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'user_id' AND REFERENCED_TABLE_NAME = ?",
+                        [$appointmentsTable, $usersTable]
+                    )->getFirstRow();
 
-                        if ($constraint && $constraint->name) {
-                            $db->query("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `{$constraint->name}`");
-                        }
+                    if ($constraint && $constraint->name) {
+                        $db->query("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `{$constraint->name}`");
                     }
 
                     $this->forge->dropColumn('appointments', 'user_id');
@@ -197,8 +180,7 @@ SQL;
             ]));
         }
 
-        // MySQL-specific JOIN UPDATE — skip on SQLite
-        if (!$this->isSQLite() && $haveCustomerId && $db->tableExists('customers')) {
+        if ($haveCustomerId && $db->tableExists('customers')) {
             $rollbackSql = <<<SQL
 UPDATE `{$appointmentsTable}` a
 JOIN `{$customersTable}` c ON a.customer_id = c.id
@@ -223,7 +205,6 @@ SQL;
             // Ignore missing column
         }
 
-        // Revert role column (skips on SQLite where ENUM is VARCHAR)
         try {
             $this->modifyEnumColumn('users', [
                 'role' => [

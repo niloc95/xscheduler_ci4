@@ -40,21 +40,17 @@ class AddLocationIdToProviderSchedules extends MigrationBase
             $this->forge->addColumn('provider_schedules', $fields);
 
             // Add FK — location deletion nullifies schedule link (non-destructive)
-            if (!$this->isSQLite()) {
-                $prefix = $this->db->getPrefix();
-                $this->db->query("ALTER TABLE `{$prefix}provider_schedules` ADD CONSTRAINT `fk_schedule_location` FOREIGN KEY (`location_id`) REFERENCES `{$prefix}locations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
-            }
+            $prefix = $this->db->getPrefix();
+            $this->db->query("ALTER TABLE `{$prefix}provider_schedules` ADD CONSTRAINT `fk_schedule_location` FOREIGN KEY (`location_id`) REFERENCES `{$prefix}locations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
         }
 
         // 2. Add unique constraint on location_days to prevent duplicate day entries
-        if (!$this->isSQLite()) {
-            try {
-                $prefix = $this->db->getPrefix();
-                $this->db->query("ALTER TABLE `{$prefix}location_days` ADD UNIQUE KEY `uq_location_day` (`location_id`, `day_of_week`)");
-            } catch (\Throwable $e) {
-                // Might fail if duplicates already exist — clean up first then retry
-                log_message('warning', 'Could not add unique constraint on location_days: ' . $e->getMessage());
-            }
+        try {
+            $prefix = $this->db->getPrefix();
+            $this->db->query("ALTER TABLE `{$prefix}location_days` ADD UNIQUE KEY `uq_location_day` (`location_id`, `day_of_week`)");
+        } catch (\Throwable $e) {
+            // Might fail if duplicates already exist — clean up first then retry
+            log_message('warning', 'Could not add unique constraint on location_days: ' . $e->getMessage());
         }
     }
 
@@ -63,24 +59,24 @@ class AddLocationIdToProviderSchedules extends MigrationBase
         $prefix = $this->db->getPrefix();
 
         // Drop FK first, then column
-        if (!$this->isSQLite()) {
-            try {
-                $this->db->query("ALTER TABLE `{$prefix}provider_schedules` DROP FOREIGN KEY `fk_schedule_location`");
-            } catch (\Throwable $e) {
-                // FK might not exist
-            }
+        try {
+            $this->db->query("ALTER TABLE `{$prefix}provider_schedules` DROP FOREIGN KEY `fk_schedule_location`");
+        } catch (\Throwable $e) {
+            // FK might not exist
         }
 
         if ($this->db->fieldExists('location_id', 'provider_schedules')) {
-            $this->forge->dropColumn('provider_schedules', 'location_id');
+            try {
+                $this->forge->dropColumn('provider_schedules', 'location_id');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some refresh paths.
+            }
         }
 
-        if (!$this->isSQLite()) {
-            try {
-                $this->db->query("ALTER TABLE `{$prefix}location_days` DROP INDEX `uq_location_day`");
-            } catch (\Throwable $e) {
-                // Index might not exist
-            }
+        try {
+            $this->db->query("ALTER TABLE `{$prefix}location_days` DROP INDEX `uq_location_day`");
+        } catch (\Throwable $e) {
+            // Index might not exist
         }
     }
 }

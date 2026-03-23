@@ -98,7 +98,7 @@ defined('APPOINTMENT_PENDING')   || define('APPOINTMENT_PENDING', 'pending');
 defined('APPOINTMENT_CONFIRMED') || define('APPOINTMENT_CONFIRMED', 'confirmed');
 defined('APPOINTMENT_COMPLETED') || define('APPOINTMENT_COMPLETED', 'completed');
 defined('APPOINTMENT_CANCELLED') || define('APPOINTMENT_CANCELLED', 'cancelled');
-defined('APPOINTMENT_NO_SHOW')   || define('APPOINTMENT_NO_SHOW', 'no_show');
+defined('APPOINTMENT_NO_SHOW')   || define('APPOINTMENT_NO_SHOW', 'no-show');
 
 // Notification Channels
 defined('NOTIFICATION_EMAIL')    || define('NOTIFICATION_EMAIL', 'email');

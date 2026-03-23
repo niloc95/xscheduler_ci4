@@ -117,6 +117,7 @@ $hasLocations = !empty($providerLocations);
                                    data-field="start"
                                    data-time-input
                                    class="form-input mt-1"
+                                <?= $isActive ? 'required' : '' ?>
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
@@ -127,6 +128,7 @@ $hasLocations = !empty($providerLocations);
                                    data-field="end"
                                    data-time-input
                                    class="form-input mt-1"
+                                <?= $isActive ? 'required' : '' ?>
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
@@ -226,6 +228,11 @@ $hasLocations = !empty($providerLocations);
         const inputs = dayRow.querySelectorAll('[data-time-input]');
         inputs.forEach((input) => {
             input.disabled = !isActive;
+            if (input.dataset.field === 'start' || input.dataset.field === 'end') {
+                input.required = !!isActive;
+            } else {
+                input.required = false;
+            }
             input.classList.toggle('opacity-70', !isActive);
         });
 

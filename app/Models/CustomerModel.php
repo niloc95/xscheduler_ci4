@@ -85,6 +85,10 @@ class CustomerModel extends BaseModel
 	 */
 	protected function generateHash(array $data): array
 	{
+		if (! $this->db->fieldExists('hash', $this->table)) {
+			return $data;
+		}
+
 		if (!isset($data['data']['hash']) || empty($data['data']['hash'])) {
 			$encryptionKey = config('Encryption')->key ?? 'default-secret-key';
 			$data['data']['hash'] = hash('sha256', uniqid('customer_', true) . $encryptionKey . time());

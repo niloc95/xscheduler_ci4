@@ -2,7 +2,7 @@
 
 namespace App\Commands;
 
-use App\Services\NotificationPhase1;
+use App\Services\NotificationCatalog;
 use App\Services\NotificationQueueDispatcher;
 use App\Services\NotificationQueueService;
 use CodeIgniter\CLI\BaseCommand;
@@ -21,9 +21,9 @@ class DispatchNotificationQueue extends BaseCommand
      */
     public function run(array $params)
     {
-        $businessId = (int) ($params[0] ?? NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $businessId = (int) ($params[0] ?? NotificationCatalog::BUSINESS_ID_DEFAULT);
         if ($businessId <= 0) {
-            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+            $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
         }
 
         $limit = (int) ($params[1] ?? 100);

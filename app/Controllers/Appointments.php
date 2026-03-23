@@ -60,6 +60,8 @@ use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
+use App\Services\Appointment\AppointmentDateTimeNormalizer;
+use App\Services\Appointment\AppointmentStatus;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
@@ -72,6 +74,7 @@ class Appointments extends BaseController
     protected $serviceModel;
     protected $appointmentModel;
     protected $customerModel;
+    protected AppointmentDateTimeNormalizer $appointmentDateTimeNormalizer;
 
     public function __construct()
     {
@@ -89,6 +92,7 @@ class Appointments extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
+        $this->appointmentDateTimeNormalizer = new AppointmentDateTimeNormalizer();
             return redirect()->to(base_url('auth/login'));
         }
 
@@ -283,7 +287,7 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::store] Validation passed');
 
         $clientTimezone = $this->resolveClientTimezone();
-        $normalizedStart = $this->normalizeFormDateTimeBoundary(
+        $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime(
             (string) $this->request->getPost('appointment_date'),
             (string) $this->request->getPost('appointment_time'),
             $clientTimezone
@@ -383,37 +387,7 @@ class Appointments extends BaseController
             $session->set('client_timezone_offset', (int) $offsetCandidate);
         }
 
-        return $timezoneCandidate;
-    }
-
-    /**
-     * Normalize form date/time at the controller boundary.
-     * Converts input timezone -> UTC canonical, then UTC -> app-local booking fields.
-     */
-    private function normalizeFormDateTimeBoundary(string $date, string $time, string $inputTimezone): array
-    {
-        try {
-            $inputTz = TimezoneService::isValidTimezone($inputTimezone)
-                ? new \DateTimeZone($inputTimezone)
-                : new \DateTimeZone(TimezoneService::businessTimezone());
-            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
-
-            $local = new \DateTimeImmutable(sprintf('%s %s:00', $date, $time), $inputTz);
-            $utc = $local->setTimezone(new \DateTimeZone('UTC'));
-            $appLocal = $utc->setTimezone($appTz);
-
-            return [
-                'success' => true,
-                'utc_start' => $utc->format('Y-m-d H:i:s'),
-                'app_date' => $appLocal->format('Y-m-d'),
-                'app_time' => $appLocal->format('H:i'),
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'message' => 'Unable to parse appointment date/time.',
-            ];
-        }
+        return $this->appointmentDateTimeNormalizer->resolveInputTimezone($timezoneCandidate);
     }
 
     /**
@@ -590,7 +564,7 @@ class Appointments extends BaseController
 
         // Normalize input at controller boundary (input timezone -> UTC canonical).
         $clientTimezone = $this->resolveClientTimezone();
-        $normalizedStart = $this->normalizeFormDateTimeBoundary($appointmentDate, $appointmentTime, $clientTimezone);
+        $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime($appointmentDate, $appointmentTime, $clientTimezone);
         if (!$normalizedStart['success']) {
             $message = $normalizedStart['message'] ?? 'Invalid appointment date/time input.';
             if ($this->request->isAJAX()) {
@@ -603,7 +577,7 @@ class Appointments extends BaseController
         }
 
         $appTimezone = (new LocalizationSettingsService())->getTimezone();
-        $startTimeStored = $normalizedStart['utc_start'];
+        $startTimeStored = $normalizedStart['utc'];
 
         log_message('info', '[Appointments::update] Stored start time (UTC): ' . $startTimeStored);
 
@@ -640,7 +614,7 @@ class Appointments extends BaseController
             'service_id' => (int) $serviceId,
             'appointment_date' => $normalizedStart['app_date'],
             'appointment_time' => $normalizedStart['app_time'],
-            'status' => $status,
+            'status' => AppointmentStatus::normalize($status) ?? $status,
             'notes' => $this->request->getPost('notes') ?? '',
             'location_id' => ($locationId !== null && $locationId !== '') ? (int) $locationId : null,
         ];
@@ -648,7 +622,10 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::update] Appointment data to pipeline: ' . json_encode($appointmentData));
 
         $bookingService = new AppointmentBookingService();
-        $event = ($status === 'cancelled') ? 'appointment_cancelled' : 'appointment_rescheduled';
+        $timeChanged = $startTimeStored !== (string) ($existingAppointment['start_at'] ?? '');
+        $event = $timeChanged
+            ? 'appointment_rescheduled'
+            : AppointmentStatus::notificationEvent($status, '');
         $result = $bookingService->updateAppointment(
             (int) $appointmentId,
             $appointmentData,
@@ -765,7 +742,7 @@ class Appointments extends BaseController
             'service_id' => 'required|is_natural_no_zero',
             'appointment_date' => 'required|valid_date',
             'appointment_time' => 'required',
-            'status' => 'required|in_list[pending,confirmed,completed,cancelled,no-show]',
+            'status' => AppointmentStatus::VALIDATION_RULE,
             'customer_first_name' => 'required|min_length[2]|max_length[120]',
             'customer_last_name' => 'permit_empty|max_length[160]',
             'customer_email' => 'required|valid_email|max_length[255]',

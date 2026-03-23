@@ -20,11 +20,13 @@ final class BusinessHoursServiceIntegrationTest extends CIUnitTestCase
 
     protected $namespace = 'App';
     protected BusinessHoursService $service;
+    private int $providerId;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->service = new BusinessHoursService();
+        $this->providerId = $this->seedProvider();
     }
 
     /**
@@ -83,8 +85,9 @@ final class BusinessHoursServiceIntegrationTest extends CIUnitTestCase
         
         $this->assertFalse($result['valid'], 'Appointment before business hours should be invalid');
         $this->assertStringContainsString('outside our business hours', $result['reason']);
-        $this->assertStringContainsString('9:00 AM', $result['reason']);
-        $this->assertStringContainsString('5:00 PM', $result['reason']);
+        $this->assertNotNull($result['hours']);
+        $this->assertEquals('09:00:00', $result['hours']['start_time']);
+        $this->assertEquals('17:00:00', $result['hours']['end_time']);
     }
 
     /**
@@ -254,10 +257,14 @@ final class BusinessHoursServiceIntegrationTest extends CIUnitTestCase
         $db = \Config\Database::connect();
         
         // Clear existing data for this weekday
-        $db->table('business_hours')->where('weekday', $weekday)->delete();
+        $db->table('business_hours')
+            ->where('provider_id', $this->providerId)
+            ->where('weekday', $weekday)
+            ->delete();
         
         // Insert test data
         $db->table('business_hours')->insert([
+            'provider_id' => $this->providerId,
             'weekday' => $weekday,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -266,11 +273,30 @@ final class BusinessHoursServiceIntegrationTest extends CIUnitTestCase
         ]);
     }
 
+    private function seedProvider(): int
+    {
+        $db = \Config\Database::connect();
+        $email = 'business-hours-provider-' . uniqid('', true) . '@example.com';
+
+        $db->table('users')->insert([
+            'name' => 'Business Hours Provider',
+            'email' => $email,
+            'password_hash' => password_hash('password', PASSWORD_DEFAULT),
+            'role' => 'provider',
+            'status' => 'active',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return (int) $db->insertID();
+    }
+
     protected function tearDown(): void
     {
-        // Clean up test data
         $db = \Config\Database::connect();
-        $db->table('business_hours')->truncate();
+
+        $db->table('business_hours')->where('provider_id', $this->providerId)->delete();
+        $db->table('users')->where('id', $this->providerId)->delete();
         
         parent::tearDown();
     }

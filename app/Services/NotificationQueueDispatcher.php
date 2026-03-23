@@ -72,11 +72,26 @@ use App\Models\BusinessIntegrationModel;
 use App\Models\BusinessNotificationRuleModel;
 use App\Models\NotificationQueueModel;
 use App\Services\NotificationDeliveryLogService;
+use App\Services\NotificationCatalog;
 use App\Services\NotificationOptOutService;
 
 class NotificationQueueDispatcher
 {
-    public const BUSINESS_ID_DEFAULT = NotificationPhase1::BUSINESS_ID_DEFAULT;
+    public const BUSINESS_ID_DEFAULT = NotificationCatalog::BUSINESS_ID_DEFAULT;
+
+    protected ?NotificationQueueModel $queueModel;
+    protected ?NotificationDeliveryLogService $deliveryLogService;
+    protected ?NotificationOptOutService $optOutService;
+
+    public function __construct(
+        ?NotificationQueueModel $queueModel = null,
+        ?NotificationDeliveryLogService $deliveryLogService = null,
+        ?NotificationOptOutService $optOutService = null,
+    ) {
+        $this->queueModel = $queueModel;
+        $this->deliveryLogService = $deliveryLogService;
+        $this->optOutService = $optOutService;
+    }
 
     /**
      * Dispatch queued notifications.
@@ -89,7 +104,7 @@ class NotificationQueueDispatcher
         $limit = max(1, min(500, $limit));
         $lockToken = bin2hex(random_bytes(16));
 
-        $model = new NotificationQueueModel();
+        $model = $this->getQueueModel();
         $now = new \DateTimeImmutable('now');
         $nowStr = $now->format('Y-m-d H:i:s');
         $staleBefore = $now->modify('-15 minutes')->format('Y-m-d H:i:s');
@@ -154,8 +169,8 @@ class NotificationQueueDispatcher
         $sentPerChannel = ['email' => 0, 'sms' => 0, 'whatsapp' => 0];
         $perChannelLimit = ['email' => 100, 'sms' => 60, 'whatsapp' => 60];
 
-        $logSvc = new NotificationDeliveryLogService();
-        $optOutSvc = new NotificationOptOutService();
+        $logSvc = $this->getDeliveryLogService();
+        $optOutSvc = $this->getOptOutService();
 
         foreach ($rows as $row) {
             $id = (int) ($row['id'] ?? 0);
@@ -277,7 +292,22 @@ class NotificationQueueDispatcher
     /**
      * @return array<string,mixed>|null
      */
-    private function getAppointmentContext(int $appointmentId): ?array
+    protected function getQueueModel(): NotificationQueueModel
+    {
+        return $this->queueModel ??= new NotificationQueueModel();
+    }
+
+    protected function getDeliveryLogService(): NotificationDeliveryLogService
+    {
+        return $this->deliveryLogService ??= new NotificationDeliveryLogService();
+    }
+
+    protected function getOptOutService(): NotificationOptOutService
+    {
+        return $this->optOutService ??= new NotificationOptOutService();
+    }
+
+    protected function getAppointmentContext(int $appointmentId): ?array
     {
         $model = new AppointmentModel();
         $builder = $model->builder();
@@ -294,7 +324,7 @@ class NotificationQueueDispatcher
         return is_array($row) ? $row : null;
     }
 
-    private function isRuleEnabled(int $businessId, string $eventType, string $channel): bool
+    protected function isRuleEnabled(int $businessId, string $eventType, string $channel): bool
     {
         $model = new BusinessNotificationRuleModel();
         $row = $model
@@ -305,7 +335,7 @@ class NotificationQueueDispatcher
         return (int) ($row['is_enabled'] ?? 0) === 1;
     }
 
-    private function isIntegrationActive(int $businessId, string $channel): bool
+    protected function isIntegrationActive(int $businessId, string $channel): bool
     {
         $model = new BusinessIntegrationModel();
         $row = $model
@@ -315,7 +345,7 @@ class NotificationQueueDispatcher
         return (bool) ($row['is_active'] ?? false);
     }
 
-    private function sendEmail(int $businessId, string $eventType, array $appt): array
+    protected function sendEmail(int $businessId, string $eventType, array $appt): array
     {
         $to = (string) ($appt['customer_email'] ?? '');
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
@@ -350,7 +380,7 @@ class NotificationQueueDispatcher
         return $svc->sendEmail($businessId, $to, $subject, $body);
     }
 
-    private function sendSmsReminder(int $businessId, array $appt): array
+    protected function sendSmsReminder(int $businessId, array $appt): array
     {
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
@@ -388,7 +418,7 @@ class NotificationQueueDispatcher
         return $svc->sendSms($businessId, $to, $message);
     }
 
-    private function sendWhatsApp(int $businessId, string $eventType, array $appt): array
+    protected function sendWhatsApp(int $businessId, string $eventType, array $appt): array
     {
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
@@ -424,7 +454,7 @@ class NotificationQueueDispatcher
         return $svc->sendTemplateMessage($businessId, $to, $eventType, $params, $message);
     }
 
-    private function markReminderSentIfSupported(int $appointmentId): void
+    protected function markReminderSentIfSupported(int $appointmentId): void
     {
         $model = new AppointmentModel();
         $db = \Config\Database::connect();
@@ -435,7 +465,7 @@ class NotificationQueueDispatcher
         $model->update($appointmentId, ['reminder_sent' => 1]);
     }
 
-    private function releaseLock(NotificationQueueModel $model, array $row): void
+    protected function releaseLock(NotificationQueueModel $model, array $row): void
     {
         $id = (int) ($row['id'] ?? 0);
         if ($id <= 0) {
@@ -448,7 +478,7 @@ class NotificationQueueDispatcher
         ]);
     }
 
-    private function markSent(NotificationQueueModel $model, array $row): void
+    protected function markSent(NotificationQueueModel $model, array $row): void
     {
         $id = (int) ($row['id'] ?? 0);
         if ($id <= 0) {
@@ -465,7 +495,7 @@ class NotificationQueueDispatcher
         ]);
     }
 
-    private function markCancelled(NotificationQueueModel $model, array $row, string $reason): void
+    protected function markCancelled(NotificationQueueModel $model, array $row, string $reason): void
     {
         $id = (int) ($row['id'] ?? 0);
         if ($id <= 0) {
@@ -481,7 +511,7 @@ class NotificationQueueDispatcher
         ]);
     }
 
-    private function markFailed(NotificationQueueModel $model, array $row, string $error, bool $final, ?int $attempts = null): void
+    protected function markFailed(NotificationQueueModel $model, array $row, string $error, bool $final, ?int $attempts = null): void
     {
         $id = (int) ($row['id'] ?? 0);
         if ($id <= 0) {
@@ -501,7 +531,7 @@ class NotificationQueueDispatcher
         $model->update($id, $payload);
     }
 
-    private function requeueWithBackoff(NotificationQueueModel $model, array $row, string $error, int $attempts, string $nextRun): void
+    protected function requeueWithBackoff(NotificationQueueModel $model, array $row, string $error, int $attempts, string $nextRun): void
     {
         $id = (int) ($row['id'] ?? 0);
         if ($id <= 0) {
@@ -519,12 +549,12 @@ class NotificationQueueDispatcher
         ]);
     }
 
-    private function isValidE164(string $phone): bool
+    protected function isValidE164(string $phone): bool
     {
         return (bool) preg_match('/^\+[1-9]\d{7,14}$/', $phone);
     }
 
-    private function getRecipientForChannel(string $channel, array $appt): ?string
+    protected function getRecipientForChannel(string $channel, array $appt): ?string
     {
         if ($channel === 'email') {
             $to = trim((string) ($appt['customer_email'] ?? ''));

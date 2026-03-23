@@ -54,6 +54,8 @@
  */
 
 namespace App\Controllers\Api\V1;
+
+use App\Controllers\Api\BaseApiController;
 use App\Models\ServiceModel;
 use App\Models\CategoryModel;
 

@@ -35,16 +35,25 @@ namespace App\Services\Appointment;
 
 use App\Models\AppointmentModel;
 use App\Models\ProviderStaffModel;
+use App\Services\LocalizationSettingsService;
 
 class AppointmentQueryService
 {
     private const DEFAULT_PROVIDER_COLOR = '#3B82F6';
 
     private AppointmentModel $model;
+    private ProviderStaffModel $providerStaffModel;
+    private LocalizationSettingsService $localizationService;
 
-    public function __construct(?AppointmentModel $model = null)
+    public function __construct(
+        ?AppointmentModel $model = null,
+        ?ProviderStaffModel $providerStaffModel = null,
+        ?LocalizationSettingsService $localizationService = null
+    )
     {
         $this->model = $model ?? new AppointmentModel();
+        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
+        $this->localizationService = $localizationService ?? new LocalizationSettingsService();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -113,7 +122,7 @@ class AppointmentQueryService
     public function getForRange(string $startDate, string $endDate, array $filters = []): array
     {
         // Convert local day boundaries to UTC for DB query using canonical resolver.
-        $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
+        $localTz = $this->localizationService->getTimezone();
         $boundaries = $this->resolveUtcBoundaries($startDate, $endDate, $localTz);
 
         $builder = $this->buildBaseQuery();
@@ -141,7 +150,7 @@ class AppointmentQueryService
     {
         $rows    = $this->getForRange($startDate, $endDate, $filters);
         $grouped = [];
-        $localTz = (new \App\Services\LocalizationSettingsService())->getTimezone();
+        $localTz = $this->localizationService->getTimezone();
 
         foreach ($rows as $row) {
             // Convert UTC start_at → local date for grouping
@@ -172,6 +181,42 @@ class AppointmentQueryService
         }
 
         return $grouped;
+    }
+
+    /**
+     * Fetch a single appointment with joined relation data.
+     */
+    public function getDetailById(int $appointmentId): ?array
+    {
+        $appointment = $this->model->getWithRelations($appointmentId);
+
+        return $appointment ?: null;
+    }
+
+    /**
+     * Count appointments across today/week/month for dashboard-style summaries.
+     */
+    public function getPeriodCounts(array $filters = []): array
+    {
+        $providerId = (int) ($filters['provider_id'] ?? 0);
+        $serviceId = (int) ($filters['service_id'] ?? 0);
+
+        $now = new \DateTimeImmutable('now');
+        $todayStart = $now->setTime(0, 0, 0);
+        $todayEnd = $now->setTime(23, 59, 59);
+
+        $dayOfWeek = (int) $now->format('w');
+        $weekStart = $todayStart->modify('-' . $dayOfWeek . ' days');
+        $weekEnd = $weekStart->modify('+6 days')->setTime(23, 59, 59);
+
+        $monthStart = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $monthEnd = $now->modify('last day of this month')->setTime(23, 59, 59);
+
+        return [
+            'today' => $this->countInRange($providerId, $serviceId, $todayStart, $todayEnd),
+            'week' => $this->countInRange($providerId, $serviceId, $weekStart, $weekEnd),
+            'month' => $this->countInRange($providerId, $serviceId, $monthStart, $monthEnd),
+        ];
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -282,6 +327,10 @@ class AppointmentQueryService
         $userRole    = $filters['user_role']        ?? null;
         $scopeUserId = $filters['scope_to_user_id'] ?? null;
         $filterPid   = $filters['provider_id']      ?? null;
+        $filterPids  = array_values(array_filter(array_map(
+            static fn ($id) => (int) $id,
+            (array) ($filters['provider_ids'] ?? [])
+        )));
 
         if ($userRole === 'provider' && $scopeUserId) {
             // Provider can only see their own appointments.
@@ -290,13 +339,17 @@ class AppointmentQueryService
         }
 
         if ($userRole === 'staff' && $scopeUserId) {
-            $assignments = new ProviderStaffModel();
-            $providers = $assignments->getProvidersForStaff((int) $scopeUserId, 'active');
+            $providers = $this->providerStaffModel->getProvidersForStaff((int) $scopeUserId, 'active');
             $providerIds = array_map('intval', array_column($providers, 'id'));
 
-            if ($filterPid) {
-                if (in_array((int) $filterPid, $providerIds, true)) {
-                    $builder->where('xs_appointments.provider_id', (int) $filterPid);
+            if ($filterPid || !empty($filterPids)) {
+                $requestedProviderIds = $filterPid
+                    ? [(int) $filterPid]
+                    : $filterPids;
+                $allowedProviderIds = array_values(array_intersect($requestedProviderIds, $providerIds));
+
+                if (!empty($allowedProviderIds)) {
+                    $builder->whereIn('xs_appointments.provider_id', $allowedProviderIds);
                 } else {
                     $builder->where('xs_appointments.provider_id', 0);
                 }
@@ -314,6 +367,8 @@ class AppointmentQueryService
 
         if ($filterPid) {
             $builder->where('xs_appointments.provider_id', (int) $filterPid);
+        } elseif (!empty($filterPids)) {
+            $builder->whereIn('xs_appointments.provider_id', $filterPids);
         }
 
         return $builder;
@@ -356,5 +411,25 @@ class AppointmentQueryService
         $builder->orderBy('xs_appointments.' . $field, $dir);
 
         return $builder;
+    }
+
+    private function countInRange(int $providerId, int $serviceId, \DateTimeImmutable $start, \DateTimeImmutable $end): int
+    {
+        $builder = $this->model->builder();
+        $builder->select('COUNT(*) AS c')
+            ->where('start_at >=', $start->format('Y-m-d H:i:s'))
+            ->where('start_at <=', $end->format('Y-m-d H:i:s'));
+
+        if ($providerId > 0) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        if ($serviceId > 0) {
+            $builder->where('service_id', $serviceId);
+        }
+
+        $row = $builder->get()->getRowArray();
+
+        return (int) ($row['c'] ?? 0);
     }
 }

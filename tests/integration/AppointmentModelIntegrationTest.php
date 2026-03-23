@@ -18,6 +18,7 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
 
     protected $namespace = 'App';
     protected AppointmentModel $model;
+    private array $providerIds = [];
 
     protected function setUp(): void
     {
@@ -171,7 +172,7 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
         
         // Should only include appointment on Feb 15
         foreach ($result as $appointment) {
-            $startTime = strtotime($appointment['start_time']);
+            $startTime = strtotime($appointment['start_at']);
             $this->assertGreaterThanOrEqual(strtotime('2026-02-10'), $startTime);
             $this->assertLessThanOrEqual(strtotime('2026-02-20'), $startTime);
         }
@@ -268,6 +269,7 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
         $db->table('xs_customers')->insert([
             'first_name' => $firstName,
             'last_name' => $lastName,
+            'hash' => hash('sha256', $email . microtime(true) . random_int(1, PHP_INT_MAX)),
             'email' => $email,
             'phone' => $phone,
             'created_at' => date('Y-m-d H:i:s'),
@@ -282,14 +284,18 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
         $db->table('xs_users')->insert([
             'name' => $name,
             'email' => $email,
-            'password' => password_hash('password', PASSWORD_DEFAULT),
+            'password_hash' => password_hash('password', PASSWORD_DEFAULT),
             'role' => 'provider',
+            'status' => 'active',
             'color' => $color,
             'is_active' => true,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
         ]);
-        return $db->insertID();
+        $providerId = (int) $db->insertID();
+        $this->providerIds[] = $providerId;
+
+        return $providerId;
     }
 
     private function createTestService(string $name, int $duration, float $price): int
@@ -317,11 +323,10 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
         $db = \Config\Database::connect();
         $db->table('xs_appointments')->insert([
             'customer_id' => $customerId,
-            'user_id' => $providerId,
             'provider_id' => $providerId,
             'service_id' => $serviceId,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
+            'start_at' => $startTime,
+            'end_at' => $endTime,
             'status' => $status,
             'hash' => hash('sha256', uniqid('test_', true)),
             'created_at' => date('Y-m-d H:i:s'),
@@ -332,12 +337,17 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
 
     protected function tearDown(): void
     {
-        // Clean up test data
         $db = \Config\Database::connect();
-        $db->table('xs_appointments')->truncate();
-        $db->table('xs_customers')->truncate();
-        $db->table('xs_services')->truncate();
-        // Note: Don't truncate xs_users as it may have system users
+
+        $db->query('DELETE FROM `xs_appointments`');
+        $db->query('DELETE FROM `xs_services`');
+        $db->query('DELETE FROM `xs_customers`');
+
+        if ($this->providerIds !== []) {
+            $db->table('xs_users')->whereIn('id', $this->providerIds)->delete();
+        }
+
+        $this->providerIds = [];
         
         parent::tearDown();
     }

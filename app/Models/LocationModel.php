@@ -178,8 +178,18 @@ class LocationModel extends BaseModel
      * @param int $locationId
      * @param array $days Array of day numbers (0-6)
      */
-    public function setLocationDays(int $locationId, array $days): bool
+    public function setLocationDays(int $locationId, array $days, ?int $providerId = null): bool
     {
+        $location = null;
+        if ($providerId === null || $this->db->fieldExists('provider_id', 'xs_location_days')) {
+            $location = $this->find($locationId);
+            if (!$location) {
+                return false;
+            }
+
+            $providerId ??= isset($location['provider_id']) ? (int) $location['provider_id'] : null;
+        }
+
         // Remove existing days
         $this->db->table('xs_location_days')
            ->where('location_id', $locationId)
@@ -191,10 +201,16 @@ class LocationModel extends BaseModel
             foreach ($days as $day) {
                 $day = (int) $day;
                 if ($day >= 0 && $day <= 6) {
-                    $insertData[] = [
+                    $row = [
                         'location_id'  => $locationId,
                         'day_of_week'  => $day,
                     ];
+
+                    if ($providerId !== null && $this->db->fieldExists('provider_id', 'xs_location_days')) {
+                        $row['provider_id'] = $providerId;
+                    }
+
+                    $insertData[] = $row;
                 }
             }
             

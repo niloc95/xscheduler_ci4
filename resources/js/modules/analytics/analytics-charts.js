@@ -12,6 +12,7 @@
  */
 
 import { Chart, registerables } from 'chart.js';
+import { formatCurrency } from '../../currency.js';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -39,13 +40,10 @@ const getChartColors = () => {
 };
 
 function formatLocalizedCurrency(amount, currencySymbol = null, decimals = 2) {
-    if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
-        return window.currencyFormatter.format(amount, decimals);
-    }
-
-    const symbol = currencySymbol || window.currencyFormatter?.getSymbol?.() || 'R';
-    const numericAmount = parseFloat(amount) || 0;
-    return `${symbol}${numericAmount.toFixed(decimals)}`;
+    return formatCurrency(amount, {
+        currencySymbol,
+        decimals,
+    });
 }
 
 /**

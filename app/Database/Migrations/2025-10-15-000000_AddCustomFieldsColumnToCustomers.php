@@ -30,7 +30,11 @@ class AddCustomFieldsColumnToCustomers extends MigrationBase
         }
 
         if ($this->db->fieldExists('custom_fields', 'customers')) {
-            $this->forge->dropColumn('customers', 'custom_fields');
+            try {
+                $this->forge->dropColumn('customers', 'custom_fields');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some refresh paths.
+            }
         }
     }
 }

@@ -44,7 +44,7 @@
  * Credentials are encrypted using application encryption key.
  * Never store plaintext API keys or passwords.
  * 
- * @see         app/Services/NotificationPhase1.php for sending
+ * @see         app/Services/NotificationPolicyService.php for policy projection
  * @see         app/Controllers/Settings.php for admin config UI
  * @package     App\Models
  * @extends     BaseModel

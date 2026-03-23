@@ -182,12 +182,12 @@ window.appConfig = {
                                     </svg>
                                     Database Configuration
                                 </h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-200">Choose your preferred database setup</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-200">Configure the MySQL database connection for your installation</p>
                             </div>
 
                     <!-- Database Type Selection -->
                     <div class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 gap-4">
                             <!-- MySQL Option -->
                             <label class="relative cursor-pointer">
                                 <input type="radio" name="database_type" value="mysql" class="sr-only peer" id="db_mysql" checked>
@@ -201,27 +201,8 @@ window.appConfig = {
                                     <p class="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Connect to an existing MySQL server</p>
                                     <ul class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1 transition-colors duration-200">
                                         <li>• High performance and scalability</li>
-                                        <li>• Requires database server setup</li>
-                                        <li>• Recommended for production</li>
-                                    </ul>
-                                </div>
-                            </label>
-
-                            <!-- SQLite Option (hidden — MySQL required for production) -->
-                            <label class="relative cursor-pointer hidden">
-                                <input type="radio" name="database_type" value="sqlite" class="sr-only peer" id="db_sqlite">
-                                <div class="border-2 border-gray-200 dark:border-gray-600 rounded-lg p-4 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-700">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <h3 class="font-semibold text-gray-900 dark:text-white transition-colors duration-200 text-md-primary">SQLite Database</h3>
-                                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                    </div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">Zero-configuration file-based database</p>
-                                    <ul class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1 transition-colors duration-200">
-                                        <li>• No server setup required</li>
-                                        <li>• Perfect for getting started</li>
-                                        <li>• Automatic database creation</li>
+                                        <li>• Requires database server access</li>
+                                        <li>• Required for all environments</li>
                                     </ul>
                                 </div>
                             </label>
@@ -310,24 +291,6 @@ window.appConfig = {
                                 </button>
                             </div>
                             <div id="connection_result" class="mt-2 hidden"></div>
-                        </div>
-                    </div>                        <!-- SQLite Configuration Display -->
-                        <div id="sqlite_config" class="space-y-4 hidden">
-                            <div class="bg-green-50 dark:bg-green-900/20 border border-gray-300 dark:border-green-600 rounded-lg p-4 transition-colors duration-200">
-                                <h4 class="font-medium mb-2 transition-colors duration-200 text-md-primary">SQLite Auto-Configuration</h4>
-                                <div class="flex items-start space-x-3">
-                                    <svg class="w-5 h-5 mt-0.5 transition-colors duration-200 text-md-secondary" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                </svg>                                    <div>
-                                        <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-200">Database will be automatically created at:</p>
-                                        <code class="block mt-1 text-xs px-2 py-1 rounded font-mono bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-200">
-                                            ./writable/database/xscheduler.db
-                                        </code>
-                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 transition-colors duration-200">
-                                            No additional configuration required. The application will create and manage the SQLite database automatically.
-                                        </p>
-                                    </div>
-                            </div>
                         </div>
                     </div>
                 </div>

@@ -3,7 +3,7 @@
 namespace App\Commands;
 
 use App\Models\NotificationDeliveryLogModel;
-use App\Services\NotificationPhase1;
+use App\Services\NotificationCatalog;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
@@ -20,9 +20,9 @@ class PurgeNotificationDeliveryLogs extends BaseCommand
      */
     public function run(array $params)
     {
-        $businessId = (int) ($params[0] ?? NotificationPhase1::BUSINESS_ID_DEFAULT);
+        $businessId = (int) ($params[0] ?? NotificationCatalog::BUSINESS_ID_DEFAULT);
         if ($businessId <= 0) {
-            $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+            $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
         }
 
         $days = (int) ($params[1] ?? 90);

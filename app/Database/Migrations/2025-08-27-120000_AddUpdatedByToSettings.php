@@ -59,18 +59,30 @@ class AddUpdatedByToSettings extends MigrationBase
 
         // Add column if it does not exist
         if (! $this->db->fieldExists('updated_by', 'settings')) {
-            $this->forge->addColumn('settings', $this->sanitiseFields([
-                'updated_by' => [
-                    'type'     => 'INT',
-                    'unsigned' => true,
-                    'null'     => true,
-                ],
-            ]));
+            try {
+                $this->forge->addColumn('settings', $this->sanitiseFields([
+                    'updated_by' => [
+                        'type'     => 'INT',
+                        'unsigned' => true,
+                        'null'     => true,
+                    ],
+                ]));
+            } catch (\Throwable $e) {
+                if (! $this->db->fieldExists('updated_by', 'settings')
+                    && stripos($e->getMessage(), 'Duplicate column name') === false) {
+                    throw $e;
+                }
+            }
 
             if ($this->db->DBDriver === 'MySQLi') {
                 $settings = $this->db->prefixTable('settings');
                 $users    = $this->db->prefixTable('users');
-                $this->db->query("ALTER TABLE {$settings} ADD CONSTRAINT fk_settings_updated_by FOREIGN KEY (updated_by) REFERENCES {$users}(id) ON DELETE SET NULL");
+
+                try {
+                    $this->db->query("ALTER TABLE {$settings} ADD CONSTRAINT fk_settings_updated_by FOREIGN KEY (updated_by) REFERENCES {$users}(id) ON DELETE SET NULL");
+                } catch (\Throwable $e) {
+                    // Constraint may already exist on some refresh paths.
+                }
             }
         }
     }
@@ -90,7 +102,11 @@ class AddUpdatedByToSettings extends MigrationBase
             }
         }
         if ($this->db->fieldExists('updated_by', 'settings')) {
-            $this->forge->dropColumn('settings', 'updated_by');
+            try {
+                $this->forge->dropColumn('settings', 'updated_by');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some schema paths
+            }
         }
     }
 }

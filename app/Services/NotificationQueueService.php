@@ -68,11 +68,13 @@ namespace App\Services;
 use App\Models\AppointmentModel;
 use App\Models\BusinessIntegrationModel;
 use App\Models\BusinessNotificationRuleModel;
+use App\Services\Appointment\AppointmentStatus;
 use App\Models\NotificationQueueModel;
+use App\Services\NotificationCatalog;
 
 class NotificationQueueService
 {
-    public const BUSINESS_ID_DEFAULT = NotificationPhase1::BUSINESS_ID_DEFAULT;
+    public const BUSINESS_ID_DEFAULT = NotificationCatalog::BUSINESS_ID_DEFAULT;
 
     /**
      * Enqueue an appointment event for a given channel.
@@ -128,7 +130,7 @@ class NotificationQueueService
         $hasReminderSent = in_array('reminder_sent', $fields, true);
 
         $builder->select('xs_appointments.id, xs_appointments.start_at');
-        $builder->whereIn('xs_appointments.status', ['pending', 'confirmed']);
+        $builder->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
         $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
         $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
         if ($hasReminderSent) {

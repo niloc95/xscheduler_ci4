@@ -6,7 +6,7 @@
  * Automatically creates a GitHub Release by:
  * 1. Building production assets
  * 2. Bumping version in package.json
- * 3. Updating CHANGELOG.md
+ * 3. Updating docs/changelog.md
  * 4. Creating git commit
  * 5. Creating and pushing git tag
  * 6. GitHub Actions then creates the release automatically
@@ -182,11 +182,11 @@ function bumpVersion(currentVersion, type) {
     return formatVersion(v);
 }
 
-// Update CHANGELOG.md
+// Update docs/changelog.md
 function updateChangelog(newVersion) {
-    const changelogPath = path.join(projectRoot, 'CHANGELOG.md');
+    const changelogPath = path.join(projectRoot, 'docs', 'changelog.md');
     if (!fs.existsSync(changelogPath)) {
-        log.warn('CHANGELOG.md not found, skipping changelog update');
+        log.warn('docs/changelog.md not found, skipping changelog update');
         return;
     }
 
@@ -215,9 +215,9 @@ function updateChangelog(newVersion) {
         }
         
         fs.writeFileSync(changelogPath, changelog);
-        log.success(`Updated CHANGELOG.md with version ${newVersion}`);
+        log.success(`Updated docs/changelog.md with version ${newVersion}`);
     } else {
-        log.warn('Could not find [Unreleased] section in CHANGELOG.md');
+        log.warn('Could not find [Unreleased] section in docs/changelog.md');
     }
 }
 
@@ -331,13 +331,13 @@ async function release() {
     pkg.version = newVersion;
     writePackageJson(pkg);
 
-    // Update CHANGELOG.md
-    log.step('Updating CHANGELOG.md...');
+    // Update docs/changelog.md
+    log.step('Updating docs/changelog.md...');
     updateChangelog(newVersion);
 
     // Git commit
     log.step('Creating git commit...');
-    run('git add package.json CHANGELOG.md');
+    run('git add package.json docs/changelog.md');
     run(`git commit -m "chore: release v${newVersion}"`, { allowFail: true });
 
     // Create tag

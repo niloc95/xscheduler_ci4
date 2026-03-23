@@ -56,6 +56,7 @@ use App\Models\ServiceModel;
 use App\Models\CustomerModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\BusinessHourModel;
+use App\Services\Appointment\AppointmentStatus;
 use App\Services\AvailabilityService;
 
 /**
@@ -77,16 +78,25 @@ class DashboardService
     protected LocalizationSettingsService $localizationService;
     protected AvailabilityService $availabilityService;
 
-    public function __construct()
+    public function __construct(
+        ?AppointmentModel $appointmentModel = null,
+        ?UserModel $userModel = null,
+        ?ServiceModel $serviceModel = null,
+        ?CustomerModel $customerModel = null,
+        ?ProviderScheduleModel $providerScheduleModel = null,
+        ?BusinessHourModel $businessHourModel = null,
+        ?LocalizationSettingsService $localizationService = null,
+        ?AvailabilityService $availabilityService = null
+    )
     {
-        $this->appointmentModel = new AppointmentModel();
-        $this->userModel = new UserModel();
-        $this->serviceModel = new ServiceModel();
-        $this->customerModel = new CustomerModel();
-        $this->providerScheduleModel = new ProviderScheduleModel();
-        $this->businessHourModel = new BusinessHourModel();
-        $this->localizationService = new LocalizationSettingsService();
-        $this->availabilityService = new AvailabilityService();
+        $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
+        $this->userModel = $userModel ?? new UserModel();
+        $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->customerModel = $customerModel ?? new CustomerModel();
+        $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
+        $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
+        $this->localizationService = $localizationService ?? new LocalizationSettingsService();
+        $this->availabilityService = $availabilityService ?? new AvailabilityService();
     }
 
     /**
@@ -165,28 +175,28 @@ class DashboardService
         $upcoming = $builder
             ->where('start_at >=', $nowUtc)
             ->where('start_at <=', $upcomingWindowUtc)
-            ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
+            ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING)
             ->countAllResults(false);
 
         // Pending confirmation
         $pending = $builder
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
-            ->where('xs_appointments.status', 'pending')
+            ->where('xs_appointments.status', AppointmentStatus::PENDING)
             ->countAllResults(false);
 
         // Cancelled/rescheduled today
         $cancelled = $builder
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
-            ->whereIn('xs_appointments.status', ['cancelled', 'no-show'])
+            ->whereIn('xs_appointments.status', [AppointmentStatus::CANCELLED, AppointmentStatus::NO_SHOW])
             ->countAllResults(false);
 
         // Confirmed today
         $confirmed = $builder
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
-            ->where('xs_appointments.status', 'confirmed')
+            ->where('xs_appointments.status', AppointmentStatus::CONFIRMED)
             ->countAllResults(false);
 
         return [
@@ -299,10 +309,7 @@ class DashboardService
         $localToday = $localNow->format('Y-m-d');
         $dayStartUtc = (new \DateTime($localToday . ' 00:00:00', $tz))->setTimezone($utcTz)->format('Y-m-d H:i:s');
 
-        $pendingCount = $builder
-            ->where('xs_appointments.status', 'pending')
-            ->where('start_at >=', $dayStartUtc)
-            ->countAllResults();
+        $pendingCount = $this->countPendingConfirmationAlerts($providerId, $dayStartUtc);
 
         if ($pendingCount > 0) {
             $alerts[] = [
@@ -345,6 +352,20 @@ class DashboardService
         return $alerts;
     }
 
+    protected function countPendingConfirmationAlerts(?int $providerId, string $dayStartUtc): int
+    {
+        $builder = $this->appointmentModel->builder();
+
+        if ($providerId !== null) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        return (int) $builder
+            ->where('xs_appointments.status', 'pending')
+            ->where('start_at >=', $dayStartUtc)
+            ->countAllResults();
+    }
+
     /**
      * Get upcoming appointments (next 7 days, max 10)
      * 
@@ -376,7 +397,7 @@ class DashboardService
         ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
         ->where('xs_appointments.start_at >=', $dayStartUtc)
         ->where('xs_appointments.start_at <=', $weekEndUtc)
-        ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
+        ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING)
         ->orderBy('xs_appointments.start_at', 'ASC')
         ->limit(10);
 
@@ -788,7 +809,7 @@ class DashboardService
     {
         $cacheKey = "dashboard_metrics_" . ($providerId ?? 'admin');
         
-        return cache()->remember($cacheKey, 300, function() use ($providerId) {
+        return $this->rememberCache($cacheKey, 300, function() use ($providerId) {
             return $this->getTodayMetrics($providerId);
         });
     }
@@ -802,12 +823,22 @@ class DashboardService
     public function invalidateCache(?int $providerId = null): void
     {
         $cacheKey = "dashboard_metrics_" . ($providerId ?? 'admin');
-        cache()->delete($cacheKey);
+        $this->deleteCacheKey($cacheKey);
         
         // Also invalidate admin cache if provider cache is invalidated
         if ($providerId !== null) {
-            cache()->delete("dashboard_metrics_admin");
+            $this->deleteCacheKey('dashboard_metrics_admin');
         }
+    }
+
+    protected function rememberCache(string $cacheKey, int $ttl, callable $resolver): array
+    {
+        return cache()->remember($cacheKey, $ttl, $resolver);
+    }
+
+    protected function deleteCacheKey(string $cacheKey): void
+    {
+        cache()->delete($cacheKey);
     }
 
     /**

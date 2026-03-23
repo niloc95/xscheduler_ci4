@@ -40,8 +40,17 @@ class AddPublicTokenToAppointments extends MigrationBase
         }
 
         if ($this->db->fieldExists('public_token', 'appointments')) {
-            $this->forge->dropKey('appointments', 'idx_appointments_public_token');
-            $this->forge->dropColumn('appointments', ['public_token', 'public_token_expires_at']);
+            try {
+                $this->forge->dropKey('appointments', 'idx_appointments_public_token');
+            } catch (\Throwable $e) {
+                // Refresh paths can reach here after a partially-applied rollback.
+            }
+
+            try {
+                $this->forge->dropColumn('appointments', ['public_token', 'public_token_expires_at']);
+            } catch (\Throwable $e) {
+                // Column(s) may already be absent on legacy refresh paths.
+            }
         }
     }
 }

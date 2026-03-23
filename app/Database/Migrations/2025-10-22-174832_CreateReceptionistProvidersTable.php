@@ -8,6 +8,10 @@ class CreateReceptionistProvidersTable extends MigrationBase
 {
     public function up()
     {
+        // Historical note:
+        // This table documents a short-lived receptionist assignment model that was
+        // superseded later the same day by the staff-role conversion migration.
+        // Keep the migration intact for applied-environment compatibility.
         $this->forge->addField($this->sanitiseFields([
             'id' => [
                 'type'           => 'INT',
@@ -67,6 +71,7 @@ class CreateReceptionistProvidersTable extends MigrationBase
 
     public function down()
     {
+        // Keep the down path aligned with the historical migration chain.
         $this->forge->dropTable('receptionist_providers');
     }
 }

@@ -40,6 +40,7 @@
 
 namespace App\Services\Calendar;
 
+use App\Models\UserModel;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 use App\Models\ProviderScheduleModel;
@@ -98,6 +99,7 @@ class DayViewService
         // 3. Group appointments by provider
         $providers = [];
         $providerMap = []; // provider_id => index
+        $requestedProviderIds = $this->extractRequestedProviderIds($filters);
         
         // First pass: identify unique providers
         foreach ($formatted as $event) {
@@ -111,6 +113,20 @@ class DayViewService
                 ];
             }
             $providers[$providerMap[$pid]]['appointments'][] = $event;
+        }
+
+        foreach ($this->fetchProvidersByIds($requestedProviderIds) as $provider) {
+            $pid = (int) ($provider['id'] ?? 0);
+            if ($pid <= 0 || isset($providerMap[$pid])) {
+                continue;
+            }
+
+            $providerMap[$pid] = count($providers);
+            $providers[] = [
+                'id' => $pid,
+                'name' => $provider['name'] ?? 'Unknown Provider',
+                'appointments' => [],
+            ];
         }
 
         // If no appointments, create a default empty provider column
@@ -128,6 +144,7 @@ class DayViewService
 
         // 5. Inject appointments into matching time slots PER PROVIDER
         $providerColumns = [];
+        $positionedAppointments = [];
         foreach ($providers as $provider) {
             // Get provider-specific working hours
             $workingHours = $this->getProviderWorkingHours($provider['id'], $dayOfWeek);
@@ -140,6 +157,9 @@ class DayViewService
             
             // SHARED ENGINE: Resolve overlapping appointments
             $positioned = $this->eventLayout->resolveLayout($provider['appointments']);
+            foreach ($positioned as $event) {
+                $positionedAppointments[] = $event;
+            }
             
             // Inject positioned appointments into time slots
             $providerGrid['slots'] = $this->injectIntoSlots(
@@ -179,9 +199,62 @@ class DayViewService
             ],
             'grid'             => $grid, // Keep base grid for backward compatibility
             'providerColumns'  => $providerColumns, // New multi-column layout with EventLayoutService positioning
-            'appointments'     => $formatted,
-            'totalAppointments'=> count($formatted),
+            'appointments'     => $positionedAppointments,
+            'totalAppointments'=> count($positionedAppointments),
         ];
+    }
+
+    /**
+     * @return int[]
+     */
+    private function extractRequestedProviderIds(array $filters): array
+    {
+        $providerIds = [];
+
+        if (!empty($filters['provider_id'])) {
+            $providerIds[] = (int) $filters['provider_id'];
+        }
+
+        foreach ((array) ($filters['provider_ids'] ?? []) as $providerId) {
+            $providerIds[] = (int) $providerId;
+        }
+
+        $providerIds = array_values(array_unique(array_filter($providerIds, static fn (int $providerId): bool => $providerId > 0)));
+
+        return $providerIds;
+    }
+
+    /**
+     * @param int[] $providerIds
+     * @return array<int, array{id:int,name:string}>
+     */
+    private function fetchProvidersByIds(array $providerIds): array
+    {
+        if ($providerIds === []) {
+            return [];
+        }
+
+        $rows = (new UserModel())
+            ->select('id, name')
+            ->whereIn('id', $providerIds)
+            ->findAll();
+
+        $rowsById = [];
+        foreach ($rows as $row) {
+            $rowsById[(int) $row['id']] = [
+                'id' => (int) $row['id'],
+                'name' => (string) ($row['name'] ?? 'Unknown Provider'),
+            ];
+        }
+
+        $ordered = [];
+        foreach ($providerIds as $providerId) {
+            if (isset($rowsById[$providerId])) {
+                $ordered[] = $rowsById[$providerId];
+            }
+        }
+
+        return $ordered;
     }
 
 }

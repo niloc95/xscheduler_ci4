@@ -28,7 +28,7 @@
 					<p class="card-subtitle">Update the details for this user account</p>
 				</div>
 
-				<form method="post" action="<?= base_url('user-management/update/' . ($user['id'] ?? 0)) ?>" class="user-form">
+				<form method="post" action="<?= base_url('user-management/update/' . ($user['id'] ?? 0)) ?>" class="user-form" id="editUserForm" data-no-spa="true">
 					<?= csrf_field() ?>
 
 					<div class="card-body space-y-6">
@@ -240,14 +240,17 @@
 							'href' => base_url('user-management'),
 							'variant' => 'outlined',
 							'size' => 'md',
-							'icon' => 'cancel'
+							'icon' => 'cancel',
+							'attrs' => ['id' => 'cancelUserButton']
 						]) ?>
 						<?= view('components/button', [
+							'tag' => 'button',
 							'label' => 'Update User',
 							'type' => 'submit',
 							'variant' => 'filled',
 							'size' => 'md',
-							'icon' => 'save'
+							'icon' => 'save',
+							'attrs' => ['id' => 'updateUserButton']
 						]) ?>
 					</div>
 
@@ -326,6 +329,5 @@
 			</div>
 		</div>
 	</div>
-</div>
 
 <?= $this->endSection() ?>

@@ -64,6 +64,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Services\Appointment\AppointmentStatus;
 use App\Services\LocalizationSettingsService;
 
 /**
@@ -104,10 +105,10 @@ class CustomerAppointmentService
     {
         $builder = $this->appointments->builder()
             ->select('xs_appointments.*, 
-                     s.name as service_name, s.duration_min as service_duration, s.price as service_price,
-                     u.name as provider_name, u.email as provider_email, u.color as provider_color')
-            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
-            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
+                     xs_services.name as service_name, xs_services.duration_min as service_duration, xs_services.price as service_price,
+                     xs_users.name as provider_name, xs_users.email as provider_email, xs_users.color as provider_color')
+            ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
+            ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
             ->where('xs_appointments.customer_id', $customerId);
 
         // Apply filters
@@ -150,13 +151,13 @@ class CustomerAppointmentService
     {
         $builder = $this->appointments->builder()
             ->select('xs_appointments.*, 
-                     s.name as service_name, s.duration_min as service_duration, s.price as service_price,
-                     u.name as provider_name, u.email as provider_email, u.color as provider_color')
-            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
-            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
+                     xs_services.name as service_name, xs_services.duration_min as service_duration, xs_services.price as service_price,
+                     xs_users.name as provider_name, xs_users.email as provider_email, xs_users.color as provider_color')
+            ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
+            ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left')
             ->where('xs_appointments.customer_id', $customerId)
             ->where('xs_appointments.start_at >=', date('Y-m-d H:i:s'))
-            ->whereIn('xs_appointments.status', ['pending', 'confirmed'])
+            ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING)
             ->orderBy('xs_appointments.start_at', 'ASC')
             ->limit($limit);
 
@@ -188,32 +189,36 @@ class CustomerAppointmentService
     public function getStats(int $customerId): array
     {
         $now = date('Y-m-d H:i:s');
-        
-        $total = $this->appointments->where('customer_id', $customerId)->countAllResults(false);
-        
-        $upcoming = $this->appointments
+
+        $newBuilder = fn () => $this->appointments->builder();
+
+        $total = $newBuilder()
+            ->where('customer_id', $customerId)
+            ->countAllResults();
+
+        $upcoming = $newBuilder()
             ->where('customer_id', $customerId)
             ->where('start_at >=', $now)
-            ->whereIn('status', ['pending', 'confirmed'])
-            ->countAllResults(false);
-        
-        $completed = $this->appointments
+            ->whereIn('status', AppointmentStatus::UPCOMING)
+            ->countAllResults();
+
+        $completed = $newBuilder()
             ->where('customer_id', $customerId)
-            ->where('status', 'completed')
-            ->countAllResults(false);
-        
-        $cancelled = $this->appointments
+            ->where('status', AppointmentStatus::COMPLETED)
+            ->countAllResults();
+
+        $cancelled = $newBuilder()
             ->where('customer_id', $customerId)
-            ->where('status', 'cancelled')
-            ->countAllResults(false);
-        
-        $noShow = $this->appointments
+            ->where('status', AppointmentStatus::CANCELLED)
+            ->countAllResults();
+
+        $noShow = $newBuilder()
             ->where('customer_id', $customerId)
-            ->where('status', 'no-show')
-            ->countAllResults(false);
+            ->where('status', AppointmentStatus::NO_SHOW)
+            ->countAllResults();
 
         // Get most used provider
-        $favoriteProvider = $this->appointments->builder()
+        $favoriteProvider = $newBuilder()
             ->select('provider_id, COUNT(*) as count')
             ->where('customer_id', $customerId)
             ->groupBy('provider_id')
@@ -223,7 +228,7 @@ class CustomerAppointmentService
             ->getRowArray();
 
         // Get most used service
-        $favoriteService = $this->appointments->builder()
+        $favoriteService = $newBuilder()
             ->select('service_id, COUNT(*) as count')
             ->where('customer_id', $customerId)
             ->groupBy('service_id')
@@ -233,13 +238,13 @@ class CustomerAppointmentService
             ->getRowArray();
 
         // Get first and last appointment dates
-        $firstAppointment = $this->appointments->builder()
+        $firstAppointment = $newBuilder()
             ->select('MIN(start_at) as first_date')
             ->where('customer_id', $customerId)
             ->get()
             ->getRowArray();
 
-        $lastAppointment = $this->appointments->builder()
+        $lastAppointment = $newBuilder()
             ->select('MAX(start_at) as last_date')
             ->where('customer_id', $customerId)
             ->where('start_at <', $now)
@@ -252,8 +257,8 @@ class CustomerAppointmentService
             'completed' => $completed,
             'cancelled' => $cancelled,
             'no_show' => $noShow,
-            'favorite_provider_id' => $favoriteProvider['provider_id'] ?? null,
-            'favorite_service_id' => $favoriteService['service_id'] ?? null,
+            'favorite_provider_id' => isset($favoriteProvider['provider_id']) ? (int) $favoriteProvider['provider_id'] : null,
+            'favorite_service_id' => isset($favoriteService['service_id']) ? (int) $favoriteService['service_id'] : null,
             'first_appointment' => $firstAppointment['first_date'] ?? null,
             'last_appointment' => $lastAppointment['last_date'] ?? null,
         ];
@@ -320,6 +325,8 @@ class CustomerAppointmentService
             return null;
         }
 
+        $customer['id'] = isset($customer['id']) ? (int) $customer['id'] : null;
+
         $stats = $this->getStats((int) $customer['id']);
         
         return array_merge($customer, [
@@ -339,24 +346,24 @@ class CustomerAppointmentService
     {
         $builder = $this->appointments->builder()
             ->select('xs_appointments.*, 
-                     c.first_name as customer_first_name, c.last_name as customer_last_name, 
-                     c.email as customer_email, c.phone as customer_phone,
-                     s.name as service_name, s.duration_min as service_duration, s.price as service_price,
-                     u.name as provider_name, u.email as provider_email, u.color as provider_color')
-            ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
-            ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
-            ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left');
+                     xs_customers.first_name as customer_first_name, xs_customers.last_name as customer_last_name, 
+                     xs_customers.email as customer_email, xs_customers.phone as customer_phone,
+                     xs_services.name as service_name, xs_services.duration_min as service_duration, xs_services.price as service_price,
+                     xs_users.name as provider_name, xs_users.email as provider_email, xs_users.color as provider_color')
+            ->join('xs_customers', 'xs_customers.id = xs_appointments.customer_id', 'left')
+            ->join('xs_services', 'xs_services.id = xs_appointments.service_id', 'left')
+            ->join('xs_users', 'xs_users.id = xs_appointments.provider_id', 'left');
 
         // Apply search term
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $builder->groupStart()
-                ->like('c.first_name', $search)
-                ->orLike('c.last_name', $search)
-                ->orLike('c.email', $search)
-                ->orLike('c.phone', $search)
-                ->orLike('s.name', $search)
-                ->orLike('u.name', $search)
+                ->like('xs_customers.first_name', $search)
+                ->orLike('xs_customers.last_name', $search)
+                ->orLike('xs_customers.email', $search)
+                ->orLike('xs_customers.phone', $search)
+                ->orLike('xs_services.name', $search)
+                ->orLike('xs_users.name', $search)
             ->groupEnd();
         }
 
@@ -398,11 +405,11 @@ class CustomerAppointmentService
         if (!empty($filters['type'])) {
             if ($filters['type'] === 'upcoming') {
                 $builder->where('xs_appointments.start_at >=', $now)
-                        ->whereIn('xs_appointments.status', ['pending', 'confirmed']);
+                        ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
             } elseif ($filters['type'] === 'past') {
                 $builder->groupStart()
                     ->where('xs_appointments.start_at <', $now)
-                    ->orWhereIn('xs_appointments.status', ['completed', 'cancelled', 'no-show'])
+                    ->orWhereIn('xs_appointments.status', AppointmentStatus::PAST)
                 ->groupEnd();
             }
         }
@@ -477,14 +484,7 @@ class CustomerAppointmentService
         }
 
         // Status label
-        $statusLabels = [
-            'pending' => 'Pending',
-            'confirmed' => 'Confirmed',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'no-show' => 'No Show',
-        ];
-        $appointment['status_label'] = $statusLabels[$appointment['status'] ?? ''] ?? ucfirst($appointment['status'] ?? '');
+        $appointment['status_label'] = AppointmentStatus::label($appointment['status'] ?? '');
 
         // Customer full name (for admin views)
         if (isset($appointment['customer_first_name'])) {

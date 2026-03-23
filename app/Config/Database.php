@@ -26,7 +26,7 @@
  * - database.default.database  : Database name
  * - database.default.username  : Database user
  * - database.default.password  : Database password
- * - database.default.DBDriver  : Driver (MySQLi, Postgre, SQLite3)
+ * - database.default.DBDriver  : Driver (MySQLi)
  * - database.default.DBPrefix  : Table prefix (default: xs_)
  * 
  * TABLE PREFIX:
@@ -108,21 +108,19 @@ class Database extends Config
         'hostname'    => '127.0.0.1',
         'username'    => '',
         'password'    => '',
-        'database'    => ':memory:',
-        'DBDriver'    => 'SQLite3',
-        'DBPrefix'    => 'db_',  // Needed to ensure we're working correctly with prefixes live. DO NOT REMOVE FOR CI DEVS
+        'database'    => '',
+        'DBDriver'    => 'MySQLi',
+        'DBPrefix'    => '',
         'pConnect'    => false,
         'DBDebug'     => true,
-        'charset'     => 'utf8',
-        'DBCollat'    => '',
+        'charset'     => 'utf8mb4',
+        'DBCollat'    => 'utf8mb4_general_ci',
         'swapPre'     => '',
         'encrypt'     => false,
         'compress'    => false,
         'strictOn'    => false,
         'failover'    => [],
         'port'        => 3306,
-        'foreignKeys' => true,
-        'busyTimeout' => 1000,
         'dateFormat'  => [
             'date'     => 'Y-m-d',
             'datetime' => 'Y-m-d H:i:s',
@@ -174,12 +172,40 @@ class Database extends Config
             $this->default['port'] = (int) getenv('database.default.port');
         }
 
+        if (getenv('database.tests.hostname') !== false) {
+            $this->tests['hostname'] = getenv('database.tests.hostname');
+        }
+        if (getenv('database.tests.database') !== false) {
+            $this->tests['database'] = getenv('database.tests.database');
+        }
+        if (getenv('database.tests.username') !== false) {
+            $this->tests['username'] = getenv('database.tests.username');
+        }
+        if (getenv('database.tests.password') !== false) {
+            $this->tests['password'] = getenv('database.tests.password');
+        }
+        if (getenv('database.tests.DBDriver') !== false) {
+            $this->tests['DBDriver'] = getenv('database.tests.DBDriver');
+        }
+        if (getenv('database.tests.DBPrefix') !== false) {
+            $this->tests['DBPrefix'] = getenv('database.tests.DBPrefix');
+        }
+        if (getenv('database.tests.port') !== false) {
+            $this->tests['port'] = (int) getenv('database.tests.port');
+        }
+
         // Handle boolean values
         if (getenv('database.default.pConnect') !== false) {
             $this->default['pConnect'] = filter_var(getenv('database.default.pConnect'), FILTER_VALIDATE_BOOLEAN);
         }
         if (getenv('database.default.DBDebug') !== false) {
             $this->default['DBDebug'] = filter_var(getenv('database.default.DBDebug'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if (getenv('database.tests.pConnect') !== false) {
+            $this->tests['pConnect'] = filter_var(getenv('database.tests.pConnect'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if (getenv('database.tests.DBDebug') !== false) {
+            $this->tests['DBDebug'] = filter_var(getenv('database.tests.DBDebug'), FILTER_VALIDATE_BOOLEAN);
         }
 
         // Charset and collation
@@ -188,6 +214,12 @@ class Database extends Config
         }
         if (getenv('database.default.DBCollat') !== false) {
             $this->default['DBCollat'] = getenv('database.default.DBCollat');
+        }
+        if (getenv('database.tests.charset') !== false) {
+            $this->tests['charset'] = getenv('database.tests.charset');
+        }
+        if (getenv('database.tests.DBCollat') !== false) {
+            $this->tests['DBCollat'] = getenv('database.tests.DBCollat');
         }
     }
 }

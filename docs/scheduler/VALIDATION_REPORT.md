@@ -8,7 +8,7 @@
 ## Executive Summary
 
 ✅ **PASS** — All three critical browser behaviors validated  
-⚠️ **PARTIAL** — Integration tests created but blocked by SQLite migration issues  
+⚠️ **PARTIAL** — Integration tests were created, but the original run was blocked by a now-retired legacy test setup  
 
 ---
 
@@ -38,7 +38,7 @@ Result: 8 errors (EEEEEEEE)
 ```
 
 #### Root Cause
-**SQLite migration compatibility issue** — Test environment uses SQLite, but migration `2025-10-22-191124_AddColorToUsers.php` attempts to drop column, which SQLite does not support natively.
+**Historical test-environment issue** — The original test environment used a file-based database path, and migration `2025-10-22-191124_AddColorToUsers.php` attempted a column drop that the engine did not support natively.
 
 **Error:**
 ```
@@ -46,12 +46,12 @@ CodeIgniter\Database\Exceptions\DatabaseException:
 Failed to drop column "color" on "users" table.
 ```
 
-**Impact:** Database migrations fail during test setup, preventing integration tests from running. This is a **test infrastructure issue**, not a service logic issue.
+**Impact at the time:** Database migrations failed during test setup, preventing integration tests from running. This was a **test infrastructure issue**, not a service logic issue.
 
 #### Recommendation
-- Option 1: Switch test database to MySQL for integration tests
-- Option 2: Use `MigrationBase` with SQLite-compatible column drop logic
-- Option 3: Skip problematic migrations in test environment
+- Option 1: Run integration tests against a dedicated MySQL or MariaDB database
+- Option 2: Refresh the integration suite now that legacy file-based test support has been removed from the app
+- Option 3: Keep the focused unit/service coverage as the fast validation layer
 
 ---
 
@@ -313,7 +313,7 @@ public/build/assets/materialWeb.js          485.48 kB │ gzip: 81.44 kB
 | **Behavior 1: Provider Timeline Hours** | ✅ PASS | Queries provider schedules correctly |
 | **Behavior 2: Overlapping Appointments** | ✅ PASS | Sweep-line algorithm assigns columns |
 | **Behavior 3: Non-Working Overlay** | ✅ PASS | Conditional rendering based on isActive |
-| **Integration Tests** | ⚠️ BLOCKED | SQLite migration compatibility issue |
+| **Integration Tests** | ⚠️ HISTORICAL BLOCKER | Original file-based test setup prevented migration execution |
 
 ---
 
@@ -321,13 +321,13 @@ public/build/assets/materialWeb.js          485.48 kB │ gzip: 81.44 kB
 
 ### Immediate Actions
 1. ✅ **Merge-Ready** — Core scheduler logic is sound and validated through code review
-2. ⚠️ **Fix Test Infrastructure** — Address SQLite migration issue for future integration test runs
-3. ✅ **Documentation Complete** — All behaviors documented in [DAY_VIEW_ARCHITECTURE.md](docs/scheduler/DAY_VIEW_ARCHITECTURE.md)
+2. ⚠️ **Fix Test Infrastructure** — Run integration coverage on dedicated MySQL/MariaDB test infrastructure
+3. ✅ **Documentation Complete** — All behaviors documented in [day_view_architecture.md](./day_view_architecture.md)
 
 ### Follow-Up Tasks
-1. **Fix SQLite Migration Compatibility**
-   - Update `AddColorToUsers` migration to use conditional `IF EXISTS` logic
-   - Or switch integration test database to MySQL
+1. **Move Integration Tests to MySQL/MariaDB**
+    - Run migrations against a dedicated test schema
+    - Re-run the integration suite under the MySQL test profile
 
 2. **Browser Manual Testing** (Optional but Recommended)
    - Navigate to `/appointments` in browser
@@ -343,7 +343,7 @@ public/build/assets/materialWeb.js          485.48 kB │ gzip: 81.44 kB
 
 ## 7. Acceptance Criteria — Final Status
 
-From [DAY_VIEW_ARCHITECTURE.md](docs/scheduler/DAY_VIEW_ARCHITECTURE.md):
+From [day_view_architecture.md](./day_view_architecture.md):
 
 | Criterion | Status | Evidence |
 |-----------|--------|----------|
@@ -365,7 +365,7 @@ From [DAY_VIEW_ARCHITECTURE.md](docs/scheduler/DAY_VIEW_ARCHITECTURE.md):
 - ✅ Overlapping appointments render side-by-side with proper column assignment
 - ✅ Non-working providers show correct "Not Working" overlay
 
-**Integration test infrastructure requires remediation** (SQLite migration issue), but this does not affect the correctness of the core service logic, which has been validated through:
+**Integration test infrastructure still requires remediation**, but the original legacy test-database blocker is no longer relevant because the application and test guidance now target MySQL/MariaDB only. Core service logic remains validated through:
 - Unit tests (passing)
 - Code review (passing)
 - Frontend build (passing)

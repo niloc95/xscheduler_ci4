@@ -57,6 +57,7 @@
 namespace App\Models;
 
 use App\Models\BaseModel;
+use App\Services\Appointment\AppointmentStatus;
 
 use CodeIgniter\Database\BaseBuilder;
 
@@ -100,7 +101,7 @@ class AppointmentModel extends BaseModel
         'end_at'    => 'permit_empty|valid_date',
         'appointment_date' => 'permit_empty|valid_date',
         'appointment_time' => 'permit_empty',
-        'status'      => 'required|in_list[pending,confirmed,completed,cancelled,no-show]'
+        'status'      => AppointmentStatus::VALIDATION_RULE
     ];
 
     /**
@@ -216,7 +217,7 @@ class AppointmentModel extends BaseModel
     public function book(array $payload): int|false
     {
         if (empty($payload['status'])) {
-            $payload['status'] = 'pending';
+            $payload['status'] = AppointmentStatus::PENDING;
         }
         // user_id column was removed in the customers-split migration;
         // ensure it never gets inserted accidentally.
@@ -231,7 +232,7 @@ class AppointmentModel extends BaseModel
     /**
      * Dashboard / analytics helpers
      */
-    public const SIMPLE_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
+    public const SIMPLE_STATUSES = AppointmentStatus::ALL;
 
     /**
      * Count appointments by semantic status (supports "upcoming" virtual status)
@@ -269,9 +270,9 @@ class AppointmentModel extends BaseModel
                 ->where('start_at >=', $todayStart)
                 ->where('start_at <=', $todayEnd), $context, $statusFilter)->countAllResults(),
             'upcoming'  => $this->countByStatus('upcoming', $context, $statusFilter),
-            'pending'   => $this->countByStatus('pending', $context, $statusFilter),
-            'completed' => $this->countByStatus('completed', $context, $statusFilter),
-            'cancelled' => $this->countByStatus('cancelled', $context, $statusFilter),
+            'pending'   => $this->countByStatus(AppointmentStatus::PENDING, $context, $statusFilter),
+            'completed' => $this->countByStatus(AppointmentStatus::COMPLETED, $context, $statusFilter),
+            'cancelled' => $this->countByStatus(AppointmentStatus::CANCELLED, $context, $statusFilter),
             'this_week' => (int) $this->applyAllScopes($this->builder()
                 ->where('start_at >=', $weekStart)
                 ->where('start_at <=', $weekEnd), $context, $statusFilter)->countAllResults(),
@@ -310,11 +311,11 @@ class AppointmentModel extends BaseModel
         };
         
         // Count by status within date range
-        $pending = (int) $baseQuery()->where("{$table}.status", 'pending')->countAllResults(false);
-        $confirmed = (int) $baseQuery()->where("{$table}.status", 'confirmed')->countAllResults(false);
-        $completed = (int) $baseQuery()->where("{$table}.status", 'completed')->countAllResults(false);
-        $cancelled = (int) $baseQuery()->where("{$table}.status", 'cancelled')->countAllResults(false);
-        $noshow = (int) $baseQuery()->where("{$table}.status", 'no-show')->countAllResults(false);
+        $pending = (int) $baseQuery()->where("{$table}.status", AppointmentStatus::PENDING)->countAllResults(false);
+        $confirmed = (int) $baseQuery()->where("{$table}.status", AppointmentStatus::CONFIRMED)->countAllResults(false);
+        $completed = (int) $baseQuery()->where("{$table}.status", AppointmentStatus::COMPLETED)->countAllResults(false);
+        $cancelled = (int) $baseQuery()->where("{$table}.status", AppointmentStatus::CANCELLED)->countAllResults(false);
+        $noshow = (int) $baseQuery()->where("{$table}.status", AppointmentStatus::NO_SHOW)->countAllResults(false);
         
         // Calculate totals
         $upcoming = $pending + $confirmed;
@@ -477,7 +478,7 @@ class AppointmentModel extends BaseModel
 
         if ($normalized === 'upcoming') {
             $builder->where('xs_appointments.start_at >=', date('Y-m-d H:i:s'))
-                    ->whereIn('xs_appointments.status', ['pending', 'confirmed']);
+                    ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
             return $builder;
         }
 
@@ -532,7 +533,7 @@ class AppointmentModel extends BaseModel
             return null;
         }
 
-        $status = strtolower($status);
+        $status = AppointmentStatus::normalize($status) ?? strtolower($status);
 
         if ($status === 'upcoming') {
             return 'upcoming';
@@ -708,15 +709,6 @@ class AppointmentModel extends BaseModel
         $results = $query->getResultArray();
         
         // Standard status colors
-        $statusColors = [
-            'confirmed' => '#34a853',  // Green
-            'pending'   => '#fbbc04',  // Yellow
-            'completed' => '#1a73e8',  // Blue
-            'cancelled' => '#ea4335',  // Red
-            'no-show'   => '#9aa0a6',  // Gray
-            'unknown'   => '#5f6368'   // Dark gray
-        ];
-        
         // Build unified data structure
         $statuses = [];
         $labels = [];
@@ -724,16 +716,16 @@ class AppointmentModel extends BaseModel
         $colors = [];
         
         foreach ($results as $row) {
-            $status = $row['status'];
+            $status = AppointmentStatus::normalize($row['status']) ?? $row['status'];
             $count = (int)$row['count'];
-            $color = $statusColors[$status] ?? '#5f6368';
+            $color = AppointmentStatus::color($status);
             
             $statuses[$status] = [
                 'count' => $count,
                 'color' => $color,
-                'label' => ucfirst($status)
+                'label' => AppointmentStatus::label($status)
             ];
-            $labels[] = ucfirst($status);
+            $labels[] = AppointmentStatus::label($status);
             $data[] = $count;
             $colors[] = $color;
         }
@@ -1011,17 +1003,10 @@ class AppointmentModel extends BaseModel
             ->getResultArray();
         
         // Convert to associative array
-        $statusCounts = [];
+        $statusCounts = AppointmentStatus::defaultCounts();
         foreach ($results as $row) {
-            $statusCounts[$row['status']] = (int)$row['count'];
-        }
-        
-        // Ensure all statuses are present even if count is 0
-        $allStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
-        foreach ($allStatuses as $status) {
-            if (!isset($statusCounts[$status])) {
-                $statusCounts[$status] = 0;
-            }
+            $status = AppointmentStatus::normalize($row['status']) ?? $row['status'];
+            $statusCounts[$status] = (int)$row['count'];
         }
         
         if (isset($options['format']) && $options['format'] === 'simple') {

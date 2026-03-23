@@ -41,34 +41,13 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
         }
 
         // -----------------------------------------------------------------
-        // 1. Drop old composite indexes that reference start_time / end_time
+        // 1. Rename columns: start_time → start_at, end_time → end_at
         // -----------------------------------------------------------------
-        $oldIndexes = [
-            'idx_appts_provider_start',
-            'idx_appts_service_start',
-            'idx_appts_status_start',
-        ];
-
-        foreach ($oldIndexes as $idx) {
-            $this->dropIndexIfExists($table, $idx);
-        }
+        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_time start_at DATETIME NOT NULL");
+        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_time   end_at   DATETIME NOT NULL");
 
         // -----------------------------------------------------------------
-        // 2. Rename columns: start_time → start_at, end_time → end_at
-        // -----------------------------------------------------------------
-        if ($this->isSQLite()) {
-            // SQLite does not support RENAME COLUMN before 3.25;
-            // CI4's forge doesn't wrap it cleanly, so use raw SQL.
-            $this->db->query("ALTER TABLE {$full} RENAME COLUMN start_time TO start_at");
-            $this->db->query("ALTER TABLE {$full} RENAME COLUMN end_time   TO end_at");
-        } else {
-            // MySQL / MariaDB: use CHANGE COLUMN to preserve type
-            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_time start_at DATETIME NOT NULL");
-            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_time   end_at   DATETIME NOT NULL");
-        }
-
-        // -----------------------------------------------------------------
-        // 3. Shift existing data from Africa/Johannesburg → UTC
+        // 2. Shift existing data from Africa/Johannesburg → UTC
         //    SAST is always UTC+2 (no DST), so subtract 2 hours.
         // -----------------------------------------------------------------
         $hours = self::OFFSET_HOURS;
@@ -76,7 +55,7 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
         $this->db->query("UPDATE {$full} SET end_at   = DATE_SUB(end_at,   INTERVAL {$hours} HOUR)");
 
         // -----------------------------------------------------------------
-        // 4. Add stored_timezone column
+        // 3. Add stored_timezone column
         // -----------------------------------------------------------------
         $fields = $this->sanitiseFields([
             'stored_timezone' => [
@@ -91,11 +70,8 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
         $this->forge->addColumn($table, $fields);
 
         // -----------------------------------------------------------------
-        // 5. Rebuild composite indexes with new column names
+        // 4. Ensure the additional composite index exists with renamed columns
         // -----------------------------------------------------------------
-        $this->createIndexIfMissing($table, 'idx_appts_provider_start', ['provider_id', 'start_at']);
-        $this->createIndexIfMissing($table, 'idx_appts_service_start',  ['service_id',  'start_at']);
-        $this->createIndexIfMissing($table, 'idx_appts_status_start',   ['status',      'start_at']);
         $this->createIndexIfMissing($table, 'idx_appts_start_end',      ['start_at',    'end_at']);
 
         log_message('info', "[Migration] Renamed start_time→start_at, end_time→end_at; data shifted to UTC.");
@@ -111,10 +87,7 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
             return;
         }
 
-        // Drop new indexes
-        $this->dropIndexIfExists($table, 'idx_appts_provider_start');
-        $this->dropIndexIfExists($table, 'idx_appts_service_start');
-        $this->dropIndexIfExists($table, 'idx_appts_status_start');
+        // Drop new index added by this migration
         $this->dropIndexIfExists($table, 'idx_appts_start_end');
 
         // Drop stored_timezone column
@@ -123,20 +96,10 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
         }
 
         // Rename columns back
-        if ($this->isSQLite()) {
-            $this->db->query("ALTER TABLE {$full} RENAME COLUMN start_at TO start_time");
-            $this->db->query("ALTER TABLE {$full} RENAME COLUMN end_at   TO end_time");
-        } else {
-            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_at start_time DATETIME NOT NULL");
-            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_at   end_time   DATETIME NOT NULL");
-        }
+        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_at start_time DATETIME NOT NULL");
+        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_at   end_time   DATETIME NOT NULL");
 
         // NOTE: Data is NOT shifted back to local time — this is a dev-only rollback.
-
-        // Rebuild original indexes
-        $this->createIndexIfMissing($table, 'idx_appts_provider_start', ['provider_id', 'start_time']);
-        $this->createIndexIfMissing($table, 'idx_appts_service_start',  ['service_id',  'start_time']);
-        $this->createIndexIfMissing($table, 'idx_appts_status_start',   ['status',      'start_time']);
 
         log_message('info', "[Migration] Reverted start_at→start_time, end_at→end_time.");
     }

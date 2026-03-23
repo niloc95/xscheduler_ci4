@@ -43,6 +43,10 @@ class AddCorrelationIdToNotificationQueue extends MigrationBase
 
         $this->dropIndexIfExists('notification_queue', 'idx_notification_queue_correlation_id');
 
-        $this->forge->dropColumn('notification_queue', 'correlation_id');
+        try {
+            $this->forge->dropColumn('notification_queue', 'correlation_id');
+        } catch (\Throwable $e) {
+            // Refresh paths can reach here after a partially-applied rollback.
+        }
     }
 }

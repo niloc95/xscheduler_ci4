@@ -28,7 +28,7 @@
                     <p class="card-subtitle">Enter the details for the new user account</p>
                 </div>
 
-                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form" id="createUserForm">
+                <form method="post" action="<?= base_url('user-management/store') ?>" class="user-form" id="createUserForm" data-no-spa="true">
                 <?= csrf_field() ?>
 
                 <div class="card-body space-y-6">
@@ -214,6 +214,7 @@
                         'icon' => 'close'
                     ]) ?>
                     <?= view('components/button', [
+                        'tag' => 'button',
                         'label' => 'Create User',
                         'type' => 'submit',
                         'variant' => 'filled',
@@ -309,6 +310,5 @@
             </div>
         </div>
     </div>
-</div>
 
 <?= $this->endSection() ?>

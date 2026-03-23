@@ -43,7 +43,7 @@
  * - Admin: View delivery logs and system-wide stats
  * 
  * @see         app/Views/notifications/ for view templates
- * @see         app/Services/NotificationPhase1.php for sending logic
+ * @see         app/Services/NotificationPolicyService.php for policy logic
  * @package     App\Controllers
  * @extends     BaseController
  * @author      WebSchedulr Team
@@ -58,7 +58,7 @@ use App\Models\NotificationDeliveryLogModel;
 use App\Models\NotificationQueueModel;
 use App\Models\AppointmentModel;
 use App\Services\LocalizationSettingsService;
-use App\Services\NotificationPhase1;
+use App\Services\NotificationCatalog;
 use App\Services\TimezoneService;
 use CodeIgniter\Controller;
 
@@ -108,7 +108,7 @@ class Notifications extends BaseController
     private function getNotifications(string $filter = 'all'): array
     {
         $notifications = [];
-        $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
 
         try {
             // Get delivery logs (sent notifications)
@@ -488,7 +488,7 @@ class Notifications extends BaseController
      */
     private function getUnreadCount(): int
     {
-        $businessId = NotificationPhase1::BUSINESS_ID_DEFAULT;
+        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
         $count = 0;
 
         try {

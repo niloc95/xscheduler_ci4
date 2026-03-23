@@ -48,7 +48,7 @@
  * - php spark notifications:retry   - Retry failed items
  * 
  * @see         app/Commands/DispatchNotificationQueue.php
- * @see         app/Services/NotificationPhase1.php
+ * @see         app/Services/NotificationPolicyService.php
  * @package     App\Models
  * @extends     BaseModel
  * @author      WebSchedulr Team

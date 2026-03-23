@@ -62,7 +62,7 @@ v1.2.0-rc.1   # Release candidate
 - [ ] All planned features/fixes merged to `main`
 - [ ] All tests passing on CI
 - [ ] Documentation updated
-- [ ] CHANGELOG.md updated
+- [ ] `docs/changelog.md` updated
 - [ ] Version bumped in appropriate files
 - [ ] No open critical bugs
 
@@ -70,7 +70,7 @@ v1.2.0-rc.1   # Release candidate
 
 Update version in these files:
 
-1. **CHANGELOG.md** - Add new version section
+1. **docs/changelog.md** - Add new version section
    ```markdown
    ## [1.1.0] - 2026-03-01
    
@@ -91,7 +91,7 @@ Update version in these files:
 ### Step 2: Commit Version Changes
 
 ```bash
-git add CHANGELOG.md README.md app/Config/Constants.php
+git add docs/changelog.md README.md app/Config/Constants.php
 git commit -m "Bump version to v1.1.0"
 git push origin main
 ```
@@ -136,7 +136,7 @@ Use this checklist before creating a release:
 - [ ] Security scan clean
 
 ### Documentation
-- [ ] CHANGELOG.md updated with all changes
+- [ ] `docs/changelog.md` updated with all changes
 - [ ] README.md reflects new features
 - [ ] API documentation updated (if applicable)
 - [ ] Migration guide created (for major versions)
@@ -246,7 +246,7 @@ sha256sum xscheduler-1.1.0.zip > checksums.txt
 2. Click **Draft a new release**
 3. Choose or create a tag (e.g., `v1.1.0`)
 4. Set release title: `xScheduler v1.1.0`
-5. Add release notes from CHANGELOG.md
+5. Add release notes from `docs/changelog.md`
 6. Upload `xscheduler-1.1.0.zip` and `checksums.txt`
 7. Check **Set as pre-release** if alpha/beta/rc
 8. Click **Publish release**
@@ -266,7 +266,7 @@ After publishing a release:
 
 ### 2. Update Documentation
 
-- [ ] Add release to CHANGELOG.md links
+- [ ] Add release to `docs/changelog.md` links
 - [ ] Update any version-specific docs
 - [ ] Create upgrade guide (for major versions)
 
@@ -321,7 +321,7 @@ For critical bugs in production:
    git push origin v1.0.1
    ```
 
-6. **Update CHANGELOG.md**
+6. **Update docs/changelog.md**
    ```markdown
    ## [1.0.1] - 2026-02-15
    
@@ -419,7 +419,7 @@ Thanks to everyone who contributed!
 
 1. **Test Before Tagging** - Always test on staging first
 2. **Clear Commit Messages** - Write descriptive commit messages
-3. **Update CHANGELOG** - Keep CHANGELOG.md current
+3. **Update changelog** - Keep `docs/changelog.md` current
 4. **Semantic Versioning** - Follow SemVer strictly
 5. **Pre-releases for Testing** - Use beta/rc for user testing
 6. **Security First** - Never release with known security issues
@@ -432,10 +432,10 @@ Thanks to everyone who contributed!
 
 - **Release Issues** → [GitHub Issues](https://github.com/niloc95/xscheduler_ci4/issues)
 - **General Questions** → [GitHub Discussions](https://github.com/niloc95/xscheduler_ci4/discussions)
-- **Security** → See [SECURITY.md](../SECURITY.md)
+- **Security** → See [security_policy.md](../security_policy.md)
 
 ---
 
 **Last Updated**: February 2, 2026  
 **Workflow File**: `.github/workflows/release.yml`  
-**Changelog**: `CHANGELOG.md`
+**Changelog**: `docs/changelog.md`

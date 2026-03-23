@@ -10,6 +10,7 @@
 
 import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
+import { formatCurrency } from '../../currency.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
 import { escapeHtml } from '../../utils/html.js';
 import { fetchSlotsForDate, groupSlotsByHour } from './availability-slots.js';
@@ -39,12 +40,7 @@ export class RightPanel {
             return this.scheduler.settingsManager.formatCurrency(amount);
         }
 
-        if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
-            return window.currencyFormatter.format(amount);
-        }
-
-        const numericAmount = parseFloat(amount) || 0;
-        return `R${numericAmount.toFixed(2)}`;
+        return formatCurrency(amount);
     }
 
     /**

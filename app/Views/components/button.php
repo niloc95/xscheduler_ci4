@@ -24,6 +24,14 @@ $tag = $tag ?? 'button'; // button|a
 $href = $href ?? '#';
 $disabled = (bool) ($disabled ?? false);
 
+// CodeIgniter view data can persist across sequential component renders.
+// If a previous button render set tag='a', a later submit button can inherit it.
+// A submit/reset control must always render as a native <button>.
+if ($tag === 'a' && in_array($type, ['submit', 'reset'], true)) {
+    $tag = 'button';
+    $href = '#';
+}
+
 $base = 'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 $sizeMap = [

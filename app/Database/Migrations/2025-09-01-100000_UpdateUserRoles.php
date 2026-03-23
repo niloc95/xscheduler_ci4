@@ -76,14 +76,18 @@ class UpdateUserRoles extends MigrationBase
             }
         }
 
-        $this->createIndexIfMissing('users', 'idx_users_role', ['role']);
-        $this->createIndexIfMissing('users', 'idx_users_provider_id', ['provider_id']);
-        $this->createIndexIfMissing('users', 'idx_users_active', ['is_active']);
+        if ($db->fieldExists('role', 'users')) {
+            $this->createIndexIfMissing('users', 'idx_users_role', ['role']);
+        }
+
+        if ($db->fieldExists('is_active', 'users')) {
+            $this->createIndexIfMissing('users', 'idx_users_active', ['is_active']);
+        }
     }
 
     public function down()
     {
-    $db = $this->db;
+        $db = $this->db;
 
         if (!$db->tableExists('users')) {
             return;
@@ -91,7 +95,7 @@ class UpdateUserRoles extends MigrationBase
 
         $usersTable = $db->prefixTable('users');
 
-        // Remove foreign key if it exists (MySQL only — SQLite does not support DROP FOREIGN KEY)
+        // Remove foreign key if it exists
         try {
             $this->mysqlOnly("ALTER TABLE `{$usersTable}` DROP FOREIGN KEY `users_provider_fk`");
         } catch (\Exception $e) {
@@ -100,13 +104,25 @@ class UpdateUserRoles extends MigrationBase
         
         // Remove added columns
         if ($db->fieldExists('provider_id', 'users')) {
-            $this->forge->dropColumn('users', 'provider_id');
+            try {
+                $this->forge->dropColumn('users', 'provider_id');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some refresh paths.
+            }
         }
         if ($db->fieldExists('permissions', 'users')) {
-            $this->forge->dropColumn('users', 'permissions');
+            try {
+                $this->forge->dropColumn('users', 'permissions');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some refresh paths.
+            }
         }
         if ($db->fieldExists('is_active', 'users')) {
-            $this->forge->dropColumn('users', 'is_active');
+            try {
+                $this->forge->dropColumn('users', 'is_active');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some refresh paths.
+            }
         }
         
         // Revert role enum to original values

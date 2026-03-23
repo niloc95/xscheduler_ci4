@@ -55,6 +55,8 @@
  */
 
 namespace App\Controllers\Api\V1;
+
+use App\Controllers\Api\BaseApiController;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
 use App\Services\TimezoneService;
@@ -401,7 +403,7 @@ class Providers extends BaseApiController
         $model = new ProviderScheduleModel();
         $schedule = $model->getByProvider($providerId);
 
-        return $this->response->setJSON([
+        return $this->ok([
             'schedule' => $schedule,
         ]);
     }

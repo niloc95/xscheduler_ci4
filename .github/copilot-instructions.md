@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions — WebSchedulr CI4
 
 ## Project Overview
-WebSchedulr is a professional appointment scheduling system built with **CodeIgniter 4** (PHP 8.1+), **MySQL/SQLite**, **Vite**, **Tailwind CSS 3**, and **Material Design 3**. It serves service-based businesses with multi-channel notifications (email, SMS, WhatsApp via Clickatell/Twilio/Meta Cloud API).
+WebSchedulr is a professional appointment scheduling system built with **CodeIgniter 4** (PHP 8.1+), **MySQL/MariaDB**, **Vite**, **Tailwind CSS 3**, and **Material Design 3**. It serves service-based businesses with multi-channel notifications (email, SMS, WhatsApp via Clickatell/Twilio/Meta Cloud API).
 
 ## Architecture
 
@@ -22,7 +22,7 @@ All public-facing appointment and customer records use a `hash` slug instead of 
 ## Database
 
 - **Table prefix:** `xs_` (e.g., `xs_appointments`, `xs_users`, `xs_settings`)
-- **Dual-database support:** MySQL (production) and SQLite (zero-config dev). **All migrations must extend `App\Database\MigrationBase`** instead of CI4's `Migration` to get automatic SQLite compatibility (strips `UNSIGNED`, `AFTER`, converts `ENUM→VARCHAR`, `JSON→TEXT`).
+- **Database support:** MySQL/MariaDB only. **All migrations must extend `App\Database\MigrationBase`** instead of CI4's `Migration` so shared migration helpers stay available.
 - **Run migrations:** `php spark migrate -n App`
 - **Settings** stored as key-value in `xs_settings` with typed values (`string|integer|boolean|json`). Keys use dot-notation prefixes: `general.*`, `localization.*`, `booking.*`, `notifications.*`, `branding.*`, `security.*`. Read via `SettingModel::getByPrefix()` or `getValue()`.
 
@@ -40,7 +40,6 @@ Vite entry points: `resources/js/app.js`, `resources/scss/app-consolidated.scss`
 php spark serve                          # Dev server on :8080
 php spark migrate -n App                 # Run app migrations
 php spark notifications:dispatch-queue   # Cron: enqueue + dispatch notification queue
-php spark notifications:send-reminders   # Cron: appointment reminders
 ```
 
 ### Packaging / Release
@@ -71,11 +70,11 @@ Notifications go through a queue (`xs_notification_queue`) processed by cron. Fl
 3. Results logged in `xs_notification_delivery_logs`; opt-outs in `xs_notification_opt_outs`
 
 ## Key Files for Orientation
-- [app/Config/Routes.php](app/Config/Routes.php) — complete route map
-- [app/Config/Filters.php](app/Config/Filters.php) — middleware definitions
-- [app/Database/MigrationBase.php](app/Database/MigrationBase.php) — required base for all migrations
-- [app/Controllers/Api/BaseApiController.php](app/Controllers/Api/BaseApiController.php) — API response helpers
-- [app/Models/AppointmentModel.php](app/Models/AppointmentModel.php) — core entity, hash callbacks, conflict detection
-- [app/Models/SettingModel.php](app/Models/SettingModel.php) — settings key-value store
-- [vite.config.js](vite.config.js) — all frontend entry points
-- [docs/README.md](docs/README.md) — documentation index
+- [../app/Config/Routes.php](../app/Config/Routes.php) — complete route map
+- [../app/Config/Filters.php](../app/Config/Filters.php) — middleware definitions
+- [../app/Database/MigrationBase.php](../app/Database/MigrationBase.php) — required base for all migrations
+- [../app/Controllers/Api/BaseApiController.php](../app/Controllers/Api/BaseApiController.php) — API response helpers
+- [../app/Models/AppointmentModel.php](../app/Models/AppointmentModel.php) — core entity, hash callbacks, conflict detection
+- [../app/Models/SettingModel.php](../app/Models/SettingModel.php) — settings key-value store
+- [../vite.config.js](../vite.config.js) — all frontend entry points
+- [../docs/readme.md](../docs/readme.md) — documentation index

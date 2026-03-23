@@ -36,7 +36,7 @@ class SeparateCustomersFinalize extends MigrationBase
                 $this->createIndexIfMissing('appointments', 'idx_appointments_customer_id', ['customer_id']);
             }
             
-            // Ensure proper role (skips on SQLite where ENUM is VARCHAR)
+            // Ensure proper role for fresh installs
             $this->modifyEnumColumn('users', [
                 'role' => [
                     'type'       => 'ENUM',
@@ -65,12 +65,6 @@ class SeparateCustomersFinalize extends MigrationBase
 
             // Add index for customer_id
             $this->createIndexIfMissing('appointments', 'idx_appointments_customer_id', ['customer_id']);
-        }
-
-        // Steps 1-4: MySQL-specific data migration (SUBSTRING_INDEX, JOIN UPDATE)
-        // SQLite fresh installs won't have legacy customer data to migrate
-        if ($this->isSQLite()) {
-            return;
         }
 
         // 1) Insert customers from xs_users into xs_customers if not already present (by email or phone)
@@ -116,8 +110,6 @@ SQL;
         $db->query("DELETE FROM `{$usersTable}` WHERE role = 'customer'");
 
         // 5) Alter enum to remove 'customer' and set a safe default
-        //    Note: MySQL/MariaDB specific. Adjust as needed for other DBs.
-        // 5) Alter enum to remove 'customer' and set a safe default (skips on SQLite)
         $this->modifyEnumColumn('users', [
             'role' => [
                 'type'       => 'ENUM',
@@ -131,8 +123,9 @@ SQL;
     public function down()
     {
         $db         = $this->db;
+        $appointmentsTable = $db->prefixTable('appointments');
 
-        // Reverse step 5: restore enum to include 'customer' (skips on SQLite)
+        // Reverse step 5: restore enum to include 'customer'
         $this->modifyEnumColumn('users', [
             'role' => [
                 'type'       => 'ENUM',
@@ -144,7 +137,17 @@ SQL;
 
         // Remove the customer_id column from appointments table if it exists
         if ($db->tableExists('appointments') && $db->fieldExists('customer_id', 'appointments')) {
-            $this->forge->dropColumn('appointments', 'customer_id');
+            try {
+                $this->mysqlOnly("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `fk_appointments_customer`");
+            } catch (\Throwable $e) {
+                // Foreign key may already be absent on some refresh paths.
+            }
+
+            try {
+                $this->forge->dropColumn('appointments', 'customer_id');
+            } catch (\Throwable $e) {
+                // Column may already be absent or constrained differently on some refresh paths.
+            }
         }
 
         // Note: We do not restore deleted xs_users with role customer, or revert appointment user_id changes,

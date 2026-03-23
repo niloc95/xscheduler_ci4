@@ -33,6 +33,11 @@ class AddColorToUsers extends MigrationBase
 
     public function down()
     {
+        if (!$this->db->fieldExists('color', $this->db->prefixTable('users'))
+            && !$this->db->fieldExists('color', 'users')) {
+            return;
+        }
+
         $this->forge->dropColumn('users', 'color');
         
         log_message('info', 'Dropped color column from xs_users table');

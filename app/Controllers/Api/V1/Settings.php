@@ -54,7 +54,7 @@
 
 namespace App\Controllers\Api\V1;
 
-use App\Controllers\Api\V1\BaseApiController;
+use App\Controllers\Api\BaseApiController;
 use App\Models\SettingFileModel;
 use App\Models\SettingModel;
 use App\Services\CalendarConfigService;
@@ -88,7 +88,7 @@ class Settings extends BaseApiController
                 $data[$r['setting_key']] = $this->model->getByKeys([$r['setting_key']])[$r['setting_key']] ?? null;
             }
         }
-        return $this->response->setJSON(['ok' => true, 'data' => $data]);
+        return $this->ok($data);
     }
 
     /**
@@ -103,10 +103,7 @@ class Settings extends BaseApiController
         $calendarService = new CalendarConfigService();
         $config = $calendarService->getJavaScriptConfig();
         
-        return $this->response->setJSON([
-            'ok' => true,
-            'data' => $config
-        ]);
+        return $this->ok($config);
     }
 
     /**
@@ -128,13 +125,10 @@ class Settings extends BaseApiController
                 'context' => $service->getContext(),
             ];
             
-            return $this->response->setJSON([
-                'ok' => true,
-                'data' => $data
-            ]);
+            return $this->ok($data);
         } catch (\Exception $e) {
             log_message('error', 'Failed to load localization settings: ' . $e->getMessage());
-            return $this->failServerError('Failed to load localization settings');
+            return $this->serverError('Failed to load localization settings', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -154,13 +148,10 @@ class Settings extends BaseApiController
                 'requiredFields' => $service->getRequiredFields(),
             ];
             
-            return $this->response->setJSON([
-                'ok' => true,
-                'data' => $data
-            ]);
+            return $this->ok($data);
         } catch (\Exception $e) {
             log_message('error', 'Failed to load booking settings: ' . $e->getMessage());
-            return $this->failServerError('Failed to load booking settings');
+            return $this->serverError('Failed to load booking settings', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -240,10 +231,7 @@ class Settings extends BaseApiController
                 }
             }
             
-            return $this->response->setJSON([
-                'ok' => true,
-                'data' => $formatted
-            ]);
+            return $this->ok($formatted);
         } catch (\Exception $e) {
             log_message('error', 'Failed to load business hours: ' . $e->getMessage());
             
@@ -259,10 +247,7 @@ class Settings extends BaseApiController
                 ];
             }
             
-            return $this->response->setJSON([
-                'ok' => true,
-                'data' => $fallback
-            ]);
+            return $this->ok($fallback, ['fallback' => true]);
         }
     }
 
@@ -293,10 +278,10 @@ class Settings extends BaseApiController
 
             if (!is_array($payload) || empty($payload)) {
                 if ($jsonParseFailed) {
-                    return $this->failValidationErrors('Invalid JSON payload');
+                    return $this->validationError('Invalid JSON payload');
                 }
 
-                return $this->failValidationErrors('Invalid payload - must be JSON or form data');
+                return $this->validationError('Invalid payload - must be JSON or form data');
             }
 
             // Do not persist transport/CSRF keys as settings.
@@ -317,7 +302,7 @@ class Settings extends BaseApiController
                 }
             }
 
-            return $this->response->setJSON(['ok' => true, 'updated' => $count]);
+            return $this->ok(['updated' => $count]);
         } catch (\Throwable $e) {
             $errorId = null;
             try {
@@ -355,16 +340,10 @@ class Settings extends BaseApiController
                 // no-op
             }
 
-            return $this->response
-                ->setStatusCode(500)
-                ->setJSON([
-                    'ok' => false,
-                    'error' => [
-                        'code' => 'settings_update_failed',
-                        'message' => 'Failed to save settings',
-                        'error_id' => $errorId,
-                    ],
-                ]);
+            return $this->serverError('Failed to save settings', [
+                'code' => 'settings_update_failed',
+                'error_id' => $errorId,
+            ]);
         }
     }
 
@@ -376,24 +355,24 @@ class Settings extends BaseApiController
     {
         $file = $this->request->getFile('company_logo');
         if (!$file) {
-            return $this->failValidationErrors('No logo file received.');
+            return $this->validationError('No logo file received.');
         }
 
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
-            return $this->failValidationErrors('Please choose a logo file to upload.');
+            return $this->validationError('Please choose a logo file to upload.');
         }
 
         if (!$file->isValid()) {
-            return $this->fail($file->getErrorString(), ResponseInterface::HTTP_BAD_REQUEST);
+            return $this->badRequest($file->getErrorString());
         }
 
         if ($file->hasMoved()) {
-            return $this->fail('Upload failed: file has already been moved.', ResponseInterface::HTTP_BAD_REQUEST);
+            return $this->badRequest('Upload failed: file has already been moved.');
         }
 
         $sizeBytes = (int) $file->getSize();
         if ($sizeBytes > (2 * 1024 * 1024)) {
-            return $this->failValidationErrors('Logo upload too large. Maximum size is 2MB.');
+            return $this->validationError('Logo upload too large. Maximum size is 2MB.');
         }
 
         $clientMime = strtolower((string) $file->getClientMimeType());
@@ -408,7 +387,7 @@ class Settings extends BaseApiController
         $mimeOk = in_array($clientMime, $allowedMimes, true) || in_array($realMime, $allowedMimes, true);
         $extOk  = in_array($ext, $allowedExts, true);
         if (!$mimeOk && !$extOk) {
-            return $this->failValidationErrors('Unsupported logo format. Use PNG, JPG, SVG, WebP, or GIF.');
+            return $this->validationError('Unsupported logo format. Use PNG, JPG, SVG, WebP, or GIF.');
         }
 
         $targetDir = rtrim(FCPATH, '/').'/assets/settings';
@@ -416,7 +395,7 @@ class Settings extends BaseApiController
             @mkdir($targetDir, 0755, true);
         }
         if (!is_dir($targetDir) || !is_writable($targetDir)) {
-            return $this->failServerError('Logo upload directory is not writable.');
+            return $this->serverError('Logo upload directory is not writable.');
         }
 
         $existing = $this->model->getByKeys(['general.company_logo']);
@@ -435,7 +414,7 @@ class Settings extends BaseApiController
         }
 
         if (!$file->move($targetDir, $safeName)) {
-            return $this->failServerError('Unable to store uploaded logo.');
+            return $this->serverError('Unable to store uploaded logo.');
         }
 
         $absolute = rtrim($targetDir, '/').'/'.$safeName;
@@ -466,10 +445,9 @@ class Settings extends BaseApiController
             log_message('warning', 'Logo upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
         }
 
-        return $this->response->setJSON([
-            'ok' => true,
+        return $this->ok([
             'path' => $relative,
-            'url' => base_url($relative)
+            'url' => base_url($relative),
         ]);
     }
 
@@ -481,24 +459,24 @@ class Settings extends BaseApiController
     {
         $file = $this->request->getFile('company_icon');
         if (!$file) {
-            return $this->failValidationErrors('No icon file received.');
+            return $this->validationError('No icon file received.');
         }
 
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
-            return $this->failValidationErrors('Please choose an icon file to upload.');
+            return $this->validationError('Please choose an icon file to upload.');
         }
 
         if (!$file->isValid()) {
-            return $this->fail($file->getErrorString(), ResponseInterface::HTTP_BAD_REQUEST);
+            return $this->badRequest($file->getErrorString());
         }
 
         if ($file->hasMoved()) {
-            return $this->fail('Upload failed: file has already been moved.', ResponseInterface::HTTP_BAD_REQUEST);
+            return $this->badRequest('Upload failed: file has already been moved.');
         }
 
         $sizeBytes = (int) $file->getSize();
         if ($sizeBytes > (2 * 1024 * 1024)) {
-            return $this->failValidationErrors('Icon upload too large. Maximum size is 2MB.');
+            return $this->validationError('Icon upload too large. Maximum size is 2MB.');
         }
 
         $clientMime = strtolower((string) $file->getClientMimeType());
@@ -513,7 +491,7 @@ class Settings extends BaseApiController
         $mimeOk = in_array($clientMime, $allowedMimes, true) || in_array($realMime, $allowedMimes, true);
         $extOk  = in_array($ext, $allowedExts, true);
         if (!$mimeOk && !$extOk) {
-            return $this->failValidationErrors('Unsupported icon format. Use ICO, PNG, or SVG.');
+            return $this->validationError('Unsupported icon format. Use ICO, PNG, or SVG.');
         }
 
         $targetDir = rtrim(FCPATH, '/').'/assets/settings';
@@ -521,7 +499,7 @@ class Settings extends BaseApiController
             @mkdir($targetDir, 0755, true);
         }
         if (!is_dir($targetDir) || !is_writable($targetDir)) {
-            return $this->failServerError('Icon upload directory is not writable.');
+            return $this->serverError('Icon upload directory is not writable.');
         }
 
         $existing = $this->model->getByKeys(['general.company_icon']);
@@ -540,7 +518,7 @@ class Settings extends BaseApiController
         }
 
         if (!$file->move($targetDir, $safeName)) {
-            return $this->failServerError('Unable to store uploaded icon.');
+            return $this->serverError('Unable to store uploaded icon.');
         }
 
         $absolute = rtrim($targetDir, '/').'/'.$safeName;
@@ -564,10 +542,9 @@ class Settings extends BaseApiController
             log_message('warning', 'Icon upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
         }
 
-        return $this->response->setJSON([
-            'ok' => true,
+        return $this->ok([
             'path' => $relative,
-            'url' => base_url($relative)
+            'url' => base_url($relative),
         ]);
     }
 

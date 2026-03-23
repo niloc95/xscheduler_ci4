@@ -12,16 +12,14 @@ WebSchedulr is a modern online appointment scheduling system for service-based b
 - Provider calendar and availability management
 - Admin panel for configuration and analytics
 - Responsive Material Design UI
-- Zero-configuration deployment to shared or VPS hosting
+- Guided deployment to shared or VPS hosting with MySQL/MariaDB
 
 **Technology Stack:**
 
 - **Backend:** CodeIgniter 4.6.1 (PHP 8.1+)
 - **Frontend:** Tailwind CSS 3.4.17 + Material Web Components
 - **Charts:** Chart.js 4.5.0
-- **Database:** 
-  - **SQLite 3.x** (zero-config) — See [SQLite Zero-Config Setup Guide](./configuration/SQLITE_ZERO_CONFIG_SETUP.md)
-  - **MySQL 5.7+** or **MariaDB 10.2+** — See [Database Selection Guide](./database/DATABASE_SELECTION_GUIDE.md)
+- **Database:** **MySQL 5.7+** or **MariaDB 10.2+**
 - **Build System:** Vite 6.3.5
 
 ---

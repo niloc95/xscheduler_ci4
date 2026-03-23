@@ -42,14 +42,22 @@ class CreateProviderStaffAssignments extends MigrationBase
 
         // Seed existing staff assignments based on legacy provider_id value
         $db = Database::connect();
-        $builder = $db->table('users');
+            if (! $db->fieldExists('provider_id', 'users')) {
+                return;
+            }
+        
+            $builder = $db->table('users');
 
-        $staffRows = $builder
-            ->select('id as staff_id, provider_id')
-            ->whereIn('role', ['staff', 'receptionist'])
-            ->where('provider_id IS NOT NULL', null, false)
-            ->get()
-            ->getResultArray();
+            try {
+                $staffRows = $builder
+                    ->select('id as staff_id, provider_id')
+                    ->whereIn('role', ['staff', 'receptionist'])
+                    ->where('provider_id IS NOT NULL', null, false)
+                    ->get()
+                    ->getResultArray();
+            } catch (\Throwable $e) {
+                return;
+            }
 
         if (!empty($staffRows)) {
             $assignBuilder = $db->table('provider_staff_assignments');

@@ -93,8 +93,8 @@ class UserModel extends BaseModel
     /**
      * Auto-repair: Add the 'color' column if it is missing.
      *
-     * This handles the case where the AddColorToUsers migration failed
-     * silently (e.g. SQLite "database is locked" during setup).
+    * This handles the case where the AddColorToUsers migration did not run
+    * cleanly during setup or deployment.
      */
     private function ensureColorColumnExists(): void
     {

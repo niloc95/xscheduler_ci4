@@ -2,11 +2,14 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\PublicBookingException;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
+use App\Models\LocationModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
 use App\Models\UserModel;
+use App\Services\AppointmentBookingService;
 use App\Services\AvailabilityService;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
@@ -58,7 +61,9 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $services,
             $users,
             $localization,
-            $settings
+            $settings,
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
         );
 
         $context = $service->buildViewContext();
@@ -95,9 +100,6 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'active' => 1,
         ]);
 
-        $availability = $this->createMock(AvailabilityService::class);
-        $availability->method('isSlotAvailable')->willReturn(['available' => true]);
-
         $customers = $this->createCustomerModelMock([
             'id' => 55,
             'email' => 'guest@example.com',
@@ -114,21 +116,39 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'provider_id' => 3,
             'service_id' => 22,
             'customer_id' => 55,
-            'start_time' => '2025-12-01 10:00:00',
-            'end_time' => '2025-12-01 10:30:00',
+            'start_at' => '2025-12-01 10:00:00',
+            'end_at' => '2025-12-01 10:30:00',
             'status' => 'pending',
             'notes' => 'Prefers telehealth',
         ]);
 
+        $booking = $this->createMock(AppointmentBookingService::class);
+        $booking->expects($this->once())
+            ->method('createAppointment')
+            ->with($this->callback(static function (array $payload): bool {
+                return $payload['provider_id'] === 3
+                    && $payload['service_id'] === 22
+                    && $payload['appointment_date'] === '2025-12-01'
+                    && $payload['appointment_time'] === '10:00'
+                    && $payload['customer_first_name'] === 'Pat'
+                    && $payload['customer_email'] === 'guest@example.com';
+            }), 'UTC')
+            ->willReturn([
+                'success' => true,
+                'appointmentId' => 910,
+            ]);
+
         $service = $this->makeService(
             $bookingSettings,
-            $availability,
+            $this->createMock(AvailabilityService::class),
             $appointments,
             $customers,
             $services,
             $users,
             $localization,
-            $this->createMock(SettingModel::class)
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $booking
         );
 
         $result = $service->createBooking([
@@ -155,8 +175,8 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'provider_id' => 9,
             'service_id' => 4,
             'customer_id' => 500,
-            'start_time' => '2025-11-30 14:00:00',
-            'end_time' => '2025-11-30 14:45:00',
+            'start_at' => '2025-11-30 14:00:00',
+            'end_at' => '2025-11-30 14:45:00',
             'status' => 'confirmed',
             'notes' => 'Bring prior labs',
             'public_token' => 'token-123',
@@ -197,7 +217,9 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $services,
             $users,
             $localization,
-            $this->createMock(SettingModel::class)
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
         );
 
         $result = $service->lookupAppointment('token-123', 'lookup@example.com');
@@ -207,6 +229,233 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->assertSame('lookup@example.com', $result['customer']['email']);
         $this->assertSame('+15559998888', $result['customer']['phone']);
         $this->assertStringContainsString('Sun', $result['display_range']);
+    }
+
+    public function testGetAvailableSlotsFormatsDisplayPayload(): void
+    {
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn('UTC');
+        $localization->method('formatTimeForDisplay')->willReturnCallback(static fn (string $time): string => substr($time, 0, 5));
+
+        $availability = $this->createMock(AvailabilityService::class);
+        $availability->expects($this->once())
+            ->method('getBufferTime')
+            ->with(5)
+            ->willReturn(15);
+        $availability->expects($this->once())
+            ->method('getAvailableSlots')
+            ->with(5, '2026-04-10', 12, 15, 'UTC', null, 99)
+            ->willReturn([
+                [
+                    'start' => new \DateTimeImmutable('2026-04-10 09:00:00', new \DateTimeZone('UTC')),
+                    'end' => new \DateTimeImmutable('2026-04-10 09:45:00', new \DateTimeZone('UTC')),
+                ],
+            ]);
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $availability,
+            $this->createMock(AppointmentModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock([
+                'id' => 12,
+                'name' => 'Exam',
+                'duration_min' => 45,
+                'price' => 70,
+                'active' => 1,
+            ]),
+            $this->createUserModelMock([
+                'id' => 5,
+                'name' => 'Dr. Lane',
+                'color' => '#123456',
+                'role' => 'provider',
+                'is_active' => true,
+            ]),
+            $localization,
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $slots = $service->getAvailableSlots(5, 12, '2026-04-10', 99);
+
+        $this->assertCount(1, $slots);
+        $this->assertSame('2026-04-10T09:00:00+00:00', $slots[0]['start']);
+        $this->assertSame('09:00 – 09:45', $slots[0]['label']);
+        $this->assertSame('UTC', $slots[0]['timezone']);
+    }
+
+    public function testCreateBookingRequiresLocationWhenProviderHasActiveLocations(): void
+    {
+        $this->expectException(PublicBookingException::class);
+        $this->expectExceptionMessage('Please select a location for this provider.');
+
+        $bookingSettings = $this->createMock(BookingSettingsService::class);
+        $bookingSettings->method('getFieldConfiguration')->willReturn($this->fieldConfigStub());
+        $bookingSettings->method('getCustomFieldConfiguration')->willReturn([]);
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn('UTC');
+
+        $booking = $this->createMock(AppointmentBookingService::class);
+        $booking->expects($this->never())->method('createAppointment');
+
+        $service = $this->makeService(
+            $bookingSettings,
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock([
+                'id' => 22,
+                'name' => 'Initial Consult',
+                'duration_min' => 30,
+                'price' => 90.0,
+                'active' => 1,
+            ]),
+            $this->createUserModelMock([
+                'id' => 3,
+                'name' => 'Dr. Patel',
+                'color' => '#3366ff',
+                'role' => 'provider',
+                'is_active' => true,
+            ]),
+            $localization,
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock(
+                [
+                    ['id' => 44, 'name' => 'Main Office'],
+                ],
+                []
+            ),
+            $booking
+        );
+
+        $service->createBooking([
+            'provider_id' => 3,
+            'service_id' => 22,
+            'slot_start' => '2025-12-01T10:00:00Z',
+            'first_name' => 'Pat',
+            'email' => 'guest@example.com',
+        ]);
+    }
+
+    public function testLookupAppointmentAcceptsPhoneVerificationWhenEmailMissing(): void
+    {
+        $appointmentRecord = [
+            'id' => 11,
+            'provider_id' => 9,
+            'service_id' => 4,
+            'customer_id' => 500,
+            'start_at' => '2025-11-30 14:00:00',
+            'end_at' => '2025-11-30 14:45:00',
+            'status' => 'confirmed',
+            'notes' => 'Bring prior labs',
+            'public_token' => 'token-phone',
+            'customer_email' => '',
+            'customer_phone' => '+1 (555) 999-8888',
+        ];
+
+        $appointments = $this->getMockBuilder(AppointmentModel::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['builder'])
+            ->getMock();
+        $appointments->method('builder')->willReturn($this->createAppointmentBuilder($appointmentRecord));
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $appointments,
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock([
+                'id' => 4,
+                'name' => 'Follow-up',
+                'duration_min' => 45,
+                'price' => 110,
+                'active' => 1,
+            ]),
+            $this->createUserModelMock([
+                'id' => 9,
+                'name' => 'Dr. Singh',
+                'color' => '#117733',
+                'role' => 'provider',
+                'is_active' => true,
+            ]),
+            $this->createLocalizationMock('UTC'),
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $result = $service->lookupAppointment('token-phone', null, '+15559998888');
+
+        $this->assertSame('+1 (555) 999-8888', $result['customer']['phone']);
+        $this->assertSame('token-phone', $result['token']);
+    }
+
+    public function testRescheduleRejectsAppointmentsInsidePolicyWindow(): void
+    {
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+6 hours')->format('Y-m-d H:i:s');
+        $appointmentRecord = [
+            'id' => 41,
+            'provider_id' => 9,
+            'service_id' => 4,
+            'customer_id' => 500,
+            'start_at' => $startAt,
+            'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
+            'status' => 'confirmed',
+            'notes' => null,
+            'public_token' => 'token-reschedule',
+            'customer_email' => 'lookup@example.com',
+            'customer_phone' => '+15559998888',
+            'location_id' => null,
+        ];
+
+        $appointments = $this->getMockBuilder(AppointmentModel::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['builder'])
+            ->getMock();
+        $appointments->method('builder')->willReturn($this->createAppointmentBuilder($appointmentRecord));
+
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '12h']);
+
+        $booking = $this->createMock(AppointmentBookingService::class);
+        $booking->expects($this->never())->method('updateAppointment');
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $appointments,
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock([
+                'id' => 4,
+                'name' => 'Follow-up',
+                'duration_min' => 45,
+                'price' => 110,
+                'active' => 1,
+            ]),
+            $this->createUserModelMock([
+                'id' => 9,
+                'name' => 'Dr. Singh',
+                'color' => '#117733',
+                'role' => 'provider',
+                'is_active' => true,
+            ]),
+            $this->createLocalizationMock('UTC'),
+            $settings,
+            $this->createLocationModelMock([], []),
+            $booking
+        );
+
+        $this->expectException(PublicBookingException::class);
+        $this->expectExceptionMessage('This appointment is too close to reschedule online.');
+
+        $service->reschedule('token-reschedule', [
+            'email' => 'lookup@example.com',
+            'provider_id' => 9,
+            'service_id' => 4,
+            'slot_start' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+2 days')->format(DATE_ATOM),
+        ]);
     }
 
     /**
@@ -232,7 +481,9 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         ServiceModel $services,
         UserModel $users,
         LocalizationSettingsService $localization,
-        SettingModel $settings
+        SettingModel $settings,
+        ?LocationModel $locations = null,
+        ?AppointmentBookingService $bookingService = null
     ): PublicBookingService {
         return new PublicBookingService(
             $bookingSettings,
@@ -242,8 +493,20 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             $services,
             $users,
             $localization,
-            $settings
+            $settings,
+            $locations,
+            $bookingService
         );
+    }
+
+    private function createLocalizationMock(string $timezone): LocalizationSettingsService
+    {
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn($timezone);
+        $localization->method('formatCurrency')->willReturnCallback(static fn (float $value): string => '$' . number_format($value, 2));
+        $localization->method('formatTimeForDisplay')->willReturnCallback(static fn (string $time): string => substr($time, 0, 5));
+
+        return $localization;
     }
 
     /**
@@ -299,6 +562,19 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $mock->method('first')->willReturn(null);
         $mock->method('insert')->willReturn($customerRow['id']);
         $mock->method('find')->willReturn($customerRow);
+        return $mock;
+    }
+
+    private function createLocationModelMock(array $providerLocations, array $providerLocationsWithDays): LocationModel
+    {
+        /** @var LocationModel&MockObject $mock */
+        $mock = $this->getMockBuilder(LocationModel::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getProviderLocations', 'getProviderLocationsWithDays'])
+            ->getMock();
+        $mock->method('getProviderLocations')->willReturn($providerLocations);
+        $mock->method('getProviderLocationsWithDays')->willReturn($providerLocationsWithDays);
+
         return $mock;
     }
 

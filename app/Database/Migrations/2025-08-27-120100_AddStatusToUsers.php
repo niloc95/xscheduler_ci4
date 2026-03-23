@@ -8,7 +8,6 @@ class AddStatusToUsers extends MigrationBase
 {
     public function up()
     {
-        // Cross-DB: Use ENUM on MySQL, VARCHAR on SQLite/Postgres/etc.
         $field = [
             'status' => [
                 'type'    => 'VARCHAR',
@@ -18,8 +17,7 @@ class AddStatusToUsers extends MigrationBase
             ],
         ];
 
-        // On MySQL, upgrade to ENUM for stricter validation
-    if ($this->db->DBDriver === 'MySQLi') {
+        if ($this->db->DBDriver === 'MySQLi') {
             $field['status'] = [
                 'type'       => 'ENUM',
                 'constraint' => ['active', 'inactive', 'suspended'],
@@ -33,6 +31,12 @@ class AddStatusToUsers extends MigrationBase
 
     public function down()
     {
-        $this->forge->dropColumn('users', 'status');
+        if ($this->db->fieldExists('status', 'users')) {
+            try {
+                $this->forge->dropColumn('users', 'status');
+            } catch (\Throwable $e) {
+                // Column may already be absent on some rollback paths
+            }
+        }
     }
 }

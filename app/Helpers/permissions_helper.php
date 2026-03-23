@@ -51,6 +51,8 @@
  * =============================================================================
  */
 
+require_once APPPATH . 'Helpers/app_helper.php';
+
 if (!function_exists('current_user_role')) {
     /**
      * Get current user's role
@@ -180,74 +182,6 @@ if (!function_exists('can_create_role')) {
             default:
                 return false;
         }
-    }
-}
-
-if (!function_exists('get_role_display_name')) {
-    /**
-     * Get display name for a role
-     */
-    function get_role_display_name(string $role): string
-    {
-        $names = [
-            'admin' => 'Administrator',
-            'provider' => 'Service Provider',
-            'staff' => 'Staff Member'
-        ];
-
-        return $names[$role] ?? ucfirst($role);
-    }
-}
-
-if (!function_exists('get_role_permissions_description')) {
-    /**
-     * Get description of permissions for a role
-     */
-    function get_role_permissions_description(string $role): string
-    {
-        $descriptions = [
-            'admin' => 'Full system access including settings, user management, and all features.',
-            'provider' => 'Can manage own calendar, create staff, manage services and categories.',
-            'staff' => 'Limited to managing own calendar and assigned appointments.'
-        ];
-
-        return $descriptions[$role] ?? 'Unknown role';
-    }
-}
-
-if (!function_exists('get_user_hierarchy')) {
-    /**
-     * Get users that the current user can manage/view
-     */
-    function get_user_hierarchy(): array
-    {
-        $userId = current_user_id();
-        if (!$userId) {
-            return [];
-        }
-
-        $permissionModel = new \App\Models\UserPermissionModel();
-        return $permissionModel->getUserHierarchy($userId);
-    }
-}
-
-if (!function_exists('can_access_route')) {
-    /**
-     * Check if current user can access a specific route/controller action
-     */
-    function can_access_route(string $route, array $requiredRoles = [], array $requiredPermissions = []): bool
-    {
-        // Check role requirements
-        if (!empty($requiredRoles) && !has_role($requiredRoles)) {
-            return false;
-        }
-
-        // Check permission requirements
-        if (!empty($requiredPermissions) && !has_permission($requiredPermissions)) {
-            return false;
-        }
-
-        return true;
     }
 }
 

@@ -115,27 +115,20 @@ class Availability extends BaseApiController
      */
     public function slots()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         // Validate required parameters
         $providerId = $this->request->getGet('provider_id');
         $date = $this->request->getGet('date');
         $serviceId = $this->request->getGet('service_id');
         
         if (!$providerId || !$date || !$serviceId) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Missing required parameters',
-                    'required' => ['provider_id', 'date', 'service_id']
-                ]
+            return $this->badRequest('Missing required parameters', [
+                'required' => ['provider_id', 'date', 'service_id'],
             ]);
         }
         
         // Validate date format
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => ['message' => 'Invalid date format. Use Y-m-d']
-            ]);
+            return $this->badRequest('Invalid date format. Use Y-m-d');
         }
         
         // Get optional parameters
@@ -149,9 +142,7 @@ class Availability extends BaseApiController
 
         $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
         if (!$locationContext['valid']) {
-            return $response->setStatusCode(422)->setJSON([
-                'error' => ['message' => $locationContext['reason']]
-            ]);
+            return $this->unprocessable($locationContext['reason']);
         }
         
         try {
@@ -176,28 +167,20 @@ class Availability extends BaseApiController
                 ];
             }, $slots);
             
-            return $response->setJSON([
-                'ok' => true,
-                'data' => [
-                    'date' => $date,
-                    'provider_id' => (int) $providerId,
-                    'service_id' => (int) $serviceId,
-                    'location_id' => $locationContext['location_id'],
-                    'buffer_minutes' => $bufferMinutes,
-                    'slots' => $formattedSlots,
-                    'total_slots' => count($formattedSlots),
-                    'timezone' => $timezone
-                ]
+            return $this->ok([
+                'date' => $date,
+                'provider_id' => (int) $providerId,
+                'service_id' => (int) $serviceId,
+                'location_id' => $locationContext['location_id'],
+                'buffer_minutes' => $bufferMinutes,
+                'slots' => $formattedSlots,
+                'total_slots' => count($formattedSlots),
+                'timezone' => $timezone,
             ]);
             
         } catch (\Exception $e) {
             log_message('error', '[API/Availability::slots] Error: ' . $e->getMessage());
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to calculate available slots',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to calculate available slots', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -228,7 +211,6 @@ class Availability extends BaseApiController
      */
     public function check()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
         $json = $this->request->getJSON(true);
         
         // Validate required fields
@@ -236,12 +218,9 @@ class Availability extends BaseApiController
         $missing = array_filter($requiredFields, fn($field) => !isset($json[$field]));
         
         if (!empty($missing)) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Missing required fields',
-                    'required' => $requiredFields,
-                    'missing' => array_values($missing)
-                ]
+            return $this->badRequest('Missing required fields', [
+                'required' => $requiredFields,
+                'missing' => array_values($missing),
             ]);
         }
         
@@ -254,9 +233,7 @@ class Availability extends BaseApiController
 
         $locationContext = $this->resolveProviderLocationContext($providerId, $locationId);
         if (!$locationContext['valid']) {
-            return $response->setStatusCode(422)->setJSON([
-                'error' => ['message' => $locationContext['reason']]
-            ]);
+            return $this->unprocessable($locationContext['reason']);
         }
         
         try {
@@ -270,21 +247,13 @@ class Availability extends BaseApiController
                 $locationContext['location_id']
             );
             
-            return $response->setJSON([
-                'ok' => true,
-                'data' => array_merge($result, [
-                    'checked_at' => (new \DateTime('now', new \DateTimeZone($timezone)))->format('c')
-                ])
-            ]);
+            return $this->ok(array_merge($result, [
+                'checked_at' => (new \DateTime('now', new \DateTimeZone($timezone)))->format('c'),
+            ]));
             
         } catch (\Exception $e) {
             log_message('error', '[API/Availability::check] Error: ' . $e->getMessage());
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to check availability',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to check availability', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -311,8 +280,6 @@ class Availability extends BaseApiController
      */
     public function summary()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         $providerId = $this->request->getGet('provider_id');
         $startDate = $this->request->getGet('start_date');
         $endDate = $this->request->getGet('end_date');
@@ -321,19 +288,14 @@ class Availability extends BaseApiController
         $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
         
         if (!$providerId || !$startDate || !$endDate || !$serviceId) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Missing required parameters',
-                    'required' => ['provider_id', 'start_date', 'end_date', 'service_id']
-                ]
+            return $this->badRequest('Missing required parameters', [
+                'required' => ['provider_id', 'start_date', 'end_date', 'service_id'],
             ]);
         }
         
         $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
         if (!$locationContext['valid']) {
-            return $response->setStatusCode(422)->setJSON([
-                'error' => ['message' => $locationContext['reason']]
-            ]);
+            return $this->unprocessable($locationContext['reason']);
         }
 
         try {
@@ -367,26 +329,16 @@ class Availability extends BaseApiController
                 $current->modify('+1 day');
             }
             
-            return $response->setJSON([
-                'ok' => true,
-                'data' => $summary
-            ]);
+            return $this->ok($summary);
             
         } catch (\Exception $e) {
             log_message('error', '[API/Availability::summary] Error: ' . $e->getMessage());
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to generate availability summary',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to generate availability summary', ['exception' => $e->getMessage()]);
         }
     }
 
     public function calendar()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-
         $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
         $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
         $startDate = $this->request->getGet('start_date');
@@ -397,25 +349,17 @@ class Availability extends BaseApiController
 
         $locationContext = $this->resolveProviderLocationContext($providerId, $locationId);
         if (!$locationContext['valid']) {
-            return $response->setStatusCode(422)->setJSON([
-                'error' => ['message' => $locationContext['reason']]
-            ]);
+            return $this->unprocessable($locationContext['reason']);
         }
 
         if ($providerId <= 0 || $serviceId <= 0) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'provider_id and service_id are required',
-                ],
+            return $this->badRequest('provider_id and service_id are required', [
+                'required' => ['provider_id', 'service_id'],
             ]);
         }
 
         if ($startDate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'start_date must use Y-m-d format',
-                ],
-            ]);
+            return $this->badRequest('start_date must use Y-m-d format');
         }
 
         $days = max(1, min($days, 120));
@@ -435,18 +379,10 @@ class Availability extends BaseApiController
                 $locationContext['location_id']
             );
 
-            return $response->setJSON([
-                'ok' => true,
-                'data' => $calendar,
-            ]);
+            return $this->ok($calendar);
         } catch (\Throwable $e) {
             log_message('error', '[API/Availability::calendar] Error: ' . $e->getMessage());
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to calculate availability calendar',
-                    'details' => $e->getMessage(),
-                ],
-            ]);
+            return $this->serverError('Failed to calculate availability calendar', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -474,19 +410,14 @@ class Availability extends BaseApiController
      */
     public function nextAvailable()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         $providerId = $this->request->getGet('provider_id');
         $serviceId = $this->request->getGet('service_id');
         $locationIdRaw = $this->request->getGet('location_id');
         $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
         
         if (!$providerId || !$serviceId) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Missing required parameters',
-                    'required' => ['provider_id', 'service_id']
-                ]
+            return $this->badRequest('Missing required parameters', [
+                'required' => ['provider_id', 'service_id'],
             ]);
         }
         
@@ -497,9 +428,7 @@ class Availability extends BaseApiController
 
         $locationContext = $this->resolveProviderLocationContext((int) $providerId, $locationId);
         if (!$locationContext['valid']) {
-            return $response->setStatusCode(422)->setJSON([
-                'error' => ['message' => $locationContext['reason']]
-            ]);
+            return $this->unprocessable($locationContext['reason']);
         }
         
         try {
@@ -525,20 +454,17 @@ class Availability extends BaseApiController
                     $firstSlot = $slots[0];
                     $daysFromNow = $current->diff(new \DateTime('now', new \DateTimeZone($timezone)))->days;
                     
-                    return $response->setJSON([
-                        'ok' => true,
-                        'data' => [
-                            'found' => true,
-                            'slot' => [
-                                'start' => $firstSlot['startFormatted'],
-                                'end' => $firstSlot['endFormatted'],
-                                'date' => $dateStr,
-                                'startTime' => $firstSlot['start']->format('c'),
-                                'endTime' => $firstSlot['end']->format('c')
-                            ],
-                            'days_from_now' => $daysFromNow,
-                            'searched_until' => $dateStr
-                        ]
+                    return $this->ok([
+                        'found' => true,
+                        'slot' => [
+                            'start' => $firstSlot['startFormatted'],
+                            'end' => $firstSlot['endFormatted'],
+                            'date' => $dateStr,
+                            'startTime' => $firstSlot['start']->format('c'),
+                            'endTime' => $firstSlot['end']->format('c'),
+                        ],
+                        'days_from_now' => $daysFromNow,
+                        'searched_until' => $dateStr,
                     ]);
                 }
                 
@@ -546,23 +472,15 @@ class Availability extends BaseApiController
             }
             
             // No available slots found
-            return $response->setJSON([
-                'ok' => true,
-                'data' => [
-                    'found' => false,
-                    'message' => 'No available slots found in the next ' . $daysAhead . ' days',
-                    'searched_until' => $endSearch->format('Y-m-d')
-                ]
+            return $this->ok([
+                'found' => false,
+                'message' => 'No available slots found in the next ' . $daysAhead . ' days',
+                'searched_until' => $endSearch->format('Y-m-d'),
             ]);
             
         } catch (\Exception $e) {
             log_message('error', '[API/Availability::nextAvailable] Error: ' . $e->getMessage());
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to find next available slot',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to find next available slot', ['exception' => $e->getMessage()]);
         }
     }
 

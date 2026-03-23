@@ -331,7 +331,7 @@ class CalendarConfigService
     /**
      * Internal cached settings accessor
      */
-    private function getSetting(string $key): ?string
+    private function getSetting(string $key): mixed
     {
         if ($this->cache === null) {
             $this->cache = $this->settings->getByKeys([

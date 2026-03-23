@@ -34,25 +34,15 @@ class FixAppointmentTimezoneOffsets extends MigrationBase
 
         log_message('notice', '[Migration] FixAppointmentTimezoneOffsets up(): about to adjust {cnt} rows (created before ' . $cutoff . ')', $preview ?: []);
 
-        // Apply -2 hour adjustment to legacy rows (cross-database)
+        // Apply -2 hour adjustment to legacy rows
         $db->transStart();
-        if ($this->isSQLite()) {
-            $db->query(
-                "UPDATE {$table} 
-                 SET start_time = datetime(start_time, '-2 hours'),
-                     end_time   = datetime(end_time, '-2 hours')
-                 WHERE created_at < ?",
-                [$cutoff]
-            );
-        } else {
-            $db->query(
-                "UPDATE {$table} 
-                 SET start_time = DATE_SUB(start_time, INTERVAL 2 HOUR),
-                     end_time   = DATE_SUB(end_time,   INTERVAL 2 HOUR)
-                 WHERE created_at < ?",
-                [$cutoff]
-            );
-        }
+        $db->query(
+            "UPDATE {$table} 
+             SET start_time = DATE_SUB(start_time, INTERVAL 2 HOUR),
+                 end_time   = DATE_SUB(end_time,   INTERVAL 2 HOUR)
+             WHERE created_at < ?",
+            [$cutoff]
+        );
         $db->transComplete();
 
         if (!$db->transStatus()) {
@@ -79,23 +69,13 @@ class FixAppointmentTimezoneOffsets extends MigrationBase
         $table  = $db->prefixTable('appointments');
 
         $db->transStart();
-        if ($this->isSQLite()) {
-            $db->query(
-                "UPDATE {$table} 
-                 SET start_time = datetime(start_time, '+2 hours'),
-                     end_time   = datetime(end_time, '+2 hours')
-                 WHERE created_at < ?",
-                [$cutoff]
-            );
-        } else {
-            $db->query(
-                "UPDATE {$table} 
-                 SET start_time = DATE_ADD(start_time, INTERVAL 2 HOUR),
-                     end_time   = DATE_ADD(end_time,   INTERVAL 2 HOUR)
-                 WHERE created_at < ?",
-                [$cutoff]
-            );
-        }
+        $db->query(
+            "UPDATE {$table} 
+             SET start_time = DATE_ADD(start_time, INTERVAL 2 HOUR),
+                 end_time   = DATE_ADD(end_time,   INTERVAL 2 HOUR)
+             WHERE created_at < ?",
+            [$cutoff]
+        );
         $db->transComplete();
 
         if (!$db->transStatus()) {

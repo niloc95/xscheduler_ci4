@@ -475,8 +475,8 @@ Before submitting a PR that touches UI:
 
 - **Material Design 3:** https://m3.material.io/
 - **Tailwind CSS:** https://tailwindcss.com/docs
-- **Design Roadmap:** `design-system-roadmap.md`
-- **Audit Summary:** `docs/design/AUDIT_SUMMARY.md`
+- **Design Roadmap:** `docs/design/design_system_roadmap.md`
+- **Audit Summary:** `docs/design/audit_summary.md`
 - **Component Examples:** `app/Views/components/`
 
 ---

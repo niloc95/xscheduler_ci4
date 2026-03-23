@@ -39,6 +39,8 @@
 
 namespace App\Services\Appointment;
 
+use App\Services\LocalizationSettingsService;
+
 class AppointmentFormatterService
 {
     private const DEFAULT_PROVIDER_COLOR = '#3B82F6';
@@ -111,6 +113,40 @@ class AppointmentFormatterService
         return $base;
     }
 
+    /**
+     * Format a single appointment for the existing appointment detail API shape.
+     */
+    public function formatForApiDetail(array $row): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'customer_id' => isset($row['customer_id']) ? (int) $row['customer_id'] : null,
+            'customer_name' => $row['customer_name'] ?? 'N/A',
+            'customer_email' => $row['customer_email'] ?? '',
+            'customer_phone' => $row['customer_phone'] ?? '',
+            'provider_id' => (int) $row['provider_id'],
+            'provider_name' => $row['provider_name'] ?? 'N/A',
+            'provider_color' => $row['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
+            'service_id' => (int) $row['service_id'],
+            'service_name' => $row['service_name'] ?? 'N/A',
+            'start_time' => $this->toLocalIso($row['start_at'] ?? null) ?? ($row['start_at'] ?? null),
+            'end_time' => $this->toLocalIso($row['end_at'] ?? null) ?? ($row['end_at'] ?? null),
+            'start' => $this->toLocalIso($row['start_at'] ?? null) ?? ($row['start_at'] ?? null),
+            'end' => $this->toLocalIso($row['end_at'] ?? null) ?? ($row['end_at'] ?? null),
+            'service_duration' => isset($row['service_duration']) ? (int) $row['service_duration'] : null,
+            'service_price' => isset($row['service_price']) ? (float) $row['service_price'] : null,
+            'status' => $row['status'] ?? 'pending',
+            'notes' => $row['notes'] ?? '',
+            'location_id' => isset($row['location_id']) && $row['location_id'] !== null ? (int) $row['location_id'] : null,
+            'location_name' => $row['location_name'] ?? '',
+            'location_address' => $row['location_address'] ?? '',
+            'location_contact' => $row['location_contact'] ?? '',
+            'is_paid' => (bool) ($row['is_paid'] ?? false),
+            'created_at' => $row['created_at'] ?? null,
+            'updated_at' => $row['updated_at'] ?? null,
+        ];
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────────────────────────
@@ -132,6 +168,23 @@ class AppointmentFormatterService
             $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
             $dt->setTimezone(new \DateTimeZone('UTC'));
             return $dt->format('Y-m-d\TH:i:s\Z');
+        } catch (\Throwable $e) {
+            return $datetime;
+        }
+    }
+
+    private function toLocalIso(?string $datetime): ?string
+    {
+        if (!$datetime) {
+            return null;
+        }
+
+        try {
+            $timezone = (new LocalizationSettingsService())->getTimezone();
+            $dateTime = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            $dateTime->setTimezone(new \DateTimeZone($timezone));
+
+            return $dateTime->format('Y-m-d\TH:i:sP');
         } catch (\Throwable $e) {
             return $datetime;
         }

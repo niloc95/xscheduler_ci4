@@ -11,16 +11,13 @@ import {
   selectAvailableDate,
   buildCalendarCacheKey,
 } from '../calendar/calendar-utils.js';
+import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 function formatLocalizedCurrency(amount) {
-  if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
-    return window.currencyFormatter.format(amount);
-  }
-
-  const fallbackSymbol = window.appCurrencySymbol || 'R';
-  const numericAmount = parseFloat(amount) || 0;
-  return `${fallbackSymbol}${numericAmount.toFixed(2)}`;
+  return formatCurrency(amount, {
+    currencySymbol: window.appCurrencySymbol || null,
+  });
 }
 
 /**

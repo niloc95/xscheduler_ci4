@@ -27,6 +27,8 @@ import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js'
 
 // Import scheduler UI module
 import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
+import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
+import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 
 // Import appointment navigation module
 import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -151,6 +153,12 @@ function initializeComponents() {
     
     // Initialize appointment booking form if present
     initAppointmentForm();
+
+    // Initialize extracted settings page workflows when present.
+    initSettingsPageEnhancements();
+
+    // Initialize customer management live search when that view is present.
+    initCustomerManagementSearch();
 
     // Initialize service create/edit UI when those forms are present
     initServiceManagementForms();

@@ -434,7 +434,7 @@ GET /api/services
 GET /api/services/{id}
 ```
 
-For complete API documentation, see [docs/openapi.yml](docs/openapi.yml).
+For project documentation, start with [docs/readme.md](docs/readme.md).
 
 ---
 
@@ -470,12 +470,12 @@ xscheduler_ci4/
 │       ├── components/        # Reusable UI components
 │       ├── dashboard/         # Dashboard views
 │       └── layouts/           # Page layouts
-├── docs/                      # Documentation (60+ files)
-│   ├── architecture/          # System architecture
-│   ├── configuration/         # Config guides
-│   ├── development/           # Developer guides
-│   ├── security/              # Security documentation
-│   └── SCHEDULING_SYSTEM.md   # Core scheduling docs
+├── docs/                      # Canonical project documentation
+│   ├── architecture/          # Architecture and system design
+│   ├── audits/                # Historical audit and remediation records
+│   ├── deployment/            # Packaging and release guides
+│   ├── scheduler/             # Scheduler-specific documentation
+│   └── readme.md              # Documentation index
 ├── public/                    # Web root
 │   ├── index.php             # Application entry
 │   └── build/                # Compiled assets
@@ -530,7 +530,6 @@ php spark db:seed                  # Run seeders
 
 # Notifications
 php spark notifications:dispatch-queue  # Process notification queue
-php spark reminders:send               # Send appointment reminders
 
 # Cache
 php spark cache:clear    # Clear all caches
@@ -568,9 +567,6 @@ php spark cache:clear    # Clear all caches
 ```bash
 # Process notification queue (every minute)
 * * * * * cd /path/to/project && php spark notifications:dispatch-queue >> /dev/null 2>&1
-
-# Send reminders (every 5 minutes)
-*/5 * * * * cd /path/to/project && php spark reminders:send >> /dev/null 2>&1
 ```
 
 ### Hosting Compatibility
@@ -602,45 +598,22 @@ php spark cache:clear    # Clear all caches
 
 Report security concerns privately to: **info@webschedulr.co.za**
 
-See [SECURITY.md](SECURITY.md) for our full security policy.
+See [docs/security_policy.md](docs/security_policy.md) for our full security policy.
 
 ---
 
 ## 📚 Documentation
 
-### Core Documentation
+### Primary entrypoints
 
 | Document | Description |
 |----------|-------------|
-| [Requirements](docs/REQUIREMENTS.md) | System specifications |
-| [Scheduling System](docs/SCHEDULING_SYSTEM.md) | Core scheduling architecture |
-| [Role-Based System](docs/architecture/ROLE_BASED_SYSTEM.md) | Permission system |
-| [API Specification](docs/openapi.yml) | OpenAPI 3.0 spec |
-
-### Configuration Guides
-
-| Document | Description |
-|----------|-------------|
-| [Environment Guide](docs/configuration/ENV-CONFIGURATION-GUIDE.md) | .env configuration |
-| [Localization](docs/configuration/LOCALIZATION_SETTINGS_UPDATE.md) | Multi-language setup |
-| [Settings](docs/configuration/SETTINGS_IMPLEMENTATION_VERIFIED.md) | Application settings |
-
-### Development Guides
-
-| Document | Description |
-|----------|-------------|
-| [Unified Layout](docs/development/UNIFIED_LAYOUT_SYSTEM.md) | UI component system |
-| [Dashboard](docs/development/DASHBOARD_LANDING_VIEW_IMPLEMENTATION.md) | Dashboard architecture |
-| [Dark Mode](docs/dark-mode/DARK_MODE_IMPLEMENTATION.md) | Theme system |
-| [Provider System](docs/development/provider_system_guide.md) | Provider management |
-
-### Security Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Security Guide](docs/security/SECURITY_IMPLEMENTATION_GUIDE.md) | Security best practices |
-| [Hash URLs](docs/security/HASH_BASED_URL_IMPLEMENTATION.md) | URL security |
-| [Encryption](docs/security/ENCRYPTION-STATUS-ASSESSMENT.md) | Data encryption |
+| [Documentation index](docs/readme.md) | Canonical entrypoint for all repository-authored docs |
+| [Requirements](docs/requirements.md) | Runtime, platform, and environment requirements |
+| [Agent context](Agent_Context.md) | Active engineering context and architecture guardrails |
+| [Scheduler UI architecture](docs/architecture/scheduler_ui_architecture.md) | Scheduler design and boundaries |
+| [Release guide](docs/deployment/releasing.md) | Release process and packaging workflow |
+| [Security policy](docs/security_policy.md) | Responsible disclosure and reporting |
 
 ---
 
@@ -710,7 +683,7 @@ We use GitHub's built-in tools for all support, bug reports, and feature request
 Before reporting:
 1. **Search existing issues** to avoid duplicates
 2. **Check the documentation** in [`/docs`](docs/)
-3. **Review [REQUIREMENTS.md](docs/REQUIREMENTS.md)** to ensure your environment is supported
+3. **Review [docs/requirements.md](docs/requirements.md)** to ensure your environment is supported
 
 **What to include:**
 - Environment details (Localhost, VPS, Shared Hosting)
@@ -745,7 +718,7 @@ Use GitHub Discussions for:
 
 ### 🔒 Security Vulnerabilities
 
-**Found a security issue?** → See [**SECURITY.md**](SECURITY.md) for responsible disclosure.
+**Found a security issue?** → See [**docs/security_policy.md**](docs/security_policy.md) for responsible disclosure.
 
 **Do NOT open public issues for security vulnerabilities.**
 
@@ -755,10 +728,10 @@ Before asking for help, check these resources:
 
 | Document | Description |
 |----------|-------------|
-| [REQUIREMENTS.md](docs/REQUIREMENTS.md) | System requirements and compatibility |
-| [/docs](docs/) | Complete documentation |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-| [SECURITY.md](SECURITY.md) | Security policy |
+| [docs/requirements.md](docs/requirements.md) | System requirements and compatibility |
+| [docs/readme.md](docs/readme.md) | Complete documentation index |
+| [docs/contributing.md](docs/contributing.md) | Contribution workflow and standards |
+| [docs/security_policy.md](docs/security_policy.md) | Security policy |
 
 ---
 
@@ -814,7 +787,7 @@ We welcome contributions! Please follow our workflow:
 - Update documentation as needed
 - Keep PRs focused on single features
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [docs/contributing.md](docs/contributing.md) for detailed guidelines.
 
 ---
 

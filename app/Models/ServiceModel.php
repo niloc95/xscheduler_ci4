@@ -125,10 +125,7 @@ class ServiceModel extends BaseModel
      */
     public function findWithRelations(?int $limit = null, ?int $offset = null): array
     {
-        $isSQLite = stripos($this->db->DBDriver, 'sqlite') !== false;
-        $providerConcat = $isSQLite
-            ? "GROUP_CONCAT(u.name, ', ') as provider_names"
-            : "GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') as provider_names";
+        $providerConcat = "GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') as provider_names";
 
         $servicesTable = $this->db->prefixTable('services');
         $categoriesTable = $this->db->prefixTable('categories');

@@ -137,9 +137,9 @@ class BaseApiController extends BaseController
      * @param string $message Error message
      * @return \CodeIgniter\HTTP\Response
      */
-    protected function notFound(string $message = 'Resource not found')
+    protected function notFound(string $message = 'Resource not found', $details = null)
     {
-        return $this->error(404, $message, 'NOT_FOUND');
+        return $this->error(404, $message, 'NOT_FOUND', $details);
     }
 
     /**
@@ -148,9 +148,9 @@ class BaseApiController extends BaseController
      * @param string $message Error message
      * @return \CodeIgniter\HTTP\Response
      */
-    protected function unauthorized(string $message = 'Authentication required')
+    protected function unauthorized(string $message = 'Authentication required', $details = null)
     {
-        return $this->error(401, $message, 'UNAUTHORIZED');
+        return $this->error(401, $message, 'UNAUTHORIZED', $details);
     }
 
     /**
@@ -159,9 +159,9 @@ class BaseApiController extends BaseController
      * @param string $message Error message
      * @return \CodeIgniter\HTTP\Response
      */
-    protected function forbidden(string $message = 'Access denied')
+    protected function forbidden(string $message = 'Access denied', $details = null)
     {
-        return $this->error(403, $message, 'FORBIDDEN');
+        return $this->error(403, $message, 'FORBIDDEN', $details);
     }
 
     /**
@@ -173,6 +173,18 @@ class BaseApiController extends BaseController
     protected function validationError($errors)
     {
         return $this->error(422, 'Validation failed', 'VALIDATION_ERROR', $errors);
+    }
+
+    /**
+     * Return an unprocessable entity error (HTTP 422)
+     *
+     * @param string $message Error message
+     * @param mixed $details Additional details
+     * @return \CodeIgniter\HTTP\Response
+     */
+    protected function unprocessable(string $message, $details = null)
+    {
+        return $this->error(422, $message, 'UNPROCESSABLE_ENTITY', $details);
     }
 
     /**

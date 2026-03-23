@@ -40,7 +40,7 @@
  * - 'complaint'    : Marked as spam
  * - 'invalid'      : Invalid contact info
  * 
- * @see         app/Services/NotificationPhase1.php for opt-out checking
+ * @see         app/Services/NotificationPolicyService.php for policy context
  * @package     App\Models
  * @extends     BaseModel
  * @author      WebSchedulr Team

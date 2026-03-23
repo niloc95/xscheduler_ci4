@@ -121,19 +121,17 @@ class Setup extends BaseController
             'admin_userid' => 'required|min_length[3]|max_length[20]|alpha_numeric',
             'admin_password' => 'required|min_length[8]',
             'admin_password_confirm' => 'required|matches[admin_password]',
-            'database_type' => 'required|in_list[mysql,sqlite]',
+            'database_type' => 'required|in_list[mysql]',
         ];
 
         // Additional MySQL validation
-        if ($this->request->getPost('database_type') === 'mysql') {
-            $rules = array_merge($rules, [
-                'mysql_hostname' => 'required',
-                'mysql_port' => 'required|numeric',
-                'mysql_database' => 'required',
-                'mysql_username' => 'required',
-                'mysql_password' => 'permit_empty'
-            ]);
-        }
+        $rules = array_merge($rules, [
+            'mysql_hostname' => 'required',
+            'mysql_port' => 'required|numeric',
+            'mysql_database' => 'required',
+            'mysql_username' => 'required',
+            'mysql_password' => 'permit_empty'
+        ]);
 
         if (!$this->validate($rules)) {
             $this->cleanOutputBuffer();
@@ -166,58 +164,31 @@ class Setup extends BaseController
             // Prepare database configuration for .env generation
             $dbConfig = [];
             
-        if ($setupData['database']['type'] === 'mysql') {
-                $dbConfig = [
-                    'db_driver' => 'MySQLi',
-                    'db_hostname' => $this->request->getPost('mysql_hostname'),
+            $dbConfig = [
+                'db_driver' => 'MySQLi',
+                'db_hostname' => $this->request->getPost('mysql_hostname'),
             // Ensure port is an integer to satisfy mysqli strict types
-            'db_port' => (int) ($this->request->getPost('mysql_port') ?: 3306),
-                    'db_database' => $this->request->getPost('mysql_database'),
-                    'db_username' => $this->request->getPost('mysql_username'),
-                    'db_password' => $this->request->getPost('mysql_password')
-                ];
+                'db_port' => (int) ($this->request->getPost('mysql_port') ?: 3306),
+                'db_database' => $this->request->getPost('mysql_database'),
+                'db_username' => $this->request->getPost('mysql_username'),
+                'db_password' => $this->request->getPost('mysql_password')
+            ];
 
-                $setupData['database']['mysql'] = [
-                    'hostname' => $dbConfig['db_hostname'],
-                    'port' => (int) $dbConfig['db_port'],
-                    'database' => $dbConfig['db_database'],
-                    'username' => $dbConfig['db_username'],
-                    'password' => $dbConfig['db_password']
-                ];
+            $setupData['database']['mysql'] = [
+                'hostname' => $dbConfig['db_hostname'],
+                'port' => (int) $dbConfig['db_port'],
+                'database' => $dbConfig['db_database'],
+                'username' => $dbConfig['db_username'],
+                'password' => $dbConfig['db_password']
+            ];
 
-                // Test MySQL connection before proceeding
-                $connectionTest = $this->testDatabaseConnection($dbConfig);
-                if (!$connectionTest['success']) {
-                    $this->cleanOutputBuffer();
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => $connectionTest['message']
-                    ])->setStatusCode(400);
-                }
-            } else {
-                // SQLite configuration - use full path
-                $dbConfig = [
-                    'db_driver' => 'SQLite3',
-                    'db_hostname' => '',
-                    'db_port' => '',
-                    'db_database' => WRITEPATH . 'database/webschedulr.db',
-                    'db_username' => '',
-                    'db_password' => ''
-                ];
-
-                $setupData['database']['sqlite'] = [
-                    'path' => WRITEPATH . 'database/webschedulr.db'
-                ];
-                
-                // Test SQLite setup
-                $connectionTest = $this->testDatabaseConnection($dbConfig);
-                if (!$connectionTest['success']) {
-                    $this->cleanOutputBuffer();
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => $connectionTest['message']
-                    ])->setStatusCode(400);
-                }
+            $connectionTest = $this->testDatabaseConnection($dbConfig);
+            if (!$connectionTest['success']) {
+                $this->cleanOutputBuffer();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $connectionTest['message']
+                ])->setStatusCode(400);
             }
 
             // Apply runtime DB config so this request (migrations) uses the correct driver
@@ -348,23 +319,12 @@ class Setup extends BaseController
             // Step 1.5: Verify required tables exist before proceeding
             $verify = $this->verifyRequiredTables();
             if (!$verify['success']) {
-                // SQLite-only self-heal: stale/partial DB files can report
-                // successful migration history but miss required tables.
-                $recovery = $this->recoverSQLiteSchema();
-                if ($recovery['attempted'] && $recovery['success']) {
-                    $verify = $this->verifyRequiredTables();
-                }
-
-                if ($verify['success']) {
-                    log_message('info', 'Setup: Required tables verified after SQLite recovery');
-                } else {
                 $missingList = implode(', ', $verify['missing']);
                 log_message('error', 'Setup: Required tables missing after migrations: ' . $missingList);
                 return [
                     'success' => false,
                     'message' => 'Required tables missing after migrations: ' . $missingList
                 ];
-                }
             }
 
             // Step 2: Run seeders (optional)
@@ -418,7 +378,6 @@ class Setup extends BaseController
             // Use a non-shared connection and uncached checks to avoid stale
             // table metadata right after migration execution.
             $db = \Config\Database::connect('default', false);
-            $this->setSQLitePragmas($db);
             $prefixMismatch = [];
 
             $tableNames = array_map(
@@ -462,24 +421,6 @@ class Setup extends BaseController
     }
 
     /**
-     * Set SQLite PRAGMAs to prevent "database is locked" errors.
-     *
-     * busy_timeout: waits up to 5 seconds for write-lock release.
-     * journal_mode=WAL: allows concurrent readers + single writer.
-     */
-    protected function setSQLitePragmas(\CodeIgniter\Database\BaseConnection $db): void
-    {
-        if (property_exists($db, 'DBDriver') && $db->DBDriver === 'SQLite3') {
-            try {
-                $db->query("PRAGMA busy_timeout = 5000");
-                $db->query("PRAGMA journal_mode = WAL");
-            } catch (\Throwable $e) {
-                log_message('warning', 'Setup: Could not set SQLite PRAGMAs: ' . $e->getMessage());
-            }
-        }
-    }
-
-    /**
      * Run database migrations
      */
     protected function runMigrations(): array
@@ -488,7 +429,6 @@ class Setup extends BaseController
         $migrate = null;
         try {
             $db = \Config\Database::connect('default', false);
-            $this->setSQLitePragmas($db);
 
             $driver = property_exists($db, 'DBDriver') ? $db->DBDriver : 'unknown';
             $dbname = property_exists($db, 'database') ? $db->database : '';
@@ -520,18 +460,6 @@ class Setup extends BaseController
                 ];
             }
 
-            // SQLite-focused diagnostic logging to prove table visibility on
-            // the same connection used by migrations.
-            try {
-                if (property_exists($db, 'DBDriver') && $db->DBDriver === 'SQLite3') {
-                    $rows = $db->query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")->getResultArray();
-                    $tableNames = array_map(static fn(array $row): string => (string) ($row['name'] ?? ''), $rows);
-                    log_message('info', 'Setup: SQLite tables after migrations: ' . implode(', ', $tableNames));
-                }
-            } catch (\Throwable $e) {
-                log_message('warning', 'Setup: Could not log SQLite table list: ' . $e->getMessage());
-            }
-
             log_message('info', 'Migrations completed successfully');
             return [
                 'success' => true,
@@ -546,7 +474,6 @@ class Setup extends BaseController
                 'message' => 'Database migration failed: ' . $e->getMessage()
             ];
         } finally {
-            // CRITICAL: Release SQLite file lock before seeders/admin creation
             unset($migrate);
             if ($db !== null && method_exists($db, 'close')) {
                 $db->close();
@@ -562,10 +489,7 @@ class Setup extends BaseController
     {
         $db = null;
         try {
-            // Use an explicit non-shared connection with SQLite PRAGMAs so the
-            // seeder does not conflict with connections from previous steps.
             $db = \Config\Database::connect('default', false);
-            $this->setSQLitePragmas($db);
 
             $seeder = new \CodeIgniter\Database\Seeder(config('Database'), $db);
             
@@ -620,69 +544,6 @@ class Setup extends BaseController
     }
 
     /**
-     * Attempt one-time SQLite schema recovery if required tables are missing.
-     *
-     * This handles stale/partial SQLite files from interrupted setup attempts.
-     */
-    protected function recoverSQLiteSchema(): array
-    {
-        $db = null;
-        $freshDb = null;
-        try {
-            $db = \Config\Database::connect('default', false);
-            if (!property_exists($db, 'DBDriver') || $db->DBDriver !== 'SQLite3') {
-                return ['attempted' => false, 'success' => false, 'message' => 'Not SQLite'];
-            }
-
-            $databaseFile = (string) ($db->database ?? '');
-            if ($databaseFile === '' || $databaseFile === ':memory:') {
-                return ['attempted' => false, 'success' => false, 'message' => 'No SQLite file path'];
-            }
-
-            log_message('warning', 'Setup: SQLite recovery attempting schema rebuild for file: ' . $databaseFile);
-
-            if (method_exists($db, 'close')) {
-                $db->close();
-            }
-            $db = null; // Prevent double-close in finally
-
-            $directory = dirname($databaseFile);
-            if (!is_dir($directory)) {
-                mkdir($directory, 0755, true);
-            }
-
-            if (is_file($databaseFile) && !@unlink($databaseFile)) {
-                return ['attempted' => true, 'success' => false, 'message' => 'Could not delete stale SQLite DB file'];
-            }
-
-            $freshDb = \Config\Database::connect('default', false);
-            $this->setSQLitePragmas($freshDb);
-            $migrate = \Config\Services::migrations(config('Migrations'), $freshDb, false);
-            $result = $migrate->latest();
-
-            if ($result === false) {
-                $error = $migrate->getCliMessages();
-                return ['attempted' => true, 'success' => false, 'message' => 'Recovery migration failed: ' . implode(', ', $error)];
-            }
-
-            log_message('info', 'Setup: SQLite recovery migration completed successfully');
-            return ['attempted' => true, 'success' => true, 'message' => 'Recovery completed'];
-        } catch (\Throwable $e) {
-            log_message('error', 'Setup: SQLite recovery failed: ' . $e->getMessage());
-            return ['attempted' => true, 'success' => false, 'message' => $e->getMessage()];
-        } finally {
-            unset($migrate);
-            if ($db !== null && method_exists($db, 'close')) {
-                $db->close();
-            }
-            if ($freshDb !== null && method_exists($freshDb, 'close')) {
-                $freshDb->close();
-            }
-            unset($freshDb, $db);
-        }
-    }
-
-    /**
      * Create the admin user in the users table
      */
     protected function createAdminUser(array $adminData): array
@@ -692,7 +553,6 @@ class Setup extends BaseController
             // Use a non-shared connection and uncached checks to avoid stale
             // metadata after migrations in this same request.
             $db = \Config\Database::connect('default', false);
-            $this->setSQLitePragmas($db);
             $prefix = method_exists($db, 'getPrefix') ? (string) $db->getPrefix() : '';
             $prefixedUsersTable = $db->prefixTable('users');
 
@@ -1278,50 +1138,7 @@ class Setup extends BaseController
      */
     protected function testDatabaseConnection(array $config): array
     {
-        if ($config['db_driver'] === 'SQLite3') {
-            return $this->testSQLiteConnection($config);
-        } else {
-            return $this->testMySQLConnection($config);
-        }
-    }
-
-    /**
-     * Test SQLite connection
-     */
-    protected function testSQLiteConnection(array $config): array
-    {
-        try {
-            // Use the full path directly from config
-            $dbPath = $config['db_database'];
-            $dbDir = dirname($dbPath);
-
-            // Ensure directory exists and is writable
-            if (!is_dir($dbDir)) {
-                mkdir($dbDir, 0755, true);
-            }
-
-            if (!is_writable($dbDir)) {
-                return [
-                    'success' => false,
-                    'message' => 'Database directory is not writable: ' . $dbDir
-                ];
-            }
-
-            // Test SQLite connection
-            $pdo = new \PDO('sqlite:' . $dbPath);
-            $pdo->exec('SELECT 1');
-
-            return [
-                'success' => true,
-                'message' => 'SQLite connection successful. Database will be created automatically.'
-            ];
-
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'message' => 'SQLite connection failed: ' . $e->getMessage()
-            ];
-        }
+        return $this->testMySQLConnection($config);
     }
 
     /**

@@ -45,16 +45,13 @@ class AddHashToCustomers extends MigrationBase
         }
 
         // Now make hash column NOT NULL after all records have hashes
-        // Skip on SQLite — modifyColumn triggers table recreation that can fail
-        if (!$this->isSQLite()) {
-            $this->forge->modifyColumn('customers', [
-                'hash' => [
-                    'type'       => 'VARCHAR',
-                    'constraint' => 64,
-                    'null'       => false,
-                ],
-            ]);
-        }
+        $this->forge->modifyColumn('customers', [
+            'hash' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 64,
+                'null'       => false,
+            ],
+        ]);
     }
 
     public function down()
@@ -72,7 +69,11 @@ class AddHashToCustomers extends MigrationBase
         
         // Remove hash column
         if ($this->db->fieldExists('hash', 'customers')) {
-            $this->forge->dropColumn('customers', 'hash');
+            try {
+                $this->forge->dropColumn('customers', 'hash');
+            } catch (\Throwable $e) {
+                // Legacy refresh paths may already have removed the column.
+            }
         }
     }
 }

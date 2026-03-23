@@ -58,7 +58,6 @@
 namespace App\Controllers\Api;
 
 use App\Models\SettingModel;
-use CodeIgniter\API\ResponseTrait;
 
 /**
  * Database Backup Controller
@@ -73,8 +72,6 @@ use CodeIgniter\API\ResponseTrait;
  */
 class DatabaseBackup extends BaseApiController
 {
-    use ResponseTrait;
-
     protected SettingModel $settingModel;
     protected string $backupDirectory;
 
@@ -101,7 +98,7 @@ class DatabaseBackup extends BaseApiController
                 'ip' => $this->request->getIPAddress(),
                 'user_agent' => $this->request->getUserAgent()->getAgentString(),
             ]);
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         // AC2: Check master switch
@@ -110,7 +107,7 @@ class DatabaseBackup extends BaseApiController
                 'user_id' => session()->get('user_id'),
                 'ip' => $this->request->getIPAddress(),
             ]);
-            return $this->failForbidden('Database backups are disabled. Enable in Settings → Database.');
+            return $this->forbidden('Database backups are disabled. Enable in Settings -> Database.');
         }
 
         try {
@@ -164,8 +161,7 @@ class DatabaseBackup extends BaseApiController
                 'ip' => $this->request->getIPAddress(),
             ]);
 
-            return $this->respond([
-                'success' => true,
+            return $this->respondWithPayload([
                 'filename' => $filename,
                 'timestamp' => $backupTime,
                 'size' => $filesize,
@@ -181,7 +177,7 @@ class DatabaseBackup extends BaseApiController
                 'ip' => $this->request->getIPAddress(),
             ]);
 
-            return $this->fail('Backup failed: ' . $e->getMessage(), 500);
+            return $this->serverError('Backup failed', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -192,7 +188,7 @@ class DatabaseBackup extends BaseApiController
     {
         // Admin authentication required
         if (!$this->isAdminAuthenticated()) {
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         $settings = $this->settingModel->getByKeys([
@@ -204,7 +200,7 @@ class DatabaseBackup extends BaseApiController
 
         $dbConfig = $this->getDatabaseConfig();
 
-        return $this->respond([
+        return $this->respondWithPayload([
             'backup_enabled' => $this->isBackupEnabled(),
             'last_backup' => [
                 'time' => $settings['database.last_backup_time'] ?? null,
@@ -228,7 +224,7 @@ class DatabaseBackup extends BaseApiController
     public function toggleBackup()
     {
         if (!$this->isAdminAuthenticated()) {
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         $enabled = $this->request->getJSON(true)['enabled'] ?? false;
@@ -242,8 +238,7 @@ class DatabaseBackup extends BaseApiController
             'ip' => $this->request->getIPAddress(),
         ]);
 
-        return $this->respond([
-            'success' => true,
+        return $this->respondWithPayload([
             'enabled' => $enabled,
             'message' => $enabled ? 'Database backups enabled' : 'Database backups disabled',
         ]);
@@ -265,11 +260,11 @@ class DatabaseBackup extends BaseApiController
                 'ip' => $this->request->getIPAddress(),
                 'filename' => $filename,
             ]);
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         if (empty($filename)) {
-            return $this->failValidation('Filename is required');
+            return $this->validationError('Filename is required');
         }
 
         // Security: Validate filename strictly - no path traversal
@@ -279,14 +274,14 @@ class DatabaseBackup extends BaseApiController
                 'filename' => $filename,
                 'ip' => $this->request->getIPAddress(),
             ]);
-            return $this->failValidation('Invalid filename');
+            return $this->validationError('Invalid filename');
         }
 
         $filepath = $this->backupDirectory . DIRECTORY_SEPARATOR . $filename;
 
         // Verify file exists
         if (!file_exists($filepath)) {
-            return $this->failNotFound('Backup file not found');
+            return $this->notFound('Backup file not found');
         }
 
         // Double-check the resolved path is inside backup directory (prevent symlink attacks)
@@ -298,7 +293,7 @@ class DatabaseBackup extends BaseApiController
                 'filename' => $filename,
                 'ip' => $this->request->getIPAddress(),
             ]);
-            return $this->failForbidden('Access denied');
+            return $this->forbidden('Access denied');
         }
 
         // Log download
@@ -318,7 +313,7 @@ class DatabaseBackup extends BaseApiController
     public function list()
     {
         if (!$this->isAdminAuthenticated()) {
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         $backups = [];
@@ -340,8 +335,7 @@ class DatabaseBackup extends BaseApiController
             usort($backups, fn($a, $b) => strtotime($b['created']) - strtotime($a['created']));
         }
 
-        return $this->respond([
-            'success' => true,
+        return $this->respondWithPayload([
             'backups' => $backups,
             'total' => count($backups),
         ]);
@@ -353,28 +347,28 @@ class DatabaseBackup extends BaseApiController
     public function delete(string $filename = null)
     {
         if (!$this->isAdminAuthenticated()) {
-            return $this->failForbidden('Access denied. Admin authentication required.');
+            return $this->forbidden('Access denied. Admin authentication required.');
         }
 
         if (empty($filename) || !$this->isValidBackupFilename($filename)) {
-            return $this->failValidation('Invalid filename');
+            return $this->validationError('Invalid filename');
         }
 
         $filepath = $this->backupDirectory . DIRECTORY_SEPARATOR . $filename;
+
+        if (!file_exists($filepath)) {
+            return $this->notFound('Backup file not found');
+        }
 
         // Verify path is inside backup directory
         $realPath = realpath($filepath);
         $realBackupDir = realpath($this->backupDirectory);
         if ($realPath === false || strpos($realPath, $realBackupDir) !== 0) {
-            return $this->failForbidden('Access denied');
-        }
-
-        if (!file_exists($filepath)) {
-            return $this->failNotFound('Backup file not found');
+            return $this->forbidden('Access denied');
         }
 
         if (!unlink($filepath)) {
-            return $this->fail('Failed to delete backup file', 500);
+            return $this->serverError('Failed to delete backup file');
         }
 
         $this->logAudit('backup_deleted', [
@@ -383,10 +377,24 @@ class DatabaseBackup extends BaseApiController
             'ip' => $this->request->getIPAddress(),
         ]);
 
-        return $this->respond([
-            'success' => true,
+        return $this->respondWithPayload([
             'message' => 'Backup deleted successfully',
         ]);
+    }
+
+    /**
+     * Return both legacy flat fields and the standard API envelope.
+     * This keeps the existing Settings UI working while preserving
+     * compatibility with BaseApiController consumers.
+     */
+    protected function respondWithPayload(array $payload, array $meta = [])
+    {
+        return $this->response
+            ->setHeader('Content-Type', 'application/json')
+            ->setJSON(array_merge($payload, [
+                'data' => $payload,
+                'meta' => (object) $meta,
+            ]));
     }
 
     /**
@@ -457,11 +465,9 @@ class DatabaseBackup extends BaseApiController
 
         if (in_array($driver, ['mysqli', 'mysql'])) {
             return $this->backupMySQL($config, $outputPath);
-        } elseif ($driver === 'sqlite3') {
-            return $this->backupSQLite($config, $outputPath);
         }
 
-        throw new \RuntimeException("Unsupported database driver: {$driver}");
+        throw new \RuntimeException("Unsupported database driver: {$driver}. Only MySQL/MariaDB backups are supported.");
     }
 
     /**
@@ -517,39 +523,6 @@ class DatabaseBackup extends BaseApiController
         }
 
         return $finalPath;
-    }
-
-    /**
-     * Backup SQLite database
-     * @return string|false The actual filepath on success, false on failure
-     */
-    protected function backupSQLite(array $config, string $outputPath): string|false
-    {
-        if (!$this->isFunctionEnabled('system')) {
-            throw new \RuntimeException('Database backup requires system command execution, but `system()` is disabled on this server.');
-        }
-
-        if (!$this->commandExists('sqlite3')) {
-            throw new \RuntimeException('SQLite backup requires `sqlite3`, but it was not found on this server.');
-        }
-
-        $dbPath = $config['database'];
-        
-        if (!file_exists($dbPath)) {
-            throw new \RuntimeException("SQLite database file not found: {$dbPath}");
-        }
-
-        // For SQLite, we can use the .dump command or simply copy the file
-        $sqlite = escapeshellarg($dbPath);
-        $output = escapeshellarg($outputPath);
-
-        $command = "sqlite3 {$sqlite} .dump > {$output}";
-        
-        $exitCode = 0;
-        system($command, $exitCode);
-
-        // Return filepath on success, false on failure
-        return ($exitCode === 0 && file_exists($outputPath) && filesize($outputPath) > 0) ? $outputPath : false;
     }
 
     /**

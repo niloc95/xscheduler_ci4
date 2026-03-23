@@ -43,7 +43,7 @@
  * - appointment_cancelled  : Cancellation notice
  * - appointment_rescheduled: Reschedule notification
  * 
- * @see         app/Services/NotificationPhase1.php for template rendering
+ * @see         app/Services/NotificationPolicyService.php for template rendering
  * @see         app/Controllers/Settings.php for admin template editor
  * @package     App\Models
  * @extends     BaseModel

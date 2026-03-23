@@ -7,7 +7,7 @@
  * 
  * @file        app/Helpers/DatabaseSetup.php
  * @description Class-based helper for initializing database during setup wizard.
- *              Supports both MySQL and SQLite database backends.
+ *              Supports MySQL and MariaDB database backends.
  * 
  * USAGE:
  * -----------------------------------------------------------------------------
@@ -17,13 +17,12 @@
  * 
  * SUPPORTED DATABASES:
  * -----------------------------------------------------------------------------
- * - MySQL/MariaDB : Full production support
- * - SQLite        : Development/testing support
+ * - MySQL/MariaDB : Full support
  * 
  * INITIALIZATION FLOW:
  * -----------------------------------------------------------------------------
  * 1. Receives setup data array from wizard
- * 2. Determines database type (mysql/sqlite)
+ * 2. Validates MySQL database configuration
  * 3. Creates database connection config
  * 4. Tests connection
  * 5. Creates required tables via migrations
@@ -32,9 +31,8 @@
  * 
  * KEY METHODS:
  * -----------------------------------------------------------------------------
- * initialize()         : Main entry point, routes to MySQL or SQLite
+ * initialize()         : Main entry point for MySQL initialization
  * initializeMySQL()    : MySQL-specific initialization
- * initializeSQLite()   : SQLite-specific initialization
  * runMigrations()      : Execute database migrations
  * seedInitialData()    : Create admin user and default settings
  * writeEnvFile()       : Update .env with database config
@@ -71,7 +69,7 @@ use Config\Database;
 
 /**
  * Database Setup Helper
- * Handles database initialization for both MySQL and SQLite
+ * Handles database initialization for MySQL and MariaDB
  */
 class DatabaseSetup
 {
@@ -88,11 +86,11 @@ class DatabaseSetup
     public function initialize(): bool
     {
         try {
-            if ($this->setupData['database']['type'] === 'mysql') {
-                return $this->initializeMySQL();
-            } else {
-                return $this->initializeSQLite();
+            if (($this->setupData['database']['type'] ?? null) !== 'mysql') {
+                throw new \InvalidArgumentException('Only MySQL/MariaDB setup is supported.');
             }
+
+            return $this->initializeMySQL();
         } catch (\Exception $e) {
             log_message('error', 'Database initialization failed: ' . $e->getMessage());
             return false;
@@ -139,56 +137,6 @@ class DatabaseSetup
         $this->createAdminUser($db);
 
         // Save database configuration to file
-        $this->saveDatabase(['default' => $dbConfig]);
-
-        return true;
-    }
-
-    /**
-     * Initialize SQLite database
-     */
-    private function initializeSQLite(): bool
-    {
-        $dbPath = $this->setupData['database']['sqlite']['path'];
-        $dbDir = dirname($dbPath);
-
-        // Create database directory if it doesn't exist
-        if (!is_dir($dbDir)) {
-            mkdir($dbDir, 0755, true);
-        }
-
-        // SQLite configuration
-        $dbConfig = [
-            'DSN'      => '',
-            'hostname' => '',
-            'username' => '',
-            'password' => '',
-            'database' => $dbPath,
-            'DBDriver' => 'SQLite3',
-            'DBPrefix' => '',
-            'pConnect' => false,
-            'DBDebug'  => ENVIRONMENT !== 'production',
-            'charset'  => 'utf8',
-            'DBCollat' => '',
-            'swapPre'  => '',
-            'encrypt'  => false,
-            'compress' => false,
-            'strictOn' => false,
-            'failover' => [],
-            'port'     => '',
-        ];
-
-        // Create database and tables
-        $db = \Config\Database::connect($dbConfig);
-        
-        if (!$db->initialize()) {
-            throw new \Exception('Failed to initialize SQLite database');
-        }
-
-        $this->createTables($db);
-        $this->createAdminUser($db);
-
-        // Save database configuration
         $this->saveDatabase(['default' => $dbConfig]);
 
         return true;
@@ -421,21 +369,19 @@ class DatabaseSetup
         $configContent .= "        'hostname'    => '127.0.0.1',\n";
         $configContent .= "        'username'    => 'root',\n";
         $configContent .= "        'password'    => '',\n";
-        $configContent .= "        'database'    => ':memory:',\n";
-        $configContent .= "        'DBDriver'    => 'SQLite3',\n";
-        $configContent .= "        'DBPrefix'    => 'db_',\n";
+        $configContent .= "        'database'    => 'webschedulr_test',\n";
+        $configContent .= "        'DBDriver'    => 'MySQLi',\n";
+        $configContent .= "        'DBPrefix'    => '',\n";
         $configContent .= "        'pConnect'    => false,\n";
         $configContent .= "        'DBDebug'     => true,\n";
-        $configContent .= "        'charset'     => 'utf8',\n";
-        $configContent .= "        'DBCollat'    => '',\n";
+        $configContent .= "        'charset'     => 'utf8mb4',\n";
+        $configContent .= "        'DBCollat'    => 'utf8mb4_general_ci',\n";
         $configContent .= "        'swapPre'     => '',\n";
         $configContent .= "        'encrypt'     => false,\n";
         $configContent .= "        'compress'    => false,\n";
         $configContent .= "        'strictOn'    => false,\n";
         $configContent .= "        'failover'    => [],\n";
         $configContent .= "        'port'        => 3306,\n";
-        $configContent .= "        'foreignKeys' => true,\n";
-        $configContent .= "        'busyTimeout' => 1000,\n";
         $configContent .= "    ];\n\n";
 
         $configContent .= "    public function __construct()\n    {\n        parent::__construct();\n\n";

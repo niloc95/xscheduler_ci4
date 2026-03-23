@@ -20,6 +20,7 @@ import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { getStatusColors, isDarkMode } from './appointment-colors.js';
 import { emitAppointmentsUpdated } from '../filters/status-filters.js';
+import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 
 export class AppointmentDetailsModal {
@@ -424,9 +425,8 @@ export class AppointmentDetailsModal {
             // Service
             this.modal.querySelector('#detail-service-name').textContent = appointment.serviceName || 'Service';
             if (appointment.servicePrice) {
-                // Use settings manager for currency formatting
                 const formattedPrice = this.scheduler.settingsManager?.formatCurrency(appointment.servicePrice) 
-                    || `${parseFloat(appointment.servicePrice).toFixed(2)}`;
+                    || formatCurrency(appointment.servicePrice);
                 this.modal.querySelector('#detail-service-price').textContent = formattedPrice;
             } else {
                 this.modal.querySelector('#detail-service-price').textContent = '';

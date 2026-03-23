@@ -251,8 +251,6 @@ docs/latex/
 #-------------------------
 # Database
 #-------------------------
-*.sqlite
-*.sqlite3
 *.db
 
 # Database dumps

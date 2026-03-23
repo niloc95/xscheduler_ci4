@@ -171,6 +171,387 @@ builds/
   - `branding.*`
   - `security.*`
 
+### Complete Current Schema
+
+The current database is centered on appointments, provider availability, public booking, settings, and queued notifications. Use the schema below as the canonical working model when changing data access, migrations, services, or API payloads.
+
+#### Core Identity Tables
+
+##### `xs_users`
+- Login-capable internal actors: admin, provider, staff.
+- Key columns:
+  - `id`
+  - `name`
+  - `email`
+  - `phone`
+  - `password_hash`
+  - `role`
+  - `color`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - This is not the customer table.
+  - Providers and staff are modeled here and linked outward through schedules, services, blocked times, and appointments.
+
+##### `xs_customers`
+- Booking customers and customer-profile data.
+- Key columns:
+  - `id`
+  - `first_name`
+  - `last_name`
+  - `email`
+  - `phone`
+  - `address`
+  - `notes`
+  - `custom_fields`
+  - `hash`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Public-facing customer flows should use `hash`, not the numeric `id`.
+  - `CustomerModel` generates `hash` on insert when the column exists.
+
+#### Core Scheduling Tables
+
+##### `xs_services`
+- Bookable services.
+- Key columns:
+  - `id`
+  - `name`
+  - `description`
+  - `duration_min`
+  - `price`
+  - `buffer_before`
+  - `buffer_after`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - `duration_min` is the service duration baseline.
+  - `buffer_before` and `buffer_after` must be included in availability logic.
+
+##### `xs_appointments`
+- Canonical appointment record.
+- Key columns:
+  - `id`
+  - `customer_id`
+  - `provider_id`
+  - `service_id`
+  - `location_id`
+  - `appointment_date`
+  - `appointment_time`
+  - `start_at`
+  - `end_at`
+  - `stored_timezone`
+  - `status`
+  - `notes`
+  - `hash`
+  - `public_token`
+  - `public_token_expires_at`
+  - `location_name`
+  - `location_address`
+  - `location_contact`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - `start_at` and `end_at` are the canonical persisted datetime fields.
+  - Stored datetimes are UTC.
+  - `customer_id` is canonical. `user_id` is deprecated and must not be used for new logic.
+  - `appointment_date` and `appointment_time` still exist for compatibility, but new scheduling logic should anchor on `start_at` and `end_at`.
+  - `location_name`, `location_address`, and `location_contact` are snapshot fields copied onto the appointment so historical records remain stable.
+  - Public customer flows may use `hash` and time-limited `public_token` fields.
+
+##### `xs_blocked_times`
+- Provider or global time exclusions.
+- Key columns:
+  - `id`
+  - `provider_id`
+  - `start_at`
+  - `end_at`
+  - `reason`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - `provider_id = NULL` means a global block.
+  - This table was migrated from `start_time` and `end_time` to UTC-backed `start_at` and `end_at`.
+
+#### Availability, Hours, and Location Tables
+
+##### `xs_business_hours`
+- Business-hour windows, typically keyed by provider and weekday.
+- Key columns:
+  - `id`
+  - `provider_id`
+  - `day_of_week`
+  - `is_open`
+  - `start_time`
+  - `end_time`
+  - `breaks_json`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - These values express local business-time concepts and must be interpreted in the configured business timezone.
+
+##### `xs_provider_schedules`
+- Provider-specific recurring schedule definition.
+- Key columns:
+  - `id`
+  - `provider_id`
+  - `location_id`
+  - `day_of_week`
+  - `start_time`
+  - `end_time`
+  - `is_available`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Unique schedule rows exist per provider/day.
+  - `location_id` is nullable and uses `ON DELETE SET NULL` semantics.
+
+##### `xs_locations`
+- Business or provider appointment locations.
+- Key columns:
+  - `id`
+  - `provider_id`
+  - `name`
+  - `address`
+  - `city`
+  - `state`
+  - `postal_code`
+  - `country`
+  - `phone`
+  - `email`
+  - `description`
+  - `is_active`
+  - `is_primary`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Locations belong to providers and can be referenced both by schedules and appointments.
+
+##### `xs_location_days`
+- Day-level hours and availability overrides for a location.
+- Key columns:
+  - `id`
+  - `location_id`
+  - `day_of_week`
+  - `is_open`
+  - `open_time`
+  - `close_time`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Unique per `location_id` and `day_of_week`.
+
+##### `xs_providers_services`
+- Provider-to-service pivot.
+- Key columns:
+  - `provider_id`
+  - `service_id`
+- Notes:
+  - Use this as the authority for which providers can deliver which services.
+
+##### `xs_provider_staff_assignments`
+- Provider-to-staff assignment pivot.
+- Key columns:
+  - `id`
+  - `provider_id`
+  - `staff_id`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Used to scope staff access and operational ownership.
+  - Protected by a unique provider/staff pairing.
+
+#### Settings and File-Backed Configuration Tables
+
+##### `xs_settings`
+- Typed key-value application settings.
+- Key columns:
+  - `id`
+  - `setting_key`
+  - `setting_value`
+  - `setting_type`
+  - `updated_by`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - This is the source of truth for configurable application behavior.
+  - `updated_by` links settings changes back to a user when available.
+
+##### `xs_settings_files`
+- Binary or file-backed settings payloads.
+- Key columns:
+  - `id`
+  - `setting_key`
+  - `filename`
+  - `mime`
+  - `data`
+  - `updated_by`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Used for settings values that need stored file/blob content rather than plain scalar values.
+  - `setting_key` is unique.
+
+#### Notification Policy and Delivery Tables
+
+##### `xs_business_notification_rules`
+- Business-level notification policy by event and channel.
+- Key columns:
+  - `id`
+  - `business_id`
+  - `event_type`
+  - `channel`
+  - `is_enabled`
+  - `reminder_offset_minutes`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Unique on `business_id`, `event_type`, and `channel`.
+
+##### `xs_business_integrations`
+- Provider/integration configuration for delivery channels.
+- Key columns:
+  - `id`
+  - `business_id`
+  - `channel`
+  - `provider_name`
+  - `encrypted_config`
+  - `is_active`
+  - `health_status`
+  - `last_tested_at`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Unique on `business_id` and `channel`.
+  - Secrets belong in `encrypted_config`, not in plain settings rows.
+
+##### `xs_message_templates`
+- Channel-aware message template storage.
+- Key columns:
+  - `id`
+  - `business_id`
+  - `event_type`
+  - `channel`
+  - `provider`
+  - `provider_template_id`
+  - `locale`
+  - `subject`
+  - `body`
+  - `is_active`
+  - `created_at`
+  - `updated_at`
+
+##### `xs_notification_queue`
+- Queue of notification jobs awaiting dispatch or retry.
+- Key columns:
+  - `id`
+  - `business_id`
+  - `appointment_id`
+  - `customer_id`
+  - `channel`
+  - `event_type`
+  - `recipient`
+  - `payload_json`
+  - `status`
+  - `run_after`
+  - `attempt_count`
+  - `last_error`
+  - `idempotency_key`
+  - `provider_message_id`
+  - `created_at`
+  - `updated_at`
+  - `sent_at`
+- Notes:
+  - Queue dispatch is the canonical notification execution path.
+  - `idempotency_key` is unique and prevents duplicate deliveries.
+
+##### `xs_notification_delivery_logs`
+- Immutable-ish delivery result records for attempted sends.
+- Key columns:
+  - `id`
+  - `queue_id`
+  - `appointment_id`
+  - `customer_id`
+  - `channel`
+  - `event_type`
+  - `recipient`
+  - `provider_name`
+  - `provider_message_id`
+  - `status`
+  - `error_code`
+  - `error_message`
+  - `payload_json`
+  - `response_json`
+  - `created_at`
+
+##### `xs_notification_opt_outs`
+- Channel-specific opt-out registry.
+- Key columns:
+  - `id`
+  - `business_id`
+  - `channel`
+  - `recipient`
+  - `reason`
+  - `created_at`
+- Notes:
+  - Unique on `business_id`, `channel`, and `recipient`.
+
+#### Audit and Traceability Tables
+
+##### `xs_audit_logs`
+- Internal audit trail for administrative and user-management actions.
+- Key columns:
+  - `id`
+  - `user_id`
+  - `action`
+  - `target_type`
+  - `target_id`
+  - `old_value`
+  - `new_value`
+  - `ip_address`
+  - `user_agent`
+  - `created_at`
+- Notes:
+  - `old_value` and `new_value` are JSON-like text snapshots.
+  - Do not store audit-only business history in application tables when this audit surface is the intended trace.
+
+#### Canonical Relationships
+- `xs_appointments.customer_id -> xs_customers.id`
+- `xs_appointments.provider_id -> xs_users.id`
+- `xs_appointments.service_id -> xs_services.id`
+- `xs_appointments.location_id -> xs_locations.id`
+- `xs_blocked_times.provider_id -> xs_users.id`
+- `xs_business_hours.provider_id -> xs_users.id`
+- `xs_provider_schedules.provider_id -> xs_users.id`
+- `xs_provider_schedules.location_id -> xs_locations.id`
+- `xs_locations.provider_id -> xs_users.id`
+- `xs_location_days.location_id -> xs_locations.id`
+- `xs_providers_services.provider_id -> xs_users.id`
+- `xs_providers_services.service_id -> xs_services.id`
+- `xs_provider_staff_assignments.provider_id -> xs_users.id`
+- `xs_provider_staff_assignments.staff_id -> xs_users.id`
+- `xs_settings.updated_by -> xs_users.id` when populated
+- `xs_settings_files.updated_by -> xs_users.id` when populated
+- `xs_notification_queue.appointment_id -> xs_appointments.id`
+- `xs_notification_queue.customer_id -> xs_customers.id`
+- `xs_notification_delivery_logs.queue_id -> xs_notification_queue.id`
+- `xs_notification_delivery_logs.appointment_id -> xs_appointments.id`
+- `xs_notification_delivery_logs.customer_id -> xs_customers.id`
+- `xs_audit_logs.user_id -> xs_users.id`
+
+#### Index and Query Expectations
+- Appointment availability and calendar queries must be optimized around provider, status, and UTC datetime ranges.
+- Public appointment access depends on indexed `hash` and `public_token` lookups.
+- Location-day, provider-day, provider-service, provider-staff, and notification-rule uniqueness constraints are part of the domain contract and should not be bypassed in application code.
+- Queue dispatch depends on indexed `status`, `run_after`, and idempotency fields.
+
+#### Legacy and Compatibility Rules
+- Do not write new logic against appointment `user_id`.
+- Do not reintroduce `start_time` and `end_time` on appointments or blocked times; use `start_at` and `end_at`.
+- Treat `appointment_date` and `appointment_time` as compatibility fields only when older views or exports still need them.
+- When adding new public booking flows, prefer `hash` or `public_token` over raw numeric identifiers.
+
 ---
 
 ## Timezone & Datetime Rules
@@ -470,9 +851,10 @@ Run this checklist:
 
 ### Key docs
 - `docs/readme.md`
-- `docs/architecture/master_context.md`
 - `docs/architecture/scheduler_ui_architecture.md`
-- `docs/architecture/settings_architecture.md`
+- `docs/architecture/unified_calendar_engine.md`
+- `docs/architecture/calendar_engine_api_reference.md`
+- `docs/architecture/calendar_engine_implementation_summary.md`
 - `docs/scheduler/calendar_engine_quick_start.md`
 - `docs/testing/test_runner_guide.md`
 - `docs/deployment/releasing.md`

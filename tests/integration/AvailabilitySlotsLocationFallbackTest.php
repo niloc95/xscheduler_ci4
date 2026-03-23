@@ -21,6 +21,32 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
     private int $serviceId;
     private int $locationId;
 
+    protected function tearDown(): void
+    {
+        $db = \Config\Database::connect('tests');
+
+        if (isset($this->providerId)) {
+            $db->table('blocked_times')->where('provider_id', $this->providerId)->delete();
+            $db->table('provider_schedules')->where('provider_id', $this->providerId)->delete();
+            $db->table('business_hours')->where('provider_id', $this->providerId)->delete();
+        }
+
+        if (isset($this->locationId)) {
+            $db->table('location_days')->where('location_id', $this->locationId)->delete();
+            $db->table('locations')->where('id', $this->locationId)->delete();
+        }
+
+        if (isset($this->serviceId)) {
+            $db->table('services')->where('id', $this->serviceId)->delete();
+        }
+
+        if (isset($this->providerId)) {
+            $db->table('users')->where('id', $this->providerId)->delete();
+        }
+
+        parent::tearDown();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,7 +61,6 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
             'email' => $providerEmail,
             'password_hash' => password_hash('test1234', PASSWORD_DEFAULT),
             'role' => 'provider',
-            'is_active' => 1,
             'status' => 'active',
             'created_at' => $now,
             'updated_at' => $now,
@@ -65,6 +90,11 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->locationId = (int) $db->insertID();
+
+        $db->table('location_days')->insert([
+            'location_id' => $this->locationId,
+            'day_of_week' => 2,
+        ]);
 
         $db->table('provider_schedules')->insert([
             'provider_id' => $this->providerId,
@@ -105,7 +135,9 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
 
         $payload = json_decode($result->getJSON(), true);
 
-        $this->assertTrue((bool) ($payload['ok'] ?? false));
+        $this->assertIsArray($payload);
+        $this->assertArrayHasKey('data', $payload);
+        $this->assertIsArray($payload['data']);
         $this->assertEquals($this->providerId, (int) ($payload['data']['provider_id'] ?? 0));
         $this->assertEquals($this->serviceId, (int) ($payload['data']['service_id'] ?? 0));
         $this->assertEquals($this->locationId, (int) ($payload['data']['location_id'] ?? 0));
@@ -133,5 +165,25 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
                 'Slot start time must be earlier than slot end time'
             );
         }
+    }
+
+    public function testCheckEndpointReturnsBlockedReasonWithoutExplicitLocationId(): void
+    {
+        $result = $this->withBodyFormat('json')->post('/api/availability/check', [
+            'provider_id' => $this->providerId,
+            'start_time' => '2026-03-03 10:00:00',
+            'end_time' => '2026-03-03 10:30:00',
+            'timezone' => 'UTC',
+        ]);
+
+        $result->assertOK();
+
+        $payload = json_decode($result->getJSON(), true);
+        $data = $payload['data'] ?? [];
+
+        $this->assertFalse((bool) ($data['available'] ?? true));
+        $this->assertSame([], $data['conflicts'] ?? null);
+        $this->assertSame('Time period is blocked', $data['reason'] ?? null);
+        $this->assertMatchesRegularExpression('/^2026-.*T.*(\+00:00|Z)$/', $data['checked_at'] ?? '');
     }
 }

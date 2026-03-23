@@ -8,6 +8,10 @@ class ConvertReceptionistsToStaff extends MigrationBase
 {
     public function up()
     {
+        // Historical note:
+        // This migration superseded the receptionist role with the staff role.
+        // Older migrations and logs still use receptionist terminology, but new
+        // runtime behavior should treat staff as the active domain concept.
         // Convert all receptionist users to staff role
         $this->db->table('users')
             ->where('role', 'receptionist')

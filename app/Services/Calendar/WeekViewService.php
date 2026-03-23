@@ -117,6 +117,7 @@ class WeekViewService
         }
 
         $days = $week['days'];
+        $positionedAppointments = [];
         foreach ($days as &$day) {
             $d    = $day['date'];
             $dayEvents = $formattedByDate[$d] ?? [];
@@ -126,6 +127,9 @@ class WeekViewService
             $day['appointmentCount'] = $dayModel['totalAppointments'];
             $day['dayGrid'] = $dayModel['grid'];
             $day['providerColumns'] = $dayModel['providerColumns'];
+            foreach ($dayModel['appointments'] as $event) {
+                $positionedAppointments[] = $event;
+            }
         }
         unset($day);
 
@@ -142,8 +146,8 @@ class WeekViewService
             ],
             'slotDuration'       => $this->timeGrid->getResolution(),
             'days'               => $days,
-            'appointments'       => $allFormatted,
-            'totalAppointments'  => count($allFormatted),
+            'appointments'       => $positionedAppointments,
+            'totalAppointments'  => count($positionedAppointments),
         ];
     }
 

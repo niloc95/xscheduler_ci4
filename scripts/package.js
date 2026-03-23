@@ -175,7 +175,7 @@ essentialFiles.forEach(({ src, dest }) => {
             if (fs.statSync(source).isDirectory()) {
                 // Special handling for writable directory to clean debug/log files
                 if (src === 'writable') {
-                    // Exclude all debug and log files, setup flags, and SQLite DB files
+                    // Exclude all debug and log files, setup flags, and local database artifacts
                     const excludePatterns = [
                         'setup_completed.flag',
                         'setup_complete.flag',
@@ -202,7 +202,7 @@ essentialFiles.forEach(({ src, dest }) => {
                         }
                     });
                     
-                    console.log(`✅ Copied ${src} → ${dest} (cleaned: logs, debugbar, flags, SQLite files)`);
+                    console.log(`✅ Copied ${src} → ${dest} (cleaned: logs, debugbar, flags, local database files)`);
                 } else if (src === 'app') {
                     // Exclude test views from production deployment
                     const excludePatterns = ['Views/test'];
@@ -534,7 +534,7 @@ This deployment package includes:
 - ✅ **Clean logs directory** - Empty and ready for production logging
 - ✅ **Clean debugbar directory** - No development debug files included
 - ✅ **No setup flags** - Ensures fresh setup wizard experience  
-- ✅ **No SQLite dev databases** - Clean database directory
+- ✅ **No local dev database artifacts** - Clean database directory
 - ✅ **No test views** - Production-only view files
 
 ${logArchivePath ? `## 📂 Archived Development Files:
@@ -579,8 +579,7 @@ ARCHIVE_LOGS=true npm run package
 4. Ensure PHP 8.1+ is available
 
 ### Database Issues:
-- SQLite: Ensure writable/database/ folder has write permissions
-- MySQL: Update .env file with correct database credentials during setup
+- MySQL/MariaDB: Update .env file with correct database credentials during setup
 
 ### Path Issues:
 - Ensure your web server points to the 'public' folder
@@ -637,7 +636,7 @@ chmod -R 755 writable/
 - Visit your domain
 - You'll be redirected to the setup wizard
 - Create your admin account
-- Choose database (SQLite recommended for easy setup)
+- Enter your MySQL/MariaDB database details during setup
 - Start using WebSchedulr!
 
 ## Troubleshooting

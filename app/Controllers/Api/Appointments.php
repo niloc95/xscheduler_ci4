@@ -61,10 +61,12 @@
 namespace App\Controllers\Api;
 
 use App\Models\AppointmentModel;
-use App\Models\LocationModel;
-use App\Services\LocalizationSettingsService;
+use App\Services\Appointment\AppointmentAvailabilityService;
+use App\Services\Appointment\AppointmentDateTimeNormalizer;
+use App\Services\Appointment\AppointmentManualNotificationService;
+use App\Services\Appointment\AppointmentMutationService;
+use App\Services\NotificationCatalog;
 use App\Services\TimezoneService;
-use App\Services\AppointmentBookingService;
 use App\Services\Appointment\AppointmentQueryService;
 use App\Services\Appointment\AppointmentFormatterService;
 
@@ -75,7 +77,10 @@ use App\Services\Appointment\AppointmentFormatterService;
  */
 class Appointments extends BaseApiController
 {
-    private const DEFAULT_PROVIDER_COLOR = '#3B82F6';
+    private ?AppointmentDateTimeNormalizer $appointmentDateTimeNormalizer = null;
+    private ?AppointmentMutationService $appointmentMutationService = null;
+    private ?AppointmentManualNotificationService $appointmentManualNotificationService = null;
+    private ?AppointmentAvailabilityService $appointmentAvailabilityService = null;
 
     /**
      * List appointments with pagination, filtering, and date range support.
@@ -88,8 +93,6 @@ class Appointments extends BaseApiController
      */
     public function index()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-
         try {
             // Query parameters
             $start      = $this->request->getGet('start');
@@ -133,30 +136,22 @@ class Appointments extends BaseApiController
 
             $events = $formatter->formatManyForCalendar($result['rows']);
 
-            return $response->setJSON([
-                'data' => $events,
-                'meta' => [
-                    'total'   => $result['total'],
-                    'page'    => $result['page'],
-                    'length'  => $result['length'],
-                    'filters' => [
-                        'start'       => $start,
-                        'end'         => $end,
-                        'provider_id' => $providerId,
-                        'service_id'  => $serviceId,
-                        'location_id' => $locationId,
-                        'timezone'    => $timezone,
-                    ],
+            return $this->ok($events, [
+                'total'   => $result['total'],
+                'page'    => $result['page'],
+                'length'  => $result['length'],
+                'filters' => [
+                    'start'       => $start,
+                    'end'         => $end,
+                    'provider_id' => $providerId,
+                    'service_id'  => $serviceId,
+                    'location_id' => $locationId,
+                    'timezone'    => $timezone,
                 ],
             ]);
 
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to fetch appointments',
-                    'details' => $e->getMessage(),
-                ],
-            ]);
+            return $this->serverError('Failed to fetch appointments', ['exception' => $e->getMessage()]);
         }
     }
     
@@ -166,70 +161,21 @@ class Appointments extends BaseApiController
      */
     public function show($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Appointment ID is required'
-                ]
-            ]);
+            return $this->badRequest('Appointment ID is required');
         }
         
         try {
-            $model = new AppointmentModel();
-            
-            // Use centralized method to eliminate duplicate JOIN query
-            $appointment = $model->getWithRelations((int)$id);
+            $appointment = $this->getAppointmentQueryService()->getDetailById((int) $id);
             
             if (!$appointment) {
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => [
-                        'message' => 'Appointment not found'
-                    ]
-                ]);
+                return $this->notFound('Appointment not found', ['appointment_id' => (int) $id]);
             }
-            
-            // Format response with consistent field aliases (service_duration, not duration)
-            $data = [
-                'id' => $appointment['id'],
-                'customer_id' => $appointment['customer_id'],
-                'customer_name' => $appointment['customer_name'] ?? 'N/A',
-                'customer_email' => $appointment['customer_email'] ?? '',
-                'customer_phone' => $appointment['customer_phone'] ?? '',
-                'provider_id' => $appointment['provider_id'],
-                'provider_name' => $appointment['provider_name'] ?? 'N/A',
-                'provider_color' => $appointment['provider_color'] ?? self::DEFAULT_PROVIDER_COLOR,
-                'service_id' => $appointment['service_id'],
-                'service_name' => $appointment['service_name'] ?? 'N/A',
-                'start_time' => $this->formatIso($appointment['start_at'] ?? null) ?? ($appointment['start_at'] ?? null),
-                'end_time' => $this->formatIso($appointment['end_at'] ?? null) ?? ($appointment['end_at'] ?? null),
-                'start' => $this->formatIso($appointment['start_at'] ?? null) ?? ($appointment['start_at'] ?? null),
-                'end' => $this->formatIso($appointment['end_at'] ?? null) ?? ($appointment['end_at'] ?? null),
-                'service_duration' => $appointment['service_duration'], // Standardized field name
-                'service_price' => $appointment['service_price'],
-                'status' => $appointment['status'],
-                'notes' => $appointment['notes'] ?? '',
-                'location_id' => $appointment['location_id'] ? (int) $appointment['location_id'] : null,
-                'location_name' => $appointment['location_name'] ?? '',
-                'location_address' => $appointment['location_address'] ?? '',
-                'location_contact' => $appointment['location_contact'] ?? '',
-                'is_paid' => $appointment['is_paid'] ?? false,
-                'created_at' => $appointment['created_at'] ?? null,
-                'updated_at' => $appointment['updated_at'] ?? null,
-            ];
-            
-            return $response->setJSON([
-                'data' => $data
-            ]);
+
+            return $this->ok($this->getAppointmentFormatterService()->formatForApiDetail($appointment));
             
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to fetch appointment',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to fetch appointment', ['exception' => $e->getMessage()]);
         }
     }
     
@@ -241,175 +187,25 @@ class Appointments extends BaseApiController
      */
     public function checkAvailability()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         try {
-            $payload = $this->request->getJSON(true) ?? [];
-            $validation = $this->validateAvailabilityPayload($payload);
-            if (!$validation['valid']) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => $validation['message'],
-                        'required' => ['provider_id', 'service_id', 'start_time']
-                    ]
-                ]);
-            }
-
-            $providerId = $validation['provider_id'];
-            $serviceId = $validation['service_id'];
-            $startTime = $validation['start_time'];
-            $timezone = $this->request->getHeaderLine('X-Client-Timezone') ?: ($payload['timezone'] ?? null);
-            $appointmentId = isset($payload['appointment_id']) ? (int) $payload['appointment_id'] : null;
-            $requestedLocationId = isset($payload['location_id']) && $payload['location_id'] !== '' ? (int) $payload['location_id'] : null;
-
-            if (!$timezone || !TimezoneService::isValidTimezone($timezone)) {
-                $timezone = (new LocalizationSettingsService())->getTimezone();
-            }
-
-            $locationContext = $this->resolveProviderLocationContext($providerId, $requestedLocationId);
-            if (!$locationContext['valid']) {
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => $locationContext['reason']
-                    ]
-                ]);
-            }
-
-            // Get service details for duration
-            $db = \Config\Database::connect();
-            $service = $db->table($db->prefixTable('services'))
-                ->select('duration_min, name')
-                ->where('id', (int)$serviceId)
-                ->where('active', 1)
-                ->get()
-                ->getRowArray();
-            
-            if (!$service) {
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => [
-                        'message' => 'Service not found or inactive'
-                    ]
-                ]);
-            }
-            
-            // Calculate end time
-            try {
-                $startDateTime = new \DateTime($startTime, new \DateTimeZone($timezone));
-            } catch (\Exception $e) {
-                log_message('error', 'Timezone conversion failed in availability check: ' . $e->getMessage());
-                $timezone = 'UTC';
-                $startDateTime = new \DateTime($startTime, new \DateTimeZone($timezone));
-            }
-            $endDateTime = clone $startDateTime;
-            $endDateTime->modify('+' . $service['duration_min'] . ' minutes');
-
-            $startLocal = $startDateTime->format('Y-m-d H:i:s');
-            $endLocal = $endDateTime->format('Y-m-d H:i:s');
-            
-            // Use AvailabilityService for consistent availability checking
-            $availabilityService = new \App\Services\AvailabilityService();
-            $availabilityCheck = $availabilityService->isSlotAvailable(
-                (int)$providerId,
-                $startLocal,
-                $endLocal,
-                $timezone,
-                $appointmentId,
-                $locationContext['location_id']
+            $result = $this->getAppointmentAvailabilityService()->checkFromPayload(
+                $this->request->getJSON(true) ?? [],
+                $this->request->getHeaderLine('X-Client-Timezone')
             );
-            
-            // Convert to UTC for response
-            $startUtc = TimezoneService::toUTC($startLocal, $timezone);
-            $endUtc = TimezoneService::toUTC($endLocal, $timezone);
-            
-            // Build response in expected format
-            $result = [
-                'available' => $availabilityCheck['available'],
-                'requestedSlot' => [
-                    'provider_id' => (int)$providerId,
-                    'service_id' => (int)$serviceId,
-                    'service_name' => $service['name'],
-                    'duration_min' => (int)$service['duration_min'],
-                    'location_id' => $locationContext['location_id'],
-                    'start_time_local' => $startLocal,
-                    'end_time_local' => $endLocal,
-                    'start_time_utc' => $startUtc,
-                    'end_time_utc' => $endUtc,
-                    'timezone' => $timezone,
-                ],
-                'conflicts' => $availabilityCheck['conflicts'] ?? [],
-                'reason' => $availabilityCheck['reason'] ?? null,
-            ];
-            
-            // Suggest next available slot if not available
-            if (!$availabilityCheck['available']) {
-                // Simple suggestion: 30 minutes later
-                $nextSlot = clone $startDateTime;
-                $nextSlot->modify('+30 minutes');
-                $result['suggestedNextSlot'] = [
-                    'local' => $nextSlot->format('Y-m-d H:i:s'),
-                    'utc' => TimezoneService::toUTC($nextSlot->format('Y-m-d H:i:s'), $timezone)
-                ];
+
+            if (!$result['success']) {
+                return match ($result['statusCode'] ?? 400) {
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    422 => $this->unprocessable($result['message'], $result['errors'] ?? []),
+                    default => $this->badRequest($result['message'], $result['errors'] ?? []),
+                };
             }
-            
-            return $response->setJSON([
-                'data' => $result
-            ]);
+
+            return $this->ok($result['data']);
             
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to check availability',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to check availability', ['exception' => $e->getMessage()]);
         }
-    }
-
-    /**
-     * Validate required payload fields for availability check.
-     */
-    private function validateAvailabilityPayload(array $payload): array
-    {
-        $providerId = isset($payload['provider_id']) ? (int) $payload['provider_id'] : 0;
-        $serviceId = isset($payload['service_id']) ? (int) $payload['service_id'] : 0;
-        $startTime = isset($payload['start_time']) ? trim((string) $payload['start_time']) : '';
-
-        if ($providerId <= 0 || $serviceId <= 0 || $startTime === '') {
-            return ['valid' => false, 'message' => 'Missing required fields'];
-        }
-
-        return [
-            'valid' => true,
-            'message' => null,
-            'provider_id' => $providerId,
-            'service_id' => $serviceId,
-            'start_time' => $startTime,
-        ];
-    }
-
-    /**
-     * Resolve provider location context for appointment availability checks.
-     */
-    private function resolveProviderLocationContext(int $providerId, ?int $requestedLocationId): array
-    {
-        $locationModel = new LocationModel();
-        $activeLocations = $locationModel->getProviderLocations($providerId, true);
-
-        if (empty($activeLocations)) {
-            return ['valid' => true, 'location_id' => null, 'reason' => null];
-        }
-
-        $activeLocationIds = array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations);
-
-        if ($requestedLocationId !== null) {
-            if (!in_array($requestedLocationId, $activeLocationIds, true)) {
-                return ['valid' => false, 'location_id' => null, 'reason' => 'Selected location is unavailable for this provider'];
-            }
-
-            return ['valid' => true, 'location_id' => $requestedLocationId, 'reason' => null];
-        }
-
-        return ['valid' => false, 'location_id' => null, 'reason' => 'location_id is required for providers with active locations'];
     }
 
     private function getCreateValidationRules(): array
@@ -448,14 +244,8 @@ class Appointments extends BaseApiController
      */
     public function updateStatus($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Appointment ID is required'
-                ]
-            ]);
+            return $this->badRequest('Appointment ID is required');
         }
         
         try {
@@ -464,82 +254,22 @@ class Appointments extends BaseApiController
             $newStatus = $json['status'] ?? null;
             
             if (!$newStatus) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => 'Status is required'
-                    ]
-                ]);
+                return $this->badRequest('Status is required');
             }
             
-            // Validate status
-            $validStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no-show'];
-            if (!in_array($newStatus, $validStatuses)) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => 'Invalid status',
-                        'valid_statuses' => $validStatuses
-                    ]
-                ]);
-            }
-            
-            // Verify appointment exists
-            $model = new AppointmentModel();
-            $appointment = $model->find($id);
-            
-            if (!$appointment) {
-                log_message('error', "Appointment not found: ID={$id}");
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => [
-                        'message' => 'Appointment not found'
-                    ]
-                ]);
-            }
-            
-            log_message('info', "Updating appointment status: ID={$id}, Old={$appointment['status']}, New={$newStatus}");
-            
-            $booking = new AppointmentBookingService();
-            $notificationEvent = '';
-            if ($newStatus === 'confirmed') {
-                $notificationEvent = 'appointment_confirmed';
-            }
-            if ($newStatus === 'cancelled') {
-                $notificationEvent = 'appointment_cancelled';
-            }
-
-            $result = $booking->updateAppointment(
-                (int) $id,
-                ['status' => $newStatus],
-                TimezoneService::businessTimezone(),
-                $notificationEvent,
-                ['email', 'whatsapp']
-            );
-
+            $result = $this->getAppointmentMutationService()->updateStatus((int) $id, (string) $newStatus);
             if (!$result['success']) {
-                log_message('error', 'Failed to update appointment status via pipeline: ' . json_encode($result));
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => $result['message'] ?? 'Failed to update appointment status',
-                        'details' => $result['errors'] ?? []
-                    ]
-                ]);
+                return match ($result['statusCode'] ?? 422) {
+                    400 => $this->badRequest($result['message'], $result['errors'] ?? []),
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    default => $this->unprocessable($result['message'], $result['errors'] ?? []),
+                };
             }
-            
-            return $response->setJSON([
-                'data' => [
-                    'id' => $id,
-                    'status' => $newStatus,
-                    'updated_at' => date('Y-m-d H:i:s')
-                ],
-                'message' => 'Appointment status updated successfully'
-            ]);
+
+            return $this->ok($result['data'], ['message' => $result['message']]);
             
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to update appointment status',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to update appointment status', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -555,14 +285,8 @@ class Appointments extends BaseApiController
      */
     public function updateNotes($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => [
-                    'message' => 'Appointment ID is required'
-                ]
-            ]);
+            return $this->badRequest('Appointment ID is required');
         }
         
         try {
@@ -570,74 +294,18 @@ class Appointments extends BaseApiController
             $json = $this->request->getJSON(true);
             $newNotes = $json['notes'] ?? '';
             
-            // Update appointment
-            $model = new AppointmentModel();
-            $appointment = $model->find($id);
-            
-            if (!$appointment) {
-                log_message('error', "Appointment not found: ID={$id}");
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => [
-                        'message' => 'Appointment not found'
-                    ]
-                ]);
-            }
-            
-            log_message('info', "Updating appointment notes: ID={$id}");
-            
-            $booking = new AppointmentBookingService();
-            $result = $booking->updateAppointment(
-                (int) $id,
-                ['notes' => $newNotes],
-                TimezoneService::businessTimezone(),
-                '',
-                []
-            );
-
+            $result = $this->getAppointmentMutationService()->updateNotes((int) $id, (string) $newNotes);
             if (!$result['success']) {
-                log_message('error', 'Failed to update appointment notes via pipeline: ' . json_encode($result));
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => $result['message'] ?? 'Failed to update appointment notes',
-                        'details' => $result['errors'] ?? []
-                    ]
-                ]);
+                return match ($result['statusCode'] ?? 422) {
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    default => $this->unprocessable($result['message'], $result['errors'] ?? []),
+                };
             }
-            
-            return $response->setJSON([
-                'data' => [
-                    'id' => $id,
-                    'notes' => $newNotes,
-                    'updated_at' => date('Y-m-d H:i:s')
-                ],
-                'message' => 'Appointment notes updated successfully'
-            ]);
+
+            return $this->ok($result['data'], ['message' => $result['message']]);
             
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to update appointment notes',
-                    'details' => $e->getMessage()
-                ]
-            ]);
-        }
-    }
-
-    private function formatIso(?string $datetime): ?string
-    {
-        if (!$datetime) {
-            return null;
-        }
-
-        try {
-            // DB stores times in UTC — parse as UTC, convert to local TZ for
-            // the ISO 8601 output so JS/Luxon receives the correct offset.
-            $tz = (new LocalizationSettingsService())->getTimezone();
-            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
-            $dt->setTimezone(new \DateTimeZone($tz));
-            return $dt->format('Y-m-d\TH:i:sP'); // e.g. 2026-02-23T16:00:00+02:00
-        } catch (\Exception $e) {
-            return $datetime;
+            return $this->serverError('Failed to update appointment notes', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -648,80 +316,31 @@ class Appointments extends BaseApiController
      */
     public function create()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         try {
             $payload = $this->request->getJSON(true) ?? $this->request->getPost();
             
             $rules = $this->getCreateValidationRules();
             
             if (!$this->validate($rules)) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => 'Invalid request body',
-                        'type' => 'validation_error',
-                        'details' => $this->validator->getErrors()
-                    ]
-                ]);
+                return $this->validationError($this->validator->getErrors());
             }
             
-            $booking = new AppointmentBookingService();
-
-            $inputTimezone = $this->resolveApiInputTimezone($payload);
-            $normalizedStart = $this->normalizeDateAndTimeToUtc(
-                (string) ($payload['date'] ?? ''),
-                (string) ($payload['start'] ?? ''),
-                $inputTimezone
+            $result = $this->getAppointmentMutationService()->createFromApiPayload(
+                $payload,
+                $this->resolveApiInputTimezone($payload)
             );
-            if (!$normalizedStart['success']) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => $normalizedStart['message'] ?? 'Invalid appointment datetime',
-                    ]
-                ]);
+            if (!$result['success']) {
+                return $this->error(
+                    $result['statusCode'] ?? 409,
+                    $result['message'] ?? 'Unable to create appointment',
+                    $result['code'] ?? 'CONFLICT',
+                    $result['errors'] ?? []
+                );
             }
 
-            $bookingPayload = [
-                'provider_id' => (int) ($payload['providerId'] ?? $payload['provider_id'] ?? 0),
-                'service_id' => (int) ($payload['serviceId'] ?? $payload['service_id'] ?? 0),
-                // Use normalized app-local date/time derived from UTC canonical input.
-                'appointment_date' => $normalizedStart['app_date'],
-                'appointment_time' => $normalizedStart['app_time'],
-                'customer_first_name' => $payload['name'] ?? '',
-                'customer_last_name' => '',
-                'customer_email' => $payload['email'] ?? '',
-                'customer_phone' => $payload['phone'] ?? '',
-                'notes' => $payload['notes'] ?? null,
-                'notification_types' => ['email', 'whatsapp'],
-            ];
-
-            if (!empty($payload['location_id'])) {
-                $bookingPayload['location_id'] = (int) $payload['location_id'];
-            }
-
-            // Send UTC to service after controller canonicalization.
-            $res = $booking->createAppointment($bookingPayload, 'UTC');
-
-            if (!$res['success']) {
-                return $response->setStatusCode(409)->setJSON([
-                    'error' => [
-                        'message' => $res['message'] ?? 'Unable to create appointment',
-                        'details' => $res['errors'] ?? [],
-                    ]
-                ]);
-            }
-
-            return $response->setStatusCode(201)->setJSON([
-                'data' => $res,
-                'message' => 'Appointment created successfully'
-            ]);
+            return $this->created($result['data'], ['message' => $result['message']]);
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to create appointment',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to create appointment', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -739,128 +358,33 @@ class Appointments extends BaseApiController
      */
     public function update($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => ['message' => 'Invalid appointment ID']
-            ]);
+            return $this->badRequest('Invalid appointment ID');
         }
         
         try {
             $payload = $this->request->getJSON(true) ?? $this->request->getRawInput();
             
             if (!$payload) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => ['message' => 'No request body']
-                ]);
+                return $this->badRequest('No request body');
             }
 
-            $update = [];
-            if (!empty($payload['status'])) {
-                $update['status'] = $payload['status'];
-            }
-            if (array_key_exists('notes', $payload)) {
-                $update['notes'] = (string) ($payload['notes'] ?? '');
-            }
-            if (!empty($payload['providerId']) || !empty($payload['provider_id'])) {
-                $update['provider_id'] = (int) ($payload['providerId'] ?? $payload['provider_id']);
-            }
-            if (!empty($payload['serviceId']) || !empty($payload['service_id'])) {
-                $update['service_id'] = (int) ($payload['serviceId'] ?? $payload['service_id']);
-            }
-            if (array_key_exists('location_id', $payload)) {
-                $update['location_id'] = $payload['location_id'] === null || $payload['location_id'] === ''
-                    ? null
-                    : (int) $payload['location_id'];
-            }
-
-            // For time changes, normalize to UTC at controller boundary.
-            if (!empty($payload['start'])) {
-                $inputTimezone = $this->resolveApiInputTimezone($payload);
-
-                if (!empty($payload['date']) && preg_match('/^\d{2}:\d{2}$/', (string) $payload['start'])) {
-                    $normalizedStart = $this->normalizeDateAndTimeToUtc(
-                        (string) $payload['date'],
-                        (string) $payload['start'],
-                        $inputTimezone
-                    );
-                } else {
-                    $normalizedStart = $this->normalizeDateTimeStringToUtc((string) $payload['start'], $inputTimezone);
-                }
-
-                if (!$normalizedStart['success']) {
-                    return $response->setStatusCode(400)->setJSON([
-                        'error' => ['message' => $normalizedStart['message'] ?? 'Invalid start datetime']
-                    ]);
-                }
-
-                $update['appointment_date'] = $normalizedStart['app_date'];
-                $update['appointment_time'] = $normalizedStart['app_time'];
-            }
-
-            // Normalize optional end datetime when supplied (DST/offset validation at boundary).
-            if (!empty($payload['end'])) {
-                $inputTimezone = $this->resolveApiInputTimezone($payload);
-                $normalizedEnd = $this->normalizeDateTimeStringToUtc((string) $payload['end'], $inputTimezone);
-                if (!$normalizedEnd['success']) {
-                    return $response->setStatusCode(400)->setJSON([
-                        'error' => ['message' => $normalizedEnd['message'] ?? 'Invalid end datetime']
-                    ]);
-                }
-            }
-            
-            if (empty($update)) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => ['message' => 'No updatable fields provided']
-                ]);
-            }
-
-            $model = new AppointmentModel();
-            if (!$model->find($id)) {
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => ['message' => 'Appointment not found']
-                ]);
-            }
-
-            $notificationEvent = '';
-            if (!empty($update['appointment_date']) || !empty($update['appointment_time'])) {
-                $notificationEvent = 'appointment_rescheduled';
-            } elseif (($update['status'] ?? null) === 'confirmed') {
-                $notificationEvent = 'appointment_confirmed';
-            } elseif (($update['status'] ?? null) === 'cancelled') {
-                $notificationEvent = 'appointment_cancelled';
-            }
-
-            $booking = new AppointmentBookingService();
-            $result = $booking->updateAppointment(
+            $result = $this->getAppointmentMutationService()->updateFromApiPayload(
                 (int) $id,
-                $update,
-                TimezoneService::businessTimezone(),
-                $notificationEvent,
-                ['email', 'whatsapp']
+                $payload,
+                $this->resolveApiInputTimezone($payload)
             );
-
             if (!$result['success']) {
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => $result['message'] ?? 'Update failed',
-                        'details' => $result['errors'] ?? []
-                    ]
-                ]);
+                return match ($result['statusCode'] ?? 422) {
+                    400 => $this->badRequest($result['message'], $result['errors'] ?? []),
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    default => $this->unprocessable($result['message'], $result['errors'] ?? []),
+                };
             }
-            
-            return $response->setJSON([
-                'data' => ['ok' => true],
-                'message' => 'Appointment updated successfully'
-            ]);
+
+            return $this->ok($result['data'], ['message' => $result['message']]);
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to update appointment',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to update appointment', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -870,52 +394,22 @@ class Appointments extends BaseApiController
      */
     public function delete($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => ['message' => 'Invalid appointment ID']
-            ]);
+            return $this->badRequest('Invalid appointment ID');
         }
         
         try {
-            $model = new AppointmentModel();
-
-            if (!$model->find($id)) {
-                return $response->setStatusCode(404)->setJSON([
-                    'error' => ['message' => 'Appointment not found']
-                ]);
-            }
-
-            $booking = new AppointmentBookingService();
-            $result = $booking->updateAppointment(
-                (int) $id,
-                ['status' => 'cancelled'],
-                TimezoneService::businessTimezone(),
-                'appointment_cancelled',
-                ['email', 'whatsapp']
-            );
-
+            $result = $this->getAppointmentMutationService()->cancelAppointment((int) $id);
             if (!$result['success']) {
-                return $response->setStatusCode(422)->setJSON([
-                    'error' => [
-                        'message' => $result['message'] ?? 'Delete failed',
-                        'details' => $result['errors'] ?? []
-                    ]
-                ]);
+                return match ($result['statusCode'] ?? 422) {
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    default => $this->unprocessable($result['message'], $result['errors'] ?? []),
+                };
             }
-            
-            return $response->setJSON([
-                'data' => ['ok' => true],
-                'message' => 'Appointment cancelled successfully'
-            ]);
+
+            return $this->ok($result['data'], ['message' => $result['message']]);
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to delete appointment',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to delete appointment', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -928,62 +422,29 @@ class Appointments extends BaseApiController
             ?? $this->request->getHeaderLine('X-Client-Timezone')
             ?? TimezoneService::businessTimezone());
 
-        return TimezoneService::isValidTimezone($tz) ? $tz : TimezoneService::businessTimezone();
+        return $this->getAppointmentDateTimeNormalizer()->resolveInputTimezone($tz);
     }
 
-    /**
-     * Normalize date+time input into UTC canonical value and app-local booking fields.
-     */
-    private function normalizeDateAndTimeToUtc(string $date, string $time, string $inputTimezone): array
+    private function getAppointmentDateTimeNormalizer(): AppointmentDateTimeNormalizer
     {
-        try {
-            $inputTz = new \DateTimeZone($inputTimezone);
-            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
-            $utcTz = new \DateTimeZone('UTC');
-
-            $local = new \DateTimeImmutable(sprintf('%s %s:00', $date, $time), $inputTz);
-            $utc = $local->setTimezone($utcTz);
-            $appLocal = $utc->setTimezone($appTz);
-
-            return [
-                'success' => true,
-                'utc' => $utc->format('Y-m-d H:i:s'),
-                'app_date' => $appLocal->format('Y-m-d'),
-                'app_time' => $appLocal->format('H:i'),
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'message' => 'Invalid appointment date/time input',
-            ];
+        if ($this->appointmentDateTimeNormalizer === null) {
+            $this->appointmentDateTimeNormalizer = new AppointmentDateTimeNormalizer();
         }
+
+        return $this->appointmentDateTimeNormalizer;
     }
 
-    /**
-     * Normalize an arbitrary datetime string to UTC and app-local booking fields.
-     */
-    private function normalizeDateTimeStringToUtc(string $dateTime, string $fallbackTimezone): array
+    private function getAppointmentMutationService(): AppointmentMutationService
     {
-        try {
-            $appTz = new \DateTimeZone((new LocalizationSettingsService())->getTimezone());
-            $utcTz = new \DateTimeZone('UTC');
-
-            $dt = new \DateTimeImmutable($dateTime, new \DateTimeZone($fallbackTimezone));
-            $utc = $dt->setTimezone($utcTz);
-            $appLocal = $utc->setTimezone($appTz);
-
-            return [
-                'success' => true,
-                'utc' => $utc->format('Y-m-d H:i:s'),
-                'app_date' => $appLocal->format('Y-m-d'),
-                'app_time' => $appLocal->format('H:i'),
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'message' => 'Invalid datetime input',
-            ];
+        if ($this->appointmentMutationService === null) {
+            $this->appointmentMutationService = new AppointmentMutationService(
+                new AppointmentModel(),
+                null,
+                $this->getAppointmentDateTimeNormalizer()
+            );
         }
+
+        return $this->appointmentMutationService;
     }
 
     /**
@@ -992,54 +453,24 @@ class Appointments extends BaseApiController
      */
     public function counts()
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         try {
             $rules = $this->getCountsValidationRules();
             
             if (!$this->validate($rules)) {
-                return $response->setStatusCode(400)->setJSON([
-                    'error' => [
-                        'message' => 'Invalid parameters',
-                        'type' => 'validation_error',
-                        'details' => $this->validator->getErrors()
-                    ]
-                ]);
+                return $this->validationError($this->validator->getErrors());
             }
 
             $providerId = (int) ($this->request->getGet('providerId') ?? 0);
             $serviceId  = (int) ($this->request->getGet('serviceId') ?? 0);
 
-            // Calculate server-side date ranges (local app timezone)
-            $now = new \DateTimeImmutable('now');
-            $todayStart = $now->setTime(0, 0, 0);
-            $todayEnd   = $now->setTime(23, 59, 59);
-
-            // Week: Sunday (0) to Saturday (6) to match UI
-            $dow = (int) $now->format('w'); // 0 (Sun) - 6 (Sat)
-            $weekStart = $todayStart->modify('-' . $dow . ' days');
-            $weekEnd   = $weekStart->modify('+6 days')->setTime(23, 59, 59);
-
-            // Month: first to last day
-            $monthStart = $now->modify('first day of this month')->setTime(0, 0, 0);
-            $monthEnd   = $now->modify('last day of this month')->setTime(23, 59, 59);
-
-            $counts = [
-                'today' => $this->countInRange($providerId, $serviceId, $todayStart, $todayEnd),
-                'week'  => $this->countInRange($providerId, $serviceId, $weekStart, $weekEnd),
-                'month' => $this->countInRange($providerId, $serviceId, $monthStart, $monthEnd),
-            ];
-
-            return $response->setJSON([
-                'data' => $counts
+            $counts = $this->getAppointmentQueryService()->getPeriodCounts([
+                'provider_id' => $providerId,
+                'service_id' => $serviceId,
             ]);
+
+            return $this->ok($counts);
         } catch (\Exception $e) {
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to get appointment counts',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to get appointment counts', ['exception' => $e->getMessage()]);
         }
     }
 
@@ -1053,182 +484,70 @@ class Appointments extends BaseApiController
     }
 
     /**
-     * Helper: Count appointments in a date range
-     */
-    private function countInRange(int $providerId, int $serviceId, \DateTimeImmutable $start, \DateTimeImmutable $end): int
-    {
-        $model = new AppointmentModel();
-        $builder = $model->builder();
-        $builder->select('COUNT(*) AS c')
-                ->where('start_at >=', $start->format('Y-m-d H:i:s'))
-                ->where('start_at <=', $end->format('Y-m-d H:i:s'));
-                
-        if ($providerId > 0) {
-            $builder->where('provider_id', $providerId);
-        }
-        if ($serviceId > 0) {
-            $builder->where('service_id', $serviceId);
-        }
-        
-        $row = $builder->get()->getRowArray();
-        return (int) ($row['c'] ?? 0);
-    }
-
-    /**
      * Send a manual notification for an appointment
      * POST /api/appointments/:id/notify
      * Body: { channel: 'email'|'sms'|'whatsapp', event_type?: string }
      */
     public function notify($id = null)
     {
-        $response = $this->response->setHeader('Content-Type', 'application/json');
-        
         if (!$id) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => ['message' => 'Invalid appointment ID']
-            ]);
+            return $this->badRequest('Invalid appointment ID');
         }
-        
-        $model = new AppointmentModel();
-        $appointment = $model->find($id);
-        
-        if (!$appointment) {
-            return $response->setStatusCode(404)->setJSON([
-                'error' => ['message' => 'Appointment not found']
-            ]);
-        }
-        
-        $json = $this->request->getJSON(true) ?? [];
-        $channel = strtolower(trim($json['channel'] ?? ''));
-        $eventType = trim($json['event_type'] ?? '');
-        
-        $validChannels = ['email', 'sms', 'whatsapp'];
-        if (!in_array($channel, $validChannels)) {
-            return $response->setStatusCode(400)->setJSON([
-                'error' => ['message' => 'Invalid channel. Must be one of: email, sms, whatsapp']
-            ]);
-        }
-        
-        // Auto-determine event type based on appointment status if not provided
-        if ($eventType === '') {
-            $status = $appointment['status'] ?? 'pending';
-            $eventTypeMap = [
-                'confirmed' => 'appointment_confirmed',
-                'pending' => 'appointment_confirmed',
-                'cancelled' => 'appointment_cancelled',
-                'completed' => 'appointment_confirmed',
-                'booked' => 'appointment_confirmed',
-            ];
-            $eventType = $eventTypeMap[$status] ?? 'appointment_confirmed';
-        }
-        
+
         try {
-            $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-            
-            // Use direct sending for immediate feedback instead of queue
-            if ($channel === 'email') {
-                $svc = new \App\Services\AppointmentNotificationService();
-                $sent = $svc->sendEventEmail($eventType, (int) $id, $businessId);
-                
-                if (!$sent) {
-                    return $response->setStatusCode(400)->setJSON([
-                        'error' => ['message' => 'Email not sent. Check if email is enabled for this event type and SMTP is configured.']
-                    ]);
-                }
-                
-                return $response->setJSON([
-                    'data' => [
-                        'ok' => true,
-                        'channel' => $channel,
-                        'event_type' => $eventType,
-                        'message' => 'Email notification sent successfully'
-                    ]
-                ]);
-            } elseif ($channel === 'sms') {
-                // SMS implementation via NotificationSmsService
-                $smsSvc = new \App\Services\NotificationSmsService();
-                $templateSvc = new \App\Services\NotificationTemplateService();
-                
-                // Get appointment context
-                $builder = $model->builder();
-                $appt = $builder
-                    ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.phone as customer_phone, s.name as service_name, u.name as provider_name')
-                    ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
-                    ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
-                    ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
-                    ->where('xs_appointments.id', $id)
-                    ->get()
-                    ->getFirstRow('array');
-                
-                if (!$appt || empty($appt['customer_phone'])) {
-                    return $response->setStatusCode(400)->setJSON([
-                        'error' => ['message' => 'SMS not sent. Customer phone number not available.']
-                    ]);
-                }
-                
-                // Render template and send
-                $message = $templateSvc->renderForAppointment($businessId, 'sms', $eventType, (int) $id);
-                if (!$message) {
-                    $message = "Your appointment on " . ($appt['start_at'] ?? 'TBD') . " is " . ($appt['status'] ?? 'confirmed') . ".";
-                }
-                
-                $result = $smsSvc->sendSms($businessId, $appt['customer_phone'], $message);
-                
-                if (!($result['ok'] ?? false)) {
-                    return $response->setStatusCode(400)->setJSON([
-                        'error' => ['message' => 'SMS not sent: ' . ($result['error'] ?? 'Unknown error')]
-                    ]);
-                }
-                
-                return $response->setJSON([
-                    'data' => [
-                        'ok' => true,
-                        'channel' => $channel,
-                        'event_type' => $eventType,
-                        'message' => 'SMS notification sent successfully'
-                    ]
-                ]);
-            } elseif ($channel === 'whatsapp') {
-                // WhatsApp - enqueue since it may need Link Generator flow
-                $this->queueAppointmentNotifications((int) $id, ['whatsapp'], $eventType);
-                
-                return $response->setJSON([
-                    'data' => [
-                        'ok' => true,
-                        'channel' => $channel,
-                        'event_type' => $eventType,
-                        'message' => 'WhatsApp notification queued for delivery'
-                    ]
-                ]);
+            $json = $this->request->getJSON(true) ?? [];
+            $result = $this->getAppointmentManualNotificationService()->send(
+                (int) $id,
+                (string) ($json['channel'] ?? ''),
+                $json['event_type'] ?? null
+            );
+
+            if (!$result['success']) {
+                return match ($result['statusCode'] ?? 400) {
+                    404 => $this->notFound($result['message'], $result['errors'] ?? []),
+                    default => $this->badRequest($result['message'], $result['errors'] ?? []),
+                };
             }
-            
+
+            return $this->ok($result['data']);
         } catch (\Throwable $e) {
             log_message('error', 'Manual notification failed for appointment {id}: {msg}', [
                 'id' => (int) $id,
                 'msg' => $e->getMessage()
             ]);
             
-            return $response->setStatusCode(500)->setJSON([
-                'error' => [
-                    'message' => 'Failed to send notification',
-                    'details' => $e->getMessage()
-                ]
-            ]);
+            return $this->serverError('Failed to send notification', ['exception' => $e->getMessage()]);
         }
     }
 
-    private function queueAppointmentNotifications(int $appointmentId, array $channels, string $eventType, string $context = 'appointment'): void
+    private function getAppointmentQueryService(): AppointmentQueryService
     {
-        try {
-            $events = new \App\Services\AppointmentEventService();
-            $businessId = \App\Services\NotificationPhase1::BUSINESS_ID_DEFAULT;
-            $events->dispatch($eventType, $appointmentId, $channels, $businessId);
-        } catch (\Throwable $e) {
-            log_message('error', 'Notification enqueue failed for {context} {id}: {msg}', [
-                'context' => $context,
-                'id' => $appointmentId,
-                'msg' => $e->getMessage()
-            ]);
+        return new AppointmentQueryService();
+    }
+
+    private function getAppointmentFormatterService(): AppointmentFormatterService
+    {
+        return new AppointmentFormatterService();
+    }
+
+    private function getAppointmentManualNotificationService(): AppointmentManualNotificationService
+    {
+        if ($this->appointmentManualNotificationService === null) {
+            $this->appointmentManualNotificationService = new AppointmentManualNotificationService(
+                new AppointmentModel(),
+                $this->getAppointmentQueryService()
+            );
         }
+
+        return $this->appointmentManualNotificationService;
+    }
+
+    private function getAppointmentAvailabilityService(): AppointmentAvailabilityService
+    {
+        if ($this->appointmentAvailabilityService === null) {
+            $this->appointmentAvailabilityService = new AppointmentAvailabilityService();
+        }
+
+        return $this->appointmentAvailabilityService;
     }
 }

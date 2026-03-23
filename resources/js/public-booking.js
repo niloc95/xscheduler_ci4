@@ -1,4 +1,5 @@
 import { normalizeCalendarPayload } from './modules/calendar/calendar-utils.js';
+import { formatCurrency } from './currency.js';
 import { escapeHtml } from './utils/html.js';
 
 const root = document.getElementById('public-booking-root');
@@ -58,13 +59,9 @@ function bootstrapPublicBooking() {
   };
 
   function formatLocalizedCurrency(amount) {
-    if (window.currencyFormatter && typeof window.currencyFormatter.format === 'function') {
-      return window.currencyFormatter.format(amount);
-    }
-
-    const symbol = context.currencySymbol || context.currency_symbol || 'R';
-    const numericAmount = parseFloat(amount) || 0;
-    return `${symbol}${numericAmount.toFixed(2)}`;
+    return formatCurrency(amount, {
+      currencySymbol: context.currencySymbol || context.currency_symbol || null,
+    });
   }
 
   render();

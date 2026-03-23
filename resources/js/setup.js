@@ -9,7 +9,6 @@ class SetupWizard {
     constructor() {
         this.form = document.getElementById('setupForm');
         this.mysqlConfig = document.getElementById('mysql_config');
-        this.sqliteConfig = document.getElementById('sqlite_config');
         this.testConnectionBtn = document.getElementById('test_connection_btn');
         this.connectionResult = document.getElementById('connection_result');
         this.loadingOverlay = document.getElementById('loading_overlay');
@@ -27,12 +26,6 @@ class SetupWizard {
     }
 
     bindEvents() {
-        // Database type toggle
-        const dbRadios = document.querySelectorAll('input[name="database_type"]');
-        dbRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => this.toggleDatabaseConfig(e.target.value));
-        });
-
         // Password validation
         const passwordInput = document.getElementById('admin_password');
         passwordInput.addEventListener('input', (e) => this.checkPasswordStrength(e.target.value));
@@ -69,16 +62,6 @@ class SetupWizard {
                 }
             });
         });
-    }
-
-    toggleDatabaseConfig(type) {
-        if (type === 'mysql') {
-            this.mysqlConfig.classList.remove('hidden');
-            this.sqliteConfig.classList.add('hidden');
-        } else {
-            this.mysqlConfig.classList.add('hidden');
-            this.sqliteConfig.classList.remove('hidden');
-        }
     }
 
     initializePasswordStrength() {

@@ -60,6 +60,7 @@
 namespace App\Controllers\Api;
 
 use App\Services\CustomerAppointmentService;
+use App\Services\Appointment\AppointmentStatus;
 use App\Models\CustomerModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -104,10 +105,7 @@ class CustomerAppointments extends BaseApiController
         // Verify customer exists
         $customer = $this->customers->find($customerId);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-                'customer_id' => $customerId,
-            ]);
+            return $this->notFound('Customer not found', ['customer_id' => $customerId]);
         }
 
         // Parse query parameters
@@ -118,8 +116,7 @@ class CustomerAppointments extends BaseApiController
 
         $result = $this->service->getHistory($customerId, $filters, $page, $perPage);
 
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'customer_id' => $customerId,
             ...$result,
         ]);
@@ -134,18 +131,15 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->find($customerId);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_id' => $customerId]);
         }
 
         $limit = min(50, max(1, (int) $this->request->getGet('limit') ?: 10));
         $appointments = $this->service->getUpcoming($customerId, $limit);
 
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'customer_id' => $customerId,
-            'data' => $appointments,
+            'appointments' => $appointments,
             'count' => count($appointments),
         ]);
     }
@@ -159,9 +153,7 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->find($customerId);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_id' => $customerId]);
         }
 
         $page = max(1, (int) $this->request->getGet('page') ?: 1);
@@ -172,8 +164,7 @@ class CustomerAppointments extends BaseApiController
 
         $result = $this->service->getHistory($customerId, $filters, $page, $perPage);
 
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'customer_id' => $customerId,
             ...$result,
         ]);
@@ -188,15 +179,12 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->find($customerId);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_id' => $customerId]);
         }
 
         $stats = $this->service->getStats($customerId);
 
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'customer_id' => $customerId,
             'stats' => $stats,
         ]);
@@ -211,17 +199,12 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->find($customerId);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_id' => $customerId]);
         }
 
         $autofill = $this->service->getAutofillData($customerId);
 
-        return $this->response->setJSON([
-            'success' => true,
-            ...$autofill,
-        ]);
+        return $this->ok($autofill);
     }
 
     /**
@@ -233,9 +216,7 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_hash' => $hash]);
         }
 
         $page = max(1, (int) $this->request->getGet('page') ?: 1);
@@ -246,8 +227,7 @@ class CustomerAppointments extends BaseApiController
         $result = $this->service->getHistory((int) $customer['id'], $filters, $page, $perPage);
 
         // Don't expose internal customer ID in public response
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'customer_hash' => $hash,
             ...$result,
         ]);
@@ -262,9 +242,7 @@ class CustomerAppointments extends BaseApiController
     {
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'error' => 'Customer not found',
-            ]);
+            return $this->notFound('Customer not found', ['customer_hash' => $hash]);
         }
 
         $autofill = $this->service->getAutofillData((int) $customer['id']);
@@ -273,10 +251,7 @@ class CustomerAppointments extends BaseApiController
         unset($autofill['customer']['id']);
         $autofill['customer']['hash'] = $hash;
 
-        return $this->response->setJSON([
-            'success' => true,
-            ...$autofill,
-        ]);
+        return $this->ok($autofill);
     }
 
     /**
@@ -294,10 +269,7 @@ class CustomerAppointments extends BaseApiController
 
         $result = $this->service->searchAllAppointments($filters, $page, $perPage);
 
-        return $this->response->setJSON([
-            'success' => true,
-            ...$result,
-        ]);
+        return $this->ok($result);
     }
 
     /**
@@ -307,17 +279,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function filterOptions(): ResponseInterface
     {
-        return $this->response->setJSON([
-            'success' => true,
+        return $this->ok([
             'providers' => $this->service->getProvidersForFilter(),
             'services' => $this->service->getServicesForFilter(),
-            'statuses' => [
-                ['value' => 'pending', 'label' => 'Pending'],
-                ['value' => 'confirmed', 'label' => 'Confirmed'],
-                ['value' => 'completed', 'label' => 'Completed'],
-                ['value' => 'cancelled', 'label' => 'Cancelled'],
-                ['value' => 'no-show', 'label' => 'No Show'],
-            ],
+            'statuses' => AppointmentStatus::options(),
         ]);
     }
 
@@ -329,9 +294,22 @@ class CustomerAppointments extends BaseApiController
         $filters = [];
 
         if ($status = $this->request->getGet('status')) {
-            $filters['status'] = is_string($status) ? explode(',', $status) : $status;
-            if (count($filters['status']) === 1) {
-                $filters['status'] = $filters['status'][0];
+                $filters['status'] = is_string($status) ? explode(',', $status) : $status;
+                if (is_array($filters['status'])) {
+                    $filters['status'] = array_values(array_filter(array_map([AppointmentStatus::class, 'normalize'], $filters['status'])));
+                    if (count($filters['status']) === 1) {
+                        $filters['status'] = $filters['status'][0];
+                    }
+                    if ($filters['status'] === []) {
+                        unset($filters['status']);
+                    }
+                } else {
+                    $normalizedStatus = AppointmentStatus::normalize((string) $filters['status']);
+                    if ($normalizedStatus === null) {
+                        unset($filters['status']);
+                    } else {
+                        $filters['status'] = $normalizedStatus;
+                    }
             }
         }
 
