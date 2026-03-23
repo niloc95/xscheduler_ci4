@@ -13,8 +13,6 @@ package-lock.json
 
 # Tests
 tests/
-cypress/
-cypress.config.js
 phpunit.xml.dist
 .phpunit.cache/
 
