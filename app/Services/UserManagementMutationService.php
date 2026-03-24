@@ -27,6 +27,7 @@ class UserManagementMutationService
         ?AuditLogModel $auditModel = null,
         ?ScheduleValidationService $scheduleValidation = null,
         ?UserManagementContextService $contextService = null,
+        ?BusinessHourModel $businessHourModel = null,
     ) {
         $this->userModel = $userModel ?? new UserModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
@@ -43,6 +44,7 @@ class UserManagementMutationService
             $localization,
             $this->scheduleValidation,
         );
+        $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
     }
 
     public function createUser(int $currentUserId, array $currentUser, array $payload): array

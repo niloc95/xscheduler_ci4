@@ -32,6 +32,8 @@ window.xsRegisterViewInit = function(initFn) {
   }
 };
 
+import { getBaseUrl } from './utils/url-helpers.js';
+
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
   const header = () => document.querySelector('.xs-header');
@@ -43,6 +45,34 @@ const SPA = (() => {
     } catch {
       return window.location.pathname;
     }
+  };
+
+  const getAppBasePath = () => {
+    try {
+      const baseUrl = getBaseUrl();
+      return new URL(baseUrl, window.location.origin).pathname.replace(/\/+$/, '');
+    } catch {
+      return '';
+    }
+  };
+
+  const getAppRelativePath = (url) => {
+    const pathname = normalizePathname(url);
+    const appBasePath = getAppBasePath();
+
+    if (!appBasePath || appBasePath === '/') {
+      return pathname;
+    }
+
+    if (pathname === appBasePath) {
+      return '/';
+    }
+
+    if (pathname.startsWith(`${appBasePath}/`)) {
+      return pathname.slice(appBasePath.length);
+    }
+
+    return pathname;
   };
 
   const isAppointmentControlsMarkup = (controlsHtml) => {
@@ -59,7 +89,8 @@ const SPA = (() => {
       return true;
     }
 
-    return targetPath === '/appointments' || targetPath.startsWith('/appointments/');
+    const relativePath = getAppRelativePath(targetPath);
+    return relativePath === '/appointments' || relativePath.startsWith('/appointments/');
   };
 
   const syncHeaderControls = (controlsHtml, hasControls) => {

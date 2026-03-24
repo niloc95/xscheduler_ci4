@@ -109,10 +109,10 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $this->createMock(UserModel::class),
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
-            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
-            $contextService
+            $contextService,
+            $this->createMock(BusinessHourModel::class)
         );
 
         $result = $service->createUser(7, ['role' => 'provider'], ['role' => 'admin']);
@@ -127,10 +127,10 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $this->createMock(UserModel::class),
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
-            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
-            $this->createMock(UserManagementContextService::class)
+            $this->createMock(UserManagementContextService::class),
+            $this->createMock(BusinessHourModel::class)
         );
 
         $result = $service->deactivateUser(22, 22);
@@ -158,10 +158,10 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
-            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
-            $this->createMock(UserManagementContextService::class)
+            $this->createMock(UserManagementContextService::class),
+            $this->createMock(BusinessHourModel::class)
         );
 
         $result = $service->activateUser(4, 33);
@@ -202,10 +202,10 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
-            $this->createMock(BusinessHourModel::class),
             $auditModel,
             $this->createMock(ScheduleValidationService::class),
-            $this->createMock(UserManagementContextService::class)
+            $this->createMock(UserManagementContextService::class),
+            $this->createMock(BusinessHourModel::class)
         );
 
         $result = $service->activateUser(4, 33);
@@ -275,10 +275,10 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ProviderStaffModel::class),
             $providerScheduleModel,
-            $businessHourModel,
             $auditModel,
             $scheduleValidation,
-            $contextService
+            $contextService,
+            $businessHourModel
         );
 
         $result = $service->createUser(7, ['role' => 'admin'], [
