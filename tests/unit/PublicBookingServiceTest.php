@@ -517,12 +517,13 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         /** @var UserModel&MockObject $mock */
         $mock = $this->getMockBuilder(UserModel::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['findAll', 'first', 'find'])
+            ->onlyMethods(['findAll', 'first', 'find', 'getProvidersWithActiveServices'])
             ->addMethods(['where', 'orderBy'])
             ->getMock();
         $mock->method('where')->willReturnSelf();
         $mock->method('orderBy')->willReturnSelf();
         $mock->method('findAll')->willReturn([$row]);
+        $mock->method('getProvidersWithActiveServices')->willReturn([$row]);
         $mock->method('first')->willReturn($row);
         $mock->method('find')->willReturn($row);
         return $mock;
@@ -536,12 +537,13 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         /** @var ServiceModel&MockObject $mock */
         $mock = $this->getMockBuilder(ServiceModel::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['findAll', 'first', 'find'])
+            ->onlyMethods(['findAll', 'first', 'find', 'getActiveByProvider'])
             ->addMethods(['where', 'orderBy'])
             ->getMock();
         $mock->method('where')->willReturnSelf();
         $mock->method('orderBy')->willReturnSelf();
         $mock->method('findAll')->willReturn([$row]);
+        $mock->method('getActiveByProvider')->willReturn([$row]);
         $mock->method('first')->willReturn($row);
         $mock->method('find')->willReturn($row);
         return $mock;

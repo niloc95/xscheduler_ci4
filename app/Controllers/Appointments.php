@@ -82,6 +82,7 @@ class Appointments extends BaseController
         $this->serviceModel = new ServiceModel();
         $this->appointmentModel = new AppointmentModel();
         $this->customerModel = new CustomerModel();
+        $this->appointmentDateTimeNormalizer = new AppointmentDateTimeNormalizer();
         helper('permissions');
     }
 
@@ -92,7 +93,6 @@ class Appointments extends BaseController
     {
         // Check authentication
         if (!session()->get('isLoggedIn')) {
-        $this->appointmentDateTimeNormalizer = new AppointmentDateTimeNormalizer();
             return redirect()->to(base_url('auth/login'));
         }
 
@@ -336,10 +336,12 @@ class Appointments extends BaseController
         // Handle result
         if (!$result['success']) {
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
+                $hasConflicts = !empty($result['conflicts']);
+                return $this->response->setStatusCode($hasConflicts ? 409 : 400)->setJSON([
                     'success' => false,
                     'message' => $result['message'],
-                    'errors' => $result['errors'] ?? []
+                    'errors' => $result['errors'] ?? [],
+                    'conflicts' => $result['conflicts'] ?? []
                 ]);
             }
             return redirect()->back()
@@ -650,10 +652,12 @@ class Appointments extends BaseController
         if (!$updated) {
             $errorMessage = $result['message'] ?? 'Failed to update appointment. Please try again.';
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(400)->setJSON([
+                $hasConflicts = !empty($result['conflicts']);
+                return $this->response->setStatusCode($hasConflicts ? 409 : 400)->setJSON([
                     'success' => false,
                     'message' => $errorMessage,
-                    'errors' => $result['errors'] ?? []
+                    'errors' => $result['errors'] ?? [],
+                    'conflicts' => $result['conflicts'] ?? []
                 ]);
             }
             return redirect()->back()
@@ -702,8 +706,8 @@ class Appointments extends BaseController
 
     private function formatDropdownData(): array
     {
-        $providers = $this->userModel->getProviders();
-        $services = $this->serviceModel->findAll();
+        $providers = $this->userModel->getProvidersWithActiveServices();
+        $services = $this->serviceModel->where('active', 1)->findAll();
 
         return [
             'providers' => array_map([$this, 'formatProviderForDropdown'], $providers),

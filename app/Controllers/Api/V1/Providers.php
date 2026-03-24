@@ -57,6 +57,7 @@
 namespace App\Controllers\Api\V1;
 
 use App\Controllers\Api\BaseApiController;
+use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
 use App\Services\TimezoneService;
@@ -122,18 +123,8 @@ class Providers extends BaseApiController
             return $this->error(404, 'Provider not found');
         }
 
-        // Query services linked to this provider via xs_providers_services
-        $db = \Config\Database::connect();
-        $builder = $db->table('xs_services s')
-            ->select('s.id, s.name, s.description, s.duration_min, s.price, s.category_id, s.active, c.name as category_name')
-            ->join('xs_providers_services ps', 'ps.service_id = s.id', 'inner')
-            ->join('xs_categories c', 'c.id = s.category_id', 'left')
-            ->where('ps.provider_id', $id)
-            ->where('s.active', 1)
-            ->orderBy('c.name', 'ASC')
-            ->orderBy('s.name', 'ASC');
-
-        $services = $builder->get()->getResultArray();
+        $serviceModel = new ServiceModel();
+        $services = $serviceModel->getActiveByProvider($id);
 
         // Format response
         $items = array_map(function ($s) {

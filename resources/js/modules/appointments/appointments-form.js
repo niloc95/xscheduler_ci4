@@ -20,6 +20,51 @@ function attachTimezoneHeaders() {
     };
 }
 
+function getCsrfContext(form) {
+    const csrfInput = form?.querySelector('input[name]');
+    const namedInput = form?.querySelector('input[name="csrf_test_name"]')
+        || form?.querySelector('input[name^="csrf_"]');
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const headerName = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+    const tokenName = namedInput?.name || 'csrf_test_name';
+    const tokenValue = metaToken || namedInput?.value || window.__CSRF_TOKEN__ || '';
+
+    return {
+        headerName,
+        tokenName,
+        tokenValue,
+        input: namedInput || csrfInput || null,
+    };
+}
+
+function syncCsrfIntoForm(form) {
+    const csrf = getCsrfContext(form);
+    if (csrf.input && csrf.tokenValue) {
+        csrf.input.value = csrf.tokenValue;
+    }
+
+    return csrf;
+}
+
+function updateCsrfFromResponse(response, form) {
+    const nextToken = response?.headers?.get('X-CSRF-TOKEN') || response?.headers?.get('x-csrf-token');
+    if (!nextToken) {
+        return;
+    }
+
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+        metaToken.setAttribute('content', nextToken);
+    }
+
+    window.__CSRF_TOKEN__ = nextToken;
+
+    const csrf = getCsrfContext(form);
+    if (csrf.input) {
+        csrf.input.value = nextToken;
+    }
+}
+
 /**
  * Appointments Booking Form Module
  *
@@ -60,49 +105,53 @@ export async function initAppointmentForm() {
         }
 
         const submitButton = form.querySelector('button[type="submit"]');
-        const originalButtonText = submitButton?.textContent;
+        const originalButtonHtml = submitButton?.innerHTML;
 
         try {
             if (submitButton) {
                 submitButton.disabled = true;
                 const isUpdate = form.getAttribute('action')?.includes('/update');
-                submitButton.textContent = isUpdate ? '⏳ Updating appointment...' : '⏳ Creating appointment...';
+                submitButton.innerHTML = `<span>${isUpdate ? 'Updating appointment...' : 'Creating appointment...'}</span>`;
             }
 
             const formData = new FormData(form);
             const formActionUrl = form.getAttribute('action');
+            const csrf = syncCsrfIntoForm(form);
+
+            if (csrf.tokenValue) {
+                formData.set(csrf.tokenName, csrf.tokenValue);
+            }
 
             const response = await fetch(formActionUrl, {
                 method: 'POST',
                 headers: {
                     ...attachTimezoneHeaders(),
                     'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrf.tokenValue ? { [csrf.headerName]: csrf.tokenValue } : {}),
                 },
+                credentials: 'same-origin',
                 body: formData,
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('[appointments-form] Server error:', errorText);
+            updateCsrfFromResponse(response, form);
 
-                if (response.status === 422) {
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        if (errorData.errors) {
-                            const errors = Object.entries(errorData.errors).map(
-                                ([field, messages]) => ({
-                                    field,
-                                    message: Array.isArray(messages) ? messages[0] : messages,
-                                })
-                            );
-                            showValidationErrors(errors);
-                            return;
-                        }
-                    } catch (_) {
-                        /* fall through */
-                    }
-                    throw new Error('Please fill in all required fields before submitting.');
+            if (!response.ok) {
+                const errorPayload = await parseErrorPayload(response);
+
+                if (response.status === 403) {
+                    throw new Error('Your session or security token has expired. Refresh the page and sign in again if needed.');
                 }
+
+                if (errorPayload?.errors || errorPayload?.message || response.status === 409) {
+                    const errors = normalizeServerErrors(errorPayload, response.status);
+                    if (errors.length > 0) {
+                        showValidationErrors(errors);
+                        return;
+                    }
+
+                    throw new Error(errorPayload?.message || 'Unable to save the appointment.');
+                }
+
                 throw new Error(`Server error (${response.status}). Please try again.`);
             }
 
@@ -138,7 +187,7 @@ export async function initAppointmentForm() {
             showNotification('error', error.message || 'Failed to create appointment. Please try again.');
             if (submitButton) {
                 submitButton.disabled = false;
-                submitButton.textContent = originalButtonText;
+                submitButton.innerHTML = originalButtonHtml;
             }
         }
 
@@ -168,6 +217,57 @@ function attachVisibilityRefresh() {
             if (form) syncClientTimezoneFields(form);
         }
     }, { once: false });
+}
+
+async function parseErrorPayload(response) {
+    const contentType = response.headers.get('content-type') || '';
+    const errorText = await response.text();
+
+    if (!errorText) {
+        return null;
+    }
+
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.parse(errorText);
+        } catch (_) {
+            console.warn('[appointments-form] Failed to parse JSON error payload');
+        }
+    }
+
+    console.error('[appointments-form] Server error:', errorText);
+    return null;
+}
+
+function normalizeServerErrors(payload, statusCode) {
+    if (!payload) {
+        return [];
+    }
+
+    if (payload.errors && !Array.isArray(payload.errors)) {
+        return Object.entries(payload.errors).map(([field, messages]) => ({
+            field,
+            message: Array.isArray(messages) ? messages[0] : messages,
+        }));
+    }
+
+    if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+        const message = payload.errors[0]?.message || payload.message;
+        return [{ field: 'appointment_time', message }].filter((error) => Boolean(error.message));
+    }
+
+    if (statusCode === 409 || Array.isArray(payload.conflicts)) {
+        return [{
+            field: 'appointment_time',
+            message: payload.message || 'This time slot conflicts with an existing appointment.',
+        }];
+    }
+
+    if (payload.message && statusCode === 422) {
+        return [{ field: 'appointment_time', message: payload.message }];
+    }
+
+    return [];
 }
 
 // ── Validation ────────────────────────────────────────────────────────

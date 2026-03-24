@@ -21,6 +21,7 @@ This directory is the canonical home for repository-authored documentation.
 ### Architecture
 
 - [architecture/scheduler_ui_architecture.md](./architecture/scheduler_ui_architecture.md)
+- [architecture/provider_service_catalog_contract.md](./architecture/provider_service_catalog_contract.md)
 - [architecture/calendar_engine_api_reference.md](./architecture/calendar_engine_api_reference.md)
 - [architecture/calendar_engine_implementation_summary.md](./architecture/calendar_engine_implementation_summary.md)
 - [architecture/unified_calendar_engine.md](./architecture/unified_calendar_engine.md)

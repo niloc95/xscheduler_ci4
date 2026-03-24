@@ -126,13 +126,14 @@ class PublicBookingService
     public function buildViewContext(): array
     {
         $providers = $this->listProviders();
-        $services = $this->listServices();
+        $initialProviderId = !empty($providers) ? (int) $providers[0]['id'] : null;
+        $services = $initialProviderId ? $this->listServices($initialProviderId) : [];
         $initialAvailability = null;
         $initialCalendar = null;
 
-        if (!empty($providers) && !empty($services)) {
+        if ($initialProviderId !== null && !empty($services)) {
             $initialCalendar = $this->availability->getCalendarAvailability(
-                (int) $providers[0]['id'],
+                $initialProviderId,
                 (int) $services[0]['id'],
                 null,
                 60,
@@ -144,7 +145,7 @@ class PublicBookingService
             if ($firstDate) {
                 $initialAvailability = [
                     'date' => $firstDate,
-                    'provider_id' => (int) $providers[0]['id'],
+                    'provider_id' => $initialProviderId,
                     'service_id' => (int) $services[0]['id'],
                     'slots' => $initialCalendar['slotsByDate'][$firstDate] ?? [],
                 ];
@@ -163,6 +164,7 @@ class PublicBookingService
             'reschedulePolicy' => $this->getReschedulePolicy(),
             'initialAvailability' => $initialAvailability,
             'initialCalendar' => $initialCalendar,
+            'appBaseUrl' => rtrim(base_url(), '/'),
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
             'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
@@ -258,7 +260,11 @@ class PublicBookingService
 
         $result = $this->bookingService->createAppointment($bookingPayload, $this->localization->getTimezone());
         if (!$result['success']) {
-            throw new PublicBookingException($result['message'] ?? 'Unable to create appointment at this time.');
+            throw new PublicBookingException(
+                $result['message'] ?? 'Unable to create appointment at this time.',
+                $this->resolveBookingFailureStatus($result),
+                $this->resolveBookingFailureErrors($result)
+            );
         }
 
         $appointment = $this->appointments->find((int) $result['appointmentId']);
@@ -310,7 +316,11 @@ class PublicBookingService
         );
 
         if (!$result['success']) {
-            throw new PublicBookingException($result['message'] ?? 'Unable to reschedule appointment. Please try again later.');
+            throw new PublicBookingException(
+                $result['message'] ?? 'Unable to reschedule appointment. Please try again later.',
+                $this->resolveBookingFailureStatus($result),
+                $this->resolveBookingFailureErrors($result)
+            );
         }
 
         $updated = $this->appointments->find((int) $appointment['id']);
@@ -319,7 +329,7 @@ class PublicBookingService
 
     private function listProviders(): array
     {
-        $rows = $this->users->where('role', 'provider')->where('is_active', true)->orderBy('name', 'ASC')->findAll();
+        $rows = $this->users->getProvidersWithActiveServices();
         return array_map(function (array $row): array {
             $providerId = (int) $row['id'];
             $locations = $this->locations->getProviderLocationsWithDays($providerId);
@@ -347,9 +357,9 @@ class PublicBookingService
         }, $rows);
     }
 
-    private function listServices(): array
+    private function listServices(?int $providerId = null): array
     {
-        $rows = $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
+        $rows = $providerId ? $this->services->getActiveByProvider($providerId) : $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
         return array_map(function (array $row): array {
             $price = $row['price'] ?? 0;
             return [
@@ -461,6 +471,34 @@ class PublicBookingService
                 ['slot' => 'unavailable']
             );
         }
+    }
+
+    private function resolveBookingFailureStatus(array $result): int
+    {
+        if (!empty($result['conflicts'])) {
+            return 409;
+        }
+
+        if (!empty($result['errors']) || !empty($result['validationErrors'])) {
+            return 422;
+        }
+
+        return 400;
+    }
+
+    private function resolveBookingFailureErrors(array $result): array
+    {
+        $errors = $result['errors'] ?? [];
+
+        if (empty($errors) && !empty($result['validationErrors']) && is_array($result['validationErrors'])) {
+            $errors = $result['validationErrors'];
+        }
+
+        if (!empty($result['conflicts']) && empty($errors['slot_start'])) {
+            $errors['slot_start'] = 'unavailable';
+        }
+
+        return is_array($errors) ? $errors : [];
     }
 
     private function storeCustomer(array $payload, ?int $existingId = null): int

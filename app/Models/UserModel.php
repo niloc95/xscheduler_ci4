@@ -277,6 +277,36 @@ class UserModel extends BaseModel
     }
 
     /**
+     * Get active providers that have at least one active linked service.
+     */
+    public function getProvidersWithActiveServices(): array
+    {
+        $usersTable = $this->db->prefixTable('users');
+        $providerServicesTable = $this->db->prefixTable('providers_services');
+        $servicesTable = $this->db->prefixTable('services');
+
+        $rows = $this->db->table($usersTable . ' u')
+            ->distinct()
+            ->select('u.*')
+            ->join($providerServicesTable . ' ps', 'ps.provider_id = u.id', 'inner')
+            ->join($servicesTable . ' s', 's.id = ps.service_id', 'inner')
+            ->where('u.role', 'provider')
+            ->where('u.is_active', true)
+            ->where('s.active', 1)
+            ->orderBy('u.name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if ($rows !== []) {
+            return $rows;
+        }
+
+        $hasMappings = (int) $this->db->table($providerServicesTable)->countAllResults() > 0;
+
+        return $hasMappings ? [] : $this->getProviders();
+    }
+
+    /**
      * Callback: Ensure a provider has a color on insert
      */
     protected function ensureProviderColor(array $data): array

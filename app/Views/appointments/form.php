@@ -46,7 +46,7 @@ $pageSubtitle = $isEditMode
             'variant' => 'text',
             'size' => 'sm',
             'icon' => 'arrow_back'
-        ]) ?>
+        ], ['saveData' => false]) ?>
     </div>
 
     <!-- Validation Errors -->
@@ -237,9 +237,9 @@ $pageSubtitle = $isEditMode
                             <input type="text" 
                                    id="customer_search" 
                                    placeholder="Search by name, email, or phone..."
-                                   class="form-input pl-10 pr-10" />
-                            <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400">search</span>
-                            <button type="button" id="clear_search_btn" class="hidden absolute right-2 top-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                class="form-input pl-12 pr-12" />
+                            <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-400">search</span>
+                            <button type="button" id="clear_search_btn" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                 <span class="material-symbols-outlined text-sm">close</span>
                             </button>
                             <div id="customer_search_results" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-64 overflow-y-auto"></div>
@@ -548,14 +548,16 @@ $pageSubtitle = $isEditMode
                     'label' => 'Cancel',
                     'href' => base_url('appointments'),
                     'variant' => 'outlined',
-                    'size' => 'md'
-                ]) ?>
+                    'size' => 'md',
+                    'icon' => null,
+                ], ['saveData' => false]) ?>
                 <?= view('components/button', [
                     'label' => $isEditMode ? 'Save Changes' : 'Book Appointment',
                     'type' => 'submit',
                     'variant' => 'filled',
-                    'size' => 'md'
-                ]) ?>
+                    'size' => 'md',
+                    'icon' => null,
+                ], ['saveData' => false]) ?>
             </div>
         </form>
     </div>

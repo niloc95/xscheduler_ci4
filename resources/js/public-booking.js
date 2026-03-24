@@ -37,6 +37,7 @@ if (!root) {
 
 function bootstrapPublicBooking() {
   const context = parseContext();
+  const appBase = resolveAppBaseUrl(context);
   const bookingBase = context.bookingBaseUrl || '/booking';
   const today = new Date();
   const initialAvailability = context.initialAvailability ?? null;
@@ -316,8 +317,7 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const baseUrl = typeof window !== 'undefined' ? String(window.__BASE_URL__ || '').replace(/\/+$/, '') : '';
-      const response = await fetch(`${baseUrl}/api/v1/providers/${providerId}/services`, {
+      const response = await fetch(`${appBase}/api/v1/providers/${providerId}/services`, {
         headers: {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
@@ -1093,7 +1093,9 @@ function bootstrapPublicBooking() {
       `;
     }).join('');
 
-    const availableServices = currentState.services?.length ? currentState.services : (ctx.services ?? []);
+    const availableServices = currentState.providerId
+      ? (currentState.services ?? [])
+      : (ctx.services ?? []);
     const serviceOptions = availableServices.map(service => {
       const optionValue = escapeHtml(String(service.id ?? ''));
       const isSelected = String(service.id) === String(currentState.serviceId) ? 'selected' : '';
@@ -1569,6 +1571,22 @@ function bootstrapPublicBooking() {
       console.error('[public-booking] Failed to parse context payload.', error);
       return window.__PUBLIC_BOOKING__ || {};
     }
+  }
+
+  function resolveAppBaseUrl(ctx) {
+    if (ctx?.appBaseUrl) {
+      return String(ctx.appBaseUrl).replace(/\/+$/, '');
+    }
+
+    if (typeof window !== 'undefined' && window.__BASE_URL__) {
+      return String(window.__BASE_URL__).replace(/\/+$/, '');
+    }
+
+    if (ctx?.bookingBaseUrl) {
+      return String(ctx.bookingBaseUrl).replace(/\/booking\/?$/, '').replace(/\/+$/, '');
+    }
+
+    return '';
   }
 
   function createCalendarState(source = null) {

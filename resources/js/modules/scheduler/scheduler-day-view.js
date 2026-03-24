@@ -271,7 +271,7 @@ export class DayView {
                 <div class="flex flex-col justify-center h-full overflow-hidden px-2 py-1 gap-0.5">
                     <div class="flex items-center justify-between gap-1">
                         <div class="text-[10px] font-semibold leading-none truncate" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
-                        ${statusDot}
+                        ${compactStatusPill.replace('text-[9px]', 'text-[8px]').replace('px-1.5 py-0.5', 'px-1 py-0.5')}
                     </div>
                     <div class="text-xs font-semibold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
                 </div>

@@ -218,6 +218,12 @@ document.addEventListener('spa:navigated', function(e) {
 
 // Listen for settings changes and refresh scheduler
 document.addEventListener('settingsSaved', async () => {
+    const schedulerContainer = document.getElementById('appointments-inline-calendar');
+    if (!schedulerContainer) {
+        teardownScheduler();
+        return;
+    }
+
     if (!window.scheduler || !window.scheduler.settingsManager) return;
     await window.scheduler.settingsManager.refresh();
     await window.scheduler.loadAppointments();
@@ -233,10 +239,19 @@ window.emitAppointmentsUpdated = emitAppointmentsUpdated;
 let schedulerInitAttempts = 0;
 const MAX_SCHEDULER_INIT_ATTEMPTS = 10;
 
+function teardownScheduler() {
+    if (window.scheduler && typeof window.scheduler.destroy === 'function') {
+        window.scheduler.destroy();
+    }
+    window.scheduler = null;
+}
+
 async function initScheduler() {
     const schedulerContainer = document.getElementById('appointments-inline-calendar');
     
     if (!schedulerContainer) {
+        teardownScheduler();
+
         // SPA navigation may not have injected the appointments view yet
         if (window.location.pathname.includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
             schedulerInitAttempts += 1;
@@ -250,10 +265,7 @@ async function initScheduler() {
 
     try {
         // Destroy existing scheduler instance if it exists
-        if (window.scheduler && typeof window.scheduler.destroy === 'function') {
-            window.scheduler.destroy();
-            window.scheduler = null;
-        }
+        teardownScheduler();
         
         // Get initial date and active status from data attributes
         const initialDate = schedulerContainer.dataset.initialDate || new Date().toISOString().split('T')[0];

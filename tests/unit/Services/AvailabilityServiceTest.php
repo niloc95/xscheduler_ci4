@@ -33,6 +33,7 @@ final class AvailabilityServiceTest extends CIUnitTestCase
         if (isset($this->providerId)) {
             $db->table('provider_schedules')->where('provider_id', $this->providerId)->delete();
             $db->table('blocked_times')->where('provider_id', $this->providerId)->delete();
+            $db->table('business_hours')->where('provider_id', $this->providerId)->delete();
             $db->table('users')->where('id', $this->providerId)->delete();
         }
 
@@ -73,6 +74,53 @@ final class AvailabilityServiceTest extends CIUnitTestCase
         $this->assertFalse((bool) ($result['available'] ?? true));
         $this->assertSame([], $result['conflicts'] ?? null);
         $this->assertSame('Location does not operate on this day', $result['reason'] ?? null);
+    }
+
+    public function testGetAvailableSlotsReturnsEmptyWhenBusinessIsClosedThatDay(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $db->table('provider_schedules')->insert([
+            'provider_id' => $this->providerId,
+            'location_id' => $this->locationId,
+            'day_of_week' => 'wednesday',
+            'start_time' => '09:00:00',
+            'end_time' => '17:00:00',
+            'break_start' => null,
+            'break_end' => null,
+            'is_active' => 1,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $db->table('services')->insert([
+            'name' => 'Availability Unit Service',
+            'description' => 'Service for business-hours test',
+            'duration_min' => 30,
+            'price' => 50.00,
+            'active' => 1,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $serviceId = (int) $db->insertID();
+
+        $service = new AvailabilityService();
+        $slots = $service->getAvailableSlots(
+            $this->providerId,
+            '2026-03-04',
+            $serviceId,
+            0,
+            'UTC',
+            null,
+            $this->locationId
+        );
+
+        $this->assertSame([], $slots);
+
+        $db->table('services')->where('id', $serviceId)->delete();
+        $db->table('provider_schedules')
+            ->where('provider_id', $this->providerId)
+            ->where('day_of_week', 'wednesday')
+            ->delete();
     }
 
     private function seedFixtureData(): void
@@ -118,6 +166,16 @@ final class AvailabilityServiceTest extends CIUnitTestCase
             'break_start' => null,
             'break_end' => null,
             'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $db->table('business_hours')->insert([
+            'provider_id' => $this->providerId,
+            'weekday' => 2,
+            'start_time' => '09:00:00',
+            'end_time' => '17:00:00',
+            'breaks_json' => null,
             'created_at' => $now,
             'updated_at' => $now,
         ]);

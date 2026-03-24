@@ -186,7 +186,7 @@ Generate time grid for day using **business hours**.
 
 ### generateDayGridWithProviderHours(date: string, providerHours: array): array
 
-Generate time grid for day using **provider-specific hours** with business hours fallback.
+Generate time grid for day using **provider-specific hours** constrained by business hours.
 
 **Parameters**:
 - `date` — 'Y-m-d'
@@ -204,7 +204,10 @@ Generate time grid for day using **provider-specific hours** with business hours
 IF providerHours.isActive === false
   THEN use business hours
 ELSE
-  use providerHours.startTime and providerHours.endTime
+    use the overlap of providerHours.startTime/endTime and business hours
+
+IF no overlap exists
+    THEN treat the day as unavailable
 ```
 
 ---

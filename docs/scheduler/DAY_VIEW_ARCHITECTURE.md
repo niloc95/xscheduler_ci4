@@ -1,7 +1,7 @@
 # Day View Architecture
 
-**Last Updated:** March 9, 2026  
-**Branch:** calendar-refactor  
+**Last Updated:** March 23, 2026  
+**Branch:** main  
 **Status:** ✅ Refactored & Aligned
 
 ---
@@ -189,6 +189,29 @@ const top = topPx(appointmentStart, 8);    // 90px (from start hour 8)
 const height = heightPx(30);               // 27px (30 min - 3px margin)
 // Positioned at row 1.5 (between 09:00 and 10:00) ✅ ALIGNED
 ```
+
+---
+
+## Compact Appointment Status Rendering
+
+Short appointments still need visible status context in Day view.
+
+**Renderer:** `resources/js/modules/scheduler/scheduler-day-view.js`
+
+### Height Tiers
+
+- `TIER_TIME_ONLY = 35`
+- `TIER_NAME = 65`
+- `TIER_SERVICE = 100`
+- `TIER_STATUS = 150`
+
+### Rendering Rule
+
+- extremely small blocks may collapse to time-only content
+- appointments below `TIER_NAME` should still show a compact status pill, not only a status dot
+- 30-minute appointments typically render at roughly `46px`, so they fall into the compact-pill tier
+
+This preserves appointment status visibility for common short bookings without forcing the full multi-line card layout used by taller blocks.
 
 ---
 

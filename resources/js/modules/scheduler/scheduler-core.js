@@ -45,6 +45,7 @@ export class SchedulerCore {
         this.renderDebounceDelay = 100; // ms
 
         this.lastDateChange = { view: null, date: null };
+        this.isDestroyed = false;
         
         // Initialize settings manager
         this.settingsManager = new SettingsManager();
@@ -84,11 +85,13 @@ export class SchedulerCore {
 
     async init() {
         try {
+            if (this.isDestroyed) return;
             this.debugLog('🚀 Initializing Custom Scheduler...');
             
             // Initialize settings manager first
             this.debugLog('⚙️  Loading settings...');
             await this.settingsManager.init();
+            if (this.isDestroyed) return;
             this.debugLog('✅ Settings loaded');
             
             // Update timezone from settings
@@ -114,6 +117,7 @@ export class SchedulerCore {
                 this.loadProviders(),
                 this.loadData()
             ]);
+            if (this.isDestroyed) return;
             this.debugLog('✅ Data loaded');
 
             // Set all providers visible by default
@@ -134,6 +138,7 @@ export class SchedulerCore {
             // Render the initial view
             this.debugLog('🎨 Rendering view...');
             this.render();
+            if (this.isDestroyed) return;
 
             // Check for appointment in URL (query param or hash)
             this.checkUrlForAppointment();
@@ -163,10 +168,12 @@ export class SchedulerCore {
             const response = await fetch(withBaseUrl('/api/v1/settings/calendar-config'));
             if (!response.ok) throw new Error('Failed to load calendar config');
             const data = await response.json();
+            if (this.isDestroyed) return;
             this.calendarConfig = data.data || data;
             this.debugLog('📅 Calendar config loaded:', this.calendarConfig);
         } catch (error) {
             console.error('Failed to load calendar config:', error);
+            if (this.isDestroyed) return;
             // Use defaults if config fails to load
             this.calendarConfig = {
                 timeFormat: '24h',
@@ -184,10 +191,12 @@ export class SchedulerCore {
             const response = await fetch(withBaseUrl('/api/providers?includeColors=true'));
             if (!response.ok) throw new Error('Failed to load providers');
             const data = await response.json();
+            if (this.isDestroyed) return;
             this.providers = data.data || data || [];
             this.debugLog('👥 Providers loaded:', this.providers.length);
         } catch (error) {
             console.error('Failed to load providers:', error);
+            if (this.isDestroyed) return;
             this.providers = [];
         }
     }
@@ -236,6 +245,7 @@ export class SchedulerCore {
             if (!response.ok) throw new Error(`Calendar model fetch failed: ${response.status}`);
 
             const data = await response.json();
+            if (this.isDestroyed) return null;
             this.calendarModel = data.data || data;
 
             // Sync flat appointments array so client-side views still work
@@ -249,6 +259,7 @@ export class SchedulerCore {
             return this.calendarModel;
         } catch (error) {
             console.error('❌ Failed to load calendar model — falling back to /api/appointments:', error);
+            if (this.isDestroyed) return null;
             this.calendarModel = null;
             return await this.loadAppointments();
         }
@@ -275,6 +286,7 @@ export class SchedulerCore {
             });
             if (!response.ok) throw new Error('Failed to load appointments');
             const data = await response.json();
+            if (this.isDestroyed) return [];
             this.debugLog('📥 Raw API response:', data);
             const rawAppointments = data.data || data || [];
             this.debugLog('📦 Extracted appointments array:', rawAppointments);
@@ -290,6 +302,7 @@ export class SchedulerCore {
             return this.appointments;
         } catch (error) {
             console.error('❌ Failed to load appointments:', error);
+            if (this.isDestroyed) return [];
             this.appointments = [];
             return [];
         }
@@ -663,6 +676,10 @@ export class SchedulerCore {
     }
 
     render() {
+        if (this.isDestroyed) {
+            return;
+        }
+
         // Clear any pending render
         if (this.renderDebounceTimer) {
             clearTimeout(this.renderDebounceTimer);
@@ -675,6 +692,10 @@ export class SchedulerCore {
     }
     
     _performRender() {
+        if (this.isDestroyed) {
+            return;
+        }
+
         // Re-find container if it's been lost (e.g., due to DOM manipulation)
         if (!this.container || !document.body.contains(this.container)) {
             this.container = document.getElementById(this.containerId);
@@ -807,6 +828,8 @@ export class SchedulerCore {
     }
 
     destroy() {
+        this.isDestroyed = true;
+
         // Clear any pending renders
         if (this.renderDebounceTimer) {
             clearTimeout(this.renderDebounceTimer);

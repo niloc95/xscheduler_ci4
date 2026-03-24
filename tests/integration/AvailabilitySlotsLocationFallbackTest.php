@@ -109,6 +109,16 @@ class AvailabilitySlotsLocationFallbackTest extends CIUnitTestCase
             'updated_at' => $now,
         ]);
 
+        $db->table('business_hours')->insert([
+            'provider_id' => $this->providerId,
+            'weekday' => 2,
+            'start_time' => '09:00:00',
+            'end_time' => '17:00:00',
+            'breaks_json' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
         // Add a UTC blocked period to validate UTC overlap filtering.
         $db->table('blocked_times')->insert([
             'provider_id' => $this->providerId,

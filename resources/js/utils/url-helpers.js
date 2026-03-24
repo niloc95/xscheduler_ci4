@@ -13,6 +13,22 @@ export function getBaseUrl() {
     if (typeof window !== 'undefined' && window.__BASE_URL__) {
         return String(window.__BASE_URL__).replace(/\/+$/, '');
     }
+
+    // Public booking page can run outside the main app layout.
+    // Derive the app base from its bootstrapped context when available.
+    if (typeof window !== 'undefined' && window.__PUBLIC_BOOKING__) {
+        const publicBookingBase = window.__PUBLIC_BOOKING__.appBaseUrl;
+        if (publicBookingBase) {
+            return String(publicBookingBase).replace(/\/+$/, '');
+        }
+
+        const bookingBaseUrl = window.__PUBLIC_BOOKING__.bookingBaseUrl;
+        if (bookingBaseUrl) {
+            return String(bookingBaseUrl)
+                .replace(/\/booking\/?$/, '')
+                .replace(/\/+$/, '');
+        }
+    }
     
     // Fall back to window.appBaseUrl (legacy)
     if (typeof window !== 'undefined' && window.appBaseUrl) {

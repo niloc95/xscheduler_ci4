@@ -93,6 +93,7 @@ class AvailabilityService
     private ServiceModel $serviceModel;
     private SettingModel $settingModel;
     private LocalizationSettingsService $localizationService;
+    private BusinessHoursService $businessHoursService;
     private ConflictService $conflictService;
     
     private array $cache = [];
@@ -107,6 +108,7 @@ class AvailabilityService
         $this->serviceModel = new ServiceModel();
         $this->settingModel = new SettingModel();
         $this->localizationService = new LocalizationSettingsService();
+        $this->businessHoursService = new BusinessHoursService();
         $this->conflictService = new ConflictService();
     }
 
@@ -481,11 +483,11 @@ class AvailabilityService
         
         if ($providerSchedule) {
             // Provider has a custom schedule for this day
-            return [
+            return $this->constrainToBusinessHours($date, [
                 'start_time' => $providerSchedule['start_time'],
                 'end_time' => $providerSchedule['end_time'],
                 'breaks' => $this->parseBreaks($providerSchedule['break_start'], $providerSchedule['break_end'])
-            ];
+            ]);
         }
         
         // Fall back to xs_business_hours (global business hours per provider)
@@ -500,15 +502,39 @@ class AvailabilityService
                 $breaks = json_decode($businessHours['breaks_json'], true) ?: [];
             }
             
-            return [
+            return $this->constrainToBusinessHours($date, [
                 'start_time' => $businessHours['start_time'],
                 'end_time' => $businessHours['end_time'],
                 'breaks' => $breaks
-            ];
+            ]);
         }
         
         // No schedule found for this provider/day
         return null;
+    }
+
+    /**
+     * Constrain provider hours to globally configured business hours.
+     */
+    private function constrainToBusinessHours(string $date, array $providerHours): ?array
+    {
+        $businessHours = $this->businessHoursService->getBusinessHoursForDate($date);
+        if (!$businessHours) {
+            return null;
+        }
+
+        $effectiveStart = max((string) $providerHours['start_time'], (string) $businessHours['start_time']);
+        $effectiveEnd = min((string) $providerHours['end_time'], (string) $businessHours['end_time']);
+
+        if ($effectiveStart >= $effectiveEnd) {
+            return null;
+        }
+
+        return [
+            'start_time' => $effectiveStart,
+            'end_time' => $effectiveEnd,
+            'breaks' => $providerHours['breaks'] ?? [],
+        ];
     }
 
     /**

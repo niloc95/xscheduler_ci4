@@ -106,7 +106,8 @@ public function generateMonthGrid(int $year, int $month): array
 
 **Key Feature**: Provider schedule override
 - Query ProviderScheduleModel first
-- Fall back to business hours if no schedule exists
+- Constrain provider hours to business hours before generating availability
+- Fall back to business hours if no provider schedule exists
 - Support inactive days (show "Not Working")
 
 **Methods**:
@@ -118,9 +119,11 @@ public function generateDayGrid(string $date): array
 public function generateDayGridWithProviderHours(string $date, array $providerHours): array
   // Uses provider-specific hours
   // Priority:
-  // 1. providerHours['startTime'] / ['endTime']
-  // 2. Business hours (fallback)
+  // 1. providerHours['startTime'] / ['endTime'] intersected with business hours
+  // 2. Business hours (fallback when no provider schedule exists)
 ```
+
+When provider hours and business hours do not overlap, that date should be treated as unavailable for slot generation.
 
 **Example Output**:
 ```php

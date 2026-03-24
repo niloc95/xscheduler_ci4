@@ -188,6 +188,44 @@ class ServiceModel extends BaseModel
     }
 
     /**
+     * Get active services linked to a specific provider.
+     */
+    public function getActiveByProvider(int $providerId): array
+    {
+        $servicesTable = $this->db->prefixTable('services');
+        $providerServicesTable = $this->db->prefixTable('providers_services');
+        $categoriesTable = $this->db->prefixTable('categories');
+
+        $rows = $this->db->table($servicesTable . ' s')
+            ->select('s.*, c.name as category_name')
+            ->join($providerServicesTable . ' ps', 'ps.service_id = s.id', 'inner')
+            ->join($categoriesTable . ' c', 'c.id = s.category_id', 'left')
+            ->where('ps.provider_id', $providerId)
+            ->where('s.active', 1)
+            ->orderBy('s.name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if ($rows !== []) {
+            return $rows;
+        }
+
+        $hasMappings = (int) $this->db->table($providerServicesTable)->countAllResults() > 0;
+
+        if ($hasMappings) {
+            return [];
+        }
+
+        return $this->db->table($servicesTable . ' s')
+            ->select('s.*, c.name as category_name')
+            ->join($categoriesTable . ' c', 'c.id = s.category_id', 'left')
+            ->where('s.active', 1)
+            ->orderBy('s.name', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Get popular services with booking counts and revenue
      */
     public function getPopularServicesWithStats(int $limit = 10): array
