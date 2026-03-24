@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\AuditLogModel;
+use App\Models\BusinessHourModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
 use App\Models\UserModel;
@@ -108,6 +109,7 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $this->createMock(UserModel::class),
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
+            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
             $contextService
@@ -125,6 +127,7 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $this->createMock(UserModel::class),
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
+            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
             $this->createMock(UserManagementContextService::class)
@@ -155,6 +158,7 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
+            $this->createMock(BusinessHourModel::class),
             $this->createMock(AuditLogModel::class),
             $this->createMock(ScheduleValidationService::class),
             $this->createMock(UserManagementContextService::class)
@@ -198,6 +202,7 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ProviderStaffModel::class),
             $this->createMock(ProviderScheduleModel::class),
+            $this->createMock(BusinessHourModel::class),
             $auditModel,
             $this->createMock(ScheduleValidationService::class),
             $this->createMock(UserManagementContextService::class)
@@ -208,5 +213,82 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
         $this->assertTrue($result['success']);
         $this->assertSame('User activated successfully.', $result['message']);
         $this->assertStringContainsString('/user-management', $result['redirect']);
+    }
+
+    public function testUserManagementMutationServiceCreateProviderSyncsBusinessHoursFromSchedule(): void
+    {
+        $contextService = $this->createMock(UserManagementContextService::class);
+        $contextService->expects($this->once())
+            ->method('canCreateRole')
+            ->with(7, 'provider')
+            ->willReturn(true);
+
+        $schedule = [
+            'monday' => [
+                'is_active' => 1,
+                'start_time' => '08:00:00',
+                'end_time' => '16:30:00',
+                'break_start' => null,
+                'break_end' => null,
+            ],
+        ];
+
+        $userModel = $this->createMock(UserModel::class);
+        $userModel->expects($this->once())
+            ->method('getAvailableProviderColor')
+            ->willReturn('#123456');
+        $userModel->expects($this->once())
+            ->method('createUser')
+            ->willReturn(44);
+
+        $scheduleValidation = $this->createMock(ScheduleValidationService::class);
+        $scheduleValidation->expects($this->once())
+            ->method('validateProviderSchedule')
+            ->with($schedule)
+            ->willReturn([$schedule, []]);
+
+        $providerScheduleModel = $this->createMock(ProviderScheduleModel::class);
+        $providerScheduleModel->expects($this->once())
+            ->method('saveSchedule')
+            ->with(44, $schedule)
+            ->willReturn(true);
+
+        $businessHourModel = $this->createMock(BusinessHourModel::class);
+        $businessHourModel->expects($this->once())
+            ->method('syncFromProviderSchedule')
+            ->with(44, $schedule)
+            ->willReturn(true);
+
+        $auditModel = $this->createMock(AuditLogModel::class);
+        $auditModel->expects($this->once())
+            ->method('log')
+            ->with(
+                'user_created',
+                7,
+                'user',
+                44,
+                null,
+                ['role' => 'provider', 'email' => 'provider@example.com']
+            );
+
+        $service = new UserManagementMutationService(
+            $userModel,
+            $this->createMock(ProviderStaffModel::class),
+            $providerScheduleModel,
+            $businessHourModel,
+            $auditModel,
+            $scheduleValidation,
+            $contextService
+        );
+
+        $result = $service->createUser(7, ['role' => 'admin'], [
+            'role' => 'provider',
+            'name' => 'Provider Example',
+            'email' => 'provider@example.com',
+            'schedule' => $schedule,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(44, $result['userId']);
     }
 }
