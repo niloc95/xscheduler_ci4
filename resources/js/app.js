@@ -167,6 +167,29 @@ function initializeComponents() {
     prefillAppointmentForm();
 }
 
+function getAppRelativePathname() {
+    try {
+        const currentPath = window.location.pathname;
+        const basePath = new URL(getBaseUrl(), window.location.origin).pathname.replace(/\/+$/, '');
+
+        if (!basePath || basePath === '/') {
+            return currentPath;
+        }
+
+        if (currentPath === basePath) {
+            return '/';
+        }
+
+        if (currentPath.startsWith(`${basePath}/`)) {
+            return currentPath.slice(basePath.length);
+        }
+
+        return currentPath;
+    } catch {
+        return window.location.pathname;
+    }
+}
+
 function initServiceManagementForms() {
     const form = document.getElementById('createServiceForm') || document.getElementById('editServiceForm');
     if (!form) {
@@ -253,7 +276,7 @@ async function initScheduler() {
         teardownScheduler();
 
         // SPA navigation may not have injected the appointments view yet
-        if (window.location.pathname.includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
+        if (getAppRelativePathname().includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
             schedulerInitAttempts += 1;
             setTimeout(() => initScheduler(), 200);
         }
