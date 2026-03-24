@@ -79,4 +79,58 @@ class BusinessHourModel extends Model
         'start_time'  => 'required',
         'end_time'    => 'required',
     ];
+
+    /**
+     * Replace provider business hours with rows derived from provider schedule entries.
+     *
+     * @param int   $providerId Provider identifier.
+     * @param array $entries    Schedule rows keyed by day name or weekday index.
+     */
+    public function syncFromProviderSchedule(int $providerId, array $entries): bool
+    {
+        $rows = [];
+
+        foreach ($entries as $day => $data) {
+            $weekday = ProviderScheduleModel::normalizeDayIndex($day);
+            if ($weekday === null || empty($data['is_active'])) {
+                continue;
+            }
+
+            $startTime = trim((string) ($data['start_time'] ?? ''));
+            $endTime = trim((string) ($data['end_time'] ?? ''));
+            if ($startTime === '' || $endTime === '') {
+                continue;
+            }
+
+            $breaks = [];
+            $breakStart = trim((string) ($data['break_start'] ?? ''));
+            $breakEnd = trim((string) ($data['break_end'] ?? ''));
+            if ($breakStart !== '' && $breakEnd !== '') {
+                $breaks[] = [
+                    'start' => $breakStart,
+                    'end' => $breakEnd,
+                ];
+            }
+
+            $rows[] = [
+                'provider_id' => $providerId,
+                'weekday' => $weekday,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'breaks_json' => $breaks === [] ? null : json_encode($breaks),
+            ];
+        }
+
+        $this->db->transStart();
+
+        $this->where('provider_id', $providerId)->delete();
+
+        if ($rows !== []) {
+            $this->insertBatch($rows);
+        }
+
+        $this->db->transComplete();
+
+        return $this->db->transStatus();
+    }
 }

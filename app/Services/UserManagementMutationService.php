@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditLogModel;
+use App\Models\BusinessHourModel;
 use App\Models\LocationModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
@@ -13,6 +14,7 @@ class UserManagementMutationService
     private UserModel $userModel;
     private ProviderStaffModel $providerStaffModel;
     private ProviderScheduleModel $providerScheduleModel;
+    private BusinessHourModel $businessHourModel;
     private AuditLogModel $auditModel;
     private ScheduleValidationService $scheduleValidation;
     private UserManagementContextService $contextService;
@@ -21,6 +23,7 @@ class UserManagementMutationService
         ?UserModel $userModel = null,
         ?ProviderStaffModel $providerStaffModel = null,
         ?ProviderScheduleModel $providerScheduleModel = null,
+        ?BusinessHourModel $businessHourModel = null,
         ?AuditLogModel $auditModel = null,
         ?ScheduleValidationService $scheduleValidation = null,
         ?UserManagementContextService $contextService = null,
@@ -28,6 +31,7 @@ class UserManagementMutationService
         $this->userModel = $userModel ?? new UserModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
         $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
+        $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
         $this->auditModel = $auditModel ?? new AuditLogModel();
         $localization = new LocalizationSettingsService();
         $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($localization);
@@ -132,6 +136,7 @@ class UserManagementMutationService
 
         if ($role === 'provider' && !empty($scheduleClean)) {
             $this->providerScheduleModel->saveSchedule((int) $userId, $scheduleClean);
+            $this->businessHourModel->syncFromProviderSchedule((int) $userId, $scheduleClean);
         }
 
         return [
@@ -235,9 +240,11 @@ class UserManagementMutationService
 
             if ($finalRole === 'provider') {
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
+                $this->businessHourModel->syncFromProviderSchedule($userId, $scheduleClean);
                 $this->syncLocationDaysFromSchedule($userId, $scheduleInput);
             } else {
                 $this->providerScheduleModel->deleteByProvider($userId);
+                $this->businessHourModel->syncFromProviderSchedule($userId, []);
             }
 
             $db->transComplete();
