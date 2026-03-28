@@ -592,6 +592,11 @@ Controller-level journeys in this repository often need more than a plain reques
 - prime the CSRF cookie for AJAX-backed form submissions
 - seed deterministic settings when validation depends on runtime configuration, especially booking field visibility and required flags
 
+### Schema Compatibility Notes
+
+- Mixed local schemas may expose internal-user active state as `is_active`, `status`, or both; queries and fixtures should resolve active users by checking available columns instead of assuming one field.
+- Hash columns are expected for public-facing appointment/customer flows, but compatibility checks should guard writes in partially migrated environments.
+
 ### Testing Entry Points
 
 - [docs/testing/test_runner_guide.md](docs/testing/test_runner_guide.md) for test environment and runner details
@@ -698,6 +703,11 @@ tail -f writable/logs/log-*.log
 ```bash
 # Verify credentials in .env
 # Test connection
+
+# If you hit unknown-column errors after branch switches,
+# run app migrations and rerun focused integration tests
+php spark migrate -n App
+php vendor/bin/phpunit tests/integration/UserManagementJourneyTest.php tests/integration/DayViewServiceIntegrationTest.php tests/integration/WeekViewServiceIntegrationTest.php
 php spark db:table users
 # Run pending migrations
 php spark migrate -n App

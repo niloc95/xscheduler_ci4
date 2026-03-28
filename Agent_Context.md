@@ -17,6 +17,7 @@ Current stage: active development and refactoring. The foundation, setup flow, s
 - Settings, notifications, appointments, dashboard, user management, customer management, search, and services have all moved toward explicit constructor seams or extracted service boundaries.
 - Appointment form and provider-schedule SPA behavior now live in frontend modules instead of view-local inline scripts.
 - Focused regression coverage exists for appointment form SPA re-initialization, provider schedule SPA re-initialization, customer-management CRUD/search/history journeys, and service CRUD/provider-assignment journeys.
+- Compatibility hardening is active for mixed-schema environments where internal-user active state may use `status` and/or `is_active`, and where hash columns may not be present in every migrated local database.
 - Remaining cleanup is centered on the last legacy controllers and any extracted seams that still lack consistent adoption.
 
 ---
@@ -192,12 +193,15 @@ The current database is centered on appointments, provider availability, public 
   - `phone`
   - `password_hash`
   - `role`
+  - `status`
+  - `is_active` (legacy/compatibility schemas)
   - `color`
   - `created_at`
   - `updated_at`
 - Notes:
   - This is not the customer table.
   - Providers and staff are modeled here and linked outward through schedules, services, blocked times, and appointments.
+  - Active-state checks in services and tests must branch by available column (`is_active` first when present, otherwise normalized `status`).
 
 ##### `xs_customers`
 - Booking customers and customer-profile data.
