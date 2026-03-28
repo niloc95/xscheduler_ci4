@@ -249,6 +249,7 @@ class PublicBookingService
             'customer_phone' => $customerFields['phone'] ?? '',
             'customer_address' => $customerFields['address'] ?? '',
             'customer_notes' => $customerFields['notes'] ?? '',
+            'booking_channel' => 'public',
         ];
 
         if (!empty($customerFields['custom_fields'])) {
@@ -305,6 +306,7 @@ class PublicBookingService
             'public_token_expires_at' => null,
             'customer_id' => $customerId,
             'location_id' => $newLocationId,
+            'booking_channel' => 'public',
         ];
 
         $result = $this->bookingService->updateAppointment(
@@ -743,7 +745,7 @@ class PublicBookingService
         }
 
         $builder = $this->appointments->builder();
-        $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id')
+        $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->where('xs_appointments.public_token', $token);
 

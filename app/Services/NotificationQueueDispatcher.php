@@ -60,8 +60,8 @@
  * @see         app/Commands/DispatchNotificationQueue.php
  * @see         app/Models/NotificationQueueModel.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -313,7 +313,7 @@ class NotificationQueueDispatcher
         $builder = $model->builder();
 
         $row = $builder
-            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, c.phone as customer_phone, s.name as service_name, u.name as provider_name')
+            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, c.phone as customer_phone, s.name as service_name, u.name as provider_name', false)
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
@@ -374,7 +374,7 @@ class NotificationQueueDispatcher
         $rendered = $templateSvc->render($eventType, 'email', $templateData);
 
         $subject = $rendered['subject'] ?: 'Appointment Update';
-        $body = $rendered['body'] ?: "Your appointment has been updated.\n\n— WebSchedulr";
+        $body = $rendered['body'] ?: "Your appointment has been updated.\n\n— WebScheduler";
 
         $svc = new NotificationEmailService();
         return $svc->sendEmail($businessId, $to, $subject, $body);
