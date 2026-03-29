@@ -50,6 +50,7 @@
         <const name="CONFIGPATH" value="./app/Config/"/>
         <!-- Directory containing the front controller (index.php) -->
         <const name="PUBLICPATH" value="./public/"/>
+        <env name="logger.threshold" value="3"/>
         <!-- Database configuration -->
         <!-- Configure a dedicated MySQL/MariaDB database for testing
             <env name="database.tests.hostname" value="localhost"/>

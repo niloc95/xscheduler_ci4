@@ -147,6 +147,7 @@ class CustomerModel extends BaseModel
 	{
 		$q = trim((string)($params['q'] ?? ''));
 		$limit = (int)($params['limit'] ?? 50);
+		$customerIds = $params['customer_ids'] ?? null; // null = no scope, [] = force empty, array = restrict
 		$builder = $this->builder();
 		if ($q !== '') {
 			$builder->groupStart()
@@ -154,6 +155,13 @@ class CustomerModel extends BaseModel
 				->orLike('last_name', $q)
 				->orLike('email', $q)
 			->groupEnd();
+		}
+		if ($customerIds !== null) {
+			if (empty($customerIds)) {
+				$builder->where('id', 0); // No matching customers — unassigned staff.
+			} else {
+				$builder->whereIn('id', $customerIds);
+			}
 		}
 		$builder->orderBy('created_at', 'DESC');
 		if ($limit > 0) {

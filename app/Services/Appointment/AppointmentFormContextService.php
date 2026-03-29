@@ -3,6 +3,7 @@
 namespace App\Services\Appointment;
 
 use App\Models\AppointmentModel;
+use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Services\BookingSettingsService;
@@ -17,6 +18,7 @@ class AppointmentFormContextService
     private AppointmentModel $appointmentModel;
     private UserModel $userModel;
     private ServiceModel $serviceModel;
+    private ProviderStaffModel $providerStaffModel;
 
     public function __construct(
         ?BookingSettingsService $bookingSettingsService = null,
@@ -24,22 +26,24 @@ class AppointmentFormContextService
         ?AppointmentModel $appointmentModel = null,
         ?UserModel $userModel = null,
         ?ServiceModel $serviceModel = null,
+        ?ProviderStaffModel $providerStaffModel = null,
     ) {
         $this->bookingSettingsService = $bookingSettingsService ?? new BookingSettingsService();
         $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
         $this->userModel = $userModel ?? new UserModel();
         $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
     }
 
-    public function buildCreateViewData(string $userRole): array
+    public function buildCreateViewData(string $userRole, ?int $userId = null): array
     {
-        return array_merge($this->buildBaseViewData($userRole), [
+        return array_merge($this->buildBaseViewData($userRole, $userId), [
             'title' => 'Book Appointment',
         ]);
     }
 
-    public function buildEditViewData(string $appointmentHash, string $userRole): array
+    public function buildEditViewData(string $appointmentHash, string $userRole, ?int $userId = null): array
     {
         $appointment = $this->loadAppointmentForEdit($appointmentHash);
         if ($appointment === null) {
@@ -50,16 +54,16 @@ class AppointmentFormContextService
         $appointment = $this->mergeCustomerCustomFields($appointment);
         $appointment = $this->appendDisplayDateTime($appointment, $timezone);
 
-        return array_merge($this->buildBaseViewData($userRole), [
+        return array_merge($this->buildBaseViewData($userRole, $userId), [
             'title' => 'Edit Appointment',
             'appointment' => $appointment,
             'isPastAppointment' => $this->isPastAppointment($appointment),
         ]);
     }
 
-    private function buildBaseViewData(string $userRole): array
+    private function buildBaseViewData(string $userRole, ?int $userId = null): array
     {
-        $dropdowns = $this->getDropdownData();
+        $dropdowns = $this->getDropdownData($userRole, $userId);
 
         return [
             'current_page' => 'appointments',
@@ -135,9 +139,16 @@ class AppointmentFormContextService
         return $appointmentTime < $now;
     }
 
-    private function getDropdownData(): array
+    private function getDropdownData(string $userRole = '', ?int $userId = null): array
     {
-        $providers = $this->userModel->getProvidersWithActiveServices();
+        // Staff see only their actively-assigned providers in the booking dropdown.
+        if ($userRole === 'staff' && $userId) {
+            $assigned = $this->providerStaffModel->getProvidersForStaff($userId, 'active');
+            $providers = $assigned;
+        } else {
+            $providers = $this->userModel->getProvidersWithActiveServices();
+        }
+
         $services = $this->serviceModel->where('active', 1)->findAll();
 
         return [

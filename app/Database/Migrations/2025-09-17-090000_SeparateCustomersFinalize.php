@@ -138,7 +138,20 @@ SQL;
         // Remove the customer_id column from appointments table if it exists
         if ($db->tableExists('appointments') && $db->fieldExists('customer_id', 'appointments')) {
             try {
-                $this->mysqlOnly("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `fk_appointments_customer`");
+                $fk = $db->query(
+                    "SELECT CONSTRAINT_NAME AS name
+                     FROM information_schema.KEY_COLUMN_USAGE
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = ?
+                       AND COLUMN_NAME = 'customer_id'
+                       AND REFERENCED_TABLE_NAME IS NOT NULL
+                     LIMIT 1",
+                    [$appointmentsTable]
+                )->getFirstRow();
+
+                if ($fk && ! empty($fk->name)) {
+                    $this->mysqlOnly("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `{$fk->name}`");
+                }
             } catch (\Throwable $e) {
                 // Foreign key may already be absent on some refresh paths.
             }

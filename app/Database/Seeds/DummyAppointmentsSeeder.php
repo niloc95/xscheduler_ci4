@@ -10,9 +10,27 @@ class DummyAppointmentsSeeder extends Seeder
     {
         $db = \Config\Database::connect();
 
+        $usersHasIsActive = method_exists($db, 'fieldExists')
+            ? ($db->fieldExists('is_active', $db->prefixTable('users')) || $db->fieldExists('is_active', 'users'))
+            : true;
+        $usersHasStatus = method_exists($db, 'fieldExists')
+            ? ($db->fieldExists('status', $db->prefixTable('users')) || $db->fieldExists('status', 'users'))
+            : true;
+
         // Fetch candidate users, providers, services
-        $users = $db->table('users')->select('id')->where('is_active', 1)->get()->getResultArray();
-        $providers = $db->table('users')->select('id')->where('role', 'provider')->where('is_active', 1)->get()->getResultArray();
+        $usersBuilder = $db->table('users')->select('id');
+        $providersBuilder = $db->table('users')->select('id')->where('role', 'provider');
+
+        if ($usersHasIsActive) {
+            $usersBuilder->where('is_active', 1);
+            $providersBuilder->where('is_active', 1);
+        } elseif ($usersHasStatus) {
+            $usersBuilder->where('status', 'active');
+            $providersBuilder->where('status', 'active');
+        }
+
+        $users = $usersBuilder->get()->getResultArray();
+        $providers = $providersBuilder->get()->getResultArray();
         $services = $db->table('services')->select('id')->where('active', 1)->get()->getResultArray();
 
         if (empty($users) || empty($providers) || empty($services)) {

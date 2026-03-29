@@ -31,26 +31,19 @@
  * 
  * CONTEXT STRUCTURE:
  * -----------------------------------------------------------------------------
- *     [
- *         'role'               => 'provider',
- *         'user_id'            => 123,
- *         'provider_id'        => 123,
- *         'staff_id'           => null,
- *         'customer_id'        => null,
- *         'filter_by_provider' => true,
- *         'filter_by_staff'    => false,
- *         'filter_by_customer' => false,
- *     ]
- * 
- * USAGE:
- * -----------------------------------------------------------------------------
- *     $contextService = new AppointmentDashboardContextService();
- *     $context = $contextService->build($role, $userId, $userData);
- *     
- *     // Use context in appointment queries
- *     if ($context['filter_by_provider']) {
- *         $query->where('provider_id', $context['provider_id']);
- *     }
+    *     [
+    *         'role'        => 'provider',
+    *         'user_id'     => 123,
+    *         'provider_id' => 123,         // scalar for provider, int[] for staff, null for admin
+    *         'customer_id' => null,
+    *     ]
+    *
+    * USAGE:
+    * -----------------------------------------------------------------------------
+    *     $contextService = new AppointmentDashboardContextService();
+    *     $context = $contextService->build($role, $userId, $userData);
+    *     // Context is consumed by AppointmentModel::applyContextScope() which reads
+    *     // 'provider_id' (accepts scalar or array) and 'customer_id'.
  * 
  * @see         app/Services/DashboardService.php for usage
  * @see         app/Controllers/Dashboard.php
@@ -62,12 +55,21 @@
 
 namespace App\Services;
 
+use App\Models\ProviderStaffModel;
+
 /**
  * Service to build dashboard context for appointment queries.
  * Determines filtering based on user role and permissions.
  */
 class AppointmentDashboardContextService
 {
+    private ProviderStaffModel $providerStaffModel;
+
+    public function __construct(?ProviderStaffModel $providerStaffModel = null)
+    {
+        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
+    }
+
     /**
      * Build context array for dashboard appointment queries.
      *
@@ -79,45 +81,43 @@ class AppointmentDashboardContextService
     public function build(?string $role, ?int $userId, ?array $user): array
     {
         $context = [
-            'role' => $role ?? 'guest',
-            'user_id' => $userId,
+            'role'        => $role ?? 'guest',
+            'user_id'     => $userId,
             'provider_id' => null,
-            'staff_id' => null,
             'customer_id' => null,
-            'filter_by_provider' => false,
-            'filter_by_staff' => false,
-            'filter_by_customer' => false,
         ];
 
-        // Determine context based on role
         switch ($role) {
             case 'admin':
-                // Admin sees all appointments - no filtering
+                // Admin sees all appointments — no filter.
                 break;
-                
+
             case 'provider':
-                // Provider sees only their appointments
+                // Provider sees only their own appointments.
                 $context['provider_id'] = $userId;
-                $context['filter_by_provider'] = true;
                 break;
-                
+
             case 'staff':
-                // Staff sees appointments for their assigned providers
-                $context['staff_id'] = $userId;
-                $context['filter_by_staff'] = true;
+                // Staff sees appointments only for their actively-assigned providers.
+                // applyContextScope() reads 'provider_id' and handles arrays via whereIn.
+                // [0] when unassigned forces no results instead of showing everything.
+                if ($userId) {
+                    $assigned = $this->providerStaffModel->getProvidersForStaff($userId, 'active');
+                    $context['provider_id'] = !empty($assigned)
+                        ? array_map('intval', array_column($assigned, 'id'))
+                        : [0];
+                } else {
+                    $context['provider_id'] = [0];
+                }
                 break;
-                
+
             case 'customer':
-                // Future phase: customer dashboard context is not active yet.
-                // Scope to no results until customer role is fully implemented.
+                // Customer dashboard not yet implemented — scope to nothing.
                 $context['customer_id'] = 0;
-                $context['filter_by_customer'] = true;
                 break;
-                
+
             default:
-                // Future phase: guest/unknown role dashboard context is not active yet.
-                // Scope to no results until role-specific access is implemented.
-                $context['filter_by_customer'] = true;
+                // Unknown/guest — scope to nothing.
                 $context['customer_id'] = 0;
                 break;
         }

@@ -49,6 +49,7 @@
         <const name="PUBLICPATH" value="./public/"/>
 
         <env name="CI_ENVIRONMENT" value="testing"/>
+        <env name="logger.threshold" value="3"/>
         <env name="database.tests.hostname" value="127.0.0.1"/>
         <env name="database.tests.database" value="webschedulr_test"/>
         <env name="database.tests.username" value="root"/>

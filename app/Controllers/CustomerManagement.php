@@ -61,6 +61,7 @@
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
+use App\Models\ProviderStaffModel;
 use App\Services\BookingSettingsService;
 use App\Services\CustomerAppointmentService;
 
@@ -69,16 +70,19 @@ class CustomerManagement extends BaseController
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
+    protected ProviderStaffModel $providerStaffModel;
 
     public function __construct(
         ?CustomerModel $customers = null,
         ?BookingSettingsService $bookingSettings = null,
         ?CustomerAppointmentService $appointmentService = null,
+        ?ProviderStaffModel $providerStaffModel = null,
     )
     {
         $this->customers = $customers ?? new CustomerModel();
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
+        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
     }
 
     /**
@@ -91,16 +95,39 @@ class CustomerManagement extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        // Basic listing; later we can scope by provider if schema supports assignment
+        $currentRole = current_user_role();
         $q = trim((string) $this->request->getGet('q'));
-        if ($q !== '') {
-            $customers = $this->customers->search(['q' => $q, 'limit' => 200]);
-        } else {
-            $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
+
+        // Staff see only customers who have appointments with their assigned providers.
+        $staffCustomerIds = null;
+        if ($currentRole === 'staff') {
+            $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
         }
 
-        // Get total customer count
-        $totalCustomers = $this->customers->countAllResults();
+        if ($q !== '') {
+            $customers = $this->customers->search(['q' => $q, 'limit' => 200, 'customer_ids' => $staffCustomerIds]);
+        } else {
+            $builder = $this->customers->orderBy('created_at', 'DESC');
+            if ($staffCustomerIds !== null) {
+                if (empty($staffCustomerIds)) {
+                    $builder->where('id', 0); // No results — unassigned staff.
+                } else {
+                    $builder->whereIn('id', $staffCustomerIds);
+                }
+            }
+            $customers = $builder->findAll(200);
+        }
+
+        // Total count respects the same scope.
+        $countBuilder = $this->customers->builder();
+        if ($staffCustomerIds !== null) {
+            if (empty($staffCustomerIds)) {
+                $countBuilder->where('id', 0);
+            } else {
+                $countBuilder->whereIn('id', $staffCustomerIds);
+            }
+        }
+        $totalCustomers = (int) $countBuilder->countAllResults();
 
         $data = [
             'title' => 'Customer Management - WebScheduler',
@@ -111,6 +138,32 @@ class CustomerManagement extends BaseController
         ];
 
         return view('customer-management/index', $data);
+    }
+
+    /**
+     * Resolve the set of customer IDs a staff member may view.
+     * Returns the distinct customer IDs from appointments under their assigned providers.
+     * Returns an empty array (not null) when the staff member has no active assignments.
+     */
+    private function resolveStaffCustomerIds(int $staffUserId): array
+    {
+        $assigned = $this->providerStaffModel->getProvidersForStaff($staffUserId, 'active');
+        if (empty($assigned)) {
+            return [];
+        }
+
+        $providerIds = array_map('intval', array_column($assigned, 'id'));
+
+        $db = \Config\Database::connect();
+        $rows = $db->table('xs_appointments')
+            ->distinct()
+            ->select('customer_id')
+            ->whereIn('provider_id', $providerIds)
+            ->where('customer_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        return array_map('intval', array_column($rows, 'customer_id'));
     }
 
     /**
@@ -412,12 +465,30 @@ class CustomerManagement extends BaseController
         }
 
         $q = trim((string) $this->request->getGet('q'));
+        $currentRole = current_user_role();
+
+        $staffCustomerIds = null;
+        if ($currentRole === 'staff') {
+            $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
+        }
         
         try {
             if ($q !== '') {
-                $customers = $this->customers->search(['q' => $q, 'limit' => 200]);
+                $customers = $this->customers->search([
+                    'q' => $q,
+                    'limit' => 200,
+                    'customer_ids' => $staffCustomerIds,
+                ]);
             } else {
-                $customers = $this->customers->orderBy('created_at', 'DESC')->findAll(200);
+                $builder = $this->customers->orderBy('created_at', 'DESC');
+                if ($staffCustomerIds !== null) {
+                    if (empty($staffCustomerIds)) {
+                        $builder->where('id', 0); // No results for unassigned staff.
+                    } else {
+                        $builder->whereIn('id', $staffCustomerIds);
+                    }
+                }
+                $customers = $builder->findAll(200);
             }
 
             return $this->response->setJSON([

@@ -183,11 +183,12 @@ class UserDeletionService
             }
 
             $appointmentsTable = $db->prefixTable('appointments');
+            $appointmentStartColumn = $this->resolveAppointmentStartColumn();
             $nowUtc = gmdate('Y-m-d H:i:s');
             $impact['appointmentsTotal'] = (int) $db->table($appointmentsTable)->where('provider_id', $userId)->countAllResults();
             $impact['appointmentsUpcoming'] = (int) $db->table($appointmentsTable)
                 ->where('provider_id', $userId)
-                ->where('start_at >=', $nowUtc)
+                ->where($appointmentStartColumn . ' >=', $nowUtc)
                 ->countAllResults();
             $impact['appointmentsPast'] = max(0, $impact['appointmentsTotal'] - $impact['appointmentsUpcoming']);
 
@@ -217,9 +218,10 @@ class UserDeletionService
                 return $row['name'] ?? null;
             }, $assignments)));
         } elseif ($role === 'customer') {
+            $appointmentStartColumn = $this->resolveAppointmentStartColumn();
             $impact['upcomingCustomerAppointments'] = (int) $db->table($db->prefixTable('appointments'))
                 ->where('customer_id', $userId)
-                ->where('start_at >=', gmdate('Y-m-d H:i:s'))
+                ->where($appointmentStartColumn . ' >=', gmdate('Y-m-d H:i:s'))
                 ->countAllResults();
         }
 
@@ -244,10 +246,11 @@ class UserDeletionService
     {
         $appointmentModel = new AppointmentModel();
         $nowUtc = gmdate('Y-m-d H:i:s');
+        $appointmentStartColumn = $this->resolveAppointmentStartColumn();
 
         $appointments = $appointmentModel
             ->where('provider_id', $providerId)
-            ->where('start_at >=', $nowUtc)
+            ->where($appointmentStartColumn . ' >=', $nowUtc)
             ->whereNotIn('status', ['cancelled', 'completed', 'no-show'])
             ->findAll();
 
@@ -310,6 +313,26 @@ class UserDeletionService
         }
 
         return $db->fieldExists($column, $db->prefixTable('users')) || $db->fieldExists($column, 'users');
+    }
+
+    private function resolveAppointmentStartColumn(): string
+    {
+        if ($this->hasAppointmentsColumn('start_at')) {
+            return 'start_at';
+        }
+
+        return 'start_time';
+    }
+
+    private function hasAppointmentsColumn(string $column): bool
+    {
+        $db = $this->userModel->db;
+
+        if (!method_exists($db, 'fieldExists')) {
+            return true;
+        }
+
+        return $db->fieldExists($column, $db->prefixTable('appointments')) || $db->fieldExists($column, 'appointments');
     }
 
     private function tableExists(string $table): bool

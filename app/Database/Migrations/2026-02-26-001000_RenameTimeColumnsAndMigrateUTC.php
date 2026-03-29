@@ -40,39 +40,56 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
             return;
         }
 
+        $hasStartTime = $this->columnExists($table, 'start_time');
+        $hasEndTime = $this->columnExists($table, 'end_time');
+        $hasStartAt = $this->columnExists($table, 'start_at');
+        $hasEndAt = $this->columnExists($table, 'end_at');
+
+        // Only perform destructive rename when legacy columns still exist.
+        $didRenameLegacyColumns = false;
+
         // -----------------------------------------------------------------
         // 1. Rename columns: start_time → start_at, end_time → end_at
         // -----------------------------------------------------------------
-        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_time start_at DATETIME NOT NULL");
-        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_time   end_at   DATETIME NOT NULL");
+        if ($hasStartTime && $hasEndTime && !$hasStartAt && !$hasEndAt) {
+            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_time start_at DATETIME NOT NULL");
+            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_time   end_at   DATETIME NOT NULL");
+            $didRenameLegacyColumns = true;
+        }
 
         // -----------------------------------------------------------------
         // 2. Shift existing data from Africa/Johannesburg → UTC
         //    SAST is always UTC+2 (no DST), so subtract 2 hours.
         // -----------------------------------------------------------------
-        $hours = self::OFFSET_HOURS;
-        $this->db->query("UPDATE {$full} SET start_at = DATE_SUB(start_at, INTERVAL {$hours} HOUR)");
-        $this->db->query("UPDATE {$full} SET end_at   = DATE_SUB(end_at,   INTERVAL {$hours} HOUR)");
+        if ($didRenameLegacyColumns) {
+            $hours = self::OFFSET_HOURS;
+            $this->db->query("UPDATE {$full} SET start_at = DATE_SUB(start_at, INTERVAL {$hours} HOUR)");
+            $this->db->query("UPDATE {$full} SET end_at   = DATE_SUB(end_at,   INTERVAL {$hours} HOUR)");
+        }
 
         // -----------------------------------------------------------------
         // 3. Add stored_timezone column
         // -----------------------------------------------------------------
-        $fields = $this->sanitiseFields([
-            'stored_timezone' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 40,
-                'null'       => false,
-                'default'    => 'UTC',
-                'after'      => 'end_at',
-            ],
-        ]);
+        if (! $this->columnExists($table, 'stored_timezone')) {
+            $fields = $this->sanitiseFields([
+                'stored_timezone' => [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 40,
+                    'null'       => false,
+                    'default'    => 'UTC',
+                    'after'      => 'end_at',
+                ],
+            ]);
 
-        $this->forge->addColumn($table, $fields);
+            $this->forge->addColumn($table, $fields);
+        }
 
         // -----------------------------------------------------------------
         // 4. Ensure the additional composite index exists with renamed columns
         // -----------------------------------------------------------------
-        $this->createIndexIfMissing($table, 'idx_appts_start_end',      ['start_at',    'end_at']);
+        if ($this->columnExists($table, 'start_at') && $this->columnExists($table, 'end_at')) {
+            $this->createIndexIfMissing($table, 'idx_appts_start_end', ['start_at', 'end_at']);
+        }
 
         log_message('info', "[Migration] Renamed start_time→start_at, end_time→end_at; data shifted to UTC.");
     }
@@ -91,16 +108,25 @@ class RenameTimeColumnsAndMigrateUTC extends MigrationBase
         $this->dropIndexIfExists($table, 'idx_appts_start_end');
 
         // Drop stored_timezone column
-        if ($this->db->fieldExists('stored_timezone', $table)) {
+        if ($this->columnExists($table, 'stored_timezone')) {
             $this->forge->dropColumn($table, 'stored_timezone');
         }
 
-        // Rename columns back
-        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_at start_time DATETIME NOT NULL");
-        $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_at   end_time   DATETIME NOT NULL");
+        // Rename columns back only when they are still in UTC-column form.
+        if ($this->columnExists($table, 'start_at') && $this->columnExists($table, 'end_at')
+            && ! $this->columnExists($table, 'start_time') && ! $this->columnExists($table, 'end_time')) {
+            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN start_at start_time DATETIME NOT NULL");
+            $this->db->query("ALTER TABLE {$full} CHANGE COLUMN end_at   end_time   DATETIME NOT NULL");
+        }
 
         // NOTE: Data is NOT shifted back to local time — this is a dev-only rollback.
 
         log_message('info', "[Migration] Reverted start_at→start_time, end_at→end_time.");
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        $fullTable = $this->db->prefixTable($table);
+        return $this->db->query("SHOW COLUMNS FROM `{$fullTable}` LIKE ?", [$column])->getFirstRow() !== null;
     }
 }

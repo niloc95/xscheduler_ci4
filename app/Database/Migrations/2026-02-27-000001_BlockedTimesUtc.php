@@ -63,57 +63,89 @@ class BlockedTimesUtc extends MigrationBase
         $bt     = $prefix . 'blocked_times';
         $appts  = $prefix . 'appointments';
 
+        if (! $this->db->tableExists('blocked_times')) {
+            log_message('warning', '[Migration BlockedTimesUtc] blocked_times table missing; skipping.');
+            return;
+        }
+
+        $hasStartTime = $this->columnExists('blocked_times', 'start_time');
+        $hasEndTime = $this->columnExists('blocked_times', 'end_time');
+        $hasStartAt = $this->columnExists('blocked_times', 'start_at');
+        $hasEndAt = $this->columnExists('blocked_times', 'end_at');
+
         // ── 1. Rename columns ─────────────────────────────────────────
-        $this->db->query("ALTER TABLE `{$bt}`
-            CHANGE `start_time` `start_at` DATETIME NOT NULL,
-            CHANGE `end_time`   `end_at`   DATETIME NOT NULL");
+        $didRenameLegacyColumns = false;
+        if ($hasStartTime && $hasEndTime && ! $hasStartAt && ! $hasEndAt) {
+            $this->db->query("ALTER TABLE `{$bt}`
+                CHANGE `start_time` `start_at` DATETIME NOT NULL,
+                CHANGE `end_time`   `end_at`   DATETIME NOT NULL");
+            $didRenameLegacyColumns = true;
+        }
 
         // ── 2. Convert existing data from local TZ → UTC ──────────────
         // CONVERT_TZ requires the mysql.time_zone_name tables to be loaded.
         // If not available, fall back to a fixed-offset subtraction.
-        $testConvert = $this->db->query(
-            "SELECT CONVERT_TZ('2000-01-01 00:00:00', '" . self::LEGACY_TZ . "', 'UTC') AS r"
-        )->getRow();
+        if ($didRenameLegacyColumns) {
+            $testConvert = $this->db->query(
+                "SELECT CONVERT_TZ('2000-01-01 00:00:00', '" . self::LEGACY_TZ . "', 'UTC') AS r"
+            )->getRow();
 
-        if ($testConvert && $testConvert->r !== null) {
-            // Named TZ tables available — use the proper conversion.
-            $this->db->query("UPDATE `{$bt}` SET
-                `start_at` = CONVERT_TZ(`start_at`, '" . self::LEGACY_TZ . "', 'UTC'),
-                `end_at`   = CONVERT_TZ(`end_at`,   '" . self::LEGACY_TZ . "', 'UTC')");
-        } else {
-            // Fallback: subtract fixed UTC+2 offset (safe for Africa/Johannesburg
-            // which has never observed DST since 1943).
-            $this->db->query("UPDATE `{$bt}` SET
-                `start_at` = DATE_SUB(`start_at`, INTERVAL 2 HOUR),
-                `end_at`   = DATE_SUB(`end_at`,   INTERVAL 2 HOUR)");
+            if ($testConvert && $testConvert->r !== null) {
+                // Named TZ tables available — use the proper conversion.
+                $this->db->query("UPDATE `{$bt}` SET
+                    `start_at` = CONVERT_TZ(`start_at`, '" . self::LEGACY_TZ . "', 'UTC'),
+                    `end_at`   = CONVERT_TZ(`end_at`,   '" . self::LEGACY_TZ . "', 'UTC')");
+            } else {
+                // Fallback: subtract fixed UTC+2 offset (safe for Africa/Johannesburg
+                // which has never observed DST since 1943).
+                $this->db->query("UPDATE `{$bt}` SET
+                    `start_at` = DATE_SUB(`start_at`, INTERVAL 2 HOUR),
+                    `end_at`   = DATE_SUB(`end_at`,   INTERVAL 2 HOUR)");
+            }
         }
 
         // ── 3. Rename the old start_time index on blocked_times ───────
         // The original migration added KEY start_time (start_time).
         // After the column rename, MySQL keeps the index but it references
         // the new column name; we rename it for clarity.
-        try {
-            $this->db->query("ALTER TABLE `{$bt}`
-                RENAME INDEX `start_time` TO `idx_blocked_start_at`");
-        } catch (\Throwable $e) {
-            // Index may already have been renamed or may not exist; skip.
-            log_message('warning', '[Migration BlockedTimesUtc] Could not rename blocked_times index: ' . $e->getMessage());
+        if ($this->hasIndex('blocked_times', 'start_time')
+            && ! $this->hasIndex('blocked_times', 'idx_blocked_start_at')) {
+            try {
+                $this->db->query("ALTER TABLE `{$bt}`
+                    RENAME INDEX `start_time` TO `idx_blocked_start_at`");
+            } catch (\Throwable $e) {
+                // Index may already have been renamed or may not exist; skip.
+                log_message('warning', '[Migration BlockedTimesUtc] Could not rename blocked_times index: ' . $e->getMessage());
+            }
         }
 
         // ── 4. Drop redundant indexes on xs_appointments ─────────────
-        foreach (self::REDUNDANT_INDEXES as [$name, $_]) {
-            try {
-                $this->db->query("ALTER TABLE `{$appts}` DROP INDEX `{$name}`");
-            } catch (\Throwable $e) {
-                // Index may not exist in some environments; log and continue.
-                log_message('warning', "[Migration BlockedTimesUtc] Could not drop index {$name}: " . $e->getMessage());
+        if ($this->db->tableExists('appointments')) {
+            foreach (self::REDUNDANT_INDEXES as [$name, $_]) {
+                if (! $this->hasIndex('appointments', $name)) {
+                    continue;
+                }
+
+                if ($this->indexSupportsForeignKey('appointments', $name)) {
+                    // Keep indexes that currently back an FK to avoid migration churn in mixed schemas.
+                    continue;
+                }
+
+                try {
+                    $this->db->query("ALTER TABLE `{$appts}` DROP INDEX `{$name}`");
+                } catch (\Throwable $e) {
+                    // Index may not exist in some environments; log and continue.
+                    log_message('warning', "[Migration BlockedTimesUtc] Could not drop index {$name}: " . $e->getMessage());
+                }
             }
         }
 
         // ── 5. Update timezone_storage setting to 'utc' ───────────────
-        $this->db->query("UPDATE `{$prefix}settings`
-            SET setting_value = 'utc', updated_at = NOW()
-            WHERE setting_key = 'general.timezone_storage'");
+        if ($this->db->tableExists('settings')) {
+            $this->db->query("UPDATE `{$prefix}settings`
+                SET setting_value = 'utc', updated_at = NOW()
+                WHERE setting_key = 'general.timezone_storage'");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -125,32 +157,100 @@ class BlockedTimesUtc extends MigrationBase
         $prefix = $this->db->getPrefix();
         $bt     = $prefix . 'blocked_times';
 
-        // Convert back UTC → local tz
-        $testConvert = $this->db->query(
-            "SELECT CONVERT_TZ('2000-01-01 00:00:00', 'UTC', '" . self::LEGACY_TZ . "') AS r"
-        )->getRow();
+        if (! $this->db->tableExists('blocked_times')) {
+            return;
+        }
 
-        if ($testConvert && $testConvert->r !== null) {
-            $this->db->query("UPDATE `{$bt}` SET
-                `start_at` = CONVERT_TZ(`start_at`, 'UTC', '" . self::LEGACY_TZ . "'),
-                `end_at`   = CONVERT_TZ(`end_at`,   'UTC', '" . self::LEGACY_TZ . "')");
-        } else {
-            $this->db->query("UPDATE `{$bt}` SET
-                `start_at` = DATE_ADD(`start_at`, INTERVAL 2 HOUR),
-                `end_at`   = DATE_ADD(`end_at`,   INTERVAL 2 HOUR)");
+        $hasStartAt = $this->columnExists('blocked_times', 'start_at');
+        $hasEndAt = $this->columnExists('blocked_times', 'end_at');
+        $hasStartTime = $this->columnExists('blocked_times', 'start_time');
+        $hasEndTime = $this->columnExists('blocked_times', 'end_time');
+
+        // Convert back UTC → local tz
+        if ($hasStartAt && $hasEndAt && ! $hasStartTime && ! $hasEndTime) {
+            $testConvert = $this->db->query(
+                "SELECT CONVERT_TZ('2000-01-01 00:00:00', 'UTC', '" . self::LEGACY_TZ . "') AS r"
+            )->getRow();
+
+            if ($testConvert && $testConvert->r !== null) {
+                $this->db->query("UPDATE `{$bt}` SET
+                    `start_at` = CONVERT_TZ(`start_at`, 'UTC', '" . self::LEGACY_TZ . "'),
+                    `end_at`   = CONVERT_TZ(`end_at`,   'UTC', '" . self::LEGACY_TZ . "')");
+            } else {
+                $this->db->query("UPDATE `{$bt}` SET
+                    `start_at` = DATE_ADD(`start_at`, INTERVAL 2 HOUR),
+                    `end_at`   = DATE_ADD(`end_at`,   INTERVAL 2 HOUR)");
+            }
         }
 
         // Rename columns back
-        $this->db->query("ALTER TABLE `{$bt}`
-            CHANGE `start_at` `start_time` DATETIME NOT NULL,
-            CHANGE `end_at`   `end_time`   DATETIME NOT NULL");
+        if ($hasStartAt && $hasEndAt && ! $hasStartTime && ! $hasEndTime) {
+            $this->db->query("ALTER TABLE `{$bt}`
+                CHANGE `start_at` `start_time` DATETIME NOT NULL,
+                CHANGE `end_at`   `end_time`   DATETIME NOT NULL");
+        }
 
         // Restore timezone_storage setting
-        $this->db->query("UPDATE `{$prefix}settings`
-            SET setting_value = 'local', updated_at = NOW()
-            WHERE setting_key = 'general.timezone_storage'");
+        if ($this->db->tableExists('settings')) {
+            $this->db->query("UPDATE `{$prefix}settings`
+                SET setting_value = 'local', updated_at = NOW()
+                WHERE setting_key = 'general.timezone_storage'");
+        }
 
         // Note: redundant indexes on xs_appointments are NOT restored as they
         // were genuinely unused/duplicated.
+    }
+
+    private function columnExists(string $table, string $column): bool
+    {
+        $fullTable = $this->db->prefixTable($table);
+        return $this->db->query("SHOW COLUMNS FROM `{$fullTable}` LIKE ?", [$column])->getFirstRow() !== null;
+    }
+
+    private function hasIndex(string $table, string $index): bool
+    {
+        $fullTable = $this->db->prefixTable($table);
+        return $this->db->query(
+            "SHOW INDEX FROM `{$fullTable}` WHERE Key_name = ?",
+            [$index]
+        )->getFirstRow() !== null;
+    }
+
+    private function indexSupportsForeignKey(string $table, string $index): bool
+    {
+        $fullTable = $this->db->prefixTable($table);
+        $indexRows = $this->db->query(
+            "SHOW INDEX FROM `{$fullTable}` WHERE Key_name = ?",
+            [$index]
+        )->getResultArray();
+
+        if (empty($indexRows)) {
+            return false;
+        }
+
+        $columns = array_values(array_unique(array_map(
+            static fn (array $row): string => (string) ($row['Column_name'] ?? ''),
+            $indexRows
+        )));
+        $columns = array_values(array_filter($columns));
+
+        if (empty($columns)) {
+            return false;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($columns), '?'));
+        $params = array_merge([$fullTable], $columns);
+
+        $row = $this->db->query(
+            "SELECT COUNT(*) AS c
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND REFERENCED_TABLE_NAME IS NOT NULL
+               AND COLUMN_NAME IN ({$placeholders})",
+            $params
+        )->getFirstRow();
+
+        return (int) ($row->c ?? 0) > 0;
     }
 }

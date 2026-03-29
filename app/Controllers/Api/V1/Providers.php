@@ -57,6 +57,7 @@
 namespace App\Controllers\Api\V1;
 
 use App\Controllers\Api\BaseApiController;
+use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Models\ProviderScheduleModel;
@@ -73,20 +74,44 @@ class Providers extends BaseApiController
         // Check if includeColors parameter is set
         $includeColors = $this->request->getGet('includeColors') === 'true';
 
-        $model = new UserModel();
-        // Assuming providers identified by role = 'provider'
-        $builder = $model->where('role', 'provider')->orderBy($sortField, strtoupper($sortDir));
-        $rows = $builder->findAll($length, $offset);
-        $total = $model->where('role', 'provider')->countAllResults();
+        $currentRole = current_user_role();
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
 
-    $items = array_map(function ($p) use ($includeColors) {
+        $scopedProviderIds = null;
+        if ($currentRole === 'provider') {
+            $scopedProviderIds = $currentUserId > 0 ? [$currentUserId] : [0];
+        } elseif ($currentRole === 'staff') {
+            $providerStaffModel = new ProviderStaffModel();
+            $assignedProviders = $providerStaffModel->getProvidersForStaff($currentUserId, 'active');
+            $scopedProviderIds = !empty($assignedProviders)
+                ? array_map('intval', array_column($assignedProviders, 'id'))
+                : [0];
+        }
+
+        $countModel = new UserModel();
+        $countBuilder = $countModel->where('role', 'provider');
+        if ($scopedProviderIds !== null) {
+            $countBuilder->whereIn('id', $scopedProviderIds);
+        }
+        $total = $countBuilder->countAllResults();
+
+        $rowsModel = new UserModel();
+        $rowsBuilder = $rowsModel
+            ->where('role', 'provider')
+            ->orderBy($sortField, strtoupper($sortDir));
+        if ($scopedProviderIds !== null) {
+            $rowsBuilder->whereIn('id', $scopedProviderIds);
+        }
+        $rows = $rowsBuilder->findAll($length, $offset);
+
+        $items = array_map(function ($p) use ($includeColors) {
             $item = [
                 'id' => (int)$p['id'],
                 'name' => $p['name'] ?? ($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''),
                 'email' => $p['email'] ?? null,
                 'phone' => $p['phone'] ?? null,
                 'active' => isset($p['active']) ? (bool)$p['active'] : true,
-        'profile_image' => $this->providerImageUrl($p),
+                'profile_image' => $this->providerImageUrl($p),
             ];
             
             // Include color if requested

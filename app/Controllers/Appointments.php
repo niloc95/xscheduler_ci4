@@ -130,14 +130,26 @@ class Appointments extends BaseController
         if ($currentRole === 'provider') {
             $context['provider_id'] = $currentUserId;
         } elseif ($currentRole === 'staff') {
-            // Staff sees appointments for providers they're assigned to
+            // Staff sees appointments only for their assigned providers.
+            // getProvidersForStaff() returns rows with key 'id' (from SELECT provider.id).
+            // applyContextScope() reads 'provider_id' (singular) and handles arrays via whereIn.
+            // Force [0] when unassigned so the query returns nothing instead of everything.
             $providerStaffModel = new \App\Models\ProviderStaffModel();
             $assignedProviders = $providerStaffModel->getProvidersForStaff($currentUserId);
-            if (!empty($assignedProviders)) {
-                $context['provider_ids'] = array_column($assignedProviders, 'provider_id');
-            }
+            $context['provider_id'] = !empty($assignedProviders)
+                ? array_column($assignedProviders, 'id')
+                : [0];
         }
         // Admin sees all appointments (no context filter)
+
+        $staffScopedProviderIds = null;
+        if ($currentRole === 'provider') {
+            $staffScopedProviderIds = [(int) $currentUserId];
+        } elseif ($currentRole === 'staff') {
+            $staffScopedProviderIds = is_array($context['provider_id'] ?? null)
+                ? array_map('intval', $context['provider_id'])
+                : [0];
+        }
 
         $db = \Config\Database::connect();
         $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
@@ -153,6 +165,10 @@ class Appointments extends BaseController
             ->where('color !=', '')
             ->orderBy('name', 'ASC');
 
+        if ($staffScopedProviderIds !== null) {
+            $activeProvidersBuilder->whereIn('id', $staffScopedProviderIds);
+        }
+
         if ($usersHasIsActive) {
             $activeProvidersBuilder->where('is_active', true);
         } elseif ($usersHasStatus) {
@@ -165,6 +181,10 @@ class Appointments extends BaseController
         $allProvidersBuilder = $this->userModel
             ->where('role', 'provider')
             ->orderBy('name', 'ASC');
+
+        if ($staffScopedProviderIds !== null) {
+            $allProvidersBuilder->whereIn('id', $staffScopedProviderIds);
+        }
 
         if ($usersHasIsActive) {
             $allProvidersBuilder->where('is_active', true);
@@ -250,7 +270,7 @@ class Appointments extends BaseController
             return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        return view('appointments/form', $this->appointmentFormContextService->buildCreateViewData((string) current_user_role()));
+        return view('appointments/form', $this->appointmentFormContextService->buildCreateViewData((string) current_user_role(), (int) session()->get('user_id')));
     }
 
     /**
@@ -339,7 +359,7 @@ class Appointments extends BaseController
             return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        return view('appointments/form', $this->appointmentFormContextService->buildEditViewData($appointmentHash, (string) current_user_role()));
+        return view('appointments/form', $this->appointmentFormContextService->buildEditViewData($appointmentHash, (string) current_user_role(), (int) session()->get('user_id')));
     }
 
     /**

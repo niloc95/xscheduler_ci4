@@ -727,6 +727,18 @@ Current operational roles include:
 - Staff access is narrower and must be checked at query and service level.
 - Customer-facing public access uses hashes/tokens rather than full staff authentication.
 
+### Staff Scope Contract
+- Staff are limited to data belonging to their actively-assigned providers via `xs_provider_staff_assignments` (status = `active`).
+- The **canonical source** for a staff member's allowed provider IDs is `ProviderStaffModel::getProvidersForStaff($userId, 'active')`. This returns rows where the key for the provider's numeric ID is **`id`** (not `provider_id`).
+- Extract provider IDs with `array_column($result, 'id')`, not `array_column($result, 'provider_id')`.
+- Pass them to appointment query context as `$context['provider_id'] = $providerIds ?: [0]`. The `AppointmentModel::applyContextScope()` reads **`provider_id`** (singular key) and accepts both scalar and array values.
+- **Never** use `'provider_ids'` (plural), `'staff_id'`, or `'filter_by_staff'` as appointment context keys; those keys are not consumed by `applyContextScope`.
+- When staff have no active assignments, force `$context['provider_id'] = [0]` to guarantee no appointments are returned rather than silently returning all appointments.
+- The reference implementation for staff appointment scoping is `AppointmentQueryService::applyProviderScope()` — use it as a template for any new scope-enforcement code.
+- Customer Management for staff must be scoped to customers who have at least one appointment with their assigned providers. Derive the allowed customer IDs via `xs_appointments WHERE provider_id IN (assigned_ids)`, then apply a `whereIn('id', $customerIds)` to the customer query.
+- The provider dropdown on the appointment create/edit form must show **only assigned providers** for staff, not the full provider list.
+- `AuthorizationService::canManageAppointment()` returns `true` for staff because their data-layer scope already restricts what they can access; do not add a second redundant ownership check for staff.
+
 ---
 
 ## Notifications Rules
@@ -800,6 +812,7 @@ Current operational roles include:
 ### Schema-Drift Guardrails (Tech Debt)
 - Treat this as canonical for internal users: `xs_users` uses `status` (`active|inactive|suspended`) and does not guarantee an `is_active` column.
 - Do not write new `xs_users` query filters that assume `is_active` exists.
+- Do not implement provider-loading filters inline in controllers using raw `where('is_active', ...)` clauses; route through schema-safe model/service methods (for example `UserModel::getProviders()`).
 - Treat this as canonical for appointment public access: `xs_appointments` is expected to include `hash`, `public_token`, and `public_token_expires_at` for public-safe lookup flows.
 - Before changing booking or public booking flows, verify runtime appointment schema with:
   - `php spark db:table xs_appointments`
@@ -809,6 +822,7 @@ Current operational roles include:
   - Fallback for mixed-schema compatibility: `fieldExists('is_active', 'xs_users')` check, else filter by `status = active`.
 - Any change that introduces a new user filter must include a schema-safe path or an explicit migration that adds required columns.
 - If a query references a column that is not guaranteed by this contract, the PR must be treated as incomplete.
+- Seeder logic that queries `xs_users` must follow the same compatibility contract (`is_active` when available, fallback to `status = active`), not assume one schema shape.
 
 ### Database Isolation Guardrails (Tech Debt)
 - Development web runtime must resolve to the configured `database.default.*` connection.
@@ -836,6 +850,8 @@ Current operational roles include:
   - syntax/error verification,
   - and a note of residual risk if full sweep is deferred.
 - If an agent cannot verify a path (for example testing bootstrap failure), it must state the gap explicitly and avoid pretending coverage.
+- When implementing staff data scoping, always resolve provider IDs from `ProviderStaffModel::getProvidersForStaff()` and store them under the `'provider_id'` context key (singular, accepts array). Do not invent `'staff_id'` or `'filter_by_staff'` context keys — those are not consumed by `applyContextScope`.
+- A staff scope fix must cover ALL affected surfaces: list page, dashboard, create/edit form dropdowns, and any management list (e.g., customers). Fixing only one surface is incomplete.
 
 ### Regression Checklist for Schema-Sensitive Changes
 Use this quick gate before merge:
@@ -872,6 +888,9 @@ Use this quick gate before merge:
 | 15 | Assuming `xs_users.is_active` exists in new logic | Use canonical `status` or schema-safe fallback checks |
 | 16 | Running tests against `database.default.*` by accident | Isolate tests with `database.tests.*` and testing env only |
 | 17 | Claiming bug-fix completeness without runtime/schema verification | Verify DB target, schema, and adjacent flows before closure |
+| 18 | `array_column($staffProviders, 'provider_id')` on `getProvidersForStaff()` result | Use `array_column($result, 'id')` — the returned column is aliased `id` |
+| 19 | Passing staff provider IDs as `'provider_ids'` (plural) to appointment context | Use `'provider_id'` (singular) — `applyContextScope` reads that key only |
+| 20 | Staff sees all appointments when unassigned | Set `$context['provider_id'] = [0]` to force empty result instead of no filter |
 
 ---
 
@@ -950,5 +969,5 @@ If a change starts from presentation while the service or data contract is still
 
 ---
 
-Last updated: 2026-03-27
+Last updated: 2026-03-29
 Status: Active

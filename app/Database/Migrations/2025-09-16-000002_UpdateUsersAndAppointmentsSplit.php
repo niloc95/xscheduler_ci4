@@ -189,9 +189,22 @@ SQL;
             $db->query($rollbackSql);
         }
 
-        // Drop FK constraint (MySQL only)
+        // Drop FK constraint (MySQL only) using discovered constraint name.
         try {
-            $this->mysqlOnly("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `fk_appointments_customer`");
+            $fk = $db->query(
+                "SELECT CONSTRAINT_NAME AS name
+                 FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?
+                   AND COLUMN_NAME = 'customer_id'
+                   AND REFERENCED_TABLE_NAME IS NOT NULL
+                 LIMIT 1",
+                [$appointmentsTable]
+            )->getFirstRow();
+
+            if ($fk && ! empty($fk->name)) {
+                $this->mysqlOnly("ALTER TABLE `{$appointmentsTable}` DROP FOREIGN KEY `{$fk->name}`");
+            }
         } catch (\Throwable $e) {
             // Ignore missing foreign key
         }

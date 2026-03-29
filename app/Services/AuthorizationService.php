@@ -157,6 +157,12 @@ class AuthorizationService
             return $appointmentProviderId === $currentProviderId;
         }
 
+        // Staff can manage any appointment they can see.
+        // Scope (what they can see) is enforced at the data-query layer.
+        if ($userRole === self::ROLE_STAFF) {
+            return true;
+        }
+
         return false;
     }
 

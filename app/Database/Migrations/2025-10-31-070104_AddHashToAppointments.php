@@ -60,10 +60,12 @@ class AddHashToAppointments extends MigrationBase
         }
 
         // Remove unique index
-        try {
-            $this->forge->dropKey('appointments', 'idx_appointments_hash');
-        } catch (\Throwable $e) {
-            // Index may not exist
+        if ($this->hasIndex('appointments', 'idx_appointments_hash')) {
+            try {
+                $this->forge->dropKey('appointments', 'idx_appointments_hash');
+            } catch (\Throwable $e) {
+                // Index may not exist
+            }
         }
         
         // Remove hash column
@@ -74,5 +76,14 @@ class AddHashToAppointments extends MigrationBase
                 // Legacy refresh paths may already have removed the column.
             }
         }
+    }
+
+    private function hasIndex(string $table, string $index): bool
+    {
+        $fullTable = $this->db->prefixTable($table);
+        return $this->db->query(
+            "SHOW INDEX FROM `{$fullTable}` WHERE Key_name = ?",
+            [$index]
+        )->getFirstRow() !== null;
     }
 }

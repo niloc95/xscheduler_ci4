@@ -217,8 +217,8 @@ class Services extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
         }
 
-        // Load real providers (role = provider only)
-        $providers = $this->userModel->where('role', 'provider')->where('is_active', true)->orderBy('name','ASC')->findAll();
+        // Load providers via schema-safe model path.
+        $providers = $this->getActiveProviders();
         $categories = $this->categoryModel->orderBy('name','ASC')->findAll();
 
         $data = [
@@ -257,7 +257,7 @@ class Services extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Service not found');
         }
 
-        $providers = $this->userModel->where('role', 'provider')->where('is_active', true)->orderBy('name','ASC')->findAll();
+        $providers = $this->getActiveProviders();
         $categories = $this->categoryModel->orderBy('name','ASC')->findAll();
 
         // Get currently linked providers
@@ -277,6 +277,20 @@ class Services extends BaseController
         ];
 
         return view('services/edit', $data);
+    }
+
+    /**
+     * Return active providers using UserModel schema compatibility fallbacks.
+     */
+    private function getActiveProviders(): array
+    {
+        $providers = $this->userModel->getProviders();
+
+        usort($providers, static function (array $a, array $b): int {
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        return $providers;
     }
 
     /**
