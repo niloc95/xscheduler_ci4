@@ -25,6 +25,7 @@ class UserManagementMutationService
         ?UserModel $userModel = null,
         ?ProviderStaffModel $providerStaffModel = null,
         ?ProviderScheduleModel $providerScheduleModel = null,
+        ?BusinessHourModel $businessHourModel = null,
         ?AuditLogModel $auditModel = null,
         ?ScheduleValidationService $scheduleValidation = null,
         ?UserManagementContextService $contextService = null,
@@ -35,6 +36,7 @@ class UserManagementMutationService
         $this->userModel = $userModel ?? new UserModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
         $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
+        $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
         $this->auditModel = $auditModel ?? new AuditLogModel();
         $this->localization = $localization ?? new LocalizationSettingsService();
         $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($this->localization);
