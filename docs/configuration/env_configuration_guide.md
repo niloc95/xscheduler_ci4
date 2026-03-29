@@ -1,8 +1,8 @@
-# Environment Configuration Guide for WebSchedulr
+# Environment Configuration Guide for WebScheduler
 
 ## Overview
 
-This guide explains how to configure the WebSchedulr application for different environments (development, staging, production) using the `.env` file.
+This guide explains how to configure the WebScheduler application for different environments (development, staging, production) using the `.env` file.
 
 ## Quick Setup
 
@@ -95,10 +95,10 @@ email.SMTPPass = your-email-password
 email.SMTPPort = 587
 email.SMTPCrypto = tls
 email.fromEmail = noreply@yourdomain.com
-email.fromName = WebSchedulr
+email.fromName = WebScheduler
 ```
 
-## Custom WebSchedulr Settings
+## Custom WebScheduler Settings
 
 ### Application Settings
 ```env
@@ -198,4 +198,4 @@ features.apiAccess = false           # API access
 
 **Last Updated**: July 2025  
 **Version**: 1.0.0  
-**Author**: WebSchedulr Development Team
+**Author**: Nilesh Nagin Cara

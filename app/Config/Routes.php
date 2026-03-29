@@ -6,7 +6,7 @@
  * =============================================================================
  * 
  * @file        app/Config/Routes.php
- * @description Defines all HTTP routes for the WebSchedulr application.
+ * @description Defines all HTTP routes for the WebScheduler application.
  *              Maps URLs to controller methods and applies middleware filters.
  * 
  * ROUTE GROUPS:
@@ -35,8 +35,8 @@
  * @see         app/Config/Filters.php for filter definitions
  * @see         app/Controllers/ for route handler implementations
  * @package     App\Config
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -135,8 +135,8 @@ $routes->group('analytics', ['filter' => 'role:admin,provider'], function($route
 // Notifications Routes (auth required)
 $routes->group('notifications', ['filter' => 'auth'], function($routes) {
     $routes->get('', 'Notifications::index');
-    $routes->post('mark-read/(:num)', 'Notifications::markAsRead/$1');
-    $routes->post('mark-all-read', 'Notifications::markAllAsRead');
+    $routes->get('mark-read/(:segment)', 'Notifications::markAsRead/$1');
+    $routes->get('mark-all-read', 'Notifications::markAllAsRead');
     $routes->post('delete/(:num)', 'Notifications::delete/$1');
     $routes->get('settings', 'Notifications::settings');
     // Note: update-settings removed - settings page redirects to main settings

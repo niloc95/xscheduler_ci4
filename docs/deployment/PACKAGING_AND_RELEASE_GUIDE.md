@@ -246,7 +246,7 @@ When `release.js` pushes a tag (e.g., `v1.0.1`), GitHub Actions automatically:
    - Creates formatted release notes
 
 6. **Creates GitHub Release**
-   - Title: `WebSchedulr vX.X.X`
+   - Title: `WebScheduler vX.X.X`
    - Tag: `vX.X.X`
    - Attaches: `webschedulr-vX.X.X-deploy.zip`
    - Includes deployment docs
@@ -259,7 +259,7 @@ When `release.js` pushes a tag (e.g., `v1.0.1`), GitHub Actions automatically:
 
 You can also manually trigger release creation from GitHub:
 
-1. Go to **Actions** → **Release WebSchedulr**
+1. Go to **Actions** → **Release WebScheduler**
 2. Click **Run workflow**
 3. Enter tag name (e.g., `v1.0.2`)
 4. Click **Run workflow**

@@ -1,6 +1,6 @@
 <?= $this->extend('layouts/auth') ?>
 
-<?= $this->section('title') ?>Login - WebSchedulr<?= $this->endSection() ?>
+<?= $this->section('title') ?>Login - WebScheduler<?= $this->endSection() ?>
 <?= $this->section('auth_title') ?>Welcome back<?= $this->endSection() ?>
 <?= $this->section('auth_subtitle') ?>Sign in to your account<?= $this->endSection() ?>
 
@@ -96,7 +96,7 @@
         </p>
         <p class="text-xs text-gray-500 dark:text-gray-500 mt-4">
             <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
-                Engineered by WebSchedulr
+                Engineered by WebScheduler
             </a>
         </p>
     </div>

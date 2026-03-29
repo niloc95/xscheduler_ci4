@@ -28,7 +28,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
                     && in_array('notifications.default_language', $keys, true);
             }))
             ->willReturn([
-                'general.company_name' => 'WebSchedulr',
+                'general.company_name' => 'WebScheduler',
                 'notifications.default_language' => 'English',
             ]);
 
@@ -46,7 +46,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
 
         $this->assertSame('System Administrator', $result['user']['name']);
         $this->assertSame('admin', $result['user']['role']);
-        $this->assertSame('WebSchedulr', $result['settings']['general.company_name']);
+        $this->assertSame('WebScheduler', $result['settings']['general.company_name']);
         $this->assertTrue($result['notificationRules']['appointment_created']['email']);
     }
 
@@ -77,7 +77,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
         $service = new GeneralSettingsService($settingModel, new NullSettingFileModel());
 
         $result = $service->save([
-            'company_name' => 'WebSchedulr',
+            'company_name' => 'WebScheduler',
             'timezone' => 'UTC',
             'booking_first_names_display' => '1',
             'booking_email_required' => '1',
@@ -95,7 +95,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
 
         $this->assertContains([
             'key' => 'general.company_name',
-            'value' => 'WebSchedulr',
+            'value' => 'WebScheduler',
             'type' => 'string',
             'userId' => 77,
         ], $settingModel->upserts);

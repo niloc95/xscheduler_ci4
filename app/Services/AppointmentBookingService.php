@@ -63,13 +63,14 @@
  * 
  * @see         app/Controllers/Api/Appointments.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
 namespace App\Services;
 
+use App\Models\AuditLogModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
@@ -97,6 +98,7 @@ class AppointmentBookingService
     protected LocalizationSettingsService $localizationSettingsService;
     protected \App\Models\LocationModel $locationModel;
     protected AppointmentEventService $appointmentEventService;
+    protected AuditLogModel $auditLogModel;
 
     public function __construct(
         ?AppointmentModel $appointmentModel = null,
@@ -108,6 +110,7 @@ class AppointmentBookingService
         ?LocalizationSettingsService $localizationSettingsService = null,
         ?\App\Models\LocationModel $locationModel = null,
         ?AppointmentEventService $appointmentEventService = null,
+        ?AuditLogModel $auditLogModel = null,
     )
     {
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
@@ -119,6 +122,7 @@ class AppointmentBookingService
         $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
         $this->locationModel = $locationModel ?? new \App\Models\LocationModel();
         $this->appointmentEventService = $appointmentEventService ?? new AppointmentEventService();
+        $this->auditLogModel = $auditLogModel ?? new AuditLogModel();
     }
 
     /**
@@ -130,6 +134,20 @@ class AppointmentBookingService
      */
     public function createAppointment(array $data, string $timezone = 'UTC'): array
     {
+        helper('logging');
+
+        $channel = (string) ($data['booking_channel'] ?? 'internal');
+        $actorUserId = $this->resolveActorUserId();
+
+        log_structured('info', 'appointment.create_attempt', [
+            'booking_channel' => $channel,
+            'actor_user_id' => $actorUserId,
+            'provider_id' => isset($data['provider_id']) ? (int) $data['provider_id'] : null,
+            'service_id' => isset($data['service_id']) ? (int) $data['service_id'] : null,
+            'appointment_date' => (string) ($data['appointment_date'] ?? ''),
+            'appointment_time' => (string) ($data['appointment_time'] ?? ''),
+        ]);
+
         log_message('info', '[AppointmentBookingService::createAppointment] ========== START ==========');
         log_message('info', '[AppointmentBookingService::createAppointment] Booking data: ' . json_encode($data));
         
@@ -137,6 +155,12 @@ class AppointmentBookingService
             // Step 1: Validate service exists
             $service = $this->serviceModel->find($data['service_id']);
             if (!$service) {
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'invalid_service',
+                    'service_id' => isset($data['service_id']) ? (int) $data['service_id'] : null,
+                ]);
                 return $this->error('Invalid service selected');
             }
 
@@ -159,6 +183,12 @@ class AppointmentBookingService
                 isset($data['location_id']) ? (int) $data['location_id'] : null
             );
             if (!$locationContext['success']) {
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'invalid_location_context',
+                    'errors' => $locationContext['errors'] ?? [],
+                ]);
                 return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
             }
             $resolvedLocationId = $locationContext['location_id'];
@@ -171,6 +201,12 @@ class AppointmentBookingService
             
             if (!$businessHoursValidation['valid']) {
                 log_message('warning', '[AppointmentBookingService] Business hours validation failed: ' . $businessHoursValidation['reason']);
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'business_hours',
+                    'details' => $businessHoursValidation['reason'],
+                ]);
                 return $this->error($businessHoursValidation['reason']);
             }
 
@@ -187,12 +223,24 @@ class AppointmentBookingService
             if (!$availabilityCheck['available']) {
                 $reason = $availabilityCheck['reason'] ?? 'Time slot not available';
                 log_message('warning', '[AppointmentBookingService] Availability check failed: ' . $reason);
+                log_structured('warning', 'appointment.create_conflict', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => $reason,
+                    'conflicts' => $availabilityCheck['conflicts'] ?? [],
+                ]);
                 return $this->error($reason, ['conflicts' => $availabilityCheck['conflicts'] ?? []]);
             }
 
             // Step 6: Handle customer (find or create)
             $customerResult = $this->resolveCustomer($data);
             if (!$customerResult['success']) {
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'customer_resolution_failed',
+                    'errors' => $customerResult['errors'] ?? [],
+                ]);
                 return $customerResult;
             }
             $customerId = $customerResult['customerId'];
@@ -202,6 +250,12 @@ class AppointmentBookingService
                 ? AppointmentStatus::normalize((string) $data['status'])
                 : AppointmentStatus::PENDING;
             if ($status === null) {
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'invalid_status',
+                    'status' => (string) ($data['status'] ?? ''),
+                ]);
                 return $this->error('Invalid appointment status', ['errors' => ['status' => 'invalid']]);
             }
 
@@ -233,10 +287,44 @@ class AppointmentBookingService
             if (!$appointmentId) {
                 $errors = $this->appointmentModel->errors();
                 log_message('error', '[AppointmentBookingService] Insert failed. Errors: ' . json_encode($errors));
+                log_structured('error', 'appointment.create_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'errors' => $errors,
+                ]);
                 return $this->error('Failed to create appointment', ['validationErrors' => $errors]);
             }
 
             log_message('info', '[AppointmentBookingService] ✅ Appointment created! ID: ' . $appointmentId);
+
+            log_structured('info', 'appointment.created', [
+                'booking_channel' => $channel,
+                'actor_user_id' => $actorUserId,
+                'appointment_id' => (int) $appointmentId,
+                'customer_id' => (int) $customerId,
+                'provider_id' => (int) $data['provider_id'],
+                'service_id' => (int) $data['service_id'],
+                'location_id' => $resolvedLocationId,
+                'status' => $status,
+                'start_at' => (string) $appointmentData['start_at'],
+                'end_at' => (string) $appointmentData['end_at'],
+            ]);
+
+            $this->writeAppointmentAudit(
+                'appointment_created',
+                (int) $appointmentId,
+                null,
+                [
+                    'booking_channel' => $channel,
+                    'status' => $status,
+                    'provider_id' => (int) $data['provider_id'],
+                    'service_id' => (int) $data['service_id'],
+                    'customer_id' => (int) $customerId,
+                    'start_at' => (string) $appointmentData['start_at'],
+                    'end_at' => (string) $appointmentData['end_at'],
+                    'location_id' => $resolvedLocationId,
+                ]
+            );
 
             // Step 8: Queue notifications (email, SMS, WhatsApp)
             $this->queueNotifications($appointmentId, $data['notification_types'] ?? ['email', 'whatsapp']);
@@ -246,6 +334,12 @@ class AppointmentBookingService
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Exception: ' . $e->getMessage());
             log_message('error', '[AppointmentBookingService] Trace: ' . $e->getTraceAsString());
+            log_structured('error', 'appointment.create_exception', [
+                'booking_channel' => (string) ($data['booking_channel'] ?? 'internal'),
+                'actor_user_id' => $this->resolveActorUserId(),
+                'exception_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
             return $this->error('An error occurred while creating the appointment: ' . $e->getMessage());
         } finally {
             log_message('info', '[AppointmentBookingService::createAppointment] ========== END ==========');
@@ -268,12 +362,30 @@ class AppointmentBookingService
         ?array $notificationTypes = null
     ): array
     {
+        helper('logging');
+
+        $channel = (string) ($data['booking_channel'] ?? 'internal');
+        $actorUserId = $this->resolveActorUserId();
+
+        log_structured('info', 'appointment.update_attempt', [
+            'booking_channel' => $channel,
+            'actor_user_id' => $actorUserId,
+            'appointment_id' => $appointmentId,
+            'fields' => array_keys($data),
+        ]);
+
         log_message('info', '[AppointmentBookingService::updateAppointment] Updating appointment #' . $appointmentId);
         
         try {
             // Verify appointment exists
             $existing = $this->appointmentModel->find($appointmentId);
             if (!$existing) {
+                log_structured('warning', 'appointment.update_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'appointment_id' => $appointmentId,
+                    'reason' => 'not_found',
+                ]);
                 return $this->error('Appointment not found');
             }
 
@@ -281,6 +393,12 @@ class AppointmentBookingService
             if (isset($data['service_id'])) {
                 $service = $this->serviceModel->find($data['service_id']);
                 if (!$service) {
+                    log_structured('warning', 'appointment.update_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => 'invalid_service',
+                    ]);
                     return $this->error('Invalid service selected');
                 }
             } else {
@@ -303,6 +421,13 @@ class AppointmentBookingService
                 );
                 
                 if (!$businessHoursValidation['valid']) {
+                    log_structured('warning', 'appointment.update_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => 'business_hours',
+                        'details' => $businessHoursValidation['reason'],
+                    ]);
                     return $this->error($businessHoursValidation['reason']);
                 }
 
@@ -314,6 +439,13 @@ class AppointmentBookingService
                         : (!empty($existing['location_id']) ? (int) $existing['location_id'] : null)
                 );
                 if (!$locationContext['success']) {
+                    log_structured('warning', 'appointment.update_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => 'invalid_location_context',
+                        'errors' => $locationContext['errors'] ?? [],
+                    ]);
                     return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
                 }
                 $resolvedLocationId = $locationContext['location_id'];
@@ -329,6 +461,13 @@ class AppointmentBookingService
                 );
                 
                 if (!$availabilityCheck['available']) {
+                    log_structured('warning', 'appointment.update_conflict', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => $availabilityCheck['reason'] ?? 'Time slot not available',
+                        'conflicts' => $availabilityCheck['conflicts'] ?? [],
+                    ]);
                     return $this->error($availabilityCheck['reason'] ?? 'Time slot not available');
                 }
 
@@ -353,6 +492,13 @@ class AppointmentBookingService
                         : (!empty($existing['location_id']) ? (int) $existing['location_id'] : null)
                 );
                 if (!$locationContext['success']) {
+                    log_structured('warning', 'appointment.update_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => 'invalid_location_context',
+                        'errors' => $locationContext['errors'] ?? [],
+                    ]);
                     return $this->error($locationContext['message'], ['errors' => $locationContext['errors'] ?? []]);
                 }
                 $data['location_id'] = $locationContext['location_id'];
@@ -366,6 +512,12 @@ class AppointmentBookingService
             if (array_key_exists('status', $data)) {
                 $normalizedStatus = AppointmentStatus::normalize((string) $data['status']);
                 if ($normalizedStatus === null) {
+                    log_structured('warning', 'appointment.update_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'appointment_id' => $appointmentId,
+                        'reason' => 'invalid_status',
+                    ]);
                     return $this->error('Invalid appointment status', ['errors' => ['status' => 'invalid']]);
                 }
 
@@ -378,10 +530,39 @@ class AppointmentBookingService
             if (!$success) {
                 $errors = $this->appointmentModel->errors();
                 log_message('error', '[AppointmentBookingService] Update failed. Errors: ' . json_encode($errors));
+                log_structured('error', 'appointment.update_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'appointment_id' => $appointmentId,
+                    'errors' => $errors,
+                ]);
                 return $this->error('Failed to update appointment', ['validationErrors' => $errors]);
             }
 
             log_message('info', '[AppointmentBookingService] ✅ Appointment #' . $appointmentId . ' updated successfully');
+
+            $diff = $this->extractAppointmentDiff($existing, $data);
+
+            log_structured('info', 'appointment.updated', [
+                'booking_channel' => $channel,
+                'actor_user_id' => $actorUserId,
+                'appointment_id' => $appointmentId,
+                'changed_fields' => array_keys($diff['new']),
+            ]);
+
+            $auditAction = 'appointment_updated';
+            if (($data['status'] ?? null) === AppointmentStatus::CANCELLED) {
+                $auditAction = 'appointment_cancelled';
+            } elseif (isset($data['start_at']) || isset($data['appointment_date']) || isset($data['appointment_time'])) {
+                $auditAction = 'appointment_rescheduled';
+            }
+
+            $this->writeAppointmentAudit(
+                $auditAction,
+                $appointmentId,
+                $diff['old'],
+                array_merge($diff['new'], ['booking_channel' => $channel])
+            );
 
             // Queue notifications when status or time changed
             $statusChanged = array_key_exists('status', $data)
@@ -407,8 +588,77 @@ class AppointmentBookingService
 
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Update exception: ' . $e->getMessage());
+            log_structured('error', 'appointment.update_exception', [
+                'booking_channel' => (string) ($data['booking_channel'] ?? 'internal'),
+                'actor_user_id' => $this->resolveActorUserId(),
+                'appointment_id' => $appointmentId,
+                'exception_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
             return $this->error('An error occurred while updating the appointment: ' . $e->getMessage());
         }
+    }
+
+    private function resolveActorUserId(): ?int
+    {
+        try {
+            if (function_exists('session')) {
+                $userId = session()->get('user_id');
+                if (is_numeric($userId) && (int) $userId > 0) {
+                    return (int) $userId;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Session service may be unavailable in CLI contexts.
+        }
+
+        return null;
+    }
+
+    private function writeAppointmentAudit(string $action, int $appointmentId, ?array $oldValue, ?array $newValue): void
+    {
+        $actorUserId = $this->resolveActorUserId();
+        if ($actorUserId === null) {
+            return;
+        }
+
+        try {
+            $this->auditLogModel->log($action, $actorUserId, 'appointment', $appointmentId, $oldValue, $newValue);
+        } catch (\Throwable $e) {
+            helper('logging');
+            log_structured('error', 'appointment.audit_write_failed', [
+                'action' => $action,
+                'appointment_id' => $appointmentId,
+                'actor_user_id' => $actorUserId,
+                'exception_message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function extractAppointmentDiff(array $existing, array $updateData): array
+    {
+        $trackedFields = [
+            'provider_id',
+            'service_id',
+            'customer_id',
+            'start_at',
+            'end_at',
+            'status',
+            'notes',
+            'location_id',
+        ];
+
+        $old = [];
+        $new = [];
+
+        foreach ($trackedFields as $field) {
+            if (array_key_exists($field, $updateData)) {
+                $old[$field] = $existing[$field] ?? null;
+                $new[$field] = $updateData[$field];
+            }
+        }
+
+        return ['old' => $old, 'new' => $new];
     }
 
     /**

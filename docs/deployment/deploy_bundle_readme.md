@@ -1,4 +1,4 @@
-# WebSchedulr Production Deployment
+# WebScheduler Production Deployment
 
 ## 🚀 Quick Deploy Instructions:
 

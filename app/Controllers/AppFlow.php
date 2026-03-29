@@ -42,8 +42,8 @@
  * @see         app/Helpers/setup_helper.php for is_setup_completed()
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

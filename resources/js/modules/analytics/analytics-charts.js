@@ -5,9 +5,9 @@
  * 
  * @file        resources/js/modules/analytics/analytics-charts.js
  * @description Handles rendering of analytics charts using Chart.js
- * @package     WebSchedulr
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @package     WebScheduler
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

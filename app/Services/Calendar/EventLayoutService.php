@@ -56,8 +56,8 @@
  * Event C: column=0, columns_total=1, column_width_pct=100
  *
  * @package     App\Services\Calendar
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

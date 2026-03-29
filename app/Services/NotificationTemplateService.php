@@ -58,8 +58,8 @@
  * 
  * @see         app/Models/MessageTemplateModel.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -414,7 +414,7 @@ class NotificationTemplateService
             'service_duration' => '60',
             'provider_name' => 'Dr. Jane Wilson',
             'start_datetime' => date('Y-m-d 14:30:00', strtotime('+2 days')),
-            'business_name' => $this->legalContent['business_name'] ?? 'WebSchedulr',
+            'business_name' => $this->legalContent['business_name'] ?? 'WebScheduler',
         ];
 
         return $this->render($eventType, $channel, $sampleData);

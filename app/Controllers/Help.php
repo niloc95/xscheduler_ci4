@@ -45,8 +45,8 @@
  * @see         app/Views/help/ for view templates
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -467,7 +467,7 @@ class Help extends BaseController
                 'id' => 1,
                 'title' => 'How to Book Your First Appointment',
                 'category' => 'getting-started',
-                'content' => '<p>Welcome to WebSchedulr! Booking your first appointment is easy...</p>',
+                'content' => '<p>Welcome to WebScheduler! Booking your first appointment is easy...</p>',
                 'last_updated' => '2025-08-15',
                 'helpful_yes' => 95,
                 'helpful_no' => 5,
@@ -524,7 +524,7 @@ class Help extends BaseController
             [
                 'id' => 1,
                 'title' => 'How to Book Your First Appointment',
-                'excerpt' => 'Welcome to WebSchedulr! Booking your first appointment is easy...',
+                'excerpt' => 'Welcome to WebScheduler! Booking your first appointment is easy...',
                 'category' => 'Getting Started',
                 'relevance' => 95
             ]
@@ -601,7 +601,7 @@ class Help extends BaseController
                 'name' => 'Getting Started',
                 'tutorials' => [
                     [
-                        'title' => 'WebSchedulr Overview',
+                        'title' => 'WebScheduler Overview',
                         'duration' => '5:30',
                         'thumbnail' => '/assets/images/tutorial-1.jpg'
                     ]

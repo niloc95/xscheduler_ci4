@@ -24,9 +24,9 @@
  * 
  * // Returns: ['08:00', '08:15', '08:30', ..., '17:00']
  * 
- * @package     WebSchedulr
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @package     WebScheduler
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * @version     1.0.0
  * =============================================================================
  */

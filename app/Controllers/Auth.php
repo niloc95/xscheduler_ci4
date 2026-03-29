@@ -7,7 +7,7 @@
  * 
  * @file        app/Controllers/Auth.php
  * @description Handles all authentication operations including login, logout,
- *              password reset, and session management for WebSchedulr.
+ *              password reset, and session management for WebScheduler.
  * 
  * ROUTES HANDLED:
  * -----------------------------------------------------------------------------
@@ -49,15 +49,15 @@
  * @see         app/Views/auth/ for view templates
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
 namespace App\Controllers;
 
+use App\Models\AuditLogModel;
 use App\Models\UserModel;
-use CodeIgniter\Controller;
 use CodeIgniter\Email\Email;
 
 class Auth extends BaseController
@@ -65,10 +65,10 @@ class Auth extends BaseController
     protected $userModel;
     protected $email;
 
-    public function __construct()
+    public function __construct(?UserModel $userModel = null, ?Email $email = null)
     {
-        $this->userModel = new UserModel();
-        $this->email = \Config\Services::email();
+        $this->userModel = $userModel ?? new UserModel();
+        $this->email = $email ?? \Config\Services::email();
     }
 
     /**
@@ -93,7 +93,7 @@ class Auth extends BaseController
         }
 
         $data = [
-            'title' => 'Login - WebSchedulr',
+            'title' => 'Login - WebScheduler',
             'validation' => $this->validator
         ];
 
@@ -105,6 +105,10 @@ class Auth extends BaseController
      */
     public function attemptLogin()
     {
+        helper('logging');
+
+        $auditLogModel = new AuditLogModel();
+
         $rules = [
             'email' => 'required|valid_email',
             'password' => 'required|min_length[6]'
@@ -121,7 +125,88 @@ class Auth extends BaseController
         $user = $this->userModel->where('email', $email)->first();
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
+            log_structured('warning', 'auth.login_failed', [
+                'email' => strtolower((string) $email),
+                'reason' => 'invalid_credentials',
+                'status_code' => 401,
+                'ip_address' => $this->request->getIPAddress(),
+                'user_agent' => $this->request->getUserAgent()->getAgentString(),
+            ]);
+
+            if (is_array($user) && isset($user['id'])) {
+                try {
+                    $auditLogModel->log(
+                        'login_failed',
+                        (int) $user['id'],
+                        'user',
+                        (int) $user['id'],
+                        null,
+                        ['reason' => 'invalid_credentials']
+                    );
+                } catch (\Throwable $e) {
+                    log_structured('error', 'audit.login_failed_write_failed', [
+                        'error_message' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             session()->setFlashdata('error', 'Invalid email or password.');
+            return redirect()->back()->withInput();
+        }
+
+        if (($user['status'] ?? 'active') !== 'active') {
+            log_structured('warning', 'auth.login_failed', [
+                'user_id' => (int) $user['id'],
+                'email' => strtolower((string) $email),
+                'reason' => 'inactive_status',
+                'status_code' => 403,
+            ]);
+
+            try {
+                $auditLogModel->log(
+                    'login_failed',
+                    (int) $user['id'],
+                    'user',
+                    (int) $user['id'],
+                    null,
+                    ['reason' => 'inactive_status']
+                );
+            } catch (\Throwable $e) {
+                log_structured('error', 'audit.login_failed_write_failed', [
+                    'user_id' => (int) $user['id'],
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+
+            session()->setFlashdata('error', 'Your account is inactive. Please contact an administrator.');
+            return redirect()->back()->withInput();
+        }
+
+        if (array_key_exists('is_active', $user) && (int) $user['is_active'] !== 1) {
+            log_structured('warning', 'auth.login_failed', [
+                'user_id' => (int) $user['id'],
+                'email' => strtolower((string) $email),
+                'reason' => 'inactive_flag',
+                'status_code' => 403,
+            ]);
+
+            try {
+                $auditLogModel->log(
+                    'login_failed',
+                    (int) $user['id'],
+                    'user',
+                    (int) $user['id'],
+                    null,
+                    ['reason' => 'inactive_flag']
+                );
+            } catch (\Throwable $e) {
+                log_structured('error', 'audit.login_failed_write_failed', [
+                    'user_id' => (int) $user['id'],
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+
+            session()->setFlashdata('error', 'Your account is inactive. Please contact an administrator.');
             return redirect()->back()->withInput();
         }
 
@@ -140,6 +225,30 @@ class Auth extends BaseController
         session()->regenerate();  // Prevent session fixation attacks
         session()->setFlashdata('success', 'Welcome back, ' . $user['name'] . '!');
 
+        log_structured('info', 'auth.login_success', [
+            'user_id' => (int) $user['id'],
+            'role' => (string) ($user['role'] ?? ''),
+            'status_code' => 200,
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => $this->request->getUserAgent()->getAgentString(),
+        ]);
+
+        try {
+            $auditLogModel->log(
+                'user_login',
+                (int) $user['id'],
+                'user',
+                (int) $user['id'],
+                null,
+                ['result' => 'success']
+            );
+        } catch (\Throwable $e) {
+            log_structured('error', 'audit.user_login_write_failed', [
+                'user_id' => (int) $user['id'],
+                'error_message' => $e->getMessage(),
+            ]);
+        }
+
         // Redirect to intended URL or dashboard
         $redirectUrl = session()->get('redirect_url') ?: base_url('dashboard');
         session()->remove('redirect_url');
@@ -153,7 +262,7 @@ class Auth extends BaseController
     public function forgotPassword()
     {
         $data = [
-            'title' => 'Forgot Password - WebSchedulr',
+            'title' => 'Forgot Password - WebScheduler',
             'validation' => $this->validator
         ];
 
@@ -227,7 +336,7 @@ class Auth extends BaseController
         }
 
         $data = [
-            'title' => 'Reset Password - WebSchedulr',
+            'title' => 'Reset Password - WebScheduler',
             'token' => $token,
             'validation' => $this->validator
         ];
@@ -302,6 +411,39 @@ class Auth extends BaseController
      */
     public function logout()
     {
+        helper('logging');
+
+        $userId = (int) (session()->get('user_id') ?? 0);
+        $user = session()->get('user');
+        $role = is_array($user) ? (string) ($user['role'] ?? '') : '';
+
+        if ($userId > 0) {
+            log_structured('info', 'auth.logout', [
+                'user_id' => $userId,
+                'role' => $role,
+                'status_code' => 200,
+                'ip_address' => $this->request->getIPAddress(),
+                'user_agent' => $this->request->getUserAgent()->getAgentString(),
+            ]);
+
+            try {
+                $auditLogModel = new AuditLogModel();
+                $auditLogModel->log(
+                    'user_logout',
+                    $userId,
+                    'user',
+                    $userId,
+                    null,
+                    ['result' => 'success']
+                );
+            } catch (\Throwable $e) {
+                log_structured('error', 'audit.user_logout_write_failed', [
+                    'user_id' => $userId,
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+        }
+
         session()->destroy();
         session()->setFlashdata('success', 'You have been logged out successfully.');
         return redirect()->to(base_url('auth/login'));
@@ -313,8 +455,8 @@ class Auth extends BaseController
     private function sendResetEmail($email, $name, $resetLink)
     {
         $this->email->setTo($email);
-        $this->email->setFrom('noreply@webschedulr.com', 'WebSchedulr');
-        $this->email->setSubject('Password Reset Request - WebSchedulr');
+        $this->email->setFrom('noreply@webschedulr.com', 'WebScheduler');
+        $this->email->setSubject('Password Reset Request - WebScheduler');
 
         $message = view('auth/emails/password-reset', [
             'name' => $name,

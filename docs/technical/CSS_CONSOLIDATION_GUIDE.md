@@ -1,4 +1,4 @@
-# WebSchedulr CSS Consolidation & Organization
+# WebScheduler CSS Consolidation & Organization
 
 ## 📁 New Structure Overview
 
@@ -249,4 +249,4 @@ html.dark {
 }
 ```
 
-This consolidation provides a solid foundation for maintainable, scalable CSS architecture that will serve WebSchedulr well as it grows and evolves.
+This consolidation provides a solid foundation for maintainable, scalable CSS architecture that will serve WebScheduler well as it grows and evolves.

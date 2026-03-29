@@ -48,8 +48,8 @@
  * @see         app/Models/CategoryModel.php for categories
  * @package     App\Controllers\Api\V1
  * @extends     BaseApiController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

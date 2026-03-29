@@ -20,6 +20,15 @@ class GeneralSettingsService
         'image/gif',
     ];
     private const ALLOWED_LOGO_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'];
+    private const ALLOWED_ICON_MIMES = [
+        'image/png',
+        'image/x-png',
+        'image/x-icon',
+        'image/vnd.microsoft.icon',
+        'image/svg+xml',
+        'image/svg',
+    ];
+    private const ALLOWED_ICON_EXTENSIONS = ['png', 'ico', 'svg'];
 
     private SettingModel $settingModel;
     private SettingFileModel $settingFileModel;
@@ -48,6 +57,180 @@ class GeneralSettingsService
         return [
             'type' => 'success',
             'message' => 'Settings saved successfully.',
+        ];
+    }
+
+    public function uploadLogoForApi(?UploadedFile $file, ?int $userId): array
+    {
+        if (!$file) {
+            return ['status' => 'validation_error', 'message' => 'No logo file received.'];
+        }
+
+        if ($file->getError() === UPLOAD_ERR_NO_FILE) {
+            return ['status' => 'validation_error', 'message' => 'Please choose a logo file to upload.'];
+        }
+
+        if (!$file->isValid()) {
+            return ['status' => 'bad_request', 'message' => $file->getErrorString()];
+        }
+
+        if ($file->hasMoved()) {
+            return ['status' => 'bad_request', 'message' => 'Upload failed: file has already been moved.'];
+        }
+
+        if ((int) $file->getSize() > self::MAX_UPLOAD_BYTES) {
+            return ['status' => 'validation_error', 'message' => 'Logo upload too large. Maximum size is 2MB.'];
+        }
+
+        $clientMime = strtolower((string) $file->getClientMimeType());
+        $realMime = strtolower((string) $file->getMimeType());
+        $extension = strtolower($file->getExtension() ?: pathinfo($file->getName(), PATHINFO_EXTENSION));
+        $mimeAllowed = in_array($clientMime, self::ALLOWED_LOGO_MIMES, true) || in_array($realMime, self::ALLOWED_LOGO_MIMES, true);
+        $extensionAllowed = in_array($extension, self::ALLOWED_LOGO_EXTENSIONS, true);
+
+        if (!$mimeAllowed && !$extensionAllowed) {
+            return ['status' => 'validation_error', 'message' => 'Unsupported logo format. Use PNG, JPG, SVG, WebP, or GIF.'];
+        }
+
+        $targetDir = rtrim(FCPATH, '/') . '/assets/settings';
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
+        if (!is_dir($targetDir) || !is_writable($targetDir)) {
+            return ['status' => 'server_error', 'message' => 'Logo upload directory is not writable.'];
+        }
+
+        $existing = $this->settingModel->getByKeys(['general.company_logo']);
+        $previous = $existing['general.company_logo'] ?? null;
+        if ($previous) {
+            $previousPath = $this->resolveStoredAssetPath((string) $previous);
+            if ($previousPath && is_file($previousPath)) {
+                @unlink($previousPath);
+            }
+        }
+
+        try {
+            $safeName = 'logo_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        } catch (\Throwable $e) {
+            $safeName = 'logo_' . date('Ymd_His') . '_' . uniqid('', true) . '.' . $extension;
+        }
+
+        if (!$file->move($targetDir, $safeName)) {
+            return ['status' => 'server_error', 'message' => 'Unable to store uploaded logo.'];
+        }
+
+        $absolute = rtrim($targetDir, '/') . '/' . $safeName;
+        try {
+            if (!in_array($realMime, ['image/svg+xml', 'image/svg'], true)) {
+                [$width, $height] = @getimagesize($absolute) ?: [null, null];
+                if ($width && $width > 1200) {
+                    $ratio = $height ? ($height / $width) : 1;
+                    $this->resizeImageInPlace($absolute, $realMime ?: $clientMime, 1200, max(1, (int) round(1200 * $ratio)));
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Logo upload resize skipped: {msg}', ['msg' => $e->getMessage()]);
+        }
+
+        $relative = 'assets/settings/' . $safeName;
+        $this->settingModel->upsert('general.company_logo', $relative, 'string', $userId);
+
+        try {
+            $bytes = @file_get_contents($absolute);
+            if ($bytes !== false) {
+                $this->settingFileModel->upsert('general.company_logo', $safeName, $realMime ?: $clientMime, $bytes, $userId);
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Logo upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
+        }
+
+        return [
+            'status' => 'ok',
+            'data' => [
+                'path' => $relative,
+                'url' => base_url($relative),
+            ],
+        ];
+    }
+
+    public function uploadIconForApi(?UploadedFile $file, ?int $userId): array
+    {
+        if (!$file) {
+            return ['status' => 'validation_error', 'message' => 'No icon file received.'];
+        }
+
+        if ($file->getError() === UPLOAD_ERR_NO_FILE) {
+            return ['status' => 'validation_error', 'message' => 'Please choose an icon file to upload.'];
+        }
+
+        if (!$file->isValid()) {
+            return ['status' => 'bad_request', 'message' => $file->getErrorString()];
+        }
+
+        if ($file->hasMoved()) {
+            return ['status' => 'bad_request', 'message' => 'Upload failed: file has already been moved.'];
+        }
+
+        if ((int) $file->getSize() > self::MAX_UPLOAD_BYTES) {
+            return ['status' => 'validation_error', 'message' => 'Icon upload too large. Maximum size is 2MB.'];
+        }
+
+        $clientMime = strtolower((string) $file->getClientMimeType());
+        $realMime = strtolower((string) $file->getMimeType());
+        $extension = strtolower($file->getExtension() ?: pathinfo($file->getName(), PATHINFO_EXTENSION));
+        $mimeAllowed = in_array($clientMime, self::ALLOWED_ICON_MIMES, true) || in_array($realMime, self::ALLOWED_ICON_MIMES, true);
+        $extensionAllowed = in_array($extension, self::ALLOWED_ICON_EXTENSIONS, true);
+
+        if (!$mimeAllowed && !$extensionAllowed) {
+            return ['status' => 'validation_error', 'message' => 'Unsupported icon format. Use ICO, PNG, or SVG.'];
+        }
+
+        $targetDir = rtrim(FCPATH, '/') . '/assets/settings';
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+        }
+        if (!is_dir($targetDir) || !is_writable($targetDir)) {
+            return ['status' => 'server_error', 'message' => 'Icon upload directory is not writable.'];
+        }
+
+        $existing = $this->settingModel->getByKeys(['general.company_icon']);
+        $previous = $existing['general.company_icon'] ?? null;
+        if ($previous) {
+            $previousPath = $this->resolveStoredAssetPath((string) $previous);
+            if ($previousPath && is_file($previousPath)) {
+                @unlink($previousPath);
+            }
+        }
+
+        try {
+            $safeName = 'icon_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        } catch (\Throwable $e) {
+            $safeName = 'icon_' . date('Ymd_His') . '_' . uniqid('', true) . '.' . $extension;
+        }
+
+        if (!$file->move($targetDir, $safeName)) {
+            return ['status' => 'server_error', 'message' => 'Unable to store uploaded icon.'];
+        }
+
+        $absolute = rtrim($targetDir, '/') . '/' . $safeName;
+        $relative = 'assets/settings/' . $safeName;
+        $this->settingModel->upsert('general.company_icon', $relative, 'string', $userId);
+
+        try {
+            $bytes = @file_get_contents($absolute);
+            if ($bytes !== false) {
+                $this->settingFileModel->upsert('general.company_icon', $safeName, $realMime ?: $clientMime, $bytes, $userId);
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'Icon upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
+        }
+
+        return [
+            'status' => 'ok',
+            'data' => [
+                'path' => $relative,
+                'url' => base_url($relative),
+            ],
         ];
     }
 

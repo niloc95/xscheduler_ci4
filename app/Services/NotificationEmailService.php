@@ -60,8 +60,8 @@
  * @see         app/Helpers/notification_helper.php for encryption
  * @see         app/Models/BusinessIntegrationModel.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -110,7 +110,7 @@ class NotificationEmailService
         $smtpUser = (string) ($config['username'] ?? '');
         $smtpPass = (string) ($config['password'] ?? '');
         $fromEmail = (string) ($config['from_email'] ?? '');
-        $fromName = (string) ($config['from_name'] ?? 'WebSchedulr');
+        $fromName = (string) ($config['from_name'] ?? 'WebScheduler');
 
         if ($smtpHost === '' || $fromEmail === '') {
             return ['ok' => false, 'error' => 'Email integration is missing required settings (host/from).'];
@@ -326,7 +326,7 @@ class NotificationEmailService
         $smtpUser = (string) ($config['username'] ?? '');
         $smtpPass = (string) ($config['password'] ?? '');
         $fromEmail = (string) ($config['from_email'] ?? '');
-        $fromName = (string) ($config['from_name'] ?? 'WebSchedulr');
+        $fromName = (string) ($config['from_name'] ?? 'WebScheduler');
 
         if ($smtpHost === '' || $fromEmail === '') {
             return ['ok' => false, 'error' => 'Email integration is missing required settings (host/from).'];
@@ -346,8 +346,8 @@ class NotificationEmailService
 
         $email->setFrom($fromEmail, $fromName);
         $email->setTo($toEmail);
-        $email->setSubject('WebSchedulr SMTP Test');
-        $email->setMessage("This is a test email from WebSchedulr.\n\nIf you received this, your SMTP integration is working.");
+        $email->setSubject('WebScheduler SMTP Test');
+        $email->setMessage("This is a test email from WebScheduler.\n\nIf you received this, your SMTP integration is working.");
 
         $now = date('Y-m-d H:i:s');
         $model = new BusinessIntegrationModel();

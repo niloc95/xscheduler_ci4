@@ -79,10 +79,10 @@ defined('EXIT__AUTO_MIN')      || define('EXIT__AUTO_MIN', 9);      // lowest au
 defined('EXIT__AUTO_MAX')      || define('EXIT__AUTO_MAX', 125);    // highest automatically-assigned error code
 /*
  |--------------------------------------------------------------------------
- | WebSchedulr Application Constants
+ | WebScheduler Application Constants
  |--------------------------------------------------------------------------
  |
- | Application-specific constants for WebSchedulr. These replace magic strings
+ | Application-specific constants for WebScheduler. These replace magic strings
  | throughout the codebase for better maintainability and IDE support.
  |
  */

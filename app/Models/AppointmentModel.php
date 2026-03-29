@@ -116,15 +116,35 @@ class AppointmentModel extends BaseModel
             return $cache[$column];
         }
 
-        try {
-            $cache[$column] = method_exists($this->db, 'fieldExists')
-                ? $this->db->fieldExists($column, $this->table)
-                : true;
-        } catch (\Throwable $e) {
-            $cache[$column] = false;
+        $prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
+        $unprefixedTable = $prefix !== '' ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $this->table) : $this->table;
+
+        $tableCandidates = array_values(array_unique([
+            $this->table,
+            method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($unprefixedTable) : $this->table,
+            $unprefixedTable,
+        ]));
+
+        foreach ($tableCandidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+
+            try {
+                foreach ($this->db->getFieldData($candidate) as $field) {
+                    if ((string) ($field->name ?? '') === $column) {
+                        $cache[$column] = true;
+                        return true;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Try the next candidate table name.
+            }
         }
 
-        return $cache[$column];
+        $cache[$column] = false;
+
+        return false;
     }
 
     /**

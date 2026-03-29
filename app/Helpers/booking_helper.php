@@ -49,8 +49,8 @@
  * @see         app/Models/SettingModel.php for settings storage
  * @see         app/Controllers/Api/Appointments.php for booking API
  * @package     App\Helpers
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

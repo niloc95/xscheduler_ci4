@@ -29,6 +29,8 @@ import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js'
 import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
 import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
+import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
+import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 
 // Import appointment navigation module
 import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -160,6 +162,9 @@ function initializeComponents() {
     // Initialize customer management live search when that view is present.
     initCustomerManagementSearch();
 
+    // Initialize extracted provider schedule UI when user-management forms are present.
+    initProviderSchedule();
+
     // Initialize service create/edit UI when those forms are present
     initServiceManagementForms();
     
@@ -221,22 +226,16 @@ window.togglePassword = function(fieldId) {
     }
 };
 
-// Initialize on DOM ready (initial page load)
-document.addEventListener('DOMContentLoaded', function() {
-    initializeComponents();
-    refreshAppointmentStats();
-});
-
-// Re-initialize after SPA navigation
-document.addEventListener('spa:navigated', function(e) {
-    // Reset scheduler init attempts on each navigation
-    schedulerInitAttempts = 0;
-    
-    initializeComponents();
-    // Only refresh stats on pages that have dashboard stat elements
-    if (document.getElementById('upcomingCount') || document.getElementById('completedCount')) {
-        refreshAppointmentStats();
-    }
+bindAppLifecycleEvents({
+    documentRef: document,
+    initializeComponents,
+    refreshAppointmentStats,
+    resetSchedulerInitAttempts: () => {
+        schedulerInitAttempts = 0;
+    },
+    hasDashboardStats: () => Boolean(
+        document.getElementById('upcomingCount') || document.getElementById('completedCount')
+    ),
 });
 
 // Listen for settings changes and refresh scheduler

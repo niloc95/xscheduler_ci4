@@ -203,7 +203,7 @@ $iconMap = [
                                 
                                 <div class="mt-3 flex items-center space-x-3">
                                     <?php if (!$notification['read']): ?>
-                                        <a href="<?= base_url('/notifications/mark-as-read/' . $notification['id']) ?>" 
+                                        <a href="<?= base_url('/notifications/mark-read/' . $notification['id']) ?>" 
                                            class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
                                             Mark as read
                                         </a>

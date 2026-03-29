@@ -42,8 +42,8 @@
  * @see         app/Filters/RoleFilter.php for route-level protection
  * @see         app/Helpers/permissions_helper.php for helper functions
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

@@ -14,7 +14,7 @@
  * - scripts: Additional JavaScript at end of body
  * - modals: Modal dialogs container
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 ?>
@@ -23,8 +23,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="WebSchedulr - Professional Appointment Scheduling">
-    <title><?= $this->renderSection('title') ?: 'WebSchedulr' ?></title>
+    <meta name="description" content="WebScheduler - Professional Appointment Scheduling">
+    <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
     
     <!-- Prevent FOUC: Apply dark mode immediately -->
@@ -57,7 +57,7 @@
     <script>
         window.__BASE_URL__ = '<?= base_url() ?>';
         window.__CSRF_TOKEN__ = '<?= csrf_hash() ?>';
-        window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebSchedulr'), 'js') ?>';
+        window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebScheduler'), 'js') ?>';
     </script>
     <meta name="csrf-header" content="X-CSRF-TOKEN">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
@@ -282,7 +282,7 @@
                 <!-- Footer -->
                 <footer class="mt-8 py-4 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <p>&copy; <?= date('Y') ?> WebSchedulr. All rights reserved.</p>
+                        <p>&copy; <?= date('Y') ?> WebScheduler. All rights reserved.</p>
                         <p>Version 2.0.0</p>
                     </div>
                 </footer>
@@ -355,7 +355,7 @@
                 
                 if (pageTitle && pageTitle !== headerEl.textContent.trim()) {
                     headerEl.textContent = pageTitle;
-                    document.title = pageTitle + ' • WebSchedulr';
+                    document.title = pageTitle + ' • WebScheduler';
                 }
             }
             

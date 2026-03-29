@@ -46,8 +46,8 @@
  * @see         app/Config/Filters.php for global filter setup
  * @package     App\Filters
  * @implements  FilterInterface
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

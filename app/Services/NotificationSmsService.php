@@ -63,8 +63,8 @@
  * @see         app/Helpers/notification_helper.php for encryption
  * @see         app/Models/BusinessIntegrationModel.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -246,7 +246,7 @@ class NotificationSmsService
         $model = new BusinessIntegrationModel();
 
         try {
-            $send = $this->sendSms($businessId, $toPhone, 'WebSchedulr SMS Test: your SMS integration is working.');
+            $send = $this->sendSms($businessId, $toPhone, 'WebScheduler SMS Test: your SMS integration is working.');
             if ($send['ok'] ?? false) {
                 $this->updateHealth($model, $integration, 'healthy', $now);
                 return ['ok' => true];

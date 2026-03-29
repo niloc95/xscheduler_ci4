@@ -238,7 +238,7 @@ function wireSidebarBrandSync() {
         }
 
         const trimmed = (name || '').trim();
-        brandEl.textContent = trimmed !== '' ? trimmed : 'WebSchedulr';
+        brandEl.textContent = trimmed !== '' ? trimmed : 'WebScheduler';
     };
 
     const handler = (event) => updateBrandName(event.target.value);

@@ -73,6 +73,16 @@ directory name after phpunit.
 > ./phpunit app/Models
 ```
 
+For focused refactor validation, prefer running only the affected controller seam and journey tests. Examples:
+
+```console
+> php vendor/bin/phpunit tests/unit/Controllers/ServicesControllerTest.php
+> php vendor/bin/phpunit tests/integration/ServicesJourneyTest.php
+> php vendor/bin/phpunit tests/unit/Controllers/SearchControllerTest.php tests/integration/CustomerManagementJourneyTest.php
+```
+
+If PHPUnit reports a warning about no code coverage driver being available, the test process may still have executed all assertions successfully. That warning only means coverage data could not be collected. Install Xdebug with `xdebug.mode=coverage` when you need coverage-enabled runs without that warning.
+
 ## Generating Code Coverage
 
 To generate coverage information, including HTML reports you can view in your browser,
@@ -131,3 +141,10 @@ Be sure to modify the test case (or create your own) to point to your seed and m
 and include any additional steps to be run before tests in the `setUp()` method.
 See [Testing Your Database](https://codeigniter.com/user_guide/testing/database.html)
 for details.
+
+In this repository, controller journey tests often also need to:
+
+- hydrate `database.tests.*` values from `.env` when local PHPUnit config does not already provide them
+- ensure the setup flag exists under `writable/`
+- prime the CSRF cookie for AJAX-backed form flows
+- seed deterministic settings when controller validation depends on runtime configuration, such as booking field visibility or required flags

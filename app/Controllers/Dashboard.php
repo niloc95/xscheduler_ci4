@@ -6,7 +6,7 @@
  * =============================================================================
  * 
  * @file        app/Controllers/Dashboard.php
- * @description Main dashboard controller for WebSchedulr. Displays the landing
+ * @description Main dashboard controller for WebScheduler. Displays the landing
  *              page with metrics, today's schedule, alerts, and quick actions.
  * 
  * ROUTES HANDLED:
@@ -42,8 +42,8 @@
  * @see         app/Views/dashboard/landing.php for view template
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -54,13 +54,13 @@ use App\Services\DashboardPageService;
 
 class Dashboard extends BaseController
 {
-    protected $dashboardApiService;
-    protected $dashboardPageService;
+    protected DashboardApiService $dashboardApiService;
+    protected DashboardPageService $dashboardPageService;
 
-    public function __construct()
+    public function __construct(?DashboardApiService $dashboardApiService = null, ?DashboardPageService $dashboardPageService = null)
     {
-        $this->dashboardApiService = new DashboardApiService();
-        $this->dashboardPageService = new DashboardPageService();
+        $this->dashboardApiService = $dashboardApiService ?? new DashboardApiService();
+        $this->dashboardPageService = $dashboardPageService ?? new DashboardPageService();
     }
 
     /**

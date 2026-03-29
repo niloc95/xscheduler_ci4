@@ -50,8 +50,8 @@
  * @see         app/Models/CategoryModel.php for categories
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -63,17 +63,23 @@ use App\Models\CategoryModel;
 
 class Services extends BaseController
 {
-    protected $userModel;
-    protected $serviceModel;
-    protected $categoryModel;
+    protected UserModel $userModel;
+    protected ServiceModel $serviceModel;
+    protected CategoryModel $categoryModel;
     private string $providerServicePivotTable;
 
-    public function __construct()
+    public function __construct(
+        ?UserModel $userModel = null,
+        ?ServiceModel $serviceModel = null,
+        ?CategoryModel $categoryModel = null
+    )
     {
-        $this->userModel    = new UserModel();
-        $this->serviceModel = new ServiceModel();
-        $this->categoryModel = new CategoryModel(); // used for category dropdowns in service forms
-        $this->providerServicePivotTable = $this->serviceModel->db->prefixTable('providers_services');
+        $this->userModel = $userModel ?? new UserModel();
+        $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->categoryModel = $categoryModel ?? new CategoryModel();
+        $this->providerServicePivotTable = $this->serviceModel->db !== null
+            ? $this->serviceModel->db->prefixTable('providers_services')
+            : 'providers_services';
         helper('permissions');
     }
 

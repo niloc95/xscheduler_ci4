@@ -15,7 +15,7 @@
  * - session()->setFlashdata('warning', 'Please review your input')
  * - session()->setFlashdata('info', 'New features available')
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 

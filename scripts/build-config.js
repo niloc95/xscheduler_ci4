@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Build Configuration Script for WebSchedulr
+ * Build Configuration Script for WebScheduler
  * 
  * This script handles environment-specific builds and configurations
- * for the WebSchedulr application.
+ * for the WebScheduler application.
  */
 
 import fs from 'fs';
@@ -61,7 +61,7 @@ class BuildManager {
         try {
             this.targetEnv = environment || this.currentEnv;
             
-            console.log(`🚀 Building WebSchedulr for ${this.targetEnv} environment...`);
+            console.log(`🚀 Building WebScheduler for ${this.targetEnv} environment...`);
             
             await this.validateEnvironment();
             await this.configureEnvironment();
@@ -342,7 +342,7 @@ switch (command) {
         break;
     default:
         console.log(`
-WebSchedulr Build Configuration Script
+WebScheduler Build Configuration Script
 
 Usage:
   node scripts/build-config.js build [environment]    # Build for specific environment

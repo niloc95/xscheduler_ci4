@@ -124,7 +124,7 @@
   &.light-mode::before { content: 'light_mode'; }
   &.dark-mode::before { content: 'dark_mode'; }
   
-  // Special WebSchedulr icons
+  // Special WebScheduler icons
   &.appointment::before { content: 'event_note'; }
   &.service::before { content: 'room_service'; }
   &.client::before { content: 'person_outline'; }

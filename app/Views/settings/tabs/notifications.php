@@ -176,7 +176,7 @@
 
                             <div class="form-field">
                                 <label class="form-label">From Name</label>
-                                <input name="smtp_from_name" class="form-input" placeholder="WebSchedulr" value="<?= esc((string) ($emailCfg['from_name'] ?? '')) ?>" />
+                                <input name="smtp_from_name" class="form-input" placeholder="WebScheduler" value="<?= esc((string) ($emailCfg['from_name'] ?? '')) ?>" />
                             </div>
                         </div>
 
@@ -397,7 +397,7 @@
 
                             <div class="form-field">
                                 <label class="form-label">Clickatell Sender ID / From (optional)</label>
-                                <input name="clickatell_from" class="form-input" placeholder="+27821234567 or WebSchedulr" value="<?= esc((string) ($smsCfg['clickatell_from'] ?? '')) ?>" />
+                                <input name="clickatell_from" class="form-input" placeholder="+27821234567 or WebScheduler" value="<?= esc((string) ($smsCfg['clickatell_from'] ?? '')) ?>" />
                                 <p class="form-help">Either +E.164 phone or 3–11 alphanumeric.</p>
                             </div>
 

@@ -49,8 +49,8 @@
  * @see         app/Controllers/UserManagement.php for full CRUD
  * @package     App\Controllers\Api
  * @extends     BaseApiController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

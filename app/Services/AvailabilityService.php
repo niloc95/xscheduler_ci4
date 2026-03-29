@@ -48,8 +48,8 @@
  * @see         app/Controllers/Api/Availability.php for API layer
  * @see         app/Models/ProviderScheduleModel.php for schedule data
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

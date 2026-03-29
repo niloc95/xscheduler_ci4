@@ -1,6 +1,6 @@
 <?= $this->extend('layouts/auth') ?>
 
-<?= $this->section('title') ?>Forgot Password - WebSchedulr<?= $this->endSection() ?>
+<?= $this->section('title') ?>Forgot Password - WebScheduler<?= $this->endSection() ?>
 <?= $this->section('auth_title') ?>Forgot Password<?= $this->endSection() ?>
 <?= $this->section('auth_subtitle') ?>Enter your email address and we'll send you a reset link<?= $this->endSection() ?>
 

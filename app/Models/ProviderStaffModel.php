@@ -42,8 +42,8 @@
  * @see         app/Controllers/StaffProviders.php for staff view
  * @package     App\Models
  * @extends     BaseModel
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -69,12 +69,21 @@ class ProviderStaffModel extends BaseModel
      */
     public function getStaffByProvider(int $providerId, ?string $status = 'active'): array
     {
+        $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, psa.assigned_at, psa.status, psa.assigned_by';
+
+        if ($this->db->fieldExists('is_active', 'xs_users')) {
+            $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, staff.is_active, psa.assigned_at, psa.status, psa.assigned_by';
+        }
+
         $builder = $this->db->table($this->table . ' AS psa')
-            ->select('staff.id, staff.name, staff.email, staff.phone, staff.role, staff.is_active, psa.assigned_at, psa.status, psa.assigned_by')
+            ->select($staffSelect)
             ->join('xs_users AS staff', 'staff.id = psa.staff_id', 'inner')
             ->where('psa.provider_id', $providerId)
-            ->where('staff.is_active', true) // Only active users
             ->where('staff.role', 'staff');
+
+        if ($this->db->fieldExists('is_active', 'xs_users')) {
+            $builder->where('staff.is_active', true);
+        }
         
         if ($status !== null) {
             $builder->where('psa.status', $status);
@@ -98,8 +107,11 @@ class ProviderStaffModel extends BaseModel
             ->select('provider.id, provider.name, provider.email, provider.role, psa.assigned_at, psa.status, psa.assigned_by')
             ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'inner')
             ->where('psa.staff_id', $staffId)
-            ->where('provider.is_active', true) // Only active providers
             ->where('provider.role', 'provider');
+
+        if ($this->db->fieldExists('is_active', 'xs_users')) {
+            $builder->where('provider.is_active', true);
+        }
         
         if ($status !== null) {
             $builder->where('psa.status', $status);

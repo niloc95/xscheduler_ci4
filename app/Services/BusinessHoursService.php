@@ -53,8 +53,8 @@
  * @see         app/Models/BusinessHourModel.php for data storage
  * @see         app/Services/AvailabilityService.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

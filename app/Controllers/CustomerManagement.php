@@ -53,8 +53,8 @@
  * @see         app/Models/CustomerModel.php for data model
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -70,11 +70,15 @@ class CustomerManagement extends BaseController
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
 
-    public function __construct()
+    public function __construct(
+        ?CustomerModel $customers = null,
+        ?BookingSettingsService $bookingSettings = null,
+        ?CustomerAppointmentService $appointmentService = null,
+    )
     {
-        $this->customers = new CustomerModel();
-        $this->bookingSettings = new BookingSettingsService();
-        $this->appointmentService = new CustomerAppointmentService();
+        $this->customers = $customers ?? new CustomerModel();
+        $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
+        $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
     }
 
     /**
@@ -99,7 +103,7 @@ class CustomerManagement extends BaseController
         $totalCustomers = $this->customers->countAllResults();
 
         $data = [
-            'title' => 'Customer Management - WebSchedulr',
+            'title' => 'Customer Management - WebScheduler',
             'customers' => $customers,
             'currentUser' => session()->get('user'),
             'q' => $q,
@@ -122,7 +126,7 @@ class CustomerManagement extends BaseController
         $customFields = $this->bookingSettings->getCustomFieldConfiguration();
         
         $data = [
-            'title' => 'Create Customer - WebSchedulr',
+            'title' => 'Create Customer - WebScheduler',
             'validation' => $this->validator,
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
@@ -199,6 +203,10 @@ class CustomerManagement extends BaseController
             $payload['last_name']  = $parts[1] ?? '';
         }
 
+        $now = date('Y-m-d H:i:s');
+        $payload['created_at'] = $now;
+        $payload['updated_at'] = $now;
+
         // Skip model validation since we already validated with the service
         // This prevents conflicts with model-level rules
         $id = $this->customers->insert($payload, false);
@@ -258,7 +266,7 @@ class CustomerManagement extends BaseController
         }
         
         $data = [
-            'title' => 'Edit Customer - WebSchedulr',
+            'title' => 'Edit Customer - WebScheduler',
             'customer' => $customer,
             'validation' => $this->validator,
             'fieldConfig' => $fieldConfig,
@@ -354,6 +362,8 @@ class CustomerManagement extends BaseController
         } else {
             log_message('info', '[CustomerManagement::update] No custom fields enabled in settings for customer ID: ' . $id);
         }
+
+        $payload['updated_at'] = date('Y-m-d H:i:s');
 
         // Skip model validation since we already validated with the service
         // This prevents conflicts with model-level rules (e.g., email required, {id} placeholder issues)

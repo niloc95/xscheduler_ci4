@@ -7,7 +7,7 @@
  * 
  * @file        app/Config/Filters.php
  * @description Configures HTTP request/response filters (middleware) for the
- *              WebSchedulr application. Filters run before and/or after
+ *              WebScheduler application. Filters run before and/or after
  *              controller methods to handle authentication, authorization,
  *              security, and other cross-cutting concerns.
  * 
@@ -44,8 +44,8 @@
  * @see         app/Config/Routes.php for filter application to routes
  * @package     Config
  * @extends     CodeIgniter\Config\Filters
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -92,6 +92,7 @@ class Filters extends BaseFilters
         'setup_auth'    => \App\Filters\SetupAuthFilter::class,
         'timezone'      => \App\Filters\TimezoneDetection::class,
         'public_rate_limit' => \App\Filters\PublicBookingRateLimiter::class,
+        'request_context' => \App\Filters\LogRequestContext::class,
     ];
 
     /**
@@ -125,6 +126,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'request_context',
             'securityheaders',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',

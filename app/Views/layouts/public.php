@@ -11,7 +11,7 @@
  * - content: Main booking content
  * - scripts: Additional JavaScript
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 ?>
@@ -57,7 +57,7 @@
                     </div>
                 <?php endif; ?>
                 <span class="text-lg font-semibold text-gray-900 dark:text-white">
-                    <?= esc($businessName ?? 'WebSchedulr') ?>
+                    <?= esc($businessName ?? 'WebScheduler') ?>
                 </span>
             </div>
             
@@ -74,7 +74,7 @@
     <!-- Footer -->
     <footer class="border-t border-gray-200 dark:border-gray-700 mt-auto">
         <div class="max-w-4xl mx-auto px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            <p>Powered by <a href="https://webschedulr.com" class="text-blue-600 dark:text-blue-400 hover:underline">WebSchedulr</a></p>
+            <p>Powered by <a href="https://webschedulr.com" class="text-blue-600 dark:text-blue-400 hover:underline">WebScheduler</a></p>
         </div>
     </footer>
     

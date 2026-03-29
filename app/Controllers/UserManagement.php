@@ -55,8 +55,8 @@
  * @see         app/Models/ProviderScheduleModel.php for schedules
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -79,7 +79,7 @@ class UserManagement extends BaseController
     protected $userModel;
     protected $permissionModel;
     protected $auditModel;
-    
+
     protected $providerScheduleModel;
     protected ProviderStaffModel $providerStaffModel;
     protected LocalizationSettingsService $localization;
@@ -89,17 +89,28 @@ class UserManagement extends BaseController
     protected UserDeletionService $userDeletionService;
     protected array $scheduleDays = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
-    public function __construct()
+    public function __construct(
+        ?UserModel $userModel = null,
+        ?UserPermissionModel $permissionModel = null,
+        ?AuditLogModel $auditModel = null,
+        ?ProviderScheduleModel $providerScheduleModel = null,
+        ?ProviderStaffModel $providerStaffModel = null,
+        ?LocalizationSettingsService $localization = null,
+        ?ScheduleValidationService $scheduleValidation = null,
+        ?UserManagementContextService $userManagementContextService = null,
+        ?UserManagementMutationService $userManagementMutationService = null,
+        ?UserDeletionService $userDeletionService = null,
+    )
     {
         helper('user');
-        $this->userModel = new UserModel();
-        $this->permissionModel = new UserPermissionModel();
-        $this->auditModel = new AuditLogModel();
-        $this->providerScheduleModel = new ProviderScheduleModel();
-        $this->providerStaffModel = new ProviderStaffModel();
-        $this->localization = new LocalizationSettingsService();
-        $this->scheduleValidation = new ScheduleValidationService($this->localization);
-        $this->userManagementContextService = new UserManagementContextService(
+        $this->userModel = $userModel ?? new UserModel();
+        $this->permissionModel = $permissionModel ?? new UserPermissionModel();
+        $this->auditModel = $auditModel ?? new AuditLogModel();
+        $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
+        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
+        $this->localization = $localization ?? new LocalizationSettingsService();
+        $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($this->localization);
+        $this->userManagementContextService = $userManagementContextService ?? new UserManagementContextService(
             $this->userModel,
             $this->permissionModel,
             $this->providerStaffModel,
@@ -107,7 +118,7 @@ class UserManagement extends BaseController
             $this->localization,
             $this->scheduleValidation,
         );
-        $this->userManagementMutationService = new UserManagementMutationService(
+        $this->userManagementMutationService = $userManagementMutationService ?? new UserManagementMutationService(
             $this->userModel,
             $this->providerStaffModel,
             $this->providerScheduleModel,
@@ -115,7 +126,7 @@ class UserManagement extends BaseController
             $this->scheduleValidation,
             $this->userManagementContextService,
         );
-        $this->userDeletionService = new UserDeletionService($this->userModel, $this->auditModel);
+        $this->userDeletionService = $userDeletionService ?? new UserDeletionService($this->userModel, $this->auditModel);
     }
 
     /**

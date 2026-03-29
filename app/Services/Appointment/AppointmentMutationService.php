@@ -49,6 +49,7 @@ class AppointmentMutationService
             'customer_phone' => $payload['phone'] ?? '',
             'notes' => $payload['notes'] ?? null,
             'notification_types' => ['email', 'whatsapp'],
+            'booking_channel' => 'api',
         ];
 
         if (!empty($payload['location_id'])) {
@@ -162,7 +163,7 @@ class AppointmentMutationService
 
         $result = $this->bookingService->updateAppointment(
             $appointmentId,
-            $update,
+            array_merge($update, ['booking_channel' => 'api']),
             TimezoneService::businessTimezone(),
             $notificationEvent,
             ['email', 'whatsapp']
@@ -209,7 +210,7 @@ class AppointmentMutationService
         $notificationEvent = AppointmentStatus::notificationEvent($normalizedStatus, '');
         $result = $this->bookingService->updateAppointment(
             $appointmentId,
-            ['status' => $normalizedStatus],
+            ['status' => $normalizedStatus, 'booking_channel' => 'api'],
             TimezoneService::businessTimezone(),
             $notificationEvent,
             ['email', 'whatsapp']
@@ -249,7 +250,7 @@ class AppointmentMutationService
 
         $result = $this->bookingService->updateAppointment(
             $appointmentId,
-            ['notes' => $notes],
+            ['notes' => $notes, 'booking_channel' => 'api'],
             TimezoneService::businessTimezone(),
             '',
             []
@@ -289,7 +290,7 @@ class AppointmentMutationService
 
         $result = $this->bookingService->updateAppointment(
             $appointmentId,
-            ['status' => 'cancelled'],
+            ['status' => 'cancelled', 'booking_channel' => 'api'],
             TimezoneService::businessTimezone(),
             'appointment_cancelled',
             ['email', 'whatsapp']

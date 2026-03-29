@@ -6,7 +6,7 @@
  * =============================================================================
  * 
  * @file        app/Config/Database.php
- * @description Database connection settings for WebSchedulr. Supports MySQL/MariaDB
+ * @description Database connection settings for WebScheduler. Supports MySQL/MariaDB
  *              with configurable connection pooling, character sets, and failover.
  * 
  * PURPOSE:
@@ -31,7 +31,7 @@
  * 
  * TABLE PREFIX:
  * -----------------------------------------------------------------------------
- * All WebSchedulr tables use 'xs_' prefix by default:
+ * All WebScheduler tables use 'xs_' prefix by default:
  * - xs_users, xs_appointments, xs_customers, xs_services, etc.
  * 
  * CHARACTER SET:
@@ -42,8 +42,8 @@
  * @see         .env.example for connection examples
  * @package     Config
  * @extends     CodeIgniter\Database\Config
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 /**
- * Simple database backup utility for WebSchedulr.
+ * Simple database backup utility for WebScheduler.
  *
  * Usage: php scripts/db_backup.php [target-directory]
  */

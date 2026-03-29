@@ -239,7 +239,7 @@ final class DayViewServiceIntegrationTest extends CIUnitTestCase
             'phone' => '+1234567890',
         ];
 
-        if ($this->db->fieldExists('hash', 'xs_customers')) {
+        if ($this->tableHasColumnExact('xs_customers', 'hash')) {
             $data['hash'] = hash('sha256', uniqid('customer_', true));
         }
 
@@ -276,6 +276,27 @@ final class DayViewServiceIntegrationTest extends CIUnitTestCase
 
     protected function seedAppointment(array $data): int
     {
-        return $this->appointmentModel->insert($data);
+        if ($this->tableHasColumnExact('xs_appointments', 'hash') && !isset($data['hash'])) {
+            $data['hash'] = hash('sha256', uniqid('appointment_', true));
+        }
+
+        $this->db->table('xs_appointments')->insert($data);
+
+        return (int) $this->db->insertID();
+    }
+
+    private function tableHasColumnExact(string $table, string $column): bool
+    {
+        try {
+            foreach ($this->db->getFieldData($table) as $field) {
+                if ((string) ($field->name ?? '') === $column) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return false;
     }
 }

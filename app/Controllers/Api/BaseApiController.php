@@ -50,8 +50,8 @@
  * @see         app/Controllers/Api/*.php for implementations
  * @package     App\Controllers\Api
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -68,7 +68,7 @@ use App\Controllers\BaseController;
  * Success: { "data": {...}, "meta": {...} }
  * Error:   { "error": { "message": "...", "code": "...", "details": {...} } }
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 class BaseApiController extends BaseController
@@ -119,6 +119,25 @@ class BaseApiController extends BaseController
      */
     protected function error(int $status, string $message, ?string $code = null, $details = null)
     {
+        helper('logging');
+
+        $sessionUser = session()->get('user');
+        $userId = session()->get('user_id');
+        $userRole = is_array($sessionUser) ? ($sessionUser['role'] ?? null) : null;
+
+        $logDetails = null;
+        if ($details !== null) {
+            $logDetails = is_scalar($details) ? (string) $details : $details;
+        }
+
+        log_api_call($status >= 500 ? 'error' : 'warning', 'api.error', $status, [
+            'error_code' => $code,
+            'error_message' => $message,
+            'actor_user_id' => $userId,
+            'actor_role' => $userRole,
+            'details' => $logDetails,
+        ]);
+
         return $this->response
             ->setHeader('Content-Type', 'application/json')
             ->setStatusCode($status)

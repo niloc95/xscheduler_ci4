@@ -278,6 +278,18 @@ class DashboardLandingTest extends CIUnitTestCase
         $this->assertGreaterThanOrEqual(2, $metrics['total']);
     }
 
+    public function testDashboardServiceContextIncludesAppointmentScopeFlags(): void
+    {
+        $dashboardService = new DashboardService();
+
+        $context = $dashboardService->getDashboardContext($this->providerId, 'provider', $this->providerId);
+
+        $this->assertSame('provider', $context['role']);
+        $this->assertSame($this->providerId, $context['provider_id']);
+        $this->assertTrue((bool) ($context['filter_by_provider'] ?? false));
+        $this->assertFalse((bool) ($context['filter_by_staff'] ?? true));
+    }
+
     /**
      * Test: AuthorizationService role checks
      */
