@@ -52,8 +52,8 @@
  * @see         app/Services/BookingSettingsService.php for validation
  * @package     App\Models
  * @extends     BaseModel
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -85,7 +85,7 @@ class CustomerModel extends BaseModel
 	 */
 	protected function generateHash(array $data): array
 	{
-		if (! $this->db->fieldExists('hash', $this->table)) {
+		if (! $this->hasCustomerColumn('hash')) {
 			return $data;
 		}
 
@@ -94,6 +94,41 @@ class CustomerModel extends BaseModel
 			$data['data']['hash'] = hash('sha256', uniqid('customer_', true) . $encryptionKey . time());
 		}
 		return $data;
+	}
+
+	private function hasCustomerColumn(string $column): bool
+	{
+		static $cache = [];
+
+		if (array_key_exists($column, $cache)) {
+			return $cache[$column];
+		}
+
+		$tableCandidates = array_values(array_unique([
+			$this->table,
+			method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($this->table) : $this->table,
+			preg_replace('/^' . preg_quote((string) ($this->db->getPrefix() ?? ''), '/') . '/', '', $this->table),
+		]));
+
+		foreach ($tableCandidates as $candidate) {
+			if (!is_string($candidate) || $candidate === '') {
+				continue;
+			}
+
+			try {
+				foreach ($this->db->getFieldData($candidate) as $field) {
+					if ((string) ($field->name ?? '') === $column) {
+						$cache[$column] = true;
+						return true;
+					}
+				}
+			} catch (\Throwable $e) {
+				// Try the next candidate.
+			}
+		}
+
+		$cache[$column] = false;
+		return false;
 	}
 
 	/**

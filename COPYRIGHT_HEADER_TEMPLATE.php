@@ -1,10 +1,10 @@
 <?php
 /**
- * WebSchedulr CI4 - Professional Appointment Scheduling System
+ * WebScheduler CI4 - Professional Appointment Scheduling System
  * 
  * PROPRIETARY SOFTWARE - ALL RIGHTS RESERVED
  * 
- * @package     WebSchedulr CI4
+ * @package     WebScheduler CI4
  * @author      niloc95
  * @copyright   Copyright (c) 2025 niloc95. All rights reserved.
  * @license     Commercial License - see LICENSE-PROPRIETARY file

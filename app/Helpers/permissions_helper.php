@@ -46,8 +46,8 @@
  * @see         app/Models/UserPermissionModel.php for permission definitions
  * @see         app/Services/AuthorizationService.php for complex checks
  * @package     App\Helpers
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

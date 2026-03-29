@@ -49,24 +49,25 @@
  * @see         app/Controllers/Api/Appointments.php for API endpoints
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
 namespace App\Controllers;
 
+use App\Models\LocationModel;
 use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\Appointment\AppointmentDateTimeNormalizer;
-use App\Services\Appointment\AppointmentStatus;
-use App\Services\BookingSettingsService;
+use App\Services\Appointment\AppointmentFormContextService;
+use App\Services\Appointment\AppointmentFormGuardService;
+use App\Services\Appointment\AppointmentFormMutationService;
+use App\Services\Appointment\AppointmentFormResponseService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
-use App\Services\AppointmentBookingService;
-use CodeIgniter\Controller;
 
 class Appointments extends BaseController
 {
@@ -74,15 +75,39 @@ class Appointments extends BaseController
     protected $serviceModel;
     protected $appointmentModel;
     protected $customerModel;
+    protected LocationModel $locationModel;
     protected AppointmentDateTimeNormalizer $appointmentDateTimeNormalizer;
+    protected LocalizationSettingsService $localizationSettingsService;
+    protected AppointmentFormContextService $appointmentFormContextService;
+    protected AppointmentFormGuardService $appointmentFormGuardService;
+    protected AppointmentFormMutationService $appointmentFormMutationService;
+    protected AppointmentFormResponseService $appointmentFormResponseService;
 
-    public function __construct()
+    public function __construct(
+        ?UserModel $userModel = null,
+        ?ServiceModel $serviceModel = null,
+        ?AppointmentModel $appointmentModel = null,
+        ?CustomerModel $customerModel = null,
+        ?LocationModel $locationModel = null,
+        ?AppointmentDateTimeNormalizer $appointmentDateTimeNormalizer = null,
+        ?LocalizationSettingsService $localizationSettingsService = null,
+        ?AppointmentFormContextService $appointmentFormContextService = null,
+        ?AppointmentFormGuardService $appointmentFormGuardService = null,
+        ?AppointmentFormMutationService $appointmentFormMutationService = null,
+        ?AppointmentFormResponseService $appointmentFormResponseService = null,
+    )
     {
-        $this->userModel = new UserModel();
-        $this->serviceModel = new ServiceModel();
-        $this->appointmentModel = new AppointmentModel();
-        $this->customerModel = new CustomerModel();
-        $this->appointmentDateTimeNormalizer = new AppointmentDateTimeNormalizer();
+        $this->userModel = $userModel ?? new UserModel();
+        $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
+        $this->customerModel = $customerModel ?? new CustomerModel();
+        $this->locationModel = $locationModel ?? new LocationModel();
+        $this->appointmentDateTimeNormalizer = $appointmentDateTimeNormalizer ?? new AppointmentDateTimeNormalizer();
+        $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
+        $this->appointmentFormContextService = $appointmentFormContextService ?? new AppointmentFormContextService();
+        $this->appointmentFormGuardService = $appointmentFormGuardService ?? new AppointmentFormGuardService();
+        $this->appointmentFormMutationService = $appointmentFormMutationService ?? new AppointmentFormMutationService();
+        $this->appointmentFormResponseService = $appointmentFormResponseService ?? new AppointmentFormResponseService();
         helper('permissions');
     }
 
@@ -113,25 +138,41 @@ class Appointments extends BaseController
             }
         }
         // Admin sees all appointments (no context filter)
+
+        $db = \Config\Database::connect();
+        $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
+        $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
         
         // Get real appointments from database
         $appointments = $this->appointmentModel->getDashboardAppointments(null, $context, 100);
         
         // Get active providers with colors for legend
-        $activeProviders = $this->userModel
+        $activeProvidersBuilder = $this->userModel
             ->where('role', 'provider')
-            ->where('is_active', true)
             ->where('color IS NOT NULL')
             ->where('color !=', '')
-            ->orderBy('name', 'ASC')
-            ->findAll();
+            ->orderBy('name', 'ASC');
+
+        if ($usersHasIsActive) {
+            $activeProvidersBuilder->where('is_active', true);
+        } elseif ($usersHasStatus) {
+            $activeProvidersBuilder->where('status', 'active');
+        }
+
+        $activeProviders = $activeProvidersBuilder->findAll();
         
         // Get ALL providers for filter dropdown (including those without colors)
-        $allProviders = $this->userModel
+        $allProvidersBuilder = $this->userModel
             ->where('role', 'provider')
-            ->where('is_active', true)
-            ->orderBy('name', 'ASC')
-            ->findAll();
+            ->orderBy('name', 'ASC');
+
+        if ($usersHasIsActive) {
+            $allProvidersBuilder->where('is_active', true);
+        } elseif ($usersHasStatus) {
+            $allProvidersBuilder->where('status', 'active');
+        }
+
+        $allProviders = $allProvidersBuilder->findAll();
         
         // Get ALL services for filter dropdown
         // Note: xs_services table uses 'active' column, not 'is_active'
@@ -141,8 +182,7 @@ class Appointments extends BaseController
             ->findAll();
         
         // Get ALL active locations for filter dropdown
-        $locationModel = new \App\Models\LocationModel();
-        $allLocations = $locationModel
+        $allLocations = $this->locationModel
             ->where('is_active', 1)
             ->orderBy('name', 'ASC')
             ->findAll();
@@ -200,38 +240,17 @@ class Appointments extends BaseController
      */
     public function create()
     {
-        // Check authentication and permissions
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to(base_url('auth/login'));
+        $guard = $this->appointmentFormGuardService->requireLogin();
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
+        $guard = $this->appointmentFormGuardService->requireRole(['customer', 'staff', 'provider', 'admin'], true);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        // Initialize services
-        $bookingService = new BookingSettingsService();
-        $localizationService = new LocalizationSettingsService();
-
-        // Get field configuration from settings
-        $fieldConfig = $bookingService->getFieldConfiguration();
-        $customFields = $bookingService->getCustomFieldConfiguration();
-        $localizationContext = $localizationService->getContext();
-
-        $dropdownData = $this->formatDropdownData();
-
-        $data = [
-            'title' => 'Book Appointment',
-            'current_page' => 'appointments',
-            'services' => $dropdownData['services'],
-            'providers' => $dropdownData['providers'],
-            'user_role' => current_user_role(),
-            'fieldConfig' => $fieldConfig,
-            'customFields' => $customFields,
-            'localization' => $localizationContext,
-        ];
-
-        return view('appointments/form', $data);
+        return view('appointments/form', $this->appointmentFormContextService->buildCreateViewData((string) current_user_role()));
     }
 
     /**
@@ -242,124 +261,32 @@ class Appointments extends BaseController
         log_message('info', '[Appointments::store] ========== STORE METHOD CALLED ==========');
         log_message('info', '[Appointments::store] POST data: ' . json_encode($this->request->getPost()));
         
-        // Check authentication and permissions
-        if (!session()->get('isLoggedIn')) {
+        $guard = $this->appointmentFormGuardService->requireLogin('Please log in to book an appointment');
+        if ($guard !== null) {
             log_message('error', '[Appointments::store] Not logged in');
-            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to book an appointment');
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!has_role(['customer', 'staff', 'provider', 'admin'])) {
+        $guard = $this->appointmentFormGuardService->requireRole(['customer', 'staff', 'provider', 'admin']);
+        if ($guard !== null) {
             log_message('error', '[Appointments::store] Access denied - role check failed');
-            return redirect()->back()->with('error', 'Access denied');
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        // Check if user is trying to book in the past
-        $pastBookingError = $this->validateNotInPast(
+        $guard = $this->appointmentFormGuardService->validateNotInPast(
             $this->request->getPost('appointment_date'),
             $this->request->getPost('appointment_time'),
-            'Cannot book appointments in the past. Please select a future date and time.'
+            'Cannot book appointments in the past. Please select a future date and time.',
+            $this->request->isAJAX(),
         );
-        if ($pastBookingError !== null) {
-            return $pastBookingError;
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
-
-        $validation = \Config\Services::validation();
-        
-        // Check if customer_id is provided (from search)
-        $customerId = $this->request->getPost('customer_id');
-        
-        $rules = $this->getStoreValidationRules(!empty($customerId));
-
-        if (!$this->validate($rules)) {
-            log_message('error', '[Appointments::store] Validation failed: ' . json_encode($validation->getErrors()));
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validation->getErrors()
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('errors', $validation->getErrors());
-        }
-
-        log_message('info', '[Appointments::store] Validation passed');
 
         $clientTimezone = $this->resolveClientTimezone();
-        $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime(
-            (string) $this->request->getPost('appointment_date'),
-            (string) $this->request->getPost('appointment_time'),
-            $clientTimezone
-        );
-        if (!$normalizedStart['success']) {
-            $message = $normalizedStart['message'] ?? 'Invalid appointment date/time.';
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => $message,
-                ]);
-            }
-            return redirect()->back()->withInput()->with('error', $message);
-        }
+        $result = $this->appointmentFormMutationService->createFromFormPayload($this->request->getPost(), $clientTimezone);
 
-        // Prepare booking data from form
-        $bookingData = [
-            'provider_id' => $this->request->getPost('provider_id'),
-            'service_id' => $this->request->getPost('service_id'),
-            'location_id' => $this->request->getPost('location_id'),
-            'appointment_date' => $normalizedStart['app_date'],
-            'appointment_time' => $normalizedStart['app_time'],
-            'customer_id' => $customerId,
-            'customer_first_name' => $this->request->getPost('customer_first_name'),
-            'customer_last_name' => $this->request->getPost('customer_last_name'),
-            'customer_email' => $this->request->getPost('customer_email'),
-            'customer_phone' => $this->request->getPost('customer_phone'),
-            'customer_address' => $this->request->getPost('customer_address'),
-            'customer_notes' => $this->request->getPost('notes'),
-            'notes' => $this->request->getPost('notes'),
-            'notification_types' => ['email', 'whatsapp']
-        ];
-
-        // Add custom fields if provided
-        for ($i = 1; $i <= 6; $i++) {
-            $fieldValue = $this->request->getPost("custom_field_{$i}");
-            if ($fieldValue !== null && $fieldValue !== '') {
-                $bookingData["custom_field_{$i}"] = $fieldValue;
-            }
-        }
-
-        // Use AppointmentBookingService for all booking logic
-        $bookingService = new AppointmentBookingService();
-        $result = $bookingService->createAppointment($bookingData, 'UTC');
-
-        // Handle result
-        if (!$result['success']) {
-            if ($this->request->isAJAX()) {
-                $hasConflicts = !empty($result['conflicts']);
-                return $this->response->setStatusCode($hasConflicts ? 409 : 400)->setJSON([
-                    'success' => false,
-                    'message' => $result['message'],
-                    'errors' => $result['errors'] ?? [],
-                    'conflicts' => $result['conflicts'] ?? []
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('error', $result['message']);
-        }
-
-        // Success - redirect to appointments list or view
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => $result['message'],
-                'redirect' => base_url('appointments'),
-                'appointmentId' => $result['appointmentId']
-            ]);
-        }
-        return redirect()->to(base_url('appointments'))
-            ->with('success', $result['message']);
+        return $this->appointmentFormResponseService->fromMutationResult($result, $this->request->isAJAX(), $this->response);
     }
 
     private function resolveClientTimezone(): string
@@ -381,7 +308,7 @@ class Appointments extends BaseController
         } elseif ($session && $session->has('client_timezone')) {
             $timezoneCandidate = (string) $session->get('client_timezone');
         } else {
-            $timezoneCandidate = (new LocalizationSettingsService())->getTimezone();
+            $timezoneCandidate = $this->localizationSettingsService->getTimezone();
         }
 
         $offsetCandidate = $headerOffset !== '' ? $headerOffset : $postOffset;
@@ -397,85 +324,22 @@ class Appointments extends BaseController
      */
     public function edit($appointmentHash = null)
     {
-        // Check authentication and permissions
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to(base_url('auth/login'));
+        $guard = $this->appointmentFormGuardService->requireLogin();
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!has_role(['staff', 'provider', 'admin'])) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Access denied');
+        $guard = $this->appointmentFormGuardService->requireRole(['staff', 'provider', 'admin'], true);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!$appointmentHash) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        $guard = $this->appointmentFormGuardService->requireAppointmentHash($appointmentHash);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        // Load appointment by hash with related data
-        $appointment = $this->appointmentModel
-            ->select('xs_appointments.*, 
-                     c.first_name as customer_first_name,
-                     c.last_name as customer_last_name,
-                     c.email as customer_email,
-                     c.phone as customer_phone,
-                     c.address as customer_address,
-                     c.notes as customer_notes,
-                     c.custom_fields as customer_custom_fields,
-                     c.hash as customer_hash')
-            ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
-            ->where('xs_appointments.hash', $appointmentHash)
-            ->first();
-
-        if (!$appointment) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
-        }
-
-        // Initialize services (needed for app timezone — must come before time comparisons)
-        $bookingService = new BookingSettingsService();
-        $localizationService = new LocalizationSettingsService();
-        $appTimezone = $localizationService->getTimezone();
-
-        // Check if appointment is in the past.
-        // DB stores times in UTC — convert to display timezone for comparison.
-        $appointmentTime = new \DateTime($appointment['start_at'], new \DateTimeZone('UTC'));
-        $now = new \DateTime('now', new \DateTimeZone('UTC'));
-        $isPastAppointment = $appointmentTime < $now;
-
-        // Get field configuration from settings
-        $fieldConfig = $bookingService->getFieldConfiguration();
-        $customFields = $bookingService->getCustomFieldConfiguration();
-
-        // Parse custom fields from JSON
-        if (!empty($appointment['customer_custom_fields'])) {
-            $customFieldsData = json_decode($appointment['customer_custom_fields'], true);
-            foreach ($customFieldsData as $key => $value) {
-                $appointment[$key] = $value;
-            }
-        }
-
-        // Times are stored in UTC — convert to display timezone for form fields.
-        if (!empty($appointment['start_at'])) {
-            $displayTime = \App\Services\TimezoneService::toDisplay($appointment['start_at'], $appTimezone);
-            $startDateTime = new \DateTime($displayTime, new \DateTimeZone($appTimezone));
-            $appointment['date'] = $startDateTime->format('Y-m-d');
-            $appointment['time'] = $startDateTime->format('H:i');
-        }
-
-        $dropdownData = $this->formatDropdownData();
-
-        $data = [
-            'title' => 'Edit Appointment',
-            'current_page' => 'appointments',
-            'appointment' => $appointment,
-            'services' => $dropdownData['services'],
-            'providers' => $dropdownData['providers'],
-            'user_role' => current_user_role(),
-            'fieldConfig' => $fieldConfig,
-            'customFields' => $customFields,
-            'localization' => $localizationService->getContext(),
-            'isPastAppointment' => $isPastAppointment,
-        ];
-
-        return view('appointments/form', $data);
+        return view('appointments/form', $this->appointmentFormContextService->buildEditViewData($appointmentHash, (string) current_user_role()));
     }
 
     /**
@@ -493,292 +357,46 @@ class Appointments extends BaseController
      */
     public function update($appointmentHash = null)
     {
-        // Check authentication and permissions
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to(base_url('auth/login'))->with('error', 'Please log in to continue');
+        $guard = $this->appointmentFormGuardService->requireLogin('Please log in to continue');
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!has_role(['staff', 'provider', 'admin'])) {
-            return redirect()->back()->with('error', 'Access denied');
+        $guard = $this->appointmentFormGuardService->requireRole(['staff', 'provider', 'admin']);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        if (!$appointmentHash) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        $guard = $this->appointmentFormGuardService->requireAppointmentHash($appointmentHash);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        // Load existing appointment by hash
-        $existingAppointment = $this->appointmentModel->findByHash($appointmentHash);
-        if (!$existingAppointment) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
+        $guard = $this->appointmentFormGuardService->requireExistingAppointment($appointmentHash);
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
-
-        $appointmentId = $existingAppointment['id'];
 
         // Get the new appointment date/time from form
         $newAppointmentDate = $this->request->getPost('appointment_date');
         $newAppointmentTime = $this->request->getPost('appointment_time');
         
-        // Check if user is trying to schedule in the past
-        $pastScheduleError = $this->validateNotInPast(
+        $guard = $this->appointmentFormGuardService->validateNotInPast(
             $newAppointmentDate,
             $newAppointmentTime,
-            'Cannot schedule appointments in the past. Please select a future date and time.'
+            'Cannot schedule appointments in the past. Please select a future date and time.',
+            $this->request->isAJAX(),
         );
-        if ($pastScheduleError !== null) {
-            return $pastScheduleError;
+        if ($guard !== null) {
+            return $this->appointmentFormGuardService->toResponse($guard, $this->response);
         }
 
-        $validation = \Config\Services::validation();
-        
-        $rules = $this->getUpdateValidationRules();
-
-        if (!$this->validate($rules)) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validation->getErrors()
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('errors', $validation->getErrors());
-        }
-
-        // Get form data
-        $providerId = $this->request->getPost('provider_id');
-        $serviceId = $this->request->getPost('service_id');
-        $appointmentDate = $this->request->getPost('appointment_date');
-        $appointmentTime = $this->request->getPost('appointment_time');
-        $status = $this->request->getPost('status');
-        
-        // Debug: Log status value
-        log_message('info', '[Appointments::update] Status from form: ' . $status);
-        log_message('info', '[Appointments::update] Current appointment status: ' . $existingAppointment['status']);
-        
-        // Get service to calculate end time
-        $service = $this->serviceModel->find($serviceId);
-        if (!$service) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Invalid service selected');
-        }
-
-        // Normalize input at controller boundary (input timezone -> UTC canonical).
         $clientTimezone = $this->resolveClientTimezone();
-        $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime($appointmentDate, $appointmentTime, $clientTimezone);
-        if (!$normalizedStart['success']) {
-            $message = $normalizedStart['message'] ?? 'Invalid appointment date/time input.';
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => $message,
-                ]);
-            }
-            return redirect()->back()->withInput()->with('error', $message);
+        $result = $this->appointmentFormMutationService->updateFromFormPayload($appointmentHash, $this->request->getPost(), $clientTimezone);
+        if (!empty($result['notFound'])) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Appointment not found');
         }
 
-        $appTimezone = (new LocalizationSettingsService())->getTimezone();
-        $startTimeStored = $normalizedStart['utc'];
-
-        log_message('info', '[Appointments::update] Stored start time (UTC): ' . $startTimeStored);
-
-        // Update customer record
-        $customerId = $existingAppointment['customer_id'];
-        $customerData = [
-            'first_name' => $this->request->getPost('customer_first_name'),
-            'last_name' => $this->request->getPost('customer_last_name'),
-            'email' => $this->request->getPost('customer_email'),
-            'phone' => $this->request->getPost('customer_phone'),
-            'address' => $this->request->getPost('customer_address')
-        ];
-
-        // Handle custom fields
-        $customFieldsData = [];
-        for ($i = 1; $i <= 6; $i++) {
-            $fieldValue = $this->request->getPost("custom_field_{$i}");
-            if ($fieldValue !== null && $fieldValue !== '') {
-                // Use consistent field naming: 'custom_field_1' not 'field_1'
-                // This matches CustomerManagement controller and BookingSettingsService
-                $customFieldsData["custom_field_{$i}"] = $fieldValue;
-            }
-        }
-        if (!empty($customFieldsData)) {
-            $customerData['custom_fields'] = json_encode($customFieldsData);
-        }
-
-        $this->customerModel->update($customerId, $customerData);
-
-        // Update appointment through centralized booking pipeline.
-        $locationId = $this->request->getPost('location_id');
-        $appointmentData = [
-            'provider_id' => (int) $providerId,
-            'service_id' => (int) $serviceId,
-            'appointment_date' => $normalizedStart['app_date'],
-            'appointment_time' => $normalizedStart['app_time'],
-            'status' => AppointmentStatus::normalize($status) ?? $status,
-            'notes' => $this->request->getPost('notes') ?? '',
-            'location_id' => ($locationId !== null && $locationId !== '') ? (int) $locationId : null,
-        ];
-
-        log_message('info', '[Appointments::update] Appointment data to pipeline: ' . json_encode($appointmentData));
-
-        $bookingService = new AppointmentBookingService();
-        $timeChanged = $startTimeStored !== (string) ($existingAppointment['start_at'] ?? '');
-        $event = $timeChanged
-            ? 'appointment_rescheduled'
-            : AppointmentStatus::notificationEvent($status, '');
-        $result = $bookingService->updateAppointment(
-            (int) $appointmentId,
-            $appointmentData,
-            'UTC',
-            $event,
-            ['email', 'whatsapp']
-        );
-        $updated = (bool) ($result['success'] ?? false);
-
-        // If the appointment time changed, reset reminder_sent so reminders can re-send.
-        try {
-            (new \App\Services\AppointmentNotificationService())
-                ->resetReminderSentIfTimeChanged(
-                    (int) $appointmentId,
-                    (string) ($existingAppointment['start_at'] ?? ''),
-                    (string) ($startTimeStored ?? '')
-                );
-        } catch (\Throwable $e) {
-            log_message('error', '[Appointments::update] Failed resetting reminder flag: {msg}', ['msg' => $e->getMessage()]);
-        }
-
-        if (!$updated) {
-            $errorMessage = $result['message'] ?? 'Failed to update appointment. Please try again.';
-            if ($this->request->isAJAX()) {
-                $hasConflicts = !empty($result['conflicts']);
-                return $this->response->setStatusCode($hasConflicts ? 409 : 400)->setJSON([
-                    'success' => false,
-                    'message' => $errorMessage,
-                    'errors' => $result['errors'] ?? [],
-                    'conflicts' => $result['conflicts'] ?? []
-                ]);
-            }
-            return redirect()->back()
-                ->withInput()
-                ->with('error', $errorMessage);
-        }
-
-        log_message('info', '[Appointments::update] Successfully updated appointment #' . $appointmentId);
-
-        // Success
-        if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Appointment updated successfully!',
-                'redirect' => base_url('appointments')
-            ]);
-        }
-        return redirect()->to(base_url('appointments'))
-            ->with('success', 'Appointment updated successfully!');
-    }
-
-    /**
-     * Format a provider record for dropdown display
-     */
-    private function formatProviderForDropdown(array $provider): array
-    {
-        return [
-            'id' => $provider['id'],
-            'name' => $provider['name'],
-            'speciality' => 'Provider', // TODO: Add speciality field to users table
-        ];
-    }
-
-    /**
-     * Format a service record for dropdown display
-     */
-    private function formatServiceForDropdown(array $service): array
-    {
-        return [
-            'id' => $service['id'],
-            'name' => $service['name'],
-            'duration' => $service['duration_min'], // Map duration_min to duration for consistency
-            'price' => $service['price'],
-        ];
-    }
-
-    private function formatDropdownData(): array
-    {
-        $providers = $this->userModel->getProvidersWithActiveServices();
-        $services = $this->serviceModel->where('active', 1)->findAll();
-
-        return [
-            'providers' => array_map([$this, 'formatProviderForDropdown'], $providers),
-            'services' => array_map([$this, 'formatServiceForDropdown'], $services),
-        ];
-    }
-
-    private function getStoreValidationRules(bool $hasExistingCustomer): array
-    {
-        $rules = [
-            'provider_id' => 'required|is_natural_no_zero',
-            'service_id' => 'required|is_natural_no_zero',
-            'appointment_date' => 'required|valid_date',
-            'appointment_time' => 'required',
-            'notes' => 'permit_empty|max_length[1000]'
-        ];
-
-        if ($hasExistingCustomer) {
-            $rules['customer_id'] = 'required|is_natural_no_zero';
-            return $rules;
-        }
-
-        return array_merge($rules, [
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
-            'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[32]',
-            'customer_address' => 'permit_empty|max_length[255]',
-        ]);
-    }
-
-    private function getUpdateValidationRules(): array
-    {
-        return [
-            'provider_id' => 'required|is_natural_no_zero',
-            'service_id' => 'required|is_natural_no_zero',
-            'appointment_date' => 'required|valid_date',
-            'appointment_time' => 'required',
-            'status' => AppointmentStatus::VALIDATION_RULE,
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
-            'customer_email' => 'required|valid_email|max_length[255]',
-            'customer_phone' => 'required|min_length[10]|max_length[32]',
-            'customer_address' => 'permit_empty|max_length[255]',
-            'notes' => 'permit_empty|max_length[1000]'
-        ];
-    }
-
-    private function validateNotInPast(?string $appointmentDate, ?string $appointmentTime, string $errorMessage)
-    {
-        if (!$appointmentDate || !$appointmentTime) {
-            return null;
-        }
-
-        $appTimezone = (new LocalizationSettingsService())->getTimezone();
-        $appointmentDateTime = new \DateTime($appointmentDate . ' ' . $appointmentTime, new \DateTimeZone($appTimezone));
-        $now = new \DateTime('now', new \DateTimeZone($appTimezone));
-
-        if ($appointmentDateTime >= $now) {
-            return null;
-        }
-
-        if ($this->request->isAJAX()) {
-            return $this->response->setStatusCode(422)->setJSON([
-                'success' => false,
-                'message' => $errorMessage
-            ]);
-        }
-
-        return redirect()->back()
-            ->withInput()
-            ->with('error', $errorMessage);
+        return $this->appointmentFormResponseService->fromMutationResult($result, $this->request->isAJAX(), $this->response);
     }
 }

@@ -1,4 +1,4 @@
-# WebSchedulr — Requirements Specification
+# WebScheduler — Requirements Specification
 
 _Last updated: January 28, 2026_
 
@@ -6,7 +6,7 @@ _Last updated: January 28, 2026_
 
 ## Project Overview
 
-WebSchedulr is a modern online appointment scheduling system for service-based businesses. It features:
+WebScheduler is a modern online appointment scheduling system for service-based businesses. It features:
 
 - Customer-facing appointment booking
 - Provider calendar and availability management

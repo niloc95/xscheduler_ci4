@@ -32,7 +32,7 @@ class DispatchNotificationQueue extends BaseCommand
         }
 
         CLI::newLine();
-        CLI::write('WebSchedulr - Notification Queue Dispatcher (Phase 5)', 'yellow');
+        CLI::write('WebScheduler - Notification Queue Dispatcher (Phase 5)', 'yellow');
         CLI::write('================================================', 'yellow');
 
         $queue = new NotificationQueueService();

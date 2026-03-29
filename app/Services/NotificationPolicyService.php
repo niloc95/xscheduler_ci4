@@ -27,8 +27,8 @@
  * @see         app/Commands/DispatchNotificationQueue.php
  * @see         app/Controllers/Settings.php for admin UI
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -130,7 +130,7 @@ class NotificationPolicyService
         }
 
         if ($channel === 'sms') {
-            return "WebSchedulr: {$event}. {date} {time}. Reply STOP to opt out.";
+            return "WebScheduler: {$event}. {date} {time}. Reply STOP to opt out.";
         }
 
         return "(Coming soon) WhatsApp templates required for {$event}.";

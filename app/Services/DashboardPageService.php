@@ -13,14 +13,23 @@ class DashboardPageService
     protected AppointmentModel $appointmentModel;
     protected DashboardService $dashboardService;
     protected AuthorizationService $authService;
+    protected AppointmentDashboardContextService $appointmentDashboardContextService;
 
-    public function __construct()
+    public function __construct(
+        ?UserModel $userModel = null,
+        ?ServiceModel $serviceModel = null,
+        ?AppointmentModel $appointmentModel = null,
+        ?DashboardService $dashboardService = null,
+        ?AuthorizationService $authService = null,
+        ?AppointmentDashboardContextService $appointmentDashboardContextService = null
+    )
     {
-        $this->userModel = new UserModel();
-        $this->serviceModel = new ServiceModel();
-        $this->appointmentModel = new AppointmentModel();
-        $this->dashboardService = new DashboardService();
-        $this->authService = new AuthorizationService();
+        $this->userModel = $userModel ?? new UserModel();
+        $this->serviceModel = $serviceModel ?? new ServiceModel();
+        $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
+        $this->dashboardService = $dashboardService ?? new DashboardService();
+        $this->authService = $authService ?? new AuthorizationService();
+        $this->appointmentDashboardContextService = $appointmentDashboardContextService ?? new AppointmentDashboardContextService();
     }
 
     /**
@@ -66,6 +75,7 @@ class DashboardPageService
             : $providerScope;
 
         $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
+        $appointmentScope = $this->appointmentDashboardContextService->build($userRole, $userId, $currentUser);
         $metrics = $this->dashboardService->getCachedMetrics($scopeProviderId);
         $schedule = $this->dashboardService->getTodaySchedule($scopeProviderId);
         $alerts = $this->dashboardService->getAlerts($scopeProviderId);
@@ -80,6 +90,7 @@ class DashboardPageService
         return [
             'user' => $currentUser,
             'context' => $context,
+            'appointment_scope' => $appointmentScope,
             'metrics' => $metrics,
             'schedule' => $schedule,
             'alerts' => $alerts,
@@ -127,7 +138,7 @@ class DashboardPageService
                 'email' => 'admin@webschedulr.com',
             ],
             'context' => [
-                'business_name' => 'WebSchedulr',
+                'business_name' => 'WebScheduler',
                 'current_date' => date('Y-m-d'),
                 'timezone' => 'UTC',
                 'user_role' => 'admin',

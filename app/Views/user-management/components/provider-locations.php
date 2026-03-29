@@ -189,18 +189,19 @@ window.LocationManager = {
             });
 
             const result = await response.json();
+            const location = this._getPayloadData(result);
 
-            if (result.status === 'ok') {
+            if (this._isSuccessfulResponse(response, result) && location) {
                 // Remove the "no locations" empty-state if present
                 const emptyMsg = document.getElementById('noLocationsMessage');
                 if (emptyMsg) emptyMsg.remove();
 
                 // Build and insert the new card
                 const container = document.getElementById('locationsContainer');
-                container.insertAdjacentHTML('beforeend', this._buildCardHTML(result.data));
+                container.insertAdjacentHTML('beforeend', this._buildCardHTML(location));
 
                 // Scroll to, highlight, and focus the new card
-                const newCard = container.querySelector(`[data-location-id="${result.data.id}"]`);
+                const newCard = container.querySelector(`[data-location-id="${location.id}"]`);
                 if (newCard) {
                     newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     const nameInput = newCard.querySelector('input[type="text"]');
@@ -214,9 +215,9 @@ window.LocationManager = {
                 this._enforceMaxLimit();
 
                 // Sync tick boxes in Schedule day-blocks
-                this._syncScheduleTickBoxes('add', result.data);
+                this._syncScheduleTickBoxes('add', location);
             } else {
-                alert('Failed to add location: ' + (result.message || 'Unknown error'));
+                alert('Failed to add location: ' + this._getErrorMessage(result));
             }
         } catch (err) {
             console.error('LocationManager.addLocation:', err);
@@ -238,8 +239,8 @@ window.LocationManager = {
 
             const result = await response.json();
 
-            if (result.status !== 'ok') {
-                console.error('LocationManager.updateLocation:', result.message);
+            if (!this._isSuccessfulResponse(response, result)) {
+                console.error('LocationManager.updateLocation:', this._getErrorMessage(result));
                 return;
             }
 
@@ -275,10 +276,10 @@ window.LocationManager = {
 
             const result = await response.json();
 
-            if (result.status === 'ok') {
+            if (this._isSuccessfulResponse(response, result)) {
                 this._refresh();
             } else {
-                alert('Failed to set primary: ' + (result.message || 'Unknown error'));
+                alert('Failed to set primary: ' + this._getErrorMessage(result));
             }
         } catch (err) {
             console.error('LocationManager.setPrimary:', err);
@@ -298,7 +299,7 @@ window.LocationManager = {
 
             const result = await response.json();
 
-            if (result.status === 'ok') {
+            if (this._isSuccessfulResponse(response, result)) {
                 const card = document.querySelector(`[data-location-id="${locationId}"]`);
                 if (card) card.remove();
 
@@ -313,7 +314,7 @@ window.LocationManager = {
 
                 this._enforceMaxLimit();
             } else {
-                alert('Failed to delete location: ' + (result.message || 'Unknown error'));
+                alert('Failed to delete location: ' + this._getErrorMessage(result));
             }
         } catch (err) {
             console.error('LocationManager.deleteLocation:', err);
@@ -331,6 +332,18 @@ window.LocationManager = {
      */
     _refresh() {
         location.reload();
+    },
+
+    _isSuccessfulResponse(response, result) {
+        return Boolean(response?.ok) && !result?.error;
+    },
+
+    _getPayloadData(result) {
+        return result?.data ?? null;
+    },
+
+    _getErrorMessage(result) {
+        return result?.error?.message || result?.meta?.message || 'Unknown error';
     },
 
     /**

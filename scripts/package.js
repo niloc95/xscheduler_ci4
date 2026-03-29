@@ -515,7 +515,7 @@ const rootHtaccessContent = `# Deny access to sensitive directories
 fs.writeFileSync(path.join(packageDir, '.htaccess'), rootHtaccessContent);
 
 // Create deployment README
-const readmeContent = `# WebSchedulr Production Deployment
+const readmeContent = `# WebScheduler Production Deployment
 
 ## 🚀 Quick Deploy Instructions:
 
@@ -637,7 +637,7 @@ chmod -R 755 writable/
 - You'll be redirected to the setup wizard
 - Create your admin account
 - Enter your MySQL/MariaDB database details during setup
-- Start using WebSchedulr!
+- Start using WebScheduler!
 
 ## Troubleshooting
 - If you get 500 errors, check writable/ folder permissions
@@ -788,7 +788,7 @@ async function createZipFile() {
         archive.directory(packageDir, false);
 
         // Add a deployment info file with version
-        const deploymentInfo = `WebSchedulr Deployment Package
+        const deploymentInfo = `WebScheduler Deployment Package
 Version: v${deployVersion}
 Created: ${new Date().toISOString()}
 Git Branch: ${execSync('git rev-parse --abbrev-ref HEAD', { cwd: projectRoot }).toString().trim()}

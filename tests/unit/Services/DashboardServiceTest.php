@@ -8,6 +8,7 @@ use App\Models\CustomerModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Services\AppointmentDashboardContextService;
 use App\Services\AvailabilityService;
 use App\Services\DashboardService;
 use App\Services\LocalizationSettingsService;
@@ -136,6 +137,53 @@ final class DashboardServiceTest extends CIUnitTestCase
         $this->assertSame('Rescheduled appointment for Follow Up', $activities[2]['activity']);
         $this->assertSame('pending', $activities[2]['status']);
         $this->assertSame('2026-03-22', $activities[2]['date']);
+    }
+
+    public function testGetDashboardContextMergesAppointmentScopeFlags(): void
+    {
+        $userModel = $this->createMock(UserModel::class);
+        $userModel->method('find')->with(7)->willReturn([
+            'name' => 'Priya Provider',
+            'email' => 'priya@example.com',
+        ]);
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getContext')->willReturn(['date_format' => 'Y-m-d']);
+        $localization->method('getTimezone')->willReturn('UTC');
+
+        $appointmentContext = $this->createMock(AppointmentDashboardContextService::class);
+        $appointmentContext->expects($this->once())
+            ->method('build')
+            ->with('provider', 7, [
+                'name' => 'Priya Provider',
+                'email' => 'priya@example.com',
+            ])
+            ->willReturn([
+                'role' => 'provider',
+                'provider_id' => 7,
+                'filter_by_provider' => true,
+                'filter_by_staff' => false,
+            ]);
+
+        $service = new DashboardService(
+            $this->createMock(AppointmentModel::class),
+            $userModel,
+            $this->createMock(ServiceModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createMock(ProviderScheduleModel::class),
+            $this->createMock(BusinessHourModel::class),
+            $localization,
+            $this->createMock(AvailabilityService::class),
+            $appointmentContext
+        );
+
+        $context = $service->getDashboardContext(7, 'provider', 7);
+
+        $this->assertSame('Priya Provider', $context['user_name']);
+        $this->assertSame('provider', $context['role']);
+        $this->assertSame(7, $context['provider_id']);
+        $this->assertTrue($context['filter_by_provider']);
+        $this->assertFalse($context['filter_by_staff']);
     }
 }
 

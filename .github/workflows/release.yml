@@ -1,4 +1,4 @@
-name: Release WebSchedulr
+name: Release WebScheduler
 
 on:
   push:
@@ -112,7 +112,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: WebSchedulr ${{ steps.tag.outputs.tag }}
+          name: WebScheduler ${{ steps.tag.outputs.tag }}
           body: ${{ steps.changelog.outputs.body }}
           files: |
             webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip

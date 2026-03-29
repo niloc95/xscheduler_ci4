@@ -54,8 +54,8 @@
  * @see         app/Controllers/Auth.php for login logging
  * @package     App\Models
  * @extends     CodeIgniter\Model
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

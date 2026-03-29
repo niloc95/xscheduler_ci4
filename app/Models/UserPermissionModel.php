@@ -55,8 +55,8 @@
  * @see         app/Filters/RoleFilter.php for route protection
  * @package     App\Models
  * @extends     CodeIgniter\Model
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -108,8 +108,43 @@ class UserPermissionModel extends Model
             'create_appointments',
             'view_assigned_services',
             'basic_profile_edit'
+        ],
+        'customer' => [
+            'view_own_appointments',
+            'basic_profile_edit'
         ]
     ];
+
+    /**
+     * Normalize legacy or aliased role names to canonical RBAC roles.
+     */
+    private function normalizeRole(?string $role): string
+    {
+        $value = strtolower(trim((string) $role));
+
+        return match ($value) {
+            'owner', 'superadmin', 'super_admin' => 'admin',
+            'employee' => 'staff',
+            default => $value,
+        };
+    }
+
+    /**
+     * Return a builder filtered to active users across mixed xs_users schemas.
+     */
+    private function applyActiveUserFilter($builder)
+    {
+        $hasIsActive = method_exists($this->db, 'fieldExists') ? $this->db->fieldExists('is_active', $this->table) : true;
+        $hasStatus = method_exists($this->db, 'fieldExists') ? $this->db->fieldExists('status', $this->table) : true;
+
+        if ($hasIsActive) {
+            $builder->where('is_active', true);
+        } elseif ($hasStatus) {
+            $builder->where('status', 'active');
+        }
+
+        return $builder;
+    }
 
     /**
      * Get user permissions based on role
@@ -121,7 +156,8 @@ class UserPermissionModel extends Model
             return [];
         }
 
-        $rolePermissions = self::ROLE_PERMISSIONS[$user['role']] ?? [];
+        $role = $this->normalizeRole($user['role'] ?? '');
+        $rolePermissions = self::ROLE_PERMISSIONS[$role] ?? [];
         
         // Add any custom permissions from the permissions JSON field
         $customPermissions = [];
@@ -155,9 +191,10 @@ class UserPermissionModel extends Model
      */
     public function getUsersByRole(string $role): array
     {
-        return $this->where('role', $role)
-                    ->where('is_active', true)
-                    ->findAll();
+        $builder = $this->where('role', $this->normalizeRole($role));
+        $this->applyActiveUserFilter($builder);
+
+        return $builder->findAll();
     }
 
     /**
@@ -174,9 +211,10 @@ class UserPermissionModel extends Model
      */
     public function getProviders(): array
     {
-        return $this->whereIn('role', ['admin', 'provider'])
-                    ->where('is_active', true)
-                    ->findAll();
+        $builder = $this->whereIn('role', ['admin', 'provider']);
+        $this->applyActiveUserFilter($builder);
+
+        return $builder->findAll();
     }
 
     /**
@@ -192,12 +230,15 @@ class UserPermissionModel extends Model
         }
 
         // Admins can manage everyone
-        if ($manager['role'] === 'admin') {
+        $managerRole = $this->normalizeRole($manager['role'] ?? '');
+        $targetRole = $this->normalizeRole($target['role'] ?? '');
+
+        if ($managerRole === 'admin') {
             return true;
         }
 
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
+        if ($managerRole === 'provider' && $targetRole === 'staff') {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($targetUserId, $managerId);
         }
@@ -222,10 +263,12 @@ class UserPermissionModel extends Model
 
         $managedUsers = [];
 
-        switch ($user['role']) {
+        switch ($this->normalizeRole($user['role'] ?? '')) {
             case 'admin':
                 // Admins can see everyone
-                $managedUsers = $this->where('is_active', true)->findAll();
+            $builder = $this->builder();
+            $this->applyActiveUserFilter($builder);
+            $managedUsers = $builder->get()->getResultArray();
                 break;
                 
             case 'provider':

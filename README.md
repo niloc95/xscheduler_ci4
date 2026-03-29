@@ -20,6 +20,7 @@ A modern, enterprise-ready appointment scheduling application built with CodeIgn
 - [API Reference](#-api-reference)
 - [Project Structure](#-project-structure)
 - [Development](#-development)
+- [Testing](#-testing)
 - [Deployment](#-deployment)
 - [Security](#-security)
 - [Documentation](#-documentation)
@@ -57,7 +58,7 @@ A modern, enterprise-ready appointment scheduling application built with CodeIgn
 - **Smart Reminders**: Automated appointment reminders with configurable timing
 
 ### 👥 Role-Based Access Control
-- **Four User Roles**: Admin, Provider, Staff, Customer
+- **Three Internal Roles + Public Customer Flows**: Admin, Provider, Staff (internal users) with customer booking/portal access via hash/token flows
 - **Granular Permissions**: Fine-grained access per role
 - **Provider Hierarchy**: Staff assigned to specific providers
 - **Secure Authentication**: CSRF protection, session security
@@ -284,7 +285,7 @@ session.regenerateDestroy = true
 # EMAIL (SMTP)
 #--------------------------------------------------------------------
 email.fromEmail = 'noreply@yourdomain.com'
-email.fromName = 'WebSchedulr'
+email.fromName = 'WebScheduler'
 email.protocol = smtp
 email.SMTPHost = smtp.example.com
 email.SMTPUser = smtp_user
@@ -343,25 +344,32 @@ Staff
 ├── Limited to assigned scope
 └── No user management
 
-Customer
-├── Book appointments
-├── View own history
-├── Profile management
-└── No administrative access
+Customer (public/hash-token access)
+├── Book appointments through public booking
+├── View own history via customer hash/token routes
+├── Manage own appointment actions on public-safe links
+└── Not an internal xs_users role
 ```
 
 ### Permission Matrix
 
-| Feature | Admin | Provider | Staff | Customer |
-|---------|:-----:|:--------:|:-----:|:--------:|
+| Feature | Admin | Provider | Staff | Public Customer |
+|---------|:-----:|:--------:|:-----:|:---------------:|
 | System Settings | ✅ | ❌ | ❌ | ❌ |
 | User Management | ✅ | Own Staff | ❌ | ❌ |
-| All Appointments | ✅ | Own | Assigned | Own |
-| Create Appointments | ✅ | ✅ | ✅ | ✅ |
-| Cancel Any Appointment | ✅ | Own | Assigned | Own |
+| All Appointments | ✅ | Own | Assigned | ❌ |
+| Create Appointments | ✅ | ✅ | ✅ | ✅ (public booking) |
+| Cancel/Reschedule Appointment | ✅ | Own | Assigned | ✅ (own token/hash links) |
 | Services Management | ✅ | Own | ❌ | ❌ |
 | Analytics | Global | Own | ❌ | ❌ |
 | Notification Rules | ✅ | ❌ | ❌ | ❌ |
+
+### Schema Alignment Notes
+
+- Internal users are stored in `xs_users` and use role values `admin`, `provider`, `staff`.
+- Customers are stored in `xs_customers`; they are not internal `xs_users` records.
+- Public-safe appointment/customer access should use `hash` and token fields, not sequential IDs.
+- Canonical appointment datetime fields are `start_at` and `end_at` (UTC storage).
 
 ---
 
@@ -539,12 +547,61 @@ php spark cache:clear    # Clear all caches
 ./vendor/bin/phpunit tests/integration/    # Integration tests
 ```
 
+### Focused Validation Commands
+
+```bash
+# Constructor seam and controller regression slices
+php vendor/bin/phpunit tests/unit/Controllers/SearchControllerTest.php
+php vendor/bin/phpunit tests/unit/Controllers/CustomerManagementControllerTest.php
+php vendor/bin/phpunit tests/unit/Controllers/ServicesControllerTest.php
+
+# Controller journeys
+php vendor/bin/phpunit tests/integration/CustomerManagementJourneyTest.php
+php vendor/bin/phpunit tests/integration/ServicesJourneyTest.php
+
+# Mixed focused runs used during refactor work
+php vendor/bin/phpunit tests/unit/Controllers/SearchControllerTest.php tests/integration/CustomerManagementJourneyTest.php
+php vendor/bin/phpunit tests/unit/Controllers/ServicesControllerTest.php tests/integration/ServicesJourneyTest.php
+```
+
+If PHPUnit reports that no code coverage driver is available, assertions may still have passed successfully. That warning only means coverage data was not collected. Install Xdebug with coverage enabled when you need clean coverage runs.
+
 ### Code Standards
 
 - Follow [CodeIgniter 4 Style Guide](https://codeigniter.com/user_guide/general/styleguide.html)
 - Use PSR-12 coding standards
 - Document all public methods with PHPDoc
 - Write tests for new features
+
+---
+
+## 🧪 Testing
+
+### Test Strategy
+
+- Unit tests cover isolated service, model, and controller seam behavior.
+- Integration journey tests cover authenticated controller flows such as customer CRUD/history and service CRUD/provider assignment.
+- Frontend runtime coverage uses Node and jsdom for SPA re-initialization and page module behavior.
+
+### Controller Journey Expectations
+
+Controller-level journeys in this repository often need more than a plain request/response assertion:
+
+- hydrate `database.tests.*` from `.env` when local PHPUnit config does not provide the test connection explicitly
+- ensure `writable/setup_complete.flag` exists
+- prime the CSRF cookie for AJAX-backed form submissions
+- seed deterministic settings when validation depends on runtime configuration, especially booking field visibility and required flags
+
+### Schema Compatibility Notes
+
+- Mixed local schemas may expose internal-user active state as `is_active`, `status`, or both; queries and fixtures should resolve active users by checking available columns instead of assuming one field.
+- Hash columns are expected for public-facing appointment/customer flows, but compatibility checks should guard writes in partially migrated environments.
+
+### Testing Entry Points
+
+- [docs/testing/test_runner_guide.md](docs/testing/test_runner_guide.md) for test environment and runner details
+- [docs/architecture/refactor_target_decision_record.md](docs/architecture/refactor_target_decision_record.md) for the active refactor ledger
+- [docs/architecture/provider_service_catalog_contract.md](docs/architecture/provider_service_catalog_contract.md) for provider/service pivot behavior and service-management expectations
 
 ---
 
@@ -611,6 +668,9 @@ See [docs/security_policy.md](docs/security_policy.md) for our full security pol
 | [Documentation index](docs/readme.md) | Canonical entrypoint for all repository-authored docs |
 | [Requirements](docs/requirements.md) | Runtime, platform, and environment requirements |
 | [Agent context](Agent_Context.md) | Active engineering context and architecture guardrails |
+| [Refactor decision record](docs/architecture/refactor_target_decision_record.md) | Current status of controller seam cleanup, frontend extraction, and focused regression work |
+| [Provider/service catalog contract](docs/architecture/provider_service_catalog_contract.md) | Provider-to-service pivot rules for booking and internal service-management flows |
+| [Test runner guide](docs/testing/test_runner_guide.md) | PHPUnit setup, focused test commands, and repository-specific controller journey guidance |
 | [Scheduler UI architecture](docs/architecture/scheduler_ui_architecture.md) | Scheduler design and boundaries |
 | [Release guide](docs/deployment/releasing.md) | Release process and packaging workflow |
 | [Security policy](docs/security_policy.md) | Responsible disclosure and reporting |
@@ -643,9 +703,33 @@ tail -f writable/logs/log-*.log
 ```bash
 # Verify credentials in .env
 # Test connection
+
+# If you hit unknown-column errors after branch switches,
+# run app migrations and rerun focused integration tests
+php spark migrate -n App
+php vendor/bin/phpunit tests/integration/UserManagementJourneyTest.php tests/integration/DayViewServiceIntegrationTest.php tests/integration/WeekViewServiceIntegrationTest.php
 php spark db:table users
 # Run pending migrations
 php spark migrate -n App
+```
+
+#### Schema-Drift and Unknown Column Errors
+```bash
+# Verify runtime schema on default DB group
+php spark db:table xs_users --dbgroup default
+php spark db:table xs_appointments --dbgroup default
+php spark db:table xs_services --dbgroup default
+
+# If migration history drifted across groups, confirm status explicitly
+php spark migrate:status -n App
+```
+
+When writing JOIN-heavy query builders with aliased selects (`c.*`, `s.*`, `u.*`), use raw select projections where needed (`select($sql, false)`) to avoid CI4 identifier rewriting on prefixed tables.
+
+After changing shared query services, always lint touched PHP files before endpoint checks:
+
+```bash
+php -l app/Services/Appointment/AppointmentQueryService.php
 ```
 
 #### Permission Errors
@@ -814,8 +898,8 @@ Built with these excellent open-source projects:
 
 | Channel | Link |
 |---------|------|
-| **Website** | [webschedulr.co.za](https://webschedulr.co.za) |
-| **Email** | info@webschedulr.co.za |
+| **Website** | [webscheduler.co.za](https://webscheduler.co.za) |
+| **Email** | info@webscheduler.co.za |
 | **GitHub** | [@niloc95](https://github.com/niloc95) |
 | **Repository** | [github.com/niloc95/xscheduler_ci4](https://github.com/niloc95/xscheduler_ci4) |
 

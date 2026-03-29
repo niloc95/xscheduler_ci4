@@ -194,7 +194,7 @@ jobs:
         
       - name: Generate documentation index
         run: |
-          echo "# WebSchedulr Documentation Index" > docs/README.md
+          echo "# WebScheduler Documentation Index" > docs/README.md
           echo "" >> docs/README.md
           echo "Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> docs/README.md
           echo "" >> docs/README.md
@@ -235,7 +235,7 @@ jobs:
           echo "## 📈 Project Status" >> docs/README.md
           echo "" >> docs/README.md
           echo "- **Current Version**: 1.1.0" >> docs/README.md
-          echo "- **Build Status**: ![CI/CD](https://github.com/niloc95/webschedulr_ci4/workflows/WebSchedulr%20CI/CD%20Pipeline/badge.svg)" >> docs/README.md
+          echo "- **Build Status**: ![CI/CD](https://github.com/niloc95/webschedulr_ci4/workflows/WebScheduler%20CI/CD%20Pipeline/badge.svg)" >> docs/README.md
           echo "- **Last Updated**: $(date -u '+%Y-%m-%d')" >> docs/README.md
           
       - name: Create pull request for documentation index

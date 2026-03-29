@@ -149,9 +149,18 @@ class UserDeletionService
         $userId = (int) ($targetUser['id'] ?? 0);
         $role = $targetUser['role'] ?? '';
 
+        $adminCountBuilder = $this->userModel->builder();
+        $adminCountBuilder->where('role', 'admin');
+
+        if ($this->hasUsersColumn('is_active')) {
+            $adminCountBuilder->where('is_active', 1);
+        } elseif ($this->hasUsersColumn('status')) {
+            $adminCountBuilder->where('status', 'active');
+        }
+
         $impact = [
             'role' => $role,
-            'adminCount' => (int) $this->userModel->where('role', 'admin')->where('is_active', 1)->countAllResults(),
+            'adminCount' => (int) $adminCountBuilder->countAllResults(),
             'servicesLinked' => 0,
             'staffLinked' => 0,
             'appointmentsTotal' => 0,
@@ -290,6 +299,17 @@ class UserDeletionService
         if ($this->tableExists('notification_delivery_logs')) {
             $db->table($db->prefixTable('notification_delivery_logs'))->whereIn('appointment_id', $appointmentIds)->delete();
         }
+    }
+
+    private function hasUsersColumn(string $column): bool
+    {
+        $db = $this->userModel->db;
+
+        if (!method_exists($db, 'fieldExists')) {
+            return true;
+        }
+
+        return $db->fieldExists($column, $db->prefixTable('users')) || $db->fieldExists($column, 'users');
     }
 
     private function tableExists(string $table): bool

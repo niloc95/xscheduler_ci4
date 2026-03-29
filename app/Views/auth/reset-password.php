@@ -1,6 +1,6 @@
 <?= $this->extend('layouts/auth') ?>
 
-<?= $this->section('title') ?>Reset Password - WebSchedulr<?= $this->endSection() ?>
+<?= $this->section('title') ?>Reset Password - WebScheduler<?= $this->endSection() ?>
 <?= $this->section('auth_title') ?>Reset Password<?= $this->endSection() ?>
 <?= $this->section('auth_subtitle') ?>Enter your new password below<?= $this->endSection() ?>
 

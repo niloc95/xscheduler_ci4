@@ -15,7 +15,9 @@ class UserManagementMutationService
     private ProviderStaffModel $providerStaffModel;
     private ProviderScheduleModel $providerScheduleModel;
     private BusinessHourModel $businessHourModel;
+    private LocationModel $locationModel;
     private AuditLogModel $auditModel;
+    private LocalizationSettingsService $localization;
     private ScheduleValidationService $scheduleValidation;
     private UserManagementContextService $contextService;
 
@@ -28,21 +30,25 @@ class UserManagementMutationService
         ?ScheduleValidationService $scheduleValidation = null,
         ?UserManagementContextService $contextService = null,
         ?BusinessHourModel $businessHourModel = null,
+        ?LocalizationSettingsService $localization = null,
+        ?LocationModel $locationModel = null,
     ) {
         $this->userModel = $userModel ?? new UserModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
         $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
         $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
         $this->auditModel = $auditModel ?? new AuditLogModel();
-        $localization = new LocalizationSettingsService();
-        $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($localization);
+        $this->localization = $localization ?? new LocalizationSettingsService();
+        $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($this->localization);
+        $this->locationModel = $locationModel ?? new LocationModel();
         $this->contextService = $contextService ?? new UserManagementContextService(
             $this->userModel,
             null,
             $this->providerStaffModel,
             $this->providerScheduleModel,
-            $localization,
+            $this->localization,
             $this->scheduleValidation,
+            $this->locationModel,
         );
         $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
     }
@@ -67,7 +73,6 @@ class UserManagementMutationService
             'phone' => $payload['phone'] ?? null,
             'role' => $role,
             'password' => $payload['password'] ?? null,
-            'is_active' => true,
         ];
 
         $scheduleInput = $payload['schedule'] ?? [];
@@ -155,8 +160,9 @@ class UserManagementMutationService
             'name' => $payload['name'] ?? null,
             'email' => $payload['email'] ?? null,
             'phone' => $payload['phone'] ?? null,
-            'is_active' => !empty($payload['is_active']) ? 1 : 0,
         ];
+
+        $updateData = array_merge($updateData, $this->buildUserActiveUpdatePayload(!empty($payload['is_active'])));
 
         if (!empty($payload['password'])) {
             $updateData['password'] = $payload['password'];
@@ -337,7 +343,7 @@ class UserManagementMutationService
             ];
         }
 
-        if (!$this->userModel->update($userId, ['is_active' => true])) {
+        if (!$this->userModel->update($userId, $this->buildUserActiveUpdatePayload(true))) {
             return [
                 'success' => false,
                 'statusCode' => 400,
@@ -358,8 +364,7 @@ class UserManagementMutationService
 
     private function syncLocationDaysFromSchedule(int $providerId, array $scheduleInput): void
     {
-        $locationModel = new LocationModel();
-        $providerLocations = $locationModel->getProviderLocations($providerId);
+        $providerLocations = $this->locationModel->getProviderLocations($providerId);
         if (empty($providerLocations)) {
             return;
         }
@@ -385,7 +390,7 @@ class UserManagementMutationService
         }
 
         foreach ($locationDaysMap as $locationId => $days) {
-            $locationModel->setLocationDays($locationId, $days, $providerId);
+            $this->locationModel->setLocationDays($locationId, $days, $providerId);
         }
     }
 
@@ -423,5 +428,25 @@ class UserManagementMutationService
         }
 
         return $scheduleInput;
+    }
+
+    /**
+     * Build active-state update payload for current xs_users schema.
+     */
+    private function buildUserActiveUpdatePayload(bool $isActive): array
+    {
+        $db = \Config\Database::connect();
+        $hasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
+        $hasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
+
+        if ($hasIsActive) {
+            return ['is_active' => $isActive ? 1 : 0];
+        }
+
+        if ($hasStatus) {
+            return ['status' => $isActive ? 'active' : 'inactive'];
+        }
+
+        return [];
     }
 }

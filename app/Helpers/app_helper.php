@@ -18,7 +18,7 @@
  * -----------------------------------------------------------------------------
  * setting($key, $default)
  *   Get a setting value by key with caching
- *   Example: setting('general.business_name', 'WebSchedulr')
+ *   Example: setting('general.business_name', 'WebScheduler')
  * 
  * settings_by_prefix($prefix)
  *   Get all settings matching a prefix
@@ -43,8 +43,8 @@
  * @see         app/Models/SettingModel.php
  * @see         app/Helpers/settings_helper.php (duplicate - prefer this file)
  * @package     App\Helpers
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

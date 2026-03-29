@@ -10,10 +10,18 @@ use App\Models\UserPermissionModel;
 
 class UserManagementContextService
 {
+    private const CREATE_ROLE_MATRIX = [
+        'admin' => ['admin', 'provider', 'staff'],
+        'provider' => ['staff'],
+        'staff' => [],
+        'customer' => [],
+    ];
+
     private UserModel $userModel;
     private UserPermissionModel $permissionModel;
     private ProviderStaffModel $providerStaffModel;
     private ProviderScheduleModel $providerScheduleModel;
+    private LocationModel $locationModel;
     private LocalizationSettingsService $localization;
     private ScheduleValidationService $scheduleValidation;
 
@@ -24,11 +32,13 @@ class UserManagementContextService
         ?ProviderScheduleModel $providerScheduleModel = null,
         ?LocalizationSettingsService $localization = null,
         ?ScheduleValidationService $scheduleValidation = null,
+        ?LocationModel $locationModel = null,
     ) {
         $this->userModel = $userModel ?? new UserModel();
         $this->permissionModel = $permissionModel ?? new UserPermissionModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
         $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
+        $this->locationModel = $locationModel ?? new LocationModel();
         $this->localization = $localization ?? new LocalizationSettingsService();
         $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($this->localization);
     }
@@ -46,7 +56,7 @@ class UserManagementContextService
         }
 
         return [
-            'title' => 'User Management - WebSchedulr',
+            'title' => 'User Management - WebScheduler',
             'currentUser' => $currentUser,
             'users' => $users,
             'stats' => $stats,
@@ -72,15 +82,11 @@ class UserManagementContextService
 
         $availableStaff = [];
         if (in_array('provider', $availableRoles, true)) {
-            $availableStaff = $this->userModel
-                ->where('role', 'staff')
-                ->where('is_active', true)
-                ->orderBy('name', 'ASC')
-                ->findAll();
+            $availableStaff = $this->getActiveUsersByRole('staff');
         }
 
         return [
-            'title' => 'Create User - WebSchedulr',
+            'title' => 'Create User - WebScheduler',
             'currentUser' => $currentUser,
             'availableRoles' => $availableRoles,
             'providers' => $providers,
@@ -129,31 +135,23 @@ class UserManagementContextService
             $assignedStaff = $this->providerStaffModel->getStaffByProvider((int) $user['id']);
 
             if ($canManageAssignments) {
-                $availableStaff = $this->userModel
-                    ->where('role', 'staff')
-                    ->where('is_active', true)
-                    ->orderBy('name', 'ASC')
-                    ->findAll();
+                $availableStaff = $this->getActiveUsersByRole('staff');
             }
         } elseif (($user['role'] ?? '') === 'staff') {
             $assignedProviders = $this->providerStaffModel->getProvidersForStaff((int) $user['id']);
 
             if ($canManageAssignments) {
-                $availableProviders = $this->userModel
-                    ->where('role', 'provider')
-                    ->where('is_active', true)
-                    ->orderBy('name', 'ASC')
-                    ->findAll();
+                $availableProviders = $this->getActiveUsersByRole('provider');
             }
         }
 
         $providerLocations = [];
         if (($user['role'] ?? '') === 'provider') {
-            $providerLocations = (new LocationModel())->getProviderLocationsWithDays((int) $user['id']);
+            $providerLocations = $this->locationModel->getProviderLocationsWithDays((int) $user['id']);
         }
 
         return [
-            'title' => 'Edit User - WebSchedulr',
+            'title' => 'Edit User - WebScheduler',
             'currentUser' => $currentUser,
             'user' => $user,
             'userId' => (int) $user['id'],
@@ -207,16 +205,23 @@ class UserManagementContextService
 
     public function getAvailableRolesForUser(int $currentUserId, ?array $targetUser = null): array
     {
-        $roles = [];
+        $currentUser = $this->userModel->find($currentUserId);
+        $currentRole = $this->normalizeRole($currentUser['role'] ?? null);
+        $roles = self::CREATE_ROLE_MATRIX[$currentRole] ?? [];
 
-        if ($this->permissionModel->hasPermission($currentUserId, 'create_admin')) {
-            $roles[] = 'admin';
+        // Keep permission checks as a secondary guard for custom permission overlays.
+        if ($roles === []) {
+            return [];
         }
-        if ($this->permissionModel->hasPermission($currentUserId, 'create_provider')) {
-            $roles[] = 'provider';
+
+        if (in_array('admin', $roles, true) && !$this->permissionModel->hasPermission($currentUserId, 'create_admin')) {
+            $roles = array_values(array_filter($roles, static fn(string $role) => $role !== 'admin'));
         }
-        if ($this->permissionModel->hasPermission($currentUserId, 'create_staff')) {
-            $roles[] = 'staff';
+        if (in_array('provider', $roles, true) && !$this->permissionModel->hasPermission($currentUserId, 'create_provider')) {
+            $roles = array_values(array_filter($roles, static fn(string $role) => $role !== 'provider'));
+        }
+        if (in_array('staff', $roles, true) && !$this->permissionModel->hasPermission($currentUserId, 'create_staff')) {
+            $roles = array_values(array_filter($roles, static fn(string $role) => $role !== 'staff'));
         }
 
         return $roles;
@@ -224,7 +229,17 @@ class UserManagementContextService
 
     public function canCreateRole(int $currentUserId, string $role): bool
     {
-        return match ($role) {
+        $requestedRole = $this->normalizeRole($role);
+
+        $currentUser = $this->userModel->find($currentUserId);
+        $currentRole = $this->normalizeRole($currentUser['role'] ?? null);
+        $allowedByRole = self::CREATE_ROLE_MATRIX[$currentRole] ?? [];
+
+        if (!in_array($requestedRole, $allowedByRole, true)) {
+            return false;
+        }
+
+        return match ($requestedRole) {
             'admin' => $this->permissionModel->hasPermission($currentUserId, 'create_admin'),
             'provider' => $this->permissionModel->hasPermission($currentUserId, 'create_provider'),
             'staff' => $this->permissionModel->hasPermission($currentUserId, 'create_staff'),
@@ -232,10 +247,43 @@ class UserManagementContextService
         };
     }
 
+    private function normalizeRole(?string $role): string
+    {
+        $value = strtolower(trim((string) $role));
+
+        return match ($value) {
+            'owner', 'superadmin', 'super_admin' => 'admin',
+            'employee' => 'staff',
+            default => $value,
+        };
+    }
+
     public function canChangeUserRole(int $currentUserId, int $targetUserId): bool
     {
         $currentUser = $this->userModel->find($currentUserId);
         return ($currentUser['role'] ?? null) === 'admin';
+    }
+
+    /**
+     * Return active users for a role with schema-safe filtering.
+     */
+    private function getActiveUsersByRole(string $role): array
+    {
+        $db = \Config\Database::connect();
+        $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
+        $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
+
+        $builder = $this->userModel
+            ->where('role', $role)
+            ->orderBy('name', 'ASC');
+
+        if ($usersHasIsActive) {
+            $builder->where('is_active', true);
+        } elseif ($usersHasStatus) {
+            $builder->where('status', 'active');
+        }
+
+        return $builder->findAll();
     }
 
     public function getStoreValidationRules(): array

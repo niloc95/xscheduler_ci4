@@ -68,8 +68,8 @@
  * @see         app/Helpers/whatsapp_helper.php for link generation
  * @see         app/Models/MessageTemplateModel.php for Meta templates
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -527,7 +527,7 @@ class NotificationWhatsAppService
                     // Use body parameters for custom messages
                     $message = implode("\n", $bodyParameters);
                     if ($message === '') {
-                        $message = 'Message from ' . ($business['business_name'] ?? 'WebSchedulr');
+                        $message = 'Message from ' . ($business['business_name'] ?? 'WebScheduler');
                     }
             }
         }
@@ -716,7 +716,7 @@ class NotificationWhatsAppService
         $model = new BusinessIntegrationModel();
 
         try {
-            $business = ['business_name' => 'WebSchedulr'];
+            $business = ['business_name' => 'WebScheduler'];
 
             // Use rendered message from template service
             $send = $this->sendMessage($businessId, $toPhone, 'appointment_confirmed', ['Test', 'Service', 'Provider', $now], $testAppointment, $business, $message);

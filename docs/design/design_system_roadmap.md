@@ -1,4 +1,4 @@
-# WebSchedulr Design System Cleanup Roadmap
+# WebScheduler Design System Cleanup Roadmap
 
 ## Objective
 Unify Tailwind and Material Design 3 usage, remove duplication and stale code, reduce inline CSS in app-facing views, and enforce consistency going forward.

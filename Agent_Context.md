@@ -1,4 +1,4 @@
-# WebSchedulr CI4 - Agent Context & Engineering Standards
+# WebScheduler CI4 - Agent Context & Engineering Standards
 
 > Read this document before making structural, architectural, API, scheduling, or UI changes.
 > These rules are repo-specific and should be treated as the working contract for this codebase.
@@ -7,11 +7,18 @@
 
 ## What You Are Building
 
-WebSchedulr CI4 is a professional appointment scheduling system built on CodeIgniter 4.
+WebScheduler CI4 is a professional appointment scheduling system built on CodeIgniter 4.
 
 Architecture: service-oriented CodeIgniter monolith with server-rendered views, REST-style APIs, Vite-managed frontend assets, and a custom scheduler/public-booking experience.
 
-Current stage: active development and refactoring. The foundation, setup flow, settings system, public booking flow, and core scheduling services exist, but parts of the scheduler, API surface, and service boundaries are still being consolidated.
+Current stage: active development and refactoring. The foundation, setup flow, settings system, public booking flow, and core scheduling services exist, while controller seams, SPA initialization boundaries, and focused regression coverage are being consolidated across the remaining high-churn surfaces.
+
+### Current Refactor Snapshot
+- Settings, notifications, appointments, dashboard, user management, customer management, search, and services have all moved toward explicit constructor seams or extracted service boundaries.
+- Appointment form and provider-schedule SPA behavior now live in frontend modules instead of view-local inline scripts.
+- Focused regression coverage exists for appointment form SPA re-initialization, provider schedule SPA re-initialization, customer-management CRUD/search/history journeys, and service CRUD/provider-assignment journeys.
+- Compatibility hardening is active for mixed-schema environments where internal-user active state may use `status` and/or `is_active`, and where hash columns may not be present in every migrated local database.
+- Remaining cleanup is centered on the last legacy controllers and any extracted seams that still lack consistent adoption.
 
 ---
 
@@ -186,12 +193,15 @@ The current database is centered on appointments, provider availability, public 
   - `phone`
   - `password_hash`
   - `role`
+  - `status`
+  - `is_active` (legacy/compatibility schemas)
   - `color`
   - `created_at`
   - `updated_at`
 - Notes:
   - This is not the customer table.
   - Providers and staff are modeled here and linked outward through schedules, services, blocked times, and appointments.
+  - Active-state checks in services and tests must branch by available column (`is_active` first when present, otherwise normalized `status`).
 
 ##### `xs_customers`
 - Booking customers and customer-profile data.
@@ -752,10 +762,15 @@ Current operational roles include:
 ### Commands
 - `./vendor/bin/phpunit`
 - `npm run test:integration:mysql`
+- `php vendor/bin/phpunit tests/unit/Controllers/ServicesControllerTest.php tests/integration/ServicesJourneyTest.php`
+- `php vendor/bin/phpunit tests/unit/Controllers/SearchControllerTest.php tests/integration/CustomerManagementJourneyTest.php`
 
 ### Requirements
 - Do not point tests at a live application schema.
 - Keep test DB configuration isolated via `phpunit.xml`, `phpunit.xml.dist`, `phpunit.mysql.xml.dist`, or `.env` overrides.
+- Journey tests that depend on AJAX-backed controller flows often need an explicit CSRF cookie, a setup flag under `writable/`, and deterministic settings fixtures.
+- Booking-field settings can leak into customer-management validation; seed those settings explicitly in controller journeys instead of assuming ambient DB state.
+- A PHPUnit warning about a missing code coverage driver does not mean the assertions failed; it only means coverage data was not collected.
 
 ### Migration Rule
 - Test-related migrations for the application should still respect project migration conventions.
@@ -780,6 +795,62 @@ Current operational roles include:
 
 ---
 
+## Debt Prevention Guardrails
+
+### Schema-Drift Guardrails (Tech Debt)
+- Treat this as canonical for internal users: `xs_users` uses `status` (`active|inactive|suspended`) and does not guarantee an `is_active` column.
+- Do not write new `xs_users` query filters that assume `is_active` exists.
+- Treat this as canonical for appointment public access: `xs_appointments` is expected to include `hash`, `public_token`, and `public_token_expires_at` for public-safe lookup flows.
+- Before changing booking or public booking flows, verify runtime appointment schema with:
+  - `php spark db:table xs_appointments`
+- If runtime schema drifts from expected appointment columns, prefer restoring schema first; only then add compatibility guards in model/service code.
+- For user-active filtering, use one of these patterns:
+  - Preferred: model/service methods that encapsulate active-user semantics.
+  - Fallback for mixed-schema compatibility: `fieldExists('is_active', 'xs_users')` check, else filter by `status = active`.
+- Any change that introduces a new user filter must include a schema-safe path or an explicit migration that adds required columns.
+- If a query references a column that is not guaranteed by this contract, the PR must be treated as incomplete.
+
+### Database Isolation Guardrails (Tech Debt)
+- Development web runtime must resolve to the configured `database.default.*` connection.
+- Test execution must use `database.tests.*` only when `CI_ENVIRONMENT=testing`.
+- Never run test suites against live/default schema.
+- Do not assume migration status is recorded under the same migration group used by web runtime; verify migration history table entries before relying on `php spark migrate` output.
+- Before debugging data mismatches, verify active runtime DB with:
+  - `php spark db:table xs_users`
+  - `php spark db:table xs_appointments`
+- Debugging checklist for possible DB crossing:
+  - Confirm `php spark env` output.
+  - Confirm `.env` `database.default.*` and `database.tests.*` values.
+  - Confirm no OS-level overrides for `CI_ENVIRONMENT` and `database.*`.
+
+### AI-Debt Guardrails (Agent and Contributor Quality)
+- Do not cargo-cult schema assumptions across files. Validate table/column contracts first.
+- Do not patch only one crash site when the same assumption appears in nearby flows; perform a targeted local sweep and fix adjacent paths.
+- Do not introduce parallel business rules in controllers if a service/model boundary already exists.
+- Prefer additive, reversible refactors over broad rewrites in dirty branches.
+- In JOIN-heavy CI4 query builders that select aliased fields (for example `c.email`, `s.name`, `u.name`), prevent identifier rewriting by using raw select projections where needed (for example `select($sql, false)`) and validate generated SQL behavior.
+- Any schema-compat helper changes must pass immediate syntax validation (`php -l`) before endpoint checks; parse errors in shared services can cascade into broad API outages.
+- Every bug fix should include:
+  - source-of-truth validation (schema/config/runtime),
+  - minimal code correction,
+  - syntax/error verification,
+  - and a note of residual risk if full sweep is deferred.
+- If an agent cannot verify a path (for example testing bootstrap failure), it must state the gap explicitly and avoid pretending coverage.
+
+### Regression Checklist for Schema-Sensitive Changes
+Use this quick gate before merge:
+
+```text
+[] Did I validate the real runtime schema for affected tables?
+[] Did I avoid hardcoding non-canonical columns on xs_users?
+[] If compatibility logic is needed, did I include safe fallback behavior?
+[] Did I verify development runtime DB target with php spark db:table?
+[] Did I verify no accidental reliance on testing DB settings in web runtime?
+[] Did I lint/validate the touched PHP files and review adjacent call sites?
+```
+
+---
+
 ## Forbidden List
 
 | # | Forbidden | Correct Alternative |
@@ -798,6 +869,9 @@ Current operational roles include:
 | 12 | Reintroducing `user_id` as the appointment customer link | Use `customer_id` |
 | 13 | Ad hoc appointment statuses in controllers/views | Use `AppointmentStatus` |
 | 14 | Skipping route filters because the UI hides an action | Enforce access in routes and backend logic |
+| 15 | Assuming `xs_users.is_active` exists in new logic | Use canonical `status` or schema-safe fallback checks |
+| 16 | Running tests against `database.default.*` by accident | Isolate tests with `database.tests.*` and testing env only |
+| 17 | Claiming bug-fix completeness without runtime/schema verification | Verify DB target, schema, and adjacent flows before closure |
 
 ---
 
@@ -876,5 +950,5 @@ If a change starts from presentation while the service or data contract is still
 
 ---
 
-Last updated: 2026-03-23
+Last updated: 2026-03-27
 Status: Active

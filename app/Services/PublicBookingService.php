@@ -99,6 +99,9 @@ class PublicBookingService
     private LocationModel $locations;
     private AppointmentBookingService $bookingService;
 
+    /** @var array<string, bool> */
+    private array $columnExistsCache = [];
+
     public function __construct(
         ?BookingSettingsService $bookingSettings = null,
         ?AvailabilityService $availability = null,
@@ -249,6 +252,7 @@ class PublicBookingService
             'customer_phone' => $customerFields['phone'] ?? '',
             'customer_address' => $customerFields['address'] ?? '',
             'customer_notes' => $customerFields['notes'] ?? '',
+            'booking_channel' => 'public',
         ];
 
         if (!empty($customerFields['custom_fields'])) {
@@ -305,6 +309,7 @@ class PublicBookingService
             'public_token_expires_at' => null,
             'customer_id' => $customerId,
             'location_id' => $newLocationId,
+            'booking_channel' => 'public',
         ];
 
         $result = $this->bookingService->updateAppointment(
@@ -378,12 +383,64 @@ class PublicBookingService
             throw new PublicBookingException('Provider selection is required.', 422, ['provider_id' => 'required']);
         }
 
-        $provider = $this->users->where('id', $providerId)->where('role', 'provider')->where('is_active', true)->first();
+        $builder = $this->users->where('id', $providerId)->where('role', 'provider');
+        if ($this->hasUsersColumn('is_active')) {
+            $builder->where('is_active', true);
+        } elseif ($this->hasUsersColumn('status')) {
+            $builder->where('status', 'active');
+        }
+
+        $provider = $builder->first();
         if (!$provider) {
             throw new PublicBookingException('Selected provider is unavailable.', 404);
         }
 
         return $provider;
+    }
+
+    private function hasUsersColumn(string $column): bool
+    {
+        $key = 'users.' . $column;
+
+        if (array_key_exists($key, $this->columnExistsCache)) {
+            return $this->columnExistsCache[$key];
+        }
+
+        $db = \Config\Database::connect();
+        $exists = false;
+
+        try {
+            if (!method_exists($db, 'getFieldData')) {
+                $this->columnExistsCache[$key] = true;
+                return true;
+            }
+
+            $candidates = [];
+            if (method_exists($db, 'prefixTable')) {
+                $candidates[] = (string) $db->prefixTable('users');
+            }
+            $candidates[] = 'users';
+
+            foreach (array_values(array_unique($candidates)) as $candidate) {
+                try {
+                    $fields = $db->getFieldData($candidate);
+                    foreach ($fields as $field) {
+                        if ((string) ($field->name ?? '') === $column) {
+                            $exists = true;
+                            break 2;
+                        }
+                    }
+                } catch (Throwable $inner) {
+                    // Try the next candidate table name.
+                }
+            }
+        } catch (Throwable $e) {
+            $exists = false;
+        }
+
+        $this->columnExistsCache[$key] = $exists;
+
+        return $exists;
     }
 
     private function resolveBookingLocation(int $providerId, $requestedLocationId): ?int
@@ -743,7 +800,7 @@ class PublicBookingService
         }
 
         $builder = $this->appointments->builder();
-        $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id')
+        $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->where('xs_appointments.public_token', $token);
 

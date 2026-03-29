@@ -25,7 +25,7 @@ $currentRole = current_user_role();
                 <?php endif; ?>
                 <?php 
                 $brandName = trim((string) setting('general.company_name', ''));
-                if ($brandName === '') { $brandName = 'WebSchedulr'; }
+                if ($brandName === '') { $brandName = 'WebScheduler'; }
                 ?>
                 <span class="brand-name" id="sidebarBrandName"><?= esc($brandName) ?></span>
                 <button id="sidebar-close-btn" class="close-button lg:hidden">
@@ -113,7 +113,7 @@ $currentRole = current_user_role();
     <div class="nav-divider"></div>
     <div class="px-4 pb-4 text-xs text-gray-500 dark:text-gray-500 text-center">
             <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
-                Engineered by WebSchedulr
+                Engineered by WebScheduler
             </a>
         </div>
     </div>

@@ -1,7 +1,7 @@
-# GitHub Copilot Instructions — WebSchedulr CI4
+# GitHub Copilot Instructions — WebScheduler CI4
 
 ## Project Overview
-WebSchedulr is a professional appointment scheduling system built with **CodeIgniter 4** (PHP 8.1+), **MySQL/MariaDB**, **Vite**, **Tailwind CSS 3**, and **Material Design 3**. It serves service-based businesses with multi-channel notifications (email, SMS, WhatsApp via Clickatell/Twilio/Meta Cloud API).
+WebScheduler is a professional appointment scheduling system built with **CodeIgniter 4** (PHP 8.1+), **MySQL/MariaDB**, **Vite**, **Tailwind CSS 3**, and **Material Design 3**. It serves service-based businesses with multi-channel notifications (email, SMS, WhatsApp via Clickatell/Twilio/Meta Cloud API).
 
 ## Architecture
 

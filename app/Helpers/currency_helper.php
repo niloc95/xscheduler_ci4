@@ -52,8 +52,8 @@
  * 
  * @see         app/Services/LocalizationSettingsService.php
  * @package     App\Helpers
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

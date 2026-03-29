@@ -77,6 +77,7 @@ class DashboardService
     protected BusinessHourModel $businessHourModel;
     protected LocalizationSettingsService $localizationService;
     protected AvailabilityService $availabilityService;
+    protected AppointmentDashboardContextService $appointmentDashboardContextService;
 
     public function __construct(
         ?AppointmentModel $appointmentModel = null,
@@ -86,7 +87,8 @@ class DashboardService
         ?ProviderScheduleModel $providerScheduleModel = null,
         ?BusinessHourModel $businessHourModel = null,
         ?LocalizationSettingsService $localizationService = null,
-        ?AvailabilityService $availabilityService = null
+        ?AvailabilityService $availabilityService = null,
+        ?AppointmentDashboardContextService $appointmentDashboardContextService = null
     )
     {
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
@@ -97,6 +99,7 @@ class DashboardService
         $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
         $this->localizationService = $localizationService ?? new LocalizationSettingsService();
         $this->availabilityService = $availabilityService ?? new AvailabilityService();
+        $this->appointmentDashboardContextService = $appointmentDashboardContextService ?? new AppointmentDashboardContextService();
     }
 
     /**
@@ -120,7 +123,7 @@ class DashboardService
         // Get timezone from settings
         $timezone = $this->localizationService->getTimezone();
 
-        return [
+        return array_merge([
             'business_name' => $businessName,
             'current_date' => $currentDate,
             'timezone' => $timezone,
@@ -129,7 +132,7 @@ class DashboardService
             'user_role' => $userRole,
             'user_id' => $userId,
             'provider_id' => $providerId,
-        ];
+        ], $this->appointmentDashboardContextService->build($userRole, $userId, is_array($user) ? $user : null));
     }
 
     /**
@@ -443,10 +446,19 @@ class DashboardService
      */
     public function getProviderAvailability(?int $providerId = null): array
     {
+        $db = \Config\Database::connect();
+        $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
+        $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
+
         $builder = $this->userModel->builder();
         $builder->select('id, name, color')
-            ->where('role', 'provider')
-            ->where('is_active', true);
+            ->where('role', 'provider');
+
+        if ($usersHasIsActive) {
+            $builder->where('is_active', true);
+        } elseif ($usersHasStatus) {
+            $builder->where('status', 'active');
+        }
 
         if ($providerId !== null) {
             $builder->where('id', $providerId);

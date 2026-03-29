@@ -48,8 +48,8 @@
  * @see         app/Models/CustomerModel::search() for customer search
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -61,9 +61,9 @@ class Search extends BaseController
 {
     protected GlobalSearchService $globalSearchService;
 
-    public function __construct()
+    public function __construct(?GlobalSearchService $globalSearchService = null)
     {
-        $this->globalSearchService = new GlobalSearchService();
+        $this->globalSearchService = $globalSearchService ?? new GlobalSearchService();
     }
 
     /**

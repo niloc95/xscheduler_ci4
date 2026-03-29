@@ -49,8 +49,8 @@
  * @see         app/Services/AppointmentBookingService.php for booking business logic
  * @package     App\Models
  * @extends     BaseModel
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -87,7 +87,8 @@ class AppointmentModel extends BaseModel
         'public_token_expires_at',
     ];
 
-    protected $beforeInsert = ['generateHash'];
+    protected $beforeInsert = ['normalizeSchemaFields', 'generateHash'];
+    protected $beforeUpdate = ['normalizeSchemaFields'];
     protected $afterInsert = ['invalidateDashboardCache'];
     protected $afterUpdate = ['invalidateDashboardCache'];
     protected $afterDelete = ['invalidateDashboardCache'];
@@ -105,10 +106,74 @@ class AppointmentModel extends BaseModel
     ];
 
     /**
+     * Check whether a column exists on xs_appointments.
+     */
+    private function hasAppointmentsColumn(string $column): bool
+    {
+        static $cache = [];
+
+        if (array_key_exists($column, $cache)) {
+            return $cache[$column];
+        }
+
+        $prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
+        $unprefixedTable = $prefix !== '' ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $this->table) : $this->table;
+
+        $tableCandidates = array_values(array_unique([
+            $this->table,
+            method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($unprefixedTable) : $this->table,
+            $unprefixedTable,
+        ]));
+
+        foreach ($tableCandidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+
+            try {
+                foreach ($this->db->getFieldData($candidate) as $field) {
+                    if ((string) ($field->name ?? '') === $column) {
+                        $cache[$column] = true;
+                        return true;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Try the next candidate table name.
+            }
+        }
+
+        $cache[$column] = false;
+
+        return false;
+    }
+
+    /**
+     * Remove fields that are not present in the live appointments schema.
+     */
+    protected function normalizeSchemaFields(array $data): array
+    {
+        if (!isset($data['data']) || !is_array($data['data'])) {
+            return $data;
+        }
+
+        foreach (array_keys($data['data']) as $field) {
+            if (!$this->hasAppointmentsColumn((string) $field)) {
+                unset($data['data'][$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * Generate unique hash for new appointment before insert
      */
     protected function generateHash(array $data): array
     {
+        if (!$this->hasAppointmentsColumn('hash')) {
+            return $data;
+        }
+
         if (!isset($data['data']['hash']) || empty($data['data']['hash'])) {
             $encryptionKey = config('Encryption')->key ?? 'default-secret-key';
             $data['data']['hash'] = hash('sha256', 'appointment_' . uniqid('', true) . $encryptionKey . time());
@@ -168,6 +233,10 @@ class AppointmentModel extends BaseModel
      */
     public function findByHash(string $hash): ?array
     {
+        if (!$this->hasAppointmentsColumn('hash')) {
+            return null;
+        }
+
         $result = $this->where('hash', $hash)->first();
         return $result ?: null;
     }
@@ -377,7 +446,7 @@ class AppointmentModel extends BaseModel
                      s.duration_min as service_duration,
                      s.price as service_price,
                      u.name as provider_name,
-                     u.color as provider_color')
+                     u.color as provider_color', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')
@@ -408,7 +477,7 @@ class AppointmentModel extends BaseModel
                      s.duration_min as service_duration,
                      s.price as service_price,
                      u.name as provider_name,
-                     u.color as provider_color')
+                     u.color as provider_color', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left');
@@ -452,7 +521,7 @@ class AppointmentModel extends BaseModel
                      c.phone as customer_phone,
                      s.name as service_name,
                      u.name as provider_name,
-                     u.color as provider_color')
+                     u.color as provider_color', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services as s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users as u', 'u.id = xs_appointments.provider_id', 'left')

@@ -7,7 +7,7 @@
  * 
  * @file        app/Controllers/Settings.php
  * @description Admin settings controller for configuring all aspects of the
- *              WebSchedulr application including business info, localization,
+ *              WebScheduler application including business info, localization,
  *              booking fields, notifications, and integrations.
  * 
  * ROUTES HANDLED:
@@ -54,8 +54,8 @@
  * @see         app/Models/SettingModel.php for settings storage
  * @package     App\Controllers
  * @extends     BaseController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -71,6 +71,16 @@ class Settings extends BaseController
     private ?GeneralSettingsService $generalSettingsService = null;
     private ?NotificationSettingsService $notificationSettingsService = null;
     private ?SettingsPageService $settingsPageService = null;
+
+    public function __construct(
+        ?GeneralSettingsService $generalSettingsService = null,
+        ?NotificationSettingsService $notificationSettingsService = null,
+        ?SettingsPageService $settingsPageService = null,
+    ) {
+        $this->generalSettingsService = $generalSettingsService;
+        $this->notificationSettingsService = $notificationSettingsService;
+        $this->settingsPageService = $settingsPageService;
+    }
 
     public function index()
     {

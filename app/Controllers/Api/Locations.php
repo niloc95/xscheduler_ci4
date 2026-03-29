@@ -51,8 +51,8 @@
  * @see         app/Views/user-management/components/provider-locations.php for admin UI
  * @package     App\Controllers\Api
  * @extends     BaseApiController
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

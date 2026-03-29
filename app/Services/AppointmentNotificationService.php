@@ -60,8 +60,8 @@
  * @see         app/Services/NotificationSmsService.php
  * @see         app/Commands/SendAppointmentReminders.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -245,7 +245,7 @@ class AppointmentNotificationService
         $builder = $model->builder();
 
         $row = $builder
-            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, s.name as service_name, u.name as provider_name')
+            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, s.name as service_name, u.name as provider_name', false)
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
@@ -301,7 +301,7 @@ class AppointmentNotificationService
         $lines[] = "Service: {$serviceName}";
         $lines[] = "When: {$start}";
         $lines[] = '';
-        $lines[] = '— WebSchedulr';
+        $lines[] = '— WebScheduler';
 
         return [$subject, implode("\n", $lines)];
     }

@@ -50,8 +50,8 @@
  * @see         app/Services/LocalizationSettingsService.php
  * @package     App\Models
  * @extends     BaseModel
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -105,6 +105,21 @@ class SettingModel extends BaseModel
         foreach ($rows as $r) {
             $out[$r['setting_key']] = $this->castValue($r['setting_value'], $r['setting_type'] ?? 'string');
         }
+        return $out;
+    }
+
+    /**
+     * Get all settings as a typed key=>value map.
+     */
+    public function getAllAsMap(): array
+    {
+        $rows = $this->select(['setting_key', 'setting_value', 'setting_type'])->findAll();
+        $out = [];
+
+        foreach ($rows as $row) {
+            $out[$row['setting_key']] = $this->castValue($row['setting_value'], $row['setting_type'] ?? 'string');
+        }
+
         return $out;
     }
 

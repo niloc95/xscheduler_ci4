@@ -66,9 +66,9 @@
  * @see         app/Controllers/UserManagement.php for usage
  * @see         app/Models/ProviderScheduleModel.php
  * @package     App\Services
- * @author      WebSchedulr Team
+ * @author      Nilesh Nagin Cara
  * @since       2.0.0
- * @copyright   2024-2026 WebSchedulr
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -80,7 +80,7 @@ namespace App\Services;
  * Centralized validation for provider schedules, business hours, and time slots.
  * Extracted from UserManagement controller to promote code reuse.
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 class ScheduleValidationService

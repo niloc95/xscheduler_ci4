@@ -4,7 +4,7 @@
 
 **Current Status: ❌ NOT FULLY END-TO-END ENCRYPTED**
 
-Your WebSchedulr application has **partial encryption** with significant gaps in the encryption chain. Here's the complete breakdown:
+Your WebScheduler application has **partial encryption** with significant gaps in the encryption chain. Here's the complete breakdown:
 
 ## Encryption Analysis by Layer
 

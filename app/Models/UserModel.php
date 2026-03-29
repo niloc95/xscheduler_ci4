@@ -17,7 +17,7 @@
  * - email           : Login email (unique)
  * - phone           : Contact phone
  * - password_hash   : Bcrypt hashed password
- * - role            : admin, provider, staff, customer
+ * - role            : admin, provider, staff
  * - permissions     : JSON array of specific permissions
  * - status          : Account status
  * - is_active       : Soft active/inactive flag
@@ -34,7 +34,6 @@
  * - admin    : Full system access, manages all settings
  * - provider : Service provider, has own schedule and calendar
  * - staff    : Assigned to provider(s), limited access
- * - customer : End user (deprecated, use CustomerModel instead)
  * 
  * KEY METHODS:
  * -----------------------------------------------------------------------------
@@ -132,7 +131,7 @@ class UserModel extends BaseModel
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[xs_users.email,id,{id}]',
-        'role'  => 'required|in_list[admin,provider,staff,customer]'
+        'role'  => 'required|in_list[admin,provider,staff]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;
@@ -201,6 +200,50 @@ class UserModel extends BaseModel
     }
 
     /**
+     * Check whether a column exists on xs_users.
+     */
+    private function hasUsersColumn(string $column): bool
+    {
+        static $cache = [];
+
+        if (array_key_exists($column, $cache)) {
+            return $cache[$column];
+        }
+
+        try {
+            $cache[$column] = method_exists($this->db, 'fieldExists')
+                ? $this->db->fieldExists($column, $this->table)
+                : true;
+        } catch (\Throwable $e) {
+            $cache[$column] = false;
+        }
+
+        return $cache[$column];
+    }
+
+    /**
+     * Normalize active fields to the current xs_users schema.
+     */
+    private function normalizeUserStateFields(array $userData): array
+    {
+        $hasIsActive = $this->hasUsersColumn('is_active');
+        $hasStatus = $this->hasUsersColumn('status');
+
+        if (array_key_exists('is_active', $userData) && !$hasIsActive) {
+            if ($hasStatus && !array_key_exists('status', $userData)) {
+                $userData['status'] = !empty($userData['is_active']) ? 'active' : 'inactive';
+            }
+            unset($userData['is_active']);
+        }
+
+        if (array_key_exists('status', $userData) && !$hasStatus) {
+            unset($userData['status']);
+        }
+
+        return $userData;
+    }
+
+    /**
      * Get recent user registrations
      */
     public function getRecentUsers($limit = 5)
@@ -246,9 +289,15 @@ class UserModel extends BaseModel
      */
     public function getUsersByRole(string $role): array
     {
-        return $this->where('role', $role)
-                    ->where('is_active', true)
-                    ->findAll();
+        $builder = $this->where('role', $role);
+
+        if ($this->hasUsersColumn('is_active')) {
+            $builder->where('is_active', true);
+        } elseif ($this->hasUsersColumn('status')) {
+            $builder->where('status', 'active');
+        }
+
+        return $builder->findAll();
     }
 
     /**
@@ -271,9 +320,15 @@ class UserModel extends BaseModel
      */
     public function getProviders(): array
     {
-        return $this->where('role', 'provider')
-                    ->where('is_active', true)
-                    ->findAll();
+        $builder = $this->where('role', 'provider');
+
+        if ($this->hasUsersColumn('is_active')) {
+            $builder->where('is_active', true);
+        } elseif ($this->hasUsersColumn('status')) {
+            $builder->where('status', 'active');
+        }
+
+        return $builder->findAll();
     }
 
     /**
@@ -285,17 +340,22 @@ class UserModel extends BaseModel
         $providerServicesTable = $this->db->prefixTable('providers_services');
         $servicesTable = $this->db->prefixTable('services');
 
-        $rows = $this->db->table($usersTable . ' u')
+        $builder = $this->db->table($usersTable . ' u')
             ->distinct()
             ->select('u.*')
             ->join($providerServicesTable . ' ps', 'ps.provider_id = u.id', 'inner')
             ->join($servicesTable . ' s', 's.id = ps.service_id', 'inner')
             ->where('u.role', 'provider')
-            ->where('u.is_active', true)
             ->where('s.active', 1)
-            ->orderBy('u.name', 'ASC')
-            ->get()
-            ->getResultArray();
+            ->orderBy('u.name', 'ASC');
+
+        if ($this->hasUsersColumn('is_active')) {
+            $builder->where('u.is_active', true);
+        } elseif ($this->hasUsersColumn('status')) {
+            $builder->where('u.status', 'active');
+        }
+
+        $rows = $builder->get()->getResultArray();
 
         if ($rows !== []) {
             return $rows;
@@ -392,13 +452,19 @@ class UserModel extends BaseModel
     public function createUser(array $userData): int|false
     {
         // Set default values
-        $userData['is_active'] = $userData['is_active'] ?? true;
+        if ($this->hasUsersColumn('is_active')) {
+            $userData['is_active'] = $userData['is_active'] ?? true;
+        } elseif ($this->hasUsersColumn('status')) {
+            $userData['status'] = $userData['status'] ?? 'active';
+        }
         $userData['role'] = $userData['role'] ?? 'staff';
         // Hash password if provided
         if (isset($userData['password'])) {
             $userData['password_hash'] = password_hash($userData['password'], PASSWORD_DEFAULT);
             unset($userData['password']);
         }
+
+        $userData = $this->normalizeUserStateFields($userData);
         
         // Insert and return the new user ID
         $result = $this->insert($userData, true); // true = return insert ID
@@ -428,6 +494,8 @@ class UserModel extends BaseModel
             unset($userData['password']);
             log_message('debug', "updateUser - Password was changed");
         }
+
+        $userData = $this->normalizeUserStateFields($userData);
         
         log_message('debug', "updateUser calling model update with data: " . json_encode($userData));
         
@@ -470,7 +538,14 @@ class UserModel extends BaseModel
         if (!$this->canManageUser($deactivatedBy, $userId)) {
             return false;
         }
-        return $this->update($userId, ['is_active' => false]);
+
+        $payload = $this->hasUsersColumn('is_active')
+            ? ['is_active' => false]
+            : ['status' => 'inactive'];
+
+        $payload = $this->normalizeUserStateFields($payload);
+
+        return $this->update($userId, $payload);
     }
 
     /**
@@ -551,10 +626,15 @@ class UserModel extends BaseModel
 
         // Get color usage count for active providers
         $colorUsage = [];
-        $providers = $this->where('role', 'provider')
-                          ->where('is_active', true)
-                          ->select('color')
-                          ->findAll();
+        $providerBuilder = $this->where('role', 'provider')->select('color');
+
+        if ($this->hasUsersColumn('is_active')) {
+            $providerBuilder->where('is_active', true);
+        } elseif ($this->hasUsersColumn('status')) {
+            $providerBuilder->where('status', 'active');
+        }
+
+        $providers = $providerBuilder->findAll();
 
         // Count occurrences of each color
         foreach ($providers as $provider) {

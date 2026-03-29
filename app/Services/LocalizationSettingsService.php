@@ -46,8 +46,8 @@
  * @see         app/Models/SettingModel.php for raw settings
  * @see         resources/js/utils/settings-manager.js for JS equivalent
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

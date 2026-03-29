@@ -2,6 +2,7 @@
 
 namespace App\Tests\Integration;
 
+use CodeIgniter\Database\Config as DatabaseConfig;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 
@@ -93,7 +94,7 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         $this->assertSame('provider', $createdUser['role'] ?? null);
         $this->assertSame('Journey Provider', $createdUser['name'] ?? null);
         $this->assertSame('#118833', $createdUser['color'] ?? null);
-        $this->assertSame('1', (string) ($createdUser['is_active'] ?? ''));
+        $this->assertUserActiveState($createdUser, true);
 
         $scheduleRows = $db->table('provider_schedules')
             ->where('provider_id', $this->managedUserId)
@@ -173,7 +174,7 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         $this->assertStringContainsString('/user-management', $deactivatePayload['redirect'] ?? '');
 
         $deactivatedUser = $db->table('users')->where('id', $this->managedUserId)->get()->getRowArray();
-        $this->assertSame('0', (string) ($deactivatedUser['is_active'] ?? ''));
+        $this->assertUserActiveState($deactivatedUser, false);
 
         $this->primeCsrfCookie();
 
@@ -191,7 +192,7 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         $this->assertStringContainsString('/user-management', $activatePayload['redirect'] ?? '');
 
         $reactivatedUser = $db->table('users')->where('id', $this->managedUserId)->get()->getRowArray();
-        $this->assertSame('1', (string) ($reactivatedUser['is_active'] ?? ''));
+        $this->assertUserActiveState($reactivatedUser, true);
 
         $preview = $this->withSession($this->adminSession())
             ->get('/user-management/delete-preview/' . $this->managedUserId);
@@ -260,28 +261,33 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         $admin = $db->table('users')->where('id', $this->adminId)->get()->getRowArray();
         $this->assertNotNull($admin);
         $this->assertSame('admin', $admin['role'] ?? null);
-        $this->assertSame('1', (string) ($admin['is_active'] ?? ''));
+        $this->assertUserActiveState($admin, true);
     }
 
     public function testAdminSessionCannotDeleteLastActiveAdminViaPreviewOrDeleteEndpoints(): void
     {
         $db = \Config\Database::connect('tests');
         $now = date('Y-m-d H:i:s');
-        $otherActiveAdmins = $db->table('users')
+        $otherActiveAdminsBuilder = $db->table('users')
             ->select('id')
             ->where('role', 'admin')
-            ->where('is_active', 1)
-            ->where('id !=', $this->adminId)
+            ->where('id !=', $this->adminId);
+
+        if ($db->fieldExists('is_active', 'users')) {
+            $otherActiveAdminsBuilder->where('is_active', 1);
+        } elseif ($db->fieldExists('status', 'users')) {
+            $otherActiveAdminsBuilder->where('status', 'active');
+        }
+
+        $otherActiveAdmins = $otherActiveAdminsBuilder
             ->get()
             ->getResultArray();
         $otherActiveAdminIds = array_values(array_map(static fn(array $row): int => (int) ($row['id'] ?? 0), $otherActiveAdmins));
 
         if ($otherActiveAdminIds !== []) {
             $db->table('users')->whereIn('id', $otherActiveAdminIds)->update([
-                'is_active' => 0,
-                'status' => 'inactive',
                 'updated_at' => $now,
-            ]);
+            ] + $this->activeUserColumns($db, false));
         }
 
         $db->table('users')->insert([
@@ -289,11 +295,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => 'guard-admin-' . uniqid('', true) . '@example.com',
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'admin',
-            'status' => 'inactive',
-            'is_active' => 0,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, false));
         $this->guardAdminId = (int) $db->insertID();
 
         try {
@@ -327,14 +331,12 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             $admin = $db->table('users')->where('id', $this->adminId)->get()->getRowArray();
             $this->assertNotNull($admin);
             $this->assertSame('admin', $admin['role'] ?? null);
-            $this->assertSame('1', (string) ($admin['is_active'] ?? ''));
+            $this->assertUserActiveState($admin, true);
         } finally {
             if ($otherActiveAdminIds !== []) {
                 $db->table('users')->whereIn('id', $otherActiveAdminIds)->update([
-                    'is_active' => 1,
-                    'status' => 'active',
                     'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+                ] + $this->activeUserColumns($db, true));
             }
         }
     }
@@ -350,11 +352,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => $email,
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'provider',
-            'status' => 'active',
-            'is_active' => 1,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, true));
 
         $this->managedUserId = (int) $db->insertID();
 
@@ -395,11 +395,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => $email,
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'provider',
-            'status' => 'active',
-            'is_active' => 1,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, true));
 
         $this->managedUserId = (int) $db->insertID();
 
@@ -461,11 +459,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => $email,
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'provider',
-            'status' => 'active',
-            'is_active' => 1,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, true));
 
         $this->managedUserId = (int) $db->insertID();
 
@@ -531,11 +527,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => $email,
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'staff',
-            'status' => 'active',
-            'is_active' => 1,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, true));
 
         $this->managedUserId = (int) $db->insertID();
 
@@ -576,6 +570,38 @@ final class UserManagementJourneyTest extends CIUnitTestCase
                 'role' => 'admin',
             ],
         ];
+    }
+
+    private function activeUserColumns($db, bool $active): array
+    {
+        $columns = [];
+
+        if ($db->fieldExists('status', 'users')) {
+            $columns['status'] = $active ? 'active' : 'inactive';
+        }
+
+        if ($db->fieldExists('is_active', 'users')) {
+            $columns['is_active'] = $active ? 1 : 0;
+        }
+
+        return $columns;
+    }
+
+    private function assertUserActiveState(?array $user, bool $expected): void
+    {
+        $this->assertNotNull($user);
+
+        if (array_key_exists('is_active', $user)) {
+            $this->assertSame($expected ? '1' : '0', (string) ($user['is_active'] ?? ''));
+            return;
+        }
+
+        if (array_key_exists('status', $user)) {
+            $this->assertSame($expected ? 'active' : 'inactive', (string) ($user['status'] ?? ''));
+            return;
+        }
+
+        $this->fail('Unable to assert active state; neither is_active nor status is available on users.');
     }
 
     private function lastAdminGuardSession(): array
@@ -632,11 +658,9 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             'email' => $email,
             'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
             'role' => 'admin',
-            'status' => 'active',
-            'is_active' => 1,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ] + $this->activeUserColumns($db, true));
 
         $this->adminId = (int) $db->insertID();
     }
@@ -687,5 +711,29 @@ final class UserManagementJourneyTest extends CIUnitTestCase
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
         }
+
+        $dbConfig = config(\Config\Database::class);
+        foreach (['hostname', 'database', 'username', 'password', 'DBDriver', 'DBPrefix', 'port'] as $field) {
+            $envKey = 'database.tests.' . $field;
+            $value = $_ENV[$envKey] ?? $_SERVER[$envKey] ?? getenv($envKey);
+            if ($value === false || $value === null || $value === '') {
+                continue;
+            }
+
+            $dbConfig->tests[$field] = $field === 'port' ? (int) $value : $value;
+            $dbConfig->default[$field] = $field === 'port' ? (int) $value : $value;
+        }
+
+        foreach (DatabaseConfig::getConnections() as $connection) {
+            try {
+                $connection->close();
+            } catch (\Throwable) {
+            }
+        }
+
+        $reflection = new \ReflectionClass(DatabaseConfig::class);
+        $instances = $reflection->getProperty('instances');
+        $instances->setAccessible(true);
+        $instances->setValue([]);
     }
 }

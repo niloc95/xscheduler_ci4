@@ -1,4 +1,4 @@
-# WebSchedulr Design System
+# WebScheduler Design System
 
 **Last Updated:** March 6, 2026  
 **Status:** Active  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document defines the canonical design system for WebSchedulr CI4. It ensures consistency, maintainability, and adherence to Material Design 3 principles while leveraging Tailwind CSS utilities.
+This document defines the canonical design system for WebScheduler CI4. It ensures consistency, maintainability, and adherence to Material Design 3 principles while leveraging Tailwind CSS utilities.
 
 ---
 
@@ -27,7 +27,7 @@ This document defines the canonical design system for WebSchedulr CI4. It ensure
 
 ### What Are Design Tokens?
 
-Design tokens are named variables that store visual design attributes (colors, spacing, typography) in a centralized location. WebSchedulr uses Material Design 3 tokens as the foundation.
+Design tokens are named variables that store visual design attributes (colors, spacing, typography) in a centralized location. WebScheduler uses Material Design 3 tokens as the foundation.
 
 ### Token Location
 
@@ -65,7 +65,7 @@ Use Tailwind's spacing scale (based on 0.25rem increments):
 
 ### Semantic Color Classes (Tailwind + MD3 Bridge)
 
-WebSchedulr exposes semantic color classes via `tailwind.config.js`:
+WebScheduler exposes semantic color classes via `tailwind.config.js`:
 
 ```javascript
 // Available Tailwind classes:
@@ -175,7 +175,7 @@ Use Tailwind's spacing scale consistently:
 
 ### Available Reusable Components
 
-WebSchedulr provides PHP view components in `app/Views/components/`:
+WebScheduler provides PHP view components in `app/Views/components/`:
 
 #### 1. Button Component
 
@@ -288,7 +288,7 @@ Create a new component when:
 
 ### Canonical Selector
 
-WebSchedulr uses **attribute-based dark mode**:
+WebScheduler uses **attribute-based dark mode**:
 
 ```html
 <html data-theme="dark">
@@ -482,4 +482,4 @@ Before submitting a PR that touches UI:
 ---
 
 **Version:** 1.0.0  
-**Maintained by:** WebSchedulr Team
+**Maintained by:** Nilesh Nagin Cara

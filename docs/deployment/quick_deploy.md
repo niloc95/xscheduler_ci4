@@ -16,7 +16,7 @@ chmod -R 755 writable/
 - You'll be redirected to the setup wizard
 - Create your admin account
 - Choose database (SQLite recommended for easy setup)
-- Start using WebSchedulr!
+- Start using WebScheduler!
 
 ## Troubleshooting
 - If you get 500 errors, check writable/ folder permissions

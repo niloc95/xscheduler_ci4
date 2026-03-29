@@ -11,7 +11,7 @@
  * - content: Auth form content
  * - footer: Optional footer content
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 ?>
@@ -20,8 +20,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="WebSchedulr - Professional Appointment Scheduling">
-    <title><?= $this->renderSection('title') ?: 'Sign In - WebSchedulr' ?></title>
+    <meta name="description" content="WebScheduler - Professional Appointment Scheduling">
+    <title><?= $this->renderSection('title') ?: 'Sign In - WebScheduler' ?></title>
     
     <!-- Prevent FOUC -->
     <script>
@@ -82,7 +82,7 @@
             <?php if (trim($footerContent)): ?>
                 <?= $footerContent ?>
             <?php else: ?>
-                <p>&copy; <?= date('Y') ?> WebSchedulr. All rights reserved.</p>
+                <p>&copy; <?= date('Y') ?> WebScheduler. All rights reserved.</p>
             <?php endif; ?>
         </div>
     </div>

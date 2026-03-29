@@ -1,6 +1,6 @@
 # Provider Service Catalog Contract
 
-**Last Updated:** March 23, 2026  
+**Last Updated:** March 25, 2026  
 **Status:** Active
 
 ---
@@ -63,10 +63,24 @@ This is a compatibility layer, not a replacement source of truth. As soon as pro
 
 - `app/Models/UserModel.php`
 - `app/Models/ServiceModel.php`
+- `app/Controllers/Services.php`
 - `app/Controllers/Api/V1/Providers.php`
 - `app/Controllers/Appointments.php`
 - `app/Services/PublicBookingService.php`
 - `resources/js/public-booking.js`
+
+---
+
+## Internal Management Contract
+
+The internal service-management flows must preserve the same provider-to-service pivot contract used by booking surfaces:
+
+- `Services::store()` persists the service first, then normalizes posted `provider_ids` and writes provider links through `ServiceModel::setProviders()`.
+- `Services::update()` replaces existing provider links so stale `xs_providers_services` rows do not survive edits.
+- `Services::delete()` removes pivot links before deleting the service record.
+- Inline category creation during service creation is supported, but the resulting service must still store its `category_id` on the service row and provider assignment through the pivot table.
+
+`app/Controllers/Services.php` now also supports optional constructor injection for the user, service, and category models so focused controller tests can replace collaborators directly.
 
 ---
 
@@ -76,3 +90,5 @@ The current booking-facing provider/service contract is covered by:
 
 - `tests/unit/PublicBookingServiceTest.php`
 - `tests/integration/ProvidersServicesApiV1Test.php`
+- `tests/unit/Controllers/ServicesControllerTest.php`
+- `tests/integration/ServicesJourneyTest.php`

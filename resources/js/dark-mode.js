@@ -1,5 +1,5 @@
 /**
- * WebSchedulr Dark Mode System
+ * WebScheduler Dark Mode System
  * Provides theme switching functionality with localStorage persistence
  */
 

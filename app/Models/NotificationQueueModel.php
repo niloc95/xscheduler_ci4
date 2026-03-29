@@ -51,8 +51,8 @@
  * @see         app/Services/NotificationPolicyService.php
  * @package     App\Models
  * @extends     BaseModel
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -62,6 +62,12 @@ class NotificationQueueModel extends BaseModel
 {
     protected $table = 'xs_notification_queue';
     protected $primaryKey = 'id';
+
+    protected $beforeInsert = ['normalizeSchemaFields'];
+    protected $beforeUpdate = ['normalizeSchemaFields'];
+
+    /** @var array<string, bool> */
+    private array $columnExistsCache = [];
 
     protected $allowedFields = [
         'business_id',
@@ -87,4 +93,55 @@ class NotificationQueueModel extends BaseModel
         'idempotency_key' => 'required|string|max_length[128]',
         'correlation_id' => 'permit_empty|string|max_length[64]',
     ];
+
+    protected function normalizeSchemaFields(array $data): array
+    {
+        if (!isset($data['data']) || !is_array($data['data'])) {
+            return $data;
+        }
+
+        foreach (array_keys($data['data']) as $field) {
+            if (!$this->hasTableColumn((string) $field)) {
+                unset($data['data'][$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function hasTableColumn(string $column): bool
+    {
+        if (array_key_exists($column, $this->columnExistsCache)) {
+            return $this->columnExistsCache[$column];
+        }
+
+        $exists = false;
+
+        try {
+            if (!method_exists($this->db, 'getFieldData')) {
+                $this->columnExistsCache[$column] = true;
+                return true;
+            }
+
+            foreach (array_values(array_unique([$this->table, $this->db->prefixTable($this->table)])) as $candidate) {
+                try {
+                    $fields = $this->db->getFieldData($candidate);
+                    foreach ($fields as $field) {
+                        if ((string) ($field->name ?? '') === $column) {
+                            $exists = true;
+                            break 2;
+                        }
+                    }
+                } catch (\Throwable $inner) {
+                    // Try the next candidate table name.
+                }
+            }
+        } catch (\Throwable $e) {
+            $exists = false;
+        }
+
+        $this->columnExistsCache[$column] = $exists;
+
+        return $exists;
+    }
 }

@@ -31,7 +31,7 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
             ]), 'json');
             $this->seedSetting($db, 'legal.cancellation_policy', 'Cancel at least 24 hours early.', 'string');
             $this->seedSetting($db, 'legal.terms_url', 'https://example.com/terms', 'string');
-            $this->seedSetting($db, 'general.business_name', 'WebSchedulr Clinic', 'string');
+            $this->seedSetting($db, 'general.business_name', 'WebScheduler Clinic', 'string');
 
             $service = new NotificationTemplateService();
 
@@ -42,7 +42,7 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
 
             $this->assertSame('Confirmed for Jane', $result['subject']);
             $this->assertSame(
-                'Hi Jane Doe from WebSchedulr Clinic. Cancel at least 24 hours early. See https://example.com/terms. Book at https://example.com/book.',
+                'Hi Jane Doe from WebScheduler Clinic. Cancel at least 24 hours early. See https://example.com/terms. Book at https://example.com/book.',
                 $result['body']
             );
         } finally {

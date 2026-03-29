@@ -6,7 +6,7 @@
  * =============================================================================
  * 
  * @file        app/Config/App.php
- * @description Core application settings for WebSchedulr. Controls base URL,
+ * @description Core application settings for WebScheduler. Controls base URL,
  *              index file, URI protocols, default locale, timezone, and
  *              character encoding settings.
  * 
@@ -35,8 +35,8 @@
  * @see         app/Config/Constants.php for application constants
  * @package     Config
  * @extends     CodeIgniter\Config\BaseConfig
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

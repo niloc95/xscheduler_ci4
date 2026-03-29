@@ -1,4 +1,4 @@
-name: WebSchedulr CI/CD Pipeline
+name: WebScheduler CI/CD Pipeline
 
 on:
   push:
@@ -300,7 +300,7 @@ jobs:
           
       - name: Generate deployment info
         run: |
-          echo "# WebSchedulr Deployment Package" > deployment-info.md
+          echo "# WebScheduler Deployment Package" > deployment-info.md
           echo "" >> deployment-info.md
           echo "**Built from:** \`${{ github.ref_name }}\`" >> deployment-info.md
           echo "**Commit:** \`${{ github.sha }}\`" >> deployment-info.md

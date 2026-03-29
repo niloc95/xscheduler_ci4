@@ -51,8 +51,8 @@
  * @see         app/Controllers/Setup.php for setup wizard
  * @see         app/Filters/SetupFilter.php for route protection
  * @package     App\Helpers
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

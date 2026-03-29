@@ -18,7 +18,7 @@
  * <?= $this->section('title') ?>Step 1 - Database<?= $this->endSection() ?>
  * <?= $this->section('content') ?>...<?= $this->endSection() ?>
  * 
- * @package WebSchedulr
+ * @package WebScheduler
  * @since 2.0.0
  */
 ?>
@@ -28,7 +28,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= $this->renderSection('title') ?> - WebSchedulr Setup</title>
+    <title><?= $this->renderSection('title') ?> - WebScheduler Setup</title>
     
     <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,7 +57,7 @@
                     <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
                         <span class="material-symbols-outlined text-white text-xl">calendar_month</span>
                     </div>
-                    <span class="text-2xl font-bold text-gray-900 dark:text-white">WebSchedulr</span>
+                    <span class="text-2xl font-bold text-gray-900 dark:text-white">WebScheduler</span>
                 </div>
             </div>
         </header>
@@ -85,7 +85,7 @@
                     <?= $this->renderSection('footer') ?>
                 <?php else: ?>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                    &copy; <?= date('Y') ?> WebSchedulr. All rights reserved.
+                    &copy; <?= date('Y') ?> WebScheduler. All rights reserved.
                 </p>
                 <?php endif; ?>
             </div>

@@ -6,7 +6,7 @@
  * =============================================================================
  * 
  * @file        app/Controllers/BaseController.php
- * @description Abstract base class that all WebSchedulr controllers extend.
+ * @description Abstract base class that all WebScheduler controllers extend.
  *              Provides shared functionality, helper loading, and common
  *              properties accessible to all child controllers.
  * 
@@ -46,8 +46,8 @@
  * @package     App\Controllers
  * @extends     CodeIgniter\Controller
  * @abstract
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 

@@ -27,7 +27,7 @@ window.appConfig = {
     <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
         <!-- Logo -->
         <div class="flex items-center">
-            <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebSchedulr" class="w-8 h-8 mr-3 transition-colors duration-200" />
+            <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebScheduler" class="w-8 h-8 mr-3 transition-colors duration-200" />
             <h1 class="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-200">xScheduler</h1>
         </div>
         
@@ -50,7 +50,7 @@ window.appConfig = {
             <!-- Setup Header -->
             <div class="text-center mb-8">
                 <div class="bg-white dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center shadow-brand border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebSchedulr" class="w-10 h-10" />
+                    <img src="<?= base_url('assets/settings/default-logo.svg') ?>" alt="WebScheduler" class="w-10 h-10" />
                 </div>
                 <h1 class="text-3xl font-bold mb-2 transition-colors duration-200 text-md-primary">Welcome to xScheduler</h1>
                 <p class="text-gray-600 dark:text-gray-400 transition-colors duration-200">Let's set up your scheduling application in just a few steps</p>

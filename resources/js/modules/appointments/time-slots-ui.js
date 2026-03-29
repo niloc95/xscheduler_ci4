@@ -95,6 +95,8 @@ export function initTimeSlotsUI(options) {
     noAvailabilityWarning: document.getElementById('no-availability-warning'),
   };
 
+  const hasSlotGrid = () => Boolean(el.grid);
+
   const CALENDAR_CACHE_TTL = 60 * 1000; // 1 minute client-side cache to avoid hammering API
   const calendarCache = new Map();
   let calendarFetchToken = 0;
@@ -346,6 +348,11 @@ export function initTimeSlotsUI(options) {
   }
 
   function renderSlotGrid(slots) {
+    if (!hasSlotGrid()) {
+      console.warn('[time-slots-ui] Missing slot grid element');
+      return;
+    }
+
     el.grid.innerHTML = '';
     el.grid.className = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2';
 
@@ -429,7 +436,7 @@ export function initTimeSlotsUI(options) {
       const slots = getSlotsForDate(calendar, date);
       renderSlotGrid(slots);
 
-      if (!el.grid.children.length) {
+      if (!hasSlotGrid() || !el.grid.children.length) {
         el.loading?.classList.add('hidden');
         el.empty?.classList.remove('hidden');
         timeInput.value = '';

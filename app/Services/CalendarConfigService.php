@@ -45,8 +45,8 @@
  * @see         resources/js/scheduler.js for frontend usage
  * @see         app/Services/LocalizationSettingsService.php
  * @package     App\Services
- * @author      WebSchedulr Team
- * @copyright   2024-2026 WebSchedulr
+ * @author      Nilesh Nagin Cara
+ * @copyright   2024-2026 Nilesh Nagin Cara
  * =============================================================================
  */
 
@@ -299,7 +299,7 @@ class CalendarConfigService
 
     /**
      * Get all calendar/scheduler-related settings for JavaScript.
-     * Keyed for the custom WebSchedulr scheduler component (not FullCalendar).
+     * Keyed for the custom WebScheduler scheduler component (not FullCalendar).
      *
      * @param int|null $providerId  Optional: scope business hours to one provider
      */
