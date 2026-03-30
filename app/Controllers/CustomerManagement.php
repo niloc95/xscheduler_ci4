@@ -61,7 +61,6 @@
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
-use App\Models\ProviderStaffModel;
 use App\Services\BookingSettingsService;
 use App\Services\CustomerAppointmentService;
 
@@ -70,19 +69,16 @@ class CustomerManagement extends BaseController
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
-    protected ProviderStaffModel $providerStaffModel;
 
     public function __construct(
         ?CustomerModel $customers = null,
         ?BookingSettingsService $bookingSettings = null,
         ?CustomerAppointmentService $appointmentService = null,
-        ?ProviderStaffModel $providerStaffModel = null,
     )
     {
         $this->customers = $customers ?? new CustomerModel();
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
-        $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
     }
 
     /**
@@ -101,9 +97,9 @@ class CustomerManagement extends BaseController
         // Staff/provider see only customers relevant to them.
         $staffCustomerIds = null;
         if ($currentRole === 'staff') {
-            $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
+            $staffCustomerIds = $this->appointmentService->resolveCustomerIdsForStaff($currentUserId);
         } elseif ($currentRole === 'provider') {
-            $staffCustomerIds = $this->resolveProviderCustomerIds($currentUserId);
+            $staffCustomerIds = $this->appointmentService->resolveCustomerIdsForProvider($currentUserId);
         }
 
         if ($q !== '') {
@@ -143,50 +139,6 @@ class CustomerManagement extends BaseController
     }
 
     /**
-     * Resolve the set of customer IDs a staff member may view.
-     * Returns the distinct customer IDs from appointments under their assigned providers.
-     * Returns an empty array (not null) when the staff member has no active assignments.
-     */
-    private function resolveStaffCustomerIds(int $staffUserId): array
-    {
-        $assigned = $this->providerStaffModel->getProvidersForStaff($staffUserId, 'active');
-        if (empty($assigned)) {
-            return [];
-        }
-
-        $providerIds = array_map('intval', array_column($assigned, 'id'));
-
-        $db = \Config\Database::connect();
-        $rows = $db->table('xs_appointments')
-            ->distinct()
-            ->select('customer_id')
-            ->whereIn('provider_id', $providerIds)
-            ->where('customer_id IS NOT NULL', null, false)
-            ->get()
-            ->getResultArray();
-
-        return array_map('intval', array_column($rows, 'customer_id'));
-    }
-
-    /**
-     * Resolve the set of customer IDs a provider may view.
-     * Returns the distinct customer IDs from appointments where they are the provider.
-     */
-    private function resolveProviderCustomerIds(int $providerUserId): array
-    {
-        $db = \Config\Database::connect();
-        $rows = $db->table('xs_appointments')
-            ->distinct()
-            ->select('customer_id')
-            ->where('provider_id', $providerUserId)
-            ->where('customer_id IS NOT NULL', null, false)
-            ->get()
-            ->getResultArray();
-
-        return array_map('intval', array_column($rows, 'customer_id'));
-    }
-
-    /**
      * Check whether the current user may access the given customer record.
      * Admin has unrestricted access; provider/staff are limited to scoped customer IDs.
      */
@@ -196,9 +148,9 @@ class CustomerManagement extends BaseController
             return true;
         }
         if ($role === 'provider') {
-            $allowed = $this->resolveProviderCustomerIds($userId);
+            $allowed = $this->appointmentService->resolveCustomerIdsForProvider($userId);
         } elseif ($role === 'staff') {
-            $allowed = $this->resolveStaffCustomerIds($userId);
+            $allowed = $this->appointmentService->resolveCustomerIdsForStaff($userId);
         } else {
             return false;
         }
@@ -513,9 +465,9 @@ class CustomerManagement extends BaseController
 
         $staffCustomerIds = null;
         if ($currentRole === 'staff') {
-            $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
+            $staffCustomerIds = $this->appointmentService->resolveCustomerIdsForStaff($currentUserId);
         } elseif ($currentRole === 'provider') {
-            $staffCustomerIds = $this->resolveProviderCustomerIds($currentUserId);
+            $staffCustomerIds = $this->appointmentService->resolveCustomerIdsForProvider($currentUserId);
         }
         
         try {
@@ -603,8 +555,7 @@ class CustomerManagement extends BaseController
         if ($currentRole === 'provider') {
             $scopedProviderIds = [$currentUserId];
         } elseif ($currentRole === 'staff') {
-            $assigned = $this->providerStaffModel->getProvidersForStaff($currentUserId, 'active');
-            $scopedProviderIds = empty($assigned) ? [] : array_map('intval', array_column($assigned, 'id'));
+            $scopedProviderIds = $this->appointmentService->getProviderIdsForStaff($currentUserId);
         }
         $providers = $this->appointmentService->getProvidersForFilter($scopedProviderIds);
         $services = $this->appointmentService->getServicesForFilter();

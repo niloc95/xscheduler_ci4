@@ -62,6 +62,7 @@ namespace App\Services;
 
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
+use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Services\Appointment\AppointmentStatus;
@@ -83,6 +84,7 @@ class CustomerAppointmentService
     protected CustomerModel $customers;
     protected ServiceModel $services;
     protected UserModel $users;
+    protected ProviderStaffModel $providerStaff;
 
     public function __construct()
     {
@@ -90,6 +92,7 @@ class CustomerAppointmentService
         $this->customers = new CustomerModel();
         $this->services = new ServiceModel();
         $this->users = new UserModel();
+        $this->providerStaff = new ProviderStaffModel();
     }
 
     /**
@@ -494,6 +497,59 @@ class CustomerAppointmentService
         }
 
         return $appointment;
+    }
+
+    /**
+     * Resolve the set of customer IDs visible to a provider.
+     * Returns distinct customer IDs from appointments where the given user is the provider.
+     */
+    public function resolveCustomerIdsForProvider(int $providerUserId): array
+    {
+        $rows = $this->appointments->builder()
+            ->select('customer_id')
+            ->distinct()
+            ->where('provider_id', $providerUserId)
+            ->where('customer_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        return array_map('intval', array_column($rows, 'customer_id'));
+    }
+
+    /**
+     * Resolve the set of customer IDs visible to a staff member.
+     * Derives allowed providers via active assignments, then queries appointment customers.
+     * Returns an empty array when the staff member has no active assignments.
+     */
+    public function resolveCustomerIdsForStaff(int $staffUserId): array
+    {
+        $providerIds = $this->getProviderIdsForStaff($staffUserId);
+        if (empty($providerIds)) {
+            return [];
+        }
+
+        $rows = $this->appointments->builder()
+            ->select('customer_id')
+            ->distinct()
+            ->whereIn('provider_id', $providerIds)
+            ->where('customer_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        return array_map('intval', array_column($rows, 'customer_id'));
+    }
+
+    /**
+     * Return the active-assigned provider IDs for a staff user.
+     * Empty array means no active assignments.
+     */
+    public function getProviderIdsForStaff(int $staffUserId): array
+    {
+        $assigned = $this->providerStaff->getProvidersForStaff($staffUserId, 'active');
+        if (empty($assigned)) {
+            return [];
+        }
+        return array_map('intval', array_column($assigned, 'id'));
     }
 
     /**

@@ -75,8 +75,8 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
-use App\Services\AppointmentNotificationService;
 use App\Services\NotificationCatalog;
+use App\Services\NotificationQueueDispatcher;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -820,29 +820,29 @@ class AppointmentBookingService
     }
 
     /**
-     * Queue notifications for appointment events
+     * Queue notifications for appointment events and dispatch them immediately.
+     *
+     * All channels are enqueued via the canonical queue system. After enqueuing,
+     * the dispatcher runs synchronously so email is delivered without waiting for
+     * the cron job, while still benefiting from idempotency keys, delivery logs,
+     * and opt-out checks.
      *
      * @param int $appointmentId Appointment ID
      * @param array $types Notification types (email, sms, whatsapp)
-    * @param string $event Event type (appointment_confirmed, appointment_rescheduled, etc.)
+     * @param string $event Event type (appointment_confirmed, appointment_rescheduled, etc.)
      */
     protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
     {
         try {
-            // Email: send synchronously so customer receives confirmation immediately
-            // after public booking, without requiring the cron dispatcher to be running.
-            if (in_array('email', $types, true)) {
-                $notifSvc = new AppointmentNotificationService();
-                $sent = $notifSvc->sendEventEmail($event, $appointmentId, NotificationCatalog::BUSINESS_ID_DEFAULT);
-                log_message('info', '[AppointmentBookingService] Direct email (' . $event . '): ' . ($sent ? 'sent' : 'skipped/disabled — check Notification settings'));
-            }
+            // Enqueue all channels via the canonical event/queue system.
+            $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
+            log_message('info', '[AppointmentBookingService] Queued notifications (' . $event . '): ' . implode(', ', $types));
 
-            // SMS and WhatsApp remain queue-based (processed by cron dispatcher).
-            $asyncTypes = array_values(array_diff($types, ['email']));
-            if (!empty($asyncTypes)) {
-                $this->appointmentEventService->dispatch($event, $appointmentId, $asyncTypes, NotificationCatalog::BUSINESS_ID_DEFAULT);
-                log_message('info', '[AppointmentBookingService] Queued async notifications: ' . implode(', ', $asyncTypes));
-            }
+            // Run the dispatcher immediately so email (and any other channels) are sent
+            // without requiring the cron job to trigger first.
+            $dispatcher = new NotificationQueueDispatcher();
+            $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
+            log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification dispatch failed: ' . $e->getMessage());
             // Don't fail the booking if notifications fail
