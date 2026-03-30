@@ -499,13 +499,19 @@ class CustomerAppointmentService
     /**
      * Get available providers for filter dropdown
      */
-    public function getProvidersForFilter(): array
+    public function getProvidersForFilter(?array $scopedProviderIds = null): array
     {
-        return $this->users
+        if ($scopedProviderIds !== null && empty($scopedProviderIds)) {
+            return [];
+        }
+        $query = $this->users
             ->whereIn('role', ['provider', 'admin'])
             ->where('status', 'active')
-            ->orderBy('name', 'ASC')
-            ->findAll();
+            ->orderBy('name', 'ASC');
+        if ($scopedProviderIds !== null) {
+            $query->whereIn('id', $scopedProviderIds);
+        }
+        return $query->findAll();
     }
 
     /**

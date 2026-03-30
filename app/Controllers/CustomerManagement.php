@@ -98,10 +98,12 @@ class CustomerManagement extends BaseController
         $currentRole = current_user_role();
         $q = trim((string) $this->request->getGet('q'));
 
-        // Staff see only customers who have appointments with their assigned providers.
+        // Staff/provider see only customers relevant to them.
         $staffCustomerIds = null;
         if ($currentRole === 'staff') {
             $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
+        } elseif ($currentRole === 'provider') {
+            $staffCustomerIds = $this->resolveProviderCustomerIds($currentUserId);
         }
 
         if ($q !== '') {
@@ -164,6 +166,43 @@ class CustomerManagement extends BaseController
             ->getResultArray();
 
         return array_map('intval', array_column($rows, 'customer_id'));
+    }
+
+    /**
+     * Resolve the set of customer IDs a provider may view.
+     * Returns the distinct customer IDs from appointments where they are the provider.
+     */
+    private function resolveProviderCustomerIds(int $providerUserId): array
+    {
+        $db = \Config\Database::connect();
+        $rows = $db->table('xs_appointments')
+            ->distinct()
+            ->select('customer_id')
+            ->where('provider_id', $providerUserId)
+            ->where('customer_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+
+        return array_map('intval', array_column($rows, 'customer_id'));
+    }
+
+    /**
+     * Check whether the current user may access the given customer record.
+     * Admin has unrestricted access; provider/staff are limited to scoped customer IDs.
+     */
+    private function isCustomerAccessible(string $role, int $userId, int $customerId): bool
+    {
+        if ($role === 'admin') {
+            return true;
+        }
+        if ($role === 'provider') {
+            $allowed = $this->resolveProviderCustomerIds($userId);
+        } elseif ($role === 'staff') {
+            $allowed = $this->resolveStaffCustomerIds($userId);
+        } else {
+            return false;
+        }
+        return in_array($customerId, $allowed, true);
     }
 
     /**
@@ -300,12 +339,17 @@ class CustomerManagement extends BaseController
      */
     public function edit(string $hash)
     {
-        if (!session()->get('user_id')) {
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
             return redirect()->to(base_url('auth/login'));
         }
+        $currentRole = current_user_role();
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
+        }
+        if (!$this->isCustomerAccessible($currentRole, $currentUserId, (int) $customer['id'])) {
+            return redirect()->to(base_url('customer-management'))->with('error', 'Access denied.');
         }
         
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
@@ -470,6 +514,8 @@ class CustomerManagement extends BaseController
         $staffCustomerIds = null;
         if ($currentRole === 'staff') {
             $staffCustomerIds = $this->resolveStaffCustomerIds($currentUserId);
+        } elseif ($currentRole === 'provider') {
+            $staffCustomerIds = $this->resolveProviderCustomerIds($currentUserId);
         }
         
         try {
@@ -512,13 +558,18 @@ class CustomerManagement extends BaseController
      */
     public function history(string $hash)
     {
-        if (!session()->get('user_id')) {
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
             return redirect()->to(base_url('auth/login'));
         }
-        
+        $currentRole = current_user_role();
+
         $customer = $this->customers->findByHash($hash);
         if (!$customer) {
             return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
+        }
+        if (!$this->isCustomerAccessible($currentRole, $currentUserId, (int) $customer['id'])) {
+            return redirect()->to(base_url('customer-management'))->with('error', 'Access denied.');
         }
 
         $customerId = (int) $customer['id'];
@@ -547,8 +598,15 @@ class CustomerManagement extends BaseController
         // Get upcoming appointments
         $upcoming = $this->appointmentService->getUpcoming($customerId, 5);
         
-        // Get filter options
-        $providers = $this->appointmentService->getProvidersForFilter();
+        // Get filter options (scope provider list by role)
+        $scopedProviderIds = null;
+        if ($currentRole === 'provider') {
+            $scopedProviderIds = [$currentUserId];
+        } elseif ($currentRole === 'staff') {
+            $assigned = $this->providerStaffModel->getProvidersForStaff($currentUserId, 'active');
+            $scopedProviderIds = empty($assigned) ? [] : array_map('intval', array_column($assigned, 'id'));
+        }
+        $providers = $this->appointmentService->getProvidersForFilter($scopedProviderIds);
         $services = $this->appointmentService->getServicesForFilter();
 
         $data = [

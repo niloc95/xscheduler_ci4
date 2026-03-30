@@ -99,16 +99,22 @@ ob_start();
                 </td>
                 <td class="px-6 py-4">
                     <div class="xs-actions-container">
-                        <a href="<?= base_url('customer-management/history/' . esc($c['hash'] ?? '')) ?>" 
+                        <?php if (!empty($c['hash'])): ?>
+                        <a href="<?= base_url('customer-management/history/' . esc($c['hash'])) ?>" 
                            class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
                            title="View History">
                             <span class="material-symbols-outlined">history</span>
                         </a>
-                        <a href="<?= base_url('customer-management/edit/' . esc($c['hash'] ?? '')) ?>" 
+                        <a href="<?= base_url('customer-management/edit/' . esc($c['hash'])) ?>" 
                            class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
                            title="Edit Customer">
                             <span class="material-symbols-outlined">edit</span>
                         </a>
+                        <?php else: ?>
+                        <span class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon opacity-40 cursor-not-allowed" title="Record requires hash — contact admin">
+                            <span class="material-symbols-outlined">edit_off</span>
+                        </span>
+                        <?php endif; ?>
                     </div>
                 </td>
             </tr>
