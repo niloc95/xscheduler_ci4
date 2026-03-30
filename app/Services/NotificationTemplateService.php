@@ -117,7 +117,7 @@ class NotificationTemplateService
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Appointment Confirmed - {service_name}',
-                'body' => "Hi {customer_name},\n\nYour appointment has been confirmed!\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
+                'body' => "Hi {customer_name},\n\nYour appointment has been confirmed!\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nManage booking: {reschedule_link}\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
             ],
             'sms' => [
                 'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
@@ -161,6 +161,19 @@ class NotificationTemplateService
             'whatsapp' => [
                 'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_name}!\n\nYour appointment has been rescheduled to:\n\n📅 *New Date:* {appointment_date}\n🕐 *New Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nManage again: {reschedule_link}\n\n_{business_name}_"
             ]
+        ],
+    ];
+
+    /**
+     * Required placeholders by event and channel.
+     *
+     * These are enforced on template save and used for runtime diagnostics.
+     */
+    private const REQUIRED_PLACEHOLDERS = [
+        'appointment_confirmed' => [
+            'email' => ['{reschedule_link}'],
+            'sms' => ['{reschedule_link}'],
+            'whatsapp' => ['{reschedule_link}'],
         ],
     ];
 
@@ -265,6 +278,7 @@ class NotificationTemplateService
     {
         $this->loadLegalContent();
         $template = $this->getTemplate($eventType, $channel);
+        $this->logIfRequiredPlaceholdersMissing($eventType, $channel, (string) ($template['body'] ?? ''));
 
         // Prepare placeholders
         $placeholders = $this->buildPlaceholders($data);
@@ -284,6 +298,41 @@ class NotificationTemplateService
         return [
             'subject' => $subject,
             'body' => $body,
+        ];
+    }
+
+    /**
+     * Return required placeholders for an event/channel pair.
+     *
+     * @return array<int, string>
+     */
+    public function getRequiredPlaceholders(string $eventType, string $channel): array
+    {
+        return self::REQUIRED_PLACEHOLDERS[$eventType][$channel] ?? [];
+    }
+
+    /**
+     * Validate required placeholders for an event/channel body.
+     *
+     * @return array{valid: bool, missing: array<int, string>}
+     */
+    public function validateRequiredPlaceholders(string $eventType, string $channel, string $content): array
+    {
+        $required = $this->getRequiredPlaceholders($eventType, $channel);
+        if (empty($required)) {
+            return ['valid' => true, 'missing' => []];
+        }
+
+        $missing = [];
+        foreach ($required as $placeholder) {
+            if (strpos($content, $placeholder) === false) {
+                $missing[] = $placeholder;
+            }
+        }
+
+        return [
+            'valid' => empty($missing),
+            'missing' => $missing,
         ];
     }
 
@@ -397,6 +446,24 @@ class NotificationTemplateService
             'valid' => empty($errors),
             'errors' => $errors,
         ];
+    }
+
+    private function logIfRequiredPlaceholdersMissing(string $eventType, string $channel, string $content): void
+    {
+        $requiredValidation = $this->validateRequiredPlaceholders($eventType, $channel, $content);
+        if ($requiredValidation['valid']) {
+            return;
+        }
+
+        log_message(
+            'warning',
+            sprintf(
+                '[NotificationTemplateService] Missing required placeholders for %s.%s: %s',
+                $eventType,
+                $channel,
+                implode(', ', $requiredValidation['missing'])
+            )
+        );
     }
 
     /**

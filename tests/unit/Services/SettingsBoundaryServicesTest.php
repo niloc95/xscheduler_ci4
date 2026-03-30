@@ -167,7 +167,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
                     'appointment_confirmed' => [
                         'email' => [
                             'subject' => '  Confirmed Subject  ',
-                            'body' => '  Appointment confirmed body.  ',
+                            'body' => '  Appointment confirmed body. Manage booking: {reschedule_link}  ',
                         ],
                     ],
                 ],
@@ -191,8 +191,50 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
             $templatePayload = json_decode((string) ($byKey['notification_template.appointment_confirmed.email']['setting_value'] ?? ''), true);
             $this->assertSame([
                 'subject' => 'Confirmed Subject',
-                'body' => 'Appointment confirmed body.',
+                'body' => 'Appointment confirmed body. Manage booking: {reschedule_link}',
             ], $templatePayload);
+        } finally {
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
+    public function testNotificationSettingsServiceSaveTemplatesRejectsMissingRequiredPlaceholders(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+
+        try {
+            $service = new NotificationSettingsService();
+
+            $result = $service->save([
+                'intent' => 'save_templates',
+                'notification_default_language' => 'English',
+                'templates' => [
+                    'appointment_confirmed' => [
+                        'email' => [
+                            'subject' => 'Confirmed Subject',
+                            'body' => 'Appointment confirmed body without required link.',
+                        ],
+                    ],
+                ],
+            ], 55);
+
+            $this->assertSame('error', $result['type']);
+            $this->assertStringContainsString('appointment_confirmed.email', $result['message']);
+            $this->assertStringContainsString('{reschedule_link}', $result['message']);
+
+            $row = $db->table('settings')
+                ->where('setting_key', 'notification_template.appointment_confirmed.email')
+                ->get()
+                ->getFirstRow('array');
+
+            $this->assertNull($row);
         } finally {
             $db->table('settings')->whereIn('setting_key', $keys)->delete();
         }

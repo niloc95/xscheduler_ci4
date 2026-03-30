@@ -61,6 +61,29 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         $this->assertContains('Unknown placeholder: {unknown_token}', $result['errors']);
     }
 
+    public function testValidateRequiredPlaceholdersDetectsMissingRescheduleLinkForConfirmedEmail(): void
+    {
+        $service = new NotificationTemplateService();
+
+        $result = $service->validateRequiredPlaceholders(
+            'appointment_confirmed',
+            'email',
+            'Hello {customer_name}, your booking is confirmed.'
+        );
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame(['{reschedule_link}'], $result['missing']);
+    }
+
+    public function testDefaultConfirmedEmailTemplateIncludesRescheduleLink(): void
+    {
+        $service = new NotificationTemplateService();
+        $defaults = $service->getDefaultTemplates();
+
+        $body = (string) ($defaults['appointment_confirmed']['email']['body'] ?? '');
+        $this->assertStringContainsString('{reschedule_link}', $body);
+    }
+
     private function seedSetting($db, string $key, string $value, string $type): void
     {
         $db->table('settings')->insert([

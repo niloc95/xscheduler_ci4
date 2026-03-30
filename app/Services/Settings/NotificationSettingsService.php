@@ -8,6 +8,7 @@ use App\Services\NotificationCatalog;
 use App\Services\NotificationEmailService;
 use App\Services\NotificationPolicyService;
 use App\Services\NotificationSmsService;
+use App\Services\NotificationTemplateService;
 use App\Services\NotificationWhatsAppService;
 
 class NotificationSettingsService
@@ -30,6 +31,11 @@ class NotificationSettingsService
     protected function getWhatsAppService(): NotificationWhatsAppService
     {
         return new NotificationWhatsAppService();
+    }
+
+    protected function getTemplateService(): NotificationTemplateService
+    {
+        return new NotificationTemplateService();
     }
 
     public function getIndexData(): array
@@ -80,6 +86,7 @@ class NotificationSettingsService
             'notificationEvents' => NotificationCatalog::EVENTS,
             'notificationDeliveryLogs' => $deliveryLogs,
             'notificationMessageTemplates' => $messageTemplates,
+            'notificationDefaultTemplates' => $this->getTemplateService()->getDefaultTemplates(),
         ];
     }
 
@@ -276,7 +283,10 @@ class NotificationSettingsService
         if ($saveTemplates) {
             $templatesInput = $post['templates'] ?? [];
             if (!empty($templatesInput) && is_array($templatesInput)) {
-                $this->saveMessageTemplates($templatesInput, $userId);
+                $templateErrors = $this->saveMessageTemplates($templatesInput, $userId);
+                if (!empty($templateErrors)) {
+                    return $this->errorResult(implode(' ', $templateErrors));
+                }
             }
 
             if ($intent === 'save_templates') {
@@ -317,9 +327,14 @@ class NotificationSettingsService
         return $templates;
     }
 
-    private function saveMessageTemplates(array $templates, ?int $userId): void
+    /**
+     * @return array<int, string>
+     */
+    private function saveMessageTemplates(array $templates, ?int $userId): array
     {
         $settingModel = $this->getSettingModel();
+        $templateService = $this->getTemplateService();
+        $errors = [];
 
         foreach ($templates as $eventType => $channels) {
             if (!is_array($channels)) {
@@ -334,6 +349,41 @@ class NotificationSettingsService
                 $subject = isset($template['subject']) ? trim((string) $template['subject']) : null;
                 $body = isset($template['body']) ? trim((string) $template['body']) : '';
 
+                $bodyValidation = $templateService->validateTemplate($body);
+                if (!($bodyValidation['valid'] ?? false)) {
+                    $errors[] = sprintf(
+                        'Template %s.%s has validation errors: %s.',
+                        $eventType,
+                        $channel,
+                        implode('; ', $bodyValidation['errors'] ?? [])
+                    );
+                    continue;
+                }
+
+                if ($subject !== null && $subject !== '') {
+                    $subjectValidation = $templateService->validateTemplate($subject);
+                    if (!($subjectValidation['valid'] ?? false)) {
+                        $errors[] = sprintf(
+                            'Template %s.%s subject has validation errors: %s.',
+                            $eventType,
+                            $channel,
+                            implode('; ', $subjectValidation['errors'] ?? [])
+                        );
+                        continue;
+                    }
+                }
+
+                $requiredValidation = $templateService->validateRequiredPlaceholders($eventType, $channel, $body);
+                if (!($requiredValidation['valid'] ?? false)) {
+                    $errors[] = sprintf(
+                        'Template %s.%s is missing required placeholders: %s.',
+                        $eventType,
+                        $channel,
+                        implode(', ', $requiredValidation['missing'] ?? [])
+                    );
+                    continue;
+                }
+
                 $settingModel->upsert(
                     "notification_template.{$eventType}.{$channel}",
                     [
@@ -345,6 +395,8 @@ class NotificationSettingsService
                 );
             }
         }
+
+        return $errors;
     }
 
     private function successResult(string $message, bool $html = false): array
