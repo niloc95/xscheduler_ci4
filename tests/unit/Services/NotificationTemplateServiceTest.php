@@ -84,6 +84,36 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         $this->assertStringContainsString('{reschedule_link}', $body);
     }
 
+    public function testRenderAppendsManageBookingLineForLegacyStoredEmailTemplate(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+
+        try {
+            $this->seedSetting($db, 'notification_template.appointment_confirmed.email', json_encode([
+                'subject' => 'Confirmed for {customer_first_name}',
+                'body' => 'Hi {customer_name}, your booking is confirmed.',
+            ]), 'json');
+
+            $service = new NotificationTemplateService();
+
+            $result = $service->render('appointment_confirmed', 'email', [
+                'customer_name' => 'Jane Doe',
+                'reschedule_link' => 'https://example.com/manage/abc',
+            ]);
+
+            $this->assertStringContainsString('Manage booking: https://example.com/manage/abc', $result['body']);
+        } finally {
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
     private function seedSetting($db, string $key, string $value, string $type): void
     {
         $db->table('settings')->insert([

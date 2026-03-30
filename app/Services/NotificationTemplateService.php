@@ -292,6 +292,7 @@ class NotificationTemplateService
         // Render body
         $body = $template['body'] ?? '';
         if ($body !== '') {
+            $body = $this->ensureBodyContainsRequiredPlaceholders($eventType, $channel, $body, $data);
             $body = strtr($body, $placeholders);
         }
 
@@ -299,6 +300,37 @@ class NotificationTemplateService
             'subject' => $subject,
             'body' => $body,
         ];
+    }
+
+    private function ensureBodyContainsRequiredPlaceholders(string $eventType, string $channel, string $body, array $data): string
+    {
+        $requiredValidation = $this->validateRequiredPlaceholders($eventType, $channel, $body);
+        if ($requiredValidation['valid']) {
+            return $body;
+        }
+
+        if (!in_array('{reschedule_link}', $requiredValidation['missing'], true)) {
+            return $body;
+        }
+
+        $rescheduleLink = trim((string) ($data['reschedule_link'] ?? ''));
+        if ($rescheduleLink === '') {
+            return $body;
+        }
+
+        if ($channel === 'email' && strpos($body, 'Manage booking: {reschedule_link}') === false) {
+            return rtrim($body) . "\n\nManage booking: {reschedule_link}";
+        }
+
+        if ($channel === 'sms' && strpos($body, 'Manage: {reschedule_link}') === false) {
+            return rtrim($body) . ' Manage: {reschedule_link}';
+        }
+
+        if ($channel === 'whatsapp' && strpos($body, 'Manage booking: {reschedule_link}') === false) {
+            return rtrim($body) . "\nManage booking: {reschedule_link}";
+        }
+
+        return $body;
     }
 
     /**

@@ -438,7 +438,7 @@ function bootstrapPublicBooking() {
     }
 
     const form = state.manage.lookupForm;
-    const reference = (form.reference ?? '').trim();
+    const reference = (form.reference ?? '').trim() || String(context.manageReference ?? '').trim();
     const email = (form.email ?? '').trim();
     const phone = (form.phone ?? '').trim();
     const errors = {};
@@ -957,6 +957,20 @@ function bootstrapPublicBooking() {
       ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
       : '';
     const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+    const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
+    const introCopy = hasPrefilledReference
+      ? 'Confirm with the email or phone used when booking to continue.'
+      : 'Enter your booking reference plus the email or phone used when booking. We will pull up your appointment instantly.';
+    const secureReferenceInfo = hasPrefilledReference
+      ? `<div class="${UI_CLASSES.cardInfo}">Secure reference detected from your link. Confirm with email or phone to continue.</div>`
+      : '';
+    const referenceField = hasPrefilledReference
+      ? `<input type="hidden" name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}">`
+      : `<label class="block text-sm font-medium text-slate-700">
+            Booking reference
+            <input name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="booking reference" required>
+            ${renderFieldError('token', manageState.lookupErrors)}
+          </label>`;
     const policyMessage = policy.enabled
       ? `You can reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before the appointment.`
       : 'Online changes are disabled. Contact the office for assistance.';
@@ -967,14 +981,11 @@ function bootstrapPublicBooking() {
         <form id="booking-lookup-form" class="space-y-5" novalidate>
           <div>
             <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
-            <p class="mt-1 text-sm text-slate-600">Enter your booking reference plus the email or phone used when booking. We will pull up your appointment instantly.</p>
+            <p class="mt-1 text-sm text-slate-600">${introCopy}</p>
           </div>
           ${info}
-          <label class="block text-sm font-medium text-slate-700">
-            Booking reference
-            <input name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="booking reference" required>
-            ${renderFieldError('token', manageState.lookupErrors)}
-          </label>
+          ${secureReferenceInfo}
+          ${referenceField}
           <div class="grid gap-4 md:grid-cols-2">
             <label class="block text-sm font-medium text-slate-700">
               Email address
@@ -1763,9 +1774,11 @@ function bootstrapPublicBooking() {
   }
 
   function createManageDraft(ctx, defaultDate) {
+    const prefilledReference = String(ctx.manageReference ?? '');
     return {
       stage: 'lookup',
-      lookupForm: { reference: String(ctx.manageReference ?? ''), email: '', phone: '' },
+      hasPrefilledReference: Boolean(prefilledReference.trim()),
+      lookupForm: { reference: prefilledReference, email: '', phone: '' },
       lookupErrors: {},
       lookupError: '',
       lookupLoading: false,
