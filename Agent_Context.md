@@ -68,6 +68,7 @@ app/
   Libraries/
   Models/
   Services/
+
     Appointment/
     Concerns/
     Settings/
@@ -101,41 +102,16 @@ docs/
   audits/
   configuration/
   deployment/
-  design/
-  development/
-  scheduler/
-  security/
   technical/
   testing/
-```
-
-### Deployment Output
-```text
-public/build/
 webschedulr-deploy/
 builds/
-```
 
----
-
-## Architecture Rules
-
-### Rule 1 - Controllers Stay Thin
-- Controllers coordinate request validation, authorization, and response shaping.
-- Business logic belongs in `app/Services/`.
-- Repeated data-fetching or mutation flows should be extracted to services instead of copied across controllers.
-
-### Rule 2 - Services Own Business Logic
 - Scheduling, booking, availability, timezone conversion, notification dispatch, dashboard metrics, search, and settings workflows belong in services.
 - If a controller or view needs non-trivial scheduling logic, the logic is probably in the wrong place.
-
-### Rule 3 - Models Are Data Access Layers
-- Models should encapsulate query patterns and persistence concerns.
 - Do not turn models into controller replacements.
 - All models extend project conventions and must stay compatible with the existing `BaseModel` usage.
 
-### Rule 4 - Migrations Must Extend MigrationBase
-- All project migrations must extend `App\Database\MigrationBase`.
 - Do not extend the framework `Migration` class directly for app migrations.
 
 ### Rule 5 - API Controllers Use the Base API Contract
@@ -238,6 +214,28 @@ The current database is centered on appointments, provider availability, public 
 - Notes:
   - `duration_min` is the service duration baseline.
   - `buffer_before` and `buffer_after` must be included in availability logic.
+  - `category_id`
+  - `active`
+- Notes:
+  - `duration_min` is the service duration baseline.
+  - `buffer_before` and `buffer_after` must be included in availability logic.
+  - `category_id` is an optional FK to `xs_categories`.
+  - `active` (0/1) controls whether the service appears in booking flows.
+
+##### `xs_categories`
+- Service category labels for organizing bookable services.
+- Key columns:
+  - `id`
+  - `name`
+  - `description`
+  - `color`
+  - `active`
+  - `created_at`
+  - `updated_at`
+- Notes:
+  - Optional classification layer used by `xs_services.category_id`.
+  - `color` is a hex string (e.g. `#FF5733`).
+  - Managed by `CategoryModel` via `app/Controllers/ServiceCategories.php`.
 
 ##### `xs_appointments`
 - Canonical appointment record.
@@ -509,7 +507,7 @@ The current database is centered on appointments, provider availability, public 
 
 #### Audit and Traceability Tables
 
-##### `xs_audit_logs`
+##### `audit_logs`
 - Internal audit trail for administrative and user-management actions.
 - Key columns:
   - `id`
@@ -525,6 +523,7 @@ The current database is centered on appointments, provider availability, public 
 - Notes:
   - `old_value` and `new_value` are JSON-like text snapshots.
   - Do not store audit-only business history in application tables when this audit surface is the intended trace.
+  - **This table intentionally uses no `xs_` prefix.** Legacy naming. Reference it as `audit_logs`, not `xs_audit_logs`.
 
 #### Canonical Relationships
 - `xs_appointments.customer_id -> xs_customers.id`
@@ -548,7 +547,8 @@ The current database is centered on appointments, provider availability, public 
 - `xs_notification_delivery_logs.queue_id -> xs_notification_queue.id`
 - `xs_notification_delivery_logs.appointment_id -> xs_appointments.id`
 - `xs_notification_delivery_logs.customer_id -> xs_customers.id`
-- `xs_audit_logs.user_id -> xs_users.id`
+- `xs_services.category_id -> xs_categories.id` (optional, nullable)
+- `audit_logs.user_id -> xs_users.id`
 
 #### Index and Query Expectations
 - Appointment availability and calendar queries must be optimized around provider, status, and UTC datetime ranges.
@@ -647,6 +647,35 @@ If a booking flow bypasses that pipeline, it is a defect unless there is a docum
 - Notification defaults
 - Business hours and booking windows
 
+### Settings Key Namespaces
+The following dot-prefixed namespaces are in active use:
+
+| Prefix | Purpose |
+|---|---|
+| `general.*` | Business identity (name, email, logo, phone) |
+| `localization.*` | Timezone, locale, currency, time format, first day of week |
+| `booking.*` | Field visibility/requirement, day window, time resolution, break times |
+| `calendar.*` | Calendar view defaults, slot duration, height, rebuild flag, weekend display |
+| `notifications.*` | Default notification language and channel defaults |
+| `branding.*` | Theme and visual identity overrides |
+| `security.*` | Auth and access policy settings |
+
+Known `calendar.*` keys currently in use:
+- `calendar.day_start`, `calendar.day_end`
+- `calendar.default_view`
+- `calendar.slot_duration`
+- `calendar.height`
+- `calendar.show_weekends`
+- `calendar.rebuild_enabled`
+- `calendar.prototype_enabled`
+
+Known `booking.*` keys currently in use:
+- `booking.fields` (JSON blob of field config)
+- `booking.day_start`, `booking.day_end`, `booking.break_start`, `booking.break_end`
+- `booking.time_resolution`
+- `booking.statuses`
+- `booking.*_display`, `booking.*_required` for each form field (first_names, surname, email, phone, address, notes)
+
 ---
 
 ## Frontend Rules
@@ -739,6 +768,18 @@ Current operational roles include:
 - The provider dropdown on the appointment create/edit form must show **only assigned providers** for staff, not the full provider list.
 - `AuthorizationService::canManageAppointment()` returns `true` for staff because their data-layer scope already restricts what they can access; do not add a second redundant ownership check for staff.
 
+### Provider Scope Contract
+- Providers are scoped to their own appointments, schedules, services, and customers.
+- For Customer Management, a provider may only see customers with at least one appointment where
+  they are the assigned provider.
+- The **canonical service** for customer ID resolution is `CustomerAppointmentService`:
+  - `resolveCustomerIdsForProvider(int $providerUserId): array`
+  - `resolveCustomerIdsForStaff(int $staffUserId): array`
+  - `getProviderIdsForStaff(int $staffUserId): array`
+- Do not write raw DB queries for customer ID resolution inside controllers — delegate to these service methods.
+- Object-level authorization for customer edit/view/history routes must be enforced after hash lookup,
+  for both provider and staff roles.
+
 ---
 
 ## Notifications Rules
@@ -746,6 +787,12 @@ Current operational roles include:
 ### Delivery Model
 - Notifications are queued and dispatched through the notification queue system.
 - Do not implement one-off notification paths when existing queue and dispatcher flows should be used.
+- When a booking or status change needs immediate email delivery (e.g., public booking confirmation),
+  enqueue via `AppointmentEventService::dispatch()` and then call
+  `NotificationQueueDispatcher::dispatch()` synchronously in the same request.
+  This preserves idempotency keys, delivery logs, and opt-out checks while sending without cron.
+- **Do not** call `AppointmentNotificationService::sendEventEmail()` directly from booking or mutation
+  services. That method is reserved for the manual resend path in `Api/Appointments` controller.
 
 ### Channels
 - Email
@@ -753,11 +800,13 @@ Current operational roles include:
 - WhatsApp
 
 ### Canonical Services
-- `AppointmentNotificationService`
-- `NotificationQueueDispatcher`
-- `NotificationEmailService`
-- `NotificationSmsService`
-- `NotificationWhatsAppService`
+- `AppointmentEventService` — entry point for enqueuing appointment-event notifications
+- `NotificationQueueService` — writes jobs to `xs_notification_queue`
+- `NotificationQueueDispatcher` — reads and dispatches queued jobs (also callable synchronously)
+- `AppointmentNotificationService` — synchronous send; **manual resend path only**
+- `NotificationEmailService` / `NotificationSmsService` / `NotificationWhatsAppService` — channel senders
+- `NotificationPolicyService` — evaluates per-channel and per-event notification rules
+- `NotificationCatalog` — constants including `BUSINESS_ID_DEFAULT = 1`
 
 ### Policy
 - Notification behavior should be driven by settings and rule services where available.
@@ -891,6 +940,8 @@ Use this quick gate before merge:
 | 18 | `array_column($staffProviders, 'provider_id')` on `getProvidersForStaff()` result | Use `array_column($result, 'id')` — the returned column is aliased `id` |
 | 19 | Passing staff provider IDs as `'provider_ids'` (plural) to appointment context | Use `'provider_id'` (singular) — `applyContextScope` reads that key only |
 | 20 | Staff sees all appointments when unassigned | Set `$context['provider_id'] = [0]` to force empty result instead of no filter |
+| 21 | Calling `AppointmentNotificationService::sendEventEmail()` from booking or mutation services | Enqueue via `AppointmentEventService::dispatch()` then call `NotificationQueueDispatcher::dispatch()` |
+| 22 | Raw DB queries for customer ID resolution inside controller methods | Delegate to `CustomerAppointmentService::resolveCustomerIdsForProvider()` or `resolveCustomerIdsForStaff()` |
 
 ---
 
@@ -969,5 +1020,5 @@ If a change starts from presentation while the service or data contract is still
 
 ---
 
-Last updated: 2026-03-29
+Last updated: 2026-03-30
 Status: Active
