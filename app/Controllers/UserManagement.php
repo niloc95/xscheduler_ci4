@@ -119,12 +119,12 @@ class UserManagement extends BaseController
             $this->scheduleValidation,
         );
         $this->userManagementMutationService = $userManagementMutationService ?? new UserManagementMutationService(
-            $this->userModel,
-            $this->providerStaffModel,
-            $this->providerScheduleModel,
-            $this->auditModel,
-            $this->scheduleValidation,
-            $this->userManagementContextService,
+            userModel: $this->userModel,
+            providerStaffModel: $this->providerStaffModel,
+            providerScheduleModel: $this->providerScheduleModel,
+            auditModel: $this->auditModel,
+            scheduleValidation: $this->scheduleValidation,
+            contextService: $this->userManagementContextService,
         );
         $this->userDeletionService = $userDeletionService ?? new UserDeletionService($this->userModel, $this->auditModel);
     }
