@@ -75,6 +75,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
+use App\Services\AppointmentNotificationService;
 use App\Services\NotificationCatalog;
 use DateTime;
 use DateTimeZone;
@@ -828,10 +829,22 @@ class AppointmentBookingService
     protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
     {
         try {
-            $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
-            log_message('info', '[AppointmentBookingService] Queued notifications: ' . implode(', ', $types));
+            // Email: send synchronously so customer receives confirmation immediately
+            // after public booking, without requiring the cron dispatcher to be running.
+            if (in_array('email', $types, true)) {
+                $notifSvc = new AppointmentNotificationService();
+                $sent = $notifSvc->sendEventEmail($event, $appointmentId, NotificationCatalog::BUSINESS_ID_DEFAULT);
+                log_message('info', '[AppointmentBookingService] Direct email (' . $event . '): ' . ($sent ? 'sent' : 'skipped/disabled — check Notification settings'));
+            }
+
+            // SMS and WhatsApp remain queue-based (processed by cron dispatcher).
+            $asyncTypes = array_values(array_diff($types, ['email']));
+            if (!empty($asyncTypes)) {
+                $this->appointmentEventService->dispatch($event, $appointmentId, $asyncTypes, NotificationCatalog::BUSINESS_ID_DEFAULT);
+                log_message('info', '[AppointmentBookingService] Queued async notifications: ' . implode(', ', $asyncTypes));
+            }
         } catch (Exception $e) {
-            log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
+            log_message('error', '[AppointmentBookingService] Notification dispatch failed: ' . $e->getMessage());
             // Don't fail the booking if notifications fail
         }
     }
