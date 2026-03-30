@@ -49,7 +49,7 @@ function bootstrapPublicBooking() {
   const hasInitialCalendar = calendarDates.length > 0 && initialCalendarSlots.length > 0;
 
   let state = {
-    view: 'book',
+    view: context.manageReference ? 'manage' : 'book',
     booking: createBookingDraft(context, defaultDate, initialAvailability, initialCalendar),
     manage: createManageDraft(context, defaultDate),
     csrf: {
@@ -438,13 +438,13 @@ function bootstrapPublicBooking() {
     }
 
     const form = state.manage.lookupForm;
-    const token = (form.token ?? '').trim();
+    const reference = (form.reference ?? '').trim();
     const email = (form.email ?? '').trim();
     const phone = (form.phone ?? '').trim();
     const errors = {};
 
-    if (!token) {
-      errors.token = 'Enter your confirmation token';
+    if (!reference) {
+      errors.token = 'Enter your booking reference';
     }
     if (!email && !phone) {
       errors.contact = 'Provide the email or phone used on the booking.';
@@ -466,7 +466,7 @@ function bootstrapPublicBooking() {
         params.set('phone', phone);
       }
       const query = params.toString();
-      const url = query ? `${bookingBase}/${encodeURIComponent(token)}?${query}` : `${bookingBase}/${encodeURIComponent(token)}`;
+      const url = query ? `${bookingBase}/${encodeURIComponent(reference)}?${query}` : `${bookingBase}/${encodeURIComponent(reference)}`;
 
       const response = await fetch(url, {
         headers: {
@@ -615,11 +615,11 @@ function bootstrapPublicBooking() {
       let method = 'POST';
 
       if (target === 'manage') {
-        const token = state.manage.appointment?.token;
-        if (!token) {
-          throw new Error('Missing appointment token.');
+        const reference = state.manage.appointment?.reference;
+        if (!reference) {
+          throw new Error('Missing appointment reference.');
         }
-        endpoint = `${bookingBase}/${encodeURIComponent(token)}`;
+        endpoint = `${bookingBase}/${encodeURIComponent(reference)}`;
         method = 'PATCH';
       }
 
@@ -936,9 +936,9 @@ function bootstrapPublicBooking() {
     if (manageState.stage === 'success' && manageState.success) {
       return renderSuccess(manageState.success, ctx, {
         title: 'Appointment updated',
-        subtitle: 'We emailed your updated confirmation. Use the new token for any future changes.',
+        subtitle: 'We emailed your updated confirmation with your secure manage link.',
         primaryButton: { label: 'Look up another booking', attr: 'data-manage-start-over' },
-        footerText: 'Need to adjust again? Submit your new confirmation token to reopen this booking.',
+        footerText: 'Need to adjust again? Open your secure manage link and confirm with email or phone.',
       });
     }
 
@@ -967,12 +967,12 @@ function bootstrapPublicBooking() {
         <form id="booking-lookup-form" class="space-y-5" novalidate>
           <div>
             <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
-            <p class="mt-1 text-sm text-slate-600">Enter your confirmation token plus the email or phone used when booking. We will pull up your appointment instantly.</p>
+            <p class="mt-1 text-sm text-slate-600">Enter your booking reference plus the email or phone used when booking. We will pull up your appointment instantly.</p>
           </div>
           ${info}
           <label class="block text-sm font-medium text-slate-700">
-            Confirmation token
-            <input name="token" value="${escapeHtml(manageState.lookupForm.token ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="abcd-1234-efgh" required>
+            Booking reference
+            <input name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="booking reference" required>
             ${renderFieldError('token', manageState.lookupErrors)}
           </label>
           <div class="grid gap-4 md:grid-cols-2">
@@ -1035,11 +1035,11 @@ function bootstrapPublicBooking() {
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking token</p>
-            <p class="mt-0.5 font-mono text-base text-slate-900">${escapeHtml(appointment.token ?? '')}</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking reference</p>
+            <p class="mt-0.5 text-base text-slate-900">Verified secure reference</p>
             <p class="mt-2 text-sm text-slate-600">${contactLine}</p>
           </div>
-          <button type="button" data-manage-reset class="${UI_CLASSES.buttonSecondary}">Use a different token</button>
+          <button type="button" data-manage-reset class="${UI_CLASSES.buttonSecondary}">Use a different reference</button>
         </div>
         <dl class="mt-6 grid gap-4 text-left md:grid-cols-3">
           <div class="${UI_CLASSES.cardBase}">
@@ -1379,7 +1379,7 @@ function bootstrapPublicBooking() {
   function renderActions(currentState, options = {}) {
     const submitLabel = options?.submitLabel ?? 'Confirm appointment';
     const pendingLabel = options?.pendingLabel ?? 'Booking your appointment...';
-    const helperText = options?.helperText ?? 'We respect your privacy. Your confirmation token will be displayed and emailed immediately.';
+    const helperText = options?.helperText ?? 'We respect your privacy. You can manage this booking later using your secure link plus contact verification.';
     const disabled = currentState.submitting ? 'disabled' : '';
     const text = currentState.submitting ? pendingLabel : submitLabel;
     return `
@@ -1401,8 +1401,8 @@ function bootstrapPublicBooking() {
     const locationLabel = appointment.location_name ?? '';
     const locationAddr = appointment.location_address ?? '';
     const title = options.title ?? "You're booked!";
-    const subtitle = options.subtitle ?? 'We\'ll send a confirmation email shortly. Keep your token handy if you need to make changes.';
-    const footerText = options.footerText ?? 'Need to reschedule? Use your token and contact email to pull up this booking anytime.';
+    const subtitle = options.subtitle ?? 'We\'ll send a confirmation email shortly with your secure manage link.';
+    const footerText = options.footerText ?? 'Need to reschedule? Use your secure manage link and confirm with email or phone.';
     const primaryButton = options.primaryButton ?? { label: 'Book another appointment', attr: 'data-start-over' };
     const secondaryButton = options.secondaryButton;
     const primaryAttr = primaryButton?.attr ?? 'data-start-over';
@@ -1429,8 +1429,8 @@ function bootstrapPublicBooking() {
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(serviceLabel)}</dd>
           </div>
           <div class="rounded-2xl border border-slate-200 px-4 py-3">
-            <dt class="text-sm font-medium text-slate-500">Confirmation token</dt>
-            <dd class="text-base font-mono text-slate-900">${escapeHtml(appointment.token ?? '')}</dd>
+            <dt class="text-sm font-medium text-slate-500">Manage booking</dt>
+            <dd class="text-base font-semibold text-slate-900">Use the secure link in your confirmation message.</dd>
           </div>
           ${locationLabel ? `
           <div class="rounded-2xl border border-slate-200 px-4 py-3 md:col-span-2">
@@ -1765,7 +1765,7 @@ function bootstrapPublicBooking() {
   function createManageDraft(ctx, defaultDate) {
     return {
       stage: 'lookup',
-      lookupForm: { token: '', email: '', phone: '' },
+      lookupForm: { reference: String(ctx.manageReference ?? ''), email: '', phone: '' },
       lookupErrors: {},
       lookupError: '',
       lookupLoading: false,

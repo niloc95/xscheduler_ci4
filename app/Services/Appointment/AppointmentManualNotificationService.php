@@ -119,6 +119,9 @@ class AppointmentManualNotificationService
             'location_name' => $appointment['location_name'] ?? '',
             'location_address' => $appointment['location_address'] ?? '',
             'location_contact' => $appointment['location_contact'] ?? '',
+            'appointment_hash' => $appointment['hash'] ?? '',
+            'reschedule_link' => !empty($appointment['hash']) ? base_url('booking/r/' . $appointment['hash']) : base_url('booking'),
+            'booking_url' => base_url('booking'),
         ];
 
         $rendered = $this->notificationTemplateService->render($eventType, 'sms', $templateData);

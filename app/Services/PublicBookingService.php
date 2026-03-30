@@ -277,14 +277,14 @@ class PublicBookingService
 
     public function lookupAppointment(string $token, ?string $email = null, ?string $phone = null): array
     {
-        $appointment = $this->fetchAppointmentByToken($token);
+        $appointment = $this->fetchAppointmentByReference($token);
         $this->verifyContactAccess($appointment, $email, $phone);
         return $this->formatPublicAppointment($appointment, $token);
     }
 
     public function reschedule(string $token, array $payload): array
     {
-        $appointment = $this->fetchAppointmentByToken($token);
+        $appointment = $this->fetchAppointmentByReference($token);
         $this->verifyContactAccess($appointment, $payload['email'] ?? null, $payload['phone'] ?? null);
         $this->assertRescheduleWindow($appointment['start_at']);
 
@@ -720,7 +720,7 @@ class PublicBookingService
         return $digits !== '' ? substr($digits, 0, 20) : null;
     }
 
-    private function formatPublicAppointment(?array $appointment, string $token): array
+    private function formatPublicAppointment(?array $appointment, string $reference): array
     {
         if (!$appointment) {
             throw new PublicBookingException('Appointment could not be loaded.');
@@ -755,7 +755,7 @@ class PublicBookingService
         }
 
         return [
-            'token' => $token,
+            'reference' => $reference,
             'provider_id' => (int) $appointment['provider_id'],
             'service_id' => (int) $appointment['service_id'],
             'start' => $start->format(DATE_ATOM),
@@ -793,20 +793,23 @@ class PublicBookingService
         return sprintf('%s at %s – %s', $dateLabel, $startLabel, $endLabel);
     }
 
-    private function fetchAppointmentByToken(string $token): array
+    private function fetchAppointmentByReference(string $reference): array
     {
-        if (trim($token) === '') {
-            throw new PublicBookingException('Confirmation token is required.', 422, ['token' => 'required']);
+        if (trim($reference) === '') {
+            throw new PublicBookingException('Booking reference is required.', 422, ['token' => 'required']);
         }
 
         $builder = $this->appointments->builder();
         $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id', false)
             ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
-            ->where('xs_appointments.public_token', $token);
+            ->groupStart()
+                ->where('xs_appointments.public_token', $reference)
+                ->orWhere('xs_appointments.hash', $reference)
+            ->groupEnd();
 
         $record = $builder->get()->getRowArray();
         if (!$record) {
-            throw new PublicBookingException('We could not find a booking for that token.', 404);
+            throw new PublicBookingException('We could not find a booking for that reference.', 404);
         }
 
         return $record;

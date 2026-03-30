@@ -102,6 +102,7 @@ class NotificationTemplateService
         '{rescheduling_policy}' => 'Rescheduling policy text',
         '{terms_link}' => 'Terms & Conditions link or text',
         '{privacy_link}' => 'Privacy policy link or text',
+        '{reschedule_link}' => 'Secure reschedule link',
         '{booking_url}' => 'Online booking URL',
         // Location placeholders
         '{location_name}' => 'Appointment location name',
@@ -119,10 +120,10 @@ class NotificationTemplateService
                 'body' => "Hi {customer_name},\n\nYour appointment has been confirmed!\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
             ],
             'sms' => [
-                'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. {business_name}"
+                'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_name}!\n\nYour appointment has been confirmed:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nThank you for booking with {business_name}!\n\n_Reply to this message if you need to make any changes._"
+                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_name}!\n\nYour appointment has been confirmed:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nManage booking: {reschedule_link}\nTerms: {terms_link}\nPrivacy: {privacy_link}\n\nThank you for booking with {business_name}!"
             ]
         ],
         'appointment_reminder' => [
@@ -131,10 +132,10 @@ class NotificationTemplateService
                 'body' => "Hi {customer_name},\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nWe look forward to seeing you!\n\n{business_name}"
             ],
             'sms' => [
-                'body' => "⏰ Reminder: {service_name} on {appointment_date} at {appointment_time}. {business_name}"
+                'body' => "⏰ Reminder: {service_name} on {appointment_date} at {appointment_time}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_name}!\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nWe look forward to seeing you!\n\n_{business_name}_"
+                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_name}!\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nManage booking: {reschedule_link}\n\nWe look forward to seeing you!\n\n_{business_name}_"
             ]
         ],
         'appointment_cancelled' => [
@@ -143,10 +144,10 @@ class NotificationTemplateService
                 'body' => "Hi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n\nWe hope to see you again soon! To reschedule, please contact us or book online.\n\n{business_name}"
             ],
             'sms' => [
-                'body' => "❌ Appt cancelled: {service_name} on {appointment_date}. Contact us to reschedule. {business_name}"
+                'body' => "❌ Appt cancelled: {service_name} on {appointment_date}. Rebook/manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "❌ *Appointment Cancelled*\n\nHi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n\nWe hope to see you again soon!\n\nTo reschedule, please contact us or book online.\n\n_{business_name}_"
+                'body' => "❌ *Appointment Cancelled*\n\nHi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n\nBook/reschedule: {reschedule_link}\n\n_{business_name}_"
             ]
         ],
         'appointment_rescheduled' => [
@@ -155,10 +156,10 @@ class NotificationTemplateService
                 'body' => "Hi {customer_name},\n\nYour appointment has been rescheduled to:\n\n📅 New Date: {appointment_date}\n🕐 New Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nPlease let us know if this doesn't work for you.\n\n{business_name}"
             ],
             'sms' => [
-                'body' => "📅 Appt rescheduled: {service_name} now {appointment_date} at {appointment_time}. {business_name}"
+                'body' => "📅 Appt rescheduled: {service_name} now {appointment_date} at {appointment_time}. Link: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_name}!\n\nYour appointment has been rescheduled to:\n\n📅 *New Date:* {appointment_date}\n🕐 *New Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nPlease let us know if this doesn't work for you.\n\n_{business_name}_"
+                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_name}!\n\nYour appointment has been rescheduled to:\n\n📅 *New Date:* {appointment_date}\n🕐 *New Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nManage again: {reschedule_link}\n\n_{business_name}_"
             ]
         ],
     ];
@@ -319,8 +320,8 @@ class NotificationTemplateService
         }
 
         // Build terms/privacy links
-        $termsLink = $this->legalContent['terms_url'] ?: ($this->legalContent['terms'] ? '[Terms & Conditions]' : '');
-        $privacyLink = $this->legalContent['privacy_url'] ?: ($this->legalContent['privacy'] ? '[Privacy Policy]' : '');
+        $termsLink = $this->legalContent['terms_url'] ?: base_url('booking/legal#terms');
+        $privacyLink = $this->legalContent['privacy_url'] ?: base_url('booking/legal#privacy');
 
         return [
             '{customer_name}' => $data['customer_name'] ?? $data['name'] ?? '',
@@ -341,6 +342,7 @@ class NotificationTemplateService
             '{rescheduling_policy}' => $this->legalContent['rescheduling_policy'] ?? '',
             '{terms_link}' => $termsLink,
             '{privacy_link}' => $privacyLink,
+            '{reschedule_link}' => $data['reschedule_link'] ?? '',
             '{booking_url}' => $data['booking_url'] ?? base_url('booking'),
             // Location placeholders (from appointment snapshot)
             '{location_name}' => $data['location_name'] ?? '',

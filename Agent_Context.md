@@ -811,6 +811,11 @@ Current operational roles include:
 ### Policy
 - Notification behavior should be driven by settings and rule services where available.
 - Templates and integration settings belong to the notification/settings system, not arbitrary module code.
+- Channel parity is required for placeholder behavior in outbound messaging:
+  - Email, SMS, and WhatsApp templates must all support `reschedule_link`.
+  - WhatsApp template parameter mapping must stay compatible with provider-specific integrations.
+- Do not display raw appointment `public_token` values in customer-facing UI or message bodies.
+  Use opaque links (for example `/booking/r/{reference}`) plus email/phone verification instead.
 
 ---
 
@@ -942,6 +947,7 @@ Use this quick gate before merge:
 | 20 | Staff sees all appointments when unassigned | Set `$context['provider_id'] = [0]` to force empty result instead of no filter |
 | 21 | Calling `AppointmentNotificationService::sendEventEmail()` from booking or mutation services | Enqueue via `AppointmentEventService::dispatch()` then call `NotificationQueueDispatcher::dispatch()` |
 | 22 | Raw DB queries for customer ID resolution inside controller methods | Delegate to `CustomerAppointmentService::resolveCustomerIdsForProvider()` or `resolveCustomerIdsForStaff()` |
+| 23 | Showing raw `public_token` in booking success UI or outbound messages | Use opaque reference links and verify ownership with email/phone before management actions |
 
 ---
 

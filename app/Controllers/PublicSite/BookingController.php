@@ -28,6 +28,14 @@ class BookingController extends BaseController
         return view('public/booking', ['context' => $context]);
     }
 
+    public function reference(string $reference)
+    {
+        $context = $this->booking->buildViewContext();
+        $context['manageReference'] = $reference;
+
+        return view('public/booking', ['context' => $context]);
+    }
+
     public function slots()
     {
         helper('logging');

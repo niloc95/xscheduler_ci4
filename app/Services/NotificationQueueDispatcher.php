@@ -367,6 +367,9 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'])
                 : '',
+            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
+            'booking_url' => base_url('booking'),
+            'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
         // Render template with placeholders
@@ -401,6 +404,9 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'])
                 : '',
+            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
+            'booking_url' => base_url('booking'),
+            'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
         // Render template with placeholders
@@ -439,6 +445,9 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'])
                 : '',
+            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
+            'booking_url' => base_url('booking'),
+            'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
         // Render template with placeholders
