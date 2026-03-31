@@ -209,6 +209,7 @@ $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('legal', 'PublicSite\LegalController::index', ['filter' => 'public_rate_limit']);
     $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
     $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
+    $routes->get('search', 'PublicSite\BookingController::search', ['filter' => 'public_rate_limit']);
     $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit', 'csrf']]);
     $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => 'public_rate_limit']);
     $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);

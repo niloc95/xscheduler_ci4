@@ -161,6 +161,17 @@ function bootstrapPublicBooking() {
       return;
     }
 
+    if (state.manage.stage === 'select') {
+      root.querySelectorAll('[data-select-appointment]').forEach(button => {
+        button.addEventListener('click', () => {
+          const index = parseInt(button.getAttribute('data-select-appointment'), 10);
+          handleSelectAppointment(index);
+        });
+      });
+      root.querySelector('[data-manage-start-over]')?.addEventListener('click', resetManageFlow);
+      return;
+    }
+
     if (state.manage.stage === 'reschedule') {
       bindFormControls('manage');
       root.querySelector('[data-manage-reset]')?.addEventListener('click', resetManageFlow);
@@ -170,6 +181,14 @@ function bootstrapPublicBooking() {
     if (state.manage.stage === 'success') {
       root.querySelector('[data-manage-start-over]')?.addEventListener('click', resetManageFlow);
     }
+  }
+
+  async function handleSelectAppointment(index) {
+    const results = state.manage.searchResults ?? [];
+    const appt = results[index];
+    if (!appt?.token) return;
+    const { email, phone } = state.manage.contact ?? {};
+    await selectAppointmentFromSearch(appt.token, email ?? '', phone ?? '');
   }
 
   function bindViewToggles() {
@@ -433,18 +452,17 @@ function bootstrapPublicBooking() {
 
   async function handleLookupSubmit(event) {
     event.preventDefault();
-    if (state.manage.lookupLoading) {
-      return;
-    }
+    if (state.manage.lookupLoading) return;
 
+    const { hasPrefilledReference } = state.manage;
     const form = state.manage.lookupForm;
     const reference = (form.reference ?? '').trim() || String(context.manageReference ?? '').trim();
     const email = (form.email ?? '').trim();
     const phone = (form.phone ?? '').trim();
     const errors = {};
 
-    if (!reference) {
-      errors.token = 'Enter your booking reference';
+    if (hasPrefilledReference && !reference) {
+      errors.token = 'Secure reference not found. Please use your original booking link.';
     }
     if (!email && !phone) {
       errors.contact = 'Provide the email or phone used on the booking.';
@@ -459,20 +477,19 @@ function bootstrapPublicBooking() {
 
     try {
       const params = new URLSearchParams();
-      if (email) {
-        params.set('email', email);
+      if (email) params.set('email', email);
+      if (phone) params.set('phone', phone);
+
+      let url;
+      if (hasPrefilledReference && reference) {
+        const query = params.toString();
+        url = query ? `${bookingBase}/${encodeURIComponent(reference)}?${query}` : `${bookingBase}/${encodeURIComponent(reference)}`;
+      } else {
+        url = `${bookingBase}/search?${params.toString()}`;
       }
-      if (phone) {
-        params.set('phone', phone);
-      }
-      const query = params.toString();
-      const url = query ? `${bookingBase}/${encodeURIComponent(reference)}?${query}` : `${bookingBase}/${encodeURIComponent(reference)}`;
 
       const response = await fetch(url, {
-        headers: {
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
       });
 
       updateCsrfFromHeaders(response.headers);
@@ -485,6 +502,63 @@ function bootstrapPublicBooking() {
       }
 
       updateManage(prev => ({ ...prev, lookupLoading: false }));
+
+      if (hasPrefilledReference) {
+        // Direct token lookup — single result, proceed straight to reschedule
+        enterRescheduleStage(data?.data, { email, phone });
+      } else {
+        // Contact-based search — may return multiple appointments
+        const results = Array.isArray(data?.data) ? data.data : [];
+        if (results.length === 0) {
+          throw new SubmissionError("We couldn't find any upcoming bookings for that contact.");
+        }
+        if (results.length === 1) {
+          await selectAppointmentFromSearch(results[0].token, email, phone);
+        } else {
+          updateManage(prev => ({
+            ...prev,
+            stage: 'select',
+            searchResults: results,
+            contact: { email, phone },
+          }));
+        }
+      }
+    } catch (error) {
+      if (error instanceof SubmissionError) {
+        updateManage(prev => ({
+          ...prev,
+          lookupLoading: false,
+          lookupError: error.message,
+          lookupErrors: { ...prev.lookupErrors, ...error.details },
+        }));
+        return;
+      }
+      updateManage(prev => ({
+        ...prev,
+        lookupLoading: false,
+        lookupError: error.message ?? 'Unable to locate that booking.',
+      }));
+    }
+  }
+
+  async function selectAppointmentFromSearch(token, email, phone) {
+    updateManage(prev => ({ ...prev, lookupLoading: true, lookupError: '' }));
+    try {
+      const params = new URLSearchParams();
+      if (email) params.set('email', email);
+      if (phone) params.set('phone', phone);
+      const url = `${bookingBase}/${encodeURIComponent(token)}?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      updateCsrfFromHeaders(response.headers);
+      const data = await safeJson(response);
+      updateCsrfFromBody(data);
+      if (!response.ok) {
+        const details = data?.details ?? {};
+        throw new SubmissionError(data?.error ?? 'Unable to load that booking.', details);
+      }
+      updateManage(prev => ({ ...prev, lookupLoading: false }));
       enterRescheduleStage(data?.data, { email, phone });
     } catch (error) {
       if (error instanceof SubmissionError) {
@@ -496,11 +570,10 @@ function bootstrapPublicBooking() {
         }));
         return;
       }
-
       updateManage(prev => ({
         ...prev,
         lookupLoading: false,
-        lookupError: error.message ?? 'Unable to locate that booking.',
+        lookupError: error.message ?? 'Unable to load that booking.',
       }));
     }
   }
@@ -942,11 +1015,58 @@ function bootstrapPublicBooking() {
       });
     }
 
+    if (manageState.stage === 'select') {
+      return renderSelectStage(manageState, ctx);
+    }
+
     if (manageState.stage === 'reschedule') {
       return renderRescheduleStage(manageState, ctx);
     }
 
     return renderLookupStage(manageState, ctx);
+  }
+
+  function renderSelectStage(manageState, ctx) {
+    const results = manageState.searchResults ?? [];
+    const isLoading = manageState.lookupLoading;
+    const errorHtml = manageState.lookupError
+      ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(manageState.lookupError)}</div>`
+      : '';
+
+    const cards = results.map((appt, index) => {
+      const statusBadge = appt.status === 'confirmed'
+        ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Confirmed</span>`
+        : appt.status === 'pending'
+          ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>`
+          : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">${escapeHtml(appt.status ?? '')}</span>`;
+
+      return `
+        <button type="button" data-select-appointment="${index}" class="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-400 hover:shadow-md transition-all" ${isLoading ? 'disabled' : ''}>
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-slate-900 truncate">${escapeHtml(appt.service?.name ?? 'Appointment')}</p>
+              <p class="text-sm text-slate-500 mt-0.5">${escapeHtml(appt.provider?.name ?? '')}</p>
+              <p class="text-sm text-slate-700 font-medium mt-1">${escapeHtml(appt.display_range ?? '')}</p>
+            </div>
+            <div class="flex-shrink-0 mt-0.5">${statusBadge}</div>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="space-y-5">
+          <div>
+            <h2 class="text-xl font-semibold text-slate-900">Your bookings</h2>
+            <p class="mt-1 text-sm text-slate-600">Select the appointment you would like to manage.</p>
+          </div>
+          ${errorHtml}
+          <div class="space-y-3">${cards}</div>
+          <button type="button" data-manage-start-over class="text-sm text-slate-500 underline hover:text-slate-700">Search again</button>
+        </div>
+      </section>
+    `;
   }
 
   function renderLookupStage(manageState, ctx) {
@@ -960,17 +1080,13 @@ function bootstrapPublicBooking() {
     const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
     const introCopy = hasPrefilledReference
       ? 'Confirm with the email or phone used when booking to continue.'
-      : 'Enter your booking reference plus the email or phone used when booking. We will pull up your appointment instantly.';
+      : 'Enter the email or phone you used when booking and we will find your appointments.';
     const secureReferenceInfo = hasPrefilledReference
       ? `<div class="${UI_CLASSES.cardInfo}">Secure reference detected from your link. Confirm with email or phone to continue.</div>`
       : '';
     const referenceField = hasPrefilledReference
       ? `<input type="hidden" name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}">`
-      : `<label class="block text-sm font-medium text-slate-700">
-            Booking reference
-            <input name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="booking reference" required>
-            ${renderFieldError('token', manageState.lookupErrors)}
-          </label>`;
+      : '';
     const policyMessage = policy.enabled
       ? `You can reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before the appointment.`
       : 'Online changes are disabled. Contact the office for assistance.';
@@ -1783,6 +1899,7 @@ function bootstrapPublicBooking() {
       lookupError: '',
       lookupLoading: false,
       appointment: null,
+      searchResults: [],
       success: null,
       contact: { email: '', phone: '' },
       formState: {

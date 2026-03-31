@@ -227,6 +227,38 @@ class BookingController extends BaseController
         }
     }
 
+    public function search()
+    {
+        helper('logging');
+
+        try {
+            $email = $this->request->getGet('email');
+            $phone = $this->request->getGet('phone');
+            $results = $this->booking->lookupAppointmentsByContact($email, $phone);
+            log_structured('info', 'public_booking.search_success', [
+                'result_count' => count($results),
+            ]);
+            return $this->respondJson(['data' => $results]);
+        } catch (PublicBookingException $e) {
+            log_structured('warning', 'public_booking.search_failed', [
+                'message' => $e->getMessage(),
+                'errors' => $e->getErrors(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            return $this->respondJson([
+                'error' => $e->getMessage(),
+                'details' => $e->getErrors(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            log_message('error', '[PublicBooking] Search failed: ' . $e->getMessage());
+            log_structured('error', 'public_booking.search_exception', [
+                'exception_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+            return $this->respondJson(['error' => 'Unable to search for bookings.'], 500);
+        }
+    }
+
     public function update(string $token)
     {
         helper('logging');

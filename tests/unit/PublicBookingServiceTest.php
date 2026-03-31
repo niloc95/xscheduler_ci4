@@ -35,7 +35,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('getCurrencySymbol')->willReturn('$');
 
         $settings = $this->createMock(SettingModel::class);
-        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '48h']);
+        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
 
         $users = $this->createUserModelMock([
             'id' => 7,
@@ -71,7 +71,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->assertSame('Dr. Rivera', $context['providers'][0]['name']);
         $this->assertSame('New Patient Visit', $context['services'][0]['name']);
         $this->assertSame('America/New_York', $context['timezone']);
-        $this->assertSame('48 hours', $context['reschedulePolicy']['label']);
+        $this->assertSame('24 hours', $context['reschedulePolicy']['label']);
     }
 
     public function testCreateBookingReturnsFormattedAppointmentPayload(): void
@@ -160,7 +160,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'notes' => 'Prefers telehealth',
         ]);
 
-        $this->assertArrayHasKey('token', $result);
+        $this->assertArrayHasKey('reference', $result);
         $this->assertSame('Initial Consult', $result['service']['name']);
         $this->assertSame('Dr. Patel', $result['provider']['name']);
         $this->assertSame('guest@example.com', $result['customer']['email']);
@@ -389,7 +389,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $result = $service->lookupAppointment('token-phone', null, '+15559998888');
 
         $this->assertSame('+1 (555) 999-8888', $result['customer']['phone']);
-        $this->assertSame('token-phone', $result['token']);
+        $this->assertSame('token-phone', $result['reference']);
     }
 
     public function testRescheduleRejectsAppointmentsInsidePolicyWindow(): void
@@ -591,7 +591,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             {
             }
 
-            public function select(string $fields): self
+            public function select(string $fields, bool $escape = true): self
             {
                 return $this;
             }
@@ -601,7 +601,22 @@ final class PublicBookingServiceTest extends CIUnitTestCase
                 return $this;
             }
 
-            public function where(string $field, string $value): self
+            public function where(string $field, mixed $value): self
+            {
+                return $this;
+            }
+
+            public function groupStart(): self
+            {
+                return $this;
+            }
+
+            public function orWhere(string $field, mixed $value): self
+            {
+                return $this;
+            }
+
+            public function groupEnd(): self
             {
                 return $this;
             }

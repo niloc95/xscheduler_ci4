@@ -216,7 +216,7 @@ class AppointmentBookingService
                 (int)$data['provider_id'],
                 $timeData['startDateTime']->format('Y-m-d H:i:s'),
                 $timeData['endDateTime']->format('Y-m-d H:i:s'),
-                $timezone,
+                $timeData['timezone'],
                 $data['exclude_appointment_id'] ?? null,
                 $resolvedLocationId
             );
@@ -456,7 +456,7 @@ class AppointmentBookingService
                     $providerId,
                     $timeData['startDateTime']->format('Y-m-d H:i:s'),
                     $timeData['endDateTime']->format('Y-m-d H:i:s'),
-                    $timezone,
+                    $timeData['timezone'],
                     $appointmentId,
                     $resolvedLocationId
                 );

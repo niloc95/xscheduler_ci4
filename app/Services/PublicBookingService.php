@@ -76,6 +76,7 @@ namespace App\Services;
 
 use App\Exceptions\PublicBookingException;
 use App\Models\AppointmentModel;
+use App\Services\Appointment\AppointmentStatus;
 use App\Models\CustomerModel;
 use App\Models\LocationModel;
 use App\Models\ServiceModel;
@@ -280,6 +281,57 @@ class PublicBookingService
         $appointment = $this->fetchAppointmentByReference($token);
         $this->verifyContactAccess($appointment, $email, $phone);
         return $this->formatPublicAppointment($appointment, $token);
+    }
+
+    /**
+     * Look up all non-cancelled appointments for a customer identified by email or phone.
+     * Returns a lightweight summary list for selection. Contact is verified via PHP-side normalization.
+     */
+    public function lookupAppointmentsByContact(?string $email, ?string $phone): array
+    {
+        $email = $email ? strtolower(trim($email)) : null;
+        $phone = $phone ? $this->normalizePhone($phone) : null;
+
+        if (!$email && !$phone) {
+            throw new PublicBookingException(
+                'Please provide your email or phone number.',
+                422,
+                ['contact' => 'required']
+            );
+        }
+
+        $builder = $this->appointments->builder();
+        $builder->select('xs_appointments.*, c.email as customer_email, c.phone as customer_phone, c.id as customer_id', false)
+            ->join('xs_customers as c', 'c.id = xs_appointments.customer_id', 'left')
+            ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
+
+        // SQL pre-filter (broad): narrow result set before PHP-level normalization pass
+        $builder->groupStart();
+        if ($email) {
+            $builder->where('LOWER(c.email)', $email);
+        }
+        if ($email && $phone) {
+            $builder->orWhere('c.phone', $phone);
+        } elseif ($phone) {
+            $builder->where('c.phone', $phone);
+        }
+        $builder->groupEnd();
+
+        $builder->orderBy('xs_appointments.start_at', 'ASC');
+        $records = $builder->get()->getResultArray();
+
+        // PHP post-filter: precise normalized match (handles phone formatting differences)
+        $records = array_values(array_filter($records, function (array $row) use ($email, $phone): bool {
+            if ($email && strtolower((string) ($row['customer_email'] ?? '')) === $email) {
+                return true;
+            }
+            if ($phone && $this->normalizePhone($row['customer_phone'] ?? null) === $phone) {
+                return true;
+            }
+            return false;
+        }));
+
+        return array_map(fn(array $row) => $this->formatAppointmentSummary($row), $records);
     }
 
     public function reschedule(string $token, array $payload): array
@@ -720,6 +772,36 @@ class PublicBookingService
         return $digits !== '' ? substr($digits, 0, 20) : null;
     }
 
+    /**
+     * Lightweight appointment summary used in search results (pre-selection list).
+     * Does not include full customer data — only what is needed for the selection UI.
+     */
+    private function formatAppointmentSummary(array $appointment): array
+    {
+        $timezone = new DateTimeZone($this->localization->getTimezone());
+        $utcTz    = new DateTimeZone('UTC');
+        $start    = (new DateTimeImmutable($appointment['start_at'], $utcTz))->setTimezone($timezone);
+        $end      = (new DateTimeImmutable($appointment['end_at'],   $utcTz))->setTimezone($timezone);
+        $provider = $this->users->find((int) $appointment['provider_id']);
+        $service  = $this->services->find((int) $appointment['service_id']);
+
+        return [
+            'token'         => $appointment['hash'],
+            'start'         => $start->format(DATE_ATOM),
+            'end'           => $end->format(DATE_ATOM),
+            'status'        => $appointment['status'] ?? 'pending',
+            'display_range' => $this->formatSlotRange($start, $end),
+            'provider'      => $provider ? [
+                'id'   => (int) $provider['id'],
+                'name' => $provider['name'] ?? 'Provider',
+            ] : null,
+            'service'       => $service ? [
+                'id'   => (int) $service['id'],
+                'name' => $service['name'] ?? 'Service',
+            ] : null,
+        ];
+    }
+
     private function formatPublicAppointment(?array $appointment, string $reference): array
     {
         if (!$appointment) {
@@ -841,8 +923,7 @@ class PublicBookingService
             throw new PublicBookingException('Rescheduling is not permitted for this booking.', 403);
         }
 
-        $timezone = new DateTimeZone($this->localization->getTimezone());
-        // DB stores UTC — parse as UTC, then compare (both converted to same TZ)
+        // DB stores UTC — compare both datetimes in UTC
         $start = new DateTimeImmutable($currentStart, new DateTimeZone('UTC'));
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
@@ -850,7 +931,7 @@ class PublicBookingService
             throw new PublicBookingException('This appointment can no longer be rescheduled.', 403);
         }
 
-        $cutoff = $now->add(new DateInterval('PT' . ($policy['hours'] ?? 0) . 'H'));
+        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
         if ($cutoff > $start) {
             throw new PublicBookingException('This appointment is too close to reschedule online.', 403);
         }
@@ -862,9 +943,8 @@ class PublicBookingService
         $value = $settings['business.reschedule'] ?? '24h';
 
         return match ($value) {
-            'none' => ['enabled' => false, 'label' => 'Disabled'],
+            'none' => ['enabled' => false, 'hours' => 0, 'label' => 'Disabled'],
             '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
-            '48h' => ['enabled' => true, 'hours' => 48, 'label' => '48 hours'],
             default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
         };
     }

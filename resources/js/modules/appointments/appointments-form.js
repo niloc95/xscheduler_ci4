@@ -151,6 +151,10 @@ export async function initAppointmentForm() {
                     const errors = normalizeServerErrors(errorPayload, response.status);
                     if (errors.length > 0) {
                         showValidationErrors(errors);
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalButtonHtml;
+                        }
                         return;
                     }
 
