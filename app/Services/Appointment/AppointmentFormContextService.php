@@ -9,6 +9,7 @@ use App\Models\UserModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
+use CodeIgniter\Database\Exceptions\DatabaseException;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class AppointmentFormContextService
@@ -78,21 +79,79 @@ class AppointmentFormContextService
 
     private function loadAppointmentForEdit(string $appointmentHash): ?array
     {
-        $appointment = $this->appointmentModel
-            ->select('xs_appointments.*, 
+        $includeCustomerCustomFields = true;
+        $includeCustomerHash = true;
+
+        while (true) {
+            try {
+                $appointment = $this->queryAppointmentForEdit($appointmentHash, $includeCustomerCustomFields, $includeCustomerHash);
+                break;
+            } catch (DatabaseException $e) {
+                if ($includeCustomerCustomFields && $this->isMissingCustomerColumn($e, 'custom_fields')) {
+                    $includeCustomerCustomFields = false;
+                    continue;
+                }
+
+                if ($includeCustomerHash && $this->isMissingCustomerColumn($e, 'hash')) {
+                    $includeCustomerHash = false;
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        if (is_array($appointment)) {
+            if (!array_key_exists('customer_custom_fields', $appointment)) {
+                $appointment['customer_custom_fields'] = null;
+            }
+
+            if (!array_key_exists('customer_hash', $appointment)) {
+                $appointment['customer_hash'] = null;
+            }
+        }
+
+        return $appointment ?: null;
+    }
+
+    private function queryAppointmentForEdit(
+        string $appointmentHash,
+        bool $includeCustomerCustomFields,
+        bool $includeCustomerHash
+    ): ?array
+    {
+        $select = 'xs_appointments.*, 
                      c.first_name as customer_first_name,
                      c.last_name as customer_last_name,
                      c.email as customer_email,
                      c.phone as customer_phone,
                      c.address as customer_address,
-                     c.notes as customer_notes,
-                     c.custom_fields as customer_custom_fields,
-                     c.hash as customer_hash', false)
+                     c.notes as customer_notes,';
+
+        if ($includeCustomerCustomFields) {
+            $select .= ' c.custom_fields as customer_custom_fields,';
+        }
+
+        if ($includeCustomerHash) {
+            $select .= ' c.hash as customer_hash';
+        } else {
+            $select = rtrim($select, ',');
+        }
+
+        // Clone the model so each attempt starts with a clean internal builder state.
+        $model = clone $this->appointmentModel;
+
+        return $model
+            ->select($select, false)
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
             ->where('xs_appointments.hash', $appointmentHash)
             ->first();
+    }
 
-        return $appointment ?: null;
+    private function isMissingCustomerColumn(DatabaseException $e, string $column): bool
+    {
+        $message = strtolower($e->getMessage());
+        return str_contains($message, 'unknown column') && str_contains($message, 'c.' . strtolower($column));
     }
 
     private function mergeCustomerCustomFields(array $appointment): array
