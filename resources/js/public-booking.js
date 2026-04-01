@@ -40,17 +40,11 @@ function bootstrapPublicBooking() {
   const appBase = resolveAppBaseUrl(context);
   const bookingBase = context.bookingBaseUrl || '/booking';
   const today = new Date();
-  const initialAvailability = context.initialAvailability ?? null;
-  const initialCalendar = context.initialCalendar ?? null;
-  const calendarDates = Array.isArray(initialCalendar?.availableDates) ? initialCalendar.availableDates : [];
-    const calendarDefaultDate = initialCalendar?.defaultDate ?? calendarDates[0] ?? null;
-  const defaultDate = initialAvailability?.date ?? calendarDefaultDate ?? today.toISOString().slice(0, 10);
-  const initialCalendarSlots = initialCalendar?.slotsByDate?.[defaultDate] ?? [];
-  const hasInitialCalendar = calendarDates.length > 0 && initialCalendarSlots.length > 0;
+  const defaultDate = today.toISOString().slice(0, 10);
 
   let state = {
     view: context.manageReference ? 'manage' : 'book',
-    booking: createBookingDraft(context, defaultDate, initialAvailability, initialCalendar),
+    booking: createBookingDraft(context, defaultDate),
     manage: createManageDraft(context, defaultDate),
     csrf: {
       header: root.dataset.csrfHeader || 'X-CSRF-TOKEN',
@@ -67,11 +61,7 @@ function bootstrapPublicBooking() {
 
   render();
   if (state.booking.providerId && state.booking.serviceId) {
-    if (hasInitialCalendar) {
-      syncSlotsFromCalendar('booking');
-    } else {
-      fetchCalendar('booking');
-    }
+    fetchCalendar('booking');
   }
 
   function setState(updater) {
@@ -250,7 +240,7 @@ function bootstrapPublicBooking() {
   }
 
   function resetBookingFlow() {
-    updateBooking(() => createBookingDraft(context, defaultDate, initialAvailability, initialCalendar));
+    updateBooking(() => createBookingDraft(context, defaultDate));
     fetchCalendar('booking');
   }
 
@@ -1692,6 +1682,15 @@ function bootstrapPublicBooking() {
   }
 
   function parseContext() {
+    const scriptPayload = document.getElementById('public-booking-context');
+    if (scriptPayload?.textContent) {
+      try {
+        return JSON.parse(scriptPayload.textContent) || {};
+      } catch (error) {
+        console.error('[public-booking] Failed to parse script context payload.', error);
+      }
+    }
+
     try {
       return JSON.parse(root.dataset.context ?? '{}') || window.__PUBLIC_BOOKING__ || {};
     } catch (error) {
@@ -1843,7 +1842,7 @@ function bootstrapPublicBooking() {
     return base;
   }
 
-  function createBookingDraft(ctx, defaultDate, initialAvailability = null, initialCalendar = null) {
+  function createBookingDraft(ctx, defaultDate) {
     const providerId = ctx.providers?.[0]?.id?.toString() ?? '';
     const serviceId = ctx.services?.[0]?.id?.toString() ?? '';
 
@@ -1852,34 +1851,20 @@ function bootstrapPublicBooking() {
     const providerLocations = firstProvider?.locations ?? [];
     const autoLocationId = providerLocations.length === 1 ? String(providerLocations[0].id) : '';
 
-    const calendarState = createCalendarState(initialCalendar);
-    const matchesPrefetch = initialAvailability
-      && String(initialAvailability.provider_id ?? '') === providerId
-      && String(initialAvailability.service_id ?? '') === serviceId
-      && Array.isArray(initialAvailability.slots)
-      && initialAvailability.slots.length > 0;
-    const calendarDate = calendarState.availableDates[0] ?? null;
-    const fallbackDate = matchesPrefetch ? initialAvailability.date : null;
-    const selectedDate = calendarDate || fallbackDate || defaultDate;
-    const calendarSlots = (calendarState.slotsByDate?.[selectedDate]) ?? [];
-    const slots = calendarSlots.length ? calendarSlots : (matchesPrefetch ? initialAvailability.slots : []);
-    if (!calendarState.availableDates.length && matchesPrefetch && initialAvailability?.date) {
-      calendarState.availableDates = [initialAvailability.date];
-      calendarState.slotsByDate = { ...calendarState.slotsByDate, [initialAvailability.date]: initialAvailability.slots ?? [] };
-    }
+    const calendarState = createCalendarState();
     return {
       providerId,
       serviceId,
       selectedLocationId: autoLocationId,
       services: ctx.services ?? [],
       servicesLoading: false,
-      appointmentDate: selectedDate,
-      slots,
+      appointmentDate: defaultDate,
+      slots: [],
       slotsLoading: false,
       slotsError: '',
       selectedSlot: null,
       resolvedLocation: null,
-      prefetched: slots.length ? { date: selectedDate } : null,
+      prefetched: null,
       calendar: calendarState,
       form: createInitialFormState(ctx),
       errors: {},

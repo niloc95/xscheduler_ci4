@@ -132,29 +132,6 @@ class PublicBookingService
         $providers = $this->listProviders();
         $initialProviderId = !empty($providers) ? (int) $providers[0]['id'] : null;
         $services = $initialProviderId ? $this->listServices($initialProviderId) : [];
-        $initialAvailability = null;
-        $initialCalendar = null;
-
-        if ($initialProviderId !== null && !empty($services)) {
-            $initialCalendar = $this->availability->getCalendarAvailability(
-                $initialProviderId,
-                (int) $services[0]['id'],
-                null,
-                60,
-                $this->localization->getTimezone(),
-                null
-            );
-
-            $firstDate = $initialCalendar['availableDates'][0] ?? null;
-            if ($firstDate) {
-                $initialAvailability = [
-                    'date' => $firstDate,
-                    'provider_id' => $initialProviderId,
-                    'service_id' => (int) $services[0]['id'],
-                    'slots' => $initialCalendar['slotsByDate'][$firstDate] ?? [],
-                ];
-            }
-        }
 
         return [
             'providers' => $providers,
@@ -166,8 +143,6 @@ class PublicBookingService
             'currency' => $this->localization->getCurrency(),
             'currencySymbol' => $this->localization->getCurrencySymbol(),
             'reschedulePolicy' => $this->getReschedulePolicy(),
-            'initialAvailability' => $initialAvailability,
-            'initialCalendar' => $initialCalendar,
             'appBaseUrl' => rtrim(base_url(), '/'),
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
