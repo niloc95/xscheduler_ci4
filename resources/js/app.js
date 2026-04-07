@@ -31,6 +31,7 @@ import { initSettingsPageEnhancements } from './modules/settings/settings-page.j
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
+import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 
 // Import appointment navigation module
 import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -167,6 +168,9 @@ function initializeComponents() {
 
     // Initialize service create/edit UI when those forms are present
     initServiceManagementForms();
+
+    // Add country-code selectors to all canonical phone fields.
+    initPhoneCountrySelectors(document);
     
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();

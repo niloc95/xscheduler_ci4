@@ -20,6 +20,7 @@ class UserManagementMutationService
     private LocalizationSettingsService $localization;
     private ScheduleValidationService $scheduleValidation;
     private UserManagementContextService $contextService;
+    private PhoneNumberService $phoneNumberService;
 
     public function __construct(
         ?UserModel $userModel = null,
@@ -31,6 +32,7 @@ class UserManagementMutationService
         ?UserManagementContextService $contextService = null,
         ?LocalizationSettingsService $localization = null,
         ?LocationModel $locationModel = null,
+        ?PhoneNumberService $phoneNumberService = null,
     ) {
         $this->userModel = $userModel ?? new UserModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
@@ -40,6 +42,7 @@ class UserManagementMutationService
         $this->localization = $localization ?? new LocalizationSettingsService();
         $this->scheduleValidation = $scheduleValidation ?? new ScheduleValidationService($this->localization);
         $this->locationModel = $locationModel ?? new LocationModel();
+        $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
         $this->contextService = $contextService ?? new UserManagementContextService(
             $this->userModel,
             null,
@@ -72,6 +75,11 @@ class UserManagementMutationService
             'role' => $role,
             'password' => $payload['password'] ?? null,
         ];
+
+        $userData['phone'] = $this->phoneNumberService->normalize(
+            isset($userData['phone']) ? (string) $userData['phone'] : null,
+            isset($payload['phone_country_code']) ? (string) $payload['phone_country_code'] : null
+        );
 
         $scheduleInput = $payload['schedule'] ?? [];
         $scheduleClean = [];
@@ -159,6 +167,11 @@ class UserManagementMutationService
             'email' => $payload['email'] ?? null,
             'phone' => $payload['phone'] ?? null,
         ];
+
+        $updateData['phone'] = $this->phoneNumberService->normalize(
+            isset($updateData['phone']) ? (string) $updateData['phone'] : null,
+            isset($payload['phone_country_code']) ? (string) $payload['phone_country_code'] : null
+        );
 
         $updateData = array_merge($updateData, $this->buildUserActiveUpdatePayload(!empty($payload['is_active'])));
 

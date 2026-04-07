@@ -58,6 +58,7 @@
         window.__BASE_URL__ = '<?= base_url() ?>';
         window.__CSRF_TOKEN__ = '<?= csrf_hash() ?>';
         window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebScheduler'), 'js') ?>';
+        window.__DEFAULT_PHONE_COUNTRY_CODE__ = '<?= esc((string) setting('localization.default_phone_country_code', '+27'), 'js') ?>';
     </script>
     <meta name="csrf-header" content="X-CSRF-TOKEN">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">

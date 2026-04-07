@@ -116,7 +116,7 @@ final class AppointmentFormMutationServiceTest extends CIUnitTestCase
         $submission->method('buildUpdateAppointmentData')->willReturn(['status' => 'confirmed']);
 
         $customerModel = $this->createMock(CustomerModel::class);
-        $customerModel->expects($this->once())->method('update')->with(45, ['first_name' => 'Updated']);
+        $customerModel->expects($this->once())->method('update')->with(45, ['first_name' => 'Updated', 'phone' => '']);
 
         $booking = $this->createMock(AppointmentBookingService::class);
         $booking->method('updateAppointment')->willReturn([

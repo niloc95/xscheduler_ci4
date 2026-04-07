@@ -6,6 +6,7 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\AppointmentBookingService;
 use App\Services\AppointmentNotificationService;
+use App\Services\PhoneNumberService;
 use CodeIgniter\Validation\ValidationInterface;
 
 class AppointmentFormMutationService
@@ -17,6 +18,7 @@ class AppointmentFormMutationService
     private CustomerModel $customerModel;
     private AppointmentModel $appointmentModel;
     private AppointmentNotificationService $appointmentNotificationService;
+    private PhoneNumberService $phoneNumberService;
 
     public function __construct(
         ?ValidationInterface $validation = null,
@@ -26,6 +28,7 @@ class AppointmentFormMutationService
         ?CustomerModel $customerModel = null,
         ?AppointmentModel $appointmentModel = null,
         ?AppointmentNotificationService $appointmentNotificationService = null,
+        ?PhoneNumberService $phoneNumberService = null,
     ) {
         $this->validation = $validation ?? \Config\Services::validation();
         $this->appointmentDateTimeNormalizer = $appointmentDateTimeNormalizer ?? new AppointmentDateTimeNormalizer();
@@ -34,6 +37,7 @@ class AppointmentFormMutationService
         $this->customerModel = $customerModel ?? new CustomerModel();
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
         $this->appointmentNotificationService = $appointmentNotificationService ?? new AppointmentNotificationService();
+        $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
     }
 
     public function createFromFormPayload(array $payload, string $clientTimezone): array
@@ -88,6 +92,10 @@ class AppointmentFormMutationService
 
         $startTimeStored = $normalizedStart['utc'] ?? '';
         $customerData = $this->appointmentFormSubmissionService->buildCustomerUpdateData($payload);
+        $customerData['phone'] = $this->phoneNumberService->normalize(
+            $customerData['phone'] ?? null,
+            $payload['customer_phone_country_code'] ?? null
+        ) ?? '';
         $this->customerModel->update((int) $existingAppointment['customer_id'], $customerData);
 
         $appointmentData = $this->appointmentFormSubmissionService->buildUpdateAppointmentData($payload, $normalizedStart);

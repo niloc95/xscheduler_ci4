@@ -52,14 +52,17 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Services\PhoneNumberService;
 
 class Profile extends BaseController
 {
     protected UserModel $userModel;
+    protected PhoneNumberService $phoneNumberService;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->phoneNumberService = new PhoneNumberService();
         helper(['permissions', 'form', 'ui']);
     }
 
@@ -173,7 +176,10 @@ class Profile extends BaseController
         $updateData = [
             'name' => $fullName,
             'email' => trim((string) $this->request->getPost('email')),
-            'phone' => $this->normalizeNullable($this->request->getPost('phone')),
+            'phone' => $this->phoneNumberService->normalize(
+                $this->normalizeNullable($this->request->getPost('phone')),
+                $this->request->getPost('phone_country_code')
+            ),
         ];
 
         if (!$this->userModel->updateUser($userId, $updateData, $userId)) {

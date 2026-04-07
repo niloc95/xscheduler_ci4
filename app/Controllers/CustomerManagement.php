@@ -63,22 +63,26 @@ namespace App\Controllers;
 use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
 use App\Services\CustomerAppointmentService;
+use App\Services\PhoneNumberService;
 
 class CustomerManagement extends BaseController
 {
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
+    protected PhoneNumberService $phoneNumberService;
 
     public function __construct(
         ?CustomerModel $customers = null,
         ?BookingSettingsService $bookingSettings = null,
         ?CustomerAppointmentService $appointmentService = null,
+        ?PhoneNumberService $phoneNumberService = null,
     )
     {
         $this->customers = $customers ?? new CustomerModel();
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
+        $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
     }
 
     /**
@@ -213,6 +217,13 @@ class CustomerManagement extends BaseController
             }
         }
 
+        if (array_key_exists('phone', $payload)) {
+            $payload['phone'] = $this->phoneNumberService->normalize(
+                $payload['phone'],
+                $this->request->getPost('phone_country_code')
+            ) ?? '';
+        }
+
         $customFieldPayload = [];
         if (!empty($customFields)) {
             log_message('info', '[CustomerManagement::store] Processing ' . count($customFields) . ' enabled custom fields');
@@ -289,14 +300,14 @@ class CustomerManagement extends BaseController
     /**
      * Edit form
      */
-    public function edit(string $hash)
+    public function edit(string $identifier)
     {
         $currentUserId = (int) (session()->get('user_id') ?? 0);
         if (!$currentUserId) {
             return redirect()->to(base_url('auth/login'));
         }
         $currentRole = current_user_role();
-        $customer = $this->customers->findByHash($hash);
+        $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
             return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
         }
@@ -317,6 +328,7 @@ class CustomerManagement extends BaseController
         $data = [
             'title' => 'Edit Customer - WebScheduler',
             'customer' => $customer,
+            'customerIdentifier' => (string) ($customer['hash'] ?? $customer['id'] ?? ''),
             'validation' => $this->validator,
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
@@ -328,12 +340,12 @@ class CustomerManagement extends BaseController
     /**
      * Update customer
      */
-    public function update(string $hash)
+    public function update(string $identifier)
     {
         if (!session()->get('user_id')) {
             return redirect()->to(base_url('auth/login'));
         }
-        $customer = $this->customers->findByHash($hash);
+        $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
             $errorMsg = 'Customer not found.';
             if ($this->request->isAJAX()) {
@@ -367,6 +379,13 @@ class CustomerManagement extends BaseController
             if ($config['display']) {
                 $payload[$fieldName] = trim((string) $this->request->getPost($fieldName));
             }
+        }
+
+        if (array_key_exists('phone', $payload)) {
+            $payload['phone'] = $this->phoneNumberService->normalize(
+                $payload['phone'],
+                $this->request->getPost('phone_country_code')
+            ) ?? '';
         }
 
         $name = trim((string) $this->request->getPost('name'));
@@ -508,7 +527,7 @@ class CustomerManagement extends BaseController
     /**
      * View customer appointment history
      */
-    public function history(string $hash)
+    public function history(string $identifier)
     {
         $currentUserId = (int) (session()->get('user_id') ?? 0);
         if (!$currentUserId) {
@@ -516,7 +535,7 @@ class CustomerManagement extends BaseController
         }
         $currentRole = current_user_role();
 
-        $customer = $this->customers->findByHash($hash);
+        $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
             return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
         }
@@ -563,6 +582,7 @@ class CustomerManagement extends BaseController
         $data = [
             'title' => 'Customer History - ' . trim($customer['first_name'] . ' ' . ($customer['last_name'] ?? '')),
             'customer' => $customer,
+            'customerIdentifier' => (string) ($customer['hash'] ?? $customer['id'] ?? ''),
             'history' => $history,
             'stats' => $stats,
             'upcoming' => $upcoming,

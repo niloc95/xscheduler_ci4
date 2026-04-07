@@ -100,6 +100,7 @@ class AppointmentBookingService
     protected \App\Models\LocationModel $locationModel;
     protected AppointmentEventService $appointmentEventService;
     protected AuditLogModel $auditLogModel;
+    protected PhoneNumberService $phoneNumberService;
 
     public function __construct(
         ?AppointmentModel $appointmentModel = null,
@@ -112,6 +113,7 @@ class AppointmentBookingService
         ?\App\Models\LocationModel $locationModel = null,
         ?AppointmentEventService $appointmentEventService = null,
         ?AuditLogModel $auditLogModel = null,
+        ?PhoneNumberService $phoneNumberService = null,
     )
     {
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
@@ -124,6 +126,7 @@ class AppointmentBookingService
         $this->locationModel = $locationModel ?? new \App\Models\LocationModel();
         $this->appointmentEventService = $appointmentEventService ?? new AppointmentEventService();
         $this->auditLogModel = $auditLogModel ?? new AuditLogModel();
+        $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
     }
 
     /**
@@ -328,9 +331,14 @@ class AppointmentBookingService
             );
 
             // Step 8: Queue notifications (email, SMS, WhatsApp)
-            $this->queueNotifications($appointmentId, $data['notification_types'] ?? ['email', 'whatsapp']);
+            $event = AppointmentStatus::notificationEvent($status, 'appointment_confirmed');
+            $this->queueNotifications($appointmentId, $data['notification_types'] ?? ['email', 'whatsapp'], $event);
 
-            return $this->success($appointmentId, 'Appointment booked successfully! Confirmation will be sent shortly.');
+            $successMessage = $status === AppointmentStatus::PENDING
+                ? 'Appointment booked successfully! We will notify you once it is confirmed.'
+                : 'Appointment booked successfully! Confirmation will be sent shortly.';
+
+            return $this->success($appointmentId, $successMessage);
 
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Exception: ' . $e->getMessage());
@@ -753,7 +761,10 @@ class AppointmentBookingService
             'first_name' => $data['customer_first_name'] ?? '',
             'last_name' => $data['customer_last_name'] ?? '',
             'email' => $data['customer_email'] ?? '',
-            'phone' => $data['customer_phone'] ?? '',
+            'phone' => $this->phoneNumberService->normalize(
+                $data['customer_phone'] ?? null,
+                $data['customer_phone_country_code'] ?? null
+            ) ?? '',
             'address' => $data['customer_address'] ?? '',
             'notes' => $data['customer_notes'] ?? ''
         ];

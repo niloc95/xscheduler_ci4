@@ -55,6 +55,7 @@ class NotificationCenterService
 
             if ($filter === 'appointments') {
                 $logBuilder->whereIn('xs_notification_delivery_logs.event_type', [
+                    'appointment_pending',
                     'appointment_confirmed',
                     'appointment_reminder',
                     'appointment_cancelled',
@@ -207,6 +208,11 @@ class NotificationCenterService
     private function getEventConfig(string $eventType): array
     {
         $configs = [
+            'appointment_pending' => [
+                'type' => 'appointment',
+                'title' => 'Appointment Pending',
+                'icon' => 'calendar',
+            ],
             'appointment_confirmed' => [
                 'type' => 'appointment',
                 'title' => 'Appointment Confirmed',
@@ -253,6 +259,7 @@ class NotificationCenterService
 
         if ($status === 'success') {
             return match ($eventType) {
+                'appointment_pending' => sprintf('%s pending notification sent to %s for appointment with %s (%s)%s', $channelLabel, $recipient ?: $customer, $provider, $service, $timeStr ? " on {$timeStr}" : ''),
                 'appointment_confirmed' => sprintf('%s notification sent to %s for appointment with %s (%s)%s', $channelLabel, $recipient ?: $customer, $provider, $service, $timeStr ? " on {$timeStr}" : ''),
                 'appointment_reminder' => sprintf('Reminder sent to %s via %s for upcoming appointment%s', $recipient ?: $customer, $channelLabel, $timeStr ? " on {$timeStr}" : ''),
                 'appointment_cancelled' => sprintf('Cancellation notice sent to %s via %s for %s appointment', $recipient ?: $customer, $channelLabel, $service),

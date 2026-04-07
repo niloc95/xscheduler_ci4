@@ -35,7 +35,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('getCurrencySymbol')->willReturn('$');
 
         $settings = $this->createMock(SettingModel::class);
-        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
+        $settings->method('getByKeys')->willReturnCallback(static function (array $keys): array {
+            if ($keys === ['business.reschedule']) {
+                return ['business.reschedule' => '24h'];
+            }
+
+            if ($keys === ['localization.default_phone_country_code', 'localization.phone_country_code']) {
+                return [];
+            }
+
+            return [];
+        });
 
         $users = $this->createUserModelMock([
             'id' => 7,

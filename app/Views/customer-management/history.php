@@ -56,7 +56,7 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <a href="<?= base_url('customer-management/edit/' . esc($customer['hash'])) ?>" 
+                     <a href="<?= base_url('customer-management/edit/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" 
                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg inline-flex items-center gap-1">
                     <span class="material-symbols-outlined text-sm">edit</span>
                     Edit Profile
@@ -186,7 +186,7 @@
                     <span class="material-symbols-outlined text-sm">filter_alt</span>
                     Apply Filters
                 </button>
-                <a href="<?= base_url('customer-management/history/' . esc($customer['hash'])) ?>" 
+                <a href="<?= base_url('customer-management/history/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" 
                    class="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-lg">
                     Clear
                 </a>

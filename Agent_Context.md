@@ -18,6 +18,9 @@ Current stage: active development and refactoring. The foundation, setup flow, s
 - Appointment form and provider-schedule SPA behavior now live in frontend modules instead of view-local inline scripts.
 - Focused regression coverage exists for appointment form SPA re-initialization, provider schedule SPA re-initialization, customer-management CRUD/search/history journeys, and service CRUD/provider-assignment journeys.
 - Compatibility hardening is active for mixed-schema environments where internal-user active state may use `status` and/or `is_active`, and where hash columns may not be present in every migrated local database.
+- Phone normalization now flows through `PhoneNumberService` (E.164-style output) with optional `phone_country_code` inputs and default country code settings under `localization.default_phone_country_code` (fallback `+27`).
+- Notification event mapping is now status-aware for newly created bookings: pending bookings emit `appointment_pending`, while confirmed bookings emit `appointment_confirmed`.
+- Customer list renderers must treat zero/invalid SQL timestamps (for example `0000-00-00 00:00:00`) as empty display values instead of rendering negative-year dates.
 - Remaining cleanup is centered on the last legacy controllers and any extracted seams that still lack consistent adoption.
 
 ---
@@ -608,6 +611,8 @@ All booking paths should flow through the same business rules:
 7. Persist appointment
 8. Queue notifications
 
+Notification dispatch for step 8 must derive event type from canonical appointment status via `AppointmentStatus::notificationEvent()`.
+
 If a booking flow bypasses that pipeline, it is a defect unless there is a documented reason.
 
 ### Availability Rules
@@ -712,6 +717,7 @@ Do not create a new top-level asset entry point unless the change truly needs on
 - The scheduler is custom-built.
 - Do not replace it with FullCalendar or another calendar framework unless explicitly requested.
 - Luxon is already part of the scheduler/frontend stack and should remain the date-time utility where that code already depends on it.
+- Keep sticky shell/header stacking above scheduler overlays (for example now-line and in-grid markers) to avoid header occlusion while scrolling.
 
 ---
 
@@ -816,6 +822,12 @@ Current operational roles include:
   - WhatsApp template parameter mapping must stay compatible with provider-specific integrations.
 - Do not display raw appointment `public_token` values in customer-facing UI or message bodies.
   Use opaque links (for example `/booking/r/{reference}`) plus email/phone verification instead.
+
+### Appointment Event Contract
+- `appointment_pending` is the canonical event for bookings created in pending state (including legacy `booked` status mapping).
+- `appointment_confirmed` is used for confirmed appointments.
+- New booking flows must not hardcode confirmation events; resolve event type from status and then enqueue.
+- Default/fallback messaging for Email, SMS, WhatsApp, and Notification Center must include pending-specific wording when event is `appointment_pending`.
 
 ---
 

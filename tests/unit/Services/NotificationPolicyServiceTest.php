@@ -44,6 +44,8 @@ final class NotificationPolicyServiceTest extends CIUnitTestCase
         $service = new NotificationPolicyService();
         $rules = $service->getRules();
 
+        $this->assertArrayHasKey('appointment_pending', $rules);
+        $this->assertArrayHasKey('email', $rules['appointment_pending']);
         $this->assertArrayHasKey('appointment_confirmed', $rules);
         $this->assertArrayHasKey('email', $rules['appointment_confirmed']);
         $this->assertSame(1, $rules['appointment_reminder']['email']['is_enabled']);

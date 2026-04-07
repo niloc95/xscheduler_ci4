@@ -75,12 +75,36 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         $this->assertSame(['{reschedule_link}'], $result['missing']);
     }
 
+    public function testValidateRequiredPlaceholdersDetectsMissingRescheduleLinkForPendingEmail(): void
+    {
+        $service = new NotificationTemplateService();
+
+        $result = $service->validateRequiredPlaceholders(
+            'appointment_pending',
+            'email',
+            'Hello {customer_name}, your booking is pending.'
+        );
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame(['{reschedule_link}'], $result['missing']);
+    }
+
     public function testDefaultConfirmedEmailTemplateIncludesRescheduleLink(): void
     {
         $service = new NotificationTemplateService();
         $defaults = $service->getDefaultTemplates();
 
         $body = (string) ($defaults['appointment_confirmed']['email']['body'] ?? '');
+        $this->assertStringContainsString('{reschedule_link}', $body);
+    }
+
+    public function testDefaultPendingEmailTemplateIncludesPendingWordingAndRescheduleLink(): void
+    {
+        $service = new NotificationTemplateService();
+        $defaults = $service->getDefaultTemplates();
+
+        $body = (string) ($defaults['appointment_pending']['email']['body'] ?? '');
+        $this->assertStringContainsString('pending confirmation', $body);
         $this->assertStringContainsString('{reschedule_link}', $body);
     }
 

@@ -70,6 +70,51 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
         $this->assertSame(1, $count);
     }
 
+    public function testEnqueueAppointmentRescheduledAllowsNewQueueEntryAfterTimeChanges(): void
+    {
+        $appointmentId = $this->seedAppointment('+2 days');
+        $service = new NotificationQueueService();
+        $db = \Config\Database::connect('tests');
+
+        $first = $service->enqueueAppointmentEvent(1, 'email', 'appointment_rescheduled', $appointmentId);
+        $second = $service->enqueueAppointmentEvent(1, 'email', 'appointment_rescheduled', $appointmentId);
+
+        $baseCount = $db->table('notification_queue')
+            ->where('appointment_id', $appointmentId)
+            ->where('event_type', 'appointment_rescheduled')
+            ->countAllResults();
+
+        $existing = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
+        $this->assertIsArray($existing);
+
+        $startAt = new \DateTimeImmutable((string) ($existing['start_at'] ?? ''), new \DateTimeZone('UTC'));
+        $endAt = new \DateTimeImmutable((string) ($existing['end_at'] ?? ''), new \DateTimeZone('UTC'));
+
+        $db->table('appointments')
+            ->where('id', $appointmentId)
+            ->update([
+                'start_at' => $startAt->modify('+1 day')->format('Y-m-d H:i:s'),
+                'end_at' => $endAt->modify('+1 day')->format('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s', time() + 2),
+            ]);
+
+        $third = $service->enqueueAppointmentEvent(1, 'email', 'appointment_rescheduled', $appointmentId);
+
+        $finalCount = $db->table('notification_queue')
+            ->where('appointment_id', $appointmentId)
+            ->where('event_type', 'appointment_rescheduled')
+            ->countAllResults();
+
+        $this->assertTrue($first['ok']);
+        $this->assertTrue((bool) ($first['inserted'] ?? false));
+        $this->assertTrue($second['ok']);
+        $this->assertFalse((bool) ($second['inserted'] ?? true));
+        $this->assertSame(1, $baseCount);
+        $this->assertTrue($third['ok']);
+        $this->assertTrue((bool) ($third['inserted'] ?? false));
+        $this->assertSame(2, $finalCount);
+    }
+
     public function testEnqueueDueRemindersQueuesOnlyDueAppointmentsForActiveChannels(): void
     {
         $dueAppointmentId = $this->seedAppointment('+30 minutes');

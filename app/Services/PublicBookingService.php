@@ -99,6 +99,7 @@ class PublicBookingService
     private SettingModel $settings;
     private LocationModel $locations;
     private AppointmentBookingService $bookingService;
+    private PhoneNumberService $phoneNumberService;
 
     /** @var array<string, bool> */
     private array $columnExistsCache = [];
@@ -125,6 +126,7 @@ class PublicBookingService
         $this->settings = $settings ?? new SettingModel();
         $this->locations = $locations ?? new LocationModel();
         $this->bookingService = $bookingService ?? new AppointmentBookingService();
+        $this->phoneNumberService = new PhoneNumberService($this->settings);
     }
 
     public function buildViewContext(): array
@@ -147,6 +149,7 @@ class PublicBookingService
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
             'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
+            'defaultPhoneCountryCode' => $this->phoneNumberService->getDefaultCountryCode(),
         ];
     }
 
@@ -251,10 +254,10 @@ class PublicBookingService
         return $this->formatPublicAppointment($appointment, $token);
     }
 
-    public function lookupAppointment(string $token, ?string $email = null, ?string $phone = null): array
+    public function lookupAppointment(string $token, ?string $email = null, ?string $phone = null, ?string $phoneCountryCode = null): array
     {
         $appointment = $this->fetchAppointmentByReference($token);
-        $this->verifyContactAccess($appointment, $email, $phone);
+        $this->verifyContactAccess($appointment, $email, $phone, $phoneCountryCode);
         return $this->formatPublicAppointment($appointment, $token);
     }
 
@@ -262,10 +265,10 @@ class PublicBookingService
      * Look up all non-cancelled appointments for a customer identified by email or phone.
      * Returns a lightweight summary list for selection. Contact is verified via PHP-side normalization.
      */
-    public function lookupAppointmentsByContact(?string $email, ?string $phone): array
+    public function lookupAppointmentsByContact(?string $email, ?string $phone, ?string $phoneCountryCode = null): array
     {
         $email = $email ? strtolower(trim($email)) : null;
-        $phone = $phone ? $this->normalizePhone($phone) : null;
+        $phone = $phone ? $this->normalizePhone($phone, $phoneCountryCode) : null;
 
         if (!$email && !$phone) {
             throw new PublicBookingException(
@@ -300,7 +303,7 @@ class PublicBookingService
             if ($email && strtolower((string) ($row['customer_email'] ?? '')) === $email) {
                 return true;
             }
-            if ($phone && $this->normalizePhone($row['customer_phone'] ?? null) === $phone) {
+            if ($phone && $this->normalizePhone($row['customer_phone'] ?? null, null) === $phone) {
                 return true;
             }
             return false;
@@ -626,7 +629,7 @@ class PublicBookingService
         $firstName = $this->sanitizeString($payload['first_name'] ?? null, 100);
         $lastName = $this->sanitizeString($payload['last_name'] ?? null, 100);
         $email = $this->sanitizeString($payload['email'] ?? null, 150);
-        $phone = $this->normalizePhone($payload['phone'] ?? null);
+        $phone = $this->normalizePhone($payload['phone'] ?? null, $payload['phone_country_code'] ?? null);
         $address = $this->sanitizeString($payload['address'] ?? null, 255);
         $notes = $this->sanitizeString($payload['customer_notes'] ?? $payload['notes'] ?? null, 1000);
 
@@ -738,13 +741,9 @@ class PublicBookingService
         return substr(strip_tags($value), 0, 255);
     }
 
-    private function normalizePhone(?string $value): ?string
+    private function normalizePhone(?string $value, ?string $countryCode = null): ?string
     {
-        if ($value === null) {
-            return null;
-        }
-        $digits = preg_replace('/[^0-9+]/', '', $value);
-        return $digits !== '' ? substr($digits, 0, 20) : null;
+        return $this->phoneNumberService->normalize($value, $countryCode);
     }
 
     /**
@@ -872,10 +871,10 @@ class PublicBookingService
         return $record;
     }
 
-    private function verifyContactAccess(array $appointment, ?string $email, ?string $phone): void
+    private function verifyContactAccess(array $appointment, ?string $email, ?string $phone, ?string $phoneCountryCode = null): void
     {
         $expectedEmail = strtolower((string) ($appointment['customer_email'] ?? ''));
-        $expectedPhone = $this->normalizePhone($appointment['customer_phone'] ?? null);
+        $expectedPhone = $this->normalizePhone($appointment['customer_phone'] ?? null, null);
 
         if ($expectedEmail) {
             if (!$email || strtolower(trim($email)) !== $expectedEmail) {
@@ -885,7 +884,7 @@ class PublicBookingService
         }
 
         if ($expectedPhone) {
-            if (!$phone || $this->normalizePhone($phone) !== $expectedPhone) {
+            if (!$phone || $this->normalizePhone($phone, $phoneCountryCode) !== $expectedPhone) {
                 throw new PublicBookingException('Contact verification failed.', 403);
             }
         }

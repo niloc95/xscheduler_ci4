@@ -150,7 +150,7 @@
 #stickyHeader,
 [data-sticky-header] {
   position: fixed;
-  z-index: 40;
+  z-index: 60;
 
   // Standard shell rounding - unified with sidebar and cards
   border-radius: var(--xs-radius-lg);

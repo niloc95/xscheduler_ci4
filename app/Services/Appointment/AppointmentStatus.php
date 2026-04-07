@@ -54,12 +54,12 @@ final class AppointmentStatus
     ];
 
     private const NOTIFICATION_EVENTS = [
-        self::PENDING => 'appointment_confirmed',
+        self::PENDING => 'appointment_pending',
         self::CONFIRMED => 'appointment_confirmed',
         self::COMPLETED => 'appointment_confirmed',
         self::CANCELLED => 'appointment_cancelled',
         self::NO_SHOW => 'appointment_no_show',
-        'booked' => 'appointment_confirmed',
+        'booked' => 'appointment_pending',
         'rescheduled' => 'appointment_rescheduled',
     ];
 

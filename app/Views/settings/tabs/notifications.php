@@ -455,6 +455,7 @@
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                     <?php
                                         $events = $notificationEvents ?? [
+                                            'appointment_pending' => 'Appointment Pending',
                                             'appointment_confirmed' => 'Appointment Confirmed',
                                             'appointment_reminder'  => 'Appointment Reminder',
                                             'appointment_cancelled' => 'Appointment Cancelled',

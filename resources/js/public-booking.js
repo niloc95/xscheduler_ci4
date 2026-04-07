@@ -1,6 +1,7 @@
 import { normalizeCalendarPayload } from './modules/calendar/calendar-utils.js';
 import { formatCurrency } from './currency.js';
 import { escapeHtml } from './utils/html.js';
+import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 
 const root = document.getElementById('public-booking-root');
 
@@ -131,6 +132,7 @@ function bootstrapPublicBooking() {
         </div>
       </div>
     `;
+    initPhoneCountrySelectors(root, { defaultCountryCode: context.defaultPhoneCountryCode || '+27' });
     bindEvents();
   }
 
@@ -177,8 +179,8 @@ function bootstrapPublicBooking() {
     const results = state.manage.searchResults ?? [];
     const appt = results[index];
     if (!appt?.token) return;
-    const { email, phone } = state.manage.contact ?? {};
-    await selectAppointmentFromSearch(appt.token, email ?? '', phone ?? '');
+    const { email, phone, phone_country_code: phoneCountryCode } = state.manage.contact ?? {};
+    await selectAppointmentFromSearch(appt.token, email ?? '', phone ?? '', phoneCountryCode ?? '');
   }
 
   function bindViewToggles() {
@@ -445,10 +447,12 @@ function bootstrapPublicBooking() {
     if (state.manage.lookupLoading) return;
 
     const { hasPrefilledReference } = state.manage;
-    const form = state.manage.lookupForm;
-    const reference = (form.reference ?? '').trim() || String(context.manageReference ?? '').trim();
-    const email = (form.email ?? '').trim();
-    const phone = (form.phone ?? '').trim();
+    const formState = state.manage.lookupForm;
+    const submittedForm = event.target;
+    const reference = (formState.reference ?? '').trim() || String(context.manageReference ?? '').trim();
+    const email = (formState.email ?? '').trim();
+    const phone = (formState.phone ?? '').trim();
+    const phoneCountryCode = (submittedForm?.querySelector('[name="phone_country_code"]')?.value || formState.phone_country_code || '').trim();
     const errors = {};
 
     if (hasPrefilledReference && !reference) {
@@ -469,6 +473,7 @@ function bootstrapPublicBooking() {
       const params = new URLSearchParams();
       if (email) params.set('email', email);
       if (phone) params.set('phone', phone);
+      if (phoneCountryCode) params.set('phone_country_code', phoneCountryCode);
 
       let url;
       if (hasPrefilledReference && reference) {
@@ -495,7 +500,7 @@ function bootstrapPublicBooking() {
 
       if (hasPrefilledReference) {
         // Direct token lookup — single result, proceed straight to reschedule
-        enterRescheduleStage(data?.data, { email, phone });
+        enterRescheduleStage(data?.data, { email, phone, phone_country_code: phoneCountryCode });
       } else {
         // Contact-based search — may return multiple appointments
         const results = Array.isArray(data?.data) ? data.data : [];
@@ -503,13 +508,13 @@ function bootstrapPublicBooking() {
           throw new SubmissionError("We couldn't find any upcoming bookings for that contact.");
         }
         if (results.length === 1) {
-          await selectAppointmentFromSearch(results[0].token, email, phone);
+          await selectAppointmentFromSearch(results[0].token, email, phone, phoneCountryCode);
         } else {
           updateManage(prev => ({
             ...prev,
             stage: 'select',
             searchResults: results,
-            contact: { email, phone },
+            contact: { email, phone, phone_country_code: phoneCountryCode },
           }));
         }
       }
@@ -531,12 +536,13 @@ function bootstrapPublicBooking() {
     }
   }
 
-  async function selectAppointmentFromSearch(token, email, phone) {
+  async function selectAppointmentFromSearch(token, email, phone, phoneCountryCode = '') {
     updateManage(prev => ({ ...prev, lookupLoading: true, lookupError: '' }));
     try {
       const params = new URLSearchParams();
       if (email) params.set('email', email);
       if (phone) params.set('phone', phone);
+      if (phoneCountryCode) params.set('phone_country_code', phoneCountryCode);
       const url = `${bookingBase}/${encodeURIComponent(token)}?${params.toString()}`;
       const response = await fetch(url, {
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -549,7 +555,7 @@ function bootstrapPublicBooking() {
         throw new SubmissionError(data?.error ?? 'Unable to load that booking.', details);
       }
       updateManage(prev => ({ ...prev, lookupLoading: false }));
-      enterRescheduleStage(data?.data, { email, phone });
+      enterRescheduleStage(data?.data, { email, phone, phone_country_code: phoneCountryCode });
     } catch (error) {
       if (error instanceof SubmissionError) {
         updateManage(prev => ({
@@ -672,7 +678,11 @@ function bootstrapPublicBooking() {
     updateDraft(target, prev => ({ ...prev, submitting: true, globalError: '', errors: { ...prev.errors } }));
 
     try {
-      const contactExtras = target === 'manage' ? state.manage.contact ?? {} : {};
+      const phoneCountryCode = (event.target?.querySelector('[name="phone_country_code"]')?.value || draft.form.phone_country_code || '').trim();
+      const contactExtras = {
+        ...(target === 'manage' ? (state.manage.contact ?? {}) : {}),
+        ...(phoneCountryCode ? { phone_country_code: phoneCountryCode } : {}),
+      };
       const payload = buildPayload(draft, contactExtras);
       let endpoint = bookingBase;
       let method = 'POST';

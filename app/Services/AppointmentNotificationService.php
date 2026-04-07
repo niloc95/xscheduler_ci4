@@ -278,6 +278,7 @@ class AppointmentNotificationService
             : '';
 
         $subjectMap = [
+            'appointment_pending' => 'Appointment Pending',
             'appointment_confirmed' => 'Appointment Confirmed',
             'appointment_reminder' => 'Appointment Reminder',
             'appointment_cancelled' => 'Appointment Cancelled',
@@ -290,6 +291,8 @@ class AppointmentNotificationService
 
         if ($eventType === 'appointment_cancelled') {
             $lines[] = "Your appointment has been cancelled.";
+        } elseif ($eventType === 'appointment_pending') {
+            $lines[] = "Your appointment request has been received and is pending confirmation.";
         } elseif ($eventType === 'appointment_reminder') {
             $lines[] = "This is a reminder for your upcoming appointment.";
         } else {

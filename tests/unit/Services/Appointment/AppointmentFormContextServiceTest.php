@@ -406,4 +406,91 @@ final class AppointmentFormContextServiceTest extends CIUnitTestCase
         $this->assertArrayHasKey('customer_hash', $payload['appointment']);
         $this->assertNull($payload['appointment']['customer_hash']);
     }
+
+    public function testBuildEditViewDataFallsBackWhenDriverThrowsGenericThrowableForMissingColumn(): void
+    {
+        $bookingSettings = $this->createMock(BookingSettingsService::class);
+        $bookingSettings->method('getFieldConfiguration')->willReturn([]);
+        $bookingSettings->method('getCustomFieldConfiguration')->willReturn([]);
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getContext')->willReturn(['timezone' => 'UTC']);
+        $localization->method('getTimezone')->willReturn('UTC');
+
+        $appointmentModel = new class extends AppointmentModel {
+            public function __construct()
+            {
+            }
+
+            public function select($select = '*', ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function join(string $table, string $cond, string $type = '', ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function where($key = null, $value = null, ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function first()
+            {
+                static $thrown = false;
+                if (!$thrown) {
+                    $thrown = true;
+                    throw new \RuntimeException("Unknown column 'c.custom_fields' in 'field list'");
+                }
+
+                return [
+                    'id' => 91,
+                    'hash' => 'apt_runtime_legacy',
+                    'start_at' => '2030-01-01 10:00:00',
+                    'provider_id' => 1,
+                    'service_id' => 2,
+                    'customer_first_name' => 'Runtime Legacy',
+                ];
+            }
+        };
+
+        $service = new AppointmentFormContextService(
+            $bookingSettings,
+            $localization,
+            $appointmentModel,
+            new class extends UserModel {
+                public function __construct()
+                {
+                }
+
+                public function getProvidersWithActiveServices(): array
+                {
+                    return [];
+                }
+            },
+            new class extends ServiceModel {
+                public function __construct()
+                {
+                }
+
+                public function where($key = null, $value = null, ?bool $escape = null)
+                {
+                    return $this;
+                }
+
+                public function findAll(?int $limit = null, int $offset = 0)
+                {
+                    return [];
+                }
+            }
+        );
+
+        $payload = $service->buildEditViewData('apt_runtime_legacy', 'admin');
+
+        $this->assertSame('Runtime Legacy', $payload['appointment']['customer_first_name']);
+        $this->assertArrayHasKey('customer_custom_fields', $payload['appointment']);
+        $this->assertNull($payload['appointment']['customer_custom_fields']);
+    }
 }

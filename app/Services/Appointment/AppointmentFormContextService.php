@@ -9,7 +9,6 @@ use App\Models\UserModel;
 use App\Services\BookingSettingsService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
-use CodeIgniter\Database\Exceptions\DatabaseException;
 use CodeIgniter\Exceptions\PageNotFoundException;
 
 class AppointmentFormContextService
@@ -86,7 +85,7 @@ class AppointmentFormContextService
             try {
                 $appointment = $this->queryAppointmentForEdit($appointmentHash, $includeCustomerCustomFields, $includeCustomerHash);
                 break;
-            } catch (DatabaseException $e) {
+            } catch (\Throwable $e) {
                 if ($includeCustomerCustomFields && $this->isMissingCustomerColumn($e, 'custom_fields')) {
                     $includeCustomerCustomFields = false;
                     continue;
@@ -148,7 +147,7 @@ class AppointmentFormContextService
             ->first();
     }
 
-    private function isMissingCustomerColumn(DatabaseException $e, string $column): bool
+    private function isMissingCustomerColumn(\Throwable $e, string $column): bool
     {
         $message = strtolower($e->getMessage());
         return str_contains($message, 'unknown column') && str_contains($message, 'c.' . strtolower($column));

@@ -29,7 +29,8 @@
  * 
  * NOTIFICATION EVENTS:
  * -----------------------------------------------------------------------------
- * - appointment_confirmed  : New booking created
+ * - appointment_pending    : Booking created and awaiting confirmation
+ * - appointment_confirmed  : Booking confirmed
  * - appointment_cancelled  : Booking cancelled
  * - appointment_rescheduled: Booking time changed
  * - appointment_reminder   : Upcoming appointment reminder
@@ -87,7 +88,12 @@ class NotificationQueueService
             return ['ok' => false, 'error' => 'Invalid appointmentId'];
         }
 
-        $idem = $this->buildIdempotencyKey($channel, $eventType, $appointmentId, null);
+        $fingerprint = null;
+        if ($eventType === 'appointment_rescheduled') {
+            $fingerprint = $this->resolveRescheduleFingerprint($appointmentId);
+        }
+
+        $idem = $this->buildIdempotencyKey($channel, $eventType, $appointmentId, $fingerprint);
         return $this->enqueueRaw($businessId, $channel, $eventType, $appointmentId, $idem, $runAfter);
     }
 
@@ -228,17 +234,45 @@ class NotificationQueueService
         }
     }
 
-    private function buildIdempotencyKey(string $channel, string $eventType, int $appointmentId, ?string $startTime): string
+    private function buildIdempotencyKey(string $channel, string $eventType, int $appointmentId, ?string $fingerprint): string
     {
         $base = $channel . ':' . $eventType . ':appt:' . $appointmentId;
-        if ($eventType === 'appointment_reminder' && $startTime) {
-            $base .= ':start:' . $startTime;
+        if ($eventType === 'appointment_reminder' && $fingerprint) {
+            $base .= ':start:' . $fingerprint;
+        }
+
+        if ($eventType === 'appointment_rescheduled' && $fingerprint) {
+            $base .= ':chg:' . $fingerprint;
         }
         // Keep under 128 chars: hash if necessary
         if (strlen($base) > 120) {
             return $channel . ':' . $eventType . ':' . sha1($base);
         }
         return $base;
+    }
+
+    private function resolveRescheduleFingerprint(int $appointmentId): ?string
+    {
+        try {
+            $row = (new AppointmentModel())
+                ->select('start_at, end_at, updated_at')
+                ->find($appointmentId);
+
+            if (!is_array($row)) {
+                return null;
+            }
+
+            $parts = [
+                (string) ($row['start_at'] ?? ''),
+                (string) ($row['end_at'] ?? ''),
+                (string) ($row['updated_at'] ?? ''),
+            ];
+
+            $raw = implode('|', $parts);
+            return $raw !== '||' ? sha1($raw) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function isChannelEnabledForEvent(int $businessId, string $eventType, string $channel): bool

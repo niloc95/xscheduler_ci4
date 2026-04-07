@@ -17,6 +17,7 @@ class AppointmentFormSubmissionService
             'customer_last_name' => $input['customer_last_name'] ?? null,
             'customer_email' => $input['customer_email'] ?? null,
             'customer_phone' => $input['customer_phone'] ?? null,
+            'customer_phone_country_code' => $input['customer_phone_country_code'] ?? null,
             'customer_address' => $input['customer_address'] ?? null,
             'customer_notes' => $input['notes'] ?? null,
             'notes' => $input['notes'] ?? null,

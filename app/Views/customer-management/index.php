@@ -95,23 +95,34 @@ ob_start();
                 <td class="px-6 py-4"><?= esc($c['email'] ?? '—') ?></td>
                 <td class="px-6 py-4"><?= esc($c['phone'] ?? '—') ?></td>
                 <td class="px-6 py-4">
-                    <span class="xs-text-small"><?= !empty($c['created_at']) ? date('M j, Y', strtotime($c['created_at'])) : '—' ?></span>
+                    <?php
+                        $createdAtDisplay = '—';
+                        $createdAtRaw = trim((string) ($c['created_at'] ?? ''));
+                        if ($createdAtRaw !== '' && !preg_match('/^0{4}-0{2}-0{2}/', $createdAtRaw)) {
+                            $createdAtTs = strtotime($createdAtRaw);
+                            if ($createdAtTs !== false && (int) date('Y', $createdAtTs) > 0) {
+                                $createdAtDisplay = date('M j, Y', $createdAtTs);
+                            }
+                        }
+                    ?>
+                    <span class="xs-text-small"><?= esc($createdAtDisplay) ?></span>
                 </td>
                 <td class="px-6 py-4">
+                    <?php $customerIdentifier = (string) ($c['hash'] ?? $c['id'] ?? ''); ?>
                     <div class="xs-actions-container">
-                        <?php if (!empty($c['hash'])): ?>
-                        <a href="<?= base_url('customer-management/history/' . esc($c['hash'])) ?>" 
+                        <?php if ($customerIdentifier !== ''): ?>
+                        <a href="<?= base_url('customer-management/history/' . esc($customerIdentifier)) ?>" 
                            class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
                            title="View History">
                             <span class="material-symbols-outlined">history</span>
                         </a>
-                        <a href="<?= base_url('customer-management/edit/' . esc($c['hash'])) ?>" 
+                        <a href="<?= base_url('customer-management/edit/' . esc($customerIdentifier)) ?>" 
                            class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" 
                            title="Edit Customer">
                             <span class="material-symbols-outlined">edit</span>
                         </a>
                         <?php else: ?>
-                        <span class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon opacity-40 cursor-not-allowed" title="Record requires hash — contact admin">
+                        <span class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon opacity-40 cursor-not-allowed" title="Customer record has no usable identifier">
                             <span class="material-symbols-outlined">edit_off</span>
                         </span>
                         <?php endif; ?>

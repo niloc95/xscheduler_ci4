@@ -114,6 +114,18 @@ class NotificationTemplateService
      * Default templates for each event type and channel
      */
     private const DEFAULT_TEMPLATES = [
+        'appointment_pending' => [
+            'email' => [
+                'subject' => 'Appointment Pending - {service_name}',
+                'body' => "Hi {customer_name},\n\nYour appointment request has been received and is pending confirmation.\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nManage booking: {reschedule_link}\n\nWe will notify you as soon as your booking is confirmed.\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
+            ],
+            'sms' => [
+                'body' => "⏳ Appt pending: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
+            ],
+            'whatsapp' => [
+                'body' => "⏳ *Appointment Pending*\n\nHi {customer_name}!\n\nYour appointment request has been received and is pending confirmation:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nManage booking: {reschedule_link}\nTerms: {terms_link}\nPrivacy: {privacy_link}\n\nWe will notify you as soon as your booking is confirmed.\n\nThank you for booking with {business_name}!"
+            ]
+        ],
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Appointment Confirmed - {service_name}',
@@ -170,6 +182,11 @@ class NotificationTemplateService
      * These are enforced on template save and used for runtime diagnostics.
      */
     private const REQUIRED_PLACEHOLDERS = [
+        'appointment_pending' => [
+            'email' => ['{reschedule_link}'],
+            'sms' => ['{reschedule_link}'],
+            'whatsapp' => ['{reschedule_link}'],
+        ],
         'appointment_confirmed' => [
             'email' => ['{reschedule_link}'],
             'sms' => ['{reschedule_link}'],

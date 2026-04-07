@@ -171,7 +171,7 @@ final class AppointmentBookingServiceTest extends CIUnitTestCase
 
         $this->assertTrue($result['success']);
         $this->assertSame(123, $result['appointmentId']);
-        $this->assertSame([['appointment_confirmed', 123, ['email'], 1]], $eventService->calls);
+        $this->assertSame([['appointment_pending', 123, ['email'], 1]], $eventService->calls);
     }
 
     public function testCreateAppointmentReturnsCustomerCreationFailure(): void

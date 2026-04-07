@@ -104,10 +104,13 @@ class CustomerModel extends BaseModel
 			return $cache[$column];
 		}
 
+		$prefix = method_exists($this->db, 'getPrefix') ? (string) $this->db->getPrefix() : '';
+		$unprefixedTable = $prefix !== '' ? preg_replace('/^' . preg_quote($prefix, '/') . '/', '', $this->table) : $this->table;
+
 		$tableCandidates = array_values(array_unique([
 			$this->table,
-			method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($this->table) : $this->table,
-			preg_replace('/^' . preg_quote((string) ($this->db->getPrefix() ?? ''), '/') . '/', '', $this->table),
+			method_exists($this->db, 'prefixTable') ? $this->db->prefixTable($unprefixedTable) : $this->table,
+			$unprefixedTable,
 		]));
 
 		foreach ($tableCandidates as $candidate) {
@@ -138,6 +141,35 @@ class CustomerModel extends BaseModel
 	{
 		$result = $this->where('hash', $hash)->first();
 		return $result ?: null;
+	}
+
+	/**
+	 * Resolve a customer by hash first, with numeric id fallback for internal routes.
+	 */
+	public function findByIdentifier(string $identifier): ?array
+	{
+		$identifier = trim($identifier);
+		if ($identifier === '') {
+			return null;
+		}
+
+		if ($this->hasCustomerColumn('hash')) {
+			try {
+				$result = $this->where('hash', $identifier)->first();
+				if (is_array($result)) {
+					return $result;
+				}
+			} catch (\Throwable $e) {
+				// Fall through to numeric fallback.
+			}
+		}
+
+		if (ctype_digit($identifier)) {
+			$result = $this->find((int) $identifier);
+			return is_array($result) ? $result : null;
+		}
+
+		return null;
 	}
 
 	/**

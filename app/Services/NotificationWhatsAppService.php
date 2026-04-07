@@ -510,6 +510,9 @@ class NotificationWhatsAppService
             // Fallback: Build message from event type using helper functions
             helper('whatsapp');
             switch ($eventType) {
+                case 'appointment_pending':
+                    $message = whatsapp_appointment_pending_message($appointment, [], [], $business);
+                    break;
                 case 'appointment_confirmed':
                 case 'appointment_created':
                     $message = whatsapp_appointment_confirmed_message($appointment, [], [], $business);

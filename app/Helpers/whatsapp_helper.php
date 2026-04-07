@@ -130,6 +130,52 @@ if (!function_exists('whatsapp_appointment_confirmed_message')) {
     }
 }
 
+if (!function_exists('whatsapp_appointment_pending_message')) {
+    /**
+     * Generate appointment pending confirmation message
+     *
+     * @param array $appointment Appointment data
+     * @param array $provider Provider data
+     * @param array $service Service data
+     * @param array $business Business settings
+     * @return string Formatted message
+     */
+    function whatsapp_appointment_pending_message(array $appointment, array $provider = [], array $service = [], array $business = []): string
+    {
+        $businessName = $business['business_name'] ?? 'Our Business';
+        $customerName = $appointment['customer_name'] ?? $appointment['name'] ?? 'Valued Customer';
+        $serviceName = $service['name'] ?? $appointment['service_name'] ?? 'Service';
+        $providerName = $provider['name'] ?? $appointment['provider_name'] ?? '';
+
+        $date = '';
+        $time = '';
+        if (!empty($appointment['start_datetime'])) {
+            $dt = new DateTime($appointment['start_datetime']);
+            $date = $dt->format('l, F j, Y');
+            $time = $dt->format('g:i A');
+        } elseif (!empty($appointment['date'])) {
+            $date = $appointment['date'];
+            $time = $appointment['time'] ?? '';
+        }
+
+        $message = "⏳ *Appointment Pending*\n\n";
+        $message .= "Hi {$customerName}!\n\n";
+        $message .= "Your appointment request has been received and is pending confirmation:\n\n";
+        $message .= "📅 *Date:* {$date}\n";
+        $message .= "🕐 *Time:* {$time}\n";
+        $message .= "💼 *Service:* {$serviceName}\n";
+
+        if ($providerName) {
+            $message .= "👤 *With:* {$providerName}\n";
+        }
+
+        $message .= "\nWe will notify you as soon as your booking is confirmed.\n";
+        $message .= "\n_{$businessName}_";
+
+        return $message;
+    }
+}
+
 if (!function_exists('whatsapp_appointment_reminder_message')) {
     /**
      * Generate appointment reminder message

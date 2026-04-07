@@ -199,7 +199,8 @@ class BookingController extends BaseController
         try {
             $email = $this->request->getGet('email');
             $phone = $this->request->getGet('phone');
-            $result = $this->booking->lookupAppointment($token, $email, $phone);
+            $phoneCountryCode = $this->request->getGet('phone_country_code');
+            $result = $this->booking->lookupAppointment($token, $email, $phone, $phoneCountryCode);
             log_structured('info', 'public_booking.lookup_success', [
                 'token_prefix' => substr($token, 0, 8),
                 'appointment_id' => isset($result['appointment']['id']) ? (int) $result['appointment']['id'] : null,
@@ -234,7 +235,8 @@ class BookingController extends BaseController
         try {
             $email = $this->request->getGet('email');
             $phone = $this->request->getGet('phone');
-            $results = $this->booking->lookupAppointmentsByContact($email, $phone);
+            $phoneCountryCode = $this->request->getGet('phone_country_code');
+            $results = $this->booking->lookupAppointmentsByContact($email, $phone, $phoneCountryCode);
             log_structured('info', 'public_booking.search_success', [
                 'result_count' => count($results),
             ]);
