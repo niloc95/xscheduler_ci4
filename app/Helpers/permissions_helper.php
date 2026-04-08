@@ -55,12 +55,13 @@ require_once APPPATH . 'Helpers/app_helper.php';
 
 if (!function_exists('current_user_role')) {
     /**
-     * Get current user's role
+     * Get current user's active role
+     * Falls back to primary role for backward compatibility
      */
     function current_user_role(): ?string
     {
         $user = session()->get('user');
-        return $user['role'] ?? null;
+        return $user['active_role'] ?? $user['role'] ?? null;
     }
 }
 

@@ -54,6 +54,14 @@ class UnifiedSidebar {
                 this.close();
             });
         }
+
+        // Role Switcher
+        const roleSwitcher = document.getElementById('roleSwitcher');
+        if (roleSwitcher) {
+            roleSwitcher.addEventListener('change', (e) => {
+                this.handleRoleSwitch(e.target.value);
+            });
+        }
         
         // Window resize
         window.addEventListener('resize', () => {
@@ -152,6 +160,72 @@ class UnifiedSidebar {
                 link.classList.toggle('active', isActive);
             }
         });
+    }
+
+    async handleRoleSwitch(newRole) {
+        try {
+            const response = await fetch('/api/auth/switch-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': this.getCsrfToken()
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Role switch failed:', error);
+                alert('Failed to switch role. Please try again.');
+                return;
+            }
+
+            const result = await response.json();
+            console.log('Role switched successfully:', result);
+            
+            // Show success message
+            if (result.data?.message) {
+                this.showNotification(result.data.message, 'success');
+            }
+
+            // Reload the page to apply new role context
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } catch (error) {
+            console.error('Error switching role:', error);
+            alert('An error occurred while switching roles. Please try again.');
+        }
+    }
+
+    getCsrfToken() {
+        // Try to get CSRF token from meta tag
+        let token = document.querySelector('meta[name="csrf-token"]')?.content;
+        
+        // Fallback: try from cookie
+        if (!token) {
+            const name = 'XSRF-TOKEN';
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) token = parts.pop().split(';').shift();
+        }
+        
+        return token || '';
+    }
+
+    showNotification(message, type = 'info') {
+        // Create a simple notification
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-4 py-3 rounded text-white text-sm z-50 ${
+            type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+        }`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
     
     // Public API methods

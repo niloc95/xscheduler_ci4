@@ -558,6 +558,126 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         $this->assertSame('staff', $user['role'] ?? null);
     }
 
+    public function testLastAdminDeactivationReturns422WithBlockCode(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        // Deactivate any other active admins so only $this->adminId remains active
+        $otherAdminIds = $db->table('users')
+            ->select('id')
+            ->where('role', 'admin')
+            ->where('id !=', $this->adminId)
+            ->get()
+            ->getResultArray();
+        $otherAdminIds = array_column($otherAdminIds, 'id');
+
+        if ($otherAdminIds !== []) {
+            $db->table('users')->whereIn('id', $otherAdminIds)->update(
+                ['updated_at' => $now] + $this->activeUserColumns($db, false)
+            );
+        }
+
+        $this->primeCsrfCookie();
+
+        // Create a second admin (inactive) to act as the requesting session
+        $db->table('users')->insert([
+            'name' => 'Guard Admin',
+            'email' => 'guard-deactivate-' . uniqid('', true) . '@example.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ] + $this->activeUserColumns($db, false));
+        $this->guardAdminId = (int) $db->insertID();
+
+        try {
+            $response = $this->withSession($this->lastAdminGuardSession())
+                ->withHeaders($this->ajaxHeaders())
+                ->post('/user-management/deactivate/' . $this->adminId, [
+                    $this->csrfTokenName() => $this->csrfToken(),
+                ]);
+
+            $response->assertStatus(422);
+
+            $payload = json_decode($response->getJSON(), true);
+            $this->assertFalse((bool) ($payload['success'] ?? true));
+            $this->assertSame('LAST_ADMIN', $payload['blockCode'] ?? null);
+
+            // Confirm admin is still active in DB
+            $admin = $db->table('users')->where('id', $this->adminId)->get()->getRowArray();
+            $this->assertUserActiveState($admin, true);
+        } finally {
+            if ($otherAdminIds !== []) {
+                $db->table('users')->whereIn('id', $otherAdminIds)->update(
+                    ['updated_at' => date('Y-m-d H:i:s')] + $this->activeUserColumns($db, true)
+                );
+            }
+        }
+    }
+
+    public function testLastAdminRoleDemotionReturns422WithBlockCode(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        // Deactivate any other active admins so only $this->adminId remains active
+        $otherAdminIds = $db->table('users')
+            ->select('id')
+            ->where('role', 'admin')
+            ->where('id !=', $this->adminId)
+            ->get()
+            ->getResultArray();
+        $otherAdminIds = array_column($otherAdminIds, 'id');
+
+        if ($otherAdminIds !== []) {
+            $db->table('users')->whereIn('id', $otherAdminIds)->update(
+                ['updated_at' => $now] + $this->activeUserColumns($db, false)
+            );
+        }
+
+        $this->primeCsrfCookie();
+
+        // Create an inactive second admin as the requesting session guard
+        $db->table('users')->insert([
+            'name' => 'Guard Admin',
+            'email' => 'guard-demotion-' . uniqid('', true) . '@example.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ] + $this->activeUserColumns($db, false));
+        $this->guardAdminId = (int) $db->insertID();
+
+        try {
+            $response = $this->withSession($this->lastAdminGuardSession())
+                ->withHeaders($this->ajaxHeaders())
+                ->post('/user-management/update/' . $this->adminId, [
+                    $this->csrfTokenName() => $this->csrfToken(),
+                    'name' => 'Journey Admin',
+                    'email' => 'journey-admin@example.com',
+                    'role' => 'staff',
+                    'is_active' => '1',
+                ]);
+
+            $response->assertStatus(422);
+
+            $payload = json_decode($response->getJSON(), true);
+            $this->assertFalse((bool) ($payload['success'] ?? true));
+            $this->assertSame('LAST_ADMIN', $payload['blockCode'] ?? null);
+
+            // Confirm role was NOT changed
+            $admin = $db->table('users')->where('id', $this->adminId)->get()->getRowArray();
+            $this->assertSame('admin', $admin['role'] ?? null);
+        } finally {
+            if ($otherAdminIds !== []) {
+                $db->table('users')->whereIn('id', $otherAdminIds)->update(
+                    ['updated_at' => date('Y-m-d H:i:s')] + $this->activeUserColumns($db, true)
+                );
+            }
+        }
+    }
+
     private function adminSession(): array
     {
         return [

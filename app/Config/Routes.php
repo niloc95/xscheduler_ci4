@@ -229,6 +229,9 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     // Dashboard API endpoint
     $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats');
 
+    // Authentication API endpoints (requires auth)
+    $routes->post('auth/switch-role', 'Api\\Auth::switchRole', ['filter' => 'auth']);
+
     // User Management API endpoints (admin/provider only)
     $routes->get('users', 'UserManagement::apiList', ['filter' => 'role:admin,provider']);
     $routes->get('user-counts', 'UserManagement::apiCounts', ['filter' => 'role:admin,provider']);

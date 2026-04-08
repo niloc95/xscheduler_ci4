@@ -26,10 +26,10 @@ class UserManagementMutationService
         ?UserModel $userModel = null,
         ?ProviderStaffModel $providerStaffModel = null,
         ?ProviderScheduleModel $providerScheduleModel = null,
-        ?BusinessHourModel $businessHourModel = null,
         ?AuditLogModel $auditModel = null,
         ?ScheduleValidationService $scheduleValidation = null,
         ?UserManagementContextService $contextService = null,
+        ?BusinessHourModel $businessHourModel = null,
         ?LocalizationSettingsService $localization = null,
         ?LocationModel $locationModel = null,
         ?PhoneNumberService $phoneNumberService = null,
@@ -56,11 +56,28 @@ class UserManagementMutationService
 
     public function createUser(int $currentUserId, array $currentUser, array $payload): array
     {
-        $role = (string) ($payload['role'] ?? '');
-        log_message('info', 'Creating user with role: ' . $role . ' by user: ' . $currentUserId . ' (role: ' . ($currentUser['role'] ?? '') . ')');
+        // Support both 'role' (single) and 'roles' (array) for backward compatibility
+        $roles = [];
+        if (!empty($payload['roles']) && is_array($payload['roles'])) {
+            $roles = array_unique(array_values($payload['roles']));
+        } elseif (!empty($payload['role'])) {
+            $roles = [$payload['role']];
+        }
 
-        if (!$this->contextService->canCreateRole($currentUserId, $role)) {
-            log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $role);
+        if (empty($roles)) {
+            return [
+                'success' => false,
+                'statusCode' => 422,
+                'message' => 'At least one role must be selected.',
+                'errors' => ['roles' => 'At least one role must be selected.'],
+            ];
+        }
+
+        $primaryRole = $roles[0]; // First role is primary for xs_users.role
+        log_message('info', 'Creating user with roles: ' . json_encode($roles) . ' by user: ' . $currentUserId . ' (role: ' . ($currentUser['role'] ?? '') . ')');
+
+        if (!$this->contextService->canCreateRole($currentUserId, $primaryRole)) {
+            log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $primaryRole);
             return [
                 'success' => false,
                 'statusCode' => 403,
@@ -68,11 +85,44 @@ class UserManagementMutationService
             ];
         }
 
+        // Validate all roles
+        foreach (array_slice($roles, 1) as $role) {
+            if (!$this->contextService->canCreateRole($currentUserId, $role)) {
+                log_message('error', 'Permission denied: User ' . $currentUserId . ' cannot create role: ' . $role);
+                return [
+                    'success' => false,
+                    'statusCode' => 403,
+                    'message' => 'You do not have permission to create users with one or more of the selected roles.',
+                ];
+            }
+        }
+
+        // Duplicate-email guard: reject at service layer before any DB write
+        $emailValue = trim((string) ($payload['email'] ?? ''));
+        if ($emailValue !== '' && $this->userModel->findByEmail($emailValue) !== null) {
+            return [
+                'success'    => false,
+                'statusCode' => 409,
+                'message'    => 'A user with this email address already exists. To assign additional roles, edit the existing user.',
+                'errors'     => ['email' => 'This email address is already registered.'],
+            ];
+        }
+
+        // Determine primary role from role hierarchy
+        $roleHierarchy = ['admin', 'provider', 'staff'];
+        $finalRole = null;
+        foreach ($roleHierarchy as $hierarchyRole) {
+            if (in_array($hierarchyRole, $roles)) {
+                $finalRole = $hierarchyRole;
+                break;
+            }
+        }
+
         $userData = [
             'name' => $payload['name'] ?? null,
             'email' => $payload['email'] ?? null,
             'phone' => $payload['phone'] ?? null,
-            'role' => $role,
+            'role' => $finalRole ?? 'staff',
             'password' => $payload['password'] ?? null,
         ];
 
@@ -83,7 +133,7 @@ class UserManagementMutationService
 
         $scheduleInput = $payload['schedule'] ?? [];
         $scheduleClean = [];
-        if ($role === 'provider') {
+        if (in_array('provider', $roles)) {
             $userData['color'] = !empty($payload['color'])
                 ? $payload['color']
                 : $this->userModel->getAvailableProviderColor();
@@ -113,16 +163,36 @@ class UserManagementMutationService
             ];
         }
 
+        // Sync roles to xs_user_roles table if it exists
+        try {
+            $db = \Config\Database::connect();
+            $userRolesTable = $db->prefixTable('user_roles');
+            
+            $now = date('Y-m-d H:i:s');
+            $roleRows = array_map(
+                static fn(string $role): array => [
+                    'user_id' => $userId,
+                    'role' => $role,
+                    'created_at' => $now,
+                ],
+                $roles
+            );
+            $db->table($userRolesTable)->insertBatch($roleRows);
+        } catch (\Throwable $e) {
+            log_message('warning', '[UserManagementMutationService::createUser] Could not sync to xs_user_roles table: ' . $e->getMessage());
+            // Continue - xs_users.role will be used as fallback
+        }
+
         $this->auditModel->log(
             'user_created',
             $currentUserId,
             'user',
             $userId,
             null,
-            ['role' => $role, 'email' => $userData['email']]
+            ['role' => $userData['role'] ?? null, 'email' => $userData['email']]
         );
 
-        if (($currentUser['role'] ?? '') === 'provider' && $role === 'staff') {
+        if (($currentUser['role'] ?? '') === 'provider' && in_array('staff', $roles)) {
             log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
             $assigned = $this->providerStaffModel->assignStaff($currentUserId, (int) $userId, $currentUserId, 'active');
 
@@ -147,7 +217,7 @@ class UserManagementMutationService
             );
         }
 
-        if ($role === 'provider' && !empty($scheduleClean)) {
+        if (in_array('provider', $roles) && !empty($scheduleClean)) {
             $this->providerScheduleModel->saveSchedule((int) $userId, $scheduleClean);
             $this->businessHourModel->syncFromProviderSchedule((int) $userId, $scheduleClean);
         }
@@ -179,26 +249,81 @@ class UserManagementMutationService
             $updateData['password'] = $payload['password'];
         }
 
-        if (($currentUser['role'] ?? '') === 'admin' && $this->contextService->canChangeUserRole($currentUserId, $userId)) {
-            $newRole = $payload['role'] ?? null;
-            if ($newRole) {
-                if ($newRole !== ($existingUser['role'] ?? null) && !$this->contextService->canCreateRole($currentUserId, $newRole)) {
+        // Handle role updates (supports both single 'role' and multiple 'roles' for backward compatibility)
+        $newRoles = [];
+        $rolesToSync = [];
+        if (!empty($payload['roles']) && is_array($payload['roles'])) {
+            $newRoles = array_unique(array_values($payload['roles']));
+        } elseif (!empty($payload['role'])) {
+            $newRoles = [$payload['role']];
+        }
+
+        if (!empty($newRoles) && ($currentUser['role'] ?? '') === 'admin' && $this->contextService->canChangeUserRole($currentUserId, $userId)) {
+            // Validate all roles
+            foreach ($newRoles as $role) {
+                if ($role !== ($existingUser['role'] ?? null) && !$this->contextService->canCreateRole($currentUserId, $role)) {
                     return [
                         'success' => false,
                         'statusCode' => 403,
-                        'message' => 'You do not have permission to assign this role.',
+                        'message' => 'You do not have permission to assign one or more roles.',
                     ];
                 }
-                $updateData['role'] = $newRole;
             }
-        } elseif (($currentUser['role'] ?? '') !== 'admin' && array_key_exists('role', $payload)) {
+
+            // Last-admin role-demotion guard
+            $currentIsAdmin = ($existingUser['role'] ?? null) === 'admin';
+            $newIsAdmin = in_array('admin', $newRoles);
+            
+            if (
+                !$newIsAdmin
+                && $currentIsAdmin
+                && $this->userModel->countActiveAdmins() <= 1
+            ) {
+                return [
+                    'success'    => false,
+                    'statusCode' => 422,
+                    'blockCode'  => 'LAST_ADMIN',
+                    'message'    => 'Cannot remove the admin role from the last active administrator. Promote another admin first.',
+                ];
+            }
+
+            // Keep role sync data separate from xs_users update payload.
+            $rolesToSync = $newRoles;
+        } elseif (!empty($newRoles) && ($currentUser['role'] ?? '') !== 'admin' && (array_key_exists('role', $payload) || array_key_exists('roles', $payload))) {
             log_message('warning', "[UserManagementMutationService::updateUser] Non-admin user {$currentUserId} attempted to change role for user {$userId}");
         }
 
-        $finalRole = $updateData['role'] ?? ($existingUser['role'] ?? null);
+        // Determine primary role from roles list (for xs_users.role backward compat)
+        $roleHierarchy = ['admin', 'provider', 'staff'];
+        $finalRole = null;
+        if (!empty($rolesToSync)) {
+            foreach ($roleHierarchy as $hierarchyRole) {
+                if (in_array($hierarchyRole, $rolesToSync, true)) {
+                    $finalRole = $hierarchyRole;
+                    break;
+                }
+            }
+        } else {
+            $finalRole = $updateData['role'] ?? ($existingUser['role'] ?? null);
+        }
+
+        // Only update role on xs_users if it changed
+        if ($finalRole && $finalRole !== ($existingUser['role'] ?? null)) {
+            $updateData['role'] = $finalRole;
+        }
+
+        $effectiveRoles = $rolesToSync;
+        if (empty($effectiveRoles)) {
+            $effectiveRoles = $this->userModel->getRolesForUser($userId);
+            if (empty($effectiveRoles) && !empty($existingUser['role'])) {
+                $effectiveRoles = [(string) $existingUser['role']];
+            }
+        }
+        $hasProviderRole = in_array('provider', $effectiveRoles, true);
+
         $scheduleInput = $payload['schedule'] ?? [];
         $scheduleClean = [];
-        if ($finalRole === 'provider') {
+        if ($hasProviderRole) {
             $scheduleInput = $this->mergeMissingScheduleFieldsFromExisting($userId, $scheduleInput);
 
             if (($currentUser['role'] ?? '') === 'admin' && !empty($payload['color'])) {
@@ -218,6 +343,10 @@ class UserManagementMutationService
         }
 
         $db = \Config\Database::connect();
+        $userRolesTable = $db->prefixTable('user_roles');
+        $canSyncUserRoles = method_exists($db, 'tableExists')
+            ? $db->tableExists('user_roles')
+            : true;
 
         try {
             $db->transException(true)->transStart();
@@ -230,6 +359,29 @@ class UserManagementMutationService
                     'statusCode' => 400,
                     'message' => 'Failed to update user. Please try again.',
                 ];
+            }
+
+            // Sync roles to xs_user_roles table if it exists and we have roles to update
+            if (!empty($rolesToSync) && $canSyncUserRoles) {
+                try {
+                    // Delete existing roles for this user
+                    $db->table($userRolesTable)->where('user_id', $userId)->delete();
+                    
+                    // Insert new roles
+                    $now = date('Y-m-d H:i:s');
+                    $roleRows = array_map(
+                        static fn(string $role): array => [
+                            'user_id' => $userId,
+                            'role' => $role,
+                            'created_at' => $now,
+                        ],
+                        $rolesToSync
+                    );
+                    $db->table($userRolesTable)->insertBatch($roleRows);
+                } catch (\Throwable $e) {
+                    log_message('warning', '[UserManagementMutationService::updateUser] Could not sync to xs_user_roles table: ' . $e->getMessage());
+                    // Continue - xs_users.role will be used as fallback
+                }
             }
 
             $changedFields = array_keys($updateData);
@@ -257,7 +409,7 @@ class UserManagementMutationService
                 ['fields' => $changedFields]
             );
 
-            if ($finalRole === 'provider') {
+            if ($hasProviderRole) {
                 $this->providerScheduleModel->saveSchedule($userId, $scheduleClean);
                 $this->businessHourModel->syncFromProviderSchedule($userId, $scheduleClean);
                 $this->syncLocationDaysFromSchedule($userId, $scheduleInput);
@@ -313,6 +465,16 @@ class UserManagementMutationService
                 'success' => false,
                 'statusCode' => 404,
                 'message' => 'User not found.',
+            ];
+        }
+
+        // Last-admin deactivation guard
+        if (($targetUser['role'] ?? '') === 'admin' && $this->userModel->countActiveAdmins() <= 1) {
+            return [
+                'success'    => false,
+                'statusCode' => 422,
+                'blockCode'  => 'LAST_ADMIN',
+                'message'    => 'Cannot deactivate the last active administrator. Promote another admin first.',
             ];
         }
 

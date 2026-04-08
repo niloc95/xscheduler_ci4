@@ -171,7 +171,7 @@ The current database is centered on appointments, provider availability, public 
   - `email`
   - `phone`
   - `password_hash`
-  - `role`
+  - `role` (primary/highest-privilege role for backward compatibility, derived from xs_user_roles)
   - `status`
   - `is_active` (legacy/compatibility schemas)
   - `color`
@@ -181,6 +181,23 @@ The current database is centered on appointments, provider availability, public 
   - This is not the customer table.
   - Providers and staff are modeled here and linked outward through schedules, services, blocked times, and appointments.
   - Active-state checks in services and tests must branch by available column (`is_active` first when present, otherwise normalized `status`).
+  - Multi-role support: A single user may now hold multiple roles simultaneously via the `xs_user_roles` junction table.
+  - The `xs_users.role` column stores the primary/highest-privilege role (admin > provider > staff) for backward compatibility and quick lookups.
+  - Query actual assigned roles via `UserModel::getRolesForUser($userId)` which reads from `xs_user_roles` and falls back to `xs_users.role` for migration safety.
+
+##### `xs_user_roles`
+- Multi-role assignment junction table. A single user may hold multiple roles simultaneously.
+- Key columns:
+  - `id`
+  - `user_id` (FK to `xs_users.id` with `ON DELETE CASCADE`)
+  - `role` (ENUM: `admin`, `provider`, `staff`)
+  - `created_at`
+- Notes:
+  - Unique constraint on `(user_id, role)` prevents duplicate role assignment.
+  - This table is authoritative for role membership; `xs_users.role` is a denormalized cache of the highest-privilege role.
+  - Introduced in Phase 3 to enable dynamic role selection, staff/provider/admin multi-role scenarios.
+  - Migration `2026-04-08-000001_CreateUserRolesTable.php` backfills roles from existing `xs_users.role` values.
+  - Systems that have not yet run the migration fall back to `xs_users.role` for role evaluation.
 
 ##### `xs_customers`
 - Booking customers and customer-profile data.
@@ -744,10 +761,21 @@ Do not create a new top-level asset entry point unless the change truly needs on
 ## Roles & Access Rules
 
 Current operational roles include:
-- `admin`
-- `provider`
-- `staff`
-- `customer`
+- `admin` — Full system access, user/business management, settings
+- `provider` — Business owner who manages own services, staff, and bookings
+- `staff` — Employee limited to their assigned provider(s) and related data
+- `customer` — Booking customer without internal login (uses hash/token access)
+
+### Multi-Role Support (Phase 3)
+- A single user may now hold **multiple roles simultaneously** via `xs_user_roles` table.
+- Form UI for user creation/edit uses checkboxes (`name="roles[]"`) to select multiple roles.
+- Backend resolves roles via `UserModel::getRolesForUser($userId)` which returns an array of assigned roles.
+- The primary role (highest privilege: admin > provider > staff) is stored in `xs_users.role` for backward compatibility.
+- Services and controllers that need role information should call `getRolesForUser()` to get the full list, not rely on single `role` value.
+- Examples of valid multi-role configurations:
+  - `[admin, provider]` — Business owner who manages own operations
+  - `[provider, staff]` — Provider with appointment-entry privileges
+  - `[admin, provider, staff]` — Administrator with full role flexibility
 
 ### Route Filters
 - `setup`
@@ -756,14 +784,18 @@ Current operational roles include:
 - `role:admin,provider`
 - `role:admin,provider,staff`
 
+Note: Route filters still check the primary role. For fine-grained multi-role checks, use service-level authorization methods like `AuthorizationService::canManageStaff()`.
+
 ### Expectations
 - Admin has full system access.
 - Provider is scoped to provider-owned or provider-relevant data.
 - Staff access is narrower and must be checked at query and service level.
 - Customer-facing public access uses hashes/tokens rather than full staff authentication.
+- When a user has multiple roles, the **most permissive** role (highest privilege) should generally apply for data access. Use service-level authorization for exceptions.
 
 ### Staff Scope Contract
 - Staff are limited to data belonging to their actively-assigned providers via `xs_provider_staff_assignments` (status = `active`).
+- Even if a staff member has `provider` role, their data access must still be scoped through their assignments (role does not automatically elevate scope).
 - The **canonical source** for a staff member's allowed provider IDs is `ProviderStaffModel::getProvidersForStaff($userId, 'active')`. This returns rows where the key for the provider's numeric ID is **`id`** (not `provider_id`).
 - Extract provider IDs with `array_column($result, 'id')`, not `array_column($result, 'provider_id')`.
 - Pass them to appointment query context as `$context['provider_id'] = $providerIds ?: [0]`. The `AppointmentModel::applyContextScope()` reads **`provider_id`** (singular key) and accepts both scalar and array values.
@@ -929,6 +961,10 @@ Use this quick gate before merge:
 [] Did I verify development runtime DB target with php spark db:table?
 [] Did I verify no accidental reliance on testing DB settings in web runtime?
 [] Did I lint/validate the touched PHP files and review adjacent call sites?
+[] If user role logic, did I use UserModel::getRolesForUser() instead of direct column read?
+[] If user role form, did I use checkboxes (roles[]) instead of radio buttons (role)?
+[] Did I sync multi-role changes to xs_user_roles table with xs_users.role fallback?
+[] Did I preserve backward compatibility for systems without xs_user_roles migration yet?
 ```
 
 ---
@@ -960,6 +996,10 @@ Use this quick gate before merge:
 | 21 | Calling `AppointmentNotificationService::sendEventEmail()` from booking or mutation services | Enqueue via `AppointmentEventService::dispatch()` then call `NotificationQueueDispatcher::dispatch()` |
 | 22 | Raw DB queries for customer ID resolution inside controller methods | Delegate to `CustomerAppointmentService::resolveCustomerIdsForProvider()` or `resolveCustomerIdsForStaff()` |
 | 23 | Showing raw `public_token` in booking success UI or outbound messages | Use opaque reference links and verify ownership with email/phone before management actions |
+| 24 | Reading user role from single `xs_users.role` column when xs_user_roles exists | Use `UserModel::getRolesForUser($userId)` to get the authoritative role array |
+| 25 | Using radio buttons for user role assignment | Use checkboxes with `name="roles[]"` to capture multi-role selections |
+| 26 | Failing to sync role changes to `xs_user_roles` during user create/update | Always sync multi-role arrays to xs_user_roles table; set xs_users.role to primary role for compat |
+| 27 | Assuming role validation rules changed in old code are still current for multi-role | Update role rules to use `is_array` validator and `in_list[]` for role array validation |
 
 ---
 
@@ -1005,10 +1045,13 @@ Run this checklist:
 - `app/Controllers/Api/BaseApiController.php`
 - `app/Database/MigrationBase.php`
 - `app/Models/AppointmentModel.php`
+- `app/Models/UserModel.php` — Role query methods, user retrieval
 - `app/Models/SettingModel.php`
 - `app/Services/AvailabilityService.php`
 - `app/Services/AppointmentBookingService.php`
 - `app/Services/TimezoneService.php`
+- `app/Services/UserManagementMutationService.php` — User creation/update with multi-role sync to xs_user_roles
+- `app/Services/UserManagementContextService.php` — Validation rules and view data building
 - `vite.config.js`
 
 ### Key docs
@@ -1038,5 +1081,47 @@ If a change starts from presentation while the service or data contract is still
 
 ---
 
-Last updated: 2026-03-30
-Status: Active
+## Phase 3: Multi-Role User Management — Implementation Summary
+
+### What Changed
+- **User roles** are now **multi-valued**: a single user can hold admin, provider, and/or staff roles simultaneously.
+- **User form UI** (`create.php`, `edit.php`) now uses checkbox inputs (`name="roles[]"`) for role selection instead of single radio button.
+- **Database**: New `xs_user_roles` junction table stores role memberships; `xs_users.role` denormalized primary role for backward compatibility.
+- **Form validation**: Rules updated to validate `roles` as a required array with `in_list[admin,provider,staff]`.
+- **Backend mutations**: `UserManagementMutationService::createUser()` and `updateUser()` sync all selected roles to `xs_user_roles` with atomic transactions.
+- **Role retrieval**: `UserModel::getRolesForUser($userId)` is now the authoritative source; reads from `xs_user_roles` and falls back to single `role` for migration safety.
+- **Dynamic UI**: JavaScript handlers on role checkboxes show/hide role-specific sections in real time (provider schedule, staff assignments, etc.).
+- **Audit logging**: Updated to log role arrays instead of single role values.
+
+### Key Service Methods (UserModel)
+- `getRolesForUser(int $userId): array` — Get all assigned roles; falls back to main role if junction table unavailable
+- Other existing methods (`getProviders()`, `findByEmail()`, etc.) remain unchanged but now operate against updated role context
+
+### Key Service Methods (UserManagementMutationService)
+- `createUser()` — Accepts `'roles'` array; validates all roles; determines primary role via hierarchy; syncs to xs_user_roles
+- `updateUser()` — Accepts `'roles'` array; validates role changes; checks last-admin guard; syncs to xs_user_roles atomically
+
+### Form Flow
+1. User checks multiple role checkboxes: `roles[]`
+2. Form validation checks `roles` is array and each value in `in_list[admin,provider,staff]`
+3. Controller extracts `getPost('roles')` and passes to mutation service
+4. Mutation service syncs roles to `xs_user_roles` with transaction
+5. Primary role (highest privilege) stored in `xs_users.role` for compat
+
+### Backward Compatibility
+- Systems without `xs_user_roles` migration continue to use `xs_users.role` as fallback
+- `getRolesForUser()` gracefully handles missing table via try-catch
+- All role queries route through service layer for automatic fallback
+- Existing role-based route filters and authorization still function
+
+### Next Phase Considerations
+- Dashboard and permission checks should read full role array for granular access control
+- Notification templates may need per-role versioning when multi-role users exist
+- Audit trails now include role arrays; reporting views should handle array display
+- Performance: xs_user_roles queries on frequently-accessed users may benefit from eager loading
+
+---
+
+Last updated: 2026-04-08
+Status: Active  
+Phase 3: ✅ User Role Management Form Implementation (Complete)

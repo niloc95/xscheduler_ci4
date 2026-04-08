@@ -209,6 +209,7 @@ class UserManagement extends BaseController
             'email' => $this->request->getPost('email'),
             'phone' => $this->request->getPost('phone'),
             'phone_country_code' => $this->request->getPost('phone_country_code'),
+            'roles' => $this->request->getPost('roles') ?? [],
             'role' => $this->request->getPost('role'),
             'password' => $this->request->getPost('password'),
             'color' => $this->request->getPost('color'),
@@ -261,6 +262,9 @@ class UserManagement extends BaseController
         }
 
         $user = $resolvedUser['user'];
+
+        // Populate user's current roles from xs_user_roles or fallback to xs_users.role
+        $user['roles'] = $this->userModel->getRolesForUser($user['id']);
 
         $existingSchedule = $this->providerScheduleModel->getByProvider($user['id']);
         $rawSchedule = old('schedule') ?: $existingSchedule;
@@ -333,6 +337,7 @@ class UserManagement extends BaseController
             'phone_country_code' => $this->request->getPost('phone_country_code'),
             'is_active' => $this->request->getPost('is_active'),
             'password' => $this->request->getPost('password'),
+            'roles' => $this->request->getPost('roles') ?? [],
             'role' => $this->request->getPost('role'),
             'color' => $this->request->getPost('color'),
             'schedule' => $this->request->getPost('schedule') ?? [],
@@ -346,6 +351,7 @@ class UserManagement extends BaseController
             if ($this->request->isAJAX()) {
                 return $this->respondUserActionFailure($result['message'], $result['statusCode'] ?? 400, null, [
                     'errors' => $result['errors'] ?? null,
+                    'blockCode' => $result['blockCode'] ?? null,
                 ]);
             }
 
@@ -392,7 +398,8 @@ class UserManagement extends BaseController
             return $this->respondUserActionFailure(
                 $result['message'],
                 $result['statusCode'] ?? 400,
-                redirect()->to(base_url('user-management'))
+                redirect()->to(base_url('user-management')),
+                ['blockCode' => $result['blockCode'] ?? null]
             );
         }
 

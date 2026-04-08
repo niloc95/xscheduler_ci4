@@ -78,31 +78,51 @@
 							</div>
 
 							<div class="form-group">
-								<label for="role" class="form-label required">Role</label>
-								<select id="role" 
-										name="role"
-										required
-										class="form-input <?= $validation && $validation->hasError('role') ? 'border-red-500 dark:border-red-400' : '' ?>">
-									<option value="">Select Role</option>
-									<?php 
-									$currentRole = old('role', $user['role'] ?? '');
-									$availableRoles = $availableRoles ?? ['admin', 'provider', 'staff', 'customer'];
-									foreach ($availableRoles as $roleOption): 
-									?>
-										<option value="<?= esc($roleOption) ?>" <?= $currentRole === $roleOption ? 'selected' : '' ?>>
-											<?= ucfirst($roleOption) ?>
-										</option>
+								<label class="form-label required">Roles</label>
+								<?php 
+								$selectedRoles = old('roles') ?? ($user['roles'] ?? []);
+								if (is_string($selectedRoles)) {
+									$selectedRoles = [$selectedRoles]; // Handle legacy single role
+								}
+								?>
+								<div class="space-y-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900/30 <?= $validation && $validation->hasError('roles') ? 'border-red-500 dark:border-red-400' : '' ?>">
+									<?php foreach (['admin', 'provider', 'staff'] as $roleOption): ?>
+										<div class="flex items-center">
+											<input type="checkbox" 
+												   id="role_<?= $roleOption ?>" 
+												   name="roles[]" 
+												   value="<?= $roleOption ?>"
+												   <?= in_array($roleOption, (array) $selectedRoles) ? 'checked' : '' ?>
+												   class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
+												   <?= $roleOption === 'admin' && ($user['id'] ?? 0) === (session('user_id') ?? 0) ? 'disabled title="You cannot remove your own admin role"' : '' ?>>
+											<label for="role_<?= $roleOption ?>" class="ml-3 cursor-pointer flex-1">
+												<div class="font-medium text-gray-900 dark:text-gray-100 text-sm"><?= ucfirst($roleOption) ?></div>
+												<div class="text-xs text-gray-600 dark:text-gray-400">
+													<?php if ($roleOption === 'admin'): ?>
+														Full System Access
+													<?php elseif ($roleOption === 'provider'): ?>
+														Can Manage Services & Staff
+													<?php elseif ($roleOption === 'staff'): ?>
+														Limited Calendar Access
+													<?php endif; ?>
+												</div>
+											</label>
+										</div>
 									<?php endforeach; ?>
-								</select>
-								<?php if ($validation && $validation->hasError('role')): ?>
-									<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('role') ?></p>
+								</div>
+								<?php if ($validation && $validation->hasError('roles')): ?>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-400"><?= $validation->getError('roles') ?></p>
 								<?php endif; ?>
 							</div>
 						</div>
 
 						<!-- Provider Color Picker (Admin Only) -->
 						<?php 
-						$isProvider = ($currentRole === 'provider');
+						$selectedRoles = old('roles') ?? ($user['roles'] ?? []);
+						if (is_string($selectedRoles)) {
+							$selectedRoles = [$selectedRoles];
+						}
+						$isProvider = in_array('provider', (array) $selectedRoles, true);
 						$canEditColor = ($currentUser['role'] ?? '') === 'admin';
 						?>
 						<?php if ($isProvider && $canEditColor): ?>
@@ -136,25 +156,27 @@
 
 
 					<!-- Provider Locations Section (FIRST — configure locations before schedule) -->
-					<div id="providerLocationsWrapper" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
-						<?php if (($user['role'] ?? '') === 'provider'): ?>
+					<?php $selectedRoles = old('roles') ?? ($user['roles'] ?? []); if (is_string($selectedRoles)) { $selectedRoles = [$selectedRoles]; } ?>
+					<div id="providerLocationsWrapper" class="<?= in_array('provider', (array) $selectedRoles) ? '' : 'hidden' ?>">
+						<?php if (in_array('provider', (array) $selectedRoles)): ?>
 						<?= $this->include('user-management/components/provider-locations') ?>
 						<?php endif; ?>
 					</div>
 
 					<!-- Provider Schedule Section (SECOND — uses locations for day assignment) -->
-					<div id="providerScheduleSection" class="<?= old('role', $user['role'] ?? '') === 'provider' ? '' : 'hidden' ?>">
+					<?php $selectedRoles = old('roles') ?? ($user['roles'] ?? []); if (is_string($selectedRoles)) { $selectedRoles = [$selectedRoles]; } ?>
+					<div id="providerScheduleSection" class="<?= in_array('provider', (array) $selectedRoles) ? '' : 'hidden' ?>">
 						<?= $this->include('user-management/components/provider-schedule') ?>
 					</div>
 
-						<?php if (($user['role'] ?? '') === 'provider'): ?>
+						<?php if (in_array('provider', (array) $selectedRoles)): ?>
 							<?= $this->include('user-management/components/provider-staff', [
 								'assignedStaff' => $assignedStaff ?? [],
 								'availableStaff' => $availableStaff ?? [],
 								'canManageAssignments' => $canManageAssignments ?? false,
 								'providerId' => $user['id'] ?? null,
 							]) ?>
-						<?php elseif (($user['role'] ?? '') === 'staff'): ?>
+						<?php elseif (in_array('staff', (array) $selectedRoles)): ?>
 							<?= $this->include('user-management/components/staff-providers', [
 								'assignedProviders' => $assignedProviders ?? [],
 								'availableProviders' => $availableProviders ?? [],
@@ -329,5 +351,46 @@
 			</div>
 		</div>
 	</div>
+
+<script>
+// Handle role checkbox changes
+document.addEventListener('DOMContentLoaded', function() {
+	const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');
+	
+	function updateSectionVisibility() {
+		const isProvider = document.getElementById('role_provider')?.checked || false;
+		const isStaff = document.getElementById('role_staff')?.checked || false;
+		
+		// Show/hide provider sections
+		const providerLocations = document.getElementById('providerLocationsWrapper');
+		const providerSchedule = document.getElementById('providerScheduleSection');
+		const providerStaff = document.querySelector('[data-provider-staff-manager]');
+		
+		if (providerLocations) {
+			providerLocations.classList.toggle('hidden', !isProvider);
+		}
+		if (providerSchedule) {
+			providerSchedule.classList.toggle('hidden', !isProvider);
+		}
+		if (providerStaff) {
+			providerStaff.classList.toggle('hidden', !isProvider);
+		}
+		
+		// Show/hide staff assignment sections
+		const staffProviders = document.querySelector('[data-staff-providers-manager]');
+		if (staffProviders) {
+			staffProviders.classList.toggle('hidden', !isStaff);
+		}
+	}
+	
+	// Add event listeners to all role checkboxes
+	roleCheckboxes.forEach(checkbox => {
+		checkbox.addEventListener('change', updateSectionVisibility);
+	});
+	
+	// Initialize visibility on page load
+	updateSectionVisibility();
+});
+</script>
 
 <?= $this->endSection() ?>

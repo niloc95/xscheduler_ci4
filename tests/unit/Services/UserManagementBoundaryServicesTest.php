@@ -291,4 +291,57 @@ final class UserManagementBoundaryServicesTest extends CIUnitTestCase
         $this->assertTrue($result['success']);
         $this->assertSame(44, $result['userId']);
     }
+
+    public function testCreateUserRejectsDuplicateEmail(): void
+    {
+        $contextService = $this->createMock(UserManagementContextService::class);
+        $contextService->expects($this->once())
+            ->method('canCreateRole')
+            ->with(1, 'staff')
+            ->willReturn(true);
+
+        $userModel = $this->createMock(UserModel::class);
+        $userModel->expects($this->once())
+            ->method('findByEmail')
+            ->with('existing@example.com')
+            ->willReturn(['id' => 99, 'email' => 'existing@example.com']);
+
+        $service = new UserManagementMutationService(
+            userModel: $userModel,
+            contextService: $contextService,
+        );
+
+        $result = $service->createUser(1, ['role' => 'admin'], [
+            'role' => 'staff',
+            'email' => 'existing@example.com',
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(409, $result['statusCode']);
+        $this->assertStringContainsString('already exists', $result['message']);
+    }
+
+    public function testDeactivateUserBlocksLastActiveAdmin(): void
+    {
+        $userModel = $this->createMock(UserModel::class);
+        $userModel->expects($this->once())
+            ->method('find')
+            ->with(2)
+            ->willReturn(['id' => 2, 'role' => 'admin']);
+        $userModel->expects($this->once())
+            ->method('countActiveAdmins')
+            ->willReturn(1);
+        $userModel->expects($this->never())
+            ->method('deactivateUser');
+
+        $service = new UserManagementMutationService(
+            userModel: $userModel,
+        );
+
+        $result = $service->deactivateUser(1, 2);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(422, $result['statusCode']);
+        $this->assertSame('LAST_ADMIN', $result['blockCode']);
+    }
 }

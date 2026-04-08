@@ -210,13 +210,27 @@ class Auth extends BaseController
             return redirect()->back()->withInput();
         }
 
-        // Set session data
+        // Set session data with multi-role support
+        $userRoles = $this->userModel->getRolesForUser((int) $user['id']);
+        
+        // Determine active role (highest privilege: admin > provider > staff)
+        $roleHierarchy = ['admin' => 3, 'provider' => 2, 'staff' => 1];
+        $activeRole = $user['role']; // fallback to xs_users.role
+        
+        foreach ($userRoles as $role) {
+            if (($roleHierarchy[$role] ?? 0) > ($roleHierarchy[$activeRole] ?? 0)) {
+                $activeRole = $role;
+            }
+        }
+        
         $sessionData = [
             'user_id' => $user['id'],
             'user' => [
                 'name' => $user['name'],
                 'email' => $user['email'],
-                'role' => $user['role']
+                'role' => $user['role'],           // legacy: primary role from xs_users
+                'roles' => $userRoles,             // new: all assigned roles
+                'active_role' => $activeRole       // new: currently active role (defaults to highest)
             ],
             'isLoggedIn' => true
         ];

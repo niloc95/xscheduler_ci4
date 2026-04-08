@@ -202,6 +202,62 @@ class UserModel extends BaseModel
     /**
      * Check whether a column exists on xs_users.
      */
+    /**
+     * Find a user by their email address.
+     * Returns the first matching user row or null.
+     */
+    public function findByEmail(string $email): ?array
+    {
+        $row = $this->where('email', trim($email))->first();
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * Return all roles currently assigned to a user in xs_user_roles.
+     * Falls back to xs_users.role for systems that haven't run the migration yet.
+     *
+     * @return list<string>
+     */
+    public function getRolesForUser(int $userId): array
+    {
+        try {
+            $userRolesTable = $this->db->prefixTable('user_roles');
+            $rows = $this->db->table($userRolesTable)
+                ->select('role')
+                ->where('user_id', $userId)
+                ->get()
+                ->getResultArray();
+
+            if (!empty($rows)) {
+                return array_values(array_column($rows, 'role'));
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', '[UserModel::getRolesForUser] xs_user_roles unavailable: ' . $e->getMessage());
+        }
+
+        // Fallback: derive from the primary role column
+        $user = $this->find($userId);
+        $role = $user['role'] ?? null;
+        return $role ? [$role] : [];
+    }
+
+    /**
+     * Count the number of currently active administrators.
+     * Schema-safe: works with both is_active and status columns.
+     */
+    public function countActiveAdmins(): int
+    {
+        $builder = $this->where('role', 'admin');
+
+        if ($this->hasUsersColumn('is_active')) {
+            $builder->where('is_active', 1);
+        } elseif ($this->hasUsersColumn('status')) {
+            $builder->where('status', 'active');
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
     private function hasUsersColumn(string $column): bool
     {
         static $cache = [];

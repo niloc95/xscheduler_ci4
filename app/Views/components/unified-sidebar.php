@@ -107,6 +107,23 @@ $currentRole = current_user_role();
                 <span class="nav-icon material-symbols-outlined">help</span>
                 <span class="nav-text">Help</span>
             </a>
+
+            <!-- Role Switcher (visible when user has multiple roles) -->
+            <?php if ((is_array($currentUser['roles'] ?? null) && count($currentUser['roles']) > 1)): ?>
+            <div class="nav-divider"></div>
+            <div class="px-4 py-2">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Current Role:</p>
+                <div class="role-switcher-dropdown">
+                    <select id="roleSwitcher" class="w-full px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <?php foreach ($currentUser['roles'] as $role): ?>
+                            <option value="<?= esc($role) ?>" <?= ($currentRole === $role) ? 'selected' : '' ?>>
+                                <?= ucfirst(esc($role)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            <?php endif; ?>
         </nav>
 
         <!-- Sidebar Footer -->

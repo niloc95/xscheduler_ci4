@@ -133,3 +133,19 @@ If you want, I can now implement a focused notifications hardening patch in one 
 Switch mark-read and mark-all-read back to POST with CSRF-safe form submits.
 Fix delete route to accept queue_ style identifiers.
 Add regression tests for delete queue cancellation and read-state contract behavior.
+
+
+URL: https://webscheduler.co.za/demo/public/booking
+
+Public booking view has two option left "Book a visit" and right "Manage Booking"
+
+Manage booking still has the Booking reference, this field is now reduntant, because we dont expose the booking token any where. However we cant just simply hide the field as its used in checking vaildation for looking up an appointment. 
+
+
+==++!123876543REFTYrt
+
+xbjchvpswvgdbxdt
+webscheduler
+
+AWS
+2bybJgiP4XVo7Ovn

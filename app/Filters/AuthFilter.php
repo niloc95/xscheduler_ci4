@@ -99,9 +99,12 @@ class AuthFilter implements FilterInterface
             // Simple role check if arguments are role names (customers are no longer users)
             $validRoles = ['admin', 'provider', 'staff'];
             $hasValidRole = false;
+            
+            // Use active_role if available, otherwise fall back to primary role
+            $currentRole = $user['active_role'] ?? $user['role'] ?? null;
 
             foreach ($arguments as $arg) {
-                if (in_array($arg, $validRoles) && $user['role'] === $arg) {
+                if (in_array($arg, $validRoles) && $currentRole === $arg) {
                     $hasValidRole = true;
                     break;
                 }
