@@ -7,6 +7,47 @@ const GENERAL_FIELD_MAP = {
     business_address: 'general.business_address',
 };
 
+function normalizePhoneWithCountryCode(rawValue, countryCodeRaw) {
+    const value = String(rawValue ?? '').trim();
+    if (!value) {
+        return '';
+    }
+
+    const normalizedCountryDigits = String(countryCodeRaw ?? '').replace(/\D+/g, '');
+    const countryDigits = normalizedCountryDigits && !normalizedCountryDigits.startsWith('0')
+        ? normalizedCountryDigits.slice(0, 4)
+        : '';
+
+    if (value.startsWith('+')) {
+        const digits = value.slice(1).replace(/\D+/g, '');
+        if (!digits || digits.startsWith('0')) {
+            return '';
+        }
+
+        return `+${digits.slice(0, 15)}`;
+    }
+
+    const localDigits = value.replace(/\D+/g, '');
+    if (!localDigits) {
+        return '';
+    }
+
+    if (!countryDigits) {
+        return localDigits.slice(0, 20);
+    }
+
+    const strippedLocal = localDigits.replace(/^0+/, '');
+    if (!strippedLocal) {
+        return '';
+    }
+
+    if (localDigits.startsWith(countryDigits)) {
+        return `+${localDigits.slice(0, 15)}`;
+    }
+
+    return `+${(countryDigits + strippedLocal).slice(0, 15)}`;
+}
+
 const SETTINGS_TABS = ['localization', 'booking', 'business', 'legal', 'integrations'];
 
 function ensureGlobalHelpers() {
@@ -344,7 +385,14 @@ function initGeneralSettingsForm(root) {
             if (!input || input.type === 'file') {
                 return;
             }
-            payload[key] = input.value ?? '';
+
+            let value = input.value ?? '';
+            if (name === 'telephone_number' || name === 'mobile_number') {
+                const countryInput = form.elements[`${name}_country_code`];
+                value = normalizePhoneWithCountryCode(value, countryInput?.value ?? '');
+            }
+
+            payload[key] = value;
         });
 
         debugLog('Saving general settings:', payload);

@@ -141,7 +141,9 @@ export function initPhoneCountrySelectors(root = document, options = {}) {
     || resolveCountryCode(window.__DEFAULT_PHONE_COUNTRY_CODE__)
     || '+27';
 
-  const inputs = Array.from(root.querySelectorAll('input[name="phone"], input[name="customer_phone"]'));
+  const inputs = Array.from(root.querySelectorAll(
+    'input[name="phone"], input[name="customer_phone"], input[name="telephone_number"], input[name="mobile_number"]'
+  ));
 
   inputs.forEach(input => {
     if (!(input instanceof HTMLInputElement)) {
