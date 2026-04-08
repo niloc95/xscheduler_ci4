@@ -24,7 +24,6 @@
  * -----------------------------------------------------------------------------
  * 1. Flag file exists (fastest):
  *    - writable/setup_complete.flag
- *    - writable/setup_completed.flag (legacy)
  * 
  * 2. .env file exists
  * 
@@ -65,11 +64,10 @@ if (!function_exists('is_setup_completed')) {
      */
     function is_setup_completed(): bool
     {
-        // Check for setup completion flag files first (fastest check, no DB needed)
+        // Check for setup completion flag file first (fastest check, no DB needed)
         $flagPathNew = WRITEPATH . 'setup_complete.flag';
-        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
-        
-        if (file_exists($flagPathNew) || file_exists($flagPathLegacy)) {
+
+        if (file_exists($flagPathNew)) {
             log_message('debug', 'Setup completed: flag file found');
             return true;
         }

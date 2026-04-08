@@ -149,3 +149,16 @@ webscheduler
 
 AWS
 2bybJgiP4XVo7Ovn
+
+
+From that exact highest-priority runtime list, current state is:
+
+1. dead API users controller still exists at Users.php:66 - Done 
+2. Agent Context open-debt references cleaned and no longer pending (Known Dead Code / TD table / Phase 3 block updated) - Done
+3. receptionist alias still allowed in staff providers at StaffProviders.php:82 - Done 
+4. stale db:// branch still in settings resolver at GeneralSettingsService.php:501 - Done
+5. setup legacy dual-flag path removed (Setup + setup_helper + TimezoneDetection now use setup_complete.flag only) - Done
+6. deprecated WhatsApp template wrapper removed; dispatcher now calls sendMessage directly - Done
+7. scheduler legacy fallback reference remains at scheduler-core.js:206 - Done
+8. deprecated provider_id compatibility marker removed from UserModel allowedFields - Done
+9. deprecated analytics helper markers removed from AppointmentModel; revenue helper now uses real revenue instead of placeholder logic - Done

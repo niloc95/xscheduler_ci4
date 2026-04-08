@@ -1,8 +1,6 @@
 <?php
 
 namespace Tests\Unit\Services;
-
-use App\Models\SettingFileModel;
 use App\Models\SettingModel;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationEmailService;
@@ -74,7 +72,7 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
     public function testGeneralSettingsServiceSaveNormalizesBlockedPeriodsAndCheckboxFields(): void
     {
         $settingModel = new RecordingSettingModel();
-        $service = new GeneralSettingsService($settingModel, new NullSettingFileModel());
+        $service = new GeneralSettingsService($settingModel);
 
         $result = $service->save([
             'company_name' => 'WebScheduler',
@@ -622,13 +620,6 @@ final class RecordingSettingModel extends SettingModel
     }
 }
 
-final class NullSettingFileModel extends SettingFileModel
-{
-    public function __construct()
-    {
-    }
-}
-
 final class SpyNotificationWhatsAppService extends NotificationWhatsAppService
 {
     public array $savedTemplates = [];
@@ -652,13 +643,6 @@ final class SpyNotificationWhatsAppService extends NotificationWhatsAppService
             'eventType' => $eventType,
             'templateName' => $templateName,
             'locale' => $locale,
-        ];
-
-        return ['ok' => true];
-    }
-}
-
-final class TestNotificationSettingsService extends NotificationSettingsService
 {
     public function __construct(
         private readonly SettingModel $settingModel,

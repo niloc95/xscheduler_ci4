@@ -203,7 +203,7 @@ export class SchedulerCore {
 
     /**
      * Unified data loader — uses server-side calendar API when mode='server',
-     * otherwise falls back to the legacy /api/appointments endpoint.
+     * otherwise uses the appointments endpoint.
      *
      * All internal navigation (changeView, navigateToDate, navigateNext, etc.) call
      * this method so the mode is respected consistently.

@@ -99,8 +99,7 @@ class TimezoneDetection implements FilterInterface
 
         if (!$session->has('client_timezone')) {
             // Skip database query if setup hasn't been completed yet
-            $setupCompleted = file_exists(WRITEPATH . 'setup_completed.flag') || 
-                              file_exists(WRITEPATH . 'setup_complete.flag');
+            $setupCompleted = file_exists(WRITEPATH . 'setup_complete.flag');
             
             if ($setupCompleted) {
                 try {

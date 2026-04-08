@@ -343,5 +343,3 @@ $routes->group('', ['filter' => 'setup'], function($routes) {
 $routes->get('assets/s/(:segment)', 'Assets::settings/$1');
 // Legacy provider assets from uploads/providers via controller
 $routes->get('assets/p/(:segment)', 'Assets::provider/$1');
-// Public assets from DB store
-$routes->get('assets/db/(:any)', 'Assets::settingsDb/$1');

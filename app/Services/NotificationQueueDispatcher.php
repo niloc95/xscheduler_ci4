@@ -460,7 +460,7 @@ class NotificationQueueDispatcher
         $params = [$customerName, $templateData['service_name'], $templateData['provider_name'], $templateData['start_datetime']];
         
         $svc = new NotificationWhatsAppService();
-        return $svc->sendTemplateMessage($businessId, $to, $eventType, $params, $message);
+        return $svc->sendMessage($businessId, $to, $eventType, $params, $templateData, [], $message);
     }
 
     protected function markReminderSentIfSupported(int $appointmentId): void

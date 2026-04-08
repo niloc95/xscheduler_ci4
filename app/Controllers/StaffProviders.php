@@ -32,7 +32,6 @@
  * -----------------------------------------------------------------------------
  * - Admin: Can view/manage any staff's provider list
  * - Staff: Can only view own provider assignments
- * - Receptionist: Can view own provider assignments
  * 
  * RESPONSE FORMAT:
  * -----------------------------------------------------------------------------
@@ -79,7 +78,7 @@ class StaffProviders extends BaseController
         }
 
         $staff = $this->userModel->find($staffId);
-        if (!$staff || !in_array($staff['role'], ['staff', 'receptionist'], true)) {
+        if (!$staff || $staff['role'] !== 'staff') {
             return $this->failNotFound('Staff member not found.');
         }
 

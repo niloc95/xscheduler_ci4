@@ -130,16 +130,6 @@ if (!function_exists('setting_url')) {
      */
     function setting_url(string $key, $default = null): ?string
     {
-        try {
-            $sfm = new \App\Models\SettingFileModel();
-            $row = $sfm->getByKey($key);
-            if ($row && !empty($row['data'])) {
-                return base_url('assets/db/' . rawurlencode($key));
-            }
-        } catch (\Throwable $e) {
-            // Silently fall back to file-based lookup
-        }
-
         $path = setting($key, $default);
         if (!$path || !is_string($path)) {
             if (is_string($default) && $default !== null) {
@@ -156,9 +146,6 @@ if (!function_exists('setting_url')) {
             }
 
             return null;
-        }
-        if (is_string($path) && str_starts_with($path, 'db://')) {
-            return base_url('assets/db/' . rawurlencode($key));
         }
         $path = ltrim((string) $path, '/');
         if (strpos($path, 'uploads/settings/') === 0) {

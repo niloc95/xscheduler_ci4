@@ -656,21 +656,6 @@ class NotificationWhatsAppService
     }
 
     /**
-     * Legacy method - Template-only enforcement for Meta Cloud API
-     * @deprecated Use sendMessage() instead
-     * 
-     * @param int $businessId Business ID
-     * @param string $toPhone Recipient phone
-     * @param string $eventType Event type
-     * @param array $bodyParameters Parameters for Meta Cloud templates
-     * @param string|null $renderedMessage Pre-rendered message from NotificationTemplateService
-     */
-    public function sendTemplateMessage(int $businessId, string $toPhone, string $eventType, array $bodyParameters = [], ?string $renderedMessage = null): array
-    {
-        return $this->sendMessage($businessId, $toPhone, $eventType, $bodyParameters, [], [], $renderedMessage);
-    }
-
-    /**
      * Sends a test WhatsApp message using the configured provider
      */
     public function sendTestMessage(int $businessId, string $toPhone): array

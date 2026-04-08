@@ -69,7 +69,7 @@ class UserModel extends BaseModel
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
-        'provider_id', // DEPRECATED: Use xs_provider_staff_assignments pivot table instead
+        'provider_id',
         'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
         'profile_image', 'color'
     ];

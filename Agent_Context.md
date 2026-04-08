@@ -1,7 +1,7 @@
 # WebScheduler CI4 - Agent Context & Engineering Standards
 
 > Read this document before making structural, architectural, API, scheduling, or UI changes.
-> These rules are repo-specific and should be treated as the working contract for this codebase.
+> This file is the live engineering contract for this repository.
 
 ---
 
@@ -9,19 +9,16 @@
 
 WebScheduler CI4 is a professional appointment scheduling system built on CodeIgniter 4.
 
-Architecture: service-oriented CodeIgniter monolith with server-rendered views, REST-style APIs, Vite-managed frontend assets, and a custom scheduler/public-booking experience.
+Architecture: service-oriented CI4 monolith with server-rendered views, REST-style APIs, Vite-managed frontend assets, and a custom scheduler/public-booking experience.
 
-Current stage: active development and refactoring. The foundation, setup flow, settings system, public booking flow, and core scheduling services exist, while controller seams, SPA initialization boundaries, and focused regression coverage are being consolidated across the remaining high-churn surfaces.
+Current state: active hardening. Core workflows are production-capable, with focused debt cleanup still needed in scheduler/frontend internals and selected user-management/calendar seams.
 
 ### Current Refactor Snapshot
-- Settings, notifications, appointments, dashboard, user management, customer management, search, and services have all moved toward explicit constructor seams or extracted service boundaries.
-- Appointment form and provider-schedule SPA behavior now live in frontend modules instead of view-local inline scripts.
-- Focused regression coverage exists for appointment form SPA re-initialization, provider schedule SPA re-initialization, customer-management CRUD/search/history journeys, and service CRUD/provider-assignment journeys.
-- Compatibility hardening is active for mixed-schema environments where internal-user active state may use `status` and/or `is_active`, and where hash columns may not be present in every migrated local database.
-- Phone normalization now flows through `PhoneNumberService` (E.164-style output) with optional `phone_country_code` inputs and default country code settings under `localization.default_phone_country_code` (fallback `+27`).
-- Notification event mapping is now status-aware for newly created bookings: pending bookings emit `appointment_pending`, while confirmed bookings emit `appointment_confirmed`.
-- Customer list renderers must treat zero/invalid SQL timestamps (for example `0000-00-00 00:00:00`) as empty display values instead of rendering negative-year dates.
-- Remaining cleanup is centered on the last legacy controllers and any extracted seams that still lack consistent adoption.
+- Business logic has moved from controllers into service boundaries.
+- Scheduler and appointment UI behavior is modularized under `resources/js/modules`.
+- Multi-role support is live via `xs_user_roles` with compatibility fallback to `xs_users.role`.
+- Notification delivery uses queue + dispatcher + delivery logs.
+- Schema-safe compatibility is still required across mixed local databases.
 
 ---
 
@@ -32,26 +29,26 @@ Current stage: active development and refactoring. The foundation, setup flow, s
 - CodeIgniter 4
 - MySQL / MariaDB only
 - Session-based authentication
-- Role filters via CodeIgniter filters and app-level role checks
+- Route filters + service-level authorization
 
 ### Frontend
 - Vite 6
 - Tailwind CSS 3.4
 - SCSS
-- Material Design 3 styling and Material packages
+- Material Design 3 packages/styles
 - Chart.js 4
 - Luxon 3
 - Plain JavaScript modules
 
 ### Build / Release
-- npm for frontend build and packaging scripts
+- npm scripts for asset build/release flow
 - Composer for PHP dependencies
-- Custom deployment packaging via `scripts/package.js`
+- Packaging via `scripts/package.js`
 - Release automation via `scripts/release.js`
 
 ### No Framework Drift
-- Do not introduce React, Vue, Alpine, or another frontend framework into this repo unless explicitly requested.
-- Do not introduce TypeScript unless a specific scoped change requires it and the team has approved that direction.
+- Do not introduce React/Vue/Alpine without explicit approval.
+- Do not introduce TypeScript without explicit scoped approval.
 
 ---
 
@@ -68,11 +65,10 @@ app/
   Database/
   Filters/
   Helpers/
-  Libraries/
   Models/
   Services/
-
     Appointment/
+    Calendar/
     Concerns/
     Settings/
   Views/
@@ -94,6 +90,8 @@ resources/
     dark-mode.js
     charts.js
     setup.js
+    unified-sidebar.js
+    material-web.js
   scss/
     app-consolidated.scss
 ```
@@ -105,605 +103,280 @@ docs/
   audits/
   configuration/
   deployment/
+  design/
+  development/
+  scheduler/
+  security/
   technical/
   testing/
-webschedulr-deploy/
-builds/
+```
 
-- Scheduling, booking, availability, timezone conversion, notification dispatch, dashboard metrics, search, and settings workflows belong in services.
-- If a controller or view needs non-trivial scheduling logic, the logic is probably in the wrong place.
-- Do not turn models into controller replacements.
-- All models extend project conventions and must stay compatible with the existing `BaseModel` usage.
+### Known Dead Code
+- Runtime calendar API controller is `app/Controllers/Api/CalendarController.php`.
 
-- Do not extend the framework `Migration` class directly for app migrations.
+---
 
-### Rule 5 - API Controllers Use the Base API Contract
-- API controllers should extend `App\Controllers\Api\BaseApiController` when they follow the standardized API envelope.
-- Success responses use:
-  - `{ "data": ..., "meta": ... }`
-- Error responses use:
-  - `{ "error": { "message": ..., "code": ..., "details": ... } }`
+## Architecture Rules
 
-### Rule 6 - Views Are Render Layers
-- Views should not perform scheduling calculations, status normalization, or timezone business logic.
-- Precompute data in services or controllers before passing it into views.
+### Rule 1 - Services Own Business Logic
+- Scheduling, booking, availability, timezone conversion, notification dispatch, and query scoping belong in services.
+
+### Rule 2 - Controllers Stay Thin
+- Controllers parse requests, call services, and shape responses.
+- Controllers must not become alternate business layers.
+
+### Rule 3 - Models Stay Data-Focused
+- Models should encapsulate data access and query composition.
+- Keep model usage compatible with project conventions.
+
+### Rule 4 - Migrations Extend MigrationBase
+- App migrations must extend `App\Database\MigrationBase`.
+
+### Rule 5 - API Envelope Contract
+- API controllers should use `App\Controllers\Api\BaseApiController` where applicable.
+- Success:
+```json
+{ "data": {}, "meta": {} }
+```
+- Error:
+```json
+{ "error": { "message": "", "code": "", "details": {} } }
+```
+
+### Rule 6 - Views Render, They Do Not Decide
+- Views should not perform business logic, authorization, or timezone calculations.
 
 ---
 
 ## Database Rules
 
 ### Core Conventions
-- Table prefix is `xs_`.
-- MySQL / MariaDB only.
-- SQLite is not a supported application database target.
+- Table prefix: `xs_`.
+- Runtime DB: MySQL / MariaDB only.
+- SQLite is not a supported app runtime DB.
+- Runtime schema is authoritative for this file.
 
 ### Customer vs User Split
-- `xs_users` stores login-capable staff, providers, and admins.
-- `xs_customers` stores booking customers.
-- Appointments must use `customer_id` for customers.
-- `user_id` on appointments is deprecated and must not be reused.
+- `xs_users` holds internal login users.
+- `xs_customers` holds booking customers.
+- Appointment customer linkage is `xs_appointments.customer_id`.
 
-### Hash-Based Public Identifiers
-- Public-facing appointment and customer flows use hashes or public tokens.
-- Do not expose sequential numeric IDs in customer-facing URLs if a hash/token flow already exists.
+### Complete Current Runtime Schema
 
-### Settings Storage
-- Settings are stored in `xs_settings` as key-value pairs.
-- Keys are namespaced, for example:
-  - `general.*`
-  - `localization.*`
-  - `booking.*`
-  - `notifications.*`
-  - `branding.*`
-  - `security.*`
-
-### Complete Current Schema
-
-The current database is centered on appointments, provider availability, public booking, settings, and queued notifications. Use the schema below as the canonical working model when changing data access, migrations, services, or API payloads.
+**Total application tables: 21** (all prefixed `xs_`)
 
 #### Core Identity Tables
 
 ##### `xs_users`
-- Login-capable internal actors: admin, provider, staff.
-- Key columns:
-  - `id`
-  - `name`
-  - `email`
-  - `phone`
-  - `password_hash`
-  - `role` (primary/highest-privilege role for backward compatibility, derived from xs_user_roles)
-  - `status`
-  - `is_active` (legacy/compatibility schemas)
-  - `color`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `name`, `email`, `phone`, `password_hash`, `role`
+  - `created_at`, `updated_at`, `color`
+  - `reset_token`, `reset_expires`, `status`, `profile_image`, `last_login`
 - Notes:
-  - This is not the customer table.
-  - Providers and staff are modeled here and linked outward through schedules, services, blocked times, and appointments.
-  - Active-state checks in services and tests must branch by available column (`is_active` first when present, otherwise normalized `status`).
-  - Multi-role support: A single user may now hold multiple roles simultaneously via the `xs_user_roles` junction table.
-  - The `xs_users.role` column stores the primary/highest-privilege role (admin > provider > staff) for backward compatibility and quick lookups.
-  - Query actual assigned roles via `UserModel::getRolesForUser($userId)` which reads from `xs_user_roles` and falls back to `xs_users.role` for migration safety.
+  - `status` is the canonical active-state field in this runtime.
 
 ##### `xs_user_roles`
-- Multi-role assignment junction table. A single user may hold multiple roles simultaneously.
-- Key columns:
-  - `id`
-  - `user_id` (FK to `xs_users.id` with `ON DELETE CASCADE`)
-  - `role` (ENUM: `admin`, `provider`, `staff`)
-  - `created_at`
+- Columns:
+  - `id`, `user_id`, `role`, `created_at`
 - Notes:
-  - Unique constraint on `(user_id, role)` prevents duplicate role assignment.
-  - This table is authoritative for role membership; `xs_users.role` is a denormalized cache of the highest-privilege role.
-  - Introduced in Phase 3 to enable dynamic role selection, staff/provider/admin multi-role scenarios.
-  - Migration `2026-04-08-000001_CreateUserRolesTable.php` backfills roles from existing `xs_users.role` values.
-  - Systems that have not yet run the migration fall back to `xs_users.role` for role evaluation.
+  - Authoritative multi-role membership table.
+  - Backfilled from `xs_users.role` in `2026-04-08-000001_CreateUserRolesTable.php`.
 
 ##### `xs_customers`
-- Booking customers and customer-profile data.
-- Key columns:
-  - `id`
-  - `first_name`
-  - `last_name`
-  - `email`
-  - `phone`
-  - `address`
-  - `notes`
-  - `custom_fields`
-  - `hash`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `first_name`, `last_name`, `email`, `phone`, `address`, `notes`, `created_at`, `updated_at`
 - Notes:
-  - Public-facing customer flows should use `hash`, not the numeric `id`.
-  - `CustomerModel` generates `hash` on insert when the column exists.
+  - The codebase expects hash-capable customer records for public portal routes such as `/my-appointments/{hash}`.
+  - This runtime does not currently expose a `hash` column on `xs_customers`, so public customer portal work should treat that as schema drift and restore the column before relying on hash-based lookup.
+  - Internal-only resolution may use `CustomerModel::findByIdentifier()` numeric fallback, but public customer access should not.
 
 #### Core Scheduling Tables
 
 ##### `xs_services`
-- Bookable services.
-- Key columns:
-  - `id`
-  - `name`
-  - `description`
-  - `duration_min`
-  - `price`
-  - `buffer_before`
-  - `buffer_after`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - `duration_min` is the service duration baseline.
-  - `buffer_before` and `buffer_after` must be included in availability logic.
-  - `category_id`
-  - `active`
-- Notes:
-  - `duration_min` is the service duration baseline.
-  - `buffer_before` and `buffer_after` must be included in availability logic.
-  - `category_id` is an optional FK to `xs_categories`.
-  - `active` (0/1) controls whether the service appears in booking flows.
+- Columns:
+  - `id`, `name`, `description`, `duration_min`, `buffer_before`, `buffer_after`, `price`, `created_at`, `updated_at`, `category_id`, `active`
 
 ##### `xs_categories`
-- Service category labels for organizing bookable services.
-- Key columns:
-  - `id`
-  - `name`
-  - `description`
-  - `color`
-  - `active`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Optional classification layer used by `xs_services.category_id`.
-  - `color` is a hex string (e.g. `#FF5733`).
-  - Managed by `CategoryModel` via `app/Controllers/ServiceCategories.php`.
+- Columns:
+  - `id`, `name`, `description`, `color`, `created_at`, `updated_at`, `active`
 
 ##### `xs_appointments`
-- Canonical appointment record.
-- Key columns:
-  - `id`
-  - `customer_id`
-  - `provider_id`
-  - `service_id`
-  - `location_id`
-  - `appointment_date`
-  - `appointment_time`
-  - `start_at`
-  - `end_at`
-  - `stored_timezone`
-  - `status`
-  - `notes`
-  - `hash`
-  - `public_token`
-  - `public_token_expires_at`
-  - `location_name`
-  - `location_address`
-  - `location_contact`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - `start_at` and `end_at` are the canonical persisted datetime fields.
-  - Stored datetimes are UTC.
-  - `customer_id` is canonical. `user_id` is deprecated and must not be used for new logic.
-  - `appointment_date` and `appointment_time` still exist for compatibility, but new scheduling logic should anchor on `start_at` and `end_at`.
-  - `location_name`, `location_address`, and `location_contact` are snapshot fields copied onto the appointment so historical records remain stable.
-  - Public customer flows may use `hash` and time-limited `public_token` fields.
+- Columns:
+  - `id`, `provider_id`, `service_id`, `start_at`, `end_at`, `stored_timezone`, `status`, `notes`
+  - `hash`, `public_token`, `public_token_expires_at`
+  - `created_at`, `updated_at`, `reminder_sent`
+  - `customer_id`, `location_id`, `location_name`, `location_address`, `location_contact`
 
 ##### `xs_blocked_times`
-- Provider or global time exclusions.
-- Key columns:
-  - `id`
-  - `provider_id`
-  - `start_at`
-  - `end_at`
-  - `reason`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - `provider_id = NULL` means a global block.
-  - This table was migrated from `start_time` and `end_time` to UTC-backed `start_at` and `end_at`.
+- Columns:
+  - `id`, `provider_id`, `start_at`, `end_at`, `reason`, `created_at`, `updated_at`
 
-#### Availability, Hours, and Location Tables
+#### Availability / Location Tables
 
 ##### `xs_business_hours`
-- Business-hour windows, typically keyed by provider and weekday.
-- Key columns:
-  - `id`
-  - `provider_id`
-  - `day_of_week`
-  - `is_open`
-  - `start_time`
-  - `end_time`
-  - `breaks_json`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `provider_id`, `weekday`, `start_time`, `end_time`, `breaks_json`, `created_at`, `updated_at`
 - Notes:
-  - These values express local business-time concepts and must be interpreted in the configured business timezone.
+  - This runtime uses `weekday`, not `day_of_week`.
 
 ##### `xs_provider_schedules`
-- Provider-specific recurring schedule definition.
-- Key columns:
-  - `id`
-  - `provider_id`
-  - `location_id`
-  - `day_of_week`
-  - `start_time`
-  - `end_time`
-  - `is_available`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `provider_id`, `day_of_week`, `start_time`, `end_time`, `break_start`, `break_end`, `is_active`, `created_at`, `updated_at`
 - Notes:
-  - Unique schedule rows exist per provider/day.
-  - `location_id` is nullable and uses `ON DELETE SET NULL` semantics.
+  - This runtime does not include `location_id`; older docs and schema snapshots may still mention it.
 
 ##### `xs_locations`
-- Business or provider appointment locations.
-- Key columns:
-  - `id`
-  - `provider_id`
-  - `name`
-  - `address`
-  - `city`
-  - `state`
-  - `postal_code`
-  - `country`
-  - `phone`
-  - `email`
-  - `description`
-  - `is_active`
-  - `is_primary`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Locations belong to providers and can be referenced both by schedules and appointments.
+- Columns:
+  - `id`, `provider_id`, `name`, `address`, `contact_number`, `is_primary`, `is_active`, `created_at`, `updated_at`
 
 ##### `xs_location_days`
-- Day-level hours and availability overrides for a location.
-- Key columns:
-  - `id`
-  - `location_id`
-  - `day_of_week`
-  - `is_open`
-  - `open_time`
-  - `close_time`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `location_id`, `day_of_week`
 - Notes:
-  - Unique per `location_id` and `day_of_week`.
+  - Runtime currently exposes only these three columns.
+  - Treat this table as schema-incomplete for day-level hours/availability work until additional fields are restored or intentionally redesigned.
 
 ##### `xs_providers_services`
-- Provider-to-service pivot.
-- Key columns:
-  - `provider_id`
-  - `service_id`
-- Notes:
-  - Use this as the authority for which providers can deliver which services.
+- Columns:
+  - `provider_id`, `service_id`, `created_at`
 
 ##### `xs_provider_staff_assignments`
-- Provider-to-staff assignment pivot.
-- Key columns:
-  - `id`
-  - `provider_id`
-  - `staff_id`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Used to scope staff access and operational ownership.
-  - Protected by a unique provider/staff pairing.
+- Columns:
+  - `id`, `provider_id`, `staff_id`, `assigned_at`, `assigned_by`, `status`
 
-#### Settings and File-Backed Configuration Tables
+#### Settings Tables
 
 ##### `xs_settings`
-- Typed key-value application settings.
-- Key columns:
-  - `id`
-  - `setting_key`
-  - `setting_value`
-  - `setting_type`
-  - `updated_by`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `setting_key`, `setting_value`, `setting_type`, `created_at`, `updated_at`
 - Notes:
-  - This is the source of truth for configurable application behavior.
-  - `updated_by` links settings changes back to a user when available.
+  - This runtime does not currently expose `updated_by` even though migrations/model compatibility logic still support it.
 
-##### `xs_settings_files`
-- Binary or file-backed settings payloads.
-- Key columns:
-  - `id`
-  - `setting_key`
-  - `filename`
-  - `mime`
-  - `data`
-  - `updated_by`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Used for settings values that need stored file/blob content rather than plain scalar values.
-  - `setting_key` is unique.
-
-#### Notification Policy and Delivery Tables
+#### Notification Tables
 
 ##### `xs_business_notification_rules`
-- Business-level notification policy by event and channel.
-- Key columns:
-  - `id`
-  - `business_id`
-  - `event_type`
-  - `channel`
-  - `is_enabled`
-  - `reminder_offset_minutes`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Unique on `business_id`, `event_type`, and `channel`.
+- Columns:
+  - `id`, `business_id`, `event_type`, `channel`, `is_enabled`, `reminder_offset_minutes`, `created_at`, `updated_at`
 
 ##### `xs_business_integrations`
-- Provider/integration configuration for delivery channels.
-- Key columns:
-  - `id`
-  - `business_id`
-  - `channel`
-  - `provider_name`
-  - `encrypted_config`
-  - `is_active`
-  - `health_status`
-  - `last_tested_at`
-  - `created_at`
-  - `updated_at`
-- Notes:
-  - Unique on `business_id` and `channel`.
-  - Secrets belong in `encrypted_config`, not in plain settings rows.
+- Columns:
+  - `id`, `business_id`, `channel`, `provider_name`, `encrypted_config`, `is_active`, `health_status`, `last_tested_at`, `created_at`, `updated_at`
 
 ##### `xs_message_templates`
-- Channel-aware message template storage.
-- Key columns:
-  - `id`
-  - `business_id`
-  - `event_type`
-  - `channel`
-  - `provider`
-  - `provider_template_id`
-  - `locale`
-  - `subject`
-  - `body`
-  - `is_active`
-  - `created_at`
-  - `updated_at`
+- Columns:
+  - `id`, `business_id`, `event_type`, `channel`, `provider`, `provider_template_id`, `locale`, `subject`, `body`, `is_active`, `created_at`, `updated_at`
 
 ##### `xs_notification_queue`
-- Queue of notification jobs awaiting dispatch or retry.
-- Key columns:
-  - `id`
-  - `business_id`
-  - `appointment_id`
-  - `customer_id`
-  - `channel`
-  - `event_type`
-  - `recipient`
-  - `payload_json`
-  - `status`
-  - `run_after`
-  - `attempt_count`
-  - `last_error`
-  - `idempotency_key`
-  - `provider_message_id`
-  - `created_at`
-  - `updated_at`
-  - `sent_at`
+- Columns:
+  - `id`, `business_id`, `channel`, `event_type`, `appointment_id`, `status`, `attempts`, `max_attempts`, `run_after`, `locked_at`, `lock_token`, `last_error`, `sent_at`, `idempotency_key`, `correlation_id`, `created_at`, `updated_at`
 - Notes:
-  - Queue dispatch is the canonical notification execution path.
-  - `idempotency_key` is unique and prevents duplicate deliveries.
+  - This runtime uses `attempts` and `max_attempts` instead of legacy `attempt_count`.
+  - This runtime includes `locked_at`, `lock_token`, and `correlation_id`.
+  - This runtime does not currently expose legacy columns such as `customer_id`, `recipient`, `payload_json`, `attempt_count`, or `provider_message_id`.
 
 ##### `xs_notification_delivery_logs`
-- Immutable-ish delivery result records for attempted sends.
-- Key columns:
-  - `id`
-  - `queue_id`
-  - `appointment_id`
-  - `customer_id`
-  - `channel`
-  - `event_type`
-  - `recipient`
-  - `provider_name`
-  - `provider_message_id`
-  - `status`
-  - `error_code`
-  - `error_message`
-  - `payload_json`
-  - `response_json`
-  - `created_at`
+- Columns:
+  - `id`, `business_id`, `queue_id`, `correlation_id`, `channel`, `event_type`, `appointment_id`, `recipient`, `provider`, `status`, `attempt`, `error_message`, `created_at`, `updated_at`
 
 ##### `xs_notification_opt_outs`
-- Channel-specific opt-out registry.
-- Key columns:
-  - `id`
-  - `business_id`
-  - `channel`
-  - `recipient`
-  - `reason`
-  - `created_at`
+- Columns:
+  - `id`, `business_id`, `channel`, `recipient`, `reason`, `created_at`, `updated_at`
+
+#### Audit Table
+
+##### `xs_audit_logs`
+- Columns:
+  - `id`, `user_id`, `action`, `target_type`, `target_id`, `old_value`, `new_value`, `ip_address`, `user_agent`, `created_at`
 - Notes:
-  - Unique on `business_id`, `channel`, and `recipient`.
+  - In this runtime the table name is `xs_audit_logs`.
+  - Older documentation may mention legacy `audit_logs` without the `xs_` prefix; verify actual runtime table name before querying in mixed environments.
 
-#### Audit and Traceability Tables
-
-##### `audit_logs`
-- Internal audit trail for administrative and user-management actions.
-- Key columns:
-  - `id`
-  - `user_id`
-  - `action`
-  - `target_type`
-  - `target_id`
-  - `old_value`
-  - `new_value`
-  - `ip_address`
-  - `user_agent`
-  - `created_at`
-- Notes:
-  - `old_value` and `new_value` are JSON-like text snapshots.
-  - Do not store audit-only business history in application tables when this audit surface is the intended trace.
-  - **This table intentionally uses no `xs_` prefix.** Legacy naming. Reference it as `audit_logs`, not `xs_audit_logs`.
-
-#### Canonical Relationships
+### Canonical Relationships
 - `xs_appointments.customer_id -> xs_customers.id`
 - `xs_appointments.provider_id -> xs_users.id`
 - `xs_appointments.service_id -> xs_services.id`
 - `xs_appointments.location_id -> xs_locations.id`
-- `xs_blocked_times.provider_id -> xs_users.id`
 - `xs_business_hours.provider_id -> xs_users.id`
 - `xs_provider_schedules.provider_id -> xs_users.id`
-- `xs_provider_schedules.location_id -> xs_locations.id`
 - `xs_locations.provider_id -> xs_users.id`
 - `xs_location_days.location_id -> xs_locations.id`
 - `xs_providers_services.provider_id -> xs_users.id`
 - `xs_providers_services.service_id -> xs_services.id`
 - `xs_provider_staff_assignments.provider_id -> xs_users.id`
 - `xs_provider_staff_assignments.staff_id -> xs_users.id`
-- `xs_settings.updated_by -> xs_users.id` when populated
-- `xs_settings_files.updated_by -> xs_users.id` when populated
+- `xs_user_roles.user_id -> xs_users.id`
 - `xs_notification_queue.appointment_id -> xs_appointments.id`
-- `xs_notification_queue.customer_id -> xs_customers.id`
 - `xs_notification_delivery_logs.queue_id -> xs_notification_queue.id`
-- `xs_notification_delivery_logs.appointment_id -> xs_appointments.id`
-- `xs_notification_delivery_logs.customer_id -> xs_customers.id`
-- `xs_services.category_id -> xs_categories.id` (optional, nullable)
-- `audit_logs.user_id -> xs_users.id`
+- `xs_audit_logs.user_id -> xs_users.id`
 
-#### Index and Query Expectations
-- Appointment availability and calendar queries must be optimized around provider, status, and UTC datetime ranges.
-- Public appointment access depends on indexed `hash` and `public_token` lookups.
-- Location-day, provider-day, provider-service, provider-staff, and notification-rule uniqueness constraints are part of the domain contract and should not be bypassed in application code.
-- Queue dispatch depends on indexed `status`, `run_after`, and idempotency fields.
-
-#### Legacy and Compatibility Rules
+### Compatibility Rules
 - Do not write new logic against appointment `user_id`.
-- Do not reintroduce `start_time` and `end_time` on appointments or blocked times; use `start_at` and `end_at`.
-- Treat `appointment_date` and `appointment_time` as compatibility fields only when older views or exports still need them.
-- When adding new public booking flows, prefer `hash` or `public_token` over raw numeric identifiers.
+- Keep scheduling logic on `start_at` / `end_at`.
+- Use schema-safe service/model fallback behavior when runtime columns vary.
+- `xs_business_hours` uses `weekday` in this runtime, not `day_of_week`; verify before querying in mixed-schema environments.
+- `xs_customers.hash` is absent in this runtime even though public customer portal code expects it; restore schema before relying on `/my-appointments/{hash}` flows.
+- `xs_provider_schedules` does not include `location_id` in this runtime; older docs that reference it are not authoritative here.
+- `xs_location_days` is currently a three-column stub in this runtime; verify schema intent before implementing location-hours logic against it.
+- `xs_settings` runtime omits `updated_by`; use model/service compatibility checks instead of assuming its presence.
+- `xs_notification_queue` uses `attempts`, `max_attempts`, `locked_at`, `lock_token`, and `correlation_id`; do not assume older queue columns still exist.
 
 ---
 
 ## Timezone & Datetime Rules
 
-> This is one of the most important rules in the repo.
-
 ### Canonical Strategy
-- Datetimes in the database are stored in UTC.
-- Business-local display and calendar semantics are resolved through settings and `TimezoneService`.
-- `start_at` and `end_at` are the canonical appointment datetime fields.
+- Persist UTC datetimes.
+- Convert at service/render boundaries using localization settings.
 
 ### Mandatory Services
-- Use `App\Services\TimezoneService` for UTC/local conversions.
-- Use `LocalizationSettingsService` or settings-backed services to resolve active timezone and time format.
+- `App\Services\TimezoneService`
+- `App\Services\LocalizationSettingsService`
 
 ### Required Behavior
-- All comparisons against persisted appointment times should assume UTC storage.
-- All business-local concepts like "today", "this week", and "this month" should be evaluated in the configured business timezone before converting query boundaries to UTC.
-- Location hours and provider schedules must be interpreted in the configured localization timezone, not in server-default time.
-
-### Forbidden
-- Do not hardcode timezone strings in business logic when a settings-backed timezone should be used.
-- Do not mix `appointment_date` / `appointment_time` style legacy fields into new scheduling logic when `start_at` / `end_at` are available.
-- Do not use raw `strtotime()` as the authoritative scheduling engine for timezone-sensitive logic when `TimezoneService`, `DateTime`, or `DateTimeImmutable` should be used.
+- Compute business-local boundaries first, then convert to UTC for DB querying.
 
 ---
 
 ## Scheduling & Booking Rules
 
 ### Single Sources of Truth
-- `AvailabilityService` is the source of truth for slot availability.
-- `AppointmentBookingService` is the source of truth for appointment creation flows.
-- `AppointmentModel` is the core appointment persistence model.
+- `AvailabilityService`
+- `AppointmentBookingService`
+- `Appointment\AppointmentQueryService`
+- `Appointment\AppointmentStatus`
 
 ### Booking Pipeline
-All booking paths should flow through the same business rules:
+```text
+1. Validate service/provider context
+2. Resolve timezone boundaries
+3. Validate business hours
+4. Validate availability and conflicts
+5. Resolve/create customer
+6. Persist appointment
+7. Enqueue notifications
+```
 
-1. Validate service and provider context
-2. Resolve timezone
-3. Compute appointment times
-4. Validate business hours
-5. Validate slot availability
-6. Resolve or create customer
-7. Persist appointment
-8. Queue notifications
-
-Notification dispatch for step 8 must derive event type from canonical appointment status via `AppointmentStatus::notificationEvent()`.
-
-If a booking flow bypasses that pipeline, it is a defect unless there is a documented reason.
-
-### Availability Rules
-- Availability calculations must account for:
-  - provider hours
-  - business hours
-  - blocked times
-  - existing appointments
-  - service duration
-  - buffer time
-  - optional location constraints
-- Client code may display slot data, but it must not invent availability rules locally.
-
-### Appointment Status Rules
-- Use the canonical status handling in `App\Services\Appointment\AppointmentStatus`.
-- Do not hardcode ad hoc status vocabularies in new controllers, views, or scripts.
+### Notification Enqueue Rule
+- The enqueue step must derive event type from `AppointmentStatus::notificationEvent()`.
+- New booking flows must not hardcode `appointment_confirmed` for all successful creates.
 
 ---
 
 ## Settings Rules
 
 ### Single Source of Truth
-- Application configuration must flow through `SettingModel` and settings-focused services.
-- Read settings with:
-  - `SettingModel::getByPrefix()`
-  - `SettingModel::getByKeys()`
-  - service wrappers such as `LocalizationSettingsService`
+- Use `SettingModel` and settings services.
+- Active key namespaces: `general.*`, `localization.*`, `booking.*`, `calendar.*`, `notifications.*`, `branding.*`, `security.*`.
 
-### No Direct Config Drift
-- Do not duplicate business-hour, localization, or booking-field configuration in multiple places.
-- If a value is user-configurable in Settings, do not hardcode a separate module-specific copy.
-
-### High-Impact Settings Consumers
-- Scheduler configuration
-- Booking field configuration
-- Currency and time display
-- Notification defaults
-- Business hours and booking windows
-
-### Settings Key Namespaces
-The following dot-prefixed namespaces are in active use:
-
-| Prefix | Purpose |
-|---|---|
-| `general.*` | Business identity (name, email, logo, phone) |
-| `localization.*` | Timezone, locale, currency, time format, first day of week |
-| `booking.*` | Field visibility/requirement, day window, time resolution, break times |
-| `calendar.*` | Calendar view defaults, slot duration, height, rebuild flag, weekend display |
-| `notifications.*` | Default notification language and channel defaults |
-| `branding.*` | Theme and visual identity overrides |
-| `security.*` | Auth and access policy settings |
-
-Known `calendar.*` keys currently in use:
-- `calendar.day_start`, `calendar.day_end`
-- `calendar.default_view`
-- `calendar.slot_duration`
-- `calendar.height`
-- `calendar.show_weekends`
-- `calendar.rebuild_enabled`
-- `calendar.prototype_enabled`
-
-Known `booking.*` keys currently in use:
-- `booking.fields` (JSON blob of field config)
-- `booking.day_start`, `booking.day_end`, `booking.break_start`, `booking.break_end`
-- `booking.time_resolution`
-- `booking.statuses`
-- `booking.*_display`, `booking.*_required` for each form field (first_names, surname, email, phone, address, notes)
+### Phone Normalization Default
+- `PhoneNumberService` reads `localization.default_phone_country_code` with fallback to `localization.phone_country_code`.
+- If neither is configured, the default fallback is `+27`.
 
 ---
 
 ## Frontend Rules
 
-### Rule 1 - Use Existing Entry Points
-Current Vite entry points are:
+### Rule 1 - Existing Entry Points Only
 - `resources/js/app.js`
 - `resources/scss/app-consolidated.scss`
 - `resources/js/material-web.js`
@@ -714,68 +387,43 @@ Current Vite entry points are:
 - `resources/js/charts.js`
 - `resources/js/public-booking.js`
 
-Do not create a new top-level asset entry point unless the change truly needs one.
+### Rule 2 - SPA Safety
+- Use idempotent initializers with dataset guards.
+- Non-AJAX form posts must carry `data-no-spa="true"`.
 
-### Rule 2 - Preserve SPA Behavior
-- In-app navigation is handled by `resources/js/spa.js`.
-- When adding interactive pages, make sure page initialization works after SPA content swaps.
-- Avoid assuming a full page reload for every screen.
-
-### Rule 3 - Respect Existing Styling Direction
-- Tailwind and SCSS are already integrated.
-- Use the consolidated SCSS pipeline.
-- Do not create a second independent styling system.
-
-### Rule 4 - Avoid Inline Styling Drift
-- Prefer existing utility classes and established styling patterns.
-- Inline styles should be the exception, not the default.
-
-### Rule 5 - Scheduler UI Is Custom
-- The scheduler is custom-built.
-- Do not replace it with FullCalendar or another calendar framework unless explicitly requested.
-- Luxon is already part of the scheduler/frontend stack and should remain the date-time utility where that code already depends on it.
-- Keep sticky shell/header stacking above scheduler overlays (for example now-line and in-grid markers) to avoid header occlusion while scrolling.
+### Rule 3 - Styling
+- Tailwind + consolidated SCSS only.
+- No inline style attributes in app-facing templates.
 
 ---
 
 ## API Rules
 
 ### Versioning
-- Versioned API routes live under `/api/v1/`.
-- There is also an unversioned `/api/` surface for some scheduler and operational endpoints.
-- Do not move or rename API routes casually; route stability matters for the frontend and public flows.
-
-### Response Contract
-- Follow the `BaseApiController` envelope for standard API endpoints.
-- Keep status codes coherent with response semantics.
+- Versioned routes under `/api/v1/`.
+- Operational routes under `/api/`.
 
 ### Authorization
-- Use route filters and controller/service authorization together.
-- Hiding a UI action is not sufficient protection for data access.
+- Enforce with route filters plus backend checks.
 
 ### Public Endpoints
-- Public booking and customer-portal routes must continue to respect setup gating, rate limiting, and hash/token-based access patterns.
+- Keep setup/rate-limit/hash-token protections for public flows.
 
 ---
 
 ## Roles & Access Rules
 
-Current operational roles include:
-- `admin` — Full system access, user/business management, settings
-- `provider` — Business owner who manages own services, staff, and bookings
-- `staff` — Employee limited to their assigned provider(s) and related data
-- `customer` — Booking customer without internal login (uses hash/token access)
+Current operational roles:
+- `admin`
+- `provider`
+- `staff`
+- `customer`
 
 ### Multi-Role Support (Phase 3)
-- A single user may now hold **multiple roles simultaneously** via `xs_user_roles` table.
-- Form UI for user creation/edit uses checkboxes (`name="roles[]"`) to select multiple roles.
-- Backend resolves roles via `UserModel::getRolesForUser($userId)` which returns an array of assigned roles.
-- The primary role (highest privilege: admin > provider > staff) is stored in `xs_users.role` for backward compatibility.
-- Services and controllers that need role information should call `getRolesForUser()` to get the full list, not rely on single `role` value.
-- Examples of valid multi-role configurations:
-  - `[admin, provider]` — Business owner who manages own operations
-  - `[provider, staff]` — Provider with appointment-entry privileges
-  - `[admin, provider, staff]` — Administrator with full role flexibility
+- Multi-role memberships are stored in `xs_user_roles`.
+- `xs_users.role` remains compatibility primary role.
+- User forms use checkbox payload `roles[]`.
+- Role-switch endpoint: `POST /api/auth/switch-role`.
 
 ### Route Filters
 - `setup`
@@ -784,187 +432,112 @@ Current operational roles include:
 - `role:admin,provider`
 - `role:admin,provider,staff`
 
-Note: Route filters still check the primary role. For fine-grained multi-role checks, use service-level authorization methods like `AuthorizationService::canManageStaff()`.
-
-### Expectations
-- Admin has full system access.
-- Provider is scoped to provider-owned or provider-relevant data.
-- Staff access is narrower and must be checked at query and service level.
-- Customer-facing public access uses hashes/tokens rather than full staff authentication.
-- When a user has multiple roles, the **most permissive** role (highest privilege) should generally apply for data access. Use service-level authorization for exceptions.
-
 ### Staff Scope Contract
-- Staff are limited to data belonging to their actively-assigned providers via `xs_provider_staff_assignments` (status = `active`).
-- Even if a staff member has `provider` role, their data access must still be scoped through their assignments (role does not automatically elevate scope).
-- The **canonical source** for a staff member's allowed provider IDs is `ProviderStaffModel::getProvidersForStaff($userId, 'active')`. This returns rows where the key for the provider's numeric ID is **`id`** (not `provider_id`).
-- Extract provider IDs with `array_column($result, 'id')`, not `array_column($result, 'provider_id')`.
-- Pass them to appointment query context as `$context['provider_id'] = $providerIds ?: [0]`. The `AppointmentModel::applyContextScope()` reads **`provider_id`** (singular key) and accepts both scalar and array values.
-- **Never** use `'provider_ids'` (plural), `'staff_id'`, or `'filter_by_staff'` as appointment context keys; those keys are not consumed by `applyContextScope`.
-- When staff have no active assignments, force `$context['provider_id'] = [0]` to guarantee no appointments are returned rather than silently returning all appointments.
-- The reference implementation for staff appointment scoping is `AppointmentQueryService::applyProviderScope()` — use it as a template for any new scope-enforcement code.
-- Customer Management for staff must be scoped to customers who have at least one appointment with their assigned providers. Derive the allowed customer IDs via `xs_appointments WHERE provider_id IN (assigned_ids)`, then apply a `whereIn('id', $customerIds)` to the customer query.
-- The provider dropdown on the appointment create/edit form must show **only assigned providers** for staff, not the full provider list.
-- `AuthorizationService::canManageAppointment()` returns `true` for staff because their data-layer scope already restricts what they can access; do not add a second redundant ownership check for staff.
+- Canonical source: `ProviderStaffModel::getProvidersForStaff($userId, 'active')`.
+- Extract provider IDs with `array_column($rows, 'id')`.
+- Preferred appointment context key: `provider_id`.
 
 ### Provider Scope Contract
-- Providers are scoped to their own appointments, schedules, services, and customers.
-- For Customer Management, a provider may only see customers with at least one appointment where
-  they are the assigned provider.
-- The **canonical service** for customer ID resolution is `CustomerAppointmentService`:
+- For customer scoping, delegate to `CustomerAppointmentService`:
   - `resolveCustomerIdsForProvider(int $providerUserId): array`
   - `resolveCustomerIdsForStaff(int $staffUserId): array`
   - `getProviderIdsForStaff(int $staffUserId): array`
-- Do not write raw DB queries for customer ID resolution inside controllers — delegate to these service methods.
-- Object-level authorization for customer edit/view/history routes must be enforced after hash lookup,
-  for both provider and staff roles.
 
 ---
 
 ## Notifications Rules
 
-### Delivery Model
-- Notifications are queued and dispatched through the notification queue system.
-- Do not implement one-off notification paths when existing queue and dispatcher flows should be used.
-- When a booking or status change needs immediate email delivery (e.g., public booking confirmation),
-  enqueue via `AppointmentEventService::dispatch()` and then call
-  `NotificationQueueDispatcher::dispatch()` synchronously in the same request.
-  This preserves idempotency keys, delivery logs, and opt-out checks while sending without cron.
-- **Do not** call `AppointmentNotificationService::sendEventEmail()` directly from booking or mutation
-  services. That method is reserved for the manual resend path in `Api/Appointments` controller.
-
-### Channels
-- Email
-- SMS
-- WhatsApp
-
 ### Canonical Services
-- `AppointmentEventService` — entry point for enqueuing appointment-event notifications
-- `NotificationQueueService` — writes jobs to `xs_notification_queue`
-- `NotificationQueueDispatcher` — reads and dispatches queued jobs (also callable synchronously)
-- `AppointmentNotificationService` — synchronous send; **manual resend path only**
-- `NotificationEmailService` / `NotificationSmsService` / `NotificationWhatsAppService` — channel senders
-- `NotificationPolicyService` — evaluates per-channel and per-event notification rules
-- `NotificationCatalog` — constants including `BUSINESS_ID_DEFAULT = 1`
+- `AppointmentEventService`
+- `NotificationQueueService`
+- `NotificationQueueDispatcher`
+- `NotificationPolicyService`
+- `NotificationEmailService`
+- `NotificationSmsService`
+- `NotificationWhatsAppService`
+- `AppointmentNotificationService` (manual resend path)
 
-### Policy
-- Notification behavior should be driven by settings and rule services where available.
-- Templates and integration settings belong to the notification/settings system, not arbitrary module code.
-- Channel parity is required for placeholder behavior in outbound messaging:
-  - Email, SMS, and WhatsApp templates must all support `reschedule_link`.
-  - WhatsApp template parameter mapping must stay compatible with provider-specific integrations.
-- Do not display raw appointment `public_token` values in customer-facing UI or message bodies.
-  Use opaque links (for example `/booking/r/{reference}`) plus email/phone verification instead.
+### Delivery Contract
+- Queue first, then dispatch.
+- Preserve idempotency and delivery-log behavior.
 
 ### Appointment Event Contract
-- `appointment_pending` is the canonical event for bookings created in pending state (including legacy `booked` status mapping).
-- `appointment_confirmed` is used for confirmed appointments.
-- New booking flows must not hardcode confirmation events; resolve event type from status and then enqueue.
-- Default/fallback messaging for Email, SMS, WhatsApp, and Notification Center must include pending-specific wording when event is `appointment_pending`.
+- `appointment_pending` is the canonical event for pending bookings.
+- `appointment_confirmed` is the canonical event for confirmed bookings.
+- New booking flows must resolve event type from appointment status via `AppointmentStatus::notificationEvent()` instead of hardcoding confirmation.
 
 ---
 
 ## Testing Rules
 
 ### Primary Tooling
-- PHPUnit is the test runner.
-- Integration tests use a dedicated MySQL/MariaDB test database.
-
-### Commands
-- `./vendor/bin/phpunit`
-- `npm run test:integration:mysql`
-- `php vendor/bin/phpunit tests/unit/Controllers/ServicesControllerTest.php tests/integration/ServicesJourneyTest.php`
-- `php vendor/bin/phpunit tests/unit/Controllers/SearchControllerTest.php tests/integration/CustomerManagementJourneyTest.php`
+- PHPUnit.
+- Integration tests must use test DB config only.
 
 ### Requirements
-- Do not point tests at a live application schema.
-- Keep test DB configuration isolated via `phpunit.xml`, `phpunit.xml.dist`, `phpunit.mysql.xml.dist`, or `.env` overrides.
-- Journey tests that depend on AJAX-backed controller flows often need an explicit CSRF cookie, a setup flag under `writable/`, and deterministic settings fixtures.
-- Booking-field settings can leak into customer-management validation; seed those settings explicitly in controller journeys instead of assuming ambient DB state.
-- A PHPUnit warning about a missing code coverage driver does not mean the assertions failed; it only means coverage data was not collected.
-
-### Migration Rule
-- Test-related migrations for the application should still respect project migration conventions.
+- Do not run tests against default/live schema.
+- Seed deterministic settings for journey tests.
+- Coverage-driver warning is not an assertion failure.
 
 ---
 
 ## Documentation Rules
 
 ### Canonical Home
-- Repository-authored documentation lives in `/docs`.
-- `README.md` is the main top-level documentation entrypoint.
+- Repository docs in `docs/`.
+- Root `README.md` is top-level documentation entrypoint.
 
-### Exception
-- This file exists in the root because it is an explicit engineering context document requested for agent and contributor guidance.
+### This File
+- `Agent_Context.md` is the root engineering contract file.
 
-### Naming Standard
-- Documentation under `/docs` uses lowercase with underscores.
+---
 
-### Before Adding New Docs
-- Prefer updating an existing `/docs` file if the information logically belongs there.
-- Avoid scattering new one-off markdown files across the repo.
+## Known Tech Debt
+
+| ID | Description | Affected files | Correct fix | Status |
+|----|-------------|----------------|-------------|--------|
+| TD-01 | Dark mode detection currently uses mixed patterns. | `resources/js/dark-mode.js`, `resources/js/utils/dark-mode-detector.js`, scheduler/chart modules | Standardize on `document.documentElement.dataset.theme === 'dark'`. | open |
+| TD-02 | `emitAppointmentsUpdated` consistency is not fully centralized. | status filter and scheduler view modules | Use one shared utility wrapper. | in-progress |
+| TD-03 | Toasts are still emitted through drag-drop module helper path. | `resources/js/modules/scheduler/scheduler-drag-drop.js` | Move to canonical toast utility entrypoint. | open |
+| TD-04 | Scheduler loading paths require strict dispatcher discipline. | `resources/js/modules/scheduler/scheduler-core.js` | Route feature calls through `loadData()`. | in-progress |
+| TD-05 | Day-view positional values require strict day-view derivation. | `resources/js/modules/scheduler/scheduler-day-view.js` | Compute from day-view Luxon datetime range. | open |
+| TD-06 | Duplicate/overlapping currency formatting adapters remain. | `resources/js/currency.js`, scheduler settings/right panel modules | Consolidate around canonical formatter utility. | open |
+| TD-07 | `window.unifiedSidebar` default null export can be misused. | `resources/js/unified-sidebar.js` | Provide clear initialized-instance contract. | open |
+| TD-08 | logger.js adoption remains partial. | `resources/js/modules/scheduler/logger.js`, modules with raw console usage | Adopt logger utility across modules. | open |
+| TD-09 | Delete-preview flow requires ongoing parity checks. | `app/Controllers/UserManagement.php`, `app/Views/user-management/index.php`, route `user-management/delete-preview/{id}` | Keep endpoint, states, and modal behavior aligned. | in-progress |
+| TD-10 | Staff/provider calendar scope must remain guarded by regression tests. | `app/Controllers/Api/CalendarController.php`, `app/Services/Appointment/AppointmentQueryService.php` | Enforce/verify staff provider assignment scope in tests. | in-progress |
+| TD-11 | Phone normalization is not guaranteed at every input boundary. | customer/user mutation controllers/services | Enforce `PhoneNumberService::normalize()` before persistence. | in-progress |
+| TD-12 | Inline style attributes still exist in some templates. | `app/Views/components/dark-mode-toggle.php`, `app/Views/appointments/index.php`, email/error templates | Replace with utility classes or data-* dynamic-color resolver pattern. | open |
 
 ---
 
 ## Debt Prevention Guardrails
 
-### Schema-Drift Guardrails (Tech Debt)
-- Treat this as canonical for internal users: `xs_users` uses `status` (`active|inactive|suspended`) and does not guarantee an `is_active` column.
-- Do not write new `xs_users` query filters that assume `is_active` exists.
-- Do not implement provider-loading filters inline in controllers using raw `where('is_active', ...)` clauses; route through schema-safe model/service methods (for example `UserModel::getProviders()`).
-- Treat this as canonical for appointment public access: `xs_appointments` is expected to include `hash`, `public_token`, and `public_token_expires_at` for public-safe lookup flows.
-- Before changing booking or public booking flows, verify runtime appointment schema with:
-  - `php spark db:table xs_appointments`
-- If runtime schema drifts from expected appointment columns, prefer restoring schema first; only then add compatibility guards in model/service code.
-- For user-active filtering, use one of these patterns:
-  - Preferred: model/service methods that encapsulate active-user semantics.
-  - Fallback for mixed-schema compatibility: `fieldExists('is_active', 'xs_users')` check, else filter by `status = active`.
-- Any change that introduces a new user filter must include a schema-safe path or an explicit migration that adds required columns.
-- If a query references a column that is not guaranteed by this contract, the PR must be treated as incomplete.
-- Seeder logic that queries `xs_users` must follow the same compatibility contract (`is_active` when available, fallback to `status = active`), not assume one schema shape.
+### Schema-Drift Guardrails
+- Validate runtime schema before changing query assumptions.
+- Use schema-safe model/service paths where columns vary by environment.
 
-### Database Isolation Guardrails (Tech Debt)
-- Development web runtime must resolve to the configured `database.default.*` connection.
-- Test execution must use `database.tests.*` only when `CI_ENVIRONMENT=testing`.
-- Never run test suites against live/default schema.
-- Do not assume migration status is recorded under the same migration group used by web runtime; verify migration history table entries before relying on `php spark migrate` output.
-- Before debugging data mismatches, verify active runtime DB with:
-  - `php spark db:table xs_users`
-  - `php spark db:table xs_appointments`
-- Debugging checklist for possible DB crossing:
-  - Confirm `php spark env` output.
-  - Confirm `.env` `database.default.*` and `database.tests.*` values.
-  - Confirm no OS-level overrides for `CI_ENVIRONMENT` and `database.*`.
+### DB Isolation Guardrails
+- Development runtime uses `database.default.*`.
+- Tests use `database.tests.*` only under testing environment.
 
-### AI-Debt Guardrails (Agent and Contributor Quality)
-- Do not cargo-cult schema assumptions across files. Validate table/column contracts first.
-- Do not patch only one crash site when the same assumption appears in nearby flows; perform a targeted local sweep and fix adjacent paths.
-- Do not introduce parallel business rules in controllers if a service/model boundary already exists.
-- Prefer additive, reversible refactors over broad rewrites in dirty branches.
-- In JOIN-heavy CI4 query builders that select aliased fields (for example `c.email`, `s.name`, `u.name`), prevent identifier rewriting by using raw select projections where needed (for example `select($sql, false)`) and validate generated SQL behavior.
-- Any schema-compat helper changes must pass immediate syntax validation (`php -l`) before endpoint checks; parse errors in shared services can cascade into broad API outages.
-- Every bug fix should include:
-  - source-of-truth validation (schema/config/runtime),
-  - minimal code correction,
-  - syntax/error verification,
-  - and a note of residual risk if full sweep is deferred.
-- If an agent cannot verify a path (for example testing bootstrap failure), it must state the gap explicitly and avoid pretending coverage.
-- When implementing staff data scoping, always resolve provider IDs from `ProviderStaffModel::getProvidersForStaff()` and store them under the `'provider_id'` context key (singular, accepts array). Do not invent `'staff_id'` or `'filter_by_staff'` context keys — those are not consumed by `applyContextScope`.
-- A staff scope fix must cover ALL affected surfaces: list page, dashboard, create/edit form dropdowns, and any management list (e.g., customers). Fixing only one surface is incomplete.
+### AI-Debt Guardrails
+- Validate source-of-truth before fixing symptoms.
+- Fix adjacent paths that share the same root assumption.
+- Explicitly call out unverified gaps.
 
 ### Regression Checklist for Schema-Sensitive Changes
-Use this quick gate before merge:
-
 ```text
-[] Did I validate the real runtime schema for affected tables?
-[] Did I avoid hardcoding non-canonical columns on xs_users?
-[] If compatibility logic is needed, did I include safe fallback behavior?
-[] Did I verify development runtime DB target with php spark db:table?
-[] Did I verify no accidental reliance on testing DB settings in web runtime?
-[] Did I lint/validate the touched PHP files and review adjacent call sites?
-[] If user role logic, did I use UserModel::getRolesForUser() instead of direct column read?
-[] If user role form, did I use checkboxes (roles[]) instead of radio buttons (role)?
-[] Did I sync multi-role changes to xs_user_roles table with xs_users.role fallback?
-[] Did I preserve backward compatibility for systems without xs_user_roles migration yet?
+[] Did I validate runtime schema for affected tables?
+[] Did I avoid non-canonical xs_users assumptions?
+[] Did I include compatibility fallbacks where required?
+[] Did I verify runtime DB target?
+[] Did I lint touched PHP files?
+[] For role logic, did I use UserModel::getRolesForUser()?
+[] For user forms, did I preserve roles[] checkbox behavior?
+[] Did I sync role changes with xs_user_roles and keep xs_users.role compatibility?
+[] Did I avoid dead-code surfaces?
+[] Did I document residual risks if full sweep was deferred?
 ```
 
 ---
@@ -972,52 +545,53 @@ Use this quick gate before merge:
 ## Forbidden List
 
 | # | Forbidden | Correct Alternative |
-|---|---|---|
+|---|-----------|---------------------|
 | 1 | Business logic in controllers | Move logic to `app/Services/` |
-| 2 | New scheduling rules in views or JS only | Put rules in `AvailabilityService` / booking services |
-| 3 | New app migrations extending framework `Migration` | Extend `App\Database\MigrationBase` |
-| 4 | Hardcoding customer-facing numeric IDs into public URLs | Use hash/token-based flows |
-| 5 | Bypassing `AppointmentBookingService` for standard booking flows | Route booking through the booking pipeline |
-| 6 | Mixing local-time storage with UTC storage | Store canonical datetimes in UTC |
-| 7 | Hardcoded timezone behavior in new scheduling code | Use `TimezoneService` and localization settings |
-| 8 | Introducing a new frontend framework casually | Stay with the existing Vite + JS module approach |
-| 9 | Creating new top-level SCSS entrypoints without need | Use `app-consolidated.scss` |
-| 10 | Client-side availability invention | Read from API/service-calculated availability |
-| 11 | Direct duplication of settings values in module code | Read from `SettingModel` or settings services |
-| 12 | Reintroducing `user_id` as the appointment customer link | Use `customer_id` |
-| 13 | Ad hoc appointment statuses in controllers/views | Use `AppointmentStatus` |
-| 14 | Skipping route filters because the UI hides an action | Enforce access in routes and backend logic |
-| 15 | Assuming `xs_users.is_active` exists in new logic | Use canonical `status` or schema-safe fallback checks |
-| 16 | Running tests against `database.default.*` by accident | Isolate tests with `database.tests.*` and testing env only |
-| 17 | Claiming bug-fix completeness without runtime/schema verification | Verify DB target, schema, and adjacent flows before closure |
-| 18 | `array_column($staffProviders, 'provider_id')` on `getProvidersForStaff()` result | Use `array_column($result, 'id')` — the returned column is aliased `id` |
-| 19 | Passing staff provider IDs as `'provider_ids'` (plural) to appointment context | Use `'provider_id'` (singular) — `applyContextScope` reads that key only |
-| 20 | Staff sees all appointments when unassigned | Set `$context['provider_id'] = [0]` to force empty result instead of no filter |
-| 21 | Calling `AppointmentNotificationService::sendEventEmail()` from booking or mutation services | Enqueue via `AppointmentEventService::dispatch()` then call `NotificationQueueDispatcher::dispatch()` |
-| 22 | Raw DB queries for customer ID resolution inside controller methods | Delegate to `CustomerAppointmentService::resolveCustomerIdsForProvider()` or `resolveCustomerIdsForStaff()` |
-| 23 | Showing raw `public_token` in booking success UI or outbound messages | Use opaque reference links and verify ownership with email/phone before management actions |
-| 24 | Reading user role from single `xs_users.role` column when xs_user_roles exists | Use `UserModel::getRolesForUser($userId)` to get the authoritative role array |
-| 25 | Using radio buttons for user role assignment | Use checkboxes with `name="roles[]"` to capture multi-role selections |
-| 26 | Failing to sync role changes to `xs_user_roles` during user create/update | Always sync multi-role arrays to xs_user_roles table; set xs_users.role to primary role for compat |
-| 27 | Assuming role validation rules changed in old code are still current for multi-role | Update role rules to use `is_array` validator and `in_list[]` for role array validation |
+| 2 | New scheduling rules in views/JS only | Put rules in scheduling services |
+| 3 | App migrations extending framework `Migration` | Extend `App\Database\MigrationBase` |
+| 4 | Public URL exposure of numeric customer IDs | Use hash/token reference flows |
+| 5 | Bypassing `AppointmentBookingService` in standard flows | Use booking pipeline |
+| 6 | Mixing local-time persistence with UTC persistence | Store canonical datetimes in UTC |
+| 7 | Hardcoded timezone behavior in scheduling logic | Use timezone/localization services |
+| 8 | Introducing new frontend framework casually | Stay with current Vite + JS module stack |
+| 9 | Creating new top-level SCSS entrypoint without need | Use `app-consolidated.scss` |
+| 10 | Client-side availability invention | Consume service/API availability output |
+| 11 | Duplicating settings values in module-local constants | Read from settings/services |
+| 12 | Reintroducing appointment `user_id` as customer link | Use `customer_id` |
+| 13 | Ad hoc appointment status vocabularies | Use `AppointmentStatus` |
+| 14 | UI-only hiding without backend auth | Enforce with route filters + backend checks |
+| 15 | Assuming `xs_users.is_active` always exists | Use schema-safe active-state handling |
+| 16 | Running tests against default/live DB | Isolate tests with testing DB config |
+| 17 | Declaring fixes complete without runtime/schema verification | Validate schema/runtime and adjacent paths |
+| 18 | `array_column($rows, 'provider_id')` on staff provider rows | Use `array_column($rows, 'id')` |
+| 19 | Defaulting to non-canonical appointment context keys | Use `provider_id` as primary key (plural only as temporary compatibility fallback) |
+| 20 | Unassigned staff seeing broad appointment results | Force no-match provider scope for unassigned staff |
+| 21 | Direct booking/mutation notification sends via manual sender | Enqueue via event + queue dispatcher |
+| 22 | Raw controller SQL for customer ID provider/staff scoping | Delegate to `CustomerAppointmentService` |
+| 23 | Displaying raw appointment tokens in customer-facing output | Use opaque reference flows |
+| 24 | Reading roles only from `xs_users.role` | Use `UserModel::getRolesForUser($userId)` |
+| 25 | Single-role-only role assignment UI in multi-role flows | Use checkbox `roles[]` model |
+| 26 | Not syncing role changes to `xs_user_roles` | Sync membership and keep compat primary role |
+| 27 | Using old single-role validators for multi-role flows | Validate role arrays against allowed role set |
+| 28 | `style=""` attributes or `<style>` tags in views/templates/JS-rendered HTML | Use utility classes; runtime dynamic values via data-* + dynamic-color resolver pattern |
+| 29 | Calling `isDarkMode()` or checking `.dark` class in new logic | Check `document.documentElement.dataset.theme === 'dark'` |
+| 30 | Implementing user-management logic outside canonical user-management surfaces | Use `app/Controllers/UserManagement.php` and its service layer |
 
 ---
 
 ## Before You Change Code
 
-Run this checklist:
-
 ```text
-[] Does this logic belong in a service instead of a controller or view?
-[] Am I using UTC storage semantics for persisted datetimes?
+[] Does this logic belong in a service instead of a controller/view?
+[] Am I using UTC semantics for persisted datetimes?
 [] Am I reading timezone/localization from settings-backed services?
-[] Am I using the canonical appointment fields (`start_at`, `end_at`, `customer_id`, `provider_id`)?
-[] Am I preserving the API response contract if this is an API change?
-[] Am I reusing the notification queue and booking pipeline instead of inventing a parallel path?
+[] Am I using canonical appointment fields and IDs?
+[] Am I preserving API response contracts?
+[] Am I reusing queue and booking pipelines?
 [] Am I respecting route filters and role boundaries?
-[] Am I working within the existing Vite entrypoint and SPA initialization model?
-[] If I am writing a migration, does it extend `MigrationBase`?
-[] Should this documentation update live under `/docs` instead of another random markdown file?
+[] Am I keeping SPA initialization conventions?
+[] If writing a migration, does it extend MigrationBase?
+[] Did I avoid dead-code surfaces and stale symbols?
 ```
 
 ---
@@ -1025,42 +599,43 @@ Run this checklist:
 ## Suggested Active Phase View
 
 | Area | Status |
-|---|---|
+|------|--------|
 | Setup and deployment flow | Stable |
 | Auth, sessions, and role filters | Stable |
 | Settings and localization foundation | Stable |
-| Services, providers, customers, and public booking | Active |
-| Appointment API and service consolidation | Active |
-| Scheduler UI refactor and hardening | Active |
-| Notification platform maturity | In progress |
-| Documentation governance | Stable |
+| Services/providers/customers/public booking | Stable |
+| Appointment API/service consolidation | Active hardening |
+| Scheduler UI debt cleanup | Active |
+| Notification platform maturity | Active hardening |
+| Documentation governance | Active |
 
 ---
 
 ## Key Files To Know
 
-### Core orientation
+### Core Orientation
 - `app/Config/Routes.php`
 - `app/Config/Filters.php`
 - `app/Controllers/Api/BaseApiController.php`
 - `app/Database/MigrationBase.php`
 - `app/Models/AppointmentModel.php`
-- `app/Models/UserModel.php` — Role query methods, user retrieval
+- `app/Models/UserModel.php`
 - `app/Models/SettingModel.php`
 - `app/Services/AvailabilityService.php`
 - `app/Services/AppointmentBookingService.php`
+- `app/Services/AuthorizationService.php`
 - `app/Services/TimezoneService.php`
-- `app/Services/UserManagementMutationService.php` — User creation/update with multi-role sync to xs_user_roles
-- `app/Services/UserManagementContextService.php` — Validation rules and view data building
+- `app/Services/UserManagementMutationService.php`
+- `app/Services/UserManagementContextService.php`
+- `app/Services/Appointment/AppointmentQueryService.php`
+- `app/Services/CustomerAppointmentService.php`
+- `app/Services/NotificationQueueDispatcher.php`
 - `vite.config.js`
 
-### Key docs
+### Key Docs
 - `docs/readme.md`
 - `docs/architecture/scheduler_ui_architecture.md`
 - `docs/architecture/unified_calendar_engine.md`
-- `docs/architecture/calendar_engine_api_reference.md`
-- `docs/architecture/calendar_engine_implementation_summary.md`
-- `docs/scheduler/calendar_engine_quick_start.md`
 - `docs/testing/test_runner_guide.md`
 - `docs/deployment/releasing.md`
 
@@ -1070,58 +645,28 @@ Run this checklist:
 
 Design and change the system in this order:
 
+```text
 1. Data and storage contract
 2. Service logic
 3. API contract
-4. View / UI rendering
+4. View/UI rendering
+```
 
-Do not reverse that order.
-
-If a change starts from presentation while the service or data contract is still unclear, stop and fix the underlying boundary first.
+If the presentation layer change starts before service/data contract clarity, stop and fix boundaries first.
 
 ---
 
-## Phase 3: Multi-Role User Management — Implementation Summary
+## Phase 3: Multi-Role User Management Status
 
-### What Changed
-- **User roles** are now **multi-valued**: a single user can hold admin, provider, and/or staff roles simultaneously.
-- **User form UI** (`create.php`, `edit.php`) now uses checkbox inputs (`name="roles[]"`) for role selection instead of single radio button.
-- **Database**: New `xs_user_roles` junction table stores role memberships; `xs_users.role` denormalized primary role for backward compatibility.
-- **Form validation**: Rules updated to validate `roles` as a required array with `in_list[admin,provider,staff]`.
-- **Backend mutations**: `UserManagementMutationService::createUser()` and `updateUser()` sync all selected roles to `xs_user_roles` with atomic transactions.
-- **Role retrieval**: `UserModel::getRolesForUser($userId)` is now the authoritative source; reads from `xs_user_roles` and falls back to single `role` for migration safety.
-- **Dynamic UI**: JavaScript handlers on role checkboxes show/hide role-specific sections in real time (provider schedule, staff assignments, etc.).
-- **Audit logging**: Updated to log role arrays instead of single role values.
-
-### Key Service Methods (UserModel)
-- `getRolesForUser(int $userId): array` — Get all assigned roles; falls back to main role if junction table unavailable
-- Other existing methods (`getProviders()`, `findByEmail()`, etc.) remain unchanged but now operate against updated role context
-
-### Key Service Methods (UserManagementMutationService)
-- `createUser()` — Accepts `'roles'` array; validates all roles; determines primary role via hierarchy; syncs to xs_user_roles
-- `updateUser()` — Accepts `'roles'` array; validates role changes; checks last-admin guard; syncs to xs_user_roles atomically
-
-### Form Flow
-1. User checks multiple role checkboxes: `roles[]`
-2. Form validation checks `roles` is array and each value in `in_list[admin,provider,staff]`
-3. Controller extracts `getPost('roles')` and passes to mutation service
-4. Mutation service syncs roles to `xs_user_roles` with transaction
-5. Primary role (highest privilege) stored in `xs_users.role` for compat
-
-### Backward Compatibility
-- Systems without `xs_user_roles` migration continue to use `xs_users.role` as fallback
-- `getRolesForUser()` gracefully handles missing table via try-catch
-- All role queries route through service layer for automatic fallback
-- Existing role-based route filters and authorization still function
-
-### Next Phase Considerations
-- Dashboard and permission checks should read full role array for granular access control
-- Notification templates may need per-role versioning when multi-role users exist
-- Audit trails now include role arrays; reporting views should handle array display
-- Performance: xs_user_roles queries on frequently-accessed users may benefit from eager loading
+- ✅ `xs_user_roles` migration and backfill
+- ✅ User create/edit forms using `roles[]` checkboxes
+- ✅ Role sync on create/update mutations
+- ✅ `UserModel::getRolesForUser()` authoritative role retrieval with fallback
+- ✅ Role switching endpoint and sidebar integration
+- 🔄 Expand multi-role regression coverage in broader journeys
 
 ---
 
 Last updated: 2026-04-08
-Status: Active  
-Phase 3: ✅ User Role Management Form Implementation (Complete)
+Status: Active hardening
+Phase 3: ✅ Multi-role core implementation complete; regression/debt cleanup in progress

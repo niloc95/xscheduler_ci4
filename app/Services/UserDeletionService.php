@@ -81,10 +81,6 @@ class UserDeletionService
             $db->table($db->prefixTable('provider_staff_assignments'))->where('provider_id', $userId)->delete();
             $db->table($db->prefixTable('provider_schedules'))->where('provider_id', $userId)->delete();
 
-            if ($this->tableExists('receptionist_providers')) {
-                $db->table($db->prefixTable('receptionist_providers'))->where('provider_id', $userId)->delete();
-            }
-
             if ($this->tableExists('locations')) {
                 $db->table($db->prefixTable('locations'))->where('provider_id', $userId)->delete();
             }
@@ -92,10 +88,6 @@ class UserDeletionService
             $this->cleanupProviderNotificationLinks($userId);
         } elseif ($role === 'staff') {
             $db->table($db->prefixTable('provider_staff_assignments'))->where('staff_id', $userId)->delete();
-
-            if ($this->tableExists('receptionist_providers')) {
-                $db->table($db->prefixTable('receptionist_providers'))->where('receptionist_id', $userId)->delete();
-            }
         }
 
         $deleted = $this->userModel->delete($userId);

@@ -685,10 +685,8 @@ class Setup extends BaseController
             'version' => '1.0.0'
         ];
 
-    // Support both legacy and new flag filenames
-    $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
-    $flagPathNew    = WRITEPATH . 'setup_complete.flag';
-    $flagDir = WRITEPATH; // both flags live directly in writable/
+    $flagPathNew = WRITEPATH . 'setup_complete.flag';
+    $flagDir = WRITEPATH;
 
         // Ensure directory exists
         if (!is_dir($flagDir)) {
@@ -710,10 +708,9 @@ class Setup extends BaseController
             }
         }
 
-        // Attempt to write BOTH flags for compatibility; the new flag is authoritative
+        // Write authoritative setup completion flag
         $payload = json_encode($flagData, JSON_PRETTY_PRINT);
         $writeNew = @file_put_contents($flagPathNew, $payload);
-        $writeLegacy = @file_put_contents($flagPathLegacy, $payload);
 
         if ($writeNew === false) {
             $msg = 'Failed to write setup flag at path: ' . $flagPathNew;
@@ -723,14 +720,9 @@ class Setup extends BaseController
 
         // Best-effort set perms
         @chmod($flagPathNew, 0644);
-        if ($writeLegacy !== false) {
-            @chmod($flagPathLegacy, 0644);
-        } else {
-            log_message('warning', 'Setup: Could not write legacy setup flag at: ' . $flagPathLegacy . ' (continuing)');
-        }
 
-        log_message('info', 'Setup completion flags written: new=' . $flagPathNew . '; legacy=' . $flagPathLegacy);
-        return [ 'success' => true, 'message' => 'Flag(s) written' ];
+        log_message('info', 'Setup completion flag written: ' . $flagPathNew);
+        return [ 'success' => true, 'message' => 'Flag written' ];
     }
 
     /**
@@ -1188,8 +1180,7 @@ class Setup extends BaseController
     {
         $flagsReset = true;
         
-        // Remove flag files if they exist
-        $flagPathLegacy = WRITEPATH . 'setup_completed.flag';
+        // Remove flag file if it exists
         $flagPathNew = WRITEPATH . 'setup_complete.flag';
         
         if (file_exists($flagPathNew)) {
@@ -1201,15 +1192,7 @@ class Setup extends BaseController
             }
         }
         
-        if (file_exists($flagPathLegacy)) {
-            if (!unlink($flagPathLegacy)) {
-                log_message('warning', 'Failed to remove legacy setup flag: ' . $flagPathLegacy);
-                $flagsReset = false;
-            } else {
-                log_message('info', 'Removed legacy setup flag: ' . $flagPathLegacy);
-            }
-        }
-        
+
         return $flagsReset;
     }
 

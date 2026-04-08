@@ -736,13 +736,10 @@ class AppointmentModel extends BaseModel
      * Chart data helpers
      */
     /**
-     * Get chart data for appointment counts by period
-     * @deprecated Use getAppointmentGrowth($period) instead - it's more comprehensive
+     * Get chart data for appointment counts by period.
      */
     public function getChartData(string $period = 'week'): array
     {
-        // DEPRECATED: Use getAppointmentGrowth() for new code
-        // Note: 'month' in old method showed 4 weeks, getAppointmentGrowth('month') does same
         return $this->getAppointmentGrowth($period);
     }
 
@@ -830,42 +827,24 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Status distribution for pie chart
-     * @deprecated Use getStatusCounts('chart') instead
+     * Status distribution for pie chart.
      */
     public function getStatusDistribution(): array
     {
-        // DEPRECATED: Use getStatusCounts('chart') for new code
         $result = $this->getStatusCounts('chart');
         // Return without colors for backward compatibility
         return ['labels' => $result['labels'], 'data' => $result['data']];
     }
 
     /**
-     * Calculate revenue from completed appointments
-     * 
-     * @deprecated Use getRealRevenue() instead - this method uses placeholder prices
+     * Calculate revenue from completed appointments.
+     *
      * @param string $period 'month', 'week', or 'today'
-     * @return int Estimated revenue (placeholder calculation)
+     * @return int Revenue rounded to whole units for dashboard summary cards
      */
     public function getRevenue(string $period = 'month'): int
     {
-        // DEPRECATED: This uses placeholder pricing ($50 per appointment)
-        // Use getRealRevenue() for actual service prices
-        $completed = $this->where('status', 'completed');
-        $local = $this->localNow();
-        if ($period === 'month') {
-            $completed->where('start_at >=', $this->toUtc($local->format('Y-m-01') . ' 00:00:00'))
-                      ->where('start_at <=', $this->toUtc($local->format('Y-m-t') . ' 23:59:59'));
-        } elseif ($period === 'week') {
-            $completed->where('start_at >=', $this->toUtc((clone $local)->modify('monday this week')->format('Y-m-d') . ' 00:00:00'))
-                      ->where('start_at <=', $this->toUtc((clone $local)->modify('sunday this week')->format('Y-m-d') . ' 23:59:59'));
-        } elseif ($period === 'today') {
-            $completed->where('start_at >=', $this->toUtc($local->format('Y-m-d') . ' 00:00:00'))
-                      ->where('start_at <=', $this->toUtc($local->format('Y-m-d') . ' 23:59:59'));
-        }
-        $count = $completed->countAllResults();
-        return $count * 50; // DEPRECATED: placeholder average revenue
+        return (int) round($this->getRealRevenue($period));
     }
 
     /**
@@ -975,12 +954,10 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Get appointments grouped by status
-     * @deprecated Use getStatusCounts('simple') instead
+     * Get appointments grouped by status.
      */
     public function getByStatus(): array
     {
-        // DEPRECATED: Use getStatusCounts('simple') for new code
         return $this->getStatusCounts('simple');
     }
 
@@ -1273,12 +1250,10 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Get appointment status distribution with colors
-     * @deprecated Use getStatusStats(['format' => 'chart', 'includeColors' => true]) instead
+     * Get appointment status distribution with colors.
      */
     public function getStatusDistributionWithColors(): array
     {
-        // DEPRECATED: Use getStatusStats() for new code
         return $this->getStatusStats([
             'format' => 'chart',
             'includeColors' => true
@@ -1286,14 +1261,10 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Get monthly appointment counts for chart (appointment growth)
-     * @deprecated Use getAppointmentGrowth('year') instead - it shows 12 months centered on current
-     * Note: This method is not currently used anywhere in the codebase
+     * Get monthly appointment counts for chart (historical months only).
      */
     public function getMonthlyAppointments(int $months = 6): array
     {
-        // DEPRECATED: Use getAppointmentGrowth('year') for new code
-        // This legacy method only looks at past months
         $labels = [];
         $data = [];
         

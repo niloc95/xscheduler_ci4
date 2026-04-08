@@ -2,7 +2,6 @@
 
 namespace App\Services\Settings;
 
-use App\Models\SettingFileModel;
 use App\Models\SettingModel;
 use CodeIgniter\HTTP\Files\UploadedFile;
 
@@ -31,12 +30,10 @@ class GeneralSettingsService
     private const ALLOWED_ICON_EXTENSIONS = ['png', 'ico', 'svg'];
 
     private SettingModel $settingModel;
-    private SettingFileModel $settingFileModel;
 
-    public function __construct(?SettingModel $settingModel = null, ?SettingFileModel $settingFileModel = null)
+    public function __construct(?SettingModel $settingModel = null)
     {
         $this->settingModel = $settingModel ?? new SettingModel();
-        $this->settingFileModel = $settingFileModel ?? new SettingFileModel();
     }
 
     public function save(array $post, ?UploadedFile $logoFile, ?int $userId): array
@@ -135,15 +132,6 @@ class GeneralSettingsService
         $relative = 'assets/settings/' . $safeName;
         $this->settingModel->upsert('general.company_logo', $relative, 'string', $userId);
 
-        try {
-            $bytes = @file_get_contents($absolute);
-            if ($bytes !== false) {
-                $this->settingFileModel->upsert('general.company_logo', $safeName, $realMime ?: $clientMime, $bytes, $userId);
-            }
-        } catch (\Throwable $e) {
-            log_message('warning', 'Logo upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
-        }
-
         return [
             'status' => 'ok',
             'data' => [
@@ -215,15 +203,6 @@ class GeneralSettingsService
         $absolute = rtrim($targetDir, '/') . '/' . $safeName;
         $relative = 'assets/settings/' . $safeName;
         $this->settingModel->upsert('general.company_icon', $relative, 'string', $userId);
-
-        try {
-            $bytes = @file_get_contents($absolute);
-            if ($bytes !== false) {
-                $this->settingFileModel->upsert('general.company_icon', $safeName, $realMime ?: $clientMime, $bytes, $userId);
-            }
-        } catch (\Throwable $e) {
-            log_message('warning', 'Icon upload: failed storing bytes to DB: {msg}', ['msg' => $e->getMessage()]);
-        }
 
         return [
             'status' => 'ok',
@@ -463,22 +442,6 @@ class GeneralSettingsService
 
         $relative = 'assets/settings/' . $safeName;
         $this->settingModel->upsert('general.company_logo', $relative, 'string', $userId);
-
-        try {
-            $bytes = @file_get_contents($absolute);
-            if ($bytes !== false) {
-                $stored = $this->settingFileModel->upsert('general.company_logo', $safeName, $realMime ?: $clientMime, $bytes, $userId);
-                $this->localUploadLog('db_store_after_move', ['status' => $stored ? 'OK' : 'FAIL']);
-                log_message('debug', 'Logo upload: DB store {status}', ['status' => $stored ? 'OK' : 'FAIL']);
-            } else {
-                $this->localUploadLog('db_read_after_move_fail', ['path' => $absolute]);
-                log_message('warning', 'Logo upload: could not read moved file for DB store: {path}', ['path' => $absolute]);
-            }
-        } catch (\Throwable $e) {
-            $this->localUploadLog('db_store_exception', ['msg' => $e->getMessage()]);
-            log_message('error', 'Logo upload: exception during DB store: {msg}', ['msg' => $e->getMessage()]);
-        }
-
         return ['type' => 'success', 'message' => 'Settings saved successfully.'];
     }
 
@@ -502,35 +465,6 @@ class GeneralSettingsService
             'err' => $errorMessage,
             'perms' => $permissions,
         ]);
-
-        try {
-            $tmpFile = method_exists($file, 'getTempName') ? $file->getTempName() : $file->getRealPath();
-            if ($tmpFile && is_file($tmpFile)) {
-                $bytes = @file_get_contents($tmpFile);
-                if ($bytes !== false) {
-                    $stored = $this->settingFileModel->upsert('general.company_logo', $file->getName(), $realMime ?: $clientMime, $bytes, $userId);
-                    $this->localUploadLog('db_fallback_from_tmp', ['status' => $stored ? 'OK' : 'FAIL']);
-                    log_message('warning', 'Logo upload: persisted to DB from temp file due to move failure. status={status}', ['status' => $stored ? 'OK' : 'FAIL']);
-                    if ($stored) {
-                        $this->settingModel->upsert('general.company_logo', 'db://' . $file->getName(), 'string', $userId);
-
-                        return [
-                            'type' => 'success',
-                            'message' => 'Settings saved. Logo stored in database due to filesystem issue.',
-                        ];
-                    }
-                } else {
-                    $this->localUploadLog('db_fallback_read_tmp_failed', []);
-                    log_message('error', 'Logo upload: failed reading temp file for DB fallback');
-                }
-            } else {
-                $this->localUploadLog('db_fallback_tmp_missing', []);
-                log_message('error', 'Logo upload: temp file missing for DB fallback');
-            }
-        } catch (\Throwable $e) {
-            $this->localUploadLog('db_fallback_exception', ['msg' => $e->getMessage()]);
-            log_message('error', 'Logo upload: exception during DB fallback: {msg}', ['msg' => $e->getMessage()]);
-        }
 
         return ['type' => 'error', 'message' => 'Failed to save uploaded logo.'];
     }
@@ -564,7 +498,7 @@ class GeneralSettingsService
     private function resolveStoredAssetPath(string $stored): ?string
     {
         $normalized = ltrim($stored, '/');
-        if ($normalized === '' || str_starts_with($normalized, 'db://')) {
+        if ($normalized === '') {
             return null;
         }
 
