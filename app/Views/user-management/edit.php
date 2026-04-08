@@ -95,7 +95,7 @@
 												   <?= in_array($roleOption, (array) $selectedRoles) ? 'checked' : '' ?>
 												   class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
 												   <?= $roleOption === 'admin' && ($user['id'] ?? 0) === (session('user_id') ?? 0) ? 'disabled title="You cannot remove your own admin role"' : '' ?>>
-											<label for="role_<?= $roleOption ?>" class="ml-3 cursor-pointer flex-1">
+											<label for="role_<?= $roleOption ?>" class="ml-4 cursor-pointer flex-1">
 												<div class="font-medium text-gray-900 dark:text-gray-100 text-sm"><?= ucfirst($roleOption) ?></div>
 												<div class="text-xs text-gray-600 dark:text-gray-400">
 													<?php if ($roleOption === 'admin'): ?>
