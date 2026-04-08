@@ -87,15 +87,15 @@
 								?>
 								<div class="space-y-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900/30 <?= $validation && $validation->hasError('roles') ? 'border-red-500 dark:border-red-400' : '' ?>">
 									<?php foreach (['admin', 'provider', 'staff'] as $roleOption): ?>
-										<div class="flex items-center">
+										<div class="flex items-center gap-3">
 											<input type="checkbox" 
 												   id="role_<?= $roleOption ?>" 
 												   name="roles[]" 
 												   value="<?= $roleOption ?>"
 												   <?= in_array($roleOption, (array) $selectedRoles) ? 'checked' : '' ?>
-												   class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
+												   class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer shrink-0"
 												   <?= $roleOption === 'admin' && ($user['id'] ?? 0) === (session('user_id') ?? 0) ? 'disabled title="You cannot remove your own admin role"' : '' ?>>
-											<label for="role_<?= $roleOption ?>" class="ml-4 cursor-pointer flex-1">
+											<label for="role_<?= $roleOption ?>" class="cursor-pointer flex-1">
 												<div class="font-medium text-gray-900 dark:text-gray-100 text-sm"><?= ucfirst($roleOption) ?></div>
 												<div class="text-xs text-gray-600 dark:text-gray-400">
 													<?php if ($roleOption === 'admin'): ?>
