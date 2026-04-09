@@ -75,6 +75,8 @@ export function initTimeSlotsUI(options) {
   // Read URL parameters for prefilling
   const urlParams = new URLSearchParams(window.location.search);
   const urlProviderId = urlParams.get('provider_id');
+  const urlServiceId = urlParams.get('service_id');
+  const urlLocationId = urlParams.get('location_id');
   const urlDate = urlParams.get('date');
   const urlTime = urlParams.get('time');
   
@@ -220,7 +222,7 @@ export function initTimeSlotsUI(options) {
   /**
    * Load locations for a provider via API and populate the location dropdown
    */
-  async function loadLocations(providerId) {
+  async function loadLocations(providerId, desiredLocationId = preselectLocationId) {
     if (!locationSelect) return;
 
     locationSelect.innerHTML = '<option value="">Loading locations...</option>';
@@ -251,7 +253,7 @@ export function initTimeSlotsUI(options) {
         opt.dataset.name = loc.name || '';
         opt.dataset.address = loc.address || '';
         opt.dataset.contact = loc.contact_number || '';
-        if (preselectLocationId && String(preselectLocationId) === String(loc.id)) {
+        if (desiredLocationId && String(desiredLocationId) === String(loc.id)) {
           opt.selected = true;
         }
         locationSelect.appendChild(opt);
@@ -265,7 +267,7 @@ export function initTimeSlotsUI(options) {
     }
   }
 
-  async function loadServices(providerId) {
+  async function loadServices(providerId, desiredServiceId = preselectServiceId) {
     serviceSelect.innerHTML = '<option value="">Loading services...</option>';
     serviceSelect.disabled = true;
 
@@ -300,7 +302,7 @@ export function initTimeSlotsUI(options) {
           : svc.name;
         opt.dataset.duration = svc.durationMin || svc.duration_min;
         opt.dataset.price = svc.price;
-        if (preselectServiceId && String(preselectServiceId) === String(svc.id)) {
+        if (desiredServiceId && String(desiredServiceId) === String(svc.id)) {
           opt.selected = true;
           preselectFound = true;
         }
@@ -460,8 +462,8 @@ export function initTimeSlotsUI(options) {
     if (bootInProgress) return;
 
     await Promise.all([
-      loadServices(providerSelect.value),
-      loadLocations(providerSelect.value),
+      loadServices(providerSelect.value, ''),
+      loadLocations(providerSelect.value, ''),
     ]);
     timeInput.value = '';
     
@@ -510,6 +512,9 @@ export function initTimeSlotsUI(options) {
   (async () => {
     bootInProgress = true;
 
+    const desiredServiceId = urlServiceId || preselectServiceId || '';
+    const desiredLocationId = urlLocationId || preselectLocationId || '';
+
     // Pre-fill from URL parameters first
     if (urlProviderId && !providerSelect.value) {
       providerSelect.value = urlProviderId;
@@ -523,8 +528,8 @@ export function initTimeSlotsUI(options) {
     // If provider is already chosen, load services and respect preselect
     if (providerSelect.value) {
       await Promise.all([
-        loadServices(providerSelect.value),
-        loadLocations(providerSelect.value),
+        loadServices(providerSelect.value, desiredServiceId),
+        loadLocations(providerSelect.value, desiredLocationId),
       ]);
       
       // Reset flags and release boot guard
