@@ -290,8 +290,8 @@
 				
 				<div class="card-body space-y-3">
 					<div class="flex justify-between items-center">
-						<span class="text-sm text-gray-600 dark:text-gray-400">User ID</span>
-						<span class="font-medium text-gray-800 dark:text-gray-200">#<?= esc($user['id'] ?? 'N/A') ?></span>
+						<span class="text-sm text-gray-600 dark:text-gray-400">User Name</span>
+						<span class="font-medium text-gray-800 dark:text-gray-200"><?= esc($user['name'] ?? 'N/A') ?></span>
 					</div>
 					<div class="flex justify-between items-center">
 						<span class="text-sm text-gray-600 dark:text-gray-400">Created</span>

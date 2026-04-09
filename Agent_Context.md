@@ -667,6 +667,15 @@ If the presentation layer change starts before service/data contract clarity, st
 
 ---
 
-Last updated: 2026-04-08
+## Agent Notes
+
+- Settings dropdown chevrons must be standardized through shared SCSS selectors (`select.form-input`, `.form-select`) in `resources/scss/components/_forms.scss`, not per-view overrides.
+- Keep chevron visuals aligned with header user-menu dropdown scale; adjust shared SVG/background-size once, then rebuild assets.
+- Native form-control chrome (date/time/select icons) must follow `data-theme` (`light`/`dark`) via consolidated SCSS in `resources/scss/app-consolidated.scss`.
+- Forbidden Rule 28 is strict: do not use inline `style=""` attributes or `<style>` blocks for icon color/size fixes.
+
+---
+
+Last updated: 2026-04-09
 Status: Active hardening
 Phase 3: ✅ Multi-role core implementation complete; regression/debt cleanup in progress

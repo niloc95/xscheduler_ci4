@@ -38,6 +38,32 @@
   }
 }
 
+select.form-input,
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-position: right $spacing-md center;
+  background-repeat: no-repeat;
+  background-size: 20px 20px;
+  padding-right: $spacing-4xl;
+}
+
+:root[data-theme='light'] select.form-input,
+:root[data-theme='light'] .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 10l5 5 5-5'/%3e%3c/svg%3e");
+}
+
+:root[data-theme='dark'] select.form-input,
+:root[data-theme='dark'] .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3cpath stroke='%23cbd5e1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 10l5 5 5-5'/%3e%3c/svg%3e");
+}
+
+select.form-input:focus,
+.form-select:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3cpath stroke='%23F77F00' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 10l5 5 5-5'/%3e%3c/svg%3e");
+}
+
 .form-textarea {
   @include form-input-base;
   min-height: 120px;
@@ -46,15 +72,6 @@
 
 .form-select {
   @include form-input-base;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right $spacing-md center;
-  background-repeat: no-repeat;
-  background-size: 16px 12px;
-  padding-right: $spacing-4xl;
-  
-  &:focus {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23F77F00' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  }
 }
 
 .form-checkbox {

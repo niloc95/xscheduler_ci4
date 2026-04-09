@@ -247,8 +247,8 @@ $pageSubtitle = $isEditMode
                             <input type="text" 
                                    id="customer_search" 
                                    placeholder="Search by name, email, or phone..."
-                                class="form-input pl-12 pr-12" />
-                            <span class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg leading-none text-gray-400">search</span>
+                                class="form-input !pl-14 !pr-12" />
+                            <span class="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-gray-400">search</span>
                             <button type="button" id="clear_search_btn" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                 <span class="material-symbols-outlined text-sm">close</span>
                             </button>

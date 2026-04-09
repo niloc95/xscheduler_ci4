@@ -167,7 +167,25 @@ md-outlined-card {
 
 // Ensure native controls render appropriate theme chrome
 @layer base {
-  input, select, textarea { color-scheme: light dark; }
+  /* Keep native input icons (date/time/select/etc.) synced with app theme. */
+  :root[data-theme='light'] input,
+  :root[data-theme='light'] select,
+  :root[data-theme='light'] textarea {
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] input,
+  :root[data-theme='dark'] select,
+  :root[data-theme='dark'] textarea {
+    color-scheme: dark;
+  }
+
+  /* Fallback when data-theme is not yet initialized. */
+  input,
+  select,
+  textarea {
+    color-scheme: light;
+  }
 
   button,
   button:hover,
