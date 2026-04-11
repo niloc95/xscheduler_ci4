@@ -72,34 +72,59 @@ class AuthorizationService
     const ROLE_STAFF = 'staff';
 
     /**
+     * Resolve a single canonical role string from a string or multi-role array.
+     * Returns the highest-privilege role present in the hierarchy.
+     *
+     * @param string|array $userRole Single role string or array of role strings
+     * @return string
+     */
+    private function resolveRole(string|array $userRole): string
+    {
+        if (!is_array($userRole)) {
+            return $userRole;
+        }
+
+        foreach ([self::ROLE_ADMIN, self::ROLE_PROVIDER, self::ROLE_STAFF] as $r) {
+            if (in_array($r, $userRole, true)) {
+                return $r;
+            }
+        }
+
+        return self::ROLE_STAFF;
+    }
+
+    /**
      * Check if user can view dashboard metrics
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canViewDashboardMetrics(string $userRole): bool
+    public function canViewDashboardMetrics(string|array $userRole): bool
     {
         // All authenticated users can view dashboard metrics
-        return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_PROVIDER, self::ROLE_STAFF]);
+        $role = $this->resolveRole($userRole);
+        return in_array($role, [self::ROLE_ADMIN, self::ROLE_PROVIDER, self::ROLE_STAFF]);
     }
 
     /**
      * Check if user can view provider schedule
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @param int $userId Current user ID
      * @param int $targetProviderId Target provider ID to view
      * @return bool
      */
-    public function canViewProviderSchedule(string $userRole, int $userId, int $targetProviderId): bool
+    public function canViewProviderSchedule(string|array $userRole, int $userId, int $targetProviderId): bool
     {
+        $role = $this->resolveRole($userRole);
+
         // Admin can view any provider
-        if ($userRole === self::ROLE_ADMIN) {
+        if ($role === self::ROLE_ADMIN) {
             return true;
         }
 
         // Provider can only view own schedule
-        if ($userRole === self::ROLE_PROVIDER) {
+        if ($role === self::ROLE_PROVIDER) {
             return $userId === $targetProviderId;
         }
 
@@ -109,23 +134,25 @@ class AuthorizationService
 
     /**
      * Get provider scope for data filtering
-     * 
+     *
      * Returns:
      * - null for admin (no scope restriction)
      * - provider ID for providers (restrict to own data)
      * - null for staff (handled by specific permissions)
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @param int|null $providerId Provider ID if user is provider
      * @return int|null Provider ID for scope or null for admin
      */
-    public function getProviderScope(string $userRole, ?int $providerId = null): ?int
+    public function getProviderScope(string|array $userRole, ?int $providerId = null): ?int
     {
-        if ($userRole === self::ROLE_ADMIN) {
+        $role = $this->resolveRole($userRole);
+
+        if ($role === self::ROLE_ADMIN) {
             return null; // No scope restriction
         }
 
-        if ($userRole === self::ROLE_PROVIDER && $providerId !== null) {
+        if ($role === self::ROLE_PROVIDER && $providerId !== null) {
             return $providerId; // Restrict to own data
         }
 
@@ -134,21 +161,23 @@ class AuthorizationService
 
     /**
      * Check if user can manage appointments
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @param int|null $appointmentProviderId Provider ID of appointment (null for create)
      * @param int|null $currentProviderId Current user's provider ID
      * @return bool
      */
-    public function canManageAppointment(string $userRole, ?int $appointmentProviderId = null, ?int $currentProviderId = null): bool
+    public function canManageAppointment(string|array $userRole, ?int $appointmentProviderId = null, ?int $currentProviderId = null): bool
     {
+        $role = $this->resolveRole($userRole);
+
         // Admin can manage all appointments
-        if ($userRole === self::ROLE_ADMIN) {
+        if ($role === self::ROLE_ADMIN) {
             return true;
         }
 
         // Provider can manage own appointments only
-        if ($userRole === self::ROLE_PROVIDER && $currentProviderId !== null) {
+        if ($role === self::ROLE_PROVIDER && $currentProviderId !== null) {
             if ($appointmentProviderId === null) {
                 // Creating new appointment for self
                 return true;
@@ -159,7 +188,7 @@ class AuthorizationService
 
         // Staff can manage any appointment they can see.
         // Scope (what they can see) is enforced at the data-query layer.
-        if ($userRole === self::ROLE_STAFF) {
+        if ($role === self::ROLE_STAFF) {
             return true;
         }
 
@@ -168,63 +197,66 @@ class AuthorizationService
 
     /**
      * Check if user can view system settings
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canViewSettings(string $userRole): bool
+    public function canViewSettings(string|array $userRole): bool
     {
         // Only admin can view/edit settings
-        return $userRole === self::ROLE_ADMIN;
+        return $this->resolveRole($userRole) === self::ROLE_ADMIN;
     }
 
     /**
      * Check if user can manage users
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canManageUsers(string $userRole): bool
+    public function canManageUsers(string|array $userRole): bool
     {
         // Only admin can manage users
-        return $userRole === self::ROLE_ADMIN;
+        return $this->resolveRole($userRole) === self::ROLE_ADMIN;
     }
 
     /**
      * Check if user can view booking status
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canViewBookingStatus(string $userRole): bool
+    public function canViewBookingStatus(string|array $userRole): bool
     {
         // Only admin can view booking system status
-        return $userRole === self::ROLE_ADMIN;
+        return $this->resolveRole($userRole) === self::ROLE_ADMIN;
     }
 
     /**
      * Check if user can view alerts
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canViewAlerts(string $userRole): bool
+    public function canViewAlerts(string|array $userRole): bool
     {
+        $role = $this->resolveRole($userRole);
         // All authenticated users can view alerts
-        return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_PROVIDER, self::ROLE_STAFF]);
+        return in_array($role, [self::ROLE_ADMIN, self::ROLE_PROVIDER, self::ROLE_STAFF]);
     }
 
     /**
      * Get filtered alert types for user role
-     * 
+     *
      * Different roles see different alert types.
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return array Array of allowed alert types
      */
-    public function getAllowedAlertTypes(string $userRole): array
+    public function getAllowedAlertTypes(string|array $userRole): array
     {
-        if ($userRole === self::ROLE_ADMIN) {
+        $role = $this->resolveRole($userRole);
+
+        if ($role === self::ROLE_ADMIN) {
             return [
                 'confirmation_pending',
                 'missing_hours',
@@ -234,7 +266,7 @@ class AuthorizationService
             ];
         }
 
-        if ($userRole === self::ROLE_PROVIDER) {
+        if ($role === self::ROLE_PROVIDER) {
             return [
                 'confirmation_pending',
                 'overbooking',
@@ -247,14 +279,15 @@ class AuthorizationService
 
     /**
      * Check if user can view reports
-     * 
-     * @param string $userRole User role
+     *
+     * @param string|array $userRole User role or roles array
      * @return bool
      */
-    public function canViewReports(string $userRole): bool
+    public function canViewReports(string|array $userRole): bool
     {
+        $role = $this->resolveRole($userRole);
         // Admin and providers can view reports
-        return in_array($userRole, [self::ROLE_ADMIN, self::ROLE_PROVIDER]);
+        return in_array($role, [self::ROLE_ADMIN, self::ROLE_PROVIDER]);
     }
 
     /**
@@ -280,8 +313,9 @@ class AuthorizationService
     }
 
     /**
-     * Get provider ID from session or user data
-     * 
+     * Get provider ID from session or user data.
+     * Checks the full roles array so admin+provider users are recognised as providers.
+     *
      * @param array|null $user User data from session
      * @return int|null Provider ID or null
      */
@@ -291,9 +325,13 @@ class AuthorizationService
             return null;
         }
 
-        // If user is provider, return their user ID
-        if (($user['role'] ?? '') === 'provider') {
-            return $user['id'] ?? null;
+        $roles = $user['roles'] ?? [$user['role'] ?? ''];
+        if (!is_array($roles)) {
+            $roles = [$roles];
+        }
+
+        if (in_array('provider', $roles, true)) {
+            return (int) ($user['id'] ?? 0) ?: null;
         }
 
         return null;

@@ -3,7 +3,29 @@ import { escapeHtml } from '../../utils/html.js';
 import { getBaseUrl } from '../../utils/url-helpers.js';
 
 function formatDate(dateString) {
-    const date = new Date(dateString);
+    if (!dateString) {
+        return '—';
+    }
+
+    const raw = String(dateString).trim();
+    let date;
+
+    // Reject MySQL zero-dates (0000-00-00 ...) — these are null-equivalent in MySQL
+    if (/^0{4}-0{2}-0{2}/.test(raw)) {
+        return '—';
+    }
+
+    // Handle MySQL datetime strings (YYYY-MM-DD HH:MM:SS) reliably across browsers.
+    const mysqlDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+|T).*/);
+    if (mysqlDateMatch) {
+        const year = Number(mysqlDateMatch[1]);
+        const month = Number(mysqlDateMatch[2]);
+        const day = Number(mysqlDateMatch[3]);
+        date = new Date(year, month - 1, day);
+    } else {
+        date = new Date(raw);
+    }
+
     if (Number.isNaN(date.getTime())) {
         return '—';
     }

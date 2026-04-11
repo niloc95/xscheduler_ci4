@@ -219,14 +219,15 @@ const SPA = (() => {
     }
   };
 
-  const navigate = async (url, push = true) => {
+  const navigate = async (url, push = true, options = {}) => {
+    const { forceReload = false } = options;
     const el = content();
     if (!el) return;
     try {
       const dest = new URL(url, window.location.href);
       const cur = new URL(window.location.href);
       const targetPath = dest.pathname;
-      if (dest.pathname === cur.pathname && dest.search === cur.search) {
+      if (!forceReload && dest.pathname === cur.pathname && dest.search === cur.search) {
         if (push && dest.hash !== cur.hash) {
           history.pushState({ spa: true }, '', dest.href);
         }
@@ -351,9 +352,10 @@ const SPA = (() => {
       if (data.success) {
         // Navigate first, then show flash so it isn't wiped by content swap
         if (data.redirect) {
-          await navigate(data.redirect);
+          // Force reload even when redirect matches current URL (e.g. delete on index page).
+          await navigate(data.redirect, true, { forceReload: true });
         } else {
-          await navigate(window.location.pathname + window.location.search);
+          await navigate(window.location.pathname + window.location.search, false, { forceReload: true });
         }
 
         // Show success message AFTER navigation so the toast survives

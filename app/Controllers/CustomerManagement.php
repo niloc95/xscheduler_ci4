@@ -11,14 +11,14 @@
  * 
  * ROUTES HANDLED:
  * -----------------------------------------------------------------------------
- * GET  /customers                  : List all customers with search
- * GET  /customers/create           : Show customer creation form
- * POST /customers/store            : Create new customer record
- * GET  /customers/edit/:hash       : Show edit form for customer
- * POST /customers/update/:hash     : Update existing customer
- * GET  /customers/view/:hash       : View customer profile with history
- * POST /customers/delete/:hash     : Soft delete customer record
- * GET  /customers/search           : AJAX search endpoint
+ * GET  /customer-management                : List customers with search
+ * GET  /customer-management/create         : Show customer creation form
+ * POST /customer-management/store          : Create new customer record
+ * GET  /customer-management/edit/:hash     : Show edit form for customer
+ * POST /customer-management/update/:hash   : Update existing customer
+ * GET  /customer-management/history/:hash  : View customer profile with history
+ * POST /customer-management/delete/:hash   : Hard delete customer without appointments
+ * GET  /customer-management/search         : AJAX search endpoint
  * 
  * PURPOSE:
  * -----------------------------------------------------------------------------
@@ -39,7 +39,7 @@
  * SECURITY:
  * -----------------------------------------------------------------------------
  * - Hash identifiers for non-enumerable URLs
- * - Role-based access (staff+ can view, admin can delete)
+ * - Role-based access (staff+ can view/edit scoped customers, admin can delete)
  * - CSRF protection on forms
  * - Input validation and sanitization
  * 
@@ -49,7 +49,7 @@
  * - BookingSettingsService     : Field configuration
  * - CustomerAppointmentService : History and statistics
  * 
- * @see         app/Views/customers/ for view templates
+ * @see         app/Views/customer-management/ for view templates
  * @see         app/Models/CustomerModel.php for data model
  * @package     App\Controllers
  * @extends     BaseController
@@ -62,6 +62,7 @@ namespace App\Controllers;
 
 use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
+use App\Services\CustomerDeletionService;
 use App\Services\CustomerAppointmentService;
 use App\Services\PhoneNumberService;
 
@@ -70,18 +71,21 @@ class CustomerManagement extends BaseController
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
+    protected CustomerDeletionService $customerDeletionService;
     protected PhoneNumberService $phoneNumberService;
 
     public function __construct(
         ?CustomerModel $customers = null,
         ?BookingSettingsService $bookingSettings = null,
         ?CustomerAppointmentService $appointmentService = null,
+        ?CustomerDeletionService $customerDeletionService = null,
         ?PhoneNumberService $phoneNumberService = null,
     )
     {
         $this->customers = $customers ?? new CustomerModel();
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
+        $this->customerDeletionService = $customerDeletionService ?? new CustomerDeletionService($this->customers);
         $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
     }
 
@@ -95,7 +99,7 @@ class CustomerManagement extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        $currentRole = current_user_role();
+        $currentRole = $this->resolveScopedRole();
         $q = trim((string) $this->request->getGet('q'));
 
         // Staff/provider see only customers relevant to them.
@@ -135,6 +139,7 @@ class CustomerManagement extends BaseController
             'title' => 'Customer Management - WebScheduler',
             'customers' => $customers,
             'currentUser' => session()->get('user'),
+            'canDeleteCustomers' => $this->hasRole('admin'),
             'q' => $q,
             'totalCustomers' => $totalCustomers,
         ];
@@ -306,7 +311,7 @@ class CustomerManagement extends BaseController
         if (!$currentUserId) {
             return redirect()->to(base_url('auth/login'));
         }
-        $currentRole = current_user_role();
+        $currentRole = $this->resolveScopedRole();
         $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
             return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
@@ -329,6 +334,8 @@ class CustomerManagement extends BaseController
             'title' => 'Edit Customer - WebScheduler',
             'customer' => $customer,
             'customerIdentifier' => (string) ($customer['hash'] ?? $customer['id'] ?? ''),
+            'canDeleteCustomers' => $this->hasRole('admin'),
+            'appointmentCount' => $this->customerDeletionService->countAppointmentsForCustomer((int) $customer['id']),
             'validation' => $this->validator,
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
@@ -468,6 +475,35 @@ class CustomerManagement extends BaseController
     }
 
     /**
+     * Delete a customer if no appointments reference the record.
+     */
+    public function delete(string $identifier)
+    {
+        $currentUserId = (int) (session()->get('user_id') ?? 0);
+        if (!$currentUserId) {
+            return redirect()->to(base_url('auth/login'));
+        }
+
+        $result = $this->customerDeletionService->deleteCustomerByIdentifier($currentUserId, $identifier);
+
+        if ($this->request->isAJAX()) {
+            if ($result['success']) {
+                $result['redirect'] = base_url('customer-management');
+            }
+
+            return $this->response
+                ->setStatusCode($result['success'] ? 200 : ($result['statusCode'] ?? 400))
+                ->setJSON($result);
+        }
+
+        if (!$result['success']) {
+            return redirect()->to(base_url('customer-management'))->with('error', $result['message']);
+        }
+
+        return redirect()->to(base_url('customer-management'))->with('success', $result['message']);
+    }
+
+    /**
      * AJAX search endpoint for live search  
      */
     public function ajaxSearch()
@@ -480,7 +516,7 @@ class CustomerManagement extends BaseController
         }
 
         $q = trim((string) $this->request->getGet('q'));
-        $currentRole = current_user_role();
+        $currentRole = $this->resolveScopedRole();
 
         $staffCustomerIds = null;
         if ($currentRole === 'staff') {
@@ -533,7 +569,7 @@ class CustomerManagement extends BaseController
         if (!$currentUserId) {
             return redirect()->to(base_url('auth/login'));
         }
-        $currentRole = current_user_role();
+        $currentRole = $this->resolveScopedRole();
 
         $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
@@ -593,5 +629,52 @@ class CustomerManagement extends BaseController
         ];
 
         return view('customer-management/history', $data);
+    }
+
+    /**
+     * Return all session roles with compatibility fallback to single role fields.
+     *
+     * @return array<int, string>
+     */
+    private function getSessionRoles(): array
+    {
+        $user = session()->get('user');
+        $roles = [];
+
+        if (is_array($user)) {
+            $roles = $user['roles'] ?? [];
+            if (!is_array($roles)) {
+                $roles = [$roles];
+            }
+
+            $primaryRole = (string) ($user['role'] ?? '');
+            if ($primaryRole !== '' && !in_array($primaryRole, $roles, true)) {
+                $roles[] = $primaryRole;
+            }
+        }
+
+        $fallbackRole = (string) (current_user_role() ?? '');
+        if ($fallbackRole !== '' && !in_array($fallbackRole, $roles, true)) {
+            $roles[] = $fallbackRole;
+        }
+
+        return array_values(array_filter(array_map(static fn($role) => trim((string) $role), $roles), static fn($role) => $role !== ''));
+    }
+
+    private function hasRole(string $role): bool
+    {
+        return in_array($role, $this->getSessionRoles(), true);
+    }
+
+    private function resolveScopedRole(): string
+    {
+        $roles = $this->getSessionRoles();
+        foreach (['admin', 'provider', 'staff'] as $role) {
+            if (in_array($role, $roles, true)) {
+                return $role;
+            }
+        }
+
+        return '';
     }
 }

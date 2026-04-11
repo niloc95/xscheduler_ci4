@@ -170,6 +170,93 @@ final class CustomerManagementJourneyTest extends CIUnitTestCase
         $this->assertStringContainsString('History Provider', $body);
     }
 
+    public function testAdminCanDeleteCustomerWithoutAppointments(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('customers')->insert([
+            'first_name' => 'Delete',
+            'last_name' => 'Allowed',
+            'email' => 'customer-delete-allowed-' . uniqid('', true) . '@example.com',
+            'phone' => '+15551110000',
+            'hash' => hash('sha256', uniqid('customer_delete_allowed_', true)),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $customerId = (int) $db->insertID();
+        $customer = $db->table('customers')->where('id', $customerId)->get()->getRowArray();
+        $this->assertNotNull($customer);
+
+        $this->primeCsrfCookie();
+
+        $response = $this->withSession($this->adminSession())
+            ->withHeaders($this->ajaxHeaders())
+            ->post('/customer-management/delete/' . ($customer['hash'] ?? $customerId), [
+                $this->csrfTokenName() => $this->csrfToken(),
+            ]);
+
+        $response->assertOK();
+
+        $payload = json_decode($response->getJSON(), true);
+        $this->assertTrue((bool) ($payload['success'] ?? false), $response->getBody());
+        $this->assertSame('Customer deleted successfully.', $payload['message'] ?? null);
+        $this->assertNull($db->table('customers')->where('id', $customerId)->get()->getRowArray());
+    }
+
+    public function testAdminCannotDeleteCustomerWithAppointments(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('customers')->insert([
+            'first_name' => 'Delete',
+            'last_name' => 'Blocked',
+            'email' => 'customer-delete-blocked-' . uniqid('', true) . '@example.com',
+            'phone' => '+15552220000',
+            'hash' => hash('sha256', uniqid('customer_delete_blocked_', true)),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $customerId = (int) $db->insertID();
+        $customer = $db->table('customers')->where('id', $customerId)->get()->getRowArray();
+        $this->assertNotNull($customer);
+        $this->customerId = $customerId;
+        $this->customerHash = (string) ($customer['hash'] ?? '');
+
+        $db->table('appointments')->insert([
+            'customer_id' => $customerId,
+            'provider_id' => $this->providerId,
+            'service_id' => $this->serviceId,
+            'hash' => hash('sha256', uniqid('customer_delete_blocked_appointment_', true)),
+            'start_at' => '2031-04-15 09:00:00',
+            'end_at' => '2031-04-15 10:00:00',
+            'status' => 'confirmed',
+            'notes' => 'Deletion-block fixture appointment',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->appointmentIds[] = (int) $db->insertID();
+
+        $this->primeCsrfCookie();
+
+        $response = $this->withSession($this->adminSession())
+            ->withHeaders($this->ajaxHeaders())
+            ->post('/customer-management/delete/' . ($customer['hash'] ?? $customerId), [
+                $this->csrfTokenName() => $this->csrfToken(),
+            ]);
+
+        $response->assertStatus(422);
+
+        $payload = json_decode($response->getJSON(), true);
+        $this->assertFalse((bool) ($payload['success'] ?? true), $response->getBody());
+        $this->assertSame('appointments_exist', $payload['blockCode'] ?? null);
+        $this->assertSame('Customer cannot be deleted because appointment history exists.', $payload['message'] ?? null);
+        $this->assertNotNull($db->table('customers')->where('id', $customerId)->get()->getRowArray());
+    }
+
     private function seedFixtureData(): void
     {
         $db = \Config\Database::connect('tests');

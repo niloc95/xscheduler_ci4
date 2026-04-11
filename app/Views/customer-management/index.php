@@ -2,12 +2,12 @@
 /**
  * Customer Management - Index View
  *
- * Admin-focused CRUD interface for managing customer records in the database.
+ * CRUD-oriented interface for managing customer records in the database.
  * This is NOT for appointment interactions (see user-management/customers.php for that).
  * 
- * Purpose: Create, Read, Update, Delete customer profiles and contact information
- * Access: Admin role only
- * Actions: View list, Create new, Edit existing, Delete customers
+ * Purpose: Create, read, update, and conditionally delete customer profiles and contact information
+ * Access: Admin/provider/staff for scoped browsing; admin-only deletion
+ * Actions: View list, create new, edit existing, admin delete when no appointments exist
  * 
  * Related: app/Views/user-management/customers.php handles booking interactions
  * 
@@ -23,6 +23,8 @@
 <?= $this->section('header_title') ?>Customers<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+
+<?= $this->include('components/ui/flash-messages') ?>
 
 <!-- Search Bar and Stats Section -->
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -121,6 +123,19 @@ ob_start();
                            title="Edit Customer">
                             <span class="material-symbols-outlined">edit</span>
                         </a>
+                        <?php if (!empty($canDeleteCustomers)): ?>
+                        <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier)) ?>" method="post" class="inline-flex">
+                            <?= csrf_field() ?>
+                            <button
+                                type="submit"
+                                class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                title="Delete Customer"
+                                onclick="return confirm('Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.');"
+                            >
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
+                        </form>
+                        <?php endif; ?>
                         <?php else: ?>
                         <span class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon opacity-40 cursor-not-allowed" title="Customer record has no usable identifier">
                             <span class="material-symbols-outlined">edit_off</span>

@@ -331,7 +331,7 @@ class AppointmentBookingService
             );
 
             // Step 8: Queue notifications (email, SMS, WhatsApp)
-            $event = AppointmentStatus::notificationEvent($status, 'appointment_confirmed');
+            $event = AppointmentStatus::notificationEvent($status, '');
             $this->queueNotifications($appointmentId, $data['notification_types'] ?? ['email', 'whatsapp'], $event);
 
             $successMessage = $status === AppointmentStatus::PENDING
@@ -842,9 +842,14 @@ class AppointmentBookingService
      * @param array $types Notification types (email, sms, whatsapp)
      * @param string $event Event type (appointment_confirmed, appointment_rescheduled, etc.)
      */
-    protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = 'appointment_confirmed'): void
+    protected function queueNotifications(int $appointmentId, array $types = ['email'], string $event = ''): void
     {
         try {
+            if ($event === '') {
+                log_message('debug', '[AppointmentBookingService] Skipping notification queue because event type is empty.');
+                return;
+            }
+
             // Enqueue all channels via the canonical event/queue system.
             $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications (' . $event . '): ' . implode(', ', $types));

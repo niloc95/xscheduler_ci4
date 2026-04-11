@@ -258,6 +258,16 @@ class UserManagementMutationService
             $newRoles = [$payload['role']];
         }
 
+        // Self-edit admin checkbox is intentionally disabled in the UI, so preserve
+        // the current admin role if the field is omitted from the submission.
+        if ($userId === $currentUserId) {
+            $existingRoles = $this->userModel->getRolesForUser($userId);
+            if (in_array('admin', $existingRoles, true) && !in_array('admin', $newRoles, true)) {
+                $newRoles[] = 'admin';
+                $newRoles = array_values(array_unique($newRoles));
+            }
+        }
+
         if (!empty($newRoles) && ($currentUser['role'] ?? '') === 'admin' && $this->contextService->canChangeUserRole($currentUserId, $userId)) {
             // Validate all roles
             foreach ($newRoles as $role) {

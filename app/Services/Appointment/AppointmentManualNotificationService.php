@@ -60,7 +60,7 @@ class AppointmentManualNotificationService
         $resolvedEventType = trim((string) $eventType);
         if ($resolvedEventType === '') {
             $status = $appointment['status'] ?? AppointmentStatus::PENDING;
-            $resolvedEventType = AppointmentStatus::notificationEvent($status, 'appointment_confirmed');
+            $resolvedEventType = AppointmentStatus::notificationEvent($status, '');
         }
 
         return match ($normalizedChannel) {

@@ -128,9 +128,14 @@ class RoleFilter implements FilterInterface
             }
         }
 
-        // Check roles
+        // Check roles — support multi-role: user passes if ANY of their assigned roles matches a required role.
+        // Prefer $user['roles'] (full array written at login) with fallback to $user['role'] (primary column).
         if (!empty($requiredRoles)) {
-            if (!in_array($user['role'], $requiredRoles)) {
+            $sessionRoles = $user['roles'] ?? [$user['role'] ?? ''];
+            if (!is_array($sessionRoles)) {
+                $sessionRoles = [$sessionRoles];
+            }
+            if (empty(array_intersect($requiredRoles, $sessionRoles))) {
                 return $this->unauthorizedResponse();
             }
         }

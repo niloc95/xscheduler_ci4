@@ -88,21 +88,27 @@ class Providers extends BaseApiController
                 : [0];
         }
 
-        $countModel = new UserModel();
-        $countBuilder = $countModel->where('role', 'provider');
-        if ($scopedProviderIds !== null) {
-            $countBuilder->whereIn('id', $scopedProviderIds);
-        }
-        $total = $countBuilder->countAllResults();
-
         $rowsModel = new UserModel();
-        $rowsBuilder = $rowsModel
-            ->where('role', 'provider')
-            ->orderBy($sortField, strtoupper($sortDir));
         if ($scopedProviderIds !== null) {
-            $rowsBuilder->whereIn('id', $scopedProviderIds);
+            $rowsModel->whereIn('id', $scopedProviderIds);
         }
-        $rows = $rowsBuilder->findAll($length, $offset);
+
+        $allScopedRows = $rowsModel
+            ->orderBy($sortField, strtoupper($sortDir))
+            ->findAll();
+
+        $roleModel = new UserModel();
+        $providerRows = array_values(array_filter($allScopedRows, static function (array $row) use ($roleModel): bool {
+            $userId = (int) ($row['id'] ?? 0);
+            if ($userId <= 0) {
+                return false;
+            }
+
+            return in_array('provider', $roleModel->getRolesForUser($userId), true);
+        }));
+
+        $total = count($providerRows);
+        $rows = array_slice($providerRows, $offset, $length);
 
         $items = array_map(function ($p) use ($includeColors) {
             $item = [
@@ -144,7 +150,7 @@ class Providers extends BaseApiController
         $userModel = new UserModel();
         $provider = $userModel->find($id);
 
-        if (!$provider || ($provider['role'] ?? null) !== 'provider') {
+        if (!$provider || !in_array('provider', $userModel->getRolesForUser($id), true)) {
             return $this->error(404, 'Provider not found');
         }
 
@@ -195,7 +201,7 @@ class Providers extends BaseApiController
         $userModel = new UserModel();
         $provider = $userModel->find($id);
 
-        if (!$provider || ($provider['role'] ?? null) !== 'provider') {
+        if (!$provider || !in_array('provider', $userModel->getRolesForUser($id), true)) {
             return $this->error(404, 'Provider not found');
         }
 
@@ -316,7 +322,7 @@ class Providers extends BaseApiController
 
         $userModel = new UserModel();
         $user = $userModel->find($id);
-        if (!$user || ($user['role'] ?? null) !== 'provider') {
+        if (!$user || !in_array('provider', $userModel->getRolesForUser($id), true)) {
             return $this->error(404, 'Provider not found');
         }
 

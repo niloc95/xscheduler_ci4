@@ -175,13 +175,15 @@ essentialFiles.forEach(({ src, dest }) => {
             if (fs.statSync(source).isDirectory()) {
                 // Special handling for writable directory to clean debug/log files
                 if (src === 'writable') {
-                    // Exclude all debug and log files, setup flags, and local database artifacts
+                    // Exclude all runtime files, debug/log files, setup flags, and local database artifacts
                     const excludePatterns = [
                         'setup_completed.flag',
                         'setup_complete.flag',
                         /^database\/.*\.db$/i,
                         /^logs\/.*\.log$/i,
                         /^debugbar\/.*\.json$/i,
+                        /^cache\/.*$/i,
+                        /^session\/.*$/i,
                         /^backups\/.*$/i,
                         /^exports\/.*$/i,
                         'upload-debug.log'
@@ -202,7 +204,7 @@ essentialFiles.forEach(({ src, dest }) => {
                         }
                     });
                     
-                    console.log(`✅ Copied ${src} → ${dest} (cleaned: logs, debugbar, flags, local database files)`);
+                    console.log(`✅ Copied ${src} → ${dest} (cleaned: logs, debugbar, cache, sessions, flags, local database files)`);
                 } else if (src === 'app') {
                     // Exclude test views from production deployment
                     const excludePatterns = ['Views/test'];

@@ -79,6 +79,37 @@ if (!function_exists('get_role_badge_classes')) {
     }
 }
 
+if (!function_exists('get_user_display_roles')) {
+    /**
+     * Return ordered, de-duplicated roles for display.
+     */
+    function get_user_display_roles(array $user): array
+    {
+        $roles = $user['roles'] ?? [];
+
+        if (!is_array($roles)) {
+            $roles = [$roles];
+        }
+
+        $primaryRole = trim((string) ($user['role'] ?? ''));
+        if ($primaryRole !== '' && !in_array($primaryRole, $roles, true)) {
+            $roles[] = $primaryRole;
+        }
+
+        $roles = array_values(array_unique(array_filter(array_map(
+            static fn($role) => trim((string) $role),
+            $roles
+        ), static fn($role) => $role !== '')));
+
+        $order = ['admin' => 1, 'provider' => 2, 'staff' => 3, 'customer' => 4];
+        usort($roles, static function (string $left, string $right) use ($order): int {
+            return ($order[$left] ?? 99) <=> ($order[$right] ?? 99);
+        });
+
+        return $roles;
+    }
+}
+
 if (!function_exists('get_status_badge_classes')) {
     /**
      * Get Tailwind CSS classes for status badge

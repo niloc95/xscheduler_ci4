@@ -3,9 +3,9 @@
  * Customer Management - Create Customer View
  *
  * Form for creating new customer records in the database.
- * Part of the admin-focused customer CRUD operations.
+ * Part of the customer-management CRUD operations.
  * 
- * Access: Admin role only
+ * Access: Admin/provider/staff
  * Related: index.php (list), edit.php (update)
  */
 ?>

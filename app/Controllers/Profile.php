@@ -86,12 +86,14 @@ class Profile extends BaseController
             return redirect()->to(base_url('auth/logout'));
         }
 
-        session()->set('user', [
+        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
+        $currentUser = session()->get('user') ?? [];
+        session()->set('user', array_merge($currentUser, [
             'name' => $userRecord['name'],
             'email' => $userRecord['email'],
             'role' => $userRecord['role'],
             'profile_image' => $userRecord['profile_image'] ?? null,
-        ]);
+        ]));
 
         $nameParts = $this->splitName($userRecord['name'] ?? '');
         $userRole = $userRecord['role'] ?? current_user_role();
@@ -196,12 +198,14 @@ class Profile extends BaseController
                 ->with('error', 'Unable to update profile. Please try again.');
         }
 
-        session()->set('user', [
+        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
+        $currentUser = session()->get('user') ?? [];
+        session()->set('user', array_merge($currentUser, [
             'name' => $updateData['name'],
             'email' => $updateData['email'],
             'role' => $userRecord['role'],
             'profile_image' => $userRecord['profile_image'] ?? null,
-        ]);
+        ]));
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
@@ -437,12 +441,14 @@ class Profile extends BaseController
                 ->with('active_tab', 'profile');
         }
 
-        session()->set('user', [
+        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
+        $currentUser = session()->get('user') ?? [];
+        session()->set('user', array_merge($currentUser, [
             'name' => $userRecord['name'],
             'email' => $userRecord['email'],
             'role' => $userRecord['role'],
             'profile_image' => $relative,
-        ]);
+        ]));
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([

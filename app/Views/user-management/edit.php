@@ -84,7 +84,11 @@
 								if (is_string($selectedRoles)) {
 									$selectedRoles = [$selectedRoles]; // Handle legacy single role
 								}
+								$selfAdminLocked = ($user['id'] ?? 0) === (session('user_id') ?? 0) && in_array('admin', (array) $selectedRoles, true);
 								?>
+								<?php if ($selfAdminLocked): ?>
+									<input type="hidden" name="roles[]" value="admin">
+								<?php endif; ?>
 								<div class="space-y-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900/30 <?= $validation && $validation->hasError('roles') ? 'border-red-500 dark:border-red-400' : '' ?>">
 									<?php foreach (['admin', 'provider', 'staff'] as $roleOption): ?>
 										<div class="flex items-center gap-3">

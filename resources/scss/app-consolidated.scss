@@ -167,6 +167,20 @@ md-outlined-card {
 
 // Ensure native controls render appropriate theme chrome
 @layer base {
+  .scheduler-status-select {
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+  }
+
+  :root[data-theme='light'] .scheduler-status-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_height=%2218%22_viewBox=%220_-960_960_960%22_width=%2218%22_fill=%22%236b7280%22%3E%3Cpath_d=%22M480-344_240-584l56-56_184_184_184-184_56_56-240_240Z%22/%3E%3C/svg%3E");
+  }
+
+  :root[data-theme='dark'] .scheduler-status-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_height=%2218%22_viewBox=%220_-960_960_960%22_width=%2218%22_fill=%22%23cbd5e1%22%3E%3Cpath_d=%22M480-344_240-584l56-56_184_184_184-184_56_56-240_240Z%22/%3E%3C/svg%3E");
+  }
+
   /* Keep native input icons (date/time/select/etc.) synced with app theme. */
   :root[data-theme='light'] input,
   :root[data-theme='light'] select,
@@ -178,6 +192,17 @@ md-outlined-card {
   :root[data-theme='dark'] select,
   :root[data-theme='dark'] textarea {
     color-scheme: dark;
+  }
+
+  :root[data-theme='dark'] select {
+    background-color: #1f2937;
+    color: #f3f4f6;
+    border-color: #4b5563;
+  }
+
+  :root[data-theme='dark'] option {
+    background-color: #1f2937;
+    color: #f3f4f6;
   }
 
   /* Fallback when data-theme is not yet initialized. */

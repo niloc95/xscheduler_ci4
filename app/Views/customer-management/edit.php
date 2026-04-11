@@ -3,9 +3,9 @@
  * Customer Management - Edit Customer View
  *
  * Form for updating existing customer records in the database.
- * Part of the admin-focused customer CRUD operations.
+ * Part of the customer-management CRUD operations.
  * 
- * Access: Admin role only
+ * Access: Admin/provider/staff for scoped records; admin-only deletion
  * Related: index.php (list), create.php (new)
  */
 ?>
@@ -18,11 +18,7 @@
 <?= $this->section('header_title') ?>Edit Customer<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<?php if (session()->getFlashdata('error')): ?>
-        <div class="mb-4 p-3 rounded-lg border border-red-300/60 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200">
-            <?= esc(session()->getFlashdata('error')) ?>
-        </div>
-    <?php endif; ?>
+<?= $this->include('components/ui/flash-messages') ?>
 
     <div class="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <form method="post" action="<?= base_url('customer-management/update/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" class="space-y-6">
@@ -170,7 +166,7 @@
                 </div>
             <?php endif; ?>
 
-            <div class="flex gap-3">
+            <div class="flex flex-wrap gap-3">
                 <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                     <span class="material-symbols-outlined">save</span>
                     Save
@@ -180,6 +176,28 @@
                 </a>
             </div>
         </form>
+
+        <?php if (!empty($canDeleteCustomers)): ?>
+        <div class="mt-4 flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+            <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" method="post" class="inline-flex">
+                <?= csrf_field() ?>
+                <button
+                    type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                    onclick="return confirm('Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.');"
+                    <?= !empty($appointmentCount) ? 'disabled aria-disabled="true" title="Customer has appointment history and cannot be deleted"' : '' ?>
+                >
+                    <span class="material-symbols-outlined">delete</span>
+                    Delete
+                </button>
+            </form>
+            <?php if (!empty($appointmentCount)): ?>
+            <p class="self-center text-sm text-amber-600 dark:text-amber-400">
+                This customer has <?= esc((string) $appointmentCount) ?> appointment<?= (int) $appointmentCount === 1 ? '' : 's' ?> and cannot be deleted.
+            </p>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 <?= $this->endSection() ?>

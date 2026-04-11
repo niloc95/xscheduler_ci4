@@ -16,11 +16,13 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
 
     private int $providerId;
     private int $otherProviderId;
+    private int $compatProviderId;
     private int $serviceId;
     private int $inactiveServiceId;
     private int $otherProviderServiceId;
     private int $customerId;
     private array $appointmentIds = [];
+    private bool $createdUserRolesTable = false;
 
     protected function setUp(): void
     {
@@ -43,7 +45,7 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
             $db->table('customers')->where('id', $this->customerId)->delete();
         }
 
-        $db->table('providers_services')->whereIn('provider_id', [$this->providerId, $this->otherProviderId])->delete();
+        $db->table('providers_services')->whereIn('provider_id', [$this->providerId, $this->otherProviderId, $this->compatProviderId])->delete();
 
         if (isset($this->serviceId)) {
             $db->table('services')->where('id', $this->serviceId)->delete();
@@ -57,9 +59,16 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
             $db->table('services')->where('id', $this->otherProviderServiceId)->delete();
         }
 
-        if (isset($this->providerId) || isset($this->otherProviderId)) {
-            $db->table('provider_schedules')->whereIn('provider_id', [$this->providerId, $this->otherProviderId])->delete();
-            $db->table('users')->whereIn('id', [$this->providerId, $this->otherProviderId])->delete();
+        if (isset($this->providerId) || isset($this->otherProviderId) || isset($this->compatProviderId)) {
+            $db->table('provider_schedules')->whereIn('provider_id', [$this->providerId, $this->otherProviderId, $this->compatProviderId])->delete();
+            if ($this->userRolesTableExists($db)) {
+                $db->table('user_roles')->whereIn('user_id', [$this->providerId, $this->otherProviderId, $this->compatProviderId])->delete();
+            }
+            $db->table('users')->whereIn('id', [$this->providerId, $this->otherProviderId, $this->compatProviderId])->delete();
+        }
+
+        if ($this->createdUserRolesTable && $this->userRolesTableExists($db)) {
+            $db->query('DROP TABLE IF EXISTS ' . $db->prefixTable('user_roles'));
         }
 
         parent::tearDown();
@@ -106,6 +115,20 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
         $this->assertTrue((bool) ($appointmentsPayload['meta']['filters']['futureOnly'] ?? false));
     }
 
+    public function testProviderIndexUsesAuthoritativeRoleMembershipTableForListing(): void
+    {
+        $providers = $this->get('/api/providers?includeColors=true&length=10');
+        $providers->assertOK();
+
+        $payload = json_decode($providers->getJSON(), true);
+        $items = $payload['data'] ?? [];
+
+        $compatProvider = $this->findItemById($items, $this->compatProviderId);
+        $this->assertNotNull($compatProvider);
+        $this->assertSame('Compat Provider Membership', $compatProvider['name'] ?? null);
+        $this->assertSame('#118833', $compatProvider['color'] ?? null);
+    }
+
     public function testAuthenticatedServicesEndpointCanFilterByProviderMapping(): void
     {
         $result = $this->withSession($this->authenticatedSession())
@@ -129,6 +152,8 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
     {
         $db = \Config\Database::connect('tests');
         $now = date('Y-m-d H:i:s');
+
+        $this->ensureUserRolesTable($db);
 
         $db->table('users')->insert([
             'name' => 'API Provider One',
@@ -155,6 +180,44 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
             'updated_at' => $now,
         ]);
         $this->otherProviderId = (int) $db->insertID();
+
+        $db->table('users')->insert([
+            'name' => 'Compat Provider Membership',
+            'email' => 'compat-provider-' . uniqid('', true) . '@example.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'staff',
+            'status' => 'active',
+            'is_active' => 1,
+            'color' => '#118833',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->compatProviderId = (int) $db->insertID();
+
+        if ($this->userRolesTableExists($db)) {
+            $db->table('user_roles')->insertBatch([
+                [
+                    'user_id' => $this->providerId,
+                    'role' => 'provider',
+                    'created_at' => $now,
+                ],
+                [
+                    'user_id' => $this->otherProviderId,
+                    'role' => 'provider',
+                    'created_at' => $now,
+                ],
+                [
+                    'user_id' => $this->compatProviderId,
+                    'role' => 'provider',
+                    'created_at' => $now,
+                ],
+                [
+                    'user_id' => $this->compatProviderId,
+                    'role' => 'staff',
+                    'created_at' => $now,
+                ],
+            ]);
+        }
 
         $db->table('services')->insert([
             'name' => 'API Public Service',
@@ -306,5 +369,33 @@ final class ProvidersServicesApiV1Test extends CIUnitTestCase
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
         }
+    }
+
+    private function userRolesTableExists($db): bool
+    {
+        if (!method_exists($db, 'tableExists')) {
+            return true;
+        }
+
+        return $db->tableExists('user_roles') || $db->tableExists($db->prefixTable('user_roles'));
+    }
+
+    private function ensureUserRolesTable($db): void
+    {
+        if ($this->userRolesTableExists($db)) {
+            return;
+        }
+
+        $table = $db->prefixTable('user_roles');
+        $db->query("CREATE TABLE IF NOT EXISTS {$table} (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            created_at DATETIME NULL,
+            INDEX idx_user_roles_user_id (user_id),
+            INDEX idx_user_roles_role (role)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $this->createdUserRolesTable = true;
     }
 }

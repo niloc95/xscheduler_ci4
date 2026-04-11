@@ -114,8 +114,18 @@ class UserManagementContextService
         array $scheduleDays,
     ): array {
         $availableRoles = $this->getAvailableRolesForUser($currentUserId, $user);
+
+        // Resolve full role arrays for multi-role membership checks.
+        // $user['roles'] is populated by the controller via UserModel::getRolesForUser() before this call.
+        $userRoles = $user['roles'] ?? (empty($user['role']) ? [] : [$user['role']]);
+        $userIsProvider = in_array('provider', $userRoles, true);
+        $userIsStaff    = in_array('staff', $userRoles, true);
+        $currentUserRoles    = $currentUser['roles'] ?? (empty($currentUser['role']) ? [] : [$currentUser['role']]);
+        $currentUserIsAdmin    = in_array('admin', $currentUserRoles, true);
+        $currentUserIsProvider = in_array('provider', $currentUserRoles, true);
+
         $providers = [];
-        if (in_array('staff', $availableRoles, true) || ($user['role'] ?? '') === 'staff') {
+        if (in_array('staff', $availableRoles, true) || $userIsStaff) {
             $providers = $this->userModel->getProviders();
         }
 
@@ -123,21 +133,21 @@ class UserManagementContextService
         $availableStaff = [];
         $assignedProviders = [];
         $availableProviders = [];
-        $canManageAssignments = ($currentUser['role'] ?? '') === 'admin';
+        $canManageAssignments = $currentUserIsAdmin;
 
-        if (($user['role'] ?? '') === 'provider'
-            && ($currentUser['role'] ?? '') === 'provider'
+        if ($userIsProvider
+            && $currentUserIsProvider
             && (int) $currentUserId === (int) ($user['id'] ?? 0)) {
             $canManageAssignments = true;
         }
 
-        if (($user['role'] ?? '') === 'provider') {
+        if ($userIsProvider) {
             $assignedStaff = $this->providerStaffModel->getStaffByProvider((int) $user['id']);
 
             if ($canManageAssignments) {
                 $availableStaff = $this->getActiveUsersByRole('staff');
             }
-        } elseif (($user['role'] ?? '') === 'staff') {
+        } elseif ($userIsStaff) {
             $assignedProviders = $this->providerStaffModel->getProvidersForStaff((int) $user['id']);
 
             if ($canManageAssignments) {
@@ -146,7 +156,7 @@ class UserManagementContextService
         }
 
         $providerLocations = [];
-        if (($user['role'] ?? '') === 'provider') {
+        if ($userIsProvider) {
             $providerLocations = $this->locationModel->getProviderLocationsWithDays((int) $user['id']);
         }
 
@@ -402,7 +412,61 @@ class UserManagementContextService
                 return [];
         }
 
+        $users = $this->enrichUsersWithRoles($users);
+
         return $this->enrichUsersWithAssignments($users);
+    }
+
+    private function enrichUsersWithRoles(array $users): array
+    {
+        if (empty($users)) {
+            return $users;
+        }
+
+        $userIds = array_values(array_filter(array_map(
+            static fn(array $user): int => (int) ($user['id'] ?? 0),
+            $users
+        )));
+
+        if (empty($userIds)) {
+            return $users;
+        }
+
+        $rolesByUserId = [];
+
+        try {
+            $rows = $this->userModel->db->table($this->userModel->db->prefixTable('user_roles'))
+                ->select('user_id, role')
+                ->whereIn('user_id', $userIds)
+                ->get()
+                ->getResultArray();
+
+            foreach ($rows as $row) {
+                $userId = (int) ($row['user_id'] ?? 0);
+                $role = trim((string) ($row['role'] ?? ''));
+                if ($userId > 0 && $role !== '') {
+                    $rolesByUserId[$userId] ??= [];
+                    $rolesByUserId[$userId][] = $role;
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('warning', 'UserManagementContextService::enrichUsersWithRoles fallback: ' . $e->getMessage());
+        }
+
+        foreach ($users as &$user) {
+            $userId = (int) ($user['id'] ?? 0);
+            $primaryRole = trim((string) ($user['role'] ?? ''));
+            $roles = $rolesByUserId[$userId] ?? [];
+
+            if ($primaryRole !== '' && !in_array($primaryRole, $roles, true)) {
+                $roles[] = $primaryRole;
+            }
+
+            $user['roles'] = array_values(array_unique($roles));
+        }
+        unset($user);
+
+        return $users;
     }
 
     private function enrichUsersWithAssignments(array $users): array

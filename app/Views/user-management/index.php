@@ -65,9 +65,14 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= get_role_badge_classes($user['role']) ?>">
-                                <?= get_role_display_name($user['role']) ?>
-                            </span>
+                            <?php $displayRoles = get_user_display_roles($user); ?>
+                            <div class="flex flex-wrap gap-1">
+                                <?php foreach ($displayRoles as $displayRole): ?>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= get_role_badge_classes($displayRole) ?>">
+                                        <?= esc(get_role_display_name($displayRole)) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
                         </td>
                         <td class="px-6 py-4">
                             <?= view('components/status_badge', [
@@ -212,7 +217,39 @@
     }
 
     function roleLabel(role) {
-        return ({ admin: 'Admin', provider: 'Provider', staff: 'Staff' })[role] || role;
+        return ({ admin: 'Administrator', provider: 'Service Provider', staff: 'Staff Member', customer: 'Customer' })[role] || role;
+    }
+
+    function getDisplayRoles(user) {
+        const rawRoles = Array.isArray(user.roles) ? user.roles : [];
+        const roles = [...rawRoles];
+        const primaryRole = String(user.role || '').trim();
+
+        if (primaryRole && !roles.includes(primaryRole)) {
+            roles.push(primaryRole);
+        }
+
+        const order = { admin: 1, provider: 2, staff: 3, customer: 4 };
+        return [...new Set(roles.filter((role) => String(role || '').trim() !== ''))]
+            .sort((left, right) => (order[left] || 99) - (order[right] || 99));
+    }
+
+    function renderRoleBadges(user) {
+        const badgeColors = {
+            admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            provider: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            staff: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            customer: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+        };
+        const roles = getDisplayRoles(user);
+
+        if (!roles.length) {
+            return '<span class="text-gray-400 dark:text-gray-500 italic text-sm">—</span>';
+        }
+
+        return '<div class="flex flex-wrap gap-1">'
+            + roles.map((role) => `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">${escapeHtml(roleLabel(role))}</span>`).join('')
+            + '</div>';
     }
 
     function fmtDate(value) {
@@ -246,11 +283,6 @@
     function userRow(user) {
         const role = user.role || '';
         const isActive = user.is_active ?? true;
-        const badgeColors = {
-            admin: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-            provider: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            staff: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-        };
         const name = user.name || '-';
         const email = user.email || '-';
         let assignmentsHtml = '<span class="text-gray-400 dark:text-gray-500 italic text-sm">None</span>';
@@ -269,7 +301,7 @@
 
         return `<tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">`
             + `<td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${escapeHtml(name.substring(0, 1).toUpperCase())}</div><div><div class="font-medium">${escapeHtml(name)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${user.phone ? `<div class="text-gray-400 dark:text-gray-500 text-xs">${escapeHtml(user.phone)}</div>` : ''}</div></div></td>`
-            + `<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">${escapeHtml(roleLabel(role))}</span></td>`
+            + `<td class="px-6 py-4">${renderRoleBadges(user)}</td>`
             + `<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">${isActive ? 'Active' : 'Inactive'}</span></td>`
             + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${assignmentsHtml}</td>`
             + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(fmtDate(user.created_at))}</td>`

@@ -46,6 +46,24 @@ Current state: active hardening. Core workflows are production-capable, with foc
 - Packaging via `scripts/package.js`
 - Release automation via `scripts/release.js`
 
+#### Deployment Package (`scripts/package.js`)
+- Builds a production-ready ZIP package excluding all development/runtime files
+- Run via `npm run package` (builds assets then packages) or `npm run package:local` (packages only)
+- **Excluded from deployment** (automatically stripped):
+  - Setup flags: `setup_completed.flag`, `setup_complete.flag`
+  - Runtime cache: all files in `writable/cache/` (e.g., availability calendar cache)
+  - Session files: all files in `writable/session/`
+  - Log files: `.log` files in `writable/logs/`
+  - Debug toolbar: `.json` files in `writable/debugbar/`
+  - Database backups: `.db` files in `writable/database/`
+  - Exports/backups: all files in `writable/exports/` and `writable/backups/`
+  - Test views: `app/Views/test/` directory
+- **Preserved directories** (empty shells with `.gitkeep`):
+  - `writable/logs/`, `writable/cache/`, `writable/session/`, `writable/debugbar/`, `writable/backups/`, `writable/exports/`
+  - These ensure proper directory structure on fresh installation
+- **Output**: ZIP file versioned as `webschedulr-deploy-v{N}.zip`, generic copy as `webschedulr-deploy.zip`
+- Configuration auto-detection: `App.php` baseURL is set empty for auto-detection via `$_SERVER['HTTP_HOST']` in production
+
 ### No Framework Drift
 - Do not introduce React/Vue/Alpine without explicit approval.
 - Do not introduce TypeScript without explicit scoped approval.
@@ -155,6 +173,10 @@ docs/
 - Runtime DB: MySQL / MariaDB only.
 - SQLite is not a supported app runtime DB.
 - Runtime schema is authoritative for this file.
+- Default DB charset/collation for new installs:
+  - Charset: `utf8mb4`
+  - Collation: `utf8mb4_unicode_ci` (portable default for MySQL and MariaDB)
+  - If strictly MySQL 8.0+, `utf8mb4_0900_ai_ci` is preferred.
 
 ### Customer vs User Split
 - `xs_users` holds internal login users.
@@ -360,6 +382,39 @@ docs/
 - The enqueue step must derive event type from `AppointmentStatus::notificationEvent()`.
 - New booking flows must not hardcode `appointment_confirmed` for all successful creates.
 
+### Public Booking Flow
+
+#### Overview
+The public booking system allows unauthenticated customers to book appointments without creating an account. Route prefix `/book/` and customer portal `/my-appointments/`.
+
+#### Entry Points
+- `GET /book` — service catalog / landing page (no auth)
+- `GET /book/{serviceSlug}` — service-specific booking page
+- `GET /book/{serviceSlug}/{providerHash}` — provider-specific booking page
+- `GET /my-appointments/{hash}` — customer appointment portal (hash-gated, no login required)
+
+#### Controller
+- `app/Controllers/PublicSite/PublicBookingController.php`
+
+#### JS Module
+- `resources/js/public-booking.js` (dedicated Vite entry point)
+
+#### API Calls Made by Public Booking Flow
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/public/services` | Load available services |
+| `GET /api/v1/public/providers` | Load available providers |
+| `GET /api/v1/public/availability` | Fetch available time slots |
+| `POST /book/submit` (or equivalent web route) | Submit booking form |
+
+All public API endpoints are unauthenticated and must enforce rate limiting. Provider and appointment hashes are passed; numeric IDs are never exposed in public URLs.
+
+#### Security Rules for Public Routes
+- Numeric customer IDs must never appear in URLs — use `xs_appointments.hash` or `xs_appointments.public_token`.
+- `xs_customers.hash` column is currently absent in this runtime; public customer portal (`/my-appointments/{hash}`) will not function until that schema is restored.
+- CSRF protection applies to all booking form submissions.
+- Public slot queries must scope by provider and service — never return cross-provider slots.
+
 ---
 
 ## Settings Rules
@@ -397,11 +452,198 @@ docs/
 
 ---
 
+## Frontend JS Architecture
+
+### Entry Points Summary
+
+| File | Purpose |
+|------|---------|
+| `resources/js/app.js` | Main authenticated-app bundle. Orchestrates all component initialization. |
+| `resources/js/spa.js` | SPA navigation layer. Intercepts links/forms; swaps `#spa-content`. |
+| `resources/js/public-booking.js` | Standalone bundle for unauthenticated public booking flow. No spa.js. |
+| `resources/js/dark-mode.js` | Dark-mode toggle; sets `data-theme` attribute on `<html>`. |
+| `resources/js/charts.js` | Chart.js wrapper for dashboard and analytics charts. |
+| `resources/js/unified-sidebar.js` | Sidebar initialization and mobile-toggle logic. |
+| `resources/js/material-web.js` | Material Design 3 component imports (side-effect only). |
+| `resources/js/setup.js` | Setup wizard JS (setup flow only, not included in main bundle). |
+
+### app.js — Main Authenticated Bundle
+
+`app.js` is the Vite entry point for all authenticated-app pages.
+
+#### Initialization Flow
+
+1. `initializeComponents()` — master init function called on first load and after every SPA navigation. Calls in order: charts, scheduler, status filters, summary-card filters, view-toggle handlers, global search, appointment form, settings page enhancements, customer management search, provider schedule UI, service management forms, phone country selectors, appointment URL prefill.
+2. `bindAppLifecycleEvents()` (from `modules/app-lifecycle.js`) — wires `DOMContentLoaded` and the `spa:navigated` custom event so `initializeComponents()` re-runs after every SPA page swap. This is the single lifecycle hook; do not add duplicate `DOMContentLoaded` handlers elsewhere.
+3. Scheduler is lazy-initialized inside `initScheduler()` with retry logic (up to 10 attempts at 200 ms intervals) to handle SPA navigation timing. Instance is stored at `window.scheduler`.
+
+#### Global Window Exports (available to PHP view scripts)
+
+| Symbol | Source | Notes |
+|--------|--------|-------|
+| `window.xsEscapeHtml(str)` | Inline in `app.js` | HTML-encode any user-supplied string before inserting into JS-rendered DOM |
+| `window.initTimeSlotsUI` | `modules/appointments/time-slots-ui.js` | Time-slot picker; called by create/edit appointment views |
+| `window.initRevenueTrendChart` | `modules/analytics/analytics-charts.js` | |
+| `window.initTimeSlotChart` | `modules/analytics/analytics-charts.js` | |
+| `window.initServiceDistributionChart` | `modules/analytics/analytics-charts.js` | |
+| `window.initProviderPicker(root)` | Inline in `app.js` | Multi-provider checkbox picker for service create/edit views |
+| `window.togglePassword(fieldId)` | Inline in `app.js` | Password-field visibility toggle |
+| `window.scheduler` | `modules/scheduler/scheduler-core.js` | Running `SchedulerCore` instance; set after `init()` resolves |
+| `window.refreshAppointmentStats` | `modules/filters/status-filters.js` | Refresh dashboard stat counters |
+| `window.emitAppointmentsUpdated` | `modules/filters/status-filters.js` | Broadcast `appointmentsUpdated` event to refresh list/scheduler |
+
+#### Per-View Initializers
+
+Views that need JS behavior must NOT add bare `DOMContentLoaded` handlers — these won't fire on SPA navigation. Instead, register with:
+
+```js
+function initMyView() {
+  const el = document.getElementById('myEl');
+  if (!el || el.dataset.initialized === 'true') return;
+  el.dataset.initialized = 'true';
+  // attach event listeners...
+}
+xsRegisterViewInit(initMyView);
+```
+
+`xsRegisterViewInit` (exposed by `spa.js`) runs the function immediately if the DOM is ready, and again after every `spa:navigated` event. Always include a `data-initialized` guard to prevent duplicate binding.
+
+---
+
+### spa.js — SPA Navigation Layer
+
+`spa.js` is a lightweight SPA layer that preserves the page chrome (header, sidebar, footer) and swaps only the `#spa-content` div. It is loaded once and never re-imported.
+
+#### How It Works
+
+```
+User clicks <a> or submits <form>
+  └─▶ clickHandler / submitHandler (document-level listeners)
+        └─▶ shouldIntercept() — opt-out check (data-no-spa, .no-spa, .fc, data-navlink)
+              └─▶ navigate(url) or submitForm(form)
+                    ├─ navigate: GET with X-Requested-With: XMLHttpRequest
+                    │     └─▶ Server returns full HTML → spa.js extracts #spa-content innerHTML
+                    │     └─▶ syncHeaderControls() — keeps calendar toolbar in sync
+                    │     └─▶ Re-runs inline <script> tags in new content
+                    │     └─▶ history.pushState()
+                    │     └─▶ initTabsInSpaContent() — tabs driven by URL hash
+                    │     └─▶ Dispatches spa:navigated CustomEvent
+                    │     └─▶ runViewInitializers() — calls all xsViewInitializers[]
+                    └─ submitForm: POST with X-Requested-With: XMLHttpRequest
+                          └─▶ Reads JSON response (see contract below)
+                          └─▶ Calls navigate() with forceReload on success
+```
+
+#### `navigate(url, push = true, options = {})`
+
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `url` | required | Destination URL |
+| `push` | `true` | Push a new browser history entry |
+| `options.forceReload` | `false` | **Bypass the same-URL early-return guard.** Required whenever a server action modifies data and redirects back to the current page (e.g. delete on the index page). Without it, the content silently does not refresh. |
+
+**Same-URL guard:** Without `forceReload: true`, a `navigate()` call whose destination pathname and query string match the current page returns immediately without fetching. This prevents spurious reloads. Always pass `{ forceReload: true }` in post-form-submit success paths.
+
+#### Form Submission & JSON Response Contract
+
+`submitForm()` POSTs via `fetch` with `X-Requested-With: XMLHttpRequest`. The controller must return JSON:
+
+**Success:**
+```json
+{ "success": true, "message": "Customer deleted.", "redirect": "https://app/customer-management" }
+```
+
+**Error:**
+```json
+{ "success": false, "message": "Cannot delete — appointments exist.", "errors": { "fieldName": "Error text." } }
+```
+
+| Key | Required | Effect |
+|-----|----------|--------|
+| `success` | Yes | `true` → navigate with forceReload; `false` → show error flash |
+| `message` | No | Shown as toast after navigation (fires after content swap so it survives) |
+| `redirect` | No (but recommended) | URL to navigate to on success. If absent, reloads current page. **Always include when the success destination matches the current URL.** |
+| `errors` | No | Field-keyed validation messages; injected inline next to form fields |
+
+**Success navigation behaviour:**
+- `data.redirect` set → `navigate(data.redirect, true, { forceReload: true })`
+- No redirect → `navigate(currentPath, false, { forceReload: true })`
+
+Flash toast fires **after** navigation so it is not wiped by the content swap.
+
+#### Opt-Out Patterns
+
+| Pattern | When to use |
+|---------|-------------|
+| `data-no-spa="true"` on `<form>` or `<a>` | Force full page reload (logout, file downloads, external links, CSRF-sensitive non-JSON flows) |
+| `class="no-spa"` on `<form>` or `<a>` | Same as above (class-based alternative) |
+| `data-navlink` on `<a>` | Prevents interception of FullCalendar's internal navigation anchors |
+
+#### Events
+
+| Event | Fired on | When |
+|-------|----------|------|
+| `spa:navigated` | `document` | After every successful content swap; detail: `{ url }` |
+| `xs:flash` | `document` | Show a toast; detail: `{ type: 'success'|'error', message }` |
+| `scheduler:ready` | `window` | After `SchedulerCore` finishes `init()`; detail: `{ scheduler }` |
+| `settingsSaved` | `document` | After settings form saves; triggers scheduler settings refresh |
+| `appointmentsUpdated` | `document` | Emitted by status-filters / scheduler to trigger stat + list refresh |
+
+---
+
+### public-booking.js — Public Booking Bundle
+
+`public-booking.js` is a completely separate Vite entry point. It does not share `spa.js` or `app.js`.
+
+- No authentication context.
+- Uses plain `fetch` calls to `/api/v1/public/...` endpoints.
+- No SPA navigation layer — transitions are full page loads.
+- Entry point for all unauthenticated routes under `/book/` and `/my-appointments/`.
+
+#### Public API Calls
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/public/services` | GET | Load available services |
+| `/api/v1/public/providers` | GET | Load available providers |
+| `/api/v1/public/availability` | GET | Fetch available time slots for a provider/service/date |
+| `/book/submit` (web route) | POST | Submit booking form |
+
+All public API calls are unauthenticated. Responses must never expose numeric customer or provider IDs — use hash/token references only.
+
+---
+
 ## API Rules
 
 ### Versioning
 - Versioned routes under `/api/v1/`.
 - Operational routes under `/api/`.
+
+### API Layer Architecture
+
+#### Base Class
+- All API controllers extend `App\Controllers\Api\BaseApiController`.
+- Provides: `successResponse()`, `errorResponse()`, `currentUser()`, `hasRole()`, `requireRole()`, `requireAuth()`.
+- Enforces the API envelope contract (Rule 5).
+
+#### Authentication Flow
+- API endpoints rely on the shared session (same session cookie as web routes — no separate JWT/token).
+- `requireAuth()` → returns 401 JSON if not authenticated.
+- `requireRole($roles)` → calls `hasRole()` and returns 403 JSON if insufficient role.
+- `hasRole()` checks the full `$user['roles']` array in session via `array_intersect`; never relies on `xs_users.role` alone.
+
+#### Versioned API Resources (`/api/v1/`)
+| Resource | Controller |
+|----------|-----------|
+| Appointments | `Api/V1/Appointments.php` |
+| Providers | `Api/V1/Providers.php` |
+| Customers | `Api/V1/Customers.php` |
+| Calendar | `Api/V1/CalendarController.php` (operational; see known dead code note) |
+| Public availability / services / providers | `Api/V1/Public*` controllers |
+
+#### Operational Routes (`/api/`)
+- `POST /api/auth/switch-role` — switches active_role in session; requires auth.
+- `POST /api/notifications/dispatch` — manual cron-equivalent dispatch trigger.
 
 ### Authorization
 - Enforce with route filters plus backend checks.
@@ -419,13 +661,61 @@ Current operational roles:
 - `staff`
 - `customer`
 
-### Multi-Role Support (Phase 3)
-- Multi-role memberships are stored in `xs_user_roles`.
-- `xs_users.role` remains compatibility primary role.
-- User forms use checkbox payload `roles[]`.
-- Role-switch endpoint: `POST /api/auth/switch-role`.
+### Multi-Role Storage & Session Structure
 
-### Route Filters
+Multi-role support is live. The storage model has two layers:
+
+| Layer | Column/Table | Purpose |
+|-------|--------------|---------|
+| Compatibility primary | `xs_users.role` | Single legacy role; kept for fallback reads |
+| Authoritative membership | `xs_user_roles` (one row per role per user) | Full role set; written on every create/update |
+
+**Session keys set at login (`app/Filters/Auth.php`):**
+- `$session->role` — primary single role from `xs_users.role` (legacy compat)
+- `$session->roles` — full role array from `UserModel::getRolesForUser()` (authoritative)
+- `$session->active_role` — highest-privilege role for UI display (admin > provider > staff)
+
+Always read from `$user['roles']` first; fall back to `[$user['role']]` only for legacy compatibility. **Never check `xs_users.role` directly for authorization decisions.**
+
+### How RBAC Is Enforced End-to-End
+
+#### Route Filters (`app/Filters/RoleFilter.php`)
+- Reads `$sessionRoles = $user['roles'] ?? [$user['role'] ?? '']` from session.
+- Gate: `empty(array_intersect($requiredRoles, $sessionRoles))` → redirect unauthorized.
+- A user with roles `['admin', 'provider']` passes both `role:admin` and `role:admin,provider` filters.
+- Applied to routes inline: `'filter' => 'role:admin,provider'`.
+
+#### Service-Level Authorization (`app/Services/AuthorizationService.php`)
+- All `can*()` and scope methods accept `string|array $userRole`.
+- `private resolveRole(string|array $userRole): string` — returns the highest privilege role found by scanning `[admin, provider, staff]` in hierarchy order.
+- `getProviderId()` checks `$user['roles'] ?? [$user['role']]` array, not `$user['role']` alone.
+- Callers that pass a plain string (e.g. `getUserRole()` result) are unaffected; `resolveRole(string)` returns the string unchanged.
+
+#### API Base Controller (`app/Controllers/Api/BaseApiController.php`)
+- `hasRole(string|array $roles): bool` — reads full session `$user['roles'] ?? [$user['role']]`, applies `array_intersect`.
+- `requireRole($roles)` — calls `hasRole()` and returns 403 JSON on failure.
+- No separate JWT layer; API endpoints rely on the same session as web routes.
+
+#### User Management Context (`app/Services/UserManagementContextService.php`)
+- `buildEditViewData()` resolves `$userRoles = $user['roles'] ?? [$user['role']]`.
+- All provider/staff/admin conditionals use `in_array($role, $userRoles, true)` — not `$user['role'] === 'provider'`.
+- Provider-specific context (assigned staff, locations, canManageAssignments) is passed to the view whenever `$userIsProvider === true`.
+- Index/API user rows must be enriched with authoritative `roles[]` membership for display surfaces; the user-management list must not render only `xs_users.role` when multiple roles are assigned.
+
+#### Provider Schedule JS (`resources/js/modules/user-management/provider-schedule.js`)
+- `getActiveRoles(): string[]` — reads all `input[name="roles[]"]:checked` checkboxes; falls back to `<select id="role">` for legacy DOM.
+- `toggleScheduleSection(activeRoles: string[])` — enables/disables the schedule section and "copy to all days" button based on `activeRoles.includes('provider')`.
+-  Event binding: loops all role checkboxes on `change`; single-select fallback is preserved for any remaining legacy form paths.
+
+#### API Providers Resource (`app/Controllers/Api/V1/Providers.php`)
+- Provider-identity checks at `services()`, `appointments()`, and `uploadProfileImage()` use `$userModel->getRolesForUser($id)` via `in_array('provider', ..., true)`.
+- Provider index listing must resolve provider membership from `UserModel::getRolesForUser($userId)` / `xs_user_roles`, not `xs_users.role` alone. Public/provider/staff scoped listings must include users whose compatibility primary role differs from their authoritative provider membership.
+
+#### Provider Schedule Authorization (`app/Controllers/ProviderSchedule.php`)
+- `isAuthorized()` must evaluate the full effective role set from session `roles[]` plus authoritative DB fallback via `getRolesForUser()`.
+- Do not gate provider schedule access on `$currentUser['role']` alone; multi-role users may carry provider/admin membership even when the compatibility primary role is different in-session.
+
+### Route Filters Reference
 - `setup`
 - `auth`
 - `role:admin`
@@ -508,6 +798,8 @@ Current operational roles:
 | TD-10 | Staff/provider calendar scope must remain guarded by regression tests. | `app/Controllers/Api/CalendarController.php`, `app/Services/Appointment/AppointmentQueryService.php` | Enforce/verify staff provider assignment scope in tests. | in-progress |
 | TD-11 | Phone normalization is not guaranteed at every input boundary. | customer/user mutation controllers/services | Enforce `PhoneNumberService::normalize()` before persistence. | in-progress |
 | TD-12 | Inline style attributes still exist in some templates. | `app/Views/components/dark-mode-toggle.php`, `app/Views/appointments/index.php`, email/error templates | Replace with utility classes or data-* dynamic-color resolver pattern. | open |
+| TD-13 | Provider index listing queried `xs_users.role = 'provider'` directly. | `app/Controllers/Api/V1/Providers.php` | Resolved by filtering scoped rows through authoritative provider membership from `getRolesForUser()`. | closed |
+| TD-14 | `ProviderSchedule.php::isAuthorized()` used single `$currentUser['role']` checks. | `app/Controllers/ProviderSchedule.php` | Resolved by evaluating merged session `roles[]` plus DB fallback roles from `getRolesForUser()`. | closed |
 
 ---
 
@@ -535,6 +827,7 @@ Current operational roles:
 [] Did I lint touched PHP files?
 [] For role logic, did I use UserModel::getRolesForUser()?
 [] For user forms, did I preserve roles[] checkbox behavior?
+[] If a role checkbox is disabled, did I preserve its submitted value another way?
 [] Did I sync role changes with xs_user_roles and keep xs_users.role compatibility?
 [] Did I avoid dead-code surfaces?
 [] Did I document residual risks if full sweep was deferred?
@@ -576,6 +869,12 @@ Current operational roles:
 | 28 | `style=""` attributes or `<style>` tags in views/templates/JS-rendered HTML | Use utility classes; runtime dynamic values via data-* + dynamic-color resolver pattern |
 | 29 | Calling `isDarkMode()` or checking `.dark` class in new logic | Check `document.documentElement.dataset.theme === 'dark'` |
 | 30 | Implementing user-management logic outside canonical user-management surfaces | Use `app/Controllers/UserManagement.php` and its service layer |
+| 31 | Controller JSON response that omits `redirect` when the success destination is the current page | Always include `redirect` in the AJAX response so spa.js can call navigate with forceReload |
+| 32 | Disabling a required role checkbox without preserving its submitted value | Add a hidden `roles[]` input or preserve the role server-side so disabled controls do not silently demote the user |
+| 33 | Mid-session `session()->set('user', [...])` with a truncated array (missing `roles`/`active_role`) | Use `array_merge(session()->get('user') ?? [], $updates)` to preserve multi-role RBAC context; only `Auth::attemptLogin()` writes the full array from scratch |
+| 34 | Rendering the user-management Role column from `xs_users.role` only | Enrich rows with authoritative `roles[]` from `UserModel::getRolesForUser()` / `xs_user_roles` and render all assigned roles |
+| 35 | Listing providers by `xs_users.role = 'provider'` alone | Filter scoped user rows through authoritative provider membership from `getRolesForUser()` / `xs_user_roles` |
+| 36 | Authorizing provider schedule routes from `$currentUser['role']` alone | Evaluate merged session `roles[]` plus DB fallback roles before allowing admin/provider access |
 
 ---
 
@@ -590,6 +889,8 @@ Current operational roles:
 [] Am I reusing queue and booking pipelines?
 [] Am I respecting route filters and role boundaries?
 [] Am I keeping SPA initialization conventions?
+[] If the controller action redirects back to the current page, does the JSON response include a `redirect` key so spa.js can use forceReload?
+[] Am I using xsRegisterViewInit instead of a bare DOMContentLoaded handler?
 [] If writing a migration, does it extend MigrationBase?
 [] Did I avoid dead-code surfaces and stale symbols?
 ```
@@ -601,7 +902,7 @@ Current operational roles:
 | Area | Status |
 |------|--------|
 | Setup and deployment flow | Stable |
-| Auth, sessions, and role filters | Stable |
+| Auth, sessions, and role filters | Stable (multi-role RBAC hardened; session write contract enforced v140+) |
 | Settings and localization foundation | Stable |
 | Services/providers/customers/public booking | Stable |
 | Appointment API/service consolidation | Active hardening |
@@ -631,6 +932,13 @@ Current operational roles:
 - `app/Services/CustomerAppointmentService.php`
 - `app/Services/NotificationQueueDispatcher.php`
 - `vite.config.js`
+
+### Frontend JS Core
+- `resources/js/spa.js` — SPA navigation layer; `navigate()` with `forceReload` option; `submitForm()` JSON contract; opt-out patterns
+- `resources/js/app.js` — main authenticated-app bundle; all component init; global window exports
+- `resources/js/public-booking.js` — standalone public booking bundle; no spa.js dependency
+- `resources/js/modules/app-lifecycle.js` — wires `DOMContentLoaded` + `spa:navigated` to `initializeComponents()`
+- `resources/js/utils/url-helpers.js` — `getBaseUrl()` used by both `spa.js` and `app.js` for base-relative URL building
 
 ### Key Docs
 - `docs/readme.md`
@@ -663,7 +971,30 @@ If the presentation layer change starts before service/data contract clarity, st
 - ✅ Role sync on create/update mutations
 - ✅ `UserModel::getRolesForUser()` authoritative role retrieval with fallback
 - ✅ Role switching endpoint and sidebar integration
-- 🔄 Expand multi-role regression coverage in broader journeys
+- ✅ `RoleFilter.php` — route RBAC now checks full `$user['roles']` array via `array_intersect`
+- ✅ `AuthorizationService.php` — all `can*()` methods accept `string|array`; `resolveRole()` picks highest privilege
+- ✅ `BaseApiController::hasRole()` — checks full session roles array; no longer single-column only
+- ✅ `UserManagementContextService::buildEditViewData()` — provider/staff/admin conditionals use full roles array
+- ✅ `Api/V1/Providers.php` — provider-identity checks at `services()`, `appointments()`, `uploadProfileImage()` use `getRolesForUser()`
+- ✅ `provider-schedule.js` — schedule section initializes from multi-role checkbox DOM; `getActiveRoles()` helper added
+- ✅ `Profile.php` — all 3 session writes (`index`, `updateProfile`, `uploadPicture`) now use `array_merge` to preserve `roles` and `active_role`
+- ✅ `UserManagement.php` — self-edit session refresh reloads roles from `getRolesForUser()` and writes full `roles`+`active_role` context
+- ✅ `UserManagementContextService.php` — index/API user rows are enriched with authoritative `roles[]` membership for multi-role display
+- ✅ `app/Views/user-management/index.php` — Role column now renders all assigned roles as badges in both initial PHP render and AJAX reload path
+- ✅ `app/Views/user-management/edit.php` — self-admin edit preserves `admin` via hidden `roles[]` input when the visible checkbox is disabled
+- ✅ `UserManagementMutationService.php` — self-edit defensively restores `admin` if a disabled checkbox omits it from the payload
+- ✅ `ProviderSchedule.php` — standalone provider-schedule auth now evaluates full effective role membership, not the single compatibility role only
+- ✅ `Api/V1/Providers.php` — provider listing now resolves provider membership from authoritative role data, not `xs_users.role` alone
+
+### Session Write Contract (enforced from v140+)
+Any code path that calls `session()->set('user', [...])` mid-session (outside the initial login) **must** use `array_merge` pattern:
+```php
+$currentUser = session()->get('user') ?? [];
+session()->set('user', array_merge($currentUser, [
+    // only the fields being updated
+]));
+```
+Exception: the login path in `Auth::attemptLogin()` writes the full array including `roles` and `active_role` from scratch — that is the only correct place to write the full array without merging.
 
 ---
 
@@ -673,9 +1004,19 @@ If the presentation layer change starts before service/data contract clarity, st
 - Keep chevron visuals aligned with header user-menu dropdown scale; adjust shared SVG/background-size once, then rebuild assets.
 - Native form-control chrome (date/time/select icons) must follow `data-theme` (`light`/`dark`) via consolidated SCSS in `resources/scss/app-consolidated.scss`.
 - Forbidden Rule 28 is strict: do not use inline `style=""` attributes or `<style>` blocks for icon color/size fixes.
+- All multi-role RBAC checks (route filters, API base controller, authorization service, user-management context) now use `array_intersect` against the full `$user['roles']` session array. Never reintroduce single `$user['role']` comparisons for authorization decisions.
+- When writing new PHP that needs to check if a user has a role: use `in_array($role, $user['roles'] ?? [$user['role'] ?? ''], true)` or delegate to `AuthorizationService` / `BaseApiController::hasRole()`.
+- When writing new JS role checks in user-management modules: use `getActiveRoles()` from `provider-schedule.js` as a reference — read from `input[name="roles[]"]:checked` checkboxes, not a single `<select id="role">`.
+- **Session write contract (v140+):** Any mid-session call to `session()->set('user', [...])` must use `array_merge(session()->get('user') ?? [], $updates)` to preserve `roles` and `active_role`. Only `Auth::attemptLogin()` writes the full session user array from scratch. Violating this silently destroys multi-role RBAC context — this was the confirmed root cause of the v139 production RBAC regression.
+- `Profile.php` is a known audit target: its `index()`, `updateProfile()`, and `uploadPicture()` methods all touch the user session; verified safe as of v140.
+- `UserManagement.php` self-edit path is an audit target: when the logged-in admin edits their own record, the session must be refreshed with a full role reload from `getRolesForUser()` — verified safe as of v140.
+- `app/Views/user-management/edit.php` self-admin role lock uses a disabled checkbox for UX only; disabled inputs do not submit, so the hidden `roles[]=admin` field is part of the contract and must not be removed without replacing its submission behavior.
+- `app/Views/user-management/index.php` must keep PHP render and AJAX reload parity for role badges; any change to role display must update both paths together.
+- `app/Controllers/ProviderSchedule.php` is no longer allowed to make auth decisions from `$currentUser['role']` alone; session `roles[]` plus DB fallback are the required source of truth.
+- `app/Controllers/Api/V1/Providers.php` index listing is intentionally schema-safe: it filters scoped user rows via `getRolesForUser()` rather than assuming `xs_users.role = 'provider'` is authoritative.
 
 ---
 
-Last updated: 2026-04-09
+Last updated: 2026-04-10
 Status: Active hardening
-Phase 3: ✅ Multi-role core implementation complete; regression/debt cleanup in progress
+Phase 3: ✅ Multi-role RBAC fully hardened (RoleFilter, AuthorizationService, BaseApiController, UserManagementContextService, Providers API including authoritative provider listing, provider-schedule.js, ProviderSchedule.php standalone auth, Profile.php, UserManagement.php self-edit, user list multi-role display, self-admin role preservation); session write contract enforced from v140

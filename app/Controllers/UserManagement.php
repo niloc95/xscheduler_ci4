@@ -364,11 +364,24 @@ class UserManagement extends BaseController
         }
 
         if (!empty($result['updatedUser']) && $currentUserId === $userId) {
-            session()->set('user', [
+            // Reload roles from DB since user edited themselves (roles may have changed).
+            $updatedRoles = $this->userModel->getRolesForUser($userId);
+            $roleHierarchy = ['admin' => 3, 'provider' => 2, 'staff' => 1];
+            $primaryRole = $result['updatedUser']['role'];
+            $activeRole = $primaryRole;
+            foreach ($updatedRoles as $r) {
+                if (($roleHierarchy[$r] ?? 0) > ($roleHierarchy[$activeRole] ?? 0)) {
+                    $activeRole = $r;
+                }
+            }
+            $currentUser = session()->get('user') ?? [];
+            session()->set('user', array_merge($currentUser, [
                 'name' => $result['updatedUser']['name'],
                 'email' => $result['updatedUser']['email'],
-                'role' => $result['updatedUser']['role'],
-            ]);
+                'role' => $primaryRole,
+                'roles' => $updatedRoles,
+                'active_role' => $activeRole,
+            ]));
         }
 
         if ($this->request->isAJAX()) {

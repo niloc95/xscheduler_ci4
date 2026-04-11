@@ -150,11 +150,22 @@ class ProviderSchedule extends BaseController
             return false;
         }
 
-        if ($currentUser['role'] === 'admin') {
+        $sessionUser = session()->get('user');
+        $sessionRoles = is_array($sessionUser) ? ($sessionUser['roles'] ?? [$sessionUser['role'] ?? '']) : [];
+        if (!is_array($sessionRoles)) {
+            $sessionRoles = [$sessionRoles];
+        }
+
+        $resolvedRoles = array_values(array_unique(array_filter(array_map(
+            static fn($role) => trim((string) $role),
+            array_merge($sessionRoles, $this->userModel->getRolesForUser($currentUserId))
+        ), static fn($role) => $role !== '')));
+
+        if (in_array('admin', $resolvedRoles, true)) {
             return true;
         }
 
-        if ($currentUser['role'] === 'provider' && $currentUserId === $providerId) {
+        if (in_array('provider', $resolvedRoles, true) && $currentUserId === $providerId) {
             return true;
         }
 

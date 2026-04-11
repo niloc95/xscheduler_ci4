@@ -134,6 +134,27 @@ final class ProviderScheduleJourneyTest extends CIUnitTestCase
         $this->assertSame(0, $db->table('provider_schedules')->where('provider_id', $this->providerId)->countAllResults());
     }
 
+    public function testProviderScheduleAuthorizationUsesFullSessionRolesArray(): void
+    {
+        $result = $this->withSession([
+            'isLoggedIn' => true,
+            'user_id' => $this->providerId,
+            'user' => [
+                'id' => $this->providerId,
+                'name' => 'Schedule Provider',
+                'email' => 'schedule-provider@example.com',
+                'role' => 'staff',
+                'roles' => ['staff', 'provider'],
+                'active_role' => 'provider',
+            ],
+        ])->get('/providers/' . $this->providerId . '/schedule');
+
+        $result->assertOK();
+
+        $payload = json_decode($result->getJSON(), true);
+        $this->assertSame($this->providerId, $payload['provider_id'] ?? null);
+    }
+
     private function seedFixtureData(): void
     {
         $db = \Config\Database::connect('tests');

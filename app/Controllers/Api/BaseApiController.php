@@ -322,6 +322,9 @@ class BaseApiController extends BaseController
     /**
      * Check if current user has a specific role
      * 
+     * Checks the full session roles array (populated at login) so multi-role
+     * users (e.g. admin+provider) pass any role that is assigned to them.
+     *
      * @param string|array $roles Role or array of roles
      * @return bool
      */
@@ -329,14 +332,15 @@ class BaseApiController extends BaseController
     {
         $user = $this->currentUser();
         if (!$user) return false;
-        
-        $userRole = $user['role'] ?? '';
-        
-        if (is_array($roles)) {
-            return in_array($userRole, $roles, true);
+
+        // Prefer full roles array from session; fall back to single role column.
+        $sessionRoles = $user['roles'] ?? [$user['role'] ?? ''];
+        if (!is_array($sessionRoles)) {
+            $sessionRoles = [$sessionRoles];
         }
-        
-        return $userRole === $roles;
+
+        $requiredRoles = is_array($roles) ? $roles : [$roles];
+        return !empty(array_intersect($requiredRoles, $sessionRoles));
     }
 
     /**

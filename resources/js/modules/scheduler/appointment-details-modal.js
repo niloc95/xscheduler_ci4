@@ -18,7 +18,6 @@
 
 import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
-import { getStatusColors, isDarkMode } from './appointment-colors.js';
 import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
@@ -165,7 +164,7 @@ export class AppointmentDetailsModal {
                                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Status</span>
                                 <div class="flex items-center gap-2">
                                     <div class="relative">
-                                        <select id="detail-status-select" class="text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none [background-image:url('data:image/svg+xml;charset=UTF-8,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_height=%2218%22_viewBox=%220_-960_960_960%22_width=%2218%22_fill=%22%236b7280%22%3E%3Cpath_d=%22M480-344_240-584l56-56_184_184_184-184_56_56-240_240Z%22/%3E%3C/svg%3E')] [background-repeat:no-repeat] [background-position:right_0.5rem_center] [background-size:1rem]">
+                                        <select id="detail-status-select" class="scheduler-status-select text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none">
                                             <option value="pending">Pending</option>
                                             <option value="confirmed">Confirmed</option>
                                             <option value="completed">Completed</option>
@@ -499,14 +498,21 @@ export class AppointmentDetailsModal {
      * Uses canonical color definitions from appointment-colors.js
      */
     updateStatusSelectStyling(selectElement, status) {
-        const darkMode = isDarkMode();
-        const colors = getStatusColors(status, darkMode);
-        
-        // Build Tailwind classes from color object (use chipBg, chipBorder, chipText)
-        const bgClass = darkMode ? 'bg-opacity-20' : '';
-        const colorClass = `${colors.chipBg} ${colors.chipText} ${colors.chipBorder}`;
-        
-        selectElement.className = `text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border focus:ring-2 focus:ring-blue-500 cursor-pointer ${colorClass}`;
+        const statusClasses = {
+            pending: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/60 dark:text-amber-100 dark:border-amber-700',
+            confirmed: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/60 dark:text-blue-100 dark:border-blue-700',
+            completed: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-100 dark:border-emerald-700',
+            cancelled: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/60 dark:text-red-100 dark:border-red-700',
+            'no-show': 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600',
+        };
+
+        const normalizedStatus = (status || 'pending').toLowerCase();
+        const colorClass = statusClasses[normalizedStatus] || statusClasses.pending;
+
+        selectElement.className = `
+            scheduler-status-select text-xs font-medium rounded-full pl-3 pr-7 py-1.5 border
+            cursor-pointer appearance-none focus:ring-2 focus:ring-blue-500 ${colorClass}
+        `.replace(/\s+/g, ' ').trim();
     }
     
     /**

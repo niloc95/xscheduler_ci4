@@ -103,6 +103,7 @@ $routes->group('customer-management', ['filter' => 'setup'], function($routes) {
     $routes->get('edit/(:any)', 'CustomerManagement::edit/$1', ['filter' => 'role:admin,provider,staff']);
     $routes->post('update/(:any)', 'CustomerManagement::update/$1', ['filter' => 'role:admin,provider,staff']);
     $routes->get('history/(:any)', 'CustomerManagement::history/$1', ['filter' => 'role:admin,provider,staff']);
+    $routes->post('delete/(:any)', 'CustomerManagement::delete/$1', ['filter' => 'role:admin']);
 });
 
 // Services Routes (auth required for viewing, admin/provider for management)

@@ -15,10 +15,20 @@ export function initProviderSchedule() {
     return;
   }
 
+  // Support both legacy single-role <select id="role"> and multi-role checkboxes <input name="roles[]">
   const roleSelect = document.getElementById('role');
-  if (!roleSelect) {
+  const roleCheckboxes = Array.from(document.querySelectorAll('input[name="roles[]"]'));
+
+  if (!roleSelect && roleCheckboxes.length === 0) {
     return;
   }
+
+  const getActiveRoles = () => {
+    if (roleCheckboxes.length > 0) {
+      return roleCheckboxes.filter((cb) => cb.checked).map((cb) => cb.value);
+    }
+    return roleSelect && roleSelect.value ? [roleSelect.value] : [];
+  };
 
   const notifier = createNotifier();
   const sourceDayKey = scheduleSection.dataset.sourceDay || 'monday';
@@ -106,8 +116,9 @@ export function initProviderSchedule() {
     setCopyButtonDisabled(!enabled);
   };
 
-  const toggleScheduleSection = (roleValue) => {
-    const isProvider = roleValue === 'provider';
+  const toggleScheduleSection = (activeRoles) => {
+    const isProvider = activeRoles.includes('provider');
+    const isStaff = activeRoles.includes('staff');
 
     const wrapper = document.getElementById('providerScheduleSection');
     if (wrapper) wrapper.classList.toggle('hidden', !isProvider);
@@ -121,7 +132,7 @@ export function initProviderSchedule() {
     if (providerAssignments) providerAssignments.classList.toggle('hidden', !isProvider);
 
     const staffAssignments = document.getElementById('staffAssignmentsSection');
-    if (staffAssignments) staffAssignments.classList.toggle('hidden', roleValue !== 'staff');
+    if (staffAssignments) staffAssignments.classList.toggle('hidden', !isStaff);
 
     document.querySelectorAll('.provider-color-field').forEach((field) => {
       field.classList.toggle('hidden', !isProvider);
@@ -129,14 +140,15 @@ export function initProviderSchedule() {
 
     const roleDesc = document.getElementById('role-description');
     const rolePerms = document.getElementById('role-permissions');
-    if (roleValue) {
+    if (activeRoles.length > 0) {
       const descriptions = {
         admin: 'Full system access including settings, user management, and all features.',
         provider: 'Can manage own calendar, create staff, manage services and categories.',
         staff: 'Limited to managing own calendar and assigned appointments. Provider assignments managed after creation.',
       };
 
-      if (rolePerms) rolePerms.innerHTML = descriptions[roleValue] || '';
+      const descParts = activeRoles.filter((r) => descriptions[r]).map((r) => descriptions[r]);
+      if (rolePerms) rolePerms.innerHTML = descParts.join(' ');
       if (roleDesc) roleDesc.classList.remove('hidden');
     } else if (roleDesc) {
       roleDesc.classList.add('hidden');
@@ -282,14 +294,24 @@ export function initProviderSchedule() {
     copyBtn.dataset.scheduleCopyBound = 'true';
   }
 
-  if (roleSelect.dataset.scheduleToggleBound !== 'true') {
+  // Bind change events to whichever role input mechanism is present
+  if (roleCheckboxes.length > 0) {
+    roleCheckboxes.forEach((cb) => {
+      if (cb.dataset.scheduleToggleBound !== 'true') {
+        cb.addEventListener('change', () => {
+          toggleScheduleSection(getActiveRoles());
+        });
+        cb.dataset.scheduleToggleBound = 'true';
+      }
+    });
+  } else if (roleSelect && roleSelect.dataset.scheduleToggleBound !== 'true') {
     roleSelect.addEventListener('change', () => {
-      toggleScheduleSection(roleSelect.value);
+      toggleScheduleSection(getActiveRoles());
     });
     roleSelect.dataset.scheduleToggleBound = 'true';
   }
 
-  toggleScheduleSection(roleSelect.value);
+  toggleScheduleSection(getActiveRoles());
   updateCopyButtonState();
   scheduleSection.dataset.providerScheduleInitialized = 'true';
 }
