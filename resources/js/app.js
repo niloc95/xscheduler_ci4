@@ -34,7 +34,7 @@ import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 
 // Import appointment navigation module
-import { navigateToCreateAppointment, prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
+import { prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
 
 // Import custom scheduler core (loads MonthView, WeekView, DayView, DragDropManager, SettingsManager internally)
 import { SchedulerCore } from './modules/scheduler/scheduler-core.js';

@@ -298,8 +298,13 @@ export class DragDropManager {
 
             const result = await response.json();
 
-            // Reload appointments and re-render
-            await this.scheduler.loadAppointments();
+            // Reload using the scheduler's mode-aware loader so server-mode
+            // calendarModel data stays in sync with slot placement.
+            if (typeof this.scheduler.loadData === 'function') {
+                await this.scheduler.loadData();
+            } else {
+                await this.scheduler.loadAppointments();
+            }
             this.scheduler.render();
 
             this.showSuccess('Appointment rescheduled successfully');
@@ -317,8 +322,12 @@ export class DragDropManager {
             console.error('❌ Reschedule failed:', error);
             this.showError('Failed to reschedule appointment. Please try again.');
             
-            // Reload to ensure data is consistent
-            await this.scheduler.loadAppointments();
+            // Reload to ensure data is consistent, respecting scheduler mode.
+            if (typeof this.scheduler.loadData === 'function') {
+                await this.scheduler.loadData();
+            } else {
+                await this.scheduler.loadAppointments();
+            }
             this.scheduler.render();
         } finally {
             this.hideLoading();

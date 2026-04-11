@@ -591,6 +591,58 @@ Flash toast fires **after** navigation so it is not wiped by the content swap.
 
 ---
 
+### Scheduler Refresh Semantics (Critical)
+
+The scheduler is **not real-time** today.
+
+- No WebSocket/SSE channel is used for appointment data synchronization.
+- No periodic appointment polling is enabled.
+- The only interval timer in scheduler views is the Day view now-line updater (`setInterval(..., 60000)`), which updates only the visual current-time indicator.
+
+#### Mode-Aware Data Source Contract
+
+`SchedulerCore` has two loading paths:
+
+- `loadData()` (canonical):
+  - `mode='server'` → loads `calendarModel` from `/api/calendar/{view}`
+  - fallback/non-server → loads flat appointments from `/api/appointments`
+- `loadAppointments()` (flat appointments only):
+  - refreshes `this.appointments`
+  - does **not** refresh `calendarModel`
+
+In server mode, views can consume `calendarModel` for slot placement. Therefore, any mutation that can move an appointment between slots must reload through `loadData()` to avoid stale placement.
+
+#### Reschedule Update Propagation
+
+**Drag-drop reschedule path (authenticated scheduler):**
+
+1. `scheduler-drag-drop.js` sends `PATCH /api/appointments/{id}`.
+2. On success, it now calls `scheduler.loadData()` (with `loadAppointments()` fallback for compatibility) and then `scheduler.render()`.
+3. Emits `emitAppointmentsUpdated(...)` for cross-component updates.
+
+This prevents stale `calendarModel` rendering in `mode='server'` after drag-drop mutations.
+
+#### Troubleshooting: Appointment Does Not Move Until Manual Refresh
+
+1. Confirm scheduler mode in `app.js` init options (`mode: 'server'`).
+2. Confirm reschedule success in Network tab (`PATCH /api/appointments/{id}` returns 2xx).
+3. Confirm a post-PATCH data reload request fires (`/api/calendar/{view}` for server mode).
+4. If only `/api/appointments` reloads after mutation in server mode, expect stale slot placement risk.
+5. Hard refresh will mask this by rebuilding both model and flat data.
+
+#### Edited Files (Refresh/Reschedule Continuity)
+
+- `resources/js/modules/scheduler/scheduler-drag-drop.js`
+  - Post-reschedule refresh changed to mode-aware reload (`loadData()` preferred).
+- `resources/js/modules/scheduler/scheduler-core.js`
+  - Source of truth for mode-aware data loading (`loadData`, `loadCalendarModel`, `loadAppointments`).
+- `resources/js/modules/scheduler/scheduler-day-view.js`
+  - Uses `calendarModel` for provider-slot placement and includes the now-line 60s timer.
+- `resources/js/app.js`
+  - Scheduler boot config sets `mode: 'server'` and drives runtime refresh expectations.
+
+---
+
 ### public-booking.js — Public Booking Bundle
 
 `public-booking.js` is a completely separate Vite entry point. It does not share `spa.js` or `app.js`.
@@ -755,6 +807,601 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 - `appointment_pending` is the canonical event for pending bookings.
 - `appointment_confirmed` is the canonical event for confirmed bookings.
 - New booking flows must resolve event type from appointment status via `AppointmentStatus::notificationEvent()` instead of hardcoding confirmation.
+
+---
+
+### Notification System: Complete Flow
+
+The notification system handles all multi-channel notifications (email, SMS, WhatsApp) using a **queue-first, dispatch-later** pattern. This ensures reliable delivery, idempotency, and comprehensive logging.
+
+#### 1. Appointment Event → Queue Enqueue
+
+**When:** An appointment is created, updated, or confirmed.
+
+**Flow:**
+```
+Appointment created/updated
+  └─▶ AppointmentModel callback (beforeUpdate/afterUpdate)
+        └─▶ AppointmentNotificationService::enqueueNotificationsForAppointment()
+              ├─ Resolves event_type from AppointmentStatus::notificationEvent()
+              ├─ Reads business_id from appointment provider context
+              ├─ Queries xs_business_notification_rules for enabled channels/events
+              ├─ For each enabled rule:
+              │   └─▶ NotificationQueueService::enqueue()
+              │         ├─ Creates xs_notification_queue row
+              │         ├─ Sets status='pending', attempts=0, max_attempts=3
+              │         ├─ Stores run_after = NOW() (or future for delayed sends)
+              │         ├─ Generates idempotency_key + correlation_id for tracking
+              │         └─ Row is visible to cron dispatcher immediately
+```
+
+**Key Services:**
+- `AppointmentNotificationService` — orchestrates enqueue logic
+- `NotificationQueueService` — low-level queue row insertion
+- `NotificationPolicyService` — reads business rules from `xs_business_notification_rules`
+
+**Key Models:**
+- `NotificationQueueModel` — reads/writes queue status
+- `AppointmentStatus` — provides `notificationEvent()` canonical event mapping
+
+#### 2. Queue Dispatch (Cron/Manual Trigger)
+
+**When:** Cron job runs `php spark notifications:dispatch-queue` OR manual admin trigger via `/api/notifications/dispatch`.
+
+**Flow:**
+```
+Cron / Admin trigger
+  └─▶ NotificationQueueDispatcher::dispatch()
+        ├─ Query xs_notification_queue WHERE status='pending' AND run_after <= NOW()
+        ├─ Apply row-level locking: lock_token + locked_at timestamp
+        ├─ For each unlocked row:
+        │   ├─ Resolve channel (email/sms/whatsapp)
+        │   ├─ Resolve business integration config: xs_business_integrations (encrypted)
+        │   ├─ Route to appropriate sender service:
+        │   │   ├─ Email    → NotificationEmailService::sendEmail()
+        │   │   ├─ SMS      → NotificationSmsService::sendSms()
+        │   │   ├─ WhatsApp → NotificationWhatsAppService::sendWhatsApp()
+        │   ├─ Increment xs_notification_queue.attempts ++
+        │   ├─ On success:
+        │   │   ├─ Update queue row: status='sent', sent_at=NOW()
+        │   │   └─ Log delivery: xs_notification_delivery_logs (status='success')
+        │   ├─ On failure:
+        │   │   ├─ If attempts < max_attempts:
+        │   │   │   └─ Update queue row: last_error=..., run_after=NOW() + 5min backoff
+        │   │   └─ If attempts >= max_attempts:
+        │   │       ├─ Update queue row: status='failed'
+        │   │       └─ Log delivery: xs_notification_delivery_logs (status='failed', error_message=...)
+        │   ├─ Always log attempt: xs_notification_delivery_logs row created
+```
+
+**Key Services:**
+- `NotificationQueueDispatcher` — coordinator for all dispatch logic
+- `NotificationEmailService` — SMTP sending via configured business integration
+- `NotificationSmsService` — SMS sending via Clickatell/Twilio
+- `NotificationWhatsAppService` — WhatsApp sending via Meta/Clickatell
+
+**Key Models:**
+- `NotificationQueueModel` — row locking, status updates
+- `NotificationDeliveryLogModel` — immutable delivery attempt records
+- `BusinessIntegrationModel` — encrypted config storage for SMTP, SMS, WhatsApp providers
+
+#### 3. Configuration & Policies
+
+**Settings stored in:**
+- `xs_business_notification_rules` — which events/channels are enabled for which business
+- `xs_business_integrations` — SMTP/SMS/WhatsApp credentials (encrypted in `encrypted_config` column)
+- `xs_message_templates` — per-business, per-event, per-channel message body/subject
+- `xs_notification_opt_outs` — customer opt-outs by channel (email, sms, whatsapp)
+
+**Example queue row structure:**
+```json
+{
+  "id": 42,
+  "business_id": 1,
+  "channel": "email",
+  "event_type": "appointment_confirmed",
+  "appointment_id": 123,
+  "status": "pending",            /* pending | sent | failed */
+  "attempts": 0,
+  "max_attempts": 3,
+  "run_after": "2026-04-11 14:00:00",
+  "locked_at": null,              /* Set during dispatch to prevent concurrent sends */
+  "lock_token": null,
+  "last_error": null,
+  "sent_at": null,
+  "idempotency_key": "apt_123_email_confirmed_1712847600",
+  "correlation_id": "cor_67890",
+  "created_at": "2026-04-11 13:58:00",
+  "updated_at": "2026-04-11 13:58:00"
+}
+```
+
+#### 4. Delivery Log (Immutable Record)
+
+**Every attempt** (success or failure) creates a **new** `xs_notification_delivery_logs` row:
+```json
+{
+  "id": 1001,
+  "business_id": 1,
+  "queue_id": 42,
+  "correlation_id": "cor_67890",
+  "channel": "email",
+  "event_type": "appointment_confirmed",
+  "appointment_id": 123,
+  "recipient": "customer@example.com",     /* Resolved from appointment + customer lookup */
+  "provider": "smtp",                       /* e.g., smtp, clickatell, twilio, meta */
+  "status": "success",                      /* success | failed | bounced */
+  "attempt": 1,                             /* Which attempt this was out of max_attempts */
+  "error_message": null,
+  "created_at": "2026-04-11 14:00:05",
+  "updated_at": "2026-04-11 14:00:05"
+}
+```
+
+---
+
+### Frontend Architecture: In-Depth
+
+The frontend uses a **modular, SPA-first architecture** with strict initialization guardrails to support both authenticated (app.js + spa.js) and public-facing (public-booking.js) experiences.
+
+#### Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Browser HTML (server-rendered PHP template)             │
+├─────────────────────────────────────────────────────────┤
+│ Vite Entry Point (app.js OR public-booking.js)          │
+├─────────────────────────────────────────────────────────┤
+│ SPA Layer (spa.js) ← intercepts navigation               │
+│   └─ Preserves header/sidebar/footer                    │
+│   └─ Swaps #spa-content only                            │
+├─────────────────────────────────────────────────────────┤
+│ Feature Modules (calendar, appointments, etc.)          │
+│ Located in resources/js/modules/                        │
+├─────────────────────────────────────────────────────────┤
+│ Utilities (url-helpers, phone-selector, etc.)           │
+│ Located in resources/js/utils/                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Initialization Lifecycle
+
+**Page Load → app.js → spa.js → Feature Modules → View Initializers**
+
+**Step 1: Initial Page Load**
+- Server renders `app/Views/layouts/main.php`
+- Includes `<script>` tag pointing to Vite-built `app.js` bundle
+- Browser requests and executes `app.js`
+
+**Step 2: app.js Imports & Side Effects**
+```javascript
+import { SchedulerCore } from './modules/scheduler/scheduler-core.js';
+import { initGlobalSearch } from './modules/search/global-search.js';
+import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js';
+// ... many more module imports ...
+
+window.xsEscapeHtml = function(str) { /* ... */ };
+window.scheduler = null;  // Will be set after SchedulerCore init
+```
+
+**Step 3: spa.js Registers Event Listeners**
+- Intercepts all `<a>` clicks and `<form>` submissions
+- Attached via document-level event delegation (fires on every event)
+
+**Step 4: initializeComponents() Runs**
+- Called automatically on `DOMContentLoaded`
+- Calls all feature module init functions in sequence:
+  ```javascript
+  initializeComponents() {
+    initRevenueTrendChart();
+    initTimeSlotChart();
+    initServiceDistributionChart();
+    initScheduler();           // Contains retry logic
+    initStatusFilterControls();
+    initSummaryCardFilters();
+    // ... more inits ...
+  }
+  ```
+
+**Step 5: View Initializers Register & Run**
+- Any view-specific JS code must run via `xsRegisterViewInit(fn)`
+- Function runs immediately if DOM is ready
+- Also runs after every `spa:navigated` event
+
+**Step 6: SPA Navigation (on Click/Submit)**
+```
+User clicks <a href="/appointments">
+  ↓
+spa.js interceptHandler() runs
+  ↓
+shouldIntercept() checks data-no-spa, .no-spa, etc.
+  ↓
+navigate("/appointments") called
+  ↓
+fetch GET with X-Requested-With: XMLHttpRequest header
+  ↓
+Server returns full HTML
+  ↓
+spa.js extracts #spa-content innerHTML
+  ↓
+Replace DOM #spa-content with new content
+  ↓
+Execute any inline <script> tags in new content
+  ↓
+history.pushState() updates browser back button
+  ↓
+Dispatch spa:navigated CustomEvent
+  ↓
+runViewInitializers() runs all registered init functions
+```
+
+---
+
+### API Request Flow
+
+#### From Frontend (JavaScript)
+
+**Authenticated routes (require login):**
+```javascript
+// In a module or event handler
+fetch('/api/v1/appointments', {
+  method: 'GET',
+  headers: {
+    'X-Requested-With': 'XMLHttpRequest',  // SPA indicator
+    'Accept': 'application/json'
+  }
+  // Cookies sent automatically (session-based auth)
+})
+.then(r => r.json())
+.then(json => {
+  console.log(json.data);    // Actual data
+  console.log(json.meta);    // Pagination, timestamps
+});
+```
+
+**Public routes (no auth):**
+```javascript
+// In public-booking.js
+fetch('/api/v1/public/providers', {
+  method: 'GET',
+  headers: { 'Accept': 'application/json' }
+})
+.then(r => r.json())
+.then(json => {
+  // Display providers
+});
+```
+
+#### Backend Processing
+
+**Step 1: Route Matching**
+```php
+// app/Config/Routes.php
+$routes->get('appointments', 'Appointments::index', ['filter' => 'auth']);
+$routes->group('api', function($routes) {
+    $routes->group('v1', function($routes) {
+        $routes->get('appointments', 'Api/V1/Appointments::index', ['filter' => 'auth']);
+    });
+});
+```
+
+**Step 2: Filter Chain**
+- `auth` filter: Check session, verify user logged in
+- `role:admin,provider` filter: Check `$user['roles']` array
+
+**Step 3: Controller / API Endpoint**
+```php
+namespace App\Controllers\Api\V1;
+
+class Appointments extends BaseApiController {
+    public function index() {
+        $this->requireAuth();  // Verify authenticated
+        $userId = $this->currentUser()['id'];
+        
+        $data = $this->appointmentService->getUserAppointments($userId);
+        
+        return $this->ok($data, [
+            'pagination' => ['total' => count($data)],
+            'timestamp' => now()
+        ]);
+    }
+}
+```
+
+**Step 4: Response Sent**
+```json
+{
+  "data": [
+    { "id": 1, "service_id": 5, "provider_id": 2, "status": "confirmed" },
+    { "id": 2, "service_id": 3, "provider_id": 2, "status": "pending" }
+  ],
+  "meta": {
+    "pagination": { "total": 2 },
+    "timestamp": "2026-04-11T14:05:30Z"
+  }
+}
+```
+
+**Step 5: Frontend Processes Response**
+```javascript
+.then(json => {
+  if (!json.data) return console.error('No data');
+  
+  json.data.forEach(apt => {
+    // Render appointment row
+  });
+});
+```
+
+---
+
+### Public Booking Flow: Step-by-Step
+
+The public booking flow allows customers to book appointments **without logging in**. It uses hash-based URLs and token-based security instead of user accounts.
+
+#### High-Level Process
+
+```
+Customer receives booking link: /book/provider/{provider_hash}
+  ↓
+Public booking form loads (public-booking.js bundle)
+  ↓
+Customer selects service → available providers/times load
+  ↓
+Customer enters contact details (name, email, phone)
+  ↓
+Customer selects time slot
+  ↓
+Customer submits form
+  ↓
+Backend creates appointment (status: pending/confirmed per policy)
+  ↓
+Backend generates public_token + expiry for future access
+  ↓
+Customer receives confirmation email with reschedule link
+  ↓
+Customer can access /my-appointments/{appointment_hash} to reschedule/cancel
+```
+
+#### Database Context
+
+**Three hash-based identifiers are used:**
+
+| Column | Table | Purpose | Created on |
+|--------|-------|---------|-----------|
+| `hash` | `xs_appointments` | Canonical appointment reference; used in URLs like `/my-appointments/{hash}` | Appointment insert (model callback) |
+| `public_token` | `xs_appointments` | Temporary token for rescheduling/canceling (expires); used as fallback when `hash` is unavailable | Booking pipeline |
+| `public_token_expires_at` | `xs_appointments` | Expiry timestamp for public_token | Booking pipeline |
+
+**Customer context (currently missing):**
+- `xs_customers.hash` — would enable `/my-customers/{hash}` public portal; **currently absent in runtime** (schema drift)
+
+#### Detailed Flow: Steps 1–4 (Form Load & Selection)
+
+**Step 1: Customer clicks booking link**
+```
+GET /book/provider/{provider_hash}
+```
+
+**Backend (PublicBookingController):**
+```php
+public function bookProvider($providerHash) {
+    // Lookup provider by hash (not numeric ID)
+    $provider = ProviderModel::where('hash', $providerHash)->first();
+    
+    // Render public booking form
+    return view('public_booking/form', [
+        'provider' => $provider,
+        'services' => $provider->getServices(),
+    ]);
+}
+```
+
+**Frontend (public-booking.js):**
+```javascript
+// On page load
+fetch('/api/v1/public/providers/' + providerHash, {
+  headers: { 'Accept': 'application/json' }
+})
+.then(r => r.json())
+.then(json => {
+  // Populate provider name, description
+  // Populate available services dropdown
+});
+```
+
+**Step 2: Customer selects a service**
+```
+User picks a service from <select name="service_id">
+```
+
+**Frontend:**
+```javascript
+document.querySelector('select[name="service_id"]')
+  .addEventListener('change', async (e) => {
+    const serviceId = e.target.value;
+    
+    // Fetch available providers for this service
+    const resp = await fetch(
+      `/api/v1/public/providers/${providerHash}/services/${serviceId}`
+    );
+    const json = await resp.json();
+    
+    // Update provider picker (or reconfirm provider)
+  });
+```
+
+**Step 3: Customer selects a date**
+```
+User picks date from calendar
+```
+
+**Frontend triggers time-slot fetch:**
+```javascript
+const response = await fetch(
+  `/api/v1/public/availability?provider_hash=${providerHash}&service_id=${serviceId}&date=${date}`
+);
+const slots = await response.json();
+
+// Render time slots
+slots.data.forEach(slot => {
+  // Show time <button>
+});
+```
+
+**Step 4: Customer selects a time slot**
+```
+User clicks time slot button
+```
+
+**Frontend stores selection:**
+```javascript
+window.bookingContext = {
+  providerHash,
+  serviceId,
+  date,
+  startTime,
+  endTime
+};
+```
+
+#### Detailed Flow: Step 5 (Form Submission)
+
+**Step 5: Customer fills contact details & submits**
+```html
+<form id="bookingForm">
+  <input name="first_name" />
+  <input name="last_name" />
+  <input name="email" />
+  <input name="phone" />
+  <button type="submit">Confirm Booking</button>
+</form>
+```
+
+**Frontend (public-booking.js):**
+```javascript
+document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const payload = {
+    provider_hash: window.bookingContext.providerHash,
+    service_id: window.bookingContext.serviceId,
+    date: window.bookingContext.date,
+    time_slot: window.bookingContext.startTime,
+    first_name: formData.get('first_name'),
+    last_name: formData.get('last_name'),
+    email: formData.get('email'),
+    phone: formData.get('phone')
+  };
+  
+  const response = await fetch('/api/v1/public/bookings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  
+  const result = await response.json();
+  
+  if (result.data) {
+    // Success: redirect to confirmation page
+    window.location.href = `/my-appointments/${result.data.hash}`;
+  } else {
+    // Failure: show error
+    alert(result.error.message);
+  }
+});
+```
+
+#### Backend: Booking Processing
+
+**Backend (PublicSiteController or Api/V1/PublicBookings):**
+```php
+public function store_booking() {
+    // Validate inputs
+    $rules = [
+        'provider_hash' => 'required|string',
+        'service_id' => 'required|integer',
+        'date' => 'required|date_format:Y-m-d',
+        'time_slot' => 'required|date_format:H:i',
+        'email' => 'required|email',
+        'phone' => 'required|string'
+    ];
+    
+    if (!$this->validate($rules)) {
+        return $this->badRequest('Validation failed', $this->validator->getErrors());
+    }
+    
+    // Lookup provider
+    $provider = ProviderModel::where('hash', $request->getPost('provider_hash'))->first();
+    if (!$provider) return $this->notFound('Provider not found');
+    
+    // Create or find customer (matching by email)
+    $customer = CustomerModel::where('email', $request->getPost('email'))->first();
+    if (!$customer) {
+        $customer = new CustomerModel([
+            'first_name' => $request->getPost('first_name'),
+            'last_name' => $request->getPost('last_name'),
+            'email' => $request->getPost('email'),
+            'phone' => $request->getPost('phone')
+        ]);
+        $customer->save();
+    }
+    
+    // Create appointment via booking service
+    $appointment = $this->appointmentBookingService->createBooking([
+        'provider_id' => $provider->id,
+        'customer_id' => $customer->id,
+        'service_id' => $request->getPost('service_id'),
+        'start_at' => /* construct datetime from date + time_slot */,
+        'end_at'   => /* add service duration */,
+        'status'   => 'pending'  // or 'confirmed' per policy
+    ]);
+    
+    // Generate public token for rescheduling
+    $appointment->public_token = bin2hex(random_bytes(32));
+    $appointment->public_token_expires_at = now()->addDays(30);
+    $appointment->save();
+    
+    // Enqueue notification (confirmation email)
+    AppointmentNotificationService::enqueueNotificationsForAppointment($appointment);
+    
+    return $this->created([
+        'id' => $appointment->id,
+        'hash' => $appointment->hash,
+        'status' => $appointment->status
+    ]);
+}
+```
+
+#### After Booking: Customer Access
+
+**Customer receives email with link:**
+```
+Confirm your appointment: https://app.example.com/my-appointments/abc123def456
+```
+
+**Customer visits `/my-appointments/{appointment_hash}`:**
+```php
+public function viewMyAppointment($appointmentHash) {
+    $appointment = AppointmentModel::where('hash', $appointmentHash)->first();
+    
+    if (!$appointment) return 404('Appointment not found');
+    
+    return view('public_booking/my_appointment', [
+        'appointment' => $appointment,
+        'rescheduleLink' => url('/my-appointments/' . $appointment->hash . '/reschedule'),
+        'cancelLink' => url('/my-appointments/' . $appointment->hash . '/cancel')
+    ]);
+}
+```
+
+**Customer can:**
+- ✅ View appointment details (time, provider, service, location)
+- ✅ Reschedule appointment (select new time slot)
+- ✅ Cancel appointment
+- ❌ Cannot access other customers' appointments (hash-based protection)
+- ❌ Cannot see customer names or emails of other bookings
 
 ---
 

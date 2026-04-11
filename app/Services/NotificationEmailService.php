@@ -104,13 +104,13 @@ class NotificationEmailService
         }
 
         $config = $this->decryptConfig($integration['encrypted_config']);
-        $smtpHost = (string) ($config['host'] ?? '');
+        $smtpHost = trim((string) ($config['host'] ?? ''));
         $smtpPort = (int) ($config['port'] ?? 587);
         $smtpCrypto = (string) ($config['crypto'] ?? 'tls');
-        $smtpUser = (string) ($config['username'] ?? '');
-        $smtpPass = (string) ($config['password'] ?? '');
-        $fromEmail = (string) ($config['from_email'] ?? '');
-        $fromName = (string) ($config['from_name'] ?? 'WebScheduler');
+        $smtpUser = trim((string) ($config['username'] ?? ''));
+        $smtpPass = trim((string) ($config['password'] ?? ''));
+        $fromEmail = trim((string) ($config['from_email'] ?? ''));
+        $fromName = trim((string) ($config['from_name'] ?? 'WebScheduler'));
 
         if ($smtpHost === '' || $fromEmail === '') {
             return ['ok' => false, 'error' => 'Email integration is missing required settings (host/from).'];
@@ -238,6 +238,10 @@ class NotificationEmailService
         if ($host === '') {
             return ['ok' => false, 'error' => 'SMTP host is required.'];
         }
+        $hostValidation = $this->validateSmtpHost($host);
+        if (!$hostValidation['ok']) {
+            return ['ok' => false, 'error' => $hostValidation['error']];
+        }
         if ($fromEmail === '' || !filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'error' => 'A valid From email is required.'];
         }
@@ -320,13 +324,13 @@ class NotificationEmailService
 
         $config = $this->decryptConfig($integration['encrypted_config']);
 
-        $smtpHost = (string) ($config['host'] ?? '');
+        $smtpHost = trim((string) ($config['host'] ?? ''));
         $smtpPort = (int) ($config['port'] ?? 587);
         $smtpCrypto = (string) ($config['crypto'] ?? 'tls');
-        $smtpUser = (string) ($config['username'] ?? '');
-        $smtpPass = (string) ($config['password'] ?? '');
-        $fromEmail = (string) ($config['from_email'] ?? '');
-        $fromName = (string) ($config['from_name'] ?? 'WebScheduler');
+        $smtpUser = trim((string) ($config['username'] ?? ''));
+        $smtpPass = trim((string) ($config['password'] ?? ''));
+        $fromEmail = trim((string) ($config['from_email'] ?? ''));
+        $fromName = trim((string) ($config['from_name'] ?? 'WebScheduler'));
 
         if ($smtpHost === '' || $fromEmail === '') {
             return ['ok' => false, 'error' => 'Email integration is missing required settings (host/from).'];
@@ -362,12 +366,57 @@ class NotificationEmailService
             $debug = trim((string) $email->printDebugger(['headers']));
             log_message('error', 'SMTP test failed: {debug}', ['debug' => $debug]);
             $this->updateHealth($model, $integration, 'unhealthy', $now);
-            return ['ok' => false, 'error' => 'SMTP test failed. Please verify your credentials and server settings.'];
+            return ['ok' => false, 'error' => $this->friendlySmtpError($debug)];
         } catch (\Throwable $e) {
-            log_message('error', 'SMTP test exception: {msg}', ['msg' => $e->getMessage()]);
+            $message = trim($e->getMessage());
+            log_message('error', 'SMTP test exception: {msg}', ['msg' => $message]);
             $this->updateHealth($model, $integration, 'unhealthy', $now);
-            return ['ok' => false, 'error' => 'SMTP test failed due to a server error.'];
+            return ['ok' => false, 'error' => $this->friendlySmtpError($message)];
         }
+    }
+
+    private function validateSmtpHost(string $host): array
+    {
+        if (!preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i', $host)) {
+            return ['ok' => false, 'error' => 'SMTP host format is invalid. Example: smtp.gmail.com'];
+        }
+
+        $commonTypos = [
+            'stmp.gmail.com' => 'smtp.gmail.com',
+            'smpt.gmail.com' => 'smtp.gmail.com',
+            'stmp.office365.com' => 'smtp.office365.com',
+            'smpt.office365.com' => 'smtp.office365.com',
+        ];
+
+        $normalized = strtolower($host);
+        if (isset($commonTypos[$normalized])) {
+            return ['ok' => false, 'error' => 'SMTP host looks mistyped. Did you mean ' . $commonTypos[$normalized] . '?'];
+        }
+
+        return ['ok' => true];
+    }
+
+    private function friendlySmtpError(string $detail): string
+    {
+        $message = strtolower(trim($detail));
+
+        if ($message === '') {
+            return 'SMTP test failed. Please verify your credentials and server settings.';
+        }
+
+        if (str_contains($message, 'getaddrinfo') || str_contains($message, 'name or service not known') || str_contains($message, 'unknown host')) {
+            return 'SMTP host could not be resolved. Verify the SMTP host name (for example smtp.gmail.com).';
+        }
+
+        if (str_contains($message, 'failed to authenticate') || str_contains($message, 'authentication') || str_contains($message, '535')) {
+            return 'SMTP authentication failed. Verify username/password, mailbox SMTP AUTH, and app password requirements.';
+        }
+
+        if (str_contains($message, 'timed out') || str_contains($message, 'connection refused') || str_contains($message, 'unable to connect')) {
+            return 'SMTP connection failed. Verify host, port, encryption mode, and server firewall/network rules.';
+        }
+
+        return 'SMTP test failed. Please verify your credentials and server settings.';
     }
 
 }

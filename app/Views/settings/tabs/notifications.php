@@ -140,7 +140,21 @@
 
                             <div class="form-field">
                                 <label class="form-label">SMTP Host</label>
-                                <input name="smtp_host" class="form-input" placeholder="smtp.example.com" value="<?= esc((string) ($emailCfg['host'] ?? '')) ?>" />
+                                <input
+                                    name="smtp_host"
+                                    class="form-input"
+                                    placeholder="smtp.example.com"
+                                    pattern="[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+"
+                                    title="Use a valid SMTP host such as smtp.gmail.com"
+                                    list="smtp-known-hosts"
+                                    value="<?= esc((string) ($emailCfg['host'] ?? '')) ?>"
+                                />
+                                <datalist id="smtp-known-hosts">
+                                    <option value="smtp.gmail.com"></option>
+                                    <option value="smtp.office365.com"></option>
+                                    <option value="smtp.sendgrid.net"></option>
+                                    <option value="smtp.mailgun.org"></option>
+                                </datalist>
                             </div>
 
                             <div class="form-field">

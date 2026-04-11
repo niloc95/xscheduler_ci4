@@ -296,21 +296,3 @@ export function initServiceDistributionChart(canvasId, servicesData) {
     });
 }
 
-/**
- * Update all analytics charts on theme change
- */
-export function refreshChartsOnThemeChange() {
-    // Store chart instances globally if needed to refresh
-    const event = new CustomEvent('analytics:refresh-charts');
-    document.dispatchEvent(event);
-}
-
-/**
- * Initialize all analytics charts on page
- * Consolidates chart initialization into a single entry point
- */
-export function initAnalyticsCharts() {
-    // Individual chart functions (initRevenueTrendChart, initTimeSlotChart, initServiceDistributionChart)
-    // are called directly from PHP template views for better granularity.
-    // This function can be expanded later if need a unified initialization pattern.
-}
