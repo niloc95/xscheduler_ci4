@@ -13,6 +13,11 @@ Architecture: service-oriented CI4 monolith with server-rendered views, REST-sty
 
 Current state: active hardening. Core workflows are production-capable, with focused debt cleanup still needed in scheduler/frontend internals and selected user-management/calendar seams.
 
+### How To Read This File
+- Read `Architecture Rules`, `Database Rules`, `Scheduling & Booking Rules`, and `Notifications Rules` before changing behavior.
+- Use `Key Files To Know` and `Agent Notes` for fast orientation.
+- If code and this document disagree, verify the live runtime first and then update this file.
+
 ### Current Refactor Snapshot
 - Business logic has moved from controllers into service boundaries.
 - Scheduler and appointment UI behavior is modularized under `resources/js/modules`.
@@ -194,9 +199,10 @@ docs/
 - Columns:
   - `id`, `name`, `email`, `phone`, `password_hash`, `role`
   - `created_at`, `updated_at`, `color`
-  - `reset_token`, `reset_expires`, `status`, `profile_image`, `last_login`
+  - `reset_token`, `reset_expires`, `status`, `profile_image`, `last_login`, `notify_on_appointments`
 - Notes:
   - `status` is the canonical active-state field in this runtime.
+  - `notify_on_appointments` is the internal appointment-notification preference used for provider/staff recipients; defaults to enabled.
 
 ##### `xs_user_roles`
 - Columns:
@@ -287,14 +293,18 @@ docs/
 
 ##### `xs_message_templates`
 - Columns:
-  - `id`, `business_id`, `event_type`, `channel`, `provider`, `provider_template_id`, `locale`, `subject`, `body`, `is_active`, `created_at`, `updated_at`
+  - `id`, `business_id`, `event_type`, `channel`, `provider`, `provider_template_id`, `locale`, `recipient_class`, `subject`, `body`, `is_active`, `created_at`, `updated_at`
+- Notes:
+  - `recipient_class` distinguishes customer-facing templates from internal provider/staff templates.
 
 ##### `xs_notification_queue`
 - Columns:
-  - `id`, `business_id`, `channel`, `event_type`, `appointment_id`, `status`, `attempts`, `max_attempts`, `run_after`, `locked_at`, `lock_token`, `last_error`, `sent_at`, `idempotency_key`, `correlation_id`, `created_at`, `updated_at`
+  - `id`, `business_id`, `channel`, `event_type`, `appointment_id`, `recipient_type`, `recipient_user_id`, `status`, `attempts`, `max_attempts`, `run_after`, `locked_at`, `lock_token`, `last_error`, `sent_at`, `idempotency_key`, `correlation_id`, `created_at`, `updated_at`
 - Notes:
   - This runtime uses `attempts` and `max_attempts` instead of legacy `attempt_count`.
   - This runtime includes `locked_at`, `lock_token`, and `correlation_id`.
+  - `recipient_type` is `customer` or `internal`; internal rows resolve the final email recipient from `xs_users` at dispatch time.
+  - `recipient_user_id` stores the internal recipient's `xs_users.id` for provider/staff notifications.
   - This runtime does not currently expose legacy columns such as `customer_id`, `recipient`, `payload_json`, `attempt_count`, or `provider_message_id`.
 
 ##### `xs_notification_delivery_logs`
@@ -399,7 +409,7 @@ Defined in `app/Services/Appointment/AppointmentStatus.php::notificationEvent()`
 
 ### Notification Template Inventory
 
-**15 default templates** (5 event types × 3 channels). Defaults defined inline in `app/Services/NotificationTemplateService.php` (lines 111–180). Per-business overrides stored in `xs_message_templates`.
+**15 customer-facing default templates** (5 event types × 3 channels) remain defined inline in `app/Services/NotificationTemplateService.php` for fallback rendering. Per-business overrides and internal/provider-facing templates are stored in `xs_message_templates`.
 
 | Event | When it fires |
 |-------|---------------|
@@ -410,6 +420,11 @@ Defined in `app/Services/Appointment/AppointmentStatus.php::notificationEvent()`
 | `appointment_rescheduled` | Date or time fields updated on an existing appointment |
 
 Channels per event: `email`, `sms`, `whatsapp`.
+
+**Internal template layer (2026-04-13):**
+- 5 seeded internal email templates now exist in `xs_message_templates` with `recipient_class = 'internal'`.
+- Internal templates are provider/staff facing and are loaded directly from `xs_message_templates` by `NotificationTemplateService::getTemplate(..., 'internal')`.
+- Internal notifications currently use the `email` channel only.
 
 ### Public Booking Flow
 
@@ -440,7 +455,7 @@ All public API endpoints are unauthenticated and must enforce rate limiting. Pro
 
 #### Security Rules for Public Routes
 - Numeric customer IDs must never appear in URLs — use `xs_appointments.hash` or `xs_appointments.public_token`.
-- `xs_customers.hash` column is currently absent in this runtime; public customer portal (`/my-appointments/{hash}`) will not function until that schema is restored.
+- `xs_customers.hash` is present in this runtime; public customer portal routes must continue to use hash-based lookups rather than numeric IDs.
 - CSRF protection applies to all booking form submissions.
 - Public slot queries must scope by provider and service — never return cross-provider slots.
 
@@ -889,10 +904,13 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 - Preserve idempotency and delivery-log behavior.
 
 ### Notification Dispatch Architecture Note
-- **Notifications fire synchronously inline** during the appointment HTTP mutation request (not deferred to the first cron tick). The `AppointmentModel` callback triggers `enqueueNotificationsForAppointment()` as part of the same request cycle.
+- **Notifications are queued synchronously inline** during the appointment HTTP mutation request (not deferred to the first cron tick). `AppointmentBookingService::queueNotifications()` dispatches the customer-facing appointment event into the queue, enqueues internal provider/staff email rows, then immediately invokes the queue dispatcher.
 - **`handleNotify()` is a manual re-send path** (`POST /api/appointments/{id}/notify`, body: `{channel, event_type?}`). Service: `AppointmentManualNotificationService::send()`. Email/SMS re-sends are sent immediately (no queue). WhatsApp re-sends are queued and picked up by cron. Event type defaults to `AppointmentStatus::notificationEvent($appointment['status'])` if not explicitly passed.
 - **`PATCH /api/appointments/{id}/status`** (used by the coordinator's status-change and cancel flows) **fires notifications server-side** for every transition. `AppointmentMutationService` resolves the event via `AppointmentStatus::notificationEvent()` and passes it to `updateAppointment()`. Channels: email + whatsapp.
 - `appointments-updated` event (from `emitAppointmentsUpdated`) does **not** affect notification dispatch. Notifications are driven by the PHP model layer, not frontend events.
+- Internal appointment notifications are queue-only: `NotificationQueueService::enqueueInternalEvent()` writes `recipient_type = 'internal'` + `recipient_user_id`, and `NotificationQueueDispatcher` resolves the real email/name from `xs_users` just before send.
+- Internal recipient eligibility is determined by `UserModel::getNotifiableUsersForProvider()` and `xs_users.notify_on_appointments`; both admin user-management and self-service profile surfaces write that preference.
+- Notification time rendering must use an explicit timezone: `NotificationQueueDispatcher` now resolves display timezone from `xs_appointments.stored_timezone` first and falls back to `TimezoneService::businessTimezone()`; do not rely on implicit session timezone when rendering queued notifications.
 
 ### Appointment Event Contract
 - `appointment_pending` is the canonical event for pending bookings.
@@ -904,7 +922,12 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 
 ### Notification System: Complete Flow
 
-The notification system handles all multi-channel notifications (email, SMS, WhatsApp) using a **queue-first, dispatch-later** pattern. This ensures reliable delivery, idempotency, and comprehensive logging.
+The notification system handles all multi-channel notifications (email, SMS, WhatsApp) using a **queue-first** pattern. Booking flows enqueue rows first and may immediately invoke the dispatcher; cron/manual dispatch remains the general delivery path. This preserves idempotency and delivery logging.
+
+**Developer shortcut:**
+- Customer-facing notification rows enter through `AppointmentEventService` and `NotificationQueueService::enqueueAppointmentEvent()`.
+- Internal provider/staff rows enter through `AppointmentBookingService::enqueueInternalNotifications()` and `NotificationQueueService::enqueueInternalEvent()`.
+- All queued rows are sent by `NotificationQueueDispatcher`.
 
 #### 1. Appointment Event → Queue Enqueue
 
@@ -913,23 +936,25 @@ The notification system handles all multi-channel notifications (email, SMS, Wha
 **Flow:**
 ```
 Appointment created/updated
-  └─▶ AppointmentModel callback (beforeUpdate/afterUpdate)
-        └─▶ AppointmentNotificationService::enqueueNotificationsForAppointment()
-              ├─ Resolves event_type from AppointmentStatus::notificationEvent()
-              ├─ Reads business_id from appointment provider context
-              ├─ Queries xs_business_notification_rules for enabled channels/events
-              ├─ For each enabled rule:
-              │   └─▶ NotificationQueueService::enqueue()
-              │         ├─ Creates xs_notification_queue row
-              │         ├─ Sets status='pending', attempts=0, max_attempts=3
-              │         ├─ Stores run_after = NOW() (or future for delayed sends)
-              │         ├─ Generates idempotency_key + correlation_id for tracking
-              │         └─ Row is visible to cron dispatcher immediately
+  └─▶ AppointmentBookingService::queueNotifications()
+    ├─▶ AppointmentEventService::dispatch(event, appointmentId, channels, businessId)
+    │     └─▶ NotificationQueueService::enqueueAppointmentEvent(...)
+    │           ├─ Creates customer-facing xs_notification_queue row(s)
+    │           ├─ Uses idempotency_key + correlation_id tracking
+    │           └─ Stores run_after = NOW() (or future for reminders)
+    ├─▶ AppointmentBookingService::enqueueInternalNotifications()
+    │     └─▶ UserModel::getNotifiableUsersForProvider(providerId)
+    │           └─▶ NotificationQueueService::enqueueInternalEvent(...)
+    │                 ├─ Creates internal xs_notification_queue row(s)
+    │                 ├─ Sets recipient_type='internal'
+    │                 └─ Stores recipient_user_id for dispatcher-time resolution
+    └─▶ NotificationQueueDispatcher::dispatch()
 ```
 
 **Key Services:**
-- `AppointmentNotificationService` — orchestrates enqueue logic
-- `NotificationQueueService` — low-level queue row insertion
+- `AppointmentEventService` — canonical customer-event enqueue entry point
+- `NotificationQueueService` — queue row insertion for both customer and internal recipients
+- `AppointmentBookingService` — booking-time orchestration for customer + internal notification enqueue
 - `NotificationPolicyService` — reads business rules from `xs_business_notification_rules`
 
 **Key Models:**
@@ -944,7 +969,7 @@ Appointment created/updated
 ```
 Cron / Admin trigger
   └─▶ NotificationQueueDispatcher::dispatch()
-        ├─ Query xs_notification_queue WHERE status='pending' AND run_after <= NOW()
+  ├─ Query xs_notification_queue WHERE status='queued' AND run_after <= NOW()
         ├─ Apply row-level locking: lock_token + locked_at timestamp
         ├─ For each unlocked row:
         │   ├─ Resolve channel (email/sms/whatsapp)
@@ -985,7 +1010,7 @@ Cron / Admin trigger
 - `xs_message_templates` — per-business, per-event, per-channel message body/subject
 - `xs_notification_opt_outs` — customer opt-outs by channel (email, sms, whatsapp)
 
-**Example queue row structure:**
+**Example customer queue row structure:**
 ```json
 {
   "id": 42,
@@ -993,7 +1018,9 @@ Cron / Admin trigger
   "channel": "email",
   "event_type": "appointment_confirmed",
   "appointment_id": 123,
-  "status": "pending",            /* pending | sent | failed */
+  "recipient_type": "customer",
+  "recipient_user_id": null,
+  "status": "queued",             /* queued | sent | failed | cancelled */
   "attempts": 0,
   "max_attempts": 3,
   "run_after": "2026-04-11 14:00:00",
@@ -1005,6 +1032,20 @@ Cron / Admin trigger
   "correlation_id": "cor_67890",
   "created_at": "2026-04-11 13:58:00",
   "updated_at": "2026-04-11 13:58:00"
+}
+```
+
+**Example internal queue row structure:**
+```json
+{
+  "id": 43,
+  "business_id": 1,
+  "channel": "email",
+  "event_type": "appointment_confirmed",
+  "appointment_id": 123,
+  "recipient_type": "internal",
+  "recipient_user_id": 77,
+  "status": "queued"
 }
 ```
 
@@ -1265,8 +1306,9 @@ Customer can access /my-appointments/{appointment_hash} to reschedule/cancel
 | `public_token` | `xs_appointments` | Temporary token for rescheduling/canceling (expires); used as fallback when `hash` is unavailable | Booking pipeline |
 | `public_token_expires_at` | `xs_appointments` | Expiry timestamp for public_token | Booking pipeline |
 
-**Customer context (currently missing):**
-- `xs_customers.hash` — would enable `/my-customers/{hash}` public portal; **currently absent in runtime** (schema drift)
+**Customer context:**
+- `xs_customers.hash` exists in the current runtime.
+- Public customer-facing routes remain appointment-hash based (`/my-appointments/{hash}`), not a separate `/my-customers/{hash}` portal contract.
 
 #### Detailed Flow: Steps 1–4 (Form Load & Selection)
 
@@ -1748,15 +1790,21 @@ Exception: the login path in `Auth::attemptLogin()` writes the full array includ
 - When writing new JS role checks in user-management modules: use `getActiveRoles()` from `provider-schedule.js` as a reference — read from `input[name="roles[]"]:checked` checkboxes, not a single `<select id="role">`.
 - **Session write contract (v140+):** Any mid-session call to `session()->set('user', [...])` must use `array_merge(session()->get('user') ?? [], $updates)` to preserve `roles` and `active_role`. Only `Auth::attemptLogin()` writes the full session user array from scratch. Violating this silently destroys multi-role RBAC context — this was the confirmed root cause of the v139 production RBAC regression.
 - `Profile.php` is a known audit target: its `index()`, `updateProfile()`, and `uploadPicture()` methods all touch the user session; verified safe as of v140.
+- `Profile::updateNotifications()` must preserve SPA success behavior by returning a `redirect` in AJAX responses and keeping the notifications tab active on full reload (`active_tab` flash or `#notifications` hash).
 - `UserManagement.php` self-edit path is an audit target: when the logged-in admin edits their own record, the session must be refreshed with a full role reload from `getRolesForUser()` — verified safe as of v140.
 - `app/Views/user-management/edit.php` self-admin role lock uses a disabled checkbox for UX only; disabled inputs do not submit, so the hidden `roles[]=admin` field is part of the contract and must not be removed without replacing its submission behavior.
 - `app/Views/user-management/index.php` must keep PHP render and AJAX reload parity for role badges; any change to role display must update both paths together.
 - `app/Controllers/ProviderSchedule.php` is no longer allowed to make auth decisions from `$currentUser['role']` alone; session `roles[]` plus DB fallback are the required source of truth.
 - `app/Controllers/Api/V1/Providers.php` index listing is intentionally schema-safe: it filters scoped user rows via `getRolesForUser()` rather than assuming `xs_users.role = 'provider'` is authoritative.
+- Internal provider/staff appointment notifications must go through `NotificationQueueService::enqueueInternalEvent()` and `NotificationQueueDispatcher`; do not introduce direct email sends from controllers or views.
+- `NotificationTemplateService` now has a recipient-class split: customer flows use settings/default templates, internal provider/staff flows use `xs_message_templates.recipient_class = 'internal'` rows.
+- The provider/staff appointment-notification preference is `xs_users.notify_on_appointments`; admin edits flow through `UserManagementMutationService`, self-service edits flow through `POST /profile/update-notifications`.
+- Appointment creation must persist `xs_appointments.stored_timezone` and notification rendering must pass explicit timezone to `TimezoneService::toDisplay(...)` to avoid UTC/session drift in outbound messages.
 
 ---
 
-Last updated: 2026-04-12
+Last updated: 2026-04-13
 Status: Active hardening
 Phase 3: ✅ Multi-role RBAC fully hardened (RoleFilter, AuthorizationService, BaseApiController, UserManagementContextService, Providers API including authoritative provider listing, provider-schedule.js, ProviderSchedule.php standalone auth, Profile.php, UserManagement.php self-edit, user list multi-role display, self-admin role preservation); session write contract enforced from v140
 Phase 4 (2026-04-12): ✅ Canonical Mutation Pipeline (appointment-mutation-coordinator.js singleton; drag-drop + modal status/notes/cancel migrated; appointment:changed event; TD-02 TD-03 closed) + Default Appointment Status Setting (booking.default_appointment_status; migration seeded; settings UI; notification control point documented) + xs_customers schema restored (hash + custom_fields columns added, hashes backfilled) + Material Symbols Rounded added to app layout
+Phase 5 (2026-04-13): ✅ Internal provider/staff notification hardening (`xs_users.notify_on_appointments`; internal queue recipients via `recipient_type`/`recipient_user_id`; internal email templates via `recipient_class`; admin + self-service notification preference surfaces; dispatcher resolves internal recipients at send time)

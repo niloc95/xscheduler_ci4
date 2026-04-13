@@ -74,6 +74,8 @@ class NotificationQueueModel extends BaseModel
         'channel',
         'event_type',
         'appointment_id',
+        'recipient_type',
+        'recipient_user_id',
         'status',
         'attempts',
         'max_attempts',
@@ -123,7 +125,7 @@ class NotificationQueueModel extends BaseModel
                 return true;
             }
 
-            foreach (array_values(array_unique([$this->table, $this->db->prefixTable($this->table)])) as $candidate) {
+            foreach ([$this->table] as $candidate) {
                 try {
                     $fields = $this->db->getFieldData($candidate);
                     foreach ($fields as $field) {
