@@ -79,6 +79,7 @@ class AppointmentModel extends BaseModel
         'appointment_time',
         'start_at',
         'end_at',
+        'stored_timezone',
         'status',
         'reminder_sent',
         'notes',

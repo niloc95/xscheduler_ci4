@@ -77,6 +77,7 @@ use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationQueueDispatcher;
+use App\Services\NotificationQueueService;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -274,6 +275,7 @@ class AppointmentBookingService
                 'service_id' => $data['service_id'],
                 'start_at' => $timeData['startUtc'],
                 'end_at' => $timeData['endUtc'],
+                'stored_timezone' => $timeData['timezone'],
                 'status' => $status,
                 'notes' => $data['notes'] ?? '',
                 'location_id' => $resolvedLocationId,
@@ -859,6 +861,10 @@ class AppointmentBookingService
             $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications (' . $event . '): ' . implode(', ', $types));
 
+
+            // Enqueue internal (provider + staff) email notifications.
+            $this->enqueueInternalNotifications($appointmentId, $event);
+
             // Run the dispatcher immediately so email (and any other channels) are sent
             // without requiring the cron job to trigger first.
             $dispatcher = new NotificationQueueDispatcher();
@@ -894,5 +900,38 @@ class AppointmentBookingService
             'message' => $message,
             'errors' => []
         ], $additionalData);
+    }
+
+    /**
+     * Enqueue email notifications for the provider and their assigned staff.
+     */
+    private function enqueueInternalNotifications(int $appointmentId, string $eventType): void
+    {
+        try {
+            if ($eventType === '') {
+                return;
+            }
+            $appt = $this->appointmentModel->find($appointmentId);
+            if (!$appt) {
+                return;
+            }
+            $providerId = (int) ($appt['provider_id'] ?? 0);
+            if ($providerId <= 0) {
+                return;
+            }
+            $users    = (new \App\Models\UserModel())->getNotifiableUsersForProvider($providerId);
+            $queueSvc = new NotificationQueueService();
+            foreach ($users as $user) {
+                $queueSvc->enqueueInternalEvent(
+                    NotificationCatalog::BUSINESS_ID_DEFAULT,
+                    'email',
+                    $eventType,
+                    $appointmentId,
+                    (int) $user['id']
+                );
+            }
+        } catch (\Throwable $e) {
+            log_message('error', '[AppointmentBookingService] enqueueInternalNotifications failed: ' . $e->getMessage());
+        }
     }
 }
