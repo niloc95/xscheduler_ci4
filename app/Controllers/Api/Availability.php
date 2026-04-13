@@ -178,7 +178,7 @@ class Availability extends BaseApiController
                 'timezone' => $timezone,
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', '[API/Availability::slots] Error: ' . $e->getMessage());
             return $this->serverError('Failed to calculate available slots', ['exception' => $e->getMessage()]);
         }
@@ -251,7 +251,7 @@ class Availability extends BaseApiController
                 'checked_at' => (new \DateTime('now', new \DateTimeZone($timezone)))->format('c'),
             ]));
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', '[API/Availability::check] Error: ' . $e->getMessage());
             return $this->serverError('Failed to check availability', ['exception' => $e->getMessage()]);
         }
@@ -331,7 +331,7 @@ class Availability extends BaseApiController
             
             return $this->ok($summary);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', '[API/Availability::summary] Error: ' . $e->getMessage());
             return $this->serverError('Failed to generate availability summary', ['exception' => $e->getMessage()]);
         }
@@ -478,7 +478,7 @@ class Availability extends BaseApiController
                 'searched_until' => $endSearch->format('Y-m-d'),
             ]);
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', '[API/Availability::nextAvailable] Error: ' . $e->getMessage());
             return $this->serverError('Failed to find next available slot', ['exception' => $e->getMessage()]);
         }

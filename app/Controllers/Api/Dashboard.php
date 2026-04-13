@@ -142,7 +142,7 @@ class Dashboard extends BaseApiController
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Dashboard API Error: ' . $e->getMessage());
             return $this->serverError('Unable to fetch appointment stats', $e->getMessage());
         }

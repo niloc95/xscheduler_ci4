@@ -20,7 +20,7 @@ import './utils/dynamic-colors.js';
 import { initGlobalSearch } from './modules/search/global-search.js';
 
 // Import status filters
-import { initStatusFilterControls, initSummaryCardFilters, initViewToggleHandlers, emitAppointmentsUpdated, refreshAppointmentStats } from './modules/filters/status-filters.js';
+import { initStatusFilterControls, initSummaryCardFilters, initViewToggleHandlers, refreshAppointmentStats } from './modules/filters/status-filters.js';
 
 // Import advanced filters
 import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js';
@@ -257,7 +257,6 @@ document.addEventListener('settingsSaved', async () => {
 }, { once: false });
 
 window.refreshAppointmentStats = refreshAppointmentStats;
-window.emitAppointmentsUpdated = emitAppointmentsUpdated;
 
 /**
  * Initialize custom scheduler

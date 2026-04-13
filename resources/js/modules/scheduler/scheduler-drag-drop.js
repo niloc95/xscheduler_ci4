@@ -6,8 +6,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { emitAppointmentsUpdated } from '../filters/status-filters.js';
-import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { withBaseUrl } from '../../utils/url-helpers.js';
+import { appointmentMutationCoordinator } from '../appointments/appointment-mutation-coordinator.js';
 
 export class DragDropManager {
     constructor(scheduler) {
@@ -274,64 +274,23 @@ export class DragDropManager {
     }
 
     async rescheduleAppointment(appointmentId, newStart, newEnd) {
-        try {
-            // Show loading indicator
-            this.showLoading();
-
-            const response = await fetch(withBaseUrl(`/api/appointments/${appointmentId}`), {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    start: newStart.toISO(),
-                    end: newEnd.toISO(),
-                    date: newStart.toISODate(),
-                    time: newStart.toFormat('HH:mm')
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to reschedule appointment');
-            }
-
-            const result = await response.json();
-
-            // Reload using the scheduler's mode-aware loader so server-mode
-            // calendarModel data stays in sync with slot placement.
-            if (typeof this.scheduler.loadData === 'function') {
-                await this.scheduler.loadData();
-            } else {
-                await this.scheduler.loadAppointments();
-            }
-            this.scheduler.render();
-
-            this.showSuccess('Appointment rescheduled successfully');
-
-            if (typeof window !== 'undefined') {
-                const detail = {
-                    source: 'drag-drop',
-                    action: 'reschedule',
-                    appointmentId
-                };
-
-                emitAppointmentsUpdated(detail);
-            }
-        } catch (error) {
-            console.error('❌ Reschedule failed:', error);
-            this.showError('Failed to reschedule appointment. Please try again.');
-            
-            // Reload to ensure data is consistent, respecting scheduler mode.
-            if (typeof this.scheduler.loadData === 'function') {
-                await this.scheduler.loadData();
-            } else {
-                await this.scheduler.loadAppointments();
-            }
-            this.scheduler.render();
-        } finally {
-            this.hideLoading();
-        }
+        await appointmentMutationCoordinator.execute({
+            action: 'reschedule',
+            endpoint: withBaseUrl(`/api/appointments/${appointmentId}`),
+            method: 'PATCH',
+            body: {
+                start: newStart.toISO(),
+                end: newEnd.toISO(),
+            },
+            uiContext: 'scheduler',
+            authContext: 'authenticated',
+            loadingTargets: ['#scheduler-loading'],
+            preserveScrollContext: true,
+            toast: { type: 'success', message: 'Appointment rescheduled successfully' },
+            onError: (error) => {
+                console.error('❌ Reschedule failed:', error);
+            },
+        });
     }
 
     resetDrag() {
@@ -343,32 +302,6 @@ export class DragDropManager {
         document.querySelectorAll('.ring-blue-500').forEach(el => {
             el.classList.remove('ring-2', 'ring-blue-500', 'ring-inset', 'bg-blue-50', 'dark:bg-blue-900/20');
         });
-    }
-
-    showLoading() {
-        // Create or show loading overlay
-        let loader = document.getElementById('scheduler-loading');
-        if (!loader) {
-            loader = document.createElement('div');
-            loader.id = 'scheduler-loading';
-            loader.className = 'fixed inset-0 bg-gray-900/50 dark:bg-gray-900/70 flex items-center justify-center z-50';
-            loader.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p class="mt-4 text-gray-700 dark:text-gray-300">Rescheduling...</p>
-                </div>
-            `;
-            document.body.appendChild(loader);
-        } else {
-            loader.classList.remove('hidden');
-        }
-    }
-
-    hideLoading() {
-        const loader = document.getElementById('scheduler-loading');
-        if (loader) {
-            loader.classList.add('hidden');
-        }
     }
 
     showSuccess(message) {

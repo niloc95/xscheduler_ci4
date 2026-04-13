@@ -157,6 +157,29 @@
                     </div>
 
 
+                    <!-- Appointment Defaults -->
+                    <div class="form-field">
+                        <label class="form-label">Appointment Defaults</label>
+                        <div class="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            <div>
+                                <label for="booking_default_appointment_status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Default Appointment Status
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    The status assigned to newly created appointments unless explicitly overridden.
+                                </p>
+                                <select id="booking_default_appointment_status" name="booking_default_appointment_status" class="form-input max-w-xs">
+                                    <option value="pending" <?= ($settings['booking.default_appointment_status'] ?? 'pending') === 'pending' ? 'selected' : '' ?>>
+                                        Pending — requires confirmation
+                                    </option>
+                                    <option value="confirmed" <?= ($settings['booking.default_appointment_status'] ?? 'pending') === 'confirmed' ? 'selected' : '' ?>>
+                                        Confirmed — auto-approve
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
                 
                 <!-- Save Button for Booking Settings -->

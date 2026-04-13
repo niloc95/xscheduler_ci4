@@ -36,6 +36,7 @@ Current state: active hardening. Core workflows are production-capable, with foc
 - Tailwind CSS 3.4
 - SCSS
 - Material Design 3 packages/styles
+  - Icon font: `Material+Symbols+Outlined` **and** `Material+Symbols+Rounded` — both loaded in `app/Views/layouts/app.php`. Views may use either `material-symbols-outlined` or `material-symbols-rounded` class on `<span>` elements. The Rounded variant was added 2026-04-12 to fix missing icons on the profile view.
 - Chart.js 4
 - Luxon 3
 - Plain JavaScript modules
@@ -206,11 +207,11 @@ docs/
 
 ##### `xs_customers`
 - Columns:
-  - `id`, `first_name`, `last_name`, `email`, `phone`, `address`, `notes`, `created_at`, `updated_at`
+  - `id`, `hash`, `first_name`, `last_name`, `email`, `phone`, `address`, `notes`, `created_at`, `updated_at`, `custom_fields`
 - Notes:
-  - The codebase expects hash-capable customer records for public portal routes such as `/my-appointments/{hash}`.
-  - This runtime does not currently expose a `hash` column on `xs_customers`, so public customer portal work should treat that as schema drift and restore the column before relying on hash-based lookup.
-  - Internal-only resolution may use `CustomerModel::findByIdentifier()` numeric fallback, but public customer access should not.
+  - `hash` — 64-char unique slug used by public portal routes (`/my-appointments/{hash}`). Column added and backfilled 2026-04-12; unique index `idx_customers_hash` is present.
+  - `custom_fields` — TEXT nullable; JSON map of custom booking field values populated via the booking form.
+  - All existing customers have their `hash` backfilled as of 2026-04-12. New customers get a hash via `CustomerModel` `beforeInsert` callback.
 
 #### Core Scheduling Tables
 
@@ -336,7 +337,7 @@ docs/
 - Keep scheduling logic on `start_at` / `end_at`.
 - Use schema-safe service/model fallback behavior when runtime columns vary.
 - `xs_business_hours` uses `weekday` in this runtime, not `day_of_week`; verify before querying in mixed-schema environments.
-- `xs_customers.hash` is absent in this runtime even though public customer portal code expects it; restore schema before relying on `/my-appointments/{hash}` flows.
+- `xs_customers.hash` and `xs_customers.custom_fields` were absent in this runtime and were restored 2026-04-12. `/my-appointments/{hash}` flows are now operational for all existing and new customers.
 - `xs_provider_schedules` does not include `location_id` in this runtime; older docs that reference it are not authoritative here.
 - `xs_location_days` is currently a three-column stub in this runtime; verify schema intent before implementing location-hours logic against it.
 - `xs_settings` runtime omits `updated_by`; use model/service compatibility checks instead of assuming its presence.
@@ -381,6 +382,34 @@ docs/
 ### Notification Enqueue Rule
 - The enqueue step must derive event type from `AppointmentStatus::notificationEvent()`.
 - New booking flows must not hardcode `appointment_confirmed` for all successful creates.
+- **`booking.default_appointment_status` is a notification control point.** Changing the default to `confirmed` causes new bookings to fire `appointment_confirmed` instead of `appointment_pending` — a different template is sent. This is intentional and expected.
+
+### Status → Notification Event Mapping
+
+Defined in `app/Services/Appointment/AppointmentStatus.php::notificationEvent()`:
+
+| Status | Notification Event |
+|--------|--------------------|
+| `pending` | `appointment_pending` |
+| `confirmed` | `appointment_confirmed` |
+| `completed` | `appointment_confirmed` *(reuses confirmed template)* |
+| `cancelled` | `appointment_cancelled` |
+| `no_show` | `appointment_no_show` |
+| `rescheduled` | `appointment_rescheduled` |
+
+### Notification Template Inventory
+
+**15 default templates** (5 event types × 3 channels). Defaults defined inline in `app/Services/NotificationTemplateService.php` (lines 111–180). Per-business overrides stored in `xs_message_templates`.
+
+| Event | When it fires |
+|-------|---------------|
+| `appointment_pending` | New booking created with status = pending |
+| `appointment_confirmed` | Status → confirmed or completed; OR new booking if default status = `confirmed` |
+| `appointment_reminder` | Scheduled cron job — **not** triggered by status change |
+| `appointment_cancelled` | Status → cancelled |
+| `appointment_rescheduled` | Date or time fields updated on an existing appointment |
+
+Channels per event: `email`, `sms`, `whatsapp`.
 
 ### Public Booking Flow
 
@@ -422,6 +451,12 @@ All public API endpoints are unauthenticated and must enforce rate limiting. Pro
 ### Single Source of Truth
 - Use `SettingModel` and settings services.
 - Active key namespaces: `general.*`, `localization.*`, `booking.*`, `calendar.*`, `notifications.*`, `branding.*`, `security.*`.
+
+### Notable Booking Settings
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `booking.default_appointment_status` | string | `pending` | Status applied to new appointments unless an explicit status is passed in the mutation payload. Allowed values: `pending`, `confirmed`. Resolved in `AppointmentBookingService::createAppointment()` via `model('SettingModel')->getByKeys(['booking.default_appointment_status'])` with `AppointmentStatus::PENDING` fallback. Configurable at Admin → Settings → Booking. |
 
 ### Phone Normalization Default
 - `PhoneNumberService` reads `localization.default_phone_country_code` with fallback to `localization.phone_country_code`.
@@ -490,7 +525,6 @@ All public API endpoints are unauthenticated and must enforce rate limiting. Pro
 | `window.togglePassword(fieldId)` | Inline in `app.js` | Password-field visibility toggle |
 | `window.scheduler` | `modules/scheduler/scheduler-core.js` | Running `SchedulerCore` instance; set after `init()` resolves |
 | `window.refreshAppointmentStats` | `modules/filters/status-filters.js` | Refresh dashboard stat counters |
-| `window.emitAppointmentsUpdated` | `modules/filters/status-filters.js` | Broadcast `appointmentsUpdated` event to refresh list/scheduler |
 
 #### Per-View Initializers
 
@@ -616,30 +650,81 @@ In server mode, views can consume `calendarModel` for slot placement. Therefore,
 
 **Drag-drop reschedule path (authenticated scheduler):**
 
-1. `scheduler-drag-drop.js` sends `PATCH /api/appointments/{id}`.
-2. On success, it now calls `scheduler.loadData()` (with `loadAppointments()` fallback for compatibility) and then `scheduler.render()`.
-3. Emits `emitAppointmentsUpdated(...)` for cross-component updates.
+1. `scheduler-drag-drop.js` calls `appointmentMutationCoordinator.execute()` with `uiContext: 'scheduler'`.
+2. Coordinator sends `PATCH /api/appointments/{id}`, then calls `scheduler.loadData()` + `scheduler.render()` automatically.
+3. Coordinator dispatches canonical `appointment:changed` event on `window`.
 
-This prevents stale `calendarModel` rendering in `mode='server'` after drag-drop mutations.
+Do NOT call `emitAppointmentsUpdated()` from scheduler mutation handlers — it is now restricted to filter-change actions (status-filter, summary-card clicks) inside `status-filters.js`.
 
 #### Troubleshooting: Appointment Does Not Move Until Manual Refresh
-
-1. Confirm scheduler mode in `app.js` init options (`mode: 'server'`).
 2. Confirm reschedule success in Network tab (`PATCH /api/appointments/{id}` returns 2xx).
 3. Confirm a post-PATCH data reload request fires (`/api/calendar/{view}` for server mode).
 4. If only `/api/appointments` reloads after mutation in server mode, expect stale slot placement risk.
 5. Hard refresh will mask this by rebuilding both model and flat data.
 
+#### Canonical Mutation Pipeline
+
+All appointment mutations (reschedule, status-change, notes-save, cancel, create) funnel through a single coordinator:
+
+```
+appointmentMutationCoordinator.execute(options)
+  → CSRF injection (authenticated: <meta csrf-token>; public: [data-booking-root].dataset.csrfValue)
+  → loadingTargets disabled (aria-busy + disabled)
+  → fetch(endpoint, {method, body})
+  → CSRF rotation from X-CSRF-TOKEN response header
+  → _refreshContext: 'scheduler' → loadData() + render(); 'passive' → no-op
+  → window.dispatchEvent(appointment:changed)
+  → window.XSNotify.toast() or xs:flash fallback
+  → onSuccess / onError callbacks
+```
+
+**Key contracts:**
+- Module: `resources/js/modules/appointments/appointment-mutation-coordinator.js`
+- Exported singleton: `appointmentMutationCoordinator`
+- `uiContext: 'scheduler'` triggers mode-aware reload; `'passive'` skips reload
+- `loadingTargets` accepts any CSS selectors — coordinator sets `disabled` + `aria-busy`
+- Coordinator shows its own toast — callers must NOT call `window.XSNotify` or dispatch `xs:flash` separately
+- `handleNotify()` (manual re-send) is explicitly excluded — it is a send action, not a mutation
+
+**Migrated callers:**
+- `scheduler-drag-drop.js` → `rescheduleAppointment()` uses coordinator
+- `appointment-details-modal.js` → `handleStatusChange()`, `handleNotesChange()`, `handleCancel()` use coordinator
+
+**Not migrated (FormData / complex state machine):**
+- `appointments-form.js` — HTML form POST with `FormData`; CSRF managed by its own helpers
+- `public-booking.js` — complex multi-target state machine; own CSRF rotation
+
+**Canonical post-mutation event:**
+```js
+window.dispatchEvent(new CustomEvent('appointment:changed', {
+  detail: { action, endpoint, data }
+}));
+```
+The legacy `appointments-updated` CustomEvent (dispatched by `emitAppointmentsUpdated`) remains in `status-filters.js` for filter-change actions only and has no scheduler listeners — do not add new callers. `window.emitAppointmentsUpdated` global was removed.
+
+#### Schema-Drift Retry Pattern (`AppointmentFormContextService`)
+
+`app/Services/Appointment/AppointmentFormContextService` uses a **retry loop** when building the appointment edit view if the runtime `xs_customers` table is missing optional columns. The loop runs up to 3 passes:
+1. First attempt includes `c.custom_fields` and `c.hash` in the SELECT.
+2. On `Unknown column 'c.custom_fields'`, drops that field and retries.
+3. On `Unknown column 'c.hash'`, drops that field and retries.
+
+This guard prevents hard 500 errors on drifted schemas. The `appointment_custom_fields` and `appointment_hash` keys in the view-data array default to `null` when unavailable. **As of 2026-04-12 both columns exist in the live runtime, so the guard no longer triggers.**
+
 #### Edited Files (Refresh/Reschedule Continuity)
 
 - `resources/js/modules/scheduler/scheduler-drag-drop.js`
-  - Post-reschedule refresh changed to mode-aware reload (`loadData()` preferred).
+  - Reschedule now uses `appointmentMutationCoordinator`; removed inline fetch, `showLoading`/`hideLoading`.
+- `resources/js/modules/scheduler/appointment-details-modal.js`
+  - Status/notes/cancel mutations use coordinator; `emitAppointmentsUpdated` import removed.
+- `resources/js/modules/appointments/appointment-mutation-coordinator.js`
+  - Singleton coordinator module (NEW).
 - `resources/js/modules/scheduler/scheduler-core.js`
   - Source of truth for mode-aware data loading (`loadData`, `loadCalendarModel`, `loadAppointments`).
 - `resources/js/modules/scheduler/scheduler-day-view.js`
   - Uses `calendarModel` for provider-slot placement and includes the now-line 60s timer.
 - `resources/js/app.js`
-  - Scheduler boot config sets `mode: 'server'` and drives runtime refresh expectations.
+  - Scheduler boot config sets `mode: 'server'`; `window.emitAppointmentsUpdated` global removed.
 
 ---
 
@@ -803,10 +888,17 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 - Queue first, then dispatch.
 - Preserve idempotency and delivery-log behavior.
 
+### Notification Dispatch Architecture Note
+- **Notifications fire synchronously inline** during the appointment HTTP mutation request (not deferred to the first cron tick). The `AppointmentModel` callback triggers `enqueueNotificationsForAppointment()` as part of the same request cycle.
+- **`handleNotify()` is a manual re-send path** (`POST /api/appointments/{id}/notify`, body: `{channel, event_type?}`). Service: `AppointmentManualNotificationService::send()`. Email/SMS re-sends are sent immediately (no queue). WhatsApp re-sends are queued and picked up by cron. Event type defaults to `AppointmentStatus::notificationEvent($appointment['status'])` if not explicitly passed.
+- **`PATCH /api/appointments/{id}/status`** (used by the coordinator's status-change and cancel flows) **fires notifications server-side** for every transition. `AppointmentMutationService` resolves the event via `AppointmentStatus::notificationEvent()` and passes it to `updateAppointment()`. Channels: email + whatsapp.
+- `appointments-updated` event (from `emitAppointmentsUpdated`) does **not** affect notification dispatch. Notifications are driven by the PHP model layer, not frontend events.
+
 ### Appointment Event Contract
 - `appointment_pending` is the canonical event for pending bookings.
-- `appointment_confirmed` is the canonical event for confirmed bookings.
+- `appointment_confirmed` is the canonical event for confirmed bookings and completed appointments.
 - New booking flows must resolve event type from appointment status via `AppointmentStatus::notificationEvent()` instead of hardcoding confirmation.
+- See **Status → Notification Event Mapping** and **Notification Template Inventory** above for the full reference.
 
 ---
 
@@ -1434,8 +1526,8 @@ public function viewMyAppointment($appointmentHash) {
 | ID | Description | Affected files | Correct fix | Status |
 |----|-------------|----------------|-------------|--------|
 | TD-01 | Dark mode detection currently uses mixed patterns. | `resources/js/dark-mode.js`, `resources/js/utils/dark-mode-detector.js`, scheduler/chart modules | Standardize on `document.documentElement.dataset.theme === 'dark'`. | open |
-| TD-02 | `emitAppointmentsUpdated` consistency is not fully centralized. | status filter and scheduler view modules | Use one shared utility wrapper. | in-progress |
-| TD-03 | Toasts are still emitted through drag-drop module helper path. | `resources/js/modules/scheduler/scheduler-drag-drop.js` | Move to canonical toast utility entrypoint. | open |
+| TD-02 | `emitAppointmentsUpdated` consistency is not fully centralized. | status filter and scheduler view modules | Use one shared utility wrapper. | closed — coordinator dispatches `appointment:changed`; `emitAppointmentsUpdated` now restricted to filter-change actions only |
+| TD-03 | Toasts are still emitted through drag-drop module helper path. | `resources/js/modules/scheduler/scheduler-drag-drop.js` | Move to canonical toast utility entrypoint. | closed — coordinator owns toast; drag-drop no longer calls showToast for mutations |
 | TD-04 | Scheduler loading paths require strict dispatcher discipline. | `resources/js/modules/scheduler/scheduler-core.js` | Route feature calls through `loadData()`. | in-progress |
 | TD-05 | Day-view positional values require strict day-view derivation. | `resources/js/modules/scheduler/scheduler-day-view.js` | Compute from day-view Luxon datetime range. | open |
 | TD-06 | Duplicate/overlapping currency formatting adapters remain. | `resources/js/currency.js`, scheduler settings/right panel modules | Consolidate around canonical formatter utility. | open |
@@ -1664,6 +1756,7 @@ Exception: the login path in `Auth::attemptLogin()` writes the full array includ
 
 ---
 
-Last updated: 2026-04-10
+Last updated: 2026-04-12
 Status: Active hardening
 Phase 3: ✅ Multi-role RBAC fully hardened (RoleFilter, AuthorizationService, BaseApiController, UserManagementContextService, Providers API including authoritative provider listing, provider-schedule.js, ProviderSchedule.php standalone auth, Profile.php, UserManagement.php self-edit, user list multi-role display, self-admin role preservation); session write contract enforced from v140
+Phase 4 (2026-04-12): ✅ Canonical Mutation Pipeline (appointment-mutation-coordinator.js singleton; drag-drop + modal status/notes/cancel migrated; appointment:changed event; TD-02 TD-03 closed) + Default Appointment Status Setting (booking.default_appointment_status; migration seeded; settings UI; notification control point documented) + xs_customers schema restored (hash + custom_fields columns added, hashes backfilled) + Material Symbols Rounded added to app layout

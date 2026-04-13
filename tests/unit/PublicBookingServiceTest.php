@@ -241,6 +241,84 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->assertStringContainsString('Sun', $result['display_range']);
     }
 
+    public function testLookupAppointmentIncludesCanRescheduleTrueWhenOutsideWindow(): void
+    {
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+48 hours')->format('Y-m-d H:i:s');
+        $appointmentRecord = [
+            'id' => 11, 'provider_id' => 9, 'service_id' => 4, 'customer_id' => 500,
+            'start_at' => $startAt,
+            'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
+            'status' => 'confirmed', 'notes' => null,
+            'public_token' => 'token-far', 'customer_email' => 'test@example.com', 'customer_phone' => '',
+        ];
+
+        $appointments = $this->getMockBuilder(AppointmentModel::class)
+            ->disableOriginalConstructor()->onlyMethods(['builder'])->getMock();
+        $appointments->method('builder')->willReturn($this->createAppointmentBuilder($appointmentRecord));
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn('UTC');
+        $localization->method('formatCurrency')->willReturn('$0.00');
+
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $appointments,
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock(['id' => 4, 'name' => 'Follow-up', 'duration_min' => 45, 'price' => 0, 'active' => 1]),
+            $this->createUserModelMock(['id' => 9, 'name' => 'Dr. Singh', 'color' => '#117733', 'role' => 'provider', 'is_active' => true]),
+            $localization,
+            $settings,
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $result = $service->lookupAppointment('token-far', 'test@example.com');
+        $this->assertTrue($result['can_reschedule'], 'Appointment 48h out should be reschedulable with 24h policy');
+    }
+
+    public function testLookupAppointmentIncludesCanRescheduleFalseWhenInsideWindow(): void
+    {
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+6 hours')->format('Y-m-d H:i:s');
+        $appointmentRecord = [
+            'id' => 12, 'provider_id' => 9, 'service_id' => 4, 'customer_id' => 500,
+            'start_at' => $startAt,
+            'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
+            'status' => 'confirmed', 'notes' => null,
+            'public_token' => 'token-close', 'customer_email' => 'test@example.com', 'customer_phone' => '',
+        ];
+
+        $appointments = $this->getMockBuilder(AppointmentModel::class)
+            ->disableOriginalConstructor()->onlyMethods(['builder'])->getMock();
+        $appointments->method('builder')->willReturn($this->createAppointmentBuilder($appointmentRecord));
+
+        $localization = $this->createMock(LocalizationSettingsService::class);
+        $localization->method('getTimezone')->willReturn('UTC');
+        $localization->method('formatCurrency')->willReturn('$0.00');
+
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $appointments,
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock(['id' => 4, 'name' => 'Follow-up', 'duration_min' => 45, 'price' => 0, 'active' => 1]),
+            $this->createUserModelMock(['id' => 9, 'name' => 'Dr. Singh', 'color' => '#117733', 'role' => 'provider', 'is_active' => true]),
+            $localization,
+            $settings,
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $result = $service->lookupAppointment('token-close', 'test@example.com');
+        $this->assertFalse($result['can_reschedule'], 'Appointment 6h out should NOT be reschedulable with 24h policy');
+    }
+
     public function testGetAvailableSlotsFormatsDisplayPayload(): void
     {
         $localization = $this->createMock(LocalizationSettingsService::class);

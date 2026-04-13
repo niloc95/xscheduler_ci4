@@ -18,9 +18,9 @@
 
 import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
-import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 import { formatCurrency } from '../../currency.js';
-import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { withBaseUrl } from '../../utils/url-helpers.js';
+import { appointmentMutationCoordinator } from '../appointments/appointment-mutation-coordinator.js';
 
 export class AppointmentDetailsModal {
     constructor(scheduler) {
@@ -522,71 +522,29 @@ export class AppointmentDetailsModal {
         const saveBtn = this.modal.querySelector('#btn-save-status');
         const statusSelect = this.modal.querySelector('#detail-status-select');
         const originalStatus = appointment.status;
-        
-        // Show loading state
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-        
-        try {
-            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/status`), {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    status: newStatus
-                })
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'Failed to update status');
-            }
-            
-            // Update current appointment status
-            appointment.status = newStatus;
-            this.currentAppointment.status = newStatus;
-            
-            // Show success message
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'success', message: 'Status updated successfully' }
-            }));
-            
-            // Hide save button
-            saveBtn.classList.add('hidden');
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save';
-            
-            // Refresh calendar to show updated status (respects server mode)
-            await this.scheduler.loadData();
-            this.scheduler.render();
 
-            if (typeof window !== 'undefined') {
-                const detail = {
-                    source: 'status-change',
-                    appointmentId: appointment.id,
-                    status: newStatus
-                };
-
-                emitAppointmentsUpdated(detail);
-            }
-            
-        } catch (error) {
-            console.error('Error updating status:', error);
-            
-            // Revert select to original status
-            statusSelect.value = originalStatus;
-            this.updateStatusSelectStyling(statusSelect, originalStatus);
-            
-            // Reset save button
-            saveBtn.classList.add('hidden');
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save';
-            
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'error', message: error.message || 'Failed to update status. Please try again.' }
-            }));
-        }
+        await appointmentMutationCoordinator.execute({
+            action: 'status-change',
+            endpoint: withBaseUrl(`/api/appointments/${appointment.id}/status`),
+            method: 'PATCH',
+            body: { status: newStatus },
+            uiContext: 'scheduler',
+            authContext: 'authenticated',
+            loadingTargets: ['#btn-save-status'],
+            toast: { type: 'success', message: 'Status updated successfully' },
+            onSuccess: () => {
+                appointment.status = newStatus;
+                this.currentAppointment.status = newStatus;
+                saveBtn.classList.add('hidden');
+                saveBtn.textContent = 'Save';
+            },
+            onError: () => {
+                statusSelect.value = originalStatus;
+                this.updateStatusSelectStyling(statusSelect, originalStatus);
+                saveBtn.classList.add('hidden');
+                saveBtn.textContent = 'Save';
+            },
+        });
     }
     
     /**
@@ -594,54 +552,27 @@ export class AppointmentDetailsModal {
      */
     async handleNotesChange(appointment, newNotes) {
         const saveBtn = this.modal.querySelector('#btn-save-notes');
-        const notesTextarea = this.modal.querySelector('#detail-notes');
-        
-        // Show loading state
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-        
-        try {
-            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/notes`), {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    notes: newNotes
-                })
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'Failed to update notes');
-            }
-            
-            // Update current appointment notes
-            appointment.notes = newNotes;
-            this.currentAppointment.notes = newNotes;
-            this.originalNotes = newNotes;
-            
-            // Show success message
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'success', message: 'Notes updated successfully' }
-            }));
-            
-            // Hide save button
-            saveBtn.classList.add('hidden');
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Notes';
-            
-        } catch (error) {
-            console.error('Error updating notes:', error);
-            
-            // Reset save button
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Notes';
-            
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'error', message: error.message || 'Failed to update notes. Please try again.' }
-            }));
-        }
+
+        await appointmentMutationCoordinator.execute({
+            action: 'notes-save',
+            endpoint: withBaseUrl(`/api/appointments/${appointment.id}/notes`),
+            method: 'PATCH',
+            body: { notes: newNotes },
+            uiContext: 'passive',
+            authContext: 'authenticated',
+            loadingTargets: ['#btn-save-notes'],
+            toast: { type: 'success', message: 'Notes updated successfully' },
+            onSuccess: () => {
+                appointment.notes = newNotes;
+                this.currentAppointment.notes = newNotes;
+                this.originalNotes = newNotes;
+                saveBtn.classList.add('hidden');
+                saveBtn.textContent = 'Save Notes';
+            },
+            onError: () => {
+                saveBtn.textContent = 'Save Notes';
+            },
+        });
     }
     
     /**
@@ -668,48 +599,20 @@ export class AppointmentDetailsModal {
         const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}`);
         
         if (!confirmed) return;
-        
-        try {
-            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/status`), {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    status: 'cancelled'
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to cancel appointment');
-            }
-            
-            // Show success message
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'success', message: 'Appointment cancelled successfully' }
-            }));
-            
-            // Refresh calendar
-            this.close();
-            await this.scheduler.loadData();
-            this.scheduler.render();
 
-            if (typeof window !== 'undefined') {
-                const detail = {
-                    source: 'status-change',
-                    appointmentId: appointment.id,
-                    status: 'cancelled'
-                };
-
-                emitAppointmentsUpdated(detail);
-            }
-            
-        } catch (error) {
-            console.error('Error cancelling appointment:', error);
-            document.dispatchEvent(new CustomEvent('xs:flash', {
-                detail: { type: 'error', message: error.message || 'Failed to cancel appointment. Please try again.' }
-            }));
-        }
+        await appointmentMutationCoordinator.execute({
+            action: 'cancel',
+            endpoint: withBaseUrl(`/api/appointments/${appointment.id}/status`),
+            method: 'PATCH',
+            body: { status: 'cancelled' },
+            uiContext: 'scheduler',
+            authContext: 'authenticated',
+            loadingTargets: ['#btn-cancel-appointment'],
+            toast: { type: 'success', message: 'Appointment cancelled successfully' },
+            onSuccess: () => {
+                this.close();
+            },
+        });
     }
     
     /**
@@ -793,32 +696,39 @@ export class AppointmentDetailsModal {
             sms: 'SMS'
         };
         const channelLabel = channelLabels[channel] || channel;
-        
+
+        // Prevent concurrent sends
+        const notifyBtn = channel === 'email'
+            ? document.querySelector('#btn-notify-email')
+            : document.querySelector('#btn-notify-sms');
+        if (notifyBtn) {
+            notifyBtn.disabled = true;
+            notifyBtn.setAttribute('aria-busy', 'true');
+        }
+
+        const showNotifyToast = (message, type = 'info') => {
+            window.XSNotify?.toast({ type, message })
+                ?? document.dispatchEvent(new CustomEvent('xs:flash', { detail: { type, message } }));
+        };
+
         // Check for required data
         if (channel === 'email') {
             const email = appointment.customerEmail || '';
             if (!email) {
-                document.dispatchEvent(new CustomEvent('xs:flash', {
-                    detail: { type: 'error', message: 'No email address available for this customer' }
-                }));
+                showNotifyToast('No email address available for this customer.', 'error');
+                if (notifyBtn) { notifyBtn.disabled = false; notifyBtn.removeAttribute('aria-busy'); }
                 return;
             }
         } else if (channel === 'sms') {
             const phone = appointment.customerPhone || '';
             if (!phone) {
-                if (this.scheduler.dragDropManager) {
-                    this.scheduler.dragDropManager.showToast('No phone number available for this customer', 'error');
-                } else {
-                    alert('No phone number available for this customer.');
-                }
+                showNotifyToast('No phone number available for this customer.', 'error');
+                if (notifyBtn) { notifyBtn.disabled = false; notifyBtn.removeAttribute('aria-busy'); }
                 return;
             }
         }
-        
-        // Show loading state
-        if (this.scheduler.dragDropManager) {
-            this.scheduler.dragDropManager.showToast(`Sending ${channelLabel}...`, 'info');
-        }
+
+        showNotifyToast(`Sending ${channelLabel}...`, 'info');
         
         try {
             const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/notify`), {
@@ -839,18 +749,15 @@ export class AppointmentDetailsModal {
             }
             
             // Show success message
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast(result.data?.message || `${channelLabel} sent successfully!`, 'success');
-            } else {
-                alert(result.data?.message || `${channelLabel} sent successfully!`);
-            }
-            
+            showNotifyToast(result.data?.message || `${channelLabel} sent successfully!`, 'success');
+
         } catch (error) {
             console.error(`Error sending ${channel} notification:`, error);
-            if (this.scheduler.dragDropManager) {
-                this.scheduler.dragDropManager.showToast(error.message || `Failed to send ${channelLabel}`, 'error');
-            } else {
-                alert(error.message || `Failed to send ${channelLabel}. Please try again.`);
+            showNotifyToast(error.message || `Failed to send ${channelLabel}. Please try again.`, 'error');
+        } finally {
+            if (notifyBtn) {
+                notifyBtn.disabled = false;
+                notifyBtn.removeAttribute('aria-busy');
             }
         }
     }

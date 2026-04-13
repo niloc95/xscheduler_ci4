@@ -81,7 +81,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
 
         $createPayload = json_decode($create->getJSON(), true);
         $created = $createPayload['data'] ?? [];
-        $initialToken = (string) ($created['token'] ?? '');
+        $initialToken = (string) ($created['reference'] ?? '');
 
         $this->assertNotSame('', $initialToken);
         $this->assertSame($this->providerId, (int) ($created['provider_id'] ?? 0));
@@ -108,10 +108,11 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $lookupPayload = json_decode($lookup->getJSON(), true);
         $lookupData = $lookupPayload['data'] ?? [];
 
-        $this->assertSame($initialToken, $lookupData['token'] ?? null);
+        $this->assertSame($initialToken, $lookupData['reference'] ?? null);
         $this->assertSame($initialStart, $lookupData['start'] ?? null);
         $this->assertSame('Pat', $lookupData['customer']['first_name'] ?? null);
         $this->assertSame('Guest', $lookupData['customer']['last_name'] ?? null);
+        $this->assertTrue((bool) ($lookupData['can_reschedule'] ?? false));
 
         $forbiddenLookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode('wrong@example.com'));
         $forbiddenLookup->assertStatus(403);
@@ -133,7 +134,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
 
         $reschedulePayload = json_decode($reschedule->getJSON(), true);
         $updated = $reschedulePayload['data'] ?? [];
-        $newToken = (string) ($updated['token'] ?? '');
+        $newToken = (string) ($updated['reference'] ?? '');
 
         $this->assertNotSame('', $newToken);
         $this->assertNotSame($initialToken, $newToken);
@@ -145,7 +146,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $oldTokenLookup->assertStatus(404);
 
         $oldTokenPayload = json_decode($oldTokenLookup->getJSON(), true);
-        $this->assertSame('We could not find a booking for that token.', $oldTokenPayload['error'] ?? null);
+        $this->assertSame('We could not find a booking for that reference.', $oldTokenPayload['error'] ?? null);
 
         $newTokenLookup = $this->get('/booking/' . $newToken . '?email=' . rawurlencode($email));
         $newTokenLookup->assertOK();
@@ -153,7 +154,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $newTokenPayload = json_decode($newTokenLookup->getJSON(), true);
         $newLookup = $newTokenPayload['data'] ?? [];
 
-        $this->assertSame($newToken, $newLookup['token'] ?? null);
+        $this->assertSame($newToken, $newLookup['reference'] ?? null);
         $this->assertSame($rescheduledStart, $newLookup['start'] ?? null);
         $this->assertSame('Rescheduled by customer', $newLookup['notes'] ?? null);
 
@@ -204,6 +205,11 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         ]);
         $appointmentId = (int) $db->insertID();
         $this->appointmentIds[] = $appointmentId;
+
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($db->table('customers')->where('id', $customerId)->get()->getRowArray()['email'] ?? ''));
+        $lookup->assertOK();
+        $lookupPayload = json_decode($lookup->getJSON(), true);
+        $this->assertFalse((bool) (($lookupPayload['data']['can_reschedule'] ?? true)));
 
         $this->primeCsrfCookie();
 

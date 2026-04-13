@@ -580,6 +580,16 @@ function bootstrapPublicBooking() {
       return;
     }
 
+    // Server-side flag: appointment is within the policy window or already past
+    if (appointment.can_reschedule === false) {
+      const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+      const reason = !policy.enabled
+        ? 'Online rescheduling is not available for this booking. Please contact us directly.'
+        : `This appointment is too close to reschedule online. Changes must be made at least ${policy.label ?? '24 hours'} before your appointment.`;
+      updateManage(prev => ({ ...prev, lookupError: reason }));
+      return;
+    }
+
     const startDate = appointment.start ? new Date(appointment.start) : null;
     const appointmentDate = startDate && !Number.isNaN(startDate.getTime())
       ? startDate.toISOString().slice(0, 10)

@@ -83,6 +83,7 @@ class SettingsPageService
             'booking.fields',
             'booking.custom_fields',
             'booking.statuses',
+            'booking.default_appointment_status',
             'business.work_start',
             'business.work_end',
             'business.break_start',

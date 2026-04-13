@@ -220,7 +220,6 @@ class PublicBookingService
             'location_id' => $locationId,
             'appointment_date' => $slot['date'],
             'appointment_time' => $slot['start']->format('H:i'),
-            'status' => 'pending',
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
             'public_token' => $token,
             'public_token_expires_at' => null,
@@ -838,6 +837,8 @@ class PublicBookingService
             'location_name' => $appointment['location_name'] ?? null,
             'location_address' => $appointment['location_address'] ?? null,
             'location_contact' => $appointment['location_contact'] ?? null,
+            // Reschedule eligibility — computed server-side so the SPA can gate the form
+            'can_reschedule' => $this->canReschedule($appointment['start_at']),
         ];
     }
 
@@ -888,6 +889,28 @@ class PublicBookingService
                 throw new PublicBookingException('Contact verification failed.', 403);
             }
         }
+    }
+
+    /**
+     * Check whether an appointment's current start time is outside the reschedule policy window.
+     * Returns false when rescheduling is disabled OR the appointment is within the cutoff.
+     */
+    private function canReschedule(string $startAt): bool
+    {
+        $policy = $this->getReschedulePolicy();
+        if (!$policy['enabled']) {
+            return false;
+        }
+
+        $start = new DateTimeImmutable($startAt, new DateTimeZone('UTC'));
+        $now   = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        if ($start <= $now) {
+            return false;
+        }
+
+        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
+        return $cutoff <= $start;
     }
 
     private function assertRescheduleWindow(string $currentStart): void

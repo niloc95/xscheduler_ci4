@@ -98,7 +98,7 @@ class Settings extends BaseApiController
     {
         try {
             return $this->ok($this->settingsApiService->getLocalization());
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Failed to load localization settings: ' . $e->getMessage());
             return $this->serverError('Failed to load localization settings', ['exception' => $e->getMessage()]);
         }
@@ -112,7 +112,7 @@ class Settings extends BaseApiController
     {
         try {
             return $this->ok($this->settingsApiService->getBooking());
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_message('error', 'Failed to load booking settings: ' . $e->getMessage());
             return $this->serverError('Failed to load booking settings', ['exception' => $e->getMessage()]);
         }

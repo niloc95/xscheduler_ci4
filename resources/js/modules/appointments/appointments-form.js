@@ -1,5 +1,4 @@
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
-import { emitAppointmentsUpdated } from '../filters/status-filters.js';
 
 function getAppointmentForm() {
     return document.querySelector('[data-appointment-form="true"]')
@@ -144,7 +143,7 @@ export async function initAppointmentForm() {
                 const errorPayload = await parseErrorPayload(response);
 
                 if (response.status === 403) {
-                    throw new Error('Your session or security token has expired. Refresh the page and sign in again if needed.');
+                    throw new Error("You don't have permission to perform this action.");
                 }
 
                 if (errorPayload?.errors || errorPayload?.message || response.status === 409) {
@@ -170,7 +169,6 @@ export async function initAppointmentForm() {
                 const result = await response.json();
                 if (result.success || result.data) {
                     showNotification('success', 'Appointment booked successfully!');
-                    emitAppointmentsUpdated('create-or-update');
                     setTimeout(() => {
                         const url = withBaseUrl('/appointments');
                         if (window.xsSPA) {
@@ -183,7 +181,6 @@ export async function initAppointmentForm() {
                     throw new Error(result.error || 'Unknown error occurred');
                 }
             } else {
-                emitAppointmentsUpdated('create-or-update');
                 const url = withBaseUrl('/appointments');
                 if (window.xsSPA) {
                     window.xsSPA.navigate(url);

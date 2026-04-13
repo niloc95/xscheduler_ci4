@@ -150,8 +150,8 @@ class Appointments extends BaseApiController
                 ],
             ]);
 
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to fetch appointments', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to fetch appointments');
         }
     }
     
@@ -174,8 +174,8 @@ class Appointments extends BaseApiController
 
             return $this->ok($this->getAppointmentFormatterService()->formatForApiDetail($appointment));
             
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to fetch appointment', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to fetch appointment');
         }
     }
     
@@ -203,8 +203,8 @@ class Appointments extends BaseApiController
 
             return $this->ok($result['data']);
             
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to check availability', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to check availability');
         }
     }
 
@@ -268,8 +268,8 @@ class Appointments extends BaseApiController
 
             return $this->ok($result['data'], ['message' => $result['message']]);
             
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to update appointment status', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to update appointment status');
         }
     }
 
@@ -304,8 +304,8 @@ class Appointments extends BaseApiController
 
             return $this->ok($result['data'], ['message' => $result['message']]);
             
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to update appointment notes', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to update appointment notes');
         }
     }
 
@@ -339,8 +339,8 @@ class Appointments extends BaseApiController
             }
 
             return $this->created($result['data'], ['message' => $result['message']]);
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to create appointment', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to create appointment');
         }
     }
 
@@ -383,8 +383,8 @@ class Appointments extends BaseApiController
             }
 
             return $this->ok($result['data'], ['message' => $result['message']]);
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to update appointment', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to update appointment');
         }
     }
 
@@ -408,8 +408,8 @@ class Appointments extends BaseApiController
             }
 
             return $this->ok($result['data'], ['message' => $result['message']]);
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to delete appointment', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to delete appointment');
         }
     }
 
@@ -469,8 +469,8 @@ class Appointments extends BaseApiController
             ]);
 
             return $this->ok($counts);
-        } catch (\Exception $e) {
-            return $this->serverError('Failed to get appointment counts', ['exception' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to get appointment counts');
         }
     }
 

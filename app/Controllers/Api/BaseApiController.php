@@ -233,6 +233,25 @@ class BaseApiController extends BaseController
     }
 
     /**
+     * Log an uncaught throwable (including stack trace) and return a 500 response.
+     *
+     * Use this in catch (\Throwable $e) blocks instead of calling serverError()
+     * directly, so that stack traces are always captured in the server log while
+     * the trace is never leaked in the JSON response body.
+     *
+     * @param \Throwable $e       The caught exception or error.
+     * @param string     $message Human-readable error summary for the API response.
+     * @return \CodeIgniter\HTTP\Response
+     */
+    protected function handleCaughtException(\Throwable $e, string $message): \CodeIgniter\HTTP\Response
+    {
+        helper('logging');
+        log_message('error', '[' . static::class . '] ' . $message . ': ' . $e->getMessage());
+        log_message('error', $e->getTraceAsString());
+        return $this->serverError($message, ['exception' => $e->getMessage()]);
+    }
+
+    /**
      * Extract and validate pagination parameters from request
      * 
      * @param int $maxLength Maximum items per page

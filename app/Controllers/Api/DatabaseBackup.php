@@ -169,7 +169,7 @@ class DatabaseBackup extends BaseApiController
                 'message' => 'Database backup created successfully',
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Log backup failure
             $this->logAudit('backup_failed', [
                 'user_id' => session()->get('user_id'),

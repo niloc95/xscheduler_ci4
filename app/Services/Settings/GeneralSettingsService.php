@@ -265,6 +265,7 @@ class GeneralSettingsService
             'booking.custom_field_6_type' => 'booking_custom_field_6_type',
             'booking.custom_fields' => 'custom_fields',
             'booking.statuses' => 'statuses',
+            'booking.default_appointment_status' => 'booking_default_appointment_status',
             'business.work_start' => 'work_start',
             'business.work_end' => 'work_end',
             'business.break_start' => 'break_start',
@@ -336,8 +337,22 @@ class GeneralSettingsService
             $upsert('business.blocked_periods', $this->normalizeBlockedPeriods($post['blocked_periods']));
         }
 
+        // Validate and normalise booking.default_appointment_status before generic save
+        if (array_key_exists('booking_default_appointment_status', $post)) {
+            $allowedStatuses = ['pending', 'confirmed'];
+            $submitted = strtolower(trim((string) ($post['booking_default_appointment_status'] ?? '')));
+            if (in_array($submitted, $allowedStatuses, true)) {
+                $upsert('booking.default_appointment_status', $submitted);
+            }
+            // Silently ignore invalid values — the setting retains its previous value
+        }
+
         foreach ($map as $settingKey => $postKey) {
             if ($settingKey === 'business.blocked_periods') {
+                continue;
+            }
+            // Already handled explicitly above
+            if ($settingKey === 'booking.default_appointment_status') {
                 continue;
             }
 

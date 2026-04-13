@@ -250,9 +250,14 @@ class AppointmentBookingService
             $customerId = $customerResult['customerId'];
 
             // Step 7: Create appointment record
+            // Resolve default status from settings; caller-supplied status always takes precedence
+            $statusSettings = model('SettingModel')->getByKeys(['booking.default_appointment_status']);
+            $defaultStatus = AppointmentStatus::normalize(
+                (string) ($statusSettings['booking.default_appointment_status'] ?? '')
+            ) ?? AppointmentStatus::PENDING;
             $status = array_key_exists('status', $data)
                 ? AppointmentStatus::normalize((string) $data['status'])
-                : AppointmentStatus::PENDING;
+                : $defaultStatus;
             if ($status === null) {
                 log_structured('warning', 'appointment.create_validation_failed', [
                     'booking_channel' => $channel,
