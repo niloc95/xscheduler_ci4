@@ -28,14 +28,6 @@
                         </select>
                     </div>
                     <div class="form-field">
-                        <label class="form-label">Default Language</label>
-                        <select name="language" class="form-input">
-                            <option value="English" <?= ($settings['localization.language'] ?? '') === 'English' ? 'selected' : '' ?>>English</option>
-                            <option value="Portuguese-BR" <?= ($settings['localization.language'] ?? '') === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
-                            <option value="Spanish" <?= ($settings['localization.language'] ?? '') === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
                         <label class="form-label">Currency</label>
                         <select name="currency" class="form-input">
                             <option value="ZAR" <?= ($settings['localization.currency'] ?? 'ZAR') === 'ZAR' ? 'selected' : '' ?>>South African Rand (ZAR)</option>

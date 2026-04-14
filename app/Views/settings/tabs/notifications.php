@@ -23,17 +23,6 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
-                            <label class="form-label">Default Notification Language</label>
-                            <?php $defaultLanguage = $settings['notifications.default_language'] ?? ($settings['localization.language'] ?? 'English'); ?>
-                            <select name="notification_default_language" class="form-input">
-                                <option value="English" <?= $defaultLanguage === 'English' ? 'selected' : '' ?>>English</option>
-                                <option value="Portuguese-BR" <?= $defaultLanguage === 'Portuguese-BR' ? 'selected' : '' ?>>Portuguese-BR</option>
-                                <option value="Spanish" <?= $defaultLanguage === 'Spanish' ? 'selected' : '' ?>>Spanish</option>
-                            </select>
-                            <p class="form-help">Used as the default language when templates are introduced.</p>
-                        </div>
-
-                        <div class="form-field">
                             <label class="form-label">Reminder Offset (minutes)</label>
                             <?php
                                 $defaultOffset = null;

@@ -153,6 +153,7 @@ $routes->group('profile', ['filter' => 'auth'], function($routes) {
     $routes->post('update-privacy', 'Profile::updatePrivacy');
     $routes->get('account', 'Profile::account');
     $routes->post('update-account', 'Profile::updateAccount');
+    $routes->post('update-notifications', 'Profile::updateNotifications');
 });
 
 // Provider schedules (auth required, controller handles authorization)

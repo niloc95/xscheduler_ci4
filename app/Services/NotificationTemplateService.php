@@ -104,6 +104,12 @@ class NotificationTemplateService
         '{privacy_link}' => 'Privacy policy link or text',
         '{reschedule_link}' => 'Secure reschedule link',
         '{booking_url}' => 'Online booking URL',
+        '{booking_id}' => 'Booking/appointment ID',
+        '{internal_view_link}' => 'Internal link to view appointment',
+        '{internal_edit_link}' => 'Internal link to edit appointment',
+        '{internal_contact_link}' => 'Internal link to contact customer',
+        '{booked_via}' => 'Booking channel (web/app/admin)',
+        '{booked_timestamp}' => 'Booking timestamp',
         // Location placeholders
         '{location_name}' => 'Appointment location name',
         '{location_address}' => 'Appointment location address',
@@ -194,6 +200,158 @@ class NotificationTemplateService
         ],
     ];
 
+    /**
+     * Default internal (provider/staff-facing) email templates for all 5 appointment events.
+     * These mirror the content seeded by migration 2026-04-13-100400.
+     * Used as a code-level fallback when xs_message_templates rows are not yet present
+     * (e.g. migration not applied in production).
+     */
+    private const DEFAULT_INTERNAL_TEMPLATES = [
+        'appointment_pending' => [
+            'email' => [
+                'subject' => 'New Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Confirmed\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Internal Actions Required\n"
+                    . "- Confirm provider availability\n"
+                    . "- Prepare patient file\n"
+                    . "- Send customer confirmation\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_confirmed' => [
+            'email' => [
+                'subject' => 'New Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Confirmed\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Internal Actions Required\n"
+                    . "- Confirm provider availability\n"
+                    . "- Prepare patient file\n"
+                    . "- Send customer confirmation\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_cancelled' => [
+            'email' => [
+                'subject' => 'Appointment Cancelled: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Cancelled\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_rescheduled' => [
+            'email' => [
+                'subject' => 'Appointment Rescheduled: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Rescheduled\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_reminder' => [
+            'email' => [
+                'subject' => 'Upcoming Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Upcoming Appointment Reminder\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+    ];
+
     public function __construct()
     {
         $this->settingModel = new SettingModel();
@@ -250,32 +408,66 @@ class NotificationTemplateService
      * @param string $channel Channel (email, sms, whatsapp)
      * @return array Template with 'subject' (if applicable) and 'body'
      */
-    public function getTemplate(string $eventType, string $channel): array
+    public function getTemplate(string $eventType, string $channel, string $recipientClass = 'customer'): array
     {
-        $cacheKey = "{$eventType}.{$channel}";
+        $cacheKey = "{$recipientClass}.{$eventType}.{$channel}";
         if (isset($this->templateCache[$cacheKey])) {
             return $this->templateCache[$cacheKey];
         }
 
-        // Try to load from database
-        $settingKey = "notification_template.{$eventType}.{$channel}";
-        $stored = $this->settingModel->getByKeys([$settingKey]);
-        
         $template = null;
-        if (!empty($stored[$settingKey])) {
-            $decoded = is_string($stored[$settingKey]) 
-                ? json_decode($stored[$settingKey], true) 
-                : $stored[$settingKey];
-            if (is_array($decoded) && !empty($decoded['body'])) {
-                $template = $decoded;
+
+        // For internal recipients: look up the seeded row in xs_message_templates directly.
+        if ($recipientClass === 'internal') {
+            try {
+                $row = (new \App\Models\MessageTemplateModel())
+                    ->where('event_type', $eventType)
+                    ->where('channel', $channel)
+                    ->where('recipient_class', 'internal')
+                    ->where('is_active', 1)
+                    ->orderBy('id', 'DESC')
+                    ->first();
+
+                if ($row && !empty($row['body'])) {
+                    $template = [
+                        'subject' => $row['subject'] ?? '',
+                        'body'    => $row['body'],
+                    ];
+                }
+            } catch (\Throwable $e) {
+                log_message('warning', '[NotificationTemplateService] Could not load internal template: ' . $e->getMessage());
             }
         }
 
-        // Fall back to defaults
+        // For customer recipients (or fallback when no internal template found):
+        // try the settings-based custom template, then fall back to hardcoded defaults.
+        if ($template === null && $recipientClass === 'customer') {
+            $settingKey = "notification_template.{$eventType}.{$channel}";
+            $stored     = $this->settingModel->getByKeys([$settingKey]);
+
+            if (!empty($stored[$settingKey])) {
+                $decoded = is_string($stored[$settingKey])
+                    ? json_decode($stored[$settingKey], true)
+                    : $stored[$settingKey];
+                if (is_array($decoded) && !empty($decoded['body'])) {
+                    $template = $decoded;
+                }
+            }
+        }
+
+        if ($template === null) {
+            // For internal recipients: use the internal code-level fallback before the
+            // customer-facing DEFAULT_TEMPLATES.  This prevents provider/staff from
+            // receiving a customer confirmation email when the migration hasn't been applied.
+            if ($recipientClass === 'internal') {
+                $template = self::DEFAULT_INTERNAL_TEMPLATES[$eventType][$channel] ?? null;
+            }
+        }
+
         if ($template === null) {
             $template = self::DEFAULT_TEMPLATES[$eventType][$channel] ?? [
                 'subject' => '',
-                'body' => '',
+                'body'    => '',
             ];
         }
 
@@ -291,10 +483,10 @@ class NotificationTemplateService
      * @param array $data Data for placeholder substitution
      * @return array Rendered template with 'subject' (if applicable) and 'body'
      */
-    public function render(string $eventType, string $channel, array $data): array
+    public function render(string $eventType, string $channel, array $data, string $recipientClass = 'customer'): array
     {
         $this->loadLegalContent();
-        $template = $this->getTemplate($eventType, $channel);
+        $template = $this->getTemplate($eventType, $channel, $recipientClass);
         $this->logIfRequiredPlaceholdersMissing($eventType, $channel, (string) ($template['body'] ?? ''));
 
         // Prepare placeholders
@@ -442,6 +634,12 @@ class NotificationTemplateService
             '{privacy_link}' => $privacyLink,
             '{reschedule_link}' => $data['reschedule_link'] ?? '',
             '{booking_url}' => $data['booking_url'] ?? base_url('booking'),
+            '{booking_id}' => (string) ($data['booking_id'] ?? $data['appointment_id'] ?? ''),
+            '{internal_view_link}' => $data['internal_view_link'] ?? '',
+            '{internal_edit_link}' => $data['internal_edit_link'] ?? '',
+            '{internal_contact_link}' => $data['internal_contact_link'] ?? '',
+            '{booked_via}' => $data['booked_via'] ?? '',
+            '{booked_timestamp}' => $data['booked_timestamp'] ?? '',
             // Location placeholders (from appointment snapshot)
             '{location_name}' => $data['location_name'] ?? '',
             '{location_address}' => $data['location_address'] ?? '',

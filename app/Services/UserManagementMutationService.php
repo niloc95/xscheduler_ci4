@@ -245,6 +245,15 @@ class UserManagementMutationService
 
         $updateData = array_merge($updateData, $this->buildUserActiveUpdatePayload(!empty($payload['is_active'])));
 
+        // Only update when explicitly submitted and the column exists in schema.
+        if (
+            array_key_exists('notify_on_appointments', $payload)
+            && $payload['notify_on_appointments'] !== null
+            && $this->hasNotifyOnAppointmentsColumn()
+        ) {
+            $updateData['notify_on_appointments'] = (int) (bool) $payload['notify_on_appointments'];
+        }
+
         if (!empty($payload['password'])) {
             $updateData['password'] = $payload['password'];
         }
@@ -631,5 +640,28 @@ class UserManagementMutationService
         }
 
         return [];
+    }
+
+    /**
+     * Check if xs_users.notify_on_appointments exists (schema-safe, cached).
+     */
+    private function hasNotifyOnAppointmentsColumn(): bool
+    {
+        static $exists = null;
+
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $exists = method_exists($db, 'fieldExists')
+                ? (bool) $db->fieldExists('notify_on_appointments', 'xs_users')
+                : true;
+        } catch (\Throwable $e) {
+            $exists = false;
+        }
+
+        return $exists;
     }
 }

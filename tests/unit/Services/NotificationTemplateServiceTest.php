@@ -138,6 +138,51 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         }
     }
 
+    public function testGetTemplateForInternalReturnsInternalFallbackWhenNoDbRowExists(): void
+    {
+        // Uses the code-level DEFAULT_INTERNAL_TEMPLATES when no xs_message_templates row exists.
+        // This guards against production environments where the migration hasn't been applied.
+        $service = new NotificationTemplateService();
+
+        $template = $service->getTemplate('appointment_confirmed', 'email', 'internal');
+
+        $this->assertNotEmpty($template['body'], 'Internal fallback body must not be empty');
+
+        // Must contain customer info section — NOT a customer-facing greeting
+        $this->assertStringContainsString('Customer Information', $template['body']);
+        $this->assertStringContainsString('{customer_name}', $template['body']);
+        $this->assertStringContainsString('{customer_email}', $template['body']);
+
+        // Must contain provider info (the appointment provider, listed as a field)
+        $this->assertStringContainsString('Provider: {provider_name}', $template['body']);
+
+        // Must contain internal quick-links
+        $this->assertStringContainsString('{internal_view_link}', $template['body']);
+        $this->assertStringContainsString('{internal_edit_link}', $template['body']);
+
+        // Subject must reference both customer and provider names
+        $this->assertStringContainsString('{customer_name}', $template['subject']);
+        $this->assertStringContainsString('{provider_name}', $template['subject']);
+    }
+
+    public function testGetTemplateForInternalFallbackExistsForAllFiveEventTypes(): void
+    {
+        $service = new NotificationTemplateService();
+        $events = [
+            'appointment_pending',
+            'appointment_confirmed',
+            'appointment_cancelled',
+            'appointment_rescheduled',
+            'appointment_reminder',
+        ];
+
+        foreach ($events as $event) {
+            $template = $service->getTemplate($event, 'email', 'internal');
+            $this->assertNotEmpty($template['body'], "Internal fallback body must not be empty for {$event}");
+            $this->assertStringContainsString('Customer Information', $template['body'], "Internal template for {$event} must include customer section");
+        }
+    }
+
     private function seedSetting($db, string $key, string $value, string $type): void
     {
         $db->table('settings')->insert([

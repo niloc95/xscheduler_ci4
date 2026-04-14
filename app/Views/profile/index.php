@@ -114,6 +114,15 @@
                                 : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600'
                         );
                     ?>
+                        <?php
+                            $isNotificationsActive = $tabState === 'notifications';
+                            $showNotificationsTab = in_array($user_role, ['provider', 'staff'], true);
+                            $notificationsTabClasses = 'flex-1 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 ' . (
+                                $isNotificationsActive
+                                    ? 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600'
+                            );
+                        ?>
                     <button type="button"
                             data-profile-tab-button="profile"
                             class="<?= esc($profileTabClasses) ?>">
@@ -124,6 +133,13 @@
                             class="<?= esc($passwordTabClasses) ?>">
                         Change Password
                     </button>
+                        <?php if ($showNotificationsTab): ?>
+                        <button type="button"
+                                data-profile-tab-button="notifications"
+                                class="<?= esc($notificationsTabClasses) ?>">
+                            Notifications
+                        </button>
+                        <?php endif; ?>
                 </div>
 
                 <div class="p-6 space-y-6">
@@ -477,6 +493,32 @@
     </div>
 </div>
 
+                    <?php if ($showNotificationsTab): ?>
+                    <form id="notificationsForm" method="post" action="<?= base_url('/profile/update-notifications') ?>" class="space-y-6 <?= $isNotificationsActive ? '' : 'hidden' ?>">
+                        <?= csrf_field() ?>
+                        <div>
+                            <h3 class="text-base font-medium text-gray-800 dark:text-gray-200 mb-1">Appointment Notifications</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose whether you receive email notifications when appointments are booked, rescheduled, cancelled, or when reminders are sent.</p>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="hidden" name="notify_on_appointments" value="0">
+                                <input type="checkbox"
+                                       id="profile_notify_on_appointments"
+                                       name="notify_on_appointments"
+                                       value="1"
+                                       <?= !empty($user['notify_on_appointments']) ? 'checked' : '' ?>
+                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Receive email notifications for my appointments</span>
+                            </label>
+                        </div>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+                                <span class="material-symbols-rounded mr-2 text-base align-middle">save</span>
+                                Save Preferences
+                            </button>
+                        </div>
+                    </form>
+                    <?php endif; ?>
+
                     <script>
                     (function () {
                         const container = document.querySelector('[data-profile-tabs]');
@@ -488,6 +530,7 @@
                         const forms = {
                             profile: container.querySelector('#profileForm'),
                             password: container.querySelector('#passwordForm'),
+                            notifications: container.querySelector('#notificationsForm'),
                         };
 
                         const tabButtons = container.querySelectorAll('[data-profile-tab-button]');
@@ -519,6 +562,9 @@
                                 return;
                             }
                             container.dataset.activeTab = target;
+                            if (window.history && window.history.replaceState) {
+                                window.history.replaceState(null, '', '#'+ target);
+                            }
                             showForm(target);
                             setActiveClasses(target);
                         };
@@ -536,7 +582,8 @@
                             });
                         });
 
-                        const initialTab = container.dataset.activeTab || 'profile';
+                        const hashTab = window.location.hash ? window.location.hash.slice(1) : '';
+                        const initialTab = forms[hashTab] ? hashTab : (container.dataset.activeTab || 'profile');
                         activateTab(initialTab);
                     })();
                     </script>

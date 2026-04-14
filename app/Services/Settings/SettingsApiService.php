@@ -122,6 +122,10 @@ class SettingsApiService
                 continue;
             }
 
+            if ($this->isBusinessTimeSetting($key)) {
+                $value = $this->normalizeBusinessTimeSetting($key, $value);
+            }
+
             $type = is_array($value) ? 'json' : (is_bool($value) ? 'bool' : 'string');
             if ($this->settingModel->upsert($key, $value, $type, $userId)) {
                 $count++;
@@ -129,6 +133,35 @@ class SettingsApiService
         }
 
         return $count;
+    }
+
+    private function isBusinessTimeSetting(string $key): bool
+    {
+        return in_array($key, [
+            'business.work_start',
+            'business.work_end',
+            'business.break_start',
+            'business.break_end',
+        ], true);
+    }
+
+    private function normalizeBusinessTimeSetting(string $key, mixed $value): string
+    {
+        $raw = is_scalar($value) ? (string) $value : '';
+        $raw = trim($raw);
+
+        if ($raw === '') {
+            return '';
+        }
+
+        $normalized = $this->localizationSettingsService->normaliseTimeInput($raw);
+        if ($normalized === null) {
+            throw new \InvalidArgumentException(
+                sprintf('Invalid value for %s. %s', $key, $this->localizationSettingsService->describeExpectedFormat())
+            );
+        }
+
+        return substr($normalized, 0, 5);
     }
 
     public function uploadLogo(?UploadedFile $file, ?int $userId): array

@@ -3,18 +3,22 @@
 namespace App\Services\Settings;
 
 use App\Models\SettingModel;
+use App\Services\LocalizationSettingsService;
 
 class SettingsPageService
 {
     private SettingModel $settingModel;
     private NotificationSettingsService $notificationSettingsService;
+    private LocalizationSettingsService $localizationSettingsService;
 
     public function __construct(
         ?SettingModel $settingModel = null,
         ?NotificationSettingsService $notificationSettingsService = null,
+        ?LocalizationSettingsService $localizationSettingsService = null,
     ) {
         $this->settingModel = $settingModel ?? new SettingModel();
         $this->notificationSettingsService = $notificationSettingsService ?? new NotificationSettingsService();
+        $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService($this->settingModel);
     }
 
     public function buildIndexData(?array $sessionUser = null): array
@@ -26,6 +30,7 @@ class SettingsPageService
                 'email' => 'admin@webschedulr.com',
             ],
             'settings' => $this->settingModel->getByKeys($this->settingsKeys()),
+            'localizationContext' => $this->localizationSettingsService->getContext(),
             ...$this->notificationSettingsService->getIndexData(),
         ];
     }

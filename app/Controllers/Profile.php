@@ -845,4 +845,74 @@ class Profile extends BaseController
         imagedestroy($src);
         imagedestroy($dst);
     }
+
+    /**
+     * Update appointment notification preference for the current user.
+     * POST /profile/update-notifications
+     */
+    public function updateNotifications()
+    {
+        if (!session()->get('isLoggedIn')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthenticated']);
+            }
+            return redirect()->to(base_url('auth/login'));
+        }
+
+        if (!$this->hasNotifyOnAppointmentsColumn()) {
+            $message = 'Notification preferences are not available yet. Please run the latest database migrations.';
+
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => $message,
+                    'redirect' => base_url('profile') . '#notifications',
+                ]);
+            }
+
+            session()->setFlashdata('error', $message);
+            session()->setFlashdata('active_tab', 'notifications');
+            return redirect()->to(base_url('profile') . '#notifications');
+        }
+
+        $userId = (int) session()->get('user_id');
+        $notify = (int) (bool) $this->request->getPost('notify_on_appointments');
+
+        $this->userModel->update($userId, ['notify_on_appointments' => $notify]);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $notify ? 'Appointment notifications enabled.' : 'Appointment notifications disabled.',
+                'redirect' => base_url('profile') . '#notifications',
+            ]);
+        }
+
+        session()->setFlashdata('success', 'Notification preferences saved.');
+        session()->setFlashdata('active_tab', 'notifications');
+        return redirect()->to(base_url('profile') . '#notifications');
+    }
+
+    /**
+     * Check if xs_users.notify_on_appointments exists (schema-safe, cached).
+     */
+    private function hasNotifyOnAppointmentsColumn(): bool
+    {
+        static $exists = null;
+
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $exists = method_exists($db, 'fieldExists')
+                ? (bool) $db->fieldExists('notify_on_appointments', 'xs_users')
+                : true;
+        } catch (\Throwable $e) {
+            $exists = false;
+        }
+
+        return $exists;
+    }
 }

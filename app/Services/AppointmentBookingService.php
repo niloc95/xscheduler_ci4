@@ -920,6 +920,9 @@ class AppointmentBookingService
                 return;
             }
             $users    = (new \App\Models\UserModel())->getNotifiableUsersForProvider($providerId);
+            if ($users === []) {
+                log_message('warning', '[AppointmentBookingService] No internal recipients resolved for appointment_id=' . $appointmentId . ', provider_id=' . $providerId . ', event=' . $eventType);
+            }
             $queueSvc = new NotificationQueueService();
             foreach ($users as $user) {
                 $queueSvc->enqueueInternalEvent(

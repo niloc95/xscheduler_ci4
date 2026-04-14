@@ -71,7 +71,7 @@ class UserModel extends BaseModel
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
         'provider_id',
         'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
-        'profile_image', 'color'
+        'profile_image', 'color', 'notify_on_appointments'
     ];
 
     // Model callbacks to ensure provider color is always assigned
@@ -202,6 +202,82 @@ class UserModel extends BaseModel
     /**
      * Check whether a column exists on xs_users.
      */
+    /**
+     * Return the provider themselves (if notify_on_appointments = 1) and all
+     * active assigned staff (if notify_on_appointments = 1) for a given provider.
+     *
+     * Used to build the list of internal recipients when enqueuing appointment
+     * event notifications.
+     *
+     * @return list<array{id: int, name: string, email: string}>
+     */
+    public function getNotifiableUsersForProvider(int $providerId): array
+    {
+        $results = [];
+        $hasNotifyColumn = $this->hasUsersColumn('notify_on_appointments');
+
+        // Include the provider themselves if they have a valid email.
+        // If the notify column exists, honor the toggle; otherwise default to enabled.
+        $providerSelect = $hasNotifyColumn
+            ? 'id, name, email, notify_on_appointments'
+            : 'id, name, email';
+
+        $provider = $this->select($providerSelect)
+            ->where('id', $providerId)
+            ->first();
+
+        $providerEmail = trim((string) ($provider['email'] ?? ''));
+
+        if ($provider && filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
+            $includeProvider = !$hasNotifyColumn || (int) ($provider['notify_on_appointments'] ?? 1) === 1;
+            if ($includeProvider) {
+                $results[] = [
+                    'id'    => (int) $provider['id'],
+                    'name'  => (string) ($provider['name'] ?? ''),
+                    'email' => $providerEmail,
+                ];
+            }
+        } elseif ($provider) {
+            log_message('warning', '[UserModel::getNotifiableUsersForProvider] Provider skipped due to missing/invalid email. provider_id=' . $providerId);
+        }
+
+        // Include active assigned staff with toggle ON
+        try {
+            $psaTable    = $this->db->prefixTable('provider_staff_assignments');
+            $usersTable  = $this->db->prefixTable('users');
+
+            $notifyFilter = $hasNotifyColumn ? "AND u.notify_on_appointments = 1" : "";
+
+            $staffRows = $this->db->query(
+                "SELECT u.id, u.name, u.email
+                   FROM {$psaTable} psa
+                   JOIN {$usersTable} u ON u.id = psa.staff_id
+                  WHERE psa.provider_id = ?
+                    AND psa.status = 'active'
+                    {$notifyFilter}
+                    AND u.email IS NOT NULL
+                    AND u.email != ''",
+                [$providerId]
+            )->getResultArray();
+
+            foreach ($staffRows as $row) {
+                $staffEmail = trim((string) ($row['email'] ?? ''));
+                if (!filter_var($staffEmail, FILTER_VALIDATE_EMAIL)) {
+                    continue;
+                }
+                $results[] = [
+                    'id'    => (int) $row['id'],
+                    'name'  => (string) ($row['name'] ?? ''),
+                    'email' => $staffEmail,
+                ];
+            }
+        } catch (\Throwable $e) {
+            log_message('error', '[UserModel::getNotifiableUsersForProvider] DB error: ' . $e->getMessage());
+        }
+
+        return $results;
+    }
+
     /**
      * Find a user by their email address.
      * Returns the first matching user row or null.

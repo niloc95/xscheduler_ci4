@@ -336,6 +336,7 @@ class UserManagement extends BaseController
             'phone' => $this->request->getPost('phone'),
             'phone_country_code' => $this->request->getPost('phone_country_code'),
             'is_active' => $this->request->getPost('is_active'),
+            'notify_on_appointments' => $this->request->getPost('notify_on_appointments'),
             'password' => $this->request->getPost('password'),
             'roles' => $this->request->getPost('roles') ?? [],
             'role' => $this->request->getPost('role'),
