@@ -911,6 +911,7 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 - Internal appointment notifications are queue-only: `NotificationQueueService::enqueueInternalEvent()` writes `recipient_type = 'internal'` + `recipient_user_id`, and `NotificationQueueDispatcher` resolves the real email/name from `xs_users` just before send.
 - Internal recipient eligibility is determined by `UserModel::getNotifiableUsersForProvider()` and `xs_users.notify_on_appointments`; both admin user-management and self-service profile surfaces write that preference.
 - Notification time rendering must use an explicit timezone: `NotificationQueueDispatcher` now resolves display timezone from `xs_appointments.stored_timezone` first and falls back to `TimezoneService::businessTimezone()`; do not rely on implicit session timezone when rendering queued notifications.
+- Production delivery prerequisites for appointment email notifications: `xs_business_notification_rules.is_enabled = 1` for the event/channel, `xs_business_integrations.is_active = 1` for `email`, and a non-empty encrypted SMTP config in `xs_business_integrations.encrypted_config`; otherwise queue rows are cancelled/failed (for example: `Rule disabled` or `Integration inactive` / `Email integration is not configured`).
 
 ### Appointment Event Contract
 - `appointment_pending` is the canonical event for pending bookings.
