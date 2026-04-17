@@ -69,6 +69,7 @@ namespace App\Services;
 
 use App\Models\BusinessIntegrationModel;
 use App\Services\Concerns\HandlesNotificationIntegrations;
+use App\Services\MailerService;
 use App\Services\NotificationCatalog;
 
 class NotificationEmailService
@@ -88,64 +89,28 @@ class NotificationEmailService
     }
 
     /**
-     * Send an email using the stored SMTP integration for the business.
-     * Returns ['ok' => bool, 'error' => string?]
+     * Send an email via MailerService (the canonical transport layer).
+     *
+     * Notification emails are plain text; the rendered message body is assembled
+     * by the caller (NotificationQueueDispatcher) through NotificationTemplateService.
+     *
+     * Returns ['ok' => bool, 'error' => ?string, 'transport' => string, 'messageId' => ?string]
      */
     public function sendEmail(int $businessId, string $toEmail, string $subject, string $message): array
     {
-        $toEmail = trim($toEmail);
-        if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
-            return ['ok' => false, 'error' => 'Invalid recipient email address.'];
-        }
+        return (new MailerService())->send($businessId, $toEmail, $subject, $message, 'text');
+    }
 
-        $integration = $this->getIntegrationRow($businessId);
-        if (!$integration || empty($integration['encrypted_config'])) {
-            return ['ok' => false, 'error' => 'Email integration is not configured.'];
-        }
-
-        $config = $this->decryptConfig($integration['encrypted_config']);
-        $smtpHost = trim((string) ($config['host'] ?? ''));
-        $smtpPort = (int) ($config['port'] ?? 587);
-        $smtpCrypto = (string) ($config['crypto'] ?? 'tls');
-        $smtpUser = trim((string) ($config['username'] ?? ''));
-        $smtpPass = trim((string) ($config['password'] ?? ''));
-        $fromEmail = trim((string) ($config['from_email'] ?? ''));
-        $fromName = trim((string) ($config['from_name'] ?? 'WebScheduler'));
-
-        if ($smtpHost === '' || $fromEmail === '') {
-            return ['ok' => false, 'error' => 'Email integration is missing required settings (host/from).'];
-        }
-
-        try {
-            $email = \Config\Services::email();
-            $email->initialize([
-                'protocol' => 'smtp',
-                'SMTPHost' => $smtpHost,
-                'SMTPPort' => $smtpPort,
-                'SMTPCrypto' => $smtpCrypto,
-                'SMTPUser' => $smtpUser,
-                'SMTPPass' => $smtpPass,
-                'mailType' => 'text',
-                'charset' => 'UTF-8',
-            ]);
-
-            $email->setFrom($fromEmail, $fromName);
-            $email->setTo($toEmail);
-            $email->setSubject($subject);
-            $email->setMessage($message);
-
-            $ok = (bool) $email->send(false);
-            if ($ok) {
-                return ['ok' => true];
-            }
-
-            $debug = trim((string) $email->printDebugger(['headers']));
-            log_message('error', 'NotificationEmailService sendEmail failed: {debug}', ['debug' => $debug]);
-            return ['ok' => false, 'error' => 'Email send failed.'];
-        } catch (\Throwable $e) {
-            log_message('error', 'NotificationEmailService sendEmail exception: {msg}', ['msg' => $e->getMessage()]);
-            return ['ok' => false, 'error' => 'Email send failed due to a server error.'];
-        }
+    /**
+     * Returns true when MailerService can resolve a valid transport config for
+     * the given business. Used by the notification queue gates
+     * (NotificationQueueDispatcher::isIntegrationActive and
+     * NotificationQueueService::isIntegrationActive) as the email channel
+     * capability check. Changes to MailerService::canSend() are queue-affecting.
+     */
+    public function canUseDevelopmentFallbackSmtp(int $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT): bool
+    {
+        return (new MailerService())->canSend($businessId);
     }
 
     /**
