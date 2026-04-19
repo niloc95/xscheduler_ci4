@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.0
+version: 2.1
 status: Active hardening
-last_updated: 2026-04-15
+last_updated: 2026-04-19
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -11,6 +11,82 @@ purpose: Single source of truth for agents, developers, and architects
 ---
 
 # WebScheduler CI4 - Agent Context v2
+
+## Rule #1 — Full Codebase Audit Directive
+
+Perform a comprehensive audit of the entire codebase with the following objectives:
+
+1. Code Quality and Redundancy
+Identify and eliminate:
+Duplicate or repeated code
+Dead code (unused variables, functions, imports, files)
+Orphaned components, views, and routes
+Detect inline CSS and migrate to structured styling (Tailwind/SCSS)
+
+2. Architecture Mapping
+Map relationships between:
+Controllers ↔ Views ↔ Helpers ↔ Services ↔ Assets
+Identify:
+Unused or disconnected components
+Architectural violations
+Tight coupling and improper dependencies
+
+3. Refactoring Opportunities
+Propose and implement:
+Service layer extraction (e.g., MailerService, BookingService)
+Reusable UI components
+Helper consolidation
+JavaScript modularization
+
+4. Performance Optimization
+Detect and resolve:
+Unused or duplicate JS/CSS assets
+Inefficient Vite bundling / multiple entry issues
+Large or unnecessary dependencies
+
+5. Security and Validation
+Enforce:
+Input validation across all forms
+Proper output escaping
+CSRF protection consistency
+Secure file and external input handling
+
+6. Deployment Integrity
+Verify:
+Only required files are deployed
+No dev/debug artifacts in production
+Environment configuration is secure and consistent
+
+7. Actionable Output Requirement
+Provide clear, actionable fixes
+Include file-level recommendations
+Avoid vague suggestions - always propose a concrete solution
+
+## ⚠️ Rule #2 — No Assumptions
+
+Do not assume code is correct.
+Always verify usage before keeping anything.
+If uncertain → trace usage or flag it.
+
+## 🧠 Rule #3 — Before You Change Code (Mandatory Checklist)
+
+Before making any code changes, the agent must validate the following:
+
+[] Does this logic belong in a service instead of a controller/view?
+[] Am I using UTC semantics for persisted datetimes?
+[] Am I reading timezone/localization from settings-backed services?
+[] Am I using canonical appointment fields and IDs?
+[] Am I preserving API response contracts?
+[] Am I reusing queue and booking pipelines?
+[] Am I respecting route filters and role boundaries?
+[] Am I keeping SPA initialization conventions?
+[] If the controller action redirects back to the current page, does the JSON response include a `redirect` key so spa.js can use forceReload?
+[] Am I using xsRegisterViewInit instead of a bare DOMContentLoaded handler?
+[] If writing a migration, does it extend MigrationBase?
+[] Did I avoid dead-code surfaces and stale symbols?
+[] Have I verified consistency with SPA.JS and APP.JS patterns?
+
+## 🔥 Why This Is Strong
 
 This document is the canonical engineering contract for this repository.
 
@@ -362,7 +438,22 @@ Auth has no knowledge of SMTP configuration.
 6. Persist appointment
 7. Enqueue notifications
 
-### 8.3 Status to Notification Event Mapping
+### 8.3 Canonical Appointment Detail Access
+
+All appointment detail views are accessed via the scheduler modal only.
+
+**Entry point:** `/appointments?open={hash}`
+
+**Deep-link compatibility:** Legacy `/appointments/view/{hash}` endpoint persists as a compatibility redirect to `/appointments?open={hash}` to prevent breaking old links, bookmarks, and notification emails.
+
+**Modal implementation:** AppointmentDetailsModal in resources/js/modules/scheduler/appointment-details-modal.js
+
+**Routes affected:** 
+- Dashboard "Today's Schedule" card links to `/appointments?open={ref}`
+- Customer management history "View Details" links to `/appointments?open={ref}`
+- Notification emails contain `/appointments?open={ref}` links
+
+### 8.4 Status to Notification Event Mapping
 
 Canonical source: AppointmentStatus::notificationEvent()
 
@@ -375,7 +466,7 @@ Canonical source: AppointmentStatus::notificationEvent()
 | no_show | appointment_no_show |
 | rescheduled | appointment_rescheduled |
 
-### 8.4 Scheduler Refresh Semantics (Critical)
+### 8.5 Scheduler Refresh Semantics (Critical)
 
 Scheduler is not real-time by default.
 
@@ -554,8 +645,71 @@ queue-enqueue checks and queue-dispatch checks transparently.
 
 ### 11.9 Template Contract
 
-- Customer and internal templates split by recipient_class
-- Internal fallback templates exist for migration drift safety
+#### 11.9.1 Recipient Classes
+
+- `customer` — outbound to the person who booked. Resolved via settings-based custom templates, then `DEFAULT_TEMPLATES` in code.
+- `internal` — outbound to providers/staff. Resolved via `xs_message_templates` rows seeded by migration, then `DEFAULT_INTERNAL_TEMPLATES` in code.
+
+#### 11.9.2 Template Loading Priority (customer class)
+
+1. `xs_settings` row with key `notification_template.{event_type}.{channel}` (JSON value `{"subject":"...","body":"..."}`)
+2. `NotificationTemplateService::DEFAULT_TEMPLATES` (code-level fallback)
+
+Settings-based templates are upserted by migrations and can be overridden at runtime without code deploys.
+
+#### 11.9.3 Template Loading Priority (internal class)
+
+1. `xs_message_templates` row where `recipient_class = 'internal'`, `is_active = 1`
+2. `NotificationTemplateService::DEFAULT_INTERNAL_TEMPLATES` (code-level fallback)
+
+#### 11.9.4 Supported Placeholder Set (34 total)
+
+**Customer info:** `{customer_name}`, `{customer_first_name}`, `{customer_email}`, `{customer_phone}`
+
+**Appointment info:** `{service_name}`, `{service_duration}`, `{provider_name}`, `{appointment_date}`, `{appointment_time}`, `{appointment_datetime}`
+
+**Business info:** `{business_name}`, `{business_email}`, `{business_phone}`, `{business_address}`
+
+**Legal content:** `{cancellation_policy}`, `{rescheduling_policy}`, `{terms_link}`, `{privacy_link}`
+
+**Links:** `{reschedule_link}`, `{booking_url}`, `{booking_id}`, `{internal_view_link}`, `{internal_edit_link}`, `{internal_contact_link}`, `{booked_via}`, `{booked_timestamp}`
+
+**Location:** `{location_name}`, `{location_address}`, `{location_contact}`
+
+**Navigation / calendar:** `{booking_reference}`, `{calendar_link}`, `{google_maps_link}`, `{waze_link}`
+
+#### 11.9.5 Business Contact Resolution
+
+`{business_email}` → `general.company_email` setting via `legalContent`
+`{business_phone}` → `general.company_phone` setting via `legalContent`
+`{business_name}` → `general.business_name` setting via `legalContent`
+`{business_address}` → `general.business_address` setting via `legalContent`
+
+#### 11.9.6 Location and Map Link Resolution
+
+`{location_address}` — primary value is `xs_appointments.location_address`. If empty, falls back to `general.business_address` setting.
+`{google_maps_link}` and `{waze_link}` — generated from the resolved `{location_name} + {location_address}` string. Empty when no address is resolvable.
+`{calendar_link}` — Google Calendar add-event URL built from `start_datetime`, service duration, resolved location, and `{booking_reference}`.
+
+#### 11.9.7 Booking Reference Format
+
+`WS-{year}-{id_zero_padded_4}` — e.g., `WS-2026-0042`. Sourced from `booking_id` or `appointment_id` in render data.
+
+#### 11.9.8 Customer Email Footer Standard (V3)
+
+All 5 customer email bodies end with:
+
+```
+For enquiries: {business_email} | Tel: {business_phone}
+{business_name}
+{terms_link} | {privacy_link}
+```
+
+Do not alter this footer pattern without creating a new migration to upsert updated settings rows.
+
+#### 11.9.9 Required Placeholders
+
+`{reschedule_link}` is required in `email`, `sms`, and `whatsapp` bodies for `appointment_pending` and `appointment_confirmed`. `render()` auto-appends a fallback block if the placeholder is missing from a stored template.
 
 ## 12) Database Schema and Relationships
 
