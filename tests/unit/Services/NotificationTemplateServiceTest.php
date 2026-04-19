@@ -104,7 +104,7 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         $defaults = $service->getDefaultTemplates();
 
         $body = (string) ($defaults['appointment_pending']['email']['body'] ?? '');
-        $this->assertStringContainsString('pending confirmation', $body);
+        $this->assertStringContainsString('confirm your appointment shortly', $body);
         $this->assertStringContainsString('{reschedule_link}', $body);
     }
 
