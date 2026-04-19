@@ -117,6 +117,9 @@ class NotificationTemplateService
         // Booking reference and calendar
         '{booking_reference}' => 'Formatted booking reference (e.g. WS-2026-0042)',
         '{calendar_link}' => 'Google Calendar add-to-calendar link',
+        // Map navigation links (resolved from appointment location → business address fallback)
+        '{google_maps_link}' => 'Google Maps URL for resolved appointment location',
+        '{waze_link}' => 'Waze navigation URL for resolved appointment location',
     ];
 
     /**
@@ -126,7 +129,7 @@ class NotificationTemplateService
         'appointment_pending' => [
             'email' => [
                 'subject' => 'Your Appointment Request is Received — {service_name}',
-                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\nFor enquiries: {business_email}\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏳ Booking received! {service_name} on {appointment_date} at {appointment_time}. Pending confirmation. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -138,7 +141,7 @@ class NotificationTemplateService
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\nFor enquiries: {business_email}\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "✅ Confirmed: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -150,7 +153,7 @@ class NotificationTemplateService
         'appointment_reminder' => [
             'email' => [
                 'subject' => 'Reminder: Your Appointment — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\nFor enquiries: {business_email}\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏰ Reminder: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. {location_name}. Manage: {reschedule_link}"
@@ -162,7 +165,7 @@ class NotificationTemplateService
         'appointment_cancelled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Cancelled — {service_name} on {appointment_date}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon! Book a new appointment:\n{booking_url}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon! Book a new appointment:\n{booking_url}\n\nFor enquiries: {business_email}\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "❌ Cancelled: {service_name} on {appointment_date}. Rebook: {booking_url}"
@@ -174,7 +177,7 @@ class NotificationTemplateService
         'appointment_rescheduled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Rescheduled — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\nFor enquiries: {business_email}\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "📅 Rescheduled: {service_name} is now {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -631,6 +634,24 @@ class NotificationTemplateService
             ? 'WS-' . $refYear . '-' . str_pad($apptId, 4, '0', STR_PAD_LEFT)
             : '';
 
+        // Resolve location with fallback to business address
+        $resolvedLocationName    = trim((string) ($data['location_name'] ?? ''));
+        $resolvedLocationAddress = trim((string) ($data['location_address'] ?? ''));
+        $resolvedLocationContact = trim((string) ($data['location_contact'] ?? ''));
+        if ($resolvedLocationAddress === '') {
+            $resolvedLocationAddress = (string) ($this->legalContent['business_address'] ?? '');
+        }
+
+        // Build Google Maps and Waze navigation links from resolved address
+        $googleMapsLink = '';
+        $wazeLink       = '';
+        $mapQuery = trim($resolvedLocationName . ' ' . $resolvedLocationAddress);
+        if ($mapQuery !== '') {
+            $enc            = urlencode($mapQuery);
+            $googleMapsLink = 'https://www.google.com/maps/search/?api=1&query=' . $enc;
+            $wazeLink       = 'https://waze.com/ul?q=' . $enc . '&navigate=yes';
+        }
+
         // Build Google Calendar add-to-calendar link
         $calendarLink = '';
         if (!empty($data['start_datetime'])) {
@@ -651,7 +672,7 @@ class NotificationTemplateService
                 );
                 $calDetails  = urlencode('Booking ref: ' . $bookingReference);
                 $calLocation = urlencode(trim(
-                    ($data['location_name'] ?? '') . ' ' . ($data['location_address'] ?? '')
+                    $resolvedLocationName . ' ' . $resolvedLocationAddress
                 ));
                 $calendarLink = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
                     . '&text=' . $calTitle
@@ -690,13 +711,16 @@ class NotificationTemplateService
             '{internal_contact_link}' => $data['internal_contact_link'] ?? '',
             '{booked_via}' => $data['booked_via'] ?? '',
             '{booked_timestamp}' => $data['booked_timestamp'] ?? '',
-            // Location placeholders (from appointment snapshot)
-            '{location_name}' => $data['location_name'] ?? '',
-            '{location_address}' => $data['location_address'] ?? '',
-            '{location_contact}' => $data['location_contact'] ?? '',
+            // Location placeholders (resolved: appointment snapshot → business address fallback)
+            '{location_name}' => $resolvedLocationName,
+            '{location_address}' => $resolvedLocationAddress,
+            '{location_contact}' => $resolvedLocationContact,
             // Booking reference and calendar link
             '{booking_reference}' => $bookingReference,
             '{calendar_link}' => $calendarLink,
+            // Map navigation links
+            '{google_maps_link}' => $googleMapsLink,
+            '{waze_link}' => $wazeLink,
         ];
     }
 
