@@ -50,6 +50,35 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         }
     }
 
+    public function testRenderUsesTelephoneNumberForBusinessPhonePlaceholder(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+            'general.telephone_number',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+
+        try {
+            $this->seedSetting($db, 'notification_template.appointment_confirmed.email', json_encode([
+                'subject' => 'Confirmed',
+                'body' => 'Call us on {business_phone}.',
+            ]), 'json');
+            $this->seedSetting($db, 'general.telephone_number', '+27111234567', 'string');
+
+            $service = new NotificationTemplateService();
+
+            $result = $service->render('appointment_confirmed', 'email', []);
+
+            $this->assertSame('Call us on +27111234567.', $result['body']);
+        } finally {
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
     public function testValidateTemplateFlagsUnknownPlaceholdersAndUnbalancedBraces(): void
     {
         $service = new NotificationTemplateService();

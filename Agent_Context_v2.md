@@ -681,7 +681,7 @@ Settings-based templates are upserted by migrations and can be overridden at run
 #### 11.9.5 Business Contact Resolution
 
 `{business_email}` → `general.company_email` setting via `legalContent`
-`{business_phone}` → `general.company_phone` setting via `legalContent`
+`{business_phone}` → `general.telephone_number`, then `general.mobile_number`, with `general.company_phone` as legacy fallback via `legalContent`
 `{business_name}` → `general.business_name` setting via `legalContent`
 `{business_address}` → `general.business_address` setting via `legalContent`
 
@@ -695,17 +695,22 @@ Settings-based templates are upserted by migrations and can be overridden at run
 
 `WS-{year}-{id_zero_padded_4}` — e.g., `WS-2026-0042`. Sourced from `booking_id` or `appointment_id` in render data.
 
-#### 11.9.8 Customer Email Footer Standard (V3)
+#### 11.9.8 Customer Email Contact Placement (V4)
 
-All 5 customer email bodies end with:
+All 5 customer email bodies place the enquiries line inside the appointment details block:
 
 ```
-For enquiries: {business_email} | Tel: {business_phone}
+☎ Enquiries: {business_email} | Tel: {business_phone}
+```
+
+The closing footer now ends with:
+
+```
 {business_name}
 {terms_link} | {privacy_link}
 ```
 
-Do not alter this footer pattern without creating a new migration to upsert updated settings rows.
+Do not alter this customer email layout without creating a new migration to upsert updated settings rows.
 
 #### 11.9.9 Required Placeholders
 
