@@ -53,6 +53,7 @@ class NotificationPolicyService
                 $rules[$eventType][$channel] = [
                     'is_enabled' => 0,
                     'reminder_offset_minutes' => null,
+                    'reminder_offsets_minutes' => [],
                 ];
             }
         }
@@ -77,10 +78,56 @@ class NotificationPolicyService
             $rules[$eventType][$channel] = [
                 'is_enabled' => (int) ($row['is_enabled'] ?? 0),
                 'reminder_offset_minutes' => $row['reminder_offset_minutes'] ?? null,
+                'reminder_offsets_minutes' => $this->extractReminderOffsets($row),
             ];
         }
 
         return $rules;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<int, int>
+     */
+    private function extractReminderOffsets(array $row): array
+    {
+        $offsets = [];
+
+        $jsonRaw = $row['reminder_offsets_json'] ?? null;
+        if (is_string($jsonRaw) && trim($jsonRaw) !== '') {
+            $decoded = json_decode($jsonRaw, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $value) {
+                    if (!is_numeric($value)) {
+                        continue;
+                    }
+                    $offsets[] = max(0, min(43200, (int) $value));
+                }
+            }
+        }
+
+        if ($offsets === []) {
+            $legacy = $row['reminder_offset_minutes'] ?? null;
+            if ($legacy !== null && $legacy !== '' && is_numeric($legacy)) {
+                $offsets[] = max(0, min(43200, (int) $legacy));
+            }
+        }
+
+        if ($offsets === []) {
+            return [];
+        }
+
+        $seen = [];
+        $normalized = [];
+        foreach ($offsets as $offset) {
+            if (isset($seen[$offset])) {
+                continue;
+            }
+            $seen[$offset] = true;
+            $normalized[] = $offset;
+        }
+
+        return $normalized;
     }
 
     public function getIntegrationStatus(int $businessId = self::BUSINESS_ID_DEFAULT): array

@@ -23,17 +23,34 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
-                            <label class="form-label">Reminder Offset (minutes)</label>
+                            <label class="form-label">Customer Reminder Offsets (minutes)</label>
                             <?php
-                                $defaultOffset = null;
-                                if (!empty($notificationRules['appointment_reminder']['email']['reminder_offset_minutes'])) {
-                                    $defaultOffset = (int) $notificationRules['appointment_reminder']['email']['reminder_offset_minutes'];
+                                $configuredOffsets = [];
+
+                                if (!empty($notificationRules['appointment_reminder']['email']['reminder_offsets_minutes']) && is_array($notificationRules['appointment_reminder']['email']['reminder_offsets_minutes'])) {
+                                    $configuredOffsets = array_values($notificationRules['appointment_reminder']['email']['reminder_offsets_minutes']);
+                                } elseif (!empty($notificationRules['appointment_reminder']['email']['reminder_offset_minutes'])) {
+                                    $configuredOffsets[] = (int) $notificationRules['appointment_reminder']['email']['reminder_offset_minutes'];
                                 } elseif (!empty($notificationRules['appointment_reminder']['sms']['reminder_offset_minutes'])) {
-                                    $defaultOffset = (int) $notificationRules['appointment_reminder']['sms']['reminder_offset_minutes'];
+                                    $configuredOffsets[] = (int) $notificationRules['appointment_reminder']['sms']['reminder_offset_minutes'];
                                 }
+
+                                $primaryOffset = $configuredOffsets[0] ?? 4320;
+                                $secondaryOffset = $configuredOffsets[1] ?? 60;
                             ?>
-                            <input type="number" min="0" max="43200" name="reminder_offset_minutes" class="form-input" value="<?= esc($defaultOffset ?? 60) ?>" />
-                            <p class="form-help">Applies to "Appointment Reminder" across channels (Phase 1).</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="form-label text-xs">First Reminder</label>
+                                    <input type="number" min="0" max="43200" name="reminder_offset_minutes_primary" class="form-input" value="<?= esc((string) $primaryOffset) ?>" />
+                                    <p class="form-help">Example: 4320 = 3 days before.</p>
+                                </div>
+                                <div>
+                                    <label class="form-label text-xs">Second Reminder</label>
+                                    <input type="number" min="0" max="43200" name="reminder_offset_minutes_secondary" class="form-input" value="<?= esc((string) $secondaryOffset) ?>" />
+                                    <p class="form-help">Example: 60 = 1 hour before.</p>
+                                </div>
+                            </div>
+                            <p class="form-help">Applies to customer "Appointment Reminder" notifications. Leave one field blank to use a single reminder.</p>
                         </div>
                     </div>
 

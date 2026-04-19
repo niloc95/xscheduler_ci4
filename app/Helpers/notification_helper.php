@@ -107,9 +107,15 @@ if (!function_exists('notification_decrypt_config')) {
 
 if (!function_exists('notification_get_reminder_offset_minutes')) {
     /**
-     * Fetch reminder offset minutes for a channel, clamped to 0..43200.
+     * Fetch reminder offsets for a channel as an ordered list of minutes.
+     *
+     * Backward compatibility:
+     * - Uses reminder_offsets_json when present and valid.
+     * - Falls back to reminder_offset_minutes when JSON is empty.
+     *
+     * @return array<int, int>
      */
-    function notification_get_reminder_offset_minutes(int $businessId, string $channel): ?int
+    function notification_get_reminder_offsets_minutes(int $businessId, string $channel): array
     {
         $model = new \App\Models\BusinessNotificationRuleModel();
         $row = $model
@@ -118,12 +124,61 @@ if (!function_exists('notification_get_reminder_offset_minutes')) {
             ->where('channel', $channel)
             ->first();
 
-        $v = $row['reminder_offset_minutes'] ?? null;
-        if ($v === null || $v === '') {
+        if (!is_array($row)) {
+            return [];
+        }
+
+        $offsets = [];
+
+        $jsonRaw = $row['reminder_offsets_json'] ?? null;
+        if (is_string($jsonRaw) && trim($jsonRaw) !== '') {
+            $decoded = json_decode($jsonRaw, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $value) {
+                    if (!is_numeric($value)) {
+                        continue;
+                    }
+                    $offsets[] = max(0, min(43200, (int) $value));
+                }
+            }
+        }
+
+        if ($offsets === []) {
+            $legacy = $row['reminder_offset_minutes'] ?? null;
+            if ($legacy !== null && $legacy !== '' && is_numeric($legacy)) {
+                $offsets[] = max(0, min(43200, (int) $legacy));
+            }
+        }
+
+        if ($offsets === []) {
+            return [];
+        }
+
+        // De-duplicate while preserving configured order.
+        $seen = [];
+        $normalized = [];
+        foreach ($offsets as $offset) {
+            if (isset($seen[$offset])) {
+                continue;
+            }
+            $seen[$offset] = true;
+            $normalized[] = $offset;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Fetch reminder offset minutes for a channel, clamped to 0..43200.
+     */
+    function notification_get_reminder_offset_minutes(int $businessId, string $channel): ?int
+    {
+        $offsets = notification_get_reminder_offsets_minutes($businessId, $channel);
+        if ($offsets === []) {
             return null;
         }
 
-        $minutes = (int) $v;
-        return max(0, min(43200, $minutes));
+        // Compatibility choice: return nearest reminder offset.
+        return min($offsets);
     }
 }

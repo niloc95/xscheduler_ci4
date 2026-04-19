@@ -13,6 +13,8 @@ use App\Services\NotificationWhatsAppService;
 
 class NotificationSettingsService
 {
+    private ?bool $hasReminderOffsetsJsonColumn = null;
+
     protected function getSettingModel(): SettingModel
     {
         return new SettingModel();
@@ -98,11 +100,8 @@ class NotificationSettingsService
 
         $rulesInput = $post['rules'] ?? [];
 
-        $reminderOffsetMinutes = $post['reminder_offset_minutes'] ?? null;
-        $reminderOffsetMinutes = is_numeric($reminderOffsetMinutes) ? (int) $reminderOffsetMinutes : null;
-        if ($reminderOffsetMinutes !== null) {
-            $reminderOffsetMinutes = max(0, min(43200, $reminderOffsetMinutes));
-        }
+        $reminderOffsetsMinutes = $this->extractReminderOffsetsFromPost($post);
+        $reminderOffsetMinutes = $reminderOffsetsMinutes !== [] ? $reminderOffsetsMinutes[0] : null;
 
         $defaultLanguage = trim((string) ($post['notification_default_language'] ?? ''));
         if ($defaultLanguage === '') {
@@ -265,6 +264,12 @@ class NotificationSettingsService
                         'reminder_offset_minutes' => $offset,
                     ];
 
+                    if ($eventType === 'appointment_reminder' && $this->rulesTableHasReminderOffsetsJson()) {
+                        $payload['reminder_offsets_json'] = $reminderOffsetsMinutes !== []
+                            ? json_encode($reminderOffsetsMinutes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                            : null;
+                    }
+
                     if (!empty($existing['id'])) {
                         $ruleModel->update((int) $existing['id'], $payload);
                     } else {
@@ -415,5 +420,84 @@ class NotificationSettingsService
             'message' => $message,
             'html' => false,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $post
+     * @return array<int, int>
+     */
+    private function extractReminderOffsetsFromPost(array $post): array
+    {
+        $values = [];
+
+        $primary = $post['reminder_offset_minutes_primary'] ?? null;
+        $secondary = $post['reminder_offset_minutes_secondary'] ?? null;
+        if ($primary !== null && $primary !== '') {
+            $values[] = $primary;
+        }
+        if ($secondary !== null && $secondary !== '') {
+            $values[] = $secondary;
+        }
+
+        if (isset($post['reminder_offsets_minutes']) && is_array($post['reminder_offsets_minutes'])) {
+            foreach ($post['reminder_offsets_minutes'] as $value) {
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                $values[] = $value;
+            }
+        }
+
+        if ($values === []) {
+            $legacy = $post['reminder_offset_minutes'] ?? null;
+            if ($legacy !== null && $legacy !== '') {
+                $values[] = $legacy;
+            }
+        }
+
+        if ($values === []) {
+            return [];
+        }
+
+        $offsets = [];
+        foreach ($values as $value) {
+            if (!is_numeric($value)) {
+                continue;
+            }
+            $offsets[] = max(0, min(43200, (int) $value));
+        }
+
+        if ($offsets === []) {
+            return [];
+        }
+
+        $seen = [];
+        $normalized = [];
+        foreach ($offsets as $offset) {
+            if (isset($seen[$offset])) {
+                continue;
+            }
+            $seen[$offset] = true;
+            $normalized[] = $offset;
+        }
+
+        return $normalized;
+    }
+
+    private function rulesTableHasReminderOffsetsJson(): bool
+    {
+        if ($this->hasReminderOffsetsJsonColumn !== null) {
+            return $this->hasReminderOffsetsJsonColumn;
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $fields = $db->getFieldNames('xs_business_notification_rules');
+            $this->hasReminderOffsetsJsonColumn = in_array('reminder_offsets_json', $fields, true);
+        } catch (\Throwable $e) {
+            $this->hasReminderOffsetsJsonColumn = false;
+        }
+
+        return $this->hasReminderOffsetsJsonColumn;
     }
 }

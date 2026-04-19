@@ -65,6 +65,7 @@ class BusinessNotificationRuleModel extends BaseModel
         'channel',
         'is_enabled',
         'reminder_offset_minutes',
+        'reminder_offsets_json',
     ];
 
     protected $validationRules = [
