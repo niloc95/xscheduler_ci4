@@ -116,8 +116,8 @@ class NotificationTemplateService
     private const DEFAULT_TEMPLATES = [
         'appointment_pending' => [
             'email' => [
-                'subject' => 'Appointment Pending - {service_name}',
-                'body' => "Hi {customer_name},\n\nYour appointment request has been received and is pending confirmation.\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nManage booking: {reschedule_link}\n\nWe will notify you as soon as your booking is confirmed.\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
+                'subject' => 'Your Appointment Request is Received — {service_name}',
+                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏳ Appt pending: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
@@ -128,8 +128,8 @@ class NotificationTemplateService
         ],
         'appointment_confirmed' => [
             'email' => [
-                'subject' => 'Appointment Confirmed - {service_name}',
-                'body' => "Hi {customer_name},\n\nYour appointment has been confirmed!\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\nImportant Information:\n{cancellation_policy}\n{rescheduling_policy}\n\nManage booking: {reschedule_link}\n\nThank you for booking with {business_name}!\n\nView our Terms & Conditions: {terms_link}\nPrivacy Policy: {privacy_link}"
+                'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
+                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
@@ -140,8 +140,8 @@ class NotificationTemplateService
         ],
         'appointment_reminder' => [
             'email' => [
-                'subject' => 'Reminder: Your Appointment Tomorrow - {service_name}',
-                'body' => "Hi {customer_name},\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nWe look forward to seeing you!\n\n{business_name}"
+                'subject' => 'Reminder: Your Appointment — {appointment_date} at {appointment_time}',
+                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏰ Reminder: {service_name} on {appointment_date} at {appointment_time}. Manage: {reschedule_link}"
@@ -152,8 +152,8 @@ class NotificationTemplateService
         ],
         'appointment_cancelled' => [
             'email' => [
-                'subject' => 'Appointment Cancelled - {service_name}',
-                'body' => "Hi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 Date: {appointment_date}\n🕐 Time: {appointment_time}\n💼 Service: {service_name}\n\nWe hope to see you again soon! To reschedule, please contact us or book online.\n\n{business_name}"
+                'subject' => 'Your Appointment Has Been Cancelled — {service_name} on {appointment_date}',
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon! Book a new appointment:\n{booking_url}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "❌ Appt cancelled: {service_name} on {appointment_date}. Rebook/manage: {reschedule_link}"
@@ -164,8 +164,8 @@ class NotificationTemplateService
         ],
         'appointment_rescheduled' => [
             'email' => [
-                'subject' => 'Appointment Rescheduled - {service_name}',
-                'body' => "Hi {customer_name},\n\nYour appointment has been rescheduled to:\n\n📅 New Date: {appointment_date}\n🕐 New Time: {appointment_time}\n💼 Service: {service_name}\n👤 With: {provider_name}\n\n{rescheduling_policy}\n\nPlease let us know if this doesn't work for you.\n\n{business_name}"
+                'subject' => 'Your Appointment Has Been Rescheduled — {appointment_date} at {appointment_time}',
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "📅 Appt rescheduled: {service_name} now {appointment_date} at {appointment_time}. Link: {reschedule_link}"
@@ -226,6 +226,8 @@ class NotificationTemplateService
             'general.business_name',
             'general.company_email',
             'general.company_phone',
+            'general.telephone_number',
+            'general.mobile_number',
             'general.business_address',
         ]);
 
@@ -238,7 +240,10 @@ class NotificationTemplateService
             'privacy_url' => $settings['legal.privacy_url'] ?? '',
             'business_name' => $settings['general.business_name'] ?? '',
             'business_email' => $settings['general.company_email'] ?? '',
-            'business_phone' => $settings['general.company_phone'] ?? '',
+            'business_phone' => $settings['general.telephone_number']
+                ?? $settings['general.mobile_number']
+                ?? $settings['general.company_phone']
+                ?? '',
             'business_address' => $settings['general.business_address'] ?? '',
         ];
     }
