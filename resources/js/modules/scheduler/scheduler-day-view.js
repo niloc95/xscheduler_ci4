@@ -512,23 +512,40 @@ export class DayView {
     }
 
     _buildAppointmentsByProvider(visibleProviders, data) {
+        // Flat list is the authoritative source — always contains ALL appointments for the
+        // day regardless of provider working-hours slot-map coverage gaps.
+        const dayAppointments = data.appointments.filter(
+            (apt) => apt.startDateTime && apt.startDateTime.hasSame(data.currentDate, 'day'),
+        );
+        const byProvider = {};
+        visibleProviders.forEach((provider) => {
+            byProvider[provider.id] = dayAppointments.filter(
+                (apt) => Number(apt.providerId) === Number(provider.id),
+            );
+        });
+
+        // Server-model path: enrich with server-side slot metadata (overlap layout etc.)
+        // when available. Uses flat list as the guaranteed-complete base so appointments
+        // outside a provider's personal schedule (e.g. 08:00–09:59 for a provider starting
+        // at 10:00) are never dropped when the slot map has incomplete coverage.
         const fromModel = this._extractFromDayModel(data.calendarModel, visibleProviders);
         if (fromModel && this._hasAnyAppointments(fromModel)) {
             // data.appointments has already been filtered by the core (status, service, etc.)
             // Cross-reference to ensure the same filters apply to model-sourced appointments
             const allowedIds = new Set(data.appointments.map((a) => Number(a.id)));
-            const filtered = {};
-            for (const [pid, apts] of Object.entries(fromModel)) {
-                filtered[pid] = apts.filter((apt) => allowedIds.has(Number(apt.id)));
+            for (const [pid, modelApts] of Object.entries(fromModel)) {
+                const modelFiltered = modelApts.filter((apt) => allowedIds.has(Number(apt.id)));
+                if (modelFiltered.length === 0) continue;
+
+                // Merge: model-positioned appointments take precedence (they carry server-side
+                // overlap layout metadata), then append any flat-list appointments the slot
+                // map missed for this provider.
+                const modelIds = new Set(modelFiltered.map((a) => Number(a.id)));
+                const flatOnly = (byProvider[pid] || []).filter((a) => !modelIds.has(Number(a.id)));
+                byProvider[pid] = [...modelFiltered, ...flatOnly];
             }
-            return filtered;
         }
 
-        const dayAppointments = data.appointments.filter((apt) => apt.startDateTime.hasSame(data.currentDate, 'day'));
-        const byProvider = {};
-        visibleProviders.forEach((provider) => {
-            byProvider[provider.id] = dayAppointments.filter((apt) => Number(apt.providerId) === Number(provider.id));
-        });
         return byProvider;
     }
 
