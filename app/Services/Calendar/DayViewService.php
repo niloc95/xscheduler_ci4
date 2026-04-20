@@ -146,14 +146,15 @@ class DayViewService
         $providerColumns = [];
         $positionedAppointments = [];
         foreach ($providers as $provider) {
-            // Get provider-specific working hours
+            // Get provider-specific working hours (used for visual overlay metadata only).
             $workingHours = $this->getProviderWorkingHours($provider['id'], $dayOfWeek);
-            
-            // Generate provider-specific time grid
-            $providerGrid = $this->timeGrid->generateDayGridWithProviderHours(
-                $date,
-                $workingHours
-            );
+
+            // Provider grids always use the full BUSINESS HOURS range so that
+            // appointments scheduled outside a provider's personal working hours
+            // (e.g. 08:00-10:00 when provider starts at 10:00) still have matching
+            // slots in the slot map and are not silently dropped by injectIntoSlots().
+            // workingHours is preserved above for the column overlay / visual metadata.
+            $providerGrid = $this->timeGrid->generateDayGrid($date);
             
             // SHARED ENGINE: Resolve overlapping appointments
             $positioned = $this->eventLayout->resolveLayout($provider['appointments']);
