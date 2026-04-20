@@ -157,11 +157,11 @@ class CalendarConfigService
 
     /**
      * Get earliest time to display on calendar
-     * Reads from canonical booking.day_start setting
+     * Reads from business.work_start setting (set via Settings > Business Hours)
      */
     public function getSlotMinTime(): string
     {
-        $value = $this->getSetting('booking.day_start');
+        $value = $this->getSetting('business.work_start');
         
         if ($value && strlen($value) >= 5) {
             // Already in HH:MM or HH:MM:SS format, just return first 5 chars
@@ -173,11 +173,11 @@ class CalendarConfigService
 
     /**
      * Get latest time to display on calendar
-     * Reads from canonical booking.day_end setting
+     * Reads from business.work_end setting (set via Settings > Business Hours)
      */
     public function getSlotMaxTime(): string
     {
-        $value = $this->getSetting('booking.day_end');
+        $value = $this->getSetting('business.work_end');
         
         if ($value && strlen($value) >= 5) {
             // Already in HH:MM or HH:MM:SS format, just return first 5 chars
@@ -339,8 +339,8 @@ class CalendarConfigService
                 'localization.timezone',
                 'localization.first_day',
                 'localization.locale',
-                'booking.day_start',
-                'booking.day_end',
+                'business.work_start',
+                'business.work_end',
                 'business.blocked_periods',
                 'calendar.slot_duration',
                 'calendar.default_view',
