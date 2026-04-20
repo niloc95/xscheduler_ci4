@@ -147,7 +147,9 @@ export class DayView {
         const timeSlots = this._generate15MinSlots(timeRange.startTime, timeRange.endTime);
 
         const startHour = parseInt(timeRange.startTime.split(':')[0], 10);
+        const endHour = parseInt(timeRange.endTime.split(':')[0], 10);
         this._activeTimelineStartHour = startHour;
+        this._activeTimelineEndHour = endHour;
 
         const timeLabels = timeSlots
             .filter((slot) => slot.minute === 0 || slot.minute === 30)
@@ -353,8 +355,18 @@ export class DayView {
 
     _renderNowLine(timeRange) {
         const now = DateTime.now().setZone(this.scheduler.options.timezone);
-        const startHour = timeRange ? parseInt(timeRange.startTime.split(':')[0], 10) : this.businessHours.startHour;
-        const top = this._topPxDay(now, startHour);
+        const [sh, sm] = timeRange.startTime.split(':').map(Number);
+        const [eh, em] = timeRange.endTime.split(':').map(Number);
+        const startMinutes = sh * 60 + (sm || 0);
+        const endMinutes   = eh * 60 + (em || 0);
+        const nowMinutes   = now.hour * 60 + now.minute;
+
+        // Hide when current time is outside the visible timeline range.
+        if (nowMinutes < startMinutes || nowMinutes >= endMinutes) {
+            return '';
+        }
+
+        const top = this._topPxDay(now, sh);
 
         return `
             <div class="now-line absolute pointer-events-none flex items-center"
@@ -414,8 +426,19 @@ export class DayView {
             }
 
             const now = DateTime.now().setZone(this.scheduler.options.timezone);
-            const top = this._topPxDay(now, this._activeTimelineStartHour ?? this.businessHours.startHour);
-            nowLine.style.top = `${top}px`;
+            const startHour = this._activeTimelineStartHour ?? this.businessHours.startHour;
+            const endHour   = this._activeTimelineEndHour   ?? (startHour + 9);
+            const nowMinutes   = now.hour * 60 + now.minute;
+            const startMinutes = startHour * 60;
+            const endMinutes   = endHour * 60;
+
+            if (nowMinutes < startMinutes || nowMinutes >= endMinutes) {
+                nowLine.style.display = 'none';
+                return;
+            }
+
+            nowLine.style.display = '';
+            nowLine.style.top = `${this._topPxDay(now, startHour)}px`;
         }, 60000);
     }
 
@@ -462,42 +485,16 @@ export class DayView {
     }
 
     _calculateTimelineRange(visibleProviders, calendarModel) {
-        const fallback = {
-            startTime: this.businessHours.startTime || '08:00',
-            endTime: this.businessHours.endTime || '17:00',
-            source: 'business',
+        // The timeline is always anchored to business hours (Settings > Business Hours).
+        // Individual provider working hours render as overlays within this fixed range.
+        // This ensures all providers share a consistent grid regardless of their schedules
+        // and prevents appointments from rendering outside the visible grid.
+        const bh = this._resolveBusinessHours(this.config, calendarModel);
+        return {
+            startTime: bh.startTime || '08:00',
+            endTime:   bh.endTime   || '17:00',
+            source:    'business',
         };
-
-        if (!calendarModel?.providerColumns) {
-            return fallback;
-        }
-
-        const providerRanges = [];
-        for (const provider of visibleProviders) {
-            const column = calendarModel.providerColumns.find((c) => c.provider.id === provider.id);
-            if (column?.workingHours?.isActive) {
-                providerRanges.push({
-                    startTime: column.workingHours.startTime,
-                    endTime: column.workingHours.endTime,
-                });
-            }
-        }
-
-        if (!providerRanges.length) {
-            return fallback;
-        }
-
-        const earliestStart = providerRanges.reduce(
-            (min, range) => (range.startTime < min ? range.startTime : min),
-            providerRanges[0].startTime,
-        );
-
-        const latestEnd = providerRanges.reduce(
-            (max, range) => (range.endTime > max ? range.endTime : max),
-            providerRanges[0].endTime,
-        );
-
-        return { startTime: earliestStart, endTime: latestEnd, source: 'provider' };
     }
 
     _getProviderTimeRange(providerId, calendarModel, overallRange) {
