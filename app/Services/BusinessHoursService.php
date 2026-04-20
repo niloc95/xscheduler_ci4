@@ -186,13 +186,27 @@ class BusinessHoursService
      */
     private function getBusinessHoursForDay(int $weekdayNum): ?array
     {
-        $db = \Config\Database::connect();
-        $result = $db->table('business_hours')
-            ->where('weekday', $weekdayNum)
-            ->get()
-            ->getRowArray();
-        
-        return $result ?: null;
+        // Global business hours are stored in xs_settings (business.work_start / business.work_end).
+        // xs_business_hours rows are always per-provider (always have a provider_id) and must not
+        // be queried here without a provider_id filter, which would return an arbitrary provider's
+        // row and cause that provider's hours to be treated as the global constraint.
+        $settingModel = new \App\Models\SettingModel();
+        $settings  = $settingModel->getByKeys(['business.work_start', 'business.work_end']);
+        $workStart = trim((string) ($settings['business.work_start'] ?? ''));
+        $workEnd   = trim((string) ($settings['business.work_end'] ?? ''));
+
+        if ($workStart === '' || $workEnd === '') {
+            return null;
+        }
+
+        if (strlen($workStart) === 5) { $workStart .= ':00'; }
+        if (strlen($workEnd) === 5)   { $workEnd   .= ':00'; }
+
+        return [
+            'weekday'    => $weekdayNum,
+            'start_time' => $workStart,
+            'end_time'   => $workEnd,
+        ];
     }
 
     /**
@@ -220,17 +234,30 @@ class BusinessHoursService
      */
     public function getWeeklyHours(): array
     {
-        $db = \Config\Database::connect();
-        $rows = $db->table('business_hours')
-            ->orderBy('weekday', 'ASC')
-            ->get()
-            ->getResultArray();
-        
-        $weekly = [];
-        foreach ($rows as $row) {
-            $weekly[$row['weekday']] = $row;
+        // Return the global hours (from xs_settings) for each weekday.
+        // Individual provider hours are in xs_business_hours (per-provider, not here).
+        $settingModel = new \App\Models\SettingModel();
+        $settings  = $settingModel->getByKeys(['business.work_start', 'business.work_end']);
+        $workStart = trim((string) ($settings['business.work_start'] ?? ''));
+        $workEnd   = trim((string) ($settings['business.work_end'] ?? ''));
+
+        if ($workStart === '' || $workEnd === '') {
+            return [];
         }
-        
+
+        if (strlen($workStart) === 5) { $workStart .= ':00'; }
+        if (strlen($workEnd) === 5)   { $workEnd   .= ':00'; }
+
+        $weekly = [];
+        // Return Mon–Fri (1–5) by default; Sunday (0) and Saturday (6) are not global working days
+        // unless a provider has explicit hours for those days.
+        foreach (range(1, 5) as $weekday) {
+            $weekly[$weekday] = [
+                'weekday'    => $weekday,
+                'start_time' => $workStart,
+                'end_time'   => $workEnd,
+            ];
+        }
         return $weekly;
     }
 }

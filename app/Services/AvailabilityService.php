@@ -520,13 +520,23 @@ class AvailabilityService
      */
     private function constrainToBusinessHours(string $date, array $providerHours): ?array
     {
-        $businessHours = $this->businessHoursService->getBusinessHoursForDate($date);
-        if (!$businessHours) {
-            return null;
+        // Global business bounds come from xs_settings (business.work_start / business.work_end).
+        // xs_business_hours is exclusively per-provider; querying it without a provider_id
+        // filter returns an arbitrary provider's row, not a global constraint.
+        $settings  = $this->settingModel->getByKeys(['business.work_start', 'business.work_end']);
+        $workStart = trim((string) ($settings['business.work_start'] ?? ''));
+        $workEnd   = trim((string) ($settings['business.work_end'] ?? ''));
+
+        if ($workStart === '' || $workEnd === '') {
+            // No global bounds configured — use provider hours as-is.
+            return $providerHours;
         }
 
-        $effectiveStart = max((string) $providerHours['start_time'], (string) $businessHours['start_time']);
-        $effectiveEnd = min((string) $providerHours['end_time'], (string) $businessHours['end_time']);
+        if (strlen($workStart) === 5) { $workStart .= ':00'; }
+        if (strlen($workEnd) === 5)   { $workEnd   .= ':00'; }
+
+        $effectiveStart = max((string) $providerHours['start_time'], $workStart);
+        $effectiveEnd   = min((string) $providerHours['end_time'],   $workEnd);
 
         if ($effectiveStart >= $effectiveEnd) {
             return null;
@@ -534,8 +544,8 @@ class AvailabilityService
 
         return [
             'start_time' => $effectiveStart,
-            'end_time' => $effectiveEnd,
-            'breaks' => $providerHours['breaks'] ?? [],
+            'end_time'   => $effectiveEnd,
+            'breaks'     => $providerHours['breaks'] ?? [],
         ];
     }
 
