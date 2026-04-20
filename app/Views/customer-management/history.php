@@ -254,7 +254,7 @@
                             <?= esc($appt['notes'] ?? '—') ?>
                         </td>
                         <td class="px-4 py-3">
-                            <a href="<?= base_url('appointments/view/' . ($appt['hash'] ?? $appt['id'])) ?>" 
+                            <a href="<?= base_url('appointments?open=' . rawurlencode((string) ($appt['hash'] ?? $appt['id']))) ?>"
                                class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600" title="View Details">
                                 <span class="material-symbols-outlined">visibility</span>
                             </a>

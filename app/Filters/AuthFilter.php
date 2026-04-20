@@ -100,15 +100,11 @@ class AuthFilter implements FilterInterface
             $validRoles = ['admin', 'provider', 'staff'];
             $hasValidRole = false;
             
-            // Use active_role if available, otherwise fall back to primary role
-            $currentRole = $user['active_role'] ?? $user['role'] ?? null;
+            // §4.4: use authoritative roles array; fall back to single-role for compatibility
+            $userRoles = $user['roles'] ?? [$user['active_role'] ?? $user['role'] ?? ''];
 
-            foreach ($arguments as $arg) {
-                if (in_array($arg, $validRoles) && $currentRole === $arg) {
-                    $hasValidRole = true;
-                    break;
-                }
-            }
+            // Check if any of the filter arguments match the user's role set
+            $hasValidRole = !empty(array_intersect(array_intersect($arguments, $validRoles), $userRoles));
 
             // If we're doing role checks and user doesn't have required role
             if (!empty(array_intersect($arguments, $validRoles)) && !$hasValidRole) {

@@ -302,6 +302,48 @@ class BookingController extends BaseController
         }
     }
 
+    public function cancel(string $token)
+    {
+        helper('logging');
+
+        try {
+            $payload = $this->payload();
+            log_structured('info', 'public_booking.cancel_attempt', [
+                'token_prefix' => substr($token, 0, 8),
+            ]);
+
+            $result = $this->booking->cancel($token, $payload);
+
+            log_structured('info', 'public_booking.cancelled', [
+                'token_prefix' => substr($token, 0, 8),
+                'appointment_id' => isset($result['appointment']['id']) ? (int) $result['appointment']['id'] : null,
+            ]);
+
+            return $this->respondJson(['data' => $result]);
+        } catch (PublicBookingException $e) {
+            log_structured('warning', 'public_booking.cancel_failed', [
+                'token_prefix' => substr($token, 0, 8),
+                'message' => $e->getMessage(),
+                'errors' => $e->getErrors(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return $this->respondJson([
+                'error' => $e->getMessage(),
+                'details' => $e->getErrors(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            log_message('error', '[PublicBooking] Cancel failed: ' . $e->getMessage());
+            log_structured('error', 'public_booking.cancel_exception', [
+                'token_prefix' => substr($token, 0, 8),
+                'exception_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+
+            return $this->respondJson(['error' => 'Unable to cancel the booking right now.'], 500);
+        }
+    }
+
     private function payload(): array
     {
         $json = $this->request->getJSON(true);

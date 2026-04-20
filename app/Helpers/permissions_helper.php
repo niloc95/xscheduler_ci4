@@ -77,20 +77,22 @@ if (!function_exists('current_user_id')) {
 
 if (!function_exists('has_role')) {
     /**
-     * Check if current user has a specific role
+     * Check if current user has a specific role.
+     * Reads the authoritative 'roles' array from session first (§4.4 Canonical RBAC Pattern).
+     * Falls back to active_role / role for compatibility with older session payloads.
      */
     function has_role(string|array $roles): bool
     {
-        $currentRole = current_user_role();
-        if (!$currentRole) {
+        $user = session()->get('user');
+        if (!$user) {
             return false;
         }
 
-        if (is_string($roles)) {
-            return $currentRole === $roles;
-        }
+        // §4.4: read authoritative roles array; fall back to single-role for compatibility
+        $userRoles = $user['roles'] ?? [$user['active_role'] ?? $user['role'] ?? ''];
+        $requiredRoles = is_string($roles) ? [$roles] : $roles;
 
-        return in_array($currentRole, $roles);
+        return !empty(array_intersect($requiredRoles, $userRoles));
     }
 }
 

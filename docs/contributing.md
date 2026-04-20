@@ -7,7 +7,7 @@ Thank you for your interest in contributing to **xScheduler**! We appreciate you
 - **🐞 Report a Bug** → [Create Bug Report](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
 - **✨ Request a Feature** → [Create Feature Request](https://github.com/niloc95/xscheduler_ci4/issues/new/choose)
 - **💬 Ask Questions** → [GitHub Discussions](https://github.com/niloc95/xscheduler_ci4/discussions)
-- **📚 Documentation** → [docs/readme.md](./readme.md)
+- **📚 Documentation** → [docs/README.md](./README.md)
 
 ---
 
@@ -18,7 +18,7 @@ Thank you for your interest in contributing to **xScheduler**! We appreciate you
 Before submitting:
 1. Search existing issues to avoid duplicates
 2. Check the documentation in `/docs` folder
-3. Review [requirements.md](./requirements.md)
+3. Review [docs/README.md](./README.md) and [Agent_Context_v2.md](../Agent_Context_v2.md) for the current engineering contract
 
 Include in your bug report:
 - Environment (Localhost, VPS, Shared Hosting)
@@ -79,6 +79,8 @@ This repository is maintained on a **personal account** and uses a **PR-only** w
    - Follow coding standards (PSR-12 for PHP)
    - Add PHPDoc comments to new classes/methods
    - Test thoroughly
+   - Keep business logic in `app/Services/`; controllers stay thin
+   - For DB changes, extend `App\Database\MigrationBase`
 
 4. **Commit with clear messages**
    ```bash
@@ -95,9 +97,9 @@ This repository is maintained on a **personal account** and uses a **PR-only** w
 
 **Requirements:**
 - PHP 8.1+ 
-- MySQL 5.7+ or MariaDB 10.3+
+- MySQL 5.7+ or MariaDB 10.2+
 - Composer
-- Node.js 16+ and npm
+- Node.js 18+ and npm
 - CodeIgniter 4.6.1
 
 **Installation:**
@@ -112,7 +114,7 @@ cp env .env
 # Edit .env with your database credentials
 
 # Run migrations
-php spark migrate
+php spark migrate -n App
 
 # Build assets
 npm run build
@@ -124,6 +126,18 @@ php spark serve
 ```
 
 Visit `http://localhost:8080`
+
+### Local Architecture Notes
+
+- Runtime database support is MySQL/MariaDB only.
+- Appointment customers live in `xs_customers`; internal users live in `xs_users`.
+- Public-facing records use hash/token URLs; do not introduce numeric IDs in public routes.
+- API endpoints should live under `/api/v1/` and use the shared API response contract.
+- Notifications are queue-first. For local verification you can dispatch queued notifications with:
+
+```bash
+php spark notifications:dispatch-queue
+```
 
 ---
 
@@ -139,6 +153,7 @@ Before submitting a PR:
 - [ ] Keep changes focused and small
 - [ ] Avoid debug logs (`console.log`, `var_dump`)
 - [ ] Reference related issue(s) in PR description
+- [ ] PR labels or commit titles clearly describe the change for changelog automation
 - [ ] **Design System compliance** (if UI changes - see below)
 
 ### 🎨 Design System Requirements (UI Changes Only)
@@ -158,7 +173,7 @@ If your PR modifies views, components, or styles, ensure:
 - [ ] **Test in dark mode** - toggle theme and verify visual correctness
 - [ ] **Build passes** - run `npm run build` with no errors
 
-**📚 Design System Reference:** See [design/design_system.md](./design/design_system.md) for complete guidelines, component usage, and anti-patterns.
+**📚 Design System Reference:** See [Agent_Context_v2.md](../Agent_Context_v2.md) for the current frontend/styling contract and inspect `app/Views/components/` before adding custom UI markup.
 
 ---
 
@@ -219,11 +234,11 @@ public function createAppointment(array $data): int
 
 **Do NOT open public issues for security vulnerabilities.**
 
-See [security_policy.md](./security_policy.md) for responsible disclosure.
+Instead, contact the repository owner privately through GitHub before disclosure and include reproduction details, impact, and any temporary mitigation you have identified.
 
 ---
 
-## � Versioning & Releases
+## 🔖 Versioning & Releases
 
 xScheduler follows [Semantic Versioning 2.0.0](https://semver.org/):
 
@@ -242,20 +257,30 @@ xScheduler follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 ### Changelog
 
-All changes are tracked in [changelog.md](./changelog.md). When contributing:
+All changes are tracked in [changelog.md](./changelog.md). Changelog entries are generated automatically during the release flow using a hybrid source:
 
-1. Add your changes to the `[Unreleased]` section
-2. Use these categories:
-   - **Added** - New features
-   - **Changed** - Changes in existing functionality
-   - **Deprecated** - Soon-to-be removed features
-   - **Removed** - Removed features
-   - **Fixed** - Bug fixes
-   - **Security** - Security improvements
+- preferred source: merged PR labels/categories
+- fallback source: commit subjects when PR metadata is unavailable
+
+To help the automation produce good entries:
+
+1. Use clear PR titles and apply accurate labels before merge.
+2. If no PR labels are available, use structured commit subjects such as `feat:`, `fix:`, `docs:`, `refactor:`, `perf:`, or `security:`.
+3. Preview the generated unreleased changelog locally when needed:
+
+```bash
+npm run changelog:preview
+```
+
+4. Sync the `[Unreleased]` section locally when needed:
+
+```bash
+npm run changelog:sync
+```
 
 ### Release Process
 
-For maintainers creating releases, see [deployment/releasing.md](./deployment/releasing.md) for the complete release guide.
+For maintainers creating releases, use the repository release scripts (`npm run release:patch`, `npm run release:minor`, `npm run release:major`) and review [scripts/release.js](../scripts/release.js) before cutting a tag.
 
 ---
 

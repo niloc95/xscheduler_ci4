@@ -161,46 +161,50 @@ class DashboardService
         $nowUtc = (clone $localNow)->setTimezone($utcTz)->format('Y-m-d H:i:s');
         $upcomingWindowUtc = (clone $localNow)->modify('+4 hours')->setTimezone($utcTz)->format('Y-m-d H:i:s');
 
-        $builder = $this->appointmentModel->builder();
+        // Build a fresh scoped builder per metric to avoid accumulating WHERE clauses
+        // across sequential countAllResults(false) calls.
+        $scopedBuilder = function () use ($providerId) {
+            $builder = $this->appointmentModel->builder();
+            if ($providerId !== null) {
+                $builder->where('provider_id', $providerId);
+            }
 
-        // Apply provider scope if provided
-        if ($providerId !== null) {
-            $builder->where('provider_id', $providerId);
-        }
+            return $builder;
+        };
 
         // Total appointments today
-        $total = $builder
+        $total = $scopedBuilder()
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
-            ->countAllResults(false);
+            ->countAllResults();
 
         // Upcoming appointments (next 4 hours)
-        $upcoming = $builder
+        $upcoming = $scopedBuilder()
             ->where('start_at >=', $nowUtc)
             ->where('start_at <=', $upcomingWindowUtc)
             ->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING)
-            ->countAllResults(false);
+            ->countAllResults();
 
         // Pending confirmation
-        $pending = $builder
+        $pending = $scopedBuilder()
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
             ->where('xs_appointments.status', AppointmentStatus::PENDING)
-            ->countAllResults(false);
+            ->countAllResults();
 
         // Cancelled/rescheduled today
-        $cancelled = $builder
+        $cancelled = $scopedBuilder()
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
             ->whereIn('xs_appointments.status', [AppointmentStatus::CANCELLED, AppointmentStatus::NO_SHOW])
-            ->countAllResults(false);
+            ->countAllResults();
 
         // Confirmed today
-        $confirmed = $builder
+        $confirmed = $scopedBuilder()
             ->where('start_at >=', $dayStartUtc)
             ->where('start_at <=', $dayEndUtc)
             ->where('xs_appointments.status', AppointmentStatus::CONFIRMED)
-            ->countAllResults(false);
+            ->countAllResults();
 
         return [
             'total' => $total,
@@ -451,8 +455,12 @@ class DashboardService
         $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
 
         $builder = $this->userModel->builder();
+        // §4.4: use xs_user_roles (authoritative) for provider lookup via subquery
+        $userRolesTable = $db->prefixTable('user_roles');
         $builder->select('id, name, color')
-            ->where('role', 'provider');
+            ->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($userRolesTable): void {
+                $sub->select('user_id')->from($userRolesTable)->where('role', 'provider');
+            });
 
         if ($usersHasIsActive) {
             $builder->where('is_active', true);

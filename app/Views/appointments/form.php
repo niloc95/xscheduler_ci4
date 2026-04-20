@@ -49,6 +49,69 @@ $pageSubtitle = $isEditMode
         ], ['saveData' => false]) ?>
     </div>
 
+    <?php if ($isEditMode): ?>
+    <?php
+    // Current appointment summary banner — edit mode only
+    $apptStatusColors = [
+        'pending'     => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+        'confirmed'   => 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+        'completed'   => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+        'cancelled'   => 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+        'no_show'     => 'bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300',
+        'no-show'     => 'bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300',
+        'rescheduled' => 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+    ];
+    $apptStatus    = $appointment['status'] ?? 'pending';
+    $apptBadgeCss  = $apptStatusColors[$apptStatus] ?? $apptStatusColors['pending'];
+    $apptStatusLbl = ucfirst(str_replace('_', ' ', $apptStatus));
+    $apptTimeFormat = $localization['time_format'] ?? '24h';
+    $apptRawTime    = $appointment['time'] ?? '';
+    $apptDispTime   = '';
+    if ($apptRawTime !== '') {
+        try {
+            $apptDt      = new DateTime($apptRawTime);
+            $apptDispTime = $apptTimeFormat === '12h' ? $apptDt->format('g:i A') : $apptDt->format('H:i');
+        } catch (Exception $e) {
+            $apptDispTime = $apptRawTime;
+        }
+    }
+    $apptDispDate = '';
+    if (!empty($appointment['date'])) {
+        try {
+            $apptDispDate = (new DateTime($appointment['date']))->format('D, d M Y');
+        } catch (Exception $e) {
+            $apptDispDate = $appointment['date'];
+        }
+    }
+    ?>
+    <!-- Current Appointment Summary -->
+    <div class="mb-6 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold <?= $apptBadgeCss ?>">
+            <?= esc($apptStatusLbl) ?>
+        </span>
+        <?php if (!empty($appointment['service_name'])): ?>
+        <span class="text-gray-700 dark:text-gray-200 font-medium">
+            <?= esc($appointment['service_name']) ?><?= !empty($appointment['service_duration']) ? ' (' . (int) $appointment['service_duration'] . ' min)' : '' ?>
+        </span>
+        <?php endif ?>
+        <?php if (!empty($appointment['provider_name'])): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="text-gray-700 dark:text-gray-200 flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs leading-none">person</span>
+            <?= esc($appointment['provider_name']) ?>
+        </span>
+        <?php endif ?>
+        <?php if ($apptDispDate): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="text-gray-700 dark:text-gray-200"><?= esc($apptDispDate) ?></span>
+        <?php endif ?>
+        <?php if ($apptDispTime): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="text-gray-700 dark:text-gray-200"><?= esc($apptDispTime) ?></span>
+        <?php endif ?>
+    </div>
+    <?php endif ?>
+
     <!-- Validation Errors -->
     <?php if (session('errors')): ?>
     <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

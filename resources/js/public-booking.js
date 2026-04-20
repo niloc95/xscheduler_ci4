@@ -167,6 +167,7 @@ function bootstrapPublicBooking() {
     if (state.manage.stage === 'reschedule') {
       bindFormControls('manage');
       root.querySelector('[data-manage-reset]')?.addEventListener('click', resetManageFlow);
+      root.querySelector('[data-manage-cancel]')?.addEventListener('click', handleManageCancel);
       return;
     }
 
@@ -248,6 +249,82 @@ function bootstrapPublicBooking() {
 
   function resetManageFlow() {
     updateManage(() => createManageDraft(context, defaultDate));
+  }
+
+  async function handleManageCancel() {
+    const appointment = state.manage.appointment;
+    const reference = appointment?.reference;
+
+    if (!reference || state.manage.cancelSubmitting) {
+      return;
+    }
+
+    if (appointment?.can_cancel === false) {
+      updateManage(prev => ({
+        ...prev,
+        cancelError: 'This appointment is too close to cancel online. Please contact us directly.',
+      }));
+      return;
+    }
+
+    const confirmed = window.confirm('Cancel this appointment? This action cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    updateManage(prev => ({ ...prev, cancelSubmitting: true, cancelError: '' }));
+
+    try {
+      const payload = {
+        email: state.manage.contact?.email || state.manage.formState?.form?.email || '',
+        phone: state.manage.contact?.phone || state.manage.formState?.form?.phone || '',
+        phone_country_code: state.manage.contact?.phone_country_code || state.manage.lookupForm?.phone_country_code || '',
+      };
+
+      const response = await fetch(`${bookingBase}/${encodeURIComponent(reference)}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(state.csrf.value ? { [state.csrf.header]: state.csrf.value } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      updateCsrfFromHeaders(response.headers);
+      const data = await safeJson(response);
+      updateCsrfFromBody(data);
+
+      if (!response.ok) {
+        const details = data?.details ?? {};
+        throw new SubmissionError(data?.error ?? 'Unable to cancel the booking.', details);
+      }
+
+      updateManage(prev => ({
+        ...prev,
+        cancelSubmitting: false,
+        cancelError: '',
+        stage: 'success',
+        success: data?.data ?? null,
+        appointment: data?.data ?? prev.appointment,
+      }));
+    } catch (error) {
+      if (error instanceof SubmissionError) {
+        updateManage(prev => ({
+          ...prev,
+          cancelSubmitting: false,
+          cancelError: error.message,
+        }));
+        return;
+      }
+
+      updateManage(prev => ({
+        ...prev,
+        cancelSubmitting: false,
+        cancelError: error.message ?? 'Unable to cancel the booking.',
+      }));
+    }
   }
 
   function handleProviderChange(value, target = 'booking') {
@@ -582,7 +659,7 @@ function bootstrapPublicBooking() {
 
     // Server-side flag: appointment is within the policy window or already past
     if (appointment.can_reschedule === false) {
-      const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+      const policy = context.reschedulePolicy ?? { enabled: true, label: '24 hours' };
       const reason = !policy.enabled
         ? 'Online rescheduling is not available for this booking. Please contact us directly.'
         : `This appointment is too close to reschedule online. Changes must be made at least ${policy.label ?? '24 hours'} before your appointment.`;
@@ -603,10 +680,13 @@ function bootstrapPublicBooking() {
       contact: {
         email: contact.email ?? prev.contact?.email ?? '',
         phone: contact.phone ?? prev.contact?.phone ?? '',
+        phone_country_code: contact.phone_country_code ?? prev.contact?.phone_country_code ?? '',
       },
       lookupError: '',
       lookupErrors: {},
       success: null,
+      cancelSubmitting: false,
+      cancelError: '',
     }));
 
     updateManageForm(prev => ({
@@ -1017,11 +1097,17 @@ function bootstrapPublicBooking() {
 
   function renderManageSection(manageState, ctx) {
     if (manageState.stage === 'success' && manageState.success) {
+      const successStatus = String(manageState.success?.status ?? '').toLowerCase();
+      const cancelled = successStatus === 'cancelled';
       return renderSuccess(manageState.success, ctx, {
-        title: 'Appointment updated',
-        subtitle: 'We emailed your updated confirmation with your secure manage link.',
+        title: cancelled ? 'Appointment cancelled' : 'Appointment updated',
+        subtitle: cancelled
+          ? 'Your appointment has been cancelled. Contact us anytime if you want to book again.'
+          : 'We emailed your updated confirmation with your secure manage link.',
         primaryButton: { label: 'Look up another booking', attr: 'data-manage-start-over' },
-        footerText: 'Need to adjust again? Open your secure manage link and confirm with email or phone.',
+        footerText: cancelled
+          ? 'Need another visit? Use Book a visit to reserve a new appointment.'
+          : 'Need to adjust again? Open your secure manage link and confirm with email or phone.',
       });
     }
 
@@ -1087,6 +1173,7 @@ function bootstrapPublicBooking() {
       ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
       : '';
     const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+    const cancelPolicy = ctx.cancelPolicy ?? { enabled: true, label: '24 hours' };
     const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
     const introCopy = hasPrefilledReference
       ? 'Confirm with the email or phone used when booking to continue.'
@@ -1097,10 +1184,10 @@ function bootstrapPublicBooking() {
     const referenceField = hasPrefilledReference
       ? `<input type="hidden" name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}">`
       : '';
-    const policyMessage = policy.enabled
-      ? `You can reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before the appointment.`
+    const policyMessage = policy.enabled || cancelPolicy.enabled
+      ? `Online changes: reschedule up to ${escapeHtml(policy.label ?? '24 hours')} and cancel up to ${escapeHtml(cancelPolicy.label ?? '24 hours')} before the appointment.`
       : 'Online changes are disabled. Contact the office for assistance.';
-    const policyClass = policy.enabled ? 'text-slate-600' : 'text-amber-600';
+    const policyClass = policy.enabled || cancelPolicy.enabled ? 'text-slate-600' : 'text-amber-600';
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1167,6 +1254,15 @@ function bootstrapPublicBooking() {
       const contactLine = contactEmail
         ? `Verified via <span class="font-semibold">${escapeHtml(contactEmail)}</span>`
         : (contactPhone ? `Verified via <span class="font-semibold">${escapeHtml(contactPhone)}</span>` : 'Contact verified');
+      const cancelDisabled = manageState.cancelSubmitting ? 'disabled' : '';
+      const cancelLabel = manageState.cancelSubmitting ? 'Cancelling...' : 'Cancel appointment';
+      const canCancel = appointment.can_cancel !== false;
+      const cancelButton = canCancel
+        ? `<button type="button" data-manage-cancel class="inline-flex items-center justify-center rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-400 hover:text-red-800" ${cancelDisabled}>${escapeHtml(cancelLabel)}</button>`
+        : '';
+      const cancelError = manageState.cancelError
+        ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(manageState.cancelError)}</div>`
+        : '';
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1176,8 +1272,12 @@ function bootstrapPublicBooking() {
             <p class="mt-0.5 text-base text-slate-900">Verified secure reference</p>
             <p class="mt-2 text-sm text-slate-600">${contactLine}</p>
           </div>
-          <button type="button" data-manage-reset class="${UI_CLASSES.buttonSecondary}">Use a different reference</button>
+          <div class="flex flex-wrap items-center gap-2">
+            ${cancelButton}
+            <button type="button" data-manage-reset class="${UI_CLASSES.buttonSecondary}">Use a different reference</button>
+          </div>
         </div>
+        ${cancelError}
         <dl class="mt-6 grid gap-4 text-left md:grid-cols-3">
           <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Current time</dt>
@@ -1899,14 +1999,16 @@ function bootstrapPublicBooking() {
     return {
       stage: 'lookup',
       hasPrefilledReference: Boolean(prefilledReference.trim()),
-      lookupForm: { reference: prefilledReference, email: '', phone: '' },
+      lookupForm: { reference: prefilledReference, email: '', phone: '', phone_country_code: '' },
       lookupErrors: {},
       lookupError: '',
       lookupLoading: false,
       appointment: null,
       searchResults: [],
       success: null,
-      contact: { email: '', phone: '' },
+      contact: { email: '', phone: '', phone_country_code: '' },
+      cancelSubmitting: false,
+      cancelError: '',
       formState: {
         providerId: '',
         serviceId: '',

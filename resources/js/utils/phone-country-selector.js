@@ -89,6 +89,83 @@ function detectFromPhoneValue(rawValue) {
   return match?.code || null;
 }
 
+function digitsOnly(value) {
+  return String(value || '').replace(/\D+/g, '');
+}
+
+function normalizeCountryCodeForInput(value) {
+  const normalized = resolveCountryCode(value);
+  return normalized || null;
+}
+
+export function splitPhoneForDisplay(rawValue, selectedCountryCode = null) {
+  const raw = String(rawValue || '').trim();
+  if (!raw) {
+    return {
+      countryCode: normalizeCountryCodeForInput(selectedCountryCode),
+      localNumber: '',
+    };
+  }
+
+  const normalizedRaw = raw.startsWith('00') ? `+${raw.slice(2)}` : raw;
+  const providedCode = normalizeCountryCodeForInput(selectedCountryCode);
+
+  if (!normalizedRaw.startsWith('+')) {
+    return {
+      countryCode: providedCode,
+      localNumber: normalizedRaw,
+    };
+  }
+
+  const phoneDigits = digitsOnly(normalizedRaw.slice(1));
+  const detectedCode = detectFromPhoneValue(normalizedRaw) || providedCode;
+
+  if (!detectedCode) {
+    return {
+      countryCode: providedCode,
+      localNumber: phoneDigits,
+    };
+  }
+
+  const countryDigits = detectedCode.slice(1);
+  let local = phoneDigits.startsWith(countryDigits)
+    ? phoneDigits.slice(countryDigits.length)
+    : phoneDigits;
+
+  // South African local display convention keeps a leading 0.
+  if (detectedCode === '+27' && local && !local.startsWith('0')) {
+    local = `0${local}`;
+  }
+
+  return {
+    countryCode: detectedCode,
+    localNumber: local,
+  };
+}
+
+export function normalizeLocalPhoneForCountry(rawValue, countryCode, options = {}) {
+  const { forStorage = false } = options;
+  const normalizedCode = normalizeCountryCodeForInput(countryCode);
+  let localDigits = digitsOnly(rawValue);
+
+  if (!localDigits) {
+    return '';
+  }
+
+  if (normalizedCode) {
+    const countryDigits = normalizedCode.slice(1);
+    if (localDigits.startsWith(countryDigits)) {
+      localDigits = localDigits.slice(countryDigits.length);
+    }
+  }
+
+  if (forStorage && normalizedCode === '+27') {
+    localDigits = localDigits.replace(/^0+/, '');
+  }
+
+  return localDigits;
+}
+
 function buildSelect(name, selectedCode, inputClassName = '') {
   const select = document.createElement('select');
   select.name = name;
@@ -162,7 +239,8 @@ export function initPhoneCountrySelectors(root = document, options = {}) {
     }
 
     const inferred = detectFromPhoneValue(input.value);
-    const select = buildSelect(countryFieldName, inferred || defaultCode, input.className);
+    const selectedCode = inferred || defaultCode;
+    const select = buildSelect(countryFieldName, selectedCode, input.className);
 
     const inlineWrapper = document.createElement('div');
     inlineWrapper.className = 'grid grid-cols-[6.5rem_1fr] gap-2 items-start';
@@ -174,6 +252,15 @@ export function initPhoneCountrySelectors(root = document, options = {}) {
     input.parentNode?.insertBefore(inlineWrapper, input);
     inlineWrapper.appendChild(select);
     inlineWrapper.appendChild(input);
+
+    const splitValue = splitPhoneForDisplay(input.value, selectedCode);
+    if (splitValue.countryCode) {
+      select.value = splitValue.countryCode;
+    }
+    if (splitValue.localNumber !== '') {
+      input.value = splitValue.localNumber;
+    }
+
     input.dataset.phoneCountryEnhanced = 'true';
   });
 }

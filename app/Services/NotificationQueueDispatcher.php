@@ -74,6 +74,7 @@ use App\Models\NotificationQueueModel;
 use App\Services\NotificationDeliveryLogService;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationOptOutService;
+use App\Services\BookingLinkService;
 
 class NotificationQueueDispatcher
 {
@@ -370,13 +371,25 @@ class NotificationQueueDispatcher
             ->where('business_id', $businessId)
             ->where('channel', $channel)
             ->first();
-        return (bool) ($row['is_active'] ?? false);
+
+        if ((bool) ($row['is_active'] ?? false)) {
+            return true;
+        }
+
+        // Development-only fallback: allow email notifications through Config\Email
+        // (.env) when no active xs_business_integrations row is present.
+        if ($channel === 'email') {
+            return (new NotificationEmailService())->canUseDevelopmentFallbackSmtp();
+        }
+
+        return false;
     }
 
     protected function sendEmail(int $businessId, string $eventType, array $appt): array
     {
         $recipientClass = (string) ($appt['recipient_class'] ?? 'customer');
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = (string) ($appt['recipient_email'] ?? $appt['customer_email'] ?? '');
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'error' => 'Missing/invalid recipient email.'];
@@ -417,10 +430,10 @@ class NotificationQueueDispatcher
             'start_datetime'   => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link'  => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url'      => base_url('booking'),
+            'reschedule_link'  => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url'      => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
-            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments/view/' . $appointmentRef) : base_url('appointments'),
+            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments?open=' . rawurlencode($appointmentRef)) : base_url('appointments'),
             'internal_edit_link' => $appointmentRef !== '' ? base_url('appointments/edit/' . $appointmentRef) : base_url('appointments'),
             'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
             'booked_via' => $bookedVia,
@@ -447,6 +460,7 @@ class NotificationQueueDispatcher
     protected function sendSmsReminder(int $businessId, array $appt): array
     {
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
             return ['ok' => false, 'error' => 'Missing/invalid customer phone (+E.164).'];
@@ -466,8 +480,8 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url' => base_url('booking'),
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
@@ -489,6 +503,7 @@ class NotificationQueueDispatcher
     protected function sendWhatsApp(int $businessId, string $eventType, array $appt): array
     {
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
             return ['ok' => false, 'error' => 'Missing/invalid customer phone (+E.164).'];
@@ -508,8 +523,8 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url' => base_url('booking'),
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 

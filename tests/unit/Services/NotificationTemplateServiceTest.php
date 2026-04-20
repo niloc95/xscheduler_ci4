@@ -167,6 +167,151 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         }
     }
 
+    public function testRenderUsesDefaultWorkingHoursWhenGlobalRowsMissing(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+            'business.work_start',
+            'business.work_end',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        $backupRows = $this->backupGlobalBusinessHoursRows($db);
+
+        try {
+            $db->table('business_hours')
+                ->groupStart()
+                ->where('provider_id', 0)
+                ->orWhere('provider_id', null)
+                ->groupEnd()
+                ->delete();
+
+            $this->seedSetting($db, 'notification_template.appointment_confirmed.email', json_encode([
+                'subject' => 'Confirmed',
+                'body' => 'Hours: {business_hours}',
+            ]), 'json');
+            $this->seedSetting($db, 'business.work_start', '09:00', 'string');
+            $this->seedSetting($db, 'business.work_end', '17:00', 'string');
+
+            $service = new NotificationTemplateService();
+            $result = $service->render('appointment_confirmed', 'email', []);
+
+            $this->assertStringContainsString('Mon', $result['body']);
+            $this->assertStringContainsString('09:00', $result['body']);
+            $this->assertStringContainsString('17:00', $result['body']);
+            $this->assertStringNotContainsString('Please contact us for business hours.', $result['body']);
+        } finally {
+            $this->restoreGlobalBusinessHoursRows($db, $backupRows);
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
+    public function testRenderUsesBusinessHoursFallbackTextWhenGlobalRowsAndDefaultSettingsMissing(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+            'business.work_start',
+            'business.work_end',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        $backupRows = $this->backupGlobalBusinessHoursRows($db);
+
+        try {
+            $db->table('business_hours')
+                ->groupStart()
+                ->where('provider_id', 0)
+                ->orWhere('provider_id', null)
+                ->groupEnd()
+                ->delete();
+
+            $this->seedSetting($db, 'notification_template.appointment_confirmed.email', json_encode([
+                'subject' => 'Confirmed',
+                'body' => 'Hours: {business_hours}',
+            ]), 'json');
+
+            $service = new NotificationTemplateService();
+            $result = $service->render('appointment_confirmed', 'email', []);
+
+            $this->assertSame('Hours: Please contact us for business hours.', $result['body']);
+        } finally {
+            $this->restoreGlobalBusinessHoursRows($db, $backupRows);
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
+    public function testRenderFormatsBusinessHoursWhenGlobalRowsExist(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $db = \Config\Database::connect('tests');
+        $keys = [
+            'notification_template.appointment_confirmed.email',
+        ];
+
+        $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        $backupRows = $this->backupGlobalBusinessHoursRows($db);
+
+        try {
+            $db->table('business_hours')
+                ->groupStart()
+                ->where('provider_id', 0)
+                ->orWhere('provider_id', null)
+                ->groupEnd()
+                ->delete();
+
+            $now = date('Y-m-d H:i:s');
+            $db->query('SET FOREIGN_KEY_CHECKS=0');
+            try {
+                $db->table('business_hours')->insertBatch([
+                    [
+                        'provider_id' => 0,
+                        'weekday' => 1,
+                        'start_time' => '09:00:00',
+                        'end_time' => '17:00:00',
+                        'breaks_json' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                    [
+                        'provider_id' => 0,
+                        'weekday' => 2,
+                        'start_time' => '10:00:00',
+                        'end_time' => '18:00:00',
+                        'breaks_json' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                ]);
+            } finally {
+                $db->query('SET FOREIGN_KEY_CHECKS=1');
+            }
+
+            $this->seedSetting($db, 'notification_template.appointment_confirmed.email', json_encode([
+                'subject' => 'Confirmed',
+                'body' => "Hours:\n{business_hours}",
+            ]), 'json');
+
+            $service = new NotificationTemplateService();
+            $result = $service->render('appointment_confirmed', 'email', []);
+
+            $this->assertStringContainsString('Mon', $result['body']);
+            $this->assertStringContainsString('09:00', $result['body']);
+            $this->assertStringContainsString('Tue', $result['body']);
+            $this->assertStringContainsString('10:00', $result['body']);
+            $this->assertStringNotContainsString('Please contact us for business hours.', $result['body']);
+        } finally {
+            $this->restoreGlobalBusinessHoursRows($db, $backupRows);
+            $db->table('settings')->whereIn('setting_key', $keys)->delete();
+        }
+    }
+
     public function testGetTemplateForInternalReturnsInternalFallbackWhenNoDbRowExists(): void
     {
         // Uses the code-level DEFAULT_INTERNAL_TEMPLATES when no xs_message_templates row exists.
@@ -221,6 +366,35 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    private function backupGlobalBusinessHoursRows($db): array
+    {
+        return $db->table('business_hours')
+            ->select('provider_id, weekday, start_time, end_time, breaks_json, created_at, updated_at')
+            ->groupStart()
+            ->where('provider_id', 0)
+            ->orWhere('provider_id', null)
+            ->groupEnd()
+            ->orderBy('weekday', 'ASC')
+            ->get()
+            ->getResultArray();
+    }
+
+    private function restoreGlobalBusinessHoursRows($db, array $rows): void
+    {
+        $db->table('business_hours')
+            ->groupStart()
+            ->where('provider_id', 0)
+            ->orWhere('provider_id', null)
+            ->groupEnd()
+            ->delete();
+
+        if ($rows === []) {
+            return;
+        }
+
+        $db->table('business_hours')->insertBatch($rows);
     }
 
     private function configureTestingDatabaseEnvironment(): void

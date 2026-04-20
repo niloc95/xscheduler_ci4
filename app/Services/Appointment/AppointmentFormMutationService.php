@@ -49,6 +49,22 @@ class AppointmentFormMutationService
             return $this->validationFailure($this->validation->getErrors());
         }
 
+        if (empty($customerId)) {
+            $normalizedPhone = $this->phoneNumberService->normalize(
+                $payload['customer_phone'] ?? null,
+                $payload['customer_phone_country_code'] ?? null
+            );
+
+            if ($normalizedPhone === null) {
+                return $this->validationFailure([
+                    'customer_phone' => 'Please enter a valid phone number for the selected country code.',
+                ]);
+            }
+
+            // Keep normalized value so downstream create path is deterministic.
+            $payload['customer_phone'] = $normalizedPhone;
+        }
+
         $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime(
             (string) ($payload['appointment_date'] ?? ''),
             (string) ($payload['appointment_time'] ?? ''),
@@ -80,6 +96,17 @@ class AppointmentFormMutationService
             return $this->validationFailure($this->validation->getErrors());
         }
 
+        $normalizedPhone = $this->phoneNumberService->normalize(
+            $payload['customer_phone'] ?? null,
+            $payload['customer_phone_country_code'] ?? null
+        );
+
+        if ($normalizedPhone === null) {
+            return $this->validationFailure([
+                'customer_phone' => 'Please enter a valid phone number for the selected country code.',
+            ]);
+        }
+
         $normalizedStart = $this->appointmentDateTimeNormalizer->normalizeDateAndTime(
             (string) ($payload['appointment_date'] ?? ''),
             (string) ($payload['appointment_time'] ?? ''),
@@ -92,10 +119,7 @@ class AppointmentFormMutationService
 
         $startTimeStored = $normalizedStart['utc'] ?? '';
         $customerData = $this->appointmentFormSubmissionService->buildCustomerUpdateData($payload);
-        $customerData['phone'] = $this->phoneNumberService->normalize(
-            $customerData['phone'] ?? null,
-            $payload['customer_phone_country_code'] ?? null
-        ) ?? '';
+        $customerData['phone'] = $normalizedPhone;
         $this->customerModel->update((int) $existingAppointment['customer_id'], $customerData);
 
         $appointmentData = $this->appointmentFormSubmissionService->buildUpdateAppointmentData($payload, $normalizedStart);

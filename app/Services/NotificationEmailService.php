@@ -274,6 +274,12 @@ class NotificationEmailService
 
     /**
      * Sends a test email and updates integration health status.
+     *
+     * §7.3.6 Isolation: This method intentionally bypasses MailerService and
+     * constructs a CI4 Email driver directly from the caller-supplied config.
+     * This bypass is load-bearing for the settings integration wizard — it must
+     * test raw SMTP credentials in real time before they are persisted as the
+     * active transport config. Do NOT route this through MailerService.
      */
     public function sendTestEmail(int $businessId, string $toEmail): array
     {

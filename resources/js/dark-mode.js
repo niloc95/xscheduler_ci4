@@ -54,7 +54,8 @@ class DarkModeManager {
     applyTheme(theme) {
         this.theme = theme;
 
-        document.documentElement.setAttribute('data-theme', theme);
+        // §6.4: canonical theme source is document.documentElement.dataset.theme
+        document.documentElement.dataset.theme = theme;
         
         // Add/remove .dark class for Tailwind's dark mode utilities
         if (theme === 'dark') {
@@ -163,6 +164,14 @@ if (document.readyState === 'loading') {
     // Document already parsed
     window.darkMode = new DarkModeManager();
 }
+
+// §6.2: re-wire toggle buttons after each SPA navigation so dynamically
+// loaded content can contain [data-theme-toggle] buttons.
+document.addEventListener('spa:navigated', () => {
+    if (window.darkMode) {
+        window.darkMode.initToggleButtons();
+    }
+});
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {

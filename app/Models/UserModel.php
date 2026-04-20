@@ -417,11 +417,25 @@ class UserModel extends BaseModel
     }
 
     /**
-     * Get users by role with active status
+     * Scope query to users who have the given role in xs_user_roles (authoritative).
+     * Returns $this for chaining. Use instead of ->where('role', ...) to respect
+     * multi-role membership per §4.4 Canonical RBAC Pattern.
+     */
+    public function whereHasRole(string $role): static
+    {
+        $userRolesTable = $this->db->prefixTable('user_roles');
+        return $this->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $builder) use ($userRolesTable, $role): void {
+            $builder->select('user_id')->from($userRolesTable)->where('role', $role);
+        });
+    }
+
+    /**
+     * Get users by role with active status.
+     * Uses xs_user_roles (authoritative) via whereHasRole().
      */
     public function getUsersByRole(string $role): array
     {
-        $builder = $this->where('role', $role);
+        $builder = $this->whereHasRole($role);
 
         if ($this->hasUsersColumn('is_active')) {
             $builder->where('is_active', true);

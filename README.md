@@ -550,6 +550,31 @@ php spark cache:clear    # Clear all caches
 ./vendor/bin/phpunit tests/integration/    # Integration tests
 ```
 
+### Mailpit Password Reset URL Test (Development)
+
+Use this flow to verify reset emails and the reset-password URL end-to-end in local development:
+
+```bash
+# 1) Start Mailpit (SMTP + inbox UI)
+npm run mailpit:start
+
+# 2) Ensure local .env uses Mailpit SMTP
+# email.protocol = smtp
+# email.SMTPHost = 127.0.0.1
+# email.SMTPPort = 1025
+# email.SMTPCrypto =
+
+# 3) Open forgot-password form
+# http://localhost:8080/auth/forgot-password
+
+# 4) Submit an existing user email, then open Mailpit UI
+# http://127.0.0.1:8025
+```
+
+From the Mailpit message, click the reset URL and verify the reset form loads at:
+
+`/auth/reset-password/{token}`
+
 ### Focused Validation Commands
 
 ```bash

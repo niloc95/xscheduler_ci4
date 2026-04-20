@@ -924,13 +924,20 @@ class AppointmentBookingService
                 log_message('warning', '[AppointmentBookingService] No internal recipients resolved for appointment_id=' . $appointmentId . ', provider_id=' . $providerId . ', event=' . $eventType);
             }
             $queueSvc = new NotificationQueueService();
+            $seenRecipientIds = [];
             foreach ($users as $user) {
+                $recipientUserId = (int) ($user['id'] ?? 0);
+                if ($recipientUserId <= 0 || isset($seenRecipientIds[$recipientUserId])) {
+                    continue;
+                }
+                $seenRecipientIds[$recipientUserId] = true;
+
                 $queueSvc->enqueueInternalEvent(
                     NotificationCatalog::BUSINESS_ID_DEFAULT,
                     'email',
                     $eventType,
                     $appointmentId,
-                    (int) $user['id']
+                    $recipientUserId
                 );
             }
         } catch (\Throwable $e) {

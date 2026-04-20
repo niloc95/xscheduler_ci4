@@ -1,4 +1,5 @@
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { normalizeLocalPhoneForCountry } from '../../utils/phone-country-selector.js';
 
 function getAppointmentForm() {
     return document.querySelector('[data-appointment-form="true"]')
@@ -69,6 +70,25 @@ function updateCsrfFromResponse(response, form) {
     }
 }
 
+function normalizeCustomerPhonePayload(form, formData) {
+    const phoneInput = form.querySelector('input[name="customer_phone"]');
+    const countrySelect = form.querySelector('select[name="customer_phone_country_code"]');
+
+    if (!(phoneInput instanceof HTMLInputElement) || !(countrySelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const selectedCountryCode = String(formData.get('customer_phone_country_code') || countrySelect.value || '').trim();
+    const normalizedLocal = normalizeLocalPhoneForCountry(
+        String(formData.get('customer_phone') || phoneInput.value || ''),
+        selectedCountryCode,
+        { forStorage: false }
+    );
+
+    formData.set('customer_phone', normalizedLocal);
+    formData.set('customer_phone_country_code', selectedCountryCode);
+}
+
 /**
  * Appointments Booking Form Module
  *
@@ -121,6 +141,8 @@ export async function initAppointmentForm() {
             const formData = new FormData(form);
             const formActionUrl = form.getAttribute('action');
             const csrf = syncCsrfIntoForm(form);
+
+            normalizeCustomerPhonePayload(form, formData);
 
             if (csrf.tokenValue) {
                 formData.set(csrf.tokenName, csrf.tokenValue);

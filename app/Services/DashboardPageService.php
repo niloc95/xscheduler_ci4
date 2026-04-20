@@ -256,8 +256,59 @@ class DashboardPageService
                 'total' => 0,
                 'upcoming' => 0,
                 'pending' => 0,
+                'confirmed' => 0,
                 'cancelled' => 0,
             ],
         ];
+    }
+
+    /**
+     * Render the Today's Schedule fragment for the AJAX endpoint.
+     *
+     * Resolves the current user's provider scope, fetches today's appointments
+     * via DashboardService::getTodaySchedule(), and returns the rendered HTML
+     * partial ready to be swapped into #dashboard-schedule-body by the client.
+     *
+     * @return array{statusCode: int, html: string}
+     */
+    public function getScheduleEndpointResponse(): array
+    {
+        $currentUser = session()->get('user');
+        if (!$currentUser) {
+            return [
+                'statusCode' => 401,
+                'html' => '<p class="text-sm text-gray-500 dark:text-gray-400 p-4">Unauthorized</p>',
+            ];
+        }
+
+        $userRole   = $this->authService->getUserRole($currentUser);
+        $providerId = $this->authService->getProviderId($currentUser);
+
+        if (!$this->authService->canViewDashboardMetrics($userRole)) {
+            return [
+                'statusCode' => 403,
+                'html' => '<p class="text-sm text-gray-500 dark:text-gray-400 p-4">Access denied</p>',
+            ];
+        }
+
+        $providerScope    = $this->authService->getProviderScope($userRole, $providerId);
+        $scopeProviderId  = is_array($providerScope)
+            ? ($providerScope['provider_id'] ?? $providerId)
+            : $providerScope;
+
+        $schedule = $this->dashboardService->getTodaySchedule($scopeProviderId);
+
+        return [
+            'statusCode' => 200,
+            'html' => view('dashboard/_schedule_fragment', ['schedule' => $schedule]),
+        ];
+    }
+
+    /**
+     * Fallback HTML returned when getScheduleEndpointResponse() throws.
+     */
+    public function getScheduleErrorHtml(): string
+    {
+        return '<div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400">Unable to load schedule</div>';
     }
 }
