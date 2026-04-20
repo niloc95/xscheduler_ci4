@@ -63,6 +63,7 @@ use App\Models\BlockedTimeModel;
 use App\Models\ServiceModel;
 use App\Models\SettingModel;
 use App\Services\ConflictService;
+use App\Services\TimezoneService;
 use DateInterval;
 use DateTime;
 use DateTimeImmutable;
@@ -222,10 +223,11 @@ class AvailabilityService
         int $providerId,
         string $startTime,
         string $endTime,
-        string $timezone = 'UTC',
+        ?string $timezone = null,
         ?int $excludeAppointmentId = null,
         ?int $locationId = null
     ): array {
+        $timezone ??= TimezoneService::businessTimezone();
         $start = new DateTime($startTime, new DateTimeZone($timezone));
         $end = new DateTime($endTime, new DateTimeZone($timezone));
         $date = $start->format('Y-m-d');

@@ -430,6 +430,7 @@ class NotificationQueueDispatcher
             'start_datetime'   => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
+            'display_timezone' => $displayTimezone,
             'reschedule_link'  => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
             'booking_url'      => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
@@ -480,6 +481,7 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
+            'display_timezone' => $displayTimezone,
             'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
             'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
@@ -523,6 +525,7 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
+            'display_timezone' => $displayTimezone,
             'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
             'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),

@@ -1080,6 +1080,38 @@ Notes:
 - xs_location_days is currently a minimal 3-column table.
 - xs_notification_queue uses modern locking/idempotency columns; do not assume legacy queue columns.
 
+### 12.6 Timezone Integrity Rules (Single Source of Truth)
+
+**Rule:** All datetime values stored in `xs_*` tables are UTC. Convert to local only at display time.
+
+**Single source of truth:** `localization.timezone` in `xs_settings` (read via `LocalizationSettingsService::getTimezone()`).
+
+**Canonical PHP service:** `TimezoneService` — use these methods and no others for datetime conversion:
+- `TimezoneService::toDisplay($utcString, $tz)` — UTC → display timezone string (`Y-m-d H:i:s`)
+- `TimezoneService::toStorage($localString, $tz)` — local → UTC for DB writes
+- `TimezoneService::businessTimezone()` — reads `localization.timezone`, cached per-request
+
+**Never do:**
+- `new \DateTime($localString)` without a `\DateTimeZone` argument when the string is in a non-UTC timezone
+- Pass `start_at` (UTC) directly to template rendering; always convert via `toDisplay()` first
+- Use `date()` / `new \DateTime()` without explicit timezone when building notification content
+
+**Notification pipeline contract:**
+- `NotificationQueueDispatcher` converts `start_at` (UTC) → `start_datetime` (display TZ local string) before calling template service
+- `NotificationQueueDispatcher` passes `display_timezone` key in all `$templateData` arrays
+- `NotificationTemplateService::buildPlaceholders()` creates `new \DateTime($data['start_datetime'], new \DateTimeZone($data['display_timezone'] ?? 'UTC'))` — always explicit timezone
+- Google Calendar links require UTC: convert `start_datetime` from display TZ → UTC before formatting with `\Z`
+
+**JS contract:**
+- `window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`
+- All scheduler views (SchedulerCore, DayView) parse API datetimes as UTC via Luxon: `DateTime.fromISO(val, {zone:'utc'}).setZone(appTimezone)`
+- Public booking JS uses `context.timezone` (from `PublicBookingService::buildViewContext()`) — do not omit this key
+- `X-Client-Timezone` / `client_timezone` are browser hints only; `localization.timezone` always takes priority
+
+**AvailabilityService contract:**
+- `isSlotAvailable()` `$timezone` parameter is `?string` with `null` resolving via `TimezoneService::businessTimezone()`
+- Always pass the correct business/booking timezone explicitly; do not rely on the default
+
 ## 13) Migration and Schema-Drift Rules
 
 ### 13.1 Migration Base Requirement

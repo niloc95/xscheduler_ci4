@@ -15,7 +15,20 @@ function getBrowserTimezone() {
 }
 
 function getTimezoneOffset() {
-    return new Date().getTimezoneOffset();
+    // Derive UTC offset in minutes from the same IANA timezone as getBrowserTimezone(),
+    // keeping X-Client-Offset consistent with X-Client-Timezone (both browser TZ).
+    try {
+        const tz = getBrowserTimezone();
+        const now = new Date();
+        // Build a UTC timestamp for the same wall-clock time in the target timezone
+        const localMs = new Date(
+            now.toLocaleString('en-CA', { timeZone: tz, hour12: false })
+                .replace(' ', 'T') + 'Z'
+        ).getTime();
+        return Math.round((now.getTime() - localMs) / 60000);
+    } catch {
+        return new Date().getTimezoneOffset();
+    }
 }
 
 function attachTimezoneHeaders() {
