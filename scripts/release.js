@@ -52,6 +52,7 @@ const dryRun = hasFlag('dry-run');
 const skipBuild = hasFlag('skip-build');
 const skipPackage = hasFlag('skip-package');
 const force = hasFlag('force');
+const syncChangelogOnly = hasFlag('sync-changelog');
 
 // Colors for console output
 const colors = {
@@ -113,6 +114,10 @@ function writePackageJson(data) {
     fs.writeFileSync(packagePath, JSON.stringify(data, null, 2) + '\n');
 }
 
+function readJson(relativePath) {
+    return JSON.parse(fs.readFileSync(path.join(projectRoot, relativePath), 'utf8'));
+}
+
 // Parse semver version
 function parseVersion(version) {
     const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?$/);
@@ -133,6 +138,288 @@ function formatVersion(v) {
         version += `-${v.prerelease}.${v.prereleaseNum}`;
     }
     return version;
+}
+
+function readReleaseConfig() {
+    const configPath = path.join(projectRoot, '.github', 'release-config.json');
+    if (!fs.existsSync(configPath)) {
+        return null;
+    }
+
+    return readJson(path.join('.github', 'release-config.json'));
+}
+
+function getRemoteUrl() {
+    return runSilent('git remote get-url origin');
+}
+
+function getRepoInfo() {
+    const remote = getRemoteUrl();
+    const match = remote.match(/github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?$/i);
+
+    if (match) {
+        return { owner: match[1], repo: match[2] };
+    }
+
+    return { owner: 'niloc95', repo: 'xscheduler_ci4' };
+}
+
+function getLatestTag(ref = 'HEAD') {
+    return runSilent(`git describe --tags --abbrev=0 ${ref}`);
+}
+
+function getPreviousTag(tag) {
+    return runSilent(`git describe --tags --abbrev=0 ${tag}^`);
+}
+
+function getTagDate(tag) {
+    return runSilent(`git log -1 --format=%cI ${tag}`);
+}
+
+function getCommitSubjects(range) {
+    if (!range) {
+        return [];
+    }
+
+    const output = runSilent(`git log --no-merges --pretty=format:%s ${range}`);
+
+    return output
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .filter((line) => !/^\{.*\}$/.test(line))
+        .filter((line) => !/^chore:\s+release\s+v/i.test(line));
+}
+
+function categorizeFromTitle(subject) {
+    const normalized = subject.toLowerCase();
+
+    if (normalized.startsWith('feat') || normalized.startsWith('feature')) {
+        return 'Added';
+    }
+
+    if (normalized.startsWith('fix') || normalized.includes(' bug')) {
+        return 'Fixed';
+    }
+
+    if (normalized.startsWith('security')) {
+        return 'Security';
+    }
+
+    if (
+        normalized.startsWith('docs') ||
+        normalized.startsWith('refactor') ||
+        normalized.startsWith('perf') ||
+        normalized.startsWith('chore') ||
+        normalized.startsWith('build') ||
+        normalized.startsWith('ci') ||
+        normalized.startsWith('style') ||
+        normalized.startsWith('test')
+    ) {
+        return 'Changed';
+    }
+
+    return 'Changed';
+}
+
+function categorizeFromLabels(labels = []) {
+    const labelSet = new Set(labels.map((label) => label.toLowerCase()));
+
+    if (labelSet.has('security')) {
+        return 'Security';
+    }
+
+    if (labelSet.has('bug') || labelSet.has('fix')) {
+        return 'Fixed';
+    }
+
+    if (labelSet.has('enhancement') || labelSet.has('feature')) {
+        return 'Added';
+    }
+
+    return null;
+}
+
+function buildGroupedEntries() {
+    return {
+        Added: [],
+        Changed: [],
+        Fixed: [],
+        Security: [],
+    };
+}
+
+function dedupeEntries(entries) {
+    return [...new Set(entries)];
+}
+
+async function githubRequest(url, token) {
+    const response = await fetch(url, {
+        headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'User-Agent': 'xscheduler-release-script',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+}
+
+async function fetchMergedPullRequestsSince(sinceDate) {
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    if (!token || !sinceDate) {
+        return [];
+    }
+
+    const { owner, repo } = getRepoInfo();
+    const pullRequests = [];
+    let page = 1;
+
+    while (page <= 5) {
+        const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=100&page=${page}`;
+        const items = await githubRequest(url, token);
+
+        if (!Array.isArray(items) || items.length === 0) {
+            break;
+        }
+
+        let sawOlderPullRequest = false;
+
+        for (const item of items) {
+            if (!item.merged_at) {
+                continue;
+            }
+
+            if (item.merged_at <= sinceDate) {
+                sawOlderPullRequest = true;
+                continue;
+            }
+
+            pullRequests.push({
+                title: item.title,
+                number: item.number,
+                author: item.user?.login || 'unknown',
+                labels: (item.labels || []).map((label) => label.name),
+                mergedAt: item.merged_at,
+            });
+        }
+
+        if (sawOlderPullRequest) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    return pullRequests.sort((a, b) => a.mergedAt.localeCompare(b.mergedAt));
+}
+
+function buildEntriesFromPullRequests(pullRequests) {
+    const grouped = buildGroupedEntries();
+
+    for (const pullRequest of pullRequests) {
+        if (/^\{.*\}$/.test(pullRequest.title.trim())) {
+            continue;
+        }
+
+        const category = categorizeFromLabels(pullRequest.labels) || categorizeFromTitle(pullRequest.title);
+        grouped[category].push(`- ${pullRequest.title} (#${pullRequest.number}) by @${pullRequest.author}`);
+    }
+
+    return grouped;
+}
+
+function buildEntriesFromCommits(range) {
+    const grouped = buildGroupedEntries();
+
+    for (const subject of getCommitSubjects(range)) {
+        const category = categorizeFromTitle(subject);
+        grouped[category].push(`- ${subject}`);
+    }
+
+    return grouped;
+}
+
+function formatGroupedEntries(grouped) {
+    const sections = [];
+
+    for (const [heading, entries] of Object.entries(grouped)) {
+        const uniqueEntries = dedupeEntries(entries);
+        if (uniqueEntries.length === 0) {
+            continue;
+        }
+
+        sections.push(`### ${heading}\n${uniqueEntries.join('\n')}`);
+    }
+
+    if (sections.length === 0) {
+        return '### Changed\n- No unreleased changes documented yet.';
+    }
+
+    return sections.join('\n\n');
+}
+
+async function generateChangelogBody(referenceTag, targetRef = 'HEAD') {
+    const sinceDate = referenceTag ? getTagDate(referenceTag) : '';
+    const commitRange = referenceTag ? `${referenceTag}..${targetRef}` : targetRef;
+
+    try {
+        const pullRequests = await fetchMergedPullRequestsSince(sinceDate);
+        if (pullRequests.length > 0) {
+            return formatGroupedEntries(buildEntriesFromPullRequests(pullRequests));
+        }
+    } catch (error) {
+        log.warn(`GitHub PR metadata unavailable, falling back to commit parsing (${error.message})`);
+    }
+
+    return formatGroupedEntries(buildEntriesFromCommits(commitRange));
+}
+
+function replaceUnreleasedSection(changelog, body) {
+    const normalizedBody = body.trim();
+    const marker = '## [Unreleased]';
+    const startIndex = changelog.indexOf(marker);
+
+    if (startIndex === -1) {
+        return `## [Unreleased]\n\n${normalizedBody}\n\n${changelog}`;
+    }
+
+    const nextHeadingIndex = changelog.indexOf('\n## [', startIndex + marker.length);
+    const before = changelog.slice(0, startIndex);
+    const after = nextHeadingIndex === -1 ? '' : changelog.slice(nextHeadingIndex + 1);
+
+    return `${before}## [Unreleased]\n\n${normalizedBody}\n\n${after}`;
+}
+
+function upsertReferenceLink(changelog, label, url) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const linkPattern = new RegExp(`^\\[${escapedLabel}\\]: .*$`, 'm');
+    const replacement = `[${label}]: ${url}`;
+
+    if (linkPattern.test(changelog)) {
+        return changelog.replace(linkPattern, replacement);
+    }
+
+    return `${changelog.trimEnd()}\n${replacement}\n`;
+}
+
+function syncUnreleasedChangelog(body) {
+    const changelogPath = path.join(projectRoot, 'docs', 'changelog.md');
+    let changelog = fs.readFileSync(changelogPath, 'utf8');
+    const latestTag = getLatestTag();
+
+    changelog = replaceUnreleasedSection(changelog, body);
+    changelog = upsertReferenceLink(
+        changelog,
+        'Unreleased',
+        `https://github.com/${getRepoInfo().owner}/${getRepoInfo().repo}/compare/${latestTag || 'HEAD'}...HEAD`
+    );
+
+    fs.writeFileSync(changelogPath, changelog);
 }
 
 // Bump version based on type
@@ -183,7 +470,7 @@ function bumpVersion(currentVersion, type) {
 }
 
 // Update docs/changelog.md
-function updateChangelog(newVersion) {
+function updateChangelog(newVersion, body, previousTag) {
     const changelogPath = path.join(projectRoot, 'docs', 'changelog.md');
     if (!fs.existsSync(changelogPath)) {
         log.warn('docs/changelog.md not found, skipping changelog update');
@@ -192,33 +479,31 @@ function updateChangelog(newVersion) {
 
     let changelog = fs.readFileSync(changelogPath, 'utf8');
     const today = new Date().toISOString().split('T')[0];
-    
-    // Replace [Unreleased] section header with new version
-    const unreleasedRegex = /## \[Unreleased\]/;
-    if (unreleasedRegex.test(changelog)) {
-        changelog = changelog.replace(
-            unreleasedRegex,
-            `## [Unreleased]\n\n## [${newVersion}] - ${today}`
-        );
-        
-        // Update links at bottom
-        const pkg = readPackageJson();
-        const repoUrl = 'https://github.com/niloc95/xscheduler_ci4';
-        
-        // Add new version link if not exists
-        if (!changelog.includes(`[${newVersion}]:`)) {
-            const linkRegex = /(\[Unreleased\]:.*)/;
-            changelog = changelog.replace(
-                linkRegex,
-                `$1\n[${newVersion}]: ${repoUrl}/releases/tag/v${newVersion}`
-            );
-        }
-        
-        fs.writeFileSync(changelogPath, changelog);
-        log.success(`Updated docs/changelog.md with version ${newVersion}`);
-    } else {
+
+    const marker = '## [Unreleased]';
+    const startIndex = changelog.indexOf(marker);
+    if (startIndex === -1) {
         log.warn('Could not find [Unreleased] section in docs/changelog.md');
+        return;
     }
+
+    const nextHeadingIndex = changelog.indexOf('\n## [', startIndex + marker.length);
+    const before = changelog.slice(0, startIndex);
+    const after = nextHeadingIndex === -1 ? '' : changelog.slice(nextHeadingIndex + 1);
+    const releaseSection = `## [Unreleased]\n\n### Changed\n- No unreleased changes documented yet.\n\n## [${newVersion}] - ${today}\n\n${body.trim()}\n\n`;
+
+    changelog = `${before}${releaseSection}${after}`;
+
+    const { owner, repo } = getRepoInfo();
+    const baseCompare = previousTag
+        ? `https://github.com/${owner}/${repo}/compare/${previousTag}...v${newVersion}`
+        : `https://github.com/${owner}/${repo}/releases/tag/v${newVersion}`;
+
+    changelog = upsertReferenceLink(changelog, 'Unreleased', `https://github.com/${owner}/${repo}/compare/v${newVersion}...HEAD`);
+    changelog = upsertReferenceLink(changelog, newVersion, baseCompare);
+
+    fs.writeFileSync(changelogPath, changelog);
+    log.success(`Updated docs/changelog.md with version ${newVersion}`);
 }
 
 // Check for uncommitted changes
@@ -257,6 +542,23 @@ async function confirm(message) {
 async function release() {
     log.title('🚀 xScheduler Release Script');
 
+    const latestTag = getLatestTag();
+
+    if (syncChangelogOnly) {
+        log.step('Generating changelog entries for [Unreleased]...');
+        const changelogBody = await generateChangelogBody(latestTag);
+
+        if (dryRun) {
+            log.warn('DRY RUN - No files were modified');
+            console.log(`\n${changelogBody}\n`);
+            process.exit(0);
+        }
+
+        syncUnreleasedChangelog(changelogBody);
+        log.success('Synchronized docs/changelog.md [Unreleased] section');
+        process.exit(0);
+    }
+
     // Pre-flight checks
     log.step('Running pre-flight checks...');
 
@@ -284,6 +586,7 @@ async function release() {
     const currentVersion = pkg.version;
     const newVersion = specificVersion || bumpVersion(currentVersion, bumpType);
     const tag = `v${newVersion}`;
+    const changelogBody = await generateChangelogBody(latestTag);
 
     log.info(`Current version: ${currentVersion}`);
     log.info(`New version: ${newVersion}`);
@@ -309,6 +612,7 @@ async function release() {
         log.warn('DRY RUN - No changes will be made');
         log.info(`Would bump version: ${currentVersion} -> ${newVersion}`);
         log.info(`Would create tag: ${tag}`);
+        console.log(`\n${changelogBody}\n`);
         process.exit(0);
     }
 
@@ -333,7 +637,7 @@ async function release() {
 
     // Update docs/changelog.md
     log.step('Updating docs/changelog.md...');
-    updateChangelog(newVersion);
+    updateChangelog(newVersion, changelogBody, latestTag);
 
     // Git commit
     log.step('Creating git commit...');

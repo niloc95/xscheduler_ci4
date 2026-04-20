@@ -104,10 +104,24 @@ class NotificationTemplateService
         '{privacy_link}' => 'Privacy policy link or text',
         '{reschedule_link}' => 'Secure reschedule link',
         '{booking_url}' => 'Online booking URL',
+        '{booking_id}' => 'Booking/appointment ID',
+        '{internal_view_link}' => 'Internal link to view appointment',
+        '{internal_edit_link}' => 'Internal link to edit appointment',
+        '{internal_contact_link}' => 'Internal link to contact customer',
+        '{booked_via}' => 'Booking channel (web/app/admin)',
+        '{booked_timestamp}' => 'Booking timestamp',
         // Location placeholders
         '{location_name}' => 'Appointment location name',
         '{location_address}' => 'Appointment location address',
         '{location_contact}' => 'Appointment location contact number',
+        // Booking reference and calendar
+        '{booking_reference}' => 'Formatted booking reference (e.g. WS-2026-0042)',
+        '{calendar_link}' => 'Google Calendar add-to-calendar link',
+        // Map navigation links (resolved from appointment location → business address fallback)
+        '{google_maps_link}' => 'Google Maps URL for resolved appointment location',
+        '{waze_link}' => 'Waze navigation URL for resolved appointment location',
+        // Business hours
+        '{business_hours}' => 'Business opening hours (formatted, one line per day)',
     ];
 
     /**
@@ -117,61 +131,61 @@ class NotificationTemplateService
         'appointment_pending' => [
             'email' => [
                 'subject' => 'Your Appointment Request is Received — {service_name}',
-                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "⏳ Appt pending: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
+                'body' => "⏳ Booking received! {service_name} on {appointment_date} at {appointment_time}. Pending confirmation. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏳ *Appointment Pending*\n\nHi {customer_name}!\n\nYour appointment request has been received and is pending confirmation:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nManage booking: {reschedule_link}\nTerms: {terms_link}\nPrivacy: {privacy_link}\n\nWe will notify you as soon as your booking is confirmed.\n\nThank you for booking with {business_name}!"
+                'body' => "⏳ *Appointment Request Received*\n\nHi {customer_first_name}!\n\nWe've received your booking request and will confirm your appointment shortly.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\nWe will notify you once confirmed.\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "✅ Appt confirmed: {service_name} on {appointment_date} at {appointment_time} with {provider_name}. Manage: {reschedule_link}"
+                'body' => "✅ Confirmed: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_name}!\n\nYour appointment has been confirmed:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\n{cancellation_policy}\n\nManage booking: {reschedule_link}\nTerms: {terms_link}\nPrivacy: {privacy_link}\n\nThank you for booking with {business_name}!"
+                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_first_name}!\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_reminder' => [
             'email' => [
                 'subject' => 'Reminder: Your Appointment — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "⏰ Reminder: {service_name} on {appointment_date} at {appointment_time}. Manage: {reschedule_link}"
+                'body' => "⏰ Reminder: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. {location_name}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_name}!\n\nThis is a friendly reminder about your upcoming appointment:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nManage booking: {reschedule_link}\n\nWe look forward to seeing you!\n\n_{business_name}_"
+                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_first_name}!\n\nDon't forget — you have an upcoming appointment!\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
             ]
         ],
         'appointment_cancelled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Cancelled — {service_name} on {appointment_date}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon! Book a new appointment:\n{booking_url}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon!\nOpen booking page: {booking_url}\nIf the link is not clickable, copy and paste this URL:\n{booking_url}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "❌ Appt cancelled: {service_name} on {appointment_date}. Rebook/manage: {reschedule_link}"
+                'body' => "❌ Cancelled: {service_name} on {appointment_date}. Rebook: {booking_url}"
             ],
             'whatsapp' => [
-                'body' => "❌ *Appointment Cancelled*\n\nHi {customer_name},\n\nYour appointment has been cancelled:\n\n📅 *Date:* {appointment_date}\n🕐 *Time:* {appointment_time}\n💼 *Service:* {service_name}\n\nBook/reschedule: {reschedule_link}\n\n_{business_name}_"
+                'body' => "❌ *Appointment Cancelled*\n\nHi {customer_first_name},\n\nYour appointment has been cancelled.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n\n*Booking Ref:* #{booking_reference}\n\nWe hope to see you again soon! Book a new appointment:\n{booking_url}\n\n_{business_name}_"
             ]
         ],
         'appointment_rescheduled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Rescheduled — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nView details / Reschedule / Cancel: {reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "📅 Appt rescheduled: {service_name} now {appointment_date} at {appointment_time}. Link: {reschedule_link}"
+                'body' => "📅 Rescheduled: {service_name} is now {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_name}!\n\nYour appointment has been rescheduled to:\n\n📅 *New Date:* {appointment_date}\n🕐 *New Time:* {appointment_time}\n💼 *Service:* {service_name}\n👤 *With:* {provider_name}\n\nManage again: {reschedule_link}\n\n_{business_name}_"
+                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_first_name}!\n\nYour appointment has been moved to a new date and time.\n\n*New Date & Time*\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
             ]
         ],
     ];
@@ -191,6 +205,158 @@ class NotificationTemplateService
             'email' => ['{reschedule_link}'],
             'sms' => ['{reschedule_link}'],
             'whatsapp' => ['{reschedule_link}'],
+        ],
+    ];
+
+    /**
+     * Default internal (provider/staff-facing) email templates for all 5 appointment events.
+     * These mirror the content seeded by migration 2026-04-13-100400.
+     * Used as a code-level fallback when xs_message_templates rows are not yet present
+     * (e.g. migration not applied in production).
+     */
+    private const DEFAULT_INTERNAL_TEMPLATES = [
+        'appointment_pending' => [
+            'email' => [
+                'subject' => 'New Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Confirmed\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Internal Actions Required\n"
+                    . "- Confirm provider availability\n"
+                    . "- Prepare patient file\n"
+                    . "- Send customer confirmation\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_confirmed' => [
+            'email' => [
+                'subject' => 'New Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Confirmed\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Internal Actions Required\n"
+                    . "- Confirm provider availability\n"
+                    . "- Prepare patient file\n"
+                    . "- Send customer confirmation\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_cancelled' => [
+            'email' => [
+                'subject' => 'Appointment Cancelled: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Cancelled\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_rescheduled' => [
+            'email' => [
+                'subject' => 'Appointment Rescheduled: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Appointment Rescheduled\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
+        ],
+        'appointment_reminder' => [
+            'email' => [
+                'subject' => 'Upcoming Appointment: {customer_name} with {provider_name} - {appointment_date} at {appointment_time}',
+                'body' => "Upcoming Appointment Reminder\n"
+                    . "Booking ID: #{booking_id}\n\n"
+                    . "Appointment Details\n"
+                    . "Date: {appointment_date}\n"
+                    . "Time: {appointment_time}\n"
+                    . "Duration: {service_duration} minutes\n\n"
+                    . "Customer Information\n"
+                    . "Name: {customer_name}\n"
+                    . "Phone: {customer_phone}\n"
+                    . "Email: {customer_email}\n\n"
+                    . "Service Details\n"
+                    . "Service: {service_name}\n"
+                    . "Provider: {provider_name}\n"
+                    . "Location: {location_name} {location_address}\n\n"
+                    . "Quick Links\n"
+                    . "View full booking details: {internal_view_link}\n"
+                    . "Edit appointment: {internal_edit_link}\n"
+                    . "Contact customer: {internal_contact_link}\n\n"
+                    . "Booked via: {booked_via}\n"
+                    . "Timestamp: {booked_timestamp}\n\n"
+                    . "Manage booking:\n"
+                    . "{reschedule_link}",
+            ],
         ],
     ];
 
@@ -255,32 +421,66 @@ class NotificationTemplateService
      * @param string $channel Channel (email, sms, whatsapp)
      * @return array Template with 'subject' (if applicable) and 'body'
      */
-    public function getTemplate(string $eventType, string $channel): array
+    public function getTemplate(string $eventType, string $channel, string $recipientClass = 'customer'): array
     {
-        $cacheKey = "{$eventType}.{$channel}";
+        $cacheKey = "{$recipientClass}.{$eventType}.{$channel}";
         if (isset($this->templateCache[$cacheKey])) {
             return $this->templateCache[$cacheKey];
         }
 
-        // Try to load from database
-        $settingKey = "notification_template.{$eventType}.{$channel}";
-        $stored = $this->settingModel->getByKeys([$settingKey]);
-        
         $template = null;
-        if (!empty($stored[$settingKey])) {
-            $decoded = is_string($stored[$settingKey]) 
-                ? json_decode($stored[$settingKey], true) 
-                : $stored[$settingKey];
-            if (is_array($decoded) && !empty($decoded['body'])) {
-                $template = $decoded;
+
+        // For internal recipients: look up the seeded row in xs_message_templates directly.
+        if ($recipientClass === 'internal') {
+            try {
+                $row = (new \App\Models\MessageTemplateModel())
+                    ->where('event_type', $eventType)
+                    ->where('channel', $channel)
+                    ->where('recipient_class', 'internal')
+                    ->where('is_active', 1)
+                    ->orderBy('id', 'DESC')
+                    ->first();
+
+                if ($row && !empty($row['body'])) {
+                    $template = [
+                        'subject' => $row['subject'] ?? '',
+                        'body'    => $row['body'],
+                    ];
+                }
+            } catch (\Throwable $e) {
+                log_message('warning', '[NotificationTemplateService] Could not load internal template: ' . $e->getMessage());
             }
         }
 
-        // Fall back to defaults
+        // For customer recipients (or fallback when no internal template found):
+        // try the settings-based custom template, then fall back to hardcoded defaults.
+        if ($template === null && $recipientClass === 'customer') {
+            $settingKey = "notification_template.{$eventType}.{$channel}";
+            $stored     = $this->settingModel->getByKeys([$settingKey]);
+
+            if (!empty($stored[$settingKey])) {
+                $decoded = is_string($stored[$settingKey])
+                    ? json_decode($stored[$settingKey], true)
+                    : $stored[$settingKey];
+                if (is_array($decoded) && !empty($decoded['body'])) {
+                    $template = $decoded;
+                }
+            }
+        }
+
+        if ($template === null) {
+            // For internal recipients: use the internal code-level fallback before the
+            // customer-facing DEFAULT_TEMPLATES.  This prevents provider/staff from
+            // receiving a customer confirmation email when the migration hasn't been applied.
+            if ($recipientClass === 'internal') {
+                $template = self::DEFAULT_INTERNAL_TEMPLATES[$eventType][$channel] ?? null;
+            }
+        }
+
         if ($template === null) {
             $template = self::DEFAULT_TEMPLATES[$eventType][$channel] ?? [
                 'subject' => '',
-                'body' => '',
+                'body'    => '',
             ];
         }
 
@@ -296,10 +496,10 @@ class NotificationTemplateService
      * @param array $data Data for placeholder substitution
      * @return array Rendered template with 'subject' (if applicable) and 'body'
      */
-    public function render(string $eventType, string $channel, array $data): array
+    public function render(string $eventType, string $channel, array $data, string $recipientClass = 'customer'): array
     {
         $this->loadLegalContent();
-        $template = $this->getTemplate($eventType, $channel);
+        $template = $this->getTemplate($eventType, $channel, $recipientClass);
         $this->logIfRequiredPlaceholdersMissing($eventType, $channel, (string) ($template['body'] ?? ''));
 
         // Prepare placeholders
@@ -426,6 +626,71 @@ class NotificationTemplateService
         $termsLink = $this->legalContent['terms_url'] ?: base_url('booking/legal#terms');
         $privacyLink = $this->legalContent['privacy_url'] ?: base_url('booking/legal#privacy');
 
+        // Build booking reference (WS-{year}-{id})
+        $apptId = (int) ($data['booking_id'] ?? $data['appointment_id'] ?? 0);
+        if (!empty($data['start_datetime'])) {
+            try {
+                $refYear = (new \DateTime($data['start_datetime']))->format('Y');
+            } catch (\Exception $e) {
+                $refYear = date('Y');
+            }
+        } else {
+            $refYear = date('Y');
+        }
+        $bookingReference = $apptId > 0
+            ? 'WS-' . $refYear . '-' . str_pad($apptId, 4, '0', STR_PAD_LEFT)
+            : '';
+
+        // Resolve location with fallback to business address
+        $resolvedLocationName    = trim((string) ($data['location_name'] ?? ''));
+        $resolvedLocationAddress = trim((string) ($data['location_address'] ?? ''));
+        $resolvedLocationContact = trim((string) ($data['location_contact'] ?? ''));
+        if ($resolvedLocationAddress === '') {
+            $resolvedLocationAddress = (string) ($this->legalContent['business_address'] ?? '');
+        }
+
+        // Build Google Maps and Waze navigation links from resolved address
+        $googleMapsLink = '';
+        $wazeLink       = '';
+        $mapQuery = trim($resolvedLocationName . ' ' . $resolvedLocationAddress);
+        if ($mapQuery !== '') {
+            $enc            = urlencode($mapQuery);
+            $googleMapsLink = 'https://www.google.com/maps/search/?api=1&query=' . $enc;
+            $wazeLink       = 'https://waze.com/ul?q=' . $enc . '&navigate=yes';
+        }
+
+        // Build Google Calendar add-to-calendar link
+        $calendarLink = '';
+        if (!empty($data['start_datetime'])) {
+            try {
+                $calDt    = new \DateTime($data['start_datetime']);
+                $calStart = $calDt->format('Ymd\THis\Z');
+                $calDurationMinutes = (int) ($data['service_duration'] ?? $data['service']['duration'] ?? 60);
+                if ($calDurationMinutes < 1) {
+                    $calDurationMinutes = 60;
+                }
+                $calEndDt = clone $calDt;
+                $calEndDt->modify('+' . $calDurationMinutes . ' minutes');
+                $calEnd      = $calEndDt->format('Ymd\THis\Z');
+                $calTitle    = urlencode(
+                    ($data['service_name'] ?? $data['service']['name'] ?? 'Appointment')
+                    . ' with '
+                    . ($data['provider_name'] ?? $data['provider']['name'] ?? '')
+                );
+                $calDetails  = urlencode('Booking ref: ' . $bookingReference);
+                $calLocation = urlencode(trim(
+                    $resolvedLocationName . ' ' . $resolvedLocationAddress
+                ));
+                $calendarLink = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                    . '&text=' . $calTitle
+                    . '&dates=' . $calStart . '/' . $calEnd
+                    . '&details=' . $calDetails
+                    . '&location=' . $calLocation;
+            } catch (\Exception $e) {
+                $calendarLink = '';
+            }
+        }
+
         return [
             '{customer_name}' => $data['customer_name'] ?? $data['name'] ?? '',
             '{customer_first_name}' => $this->extractFirstName($data['customer_name'] ?? $data['name'] ?? ''),
@@ -447,11 +712,119 @@ class NotificationTemplateService
             '{privacy_link}' => $privacyLink,
             '{reschedule_link}' => $data['reschedule_link'] ?? '',
             '{booking_url}' => $data['booking_url'] ?? base_url('booking'),
-            // Location placeholders (from appointment snapshot)
-            '{location_name}' => $data['location_name'] ?? '',
-            '{location_address}' => $data['location_address'] ?? '',
-            '{location_contact}' => $data['location_contact'] ?? '',
+            '{booking_id}' => (string) ($data['booking_id'] ?? $data['appointment_id'] ?? ''),
+            '{internal_view_link}' => $data['internal_view_link'] ?? '',
+            '{internal_edit_link}' => $data['internal_edit_link'] ?? '',
+            '{internal_contact_link}' => $data['internal_contact_link'] ?? '',
+            '{booked_via}' => $data['booked_via'] ?? '',
+            '{booked_timestamp}' => $data['booked_timestamp'] ?? '',
+            // Location placeholders (resolved: appointment snapshot → business address fallback)
+            '{location_name}' => $resolvedLocationName,
+            '{location_address}' => $resolvedLocationAddress,
+            '{location_contact}' => $resolvedLocationContact,
+            // Booking reference and calendar link
+            '{booking_reference}' => $bookingReference,
+            '{calendar_link}' => $calendarLink,
+            // Map navigation links
+            '{google_maps_link}' => $googleMapsLink,
+            '{waze_link}' => $wazeLink,
+            // Business hours
+            '{business_hours}' => $this->buildBusinessHoursText(),
         ];
+    }
+
+    /**
+     * Build a formatted business hours text block from xs_business_hours global rows.
+     * Returns fallback text if no rows exist or on any DB error.
+     */
+    private function buildBusinessHoursText(): string
+    {
+        try {
+            $db   = \Config\Database::connect();
+            $rows = $db->table('xs_business_hours')
+                ->select('weekday, start_time, end_time')
+                ->groupStart()
+                ->where('provider_id', 0)
+                ->orWhere('provider_id', null)
+                ->groupEnd()
+                ->orderBy('weekday', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            if (empty($rows)) {
+                $defaultHours = $this->buildBusinessHoursFromDefaultSettings();
+                if ($defaultHours !== '') {
+                    return $defaultHours;
+                }
+
+                return 'Please contact us for business hours.';
+            }
+
+            $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            $lines    = [];
+
+            foreach ($rows as $row) {
+                $label = $dayNames[(int) ($row['weekday'] ?? 8)] ?? 'Day';
+                if (empty($row['start_time']) || empty($row['end_time'])) {
+                    $lines[] = sprintf('  %-4s Closed', $label);
+                } else {
+                    $start   = substr($row['start_time'], 0, 5);
+                    $end     = substr($row['end_time'],   0, 5);
+                    $lines[] = sprintf('  %-4s %s – %s', $label, $start, $end);
+                }
+            }
+
+            return implode("\n", $lines);
+        } catch (\Throwable $e) {
+            $defaultHours = $this->buildBusinessHoursFromDefaultSettings();
+            if ($defaultHours !== '') {
+                return $defaultHours;
+            }
+
+            return 'Please contact us for business hours.';
+        }
+    }
+
+    /**
+     * Build weekday business hours from Settings > Business Hours defaults.
+     */
+    private function buildBusinessHoursFromDefaultSettings(): string
+    {
+        try {
+            $settings = $this->settingModel->getByKeys([
+                'business.work_start',
+                'business.work_end',
+            ]);
+
+            $start = trim((string) ($settings['business.work_start'] ?? ''));
+            $end = trim((string) ($settings['business.work_end'] ?? ''));
+
+            if ($start === '' || $end === '') {
+                return '';
+            }
+
+            $start = substr($start, 0, 5);
+            $end = substr($end, 0, 5);
+            if (!preg_match('/^\d{2}:\d{2}$/', $start) || !preg_match('/^\d{2}:\d{2}$/', $end)) {
+                return '';
+            }
+
+            $lines = [];
+            $days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            $openDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+            foreach ($days as $day) {
+                if (in_array($day, $openDays, true)) {
+                    $lines[] = sprintf('  %-4s %s – %s', $day, $start, $end);
+                } else {
+                    $lines[] = sprintf('  %-4s Closed', $day);
+                }
+            }
+
+            return implode("\n", $lines);
+        } catch (\Throwable $e) {
+            return '';
+        }
     }
 
     /**

@@ -25,7 +25,8 @@ class UserDeletionService
         return [
             'allowed' => $blockCode === null,
             'blockCode' => $blockCode,
-            'typedConfirmationRequired' => ($targetUser['role'] ?? '') === 'provider',
+            // §4.4: use authoritative roles for confirmation gate
+            'typedConfirmationRequired' => in_array('provider', $this->getUserRoles($targetUser)),
             'target' => [
                 'id' => (int) ($targetUser['id'] ?? 0),
                 'name' => $targetUser['name'] ?? 'Unknown',
@@ -70,11 +71,14 @@ class UserDeletionService
 
         $userId = (int) ($targetUser['id'] ?? 0);
         $role = $targetUser['role'] ?? '';
+        // §4.4: use authoritative roles to handle multi-role users correctly
+        $roles = $this->getUserRoles($targetUser);
         $db = $this->userModel->db;
 
         $db->transStart();
 
-        if ($role === 'provider') {
+        // Use separate if blocks (not elseif) so multi-role users get full cleanup
+        if (in_array('provider', $roles)) {
             $this->cancelProviderUpcomingAppointments($userId, $currentUserId);
 
             $db->table($db->prefixTable('providers_services'))->where('provider_id', $userId)->delete();
@@ -86,7 +90,8 @@ class UserDeletionService
             }
 
             $this->cleanupProviderNotificationLinks($userId);
-        } elseif ($role === 'staff') {
+        }
+        if (in_array('staff', $roles)) {
             $db->table($db->prefixTable('provider_staff_assignments'))->where('staff_id', $userId)->delete();
         }
 
@@ -140,7 +145,11 @@ class UserDeletionService
         $db = $this->userModel->db;
         $userId = (int) ($targetUser['id'] ?? 0);
         $role = $targetUser['role'] ?? '';
+        // §4.4: use authoritative roles
+        $roles = $this->getUserRoles($targetUser);
 
+        // Count active admins via xs_users.role (compatibility primary, kept in sync by migration).
+        // xs_users.role is appropriate for bulk counting; per-user role decisions use xs_user_roles.
         $adminCountBuilder = $this->userModel->builder();
         $adminCountBuilder->where('role', 'admin');
 
@@ -166,7 +175,8 @@ class UserDeletionService
             'upcomingCustomerAppointments' => 0,
         ];
 
-        if ($role === 'provider') {
+        // Use in_array checks (not elseif) to handle multi-role users correctly
+        if (in_array('provider', $roles)) {
             $impact['servicesLinked'] = (int) $db->table($db->prefixTable('providers_services'))->where('provider_id', $userId)->countAllResults();
             $impact['staffLinked'] = (int) $db->table($db->prefixTable('provider_staff_assignments'))->where('provider_id', $userId)->countAllResults();
 
@@ -197,7 +207,8 @@ class UserDeletionService
                     ->where('a.provider_id', $userId)
                     ->countAllResults();
             }
-        } elseif ($role === 'staff') {
+        }
+        if (in_array('staff', $roles)) {
             $assignments = $db->table($db->prefixTable('provider_staff_assignments') . ' psa')
                 ->select('p.name')
                 ->join($db->prefixTable('users') . ' p', 'p.id = psa.provider_id', 'left')
@@ -209,7 +220,8 @@ class UserDeletionService
             $impact['providerNames'] = array_values(array_filter(array_map(static function ($row) {
                 return $row['name'] ?? null;
             }, $assignments)));
-        } elseif ($role === 'customer') {
+        }
+        if ($role === 'customer') {
             $appointmentStartColumn = $this->resolveAppointmentStartColumn();
             $impact['upcomingCustomerAppointments'] = (int) $db->table($db->prefixTable('appointments'))
                 ->where('customer_id', $userId)
@@ -227,11 +239,27 @@ class UserDeletionService
             return 'SELF_DELETE';
         }
 
-        if (($targetUser['role'] ?? '') === 'admin' && ((int) ($impact['adminCount'] ?? 0)) <= 1) {
+        // §4.4: use authoritative roles for last-admin guard
+        $targetRoles = $this->getUserRoles($targetUser);
+        if (in_array('admin', $targetRoles) && ((int) ($impact['adminCount'] ?? 0)) <= 1) {
             return 'LAST_ADMIN';
         }
 
         return null;
+    }
+
+    /**
+     * Get authoritative roles for a user via xs_user_roles.
+     * Falls back to xs_users.role for compatibility (§4.4 Canonical RBAC Pattern).
+     */
+    private function getUserRoles(array $targetUser): array
+    {
+        $userId = (int) ($targetUser['id'] ?? 0);
+        if ($userId > 0) {
+            return $this->userModel->getRolesForUser($userId);
+        }
+        $role = $targetUser['role'] ?? '';
+        return $role ? [$role] : [];
     }
 
     private function cancelProviderUpcomingAppointments(int $providerId, int $actorId): void

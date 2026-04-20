@@ -11,6 +11,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "mailpit:start": "sh scripts/mailpit-dev.sh start",
+    "mailpit:stop": "sh scripts/mailpit-dev.sh stop",
+    "mailpit:status": "sh scripts/mailpit-dev.sh status",
     "test:frontend:lifecycle": "node --test tests/frontend/*.test.js",
     "test:integration:mysql": "bash scripts/run-mysql-integration-tests.sh",
     "package": "npm run build && node scripts/package.js",
@@ -24,6 +27,8 @@
     "release:beta": "node scripts/release.js --beta",
     "release:rc": "node scripts/release.js --rc",
     "release:dry": "node scripts/release.js --dry-run",
+    "changelog:preview": "node scripts/release.js --sync-changelog --dry-run",
+    "changelog:sync": "node scripts/release.js --sync-changelog",
     "build:dev": "node scripts/build-config.js build development",
     "build:staging": "node scripts/build-config.js build staging",
     "build:prod": "node scripts/build-config.js build production"

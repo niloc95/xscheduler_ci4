@@ -6,26 +6,42 @@
  * Included by settings/index.php — all view variables ($settings, etc.) are
  * available via CI4's $this->include() data sharing.
  */
+
+$localizationContext = is_array($localizationContext ?? null) ? $localizationContext : [];
+$isTwelveHour = ($localizationContext['time_format'] ?? '24h') === '12h';
+$timeFormatExample = (string) ($localizationContext['format_example'] ?? ($isTwelveHour ? '09:00 AM' : '09:00'));
+$timeFormatHint = (string) ($localizationContext['format_description'] ?? ($isTwelveHour
+    ? 'Use HH:MM AM/PM (e.g. 09:00 AM).'
+    : 'Use 24-hour HH:MM (e.g. 09:00).'));
+
+$localizationService = new \App\Services\LocalizationSettingsService();
+$displayTime = static fn (?string $value): string => $localizationService->formatTimeForDisplay($value);
+$timeInputPattern = $isTwelveHour
+    ? '^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$'
+    : '^([01][0-9]|2[0-3]):[0-5][0-9]$';
 ?>
             <!-- Business hours Form -->
             <form id="business-settings-form" method="POST" action="<?= base_url('api/v1/settings') ?>" class="mt-4 space-y-6" data-tab-form="business" data-no-spa="true">
                 <?= csrf_field() ?>
                 <input type="hidden" name="form_source" value="business_settings">
+                <input type="hidden" name="time_format" value="<?= esc($isTwelveHour ? '12h' : '24h') ?>">
             <section id="panel-business" class="tab-panel hidden">
                 <div class="space-y-6">
                     <div class="form-field">
                         <label class="form-label">Default Working Hours</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <input type="time" name="work_start" class="form-input" value="<?= esc($settings['business.work_start'] ?? '09:00') ?>">
-                            <input type="time" name="work_end" class="form-input" value="<?= esc($settings['business.work_end'] ?? '17:00') ?>">
+                            <input type="text" name="work_start" class="form-input" value="<?= esc($displayTime($settings['business.work_start'] ?? '09:00')) ?>" placeholder="<?= esc($timeFormatExample) ?>" pattern="<?= esc($timeInputPattern) ?>" data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>" inputmode="numeric" autocomplete="off">
+                            <input type="text" name="work_end" class="form-input" value="<?= esc($displayTime($settings['business.work_end'] ?? '17:00')) ?>" placeholder="<?= esc($timeFormatExample) ?>" pattern="<?= esc($timeInputPattern) ?>" data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>" inputmode="numeric" autocomplete="off">
                         </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" data-time-format-hint><?= esc($timeFormatHint) ?></p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Breaks</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <input type="time" name="break_start" class="form-input" value="<?= esc($settings['business.break_start'] ?? '12:00') ?>">
-                            <input type="time" name="break_end" class="form-input" value="<?= esc($settings['business.break_end'] ?? '13:00') ?>">
+                            <input type="text" name="break_start" class="form-input" value="<?= esc($displayTime($settings['business.break_start'] ?? '12:00')) ?>" placeholder="<?= esc($timeFormatExample) ?>" pattern="<?= esc($timeInputPattern) ?>" data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>" inputmode="numeric" autocomplete="off">
+                            <input type="text" name="break_end" class="form-input" value="<?= esc($displayTime($settings['business.break_end'] ?? '13:00')) ?>" placeholder="<?= esc($timeFormatExample) ?>" pattern="<?= esc($timeInputPattern) ?>" data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>" inputmode="numeric" autocomplete="off">
                         </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" data-time-format-hint><?= esc($timeFormatHint) ?></p>
                     </div>
                     <div class="form-field">
                         <label class="form-label">Blocked Periods</label>

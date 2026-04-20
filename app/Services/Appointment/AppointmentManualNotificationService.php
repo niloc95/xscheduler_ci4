@@ -5,6 +5,7 @@ namespace App\Services\Appointment;
 use App\Models\AppointmentModel;
 use App\Services\AppointmentEventService;
 use App\Services\AppointmentNotificationService;
+use App\Services\BookingLinkService;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationSmsService;
 use App\Services\NotificationTemplateService;
@@ -108,6 +109,8 @@ class AppointmentManualNotificationService
             ];
         }
 
+        $bookingLinkService = new BookingLinkService();
+
         $templateData = [
             'customer_name' => $appointment['customer_name'] ?? '',
             'customer_email' => $appointment['customer_email'] ?? '',
@@ -120,8 +123,8 @@ class AppointmentManualNotificationService
             'location_address' => $appointment['location_address'] ?? '',
             'location_contact' => $appointment['location_contact'] ?? '',
             'appointment_hash' => $appointment['hash'] ?? '',
-            'reschedule_link' => !empty($appointment['hash']) ? base_url('booking/r/' . $appointment['hash']) : base_url('booking'),
-            'booking_url' => base_url('booking'),
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appointment['hash'] ?? ''), (string) ($appointment['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
         ];
 
         $rendered = $this->notificationTemplateService->render($eventType, 'sms', $templateData);

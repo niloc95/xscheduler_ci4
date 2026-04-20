@@ -11,11 +11,12 @@
  * 
  * ROUTES HANDLED:
  * -----------------------------------------------------------------------------
- * GET  /dashboard           : Main dashboard landing page
- * GET  /dashboard/api       : AJAX data refresh endpoint
- * GET  /dashboard/api/metrics : Metrics data for dashboard widgets
- * GET  /dashboard/charts    : Chart data for analytics widgets
- * GET  /dashboard/status    : System status information
+ * GET  /dashboard              : Main dashboard landing page
+ * GET  /dashboard/api          : AJAX data refresh endpoint
+ * GET  /dashboard/api/metrics  : Metrics data for dashboard widgets
+ * GET  /dashboard/api/schedule : Today's Schedule HTML fragment (polling + event-driven)
+ * GET  /dashboard/charts       : Chart data for analytics widgets
+ * GET  /dashboard/status       : System status information
  * 
  * PURPOSE:
  * -----------------------------------------------------------------------------
@@ -128,6 +129,30 @@ class Dashboard extends BaseController
             return $this->response
                 ->setStatusCode(500)
                 ->setJSON($this->dashboardPageService->getMetricsErrorPayload($e->getMessage()));
+        }
+    }
+
+    /**
+     * API endpoint for Today's Schedule fragment
+     * Returns rendered HTML partial swapped into #dashboard-schedule-body
+     */
+    public function apiSchedule()
+    {
+        $this->response->setHeader('Content-Type', 'text/html; charset=UTF-8');
+
+        try {
+            $result = $this->dashboardPageService->getScheduleEndpointResponse();
+
+            return $this->response
+                ->setStatusCode($result['statusCode'])
+                ->setBody($result['html']);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Dashboard API Schedule Error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
+
+            return $this->response
+                ->setStatusCode(500)
+                ->setBody($this->dashboardPageService->getScheduleErrorHtml());
         }
     }
 

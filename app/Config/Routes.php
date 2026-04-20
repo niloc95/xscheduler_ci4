@@ -73,6 +73,7 @@ $routes->group('dashboard', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'Dashboard::index', ['filter' => 'auth']);
     $routes->get('api', 'Dashboard::api', ['filter' => 'auth']);
     $routes->get('api/metrics', 'Dashboard::apiMetrics', ['filter' => 'auth']); // New landing view metrics endpoint
+    $routes->get('api/schedule', 'Dashboard::apiSchedule', ['filter' => 'auth']); // Today's Schedule fragment for polling/event refresh
     $routes->get('charts', 'Dashboard::charts', ['filter' => 'auth']);
     $routes->get('status', 'Dashboard::status', ['filter' => 'auth']);
     $routes->get('search', 'Search::dashboard', ['filter' => 'auth']); // Moved to Search controller
@@ -153,6 +154,7 @@ $routes->group('profile', ['filter' => 'auth'], function($routes) {
     $routes->post('update-privacy', 'Profile::updatePrivacy');
     $routes->get('account', 'Profile::account');
     $routes->post('update-account', 'Profile::updateAccount');
+    $routes->post('update-notifications', 'Profile::updateNotifications');
 });
 
 // Provider schedules (auth required, controller handles authorization)
@@ -205,6 +207,8 @@ $routes->group('help', function($routes) {
 // Public booking experience
 // Note: Legacy /scheduler and GET /book routes removed (deprecated since v2.0, sunset 2026-03-01)
 // New dedicated public booking experience (Option B)
+$routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => ['setup', 'public_rate_limit']]);
+
 $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
     $routes->get('legal', 'PublicSite\LegalController::index', ['filter' => 'public_rate_limit']);
@@ -213,6 +217,7 @@ $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('search', 'PublicSite\BookingController::search', ['filter' => 'public_rate_limit']);
     $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit', 'csrf']]);
     $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => 'public_rate_limit']);
+    $routes->patch('(:segment)/cancel', 'PublicSite\BookingController::cancel/$1', ['filter' => ['public_rate_limit', 'csrf']]);
     $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
     $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => ['public_rate_limit', 'csrf']]);
 });

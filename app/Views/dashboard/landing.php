@@ -27,6 +27,7 @@ $userName = $context['user_name'] ?? 'User';
 // Calculate additional metrics
 $pendingCount = $metrics['pending'] ?? 0;
 $confirmedCount = $metrics['confirmed'] ?? 0;
+$cancelledCount = $metrics['cancelled'] ?? 0;
 $totalProviders = count($availability);
 $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ?? '') === 'working'));
 ?>
@@ -57,7 +58,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <!-- Page Body -->
 <div class="xs-page-body">
     <!-- Metrics Row: Compact horizontal strip -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="metrics-container">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="metrics-container">
         <div class="metric-mini metric-mini-blue">
             <span class="text-2xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
             <span class="text-xs text-blue-600 dark:text-blue-400">Today</span>
@@ -69,6 +70,10 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
         <div class="metric-mini metric-mini-green">
             <span class="text-2xl font-bold text-green-700 dark:text-green-300" id="metric-confirmed"><?= $confirmedCount ?></span>
             <span class="text-xs text-green-600 dark:text-green-400">Confirmed</span>
+        </div>
+        <div class="metric-mini metric-mini-red">
+            <span class="text-2xl font-bold text-red-700 dark:text-red-300" id="metric-cancelled"><?= $cancelledCount ?></span>
+            <span class="text-xs text-red-600 dark:text-red-400">Cancelled</span>
         </div>
         <div class="metric-mini metric-mini-indigo">
             <span class="text-2xl font-bold text-indigo-700 dark:text-indigo-300"><?= $workingProviders ?>/<?= $totalProviders ?></span>
@@ -193,76 +198,9 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     View all →
                 </a>
             </div>
-            
-            <?php if (!empty($schedule)): ?>
-            <div class="max-h-[400px] overflow-y-auto">
-                <?php foreach ($schedule as $providerName => $appointments): ?>
-                    <!-- Provider Section -->
-                    <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 sticky top-0">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-gray-700 dark:text-gray-300"><?= esc($providerName) ?></span>
-                            <span class="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                                <?= count($appointments) ?>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <?php foreach ($appointments as $appt): ?>
-                        <?php
-                        $statusColors = [
-                            'pending' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-                            'confirmed' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-                            'completed' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-                            'cancelled' => 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-                        ];
-                        $statusClass = $statusColors[$appt['status']] ?? $statusColors['pending'];
-                        
-                        // Use hash for URL, fallback to id
-                        $appointmentUrl = base_url('/appointments/view/' . ($appt['hash'] ?? $appt['id']));
-                        ?>
-                        <div class="appt-row">
-                            <!-- Time -->
-                            <div class="text-xs font-medium text-gray-900 dark:text-white">
-                                <?= esc($appt['start_at']) ?>
-                            </div>
-                            
-                            <!-- Customer & Service -->
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                    <?= esc($appt['customer_name'] ?: 'No customer') ?>
-                                </p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                    <?= esc($appt['service_name'] ?: 'No service') ?>
-                                </p>
-                            </div>
-                            
-                            <!-- Status (hidden on mobile) -->
-                            <div class="status-badge">
-                                <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium <?= $statusClass ?>">
-                                    <?= ucfirst(esc($appt['status'])) ?>
-                                </span>
-                            </div>
-                            
-                            <!-- Action -->
-                            <a href="<?= esc($appointmentUrl) ?>" 
-                               data-no-spa="true"
-                               class="flex items-center justify-center w-7 h-7 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                               title="View appointment">
-                                <span class="material-symbols-outlined text-base">chevron_right</span>
-                            </a>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endforeach; ?>
+            <div id="dashboard-schedule-body">
+                <?= $this->include('dashboard/_schedule_fragment', ['schedule' => $schedule]) ?>
             </div>
-            <?php else: ?>
-            <div class="p-8 text-center">
-                <span class="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600 mb-2">event_available</span>
-                <p class="text-sm text-gray-500 dark:text-gray-400">No appointments scheduled for today</p>
-                <a href="<?= base_url('/appointments/create') ?>" class="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block">
-                    Create one now →
-                </a>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
 </div><!-- /.xs-page-body -->
@@ -271,101 +209,195 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <?= $this->section('scripts') ?>
 <script>
-// Dashboard metrics refresh - SPA compatible
+// Dashboard refresh (metrics + schedule) — SPA-compatible, polling + event-driven
 (function() {
-    // Prevent duplicate initialization
+    // Prevent duplicate initialization on SPA back-nav
     const container = document.getElementById('metrics-container');
     if (!container || container.dataset.refreshInitialized === 'true') return;
     container.dataset.refreshInitialized = 'true';
-    
-    const REFRESH_INTERVAL = 15000;
-    const RETRY_DELAY = 10000;
-    let refreshTimer = null;
-    let isRefreshing = false;
-    
-    function refreshMetrics() {
-        if (document.hidden || isRefreshing) return;
-        
-        // Check if we're still on dashboard
-        const metricsEl = document.getElementById('metrics-container');
-        if (!metricsEl) {
-            cleanup();
+
+    const METRICS_INTERVAL  = 15000;
+    const SCHEDULE_INTERVAL = 30000;
+    const RETRY_DELAY       = 10000;
+    const AUTH_RETRY_DELAY  = 3000;
+    const MAX_AUTH_RETRIES  = 2;
+
+    let metricsTimer   = null;
+    let scheduleTimer  = null;
+    let abortController = null;  // guards the in-flight schedule fetch
+    let isRefreshingMetrics = false;
+    let authFailureCount = 0;
+
+    function handleUnauthorized(message) {
+        authFailureCount += 1;
+
+        if (authFailureCount < MAX_AUTH_RETRIES) {
+            console.warn(`[Dashboard] ${message}; retrying shortly (${authFailureCount}/${MAX_AUTH_RETRIES - 1})`);
+            metricsTimer = setTimeout(refreshMetrics, AUTH_RETRY_DELAY);
+            scheduleTimer = setTimeout(refreshSchedule, AUTH_RETRY_DELAY);
             return;
         }
-        
-        isRefreshing = true;
+
+        window.location.href = '<?= base_url('auth/login') ?>';
+    }
+
+    // ─── Unified cleanup (called on SPA nav away + tab hide) ────────────────
+    function cleanup() {
+        if (metricsTimer)  { clearTimeout(metricsTimer);  metricsTimer  = null; }
+        if (scheduleTimer) { clearTimeout(scheduleTimer); scheduleTimer = null; }
+        if (abortController) { abortController.abort(); abortController = null; }
+        window.removeEventListener('appointment:changed', onAppointmentChanged);
+    }
+
+    // ─── Metrics polling ────────────────────────────────────────────────────
+    function refreshMetrics() {
+        if (document.hidden || isRefreshingMetrics) return;
+        const metricsEl = document.getElementById('metrics-container');
+        if (!metricsEl) { cleanup(); return; }
+
+        isRefreshingMetrics = true;
         metricsEl.classList.add('loading-pulse');
-        
+
         fetch('<?= base_url('/dashboard/api/metrics') ?>', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+        .then(async r => {
+            if (r.status === 401) {
+                throw { status: 401, message: 'metrics endpoint returned 401' };
+            }
+
+            if (!r.ok) {
+                throw { status: r.status, message: `metrics endpoint returned ${r.status}` };
+            }
+
+            return r.json();
+        })
         .then(data => {
+            authFailureCount = 0;
             const m = data.data || data;
-            updateValue('metric-total', m.total);
-            updateValue('metric-pending', m.pending);
+            updateValue('metric-total',     m.total);
+            updateValue('metric-pending',   m.pending);
             updateValue('metric-confirmed', m.confirmed);
+            updateValue('metric-cancelled', m.cancelled);
             metricsEl.classList.remove('loading-pulse');
-            isRefreshing = false;
-            scheduleRefresh(REFRESH_INTERVAL);
+            isRefreshingMetrics = false;
+            metricsTimer = setTimeout(refreshMetrics, METRICS_INTERVAL);
         })
         .catch(err => {
-            console.error('Dashboard refresh failed:', err);
+            if (err?.status === 401) {
+                metricsEl.classList.remove('loading-pulse');
+                isRefreshingMetrics = false;
+                handleUnauthorized(err.message || 'metrics polling unauthorized');
+                return;
+            }
+
+            console.error('[Dashboard] Metrics refresh failed:', err);
             metricsEl.classList.remove('loading-pulse');
-            isRefreshing = false;
-            scheduleRefresh(RETRY_DELAY);
+            isRefreshingMetrics = false;
+            metricsTimer = setTimeout(refreshMetrics, RETRY_DELAY);
         });
     }
-    
+
     function updateValue(id, val) {
         const el = document.getElementById(id);
-        if (el && parseInt(el.textContent) !== val) {
-            el.textContent = val;
-        }
+        if (el && parseInt(el.textContent) !== val) { el.textContent = val; }
     }
-    
-    function scheduleRefresh(delay) {
-        if (refreshTimer) clearTimeout(refreshTimer);
-        refreshTimer = setTimeout(refreshMetrics, delay);
+
+    // ─── Schedule polling ────────────────────────────────────────────────────
+    function refreshSchedule() {
+        const body = document.getElementById('dashboard-schedule-body');
+        if (!body) { cleanup(); return; }
+
+        // Abort any in-flight request before starting a new one
+        if (abortController) { abortController.abort(); }
+        abortController = new AbortController();
+
+        body.classList.add('opacity-50', 'transition-opacity', 'duration-150');
+
+        fetch('<?= base_url('/dashboard/api/schedule') ?>', {
+            signal: abortController.signal,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(async r => {
+            if (r.status === 401) {
+                throw { status: 401, message: 'schedule endpoint returned 401' };
+            }
+
+            if (!r.ok) {
+                throw { status: r.status, message: `schedule endpoint returned ${r.status}` };
+            }
+
+            return r.text();
+        })
+        .then(html => {
+            authFailureCount = 0;
+            // Only swap if content changed — avoids unnecessary repaints
+            if (body.innerHTML !== html) { body.innerHTML = html; }
+            body.classList.remove('opacity-50');
+            abortController = null;
+            scheduleTimer = setTimeout(refreshSchedule, SCHEDULE_INTERVAL);
+        })
+        .catch(err => {
+            if (err.name === 'AbortError') return; // intentional — ignore
+
+            if (err?.status === 401) {
+                body.classList.remove('opacity-50');
+                abortController = null;
+                handleUnauthorized(err.message || 'schedule polling unauthorized');
+                return;
+            }
+
+            console.error('[Dashboard] Schedule refresh failed:', err);
+            body.classList.remove('opacity-50');
+            scheduleTimer = setTimeout(refreshSchedule, RETRY_DELAY);
+        });
     }
-    
-    function cleanup() {
-        if (refreshTimer) {
-            clearTimeout(refreshTimer);
-            refreshTimer = null;
-        }
+
+    // ─── appointment:changed — immediate schedule refresh ───────────────────
+    function onAppointmentChanged() {
+        if (scheduleTimer) { clearTimeout(scheduleTimer); scheduleTimer = null; }
+        refreshSchedule();
     }
-    
-    // Handle visibility changes
+    window.addEventListener('appointment:changed', onAppointmentChanged);
+
+    // ─── Visibility change ───────────────────────────────────────────────────
     function onVisibilityChange() {
         if (!document.getElementById('metrics-container')) {
+            // Edge case: metrics-container gone after SPA nav — full teardown
             cleanup();
             document.removeEventListener('visibilitychange', onVisibilityChange);
             return;
         }
         if (!document.hidden) {
             refreshMetrics();
+            refreshSchedule();
         } else {
-            cleanup();
+            // Tab hidden — pause timers and abort in-flight requests ONLY.
+            // Do NOT remove appointment:changed listener — it must survive tab hide
+            // so mutations made on return to tab still trigger immediate refresh.
+            if (metricsTimer)    { clearTimeout(metricsTimer);  metricsTimer  = null; }
+            if (scheduleTimer)   { clearTimeout(scheduleTimer); scheduleTimer = null; }
+            if (abortController) { abortController.abort();     abortController = null; }
         }
     }
-    
-    // Handle SPA navigation away from dashboard
-    function onSpaNavigated(e) {
+
+    // ─── SPA navigation away from dashboard ─────────────────────────────────
+    function onSpaNavigated() {
         if (!document.getElementById('metrics-container')) {
-            cleanup();
+            cleanup(); // full teardown including appointment:changed listener
             document.removeEventListener('spa:navigated', onSpaNavigated);
             document.removeEventListener('visibilitychange', onVisibilityChange);
         }
     }
-    
+
     document.addEventListener('visibilitychange', onVisibilityChange);
     document.addEventListener('spa:navigated', onSpaNavigated);
-    
-    // Initial fetch + start polling
+
+    // ─── Bootstrap ──────────────────────────────────────────────────────────
     refreshMetrics();
-    
-    console.log('[Dashboard] Metrics refresh initialized');
+    refreshSchedule();
+
+    console.log('[Dashboard] Metrics + schedule refresh initialized');
 })();
 </script>
 <?= $this->endSection() ?>

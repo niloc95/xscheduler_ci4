@@ -58,17 +58,18 @@ namespace App\Controllers;
 
 use App\Models\AuditLogModel;
 use App\Models\UserModel;
-use CodeIgniter\Email\Email;
+use App\Services\MailerService;
+use App\Services\NotificationCatalog;
 
 class Auth extends BaseController
 {
     protected $userModel;
-    protected $email;
+    protected MailerService $mailer;
 
-    public function __construct(?UserModel $userModel = null, ?Email $email = null)
+    public function __construct(?UserModel $userModel = null, ?MailerService $mailer = null)
     {
         $this->userModel = $userModel ?? new UserModel();
-        $this->email = $email ?? \Config\Services::email();
+        $this->mailer    = $mailer    ?? new MailerService();
     }
 
     /**
@@ -464,23 +465,28 @@ class Auth extends BaseController
     }
 
     /**
-     * Send password reset email
+     * Send password reset email via MailerService (the canonical transport layer).
+     *
+     * Renders the PHP view template, then delegates transport entirely to
+     * MailerService. No SMTP setup or from-address logic lives here.
      */
-    private function sendResetEmail($email, $name, $resetLink)
+    private function sendResetEmail(string $email, string $name, string $resetLink): void
     {
-        $this->email->setTo($email);
-        $this->email->setFrom('noreply@webschedulr.com', 'WebScheduler');
-        $this->email->setSubject('Password Reset Request - WebScheduler');
-
-        $message = view('auth/emails/password-reset', [
-            'name' => $name,
-            'resetLink' => $resetLink
+        $body = view('auth/emails/password-reset', [
+            'name'      => $name,
+            'resetLink' => $resetLink,
         ]);
 
-        $this->email->setMessage($message);
+        $result = $this->mailer->send(
+            NotificationCatalog::BUSINESS_ID_DEFAULT,
+            $email,
+            'Password Reset Request - WebScheduler',
+            $body,
+            'html'
+        );
 
-        if (!$this->email->send()) {
-            throw new \Exception('Failed to send email: ' . $this->email->printDebugger());
+        if (!$result['ok']) {
+            throw new \RuntimeException('Failed to send password reset email: ' . ($result['error'] ?? 'unknown error'));
         }
     }
 

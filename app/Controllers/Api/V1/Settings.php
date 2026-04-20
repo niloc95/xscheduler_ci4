@@ -166,6 +166,8 @@ class Settings extends BaseApiController
             $count = $this->settingsApiService->updateSettings($payload, $userId);
 
             return $this->ok(['updated' => $count]);
+        } catch (\InvalidArgumentException $e) {
+            return $this->validationError($e->getMessage());
         } catch (\Throwable $e) {
             $errorId = null;
             try {

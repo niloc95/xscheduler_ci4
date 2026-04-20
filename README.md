@@ -530,6 +530,9 @@ tail -f writable/logs/log-$(date +%Y-%m-%d).log
 npm run dev              # Start Vite dev server
 npm run build            # Production build
 npm run preview          # Preview production build
+npm run mailpit:start    # Start local Mailpit SMTP + inbox UI
+npm run mailpit:status   # Show Mailpit status and endpoints
+npm run mailpit:stop     # Stop local Mailpit
 
 # Database
 php spark migrate -n App           # Run migrations
@@ -546,6 +549,31 @@ php spark cache:clear    # Clear all caches
 ./vendor/bin/phpunit tests/unit/           # Unit tests
 ./vendor/bin/phpunit tests/integration/    # Integration tests
 ```
+
+### Mailpit Password Reset URL Test (Development)
+
+Use this flow to verify reset emails and the reset-password URL end-to-end in local development:
+
+```bash
+# 1) Start Mailpit (SMTP + inbox UI)
+npm run mailpit:start
+
+# 2) Ensure local .env uses Mailpit SMTP
+# email.protocol = smtp
+# email.SMTPHost = 127.0.0.1
+# email.SMTPPort = 1025
+# email.SMTPCrypto =
+
+# 3) Open forgot-password form
+# http://localhost:8080/auth/forgot-password
+
+# 4) Submit an existing user email, then open Mailpit UI
+# http://127.0.0.1:8025
+```
+
+From the Mailpit message, click the reset URL and verify the reset form loads at:
+
+`/auth/reset-password/{token}`
 
 ### Focused Validation Commands
 
@@ -698,6 +726,33 @@ php spark notifications:dispatch-queue
 # Review logs
 tail -f writable/logs/log-*.log
 ```
+
+#### Local Mailpit Email Testing
+```bash
+# Install Mailpit once on macOS
+brew install mailpit
+
+# Start local SMTP catcher + web inbox
+npm run mailpit:start
+
+# Open the Mailpit inbox UI
+open http://127.0.0.1:8025
+```
+
+Then configure Settings → Notifications → Email (SMTP) with:
+
+```text
+SMTP Host: 127.0.0.1
+SMTP Port: 1025
+SMTP Encryption: none
+SMTP Username: leave blank
+SMTP Password: leave blank
+From Email: any valid dev sender, for example noreply@local.test
+From Name: WebScheduler Dev
+Enable Email Sending: on
+```
+
+Use “Send Test Email” in the Notifications settings tab to confirm Mailpit capture before testing customer/internal appointment notifications.
 
 #### Database Connection Errors
 ```bash

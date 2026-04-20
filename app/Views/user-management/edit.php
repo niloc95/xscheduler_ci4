@@ -203,6 +203,28 @@
 						</div>
 
 						<!-- Password Reset Section -->
+												<!-- Appointment Notifications (provider/staff only) -->
+												<?php
+												$_editRoles = old('roles') ?? ($user['roles'] ?? []);
+												if (is_string($_editRoles)) { $_editRoles = [$_editRoles]; }
+												if (array_intersect(['provider', 'staff'], (array) $_editRoles)):
+												?>
+												<div class="form-group">
+													<label class="flex items-center space-x-3 cursor-pointer">
+														<input type="hidden" name="notify_on_appointments" value="0">
+														<input type="checkbox"
+															   id="notify_on_appointments"
+															   name="notify_on_appointments"
+															   value="1"
+															   <?= old('notify_on_appointments', $user['notify_on_appointments'] ?? 1) ? 'checked' : '' ?>
+															   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+														<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Receive appointment notifications</span>
+													</label>
+													<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Send this user an email when appointments are booked, rescheduled, or cancelled</p>
+												</div>
+												<?php endif; ?>
+
+												<!-- Password Reset Section -->
 						<div class="border-t border-gray-200 dark:border-gray-700 pt-6">
 							<h3 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4 transition-colors duration-300">Password Management</h3>
 							

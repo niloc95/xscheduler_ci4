@@ -137,6 +137,50 @@ function getApiData(payload) {
     return payload?.data ?? payload;
 }
 
+function isBusinessTimeField(name) {
+    return ['work_start', 'work_end', 'break_start', 'break_end'].includes(name);
+}
+
+function normalizeBusinessTimeValue(rawValue, format) {
+    const value = String(rawValue ?? '').trim();
+    if (value === '') {
+        return '';
+    }
+
+    if (format === '12h') {
+        const match = value.match(/^(0?[1-9]|1[0-2]):([0-5][0-9])\s?(AM|PM)$/i);
+        if (!match) {
+            return null;
+        }
+
+        let hour = Number.parseInt(match[1], 10);
+        const minute = match[2];
+        const period = match[3].toUpperCase();
+
+        if (period === 'PM' && hour !== 12) {
+            hour += 12;
+        }
+
+        if (period === 'AM' && hour === 12) {
+            hour = 0;
+        }
+
+        return `${String(hour).padStart(2, '0')}:${minute}`;
+    }
+
+    if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value)) {
+        return null;
+    }
+
+    return value;
+}
+
+function getTimeFormatHint(format) {
+    return format === '12h'
+        ? 'Use HH:MM AM/PM (example: 09:00 AM).'
+        : 'Use 24-hour HH:MM (example: 09:00).';
+}
+
 async function buildHttpError(response, fallbackMessage) {
     let errorId = '';
 
@@ -526,6 +570,14 @@ function initTabForm(root, tabName) {
         const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
         const { header, token } = getCsrf(csrfInput);
         const payload = {};
+        const timeFormat = String(form.querySelector('input[name="time_format"]')?.value || '24h').toLowerCase();
+        let businessTimeValidationError = null;
+
+        formInputs.forEach((input) => {
+            input.classList.remove('border-red-500');
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('title');
+        });
 
         formInputs.forEach((input) => {
             const name = input.name;
@@ -545,6 +597,20 @@ function initTabForm(root, tabName) {
                 value = input.value ?? '';
             }
 
+            if (tabName === 'business' && isBusinessTimeField(name)) {
+                const normalized = normalizeBusinessTimeValue(value, timeFormat);
+                if (normalized === null) {
+                    const message = getTimeFormatHint(timeFormat);
+                    input.classList.add('border-red-500');
+                    input.setAttribute('aria-invalid', 'true');
+                    input.setAttribute('title', message);
+                    businessTimeValidationError = `Invalid ${name.replace('_', ' ')}. ${message}`;
+                    return;
+                }
+
+                value = normalized;
+            }
+
             let key = name;
             if (name.startsWith(`${tabName}_`)) {
                 key = `${tabName}.${name.substring(tabName.length + 1)}`;
@@ -554,6 +620,11 @@ function initTabForm(root, tabName) {
 
             payload[key] = value;
         });
+
+        if (businessTimeValidationError !== null) {
+            showToast('error', 'Validation Error', businessTimeValidationError, false);
+            return;
+        }
 
         const originalLabel = saveBtn.innerHTML;
         saveBtn.innerHTML = '<span class="inline-flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>Saving...</span>';

@@ -229,9 +229,9 @@ class TodayViewService
      */
     private function getProvidersForDate(?int $businessId, int $weekday, ?array $filterIds = null): array
     {
-        // Load providers from database
+        // Load providers from database (§4.4: use xs_user_roles for authoritative role lookup)
         $providerModel = new \App\Models\UserModel();
-        $query = $providerModel->where('role', 'provider');
+        $query = $providerModel->whereHasRole('provider');
 
         if ($filterIds) {
             $query = $query->whereIn('id', $filterIds);

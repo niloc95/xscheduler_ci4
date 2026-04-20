@@ -145,6 +145,7 @@ class PublicBookingService
             'currency' => $this->localization->getCurrency(),
             'currencySymbol' => $this->localization->getCurrencySymbol(),
             'reschedulePolicy' => $this->getReschedulePolicy(),
+            'cancelPolicy' => $this->getCancelPolicy(),
             'appBaseUrl' => rtrim(base_url(), '/'),
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
@@ -359,6 +360,46 @@ class PublicBookingService
 
         $updated = $this->appointments->find((int) $appointment['id']);
         return $this->formatPublicAppointment($updated, $newToken);
+    }
+
+    public function cancel(string $token, array $payload): array
+    {
+        $appointment = $this->fetchAppointmentByReference($token);
+        $this->verifyContactAccess(
+            $appointment,
+            $payload['email'] ?? null,
+            $payload['phone'] ?? null,
+            $payload['phone_country_code'] ?? null
+        );
+        $this->assertCancellationWindow($appointment);
+
+        $updatePayload = [
+            'status' => AppointmentStatus::CANCELLED,
+            'booking_channel' => 'public',
+        ];
+
+        if (array_key_exists('cancel_reason', $payload)) {
+            $updatePayload['notes'] = $this->sanitizeString($payload['cancel_reason'], 1000);
+        }
+
+        $result = $this->bookingService->updateAppointment(
+            (int) $appointment['id'],
+            $updatePayload,
+            $this->localization->getTimezone(),
+            'appointment_cancelled',
+            ['email', 'whatsapp']
+        );
+
+        if (!$result['success']) {
+            throw new PublicBookingException(
+                $result['message'] ?? 'Unable to cancel appointment. Please try again later.',
+                $this->resolveBookingFailureStatus($result),
+                $this->resolveBookingFailureErrors($result)
+            );
+        }
+
+        $updated = $this->appointments->find((int) $appointment['id']);
+        return $this->formatPublicAppointment($updated, $token);
     }
 
     private function listProviders(): array
@@ -839,6 +880,8 @@ class PublicBookingService
             'location_contact' => $appointment['location_contact'] ?? null,
             // Reschedule eligibility — computed server-side so the SPA can gate the form
             'can_reschedule' => $this->canReschedule($appointment['start_at']),
+            // Cancellation eligibility — computed server-side so the SPA can gate cancel action
+            'can_cancel' => $this->canCancel($appointment),
         ];
     }
 
@@ -898,19 +941,7 @@ class PublicBookingService
     private function canReschedule(string $startAt): bool
     {
         $policy = $this->getReschedulePolicy();
-        if (!$policy['enabled']) {
-            return false;
-        }
-
-        $start = new DateTimeImmutable($startAt, new DateTimeZone('UTC'));
-        $now   = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-
-        if ($start <= $now) {
-            return false;
-        }
-
-        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
-        return $cutoff <= $start;
+        return $this->isOutsidePolicyWindow($startAt, $policy);
     }
 
     private function assertRescheduleWindow(string $currentStart): void
@@ -934,6 +965,50 @@ class PublicBookingService
         }
     }
 
+    /**
+     * Check whether the appointment can be cancelled online based on status and policy window.
+     */
+    private function canCancel(array $appointment): bool
+    {
+        $status = AppointmentStatus::normalize((string) ($appointment['status'] ?? ''));
+        if (!in_array($status, AppointmentStatus::UPCOMING, true)) {
+            return false;
+        }
+
+        $policy = $this->getCancelPolicy();
+        return $this->isOutsidePolicyWindow((string) ($appointment['start_at'] ?? ''), $policy);
+    }
+
+    private function assertCancellationWindow(array $appointment): void
+    {
+        $status = AppointmentStatus::normalize((string) ($appointment['status'] ?? ''));
+
+        if ($status === AppointmentStatus::CANCELLED) {
+            throw new PublicBookingException('This appointment has already been cancelled.', 409);
+        }
+
+        if (!in_array($status, AppointmentStatus::UPCOMING, true)) {
+            throw new PublicBookingException('This appointment can no longer be cancelled online.', 403);
+        }
+
+        $policy = $this->getCancelPolicy();
+        if (!$policy['enabled']) {
+            throw new PublicBookingException('Online cancellations are not permitted for this booking.', 403);
+        }
+
+        $start = new DateTimeImmutable((string) $appointment['start_at'], new DateTimeZone('UTC'));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        if ($start <= $now) {
+            throw new PublicBookingException('This appointment can no longer be cancelled online.', 403);
+        }
+
+        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
+        if ($cutoff > $start) {
+            throw new PublicBookingException('This appointment is too close to cancel online.', 403);
+        }
+    }
+
     private function getReschedulePolicy(): array
     {
         $settings = $this->settings->getByKeys(['business.reschedule']);
@@ -944,6 +1019,39 @@ class PublicBookingService
             '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
             default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
         };
+    }
+
+    private function getCancelPolicy(): array
+    {
+        $settings = $this->settings->getByKeys(['business.cancel']);
+        $value = $settings['business.cancel'] ?? '24h';
+
+        return match ($value) {
+            'none' => ['enabled' => false, 'hours' => 0, 'label' => 'Disabled'],
+            '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
+            default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
+        };
+    }
+
+    private function isOutsidePolicyWindow(string $startAt, array $policy): bool
+    {
+        if (!$policy['enabled']) {
+            return false;
+        }
+
+        if (trim($startAt) === '') {
+            return false;
+        }
+
+        $start = new DateTimeImmutable($startAt, new DateTimeZone('UTC'));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
+        if ($start <= $now) {
+            return false;
+        }
+
+        $cutoff = $now->add(new DateInterval('PT' . $policy['hours'] . 'H'));
+        return $cutoff <= $start;
     }
 
     private function generateToken(): string

@@ -178,6 +178,67 @@ final class SettingsApiServiceTest extends CIUnitTestCase
         ], $calls);
     }
 
+    public function testUpdateSettingsNormalizesBusinessTimeValuesBeforePersisting(): void
+    {
+        $settingModel = $this->createMock(SettingModel::class);
+        $settingModel->expects($this->once())
+            ->method('upsert')
+            ->with('business.work_start', '09:15', 'string', 11)
+            ->willReturn(true);
+
+        $localizationSettingsService = $this->createMock(LocalizationSettingsService::class);
+        $localizationSettingsService->expects($this->once())
+            ->method('normaliseTimeInput')
+            ->with('9:15 am')
+            ->willReturn('09:15:00');
+
+        $service = new SettingsApiService(
+            $settingModel,
+            $this->createMock(CalendarConfigService::class),
+            $localizationSettingsService,
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(BusinessHourModel::class),
+            $this->createMock(GeneralSettingsService::class)
+        );
+
+        $result = $service->updateSettings([
+            'business.work_start' => '9:15 am',
+        ], 11);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testUpdateSettingsThrowsForInvalidBusinessTimeValues(): void
+    {
+        $settingModel = $this->createMock(SettingModel::class);
+        $settingModel->expects($this->never())->method('upsert');
+
+        $localizationSettingsService = $this->createMock(LocalizationSettingsService::class);
+        $localizationSettingsService->expects($this->once())
+            ->method('normaliseTimeInput')
+            ->with('invalid-time')
+            ->willReturn(null);
+        $localizationSettingsService->expects($this->once())
+            ->method('describeExpectedFormat')
+            ->willReturn('Use HH:MM (24h) or h:mm AM/PM (12h).');
+
+        $service = new SettingsApiService(
+            $settingModel,
+            $this->createMock(CalendarConfigService::class),
+            $localizationSettingsService,
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(BusinessHourModel::class),
+            $this->createMock(GeneralSettingsService::class)
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid value for business.work_start');
+
+        $service->updateSettings([
+            'business.work_start' => 'invalid-time',
+        ], 11);
+    }
+
     public function testUploadLogoDelegatesToGeneralSettingsService(): void
     {
         $generalSettingsService = $this->createMock(GeneralSettingsService::class);

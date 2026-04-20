@@ -261,7 +261,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('formatCurrency')->willReturn('$0.00');
 
         $settings = $this->createMock(SettingModel::class);
-        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
+        $settings->method('getByKeys')->willReturnCallback(static function (array $keys): array {
+            if ($keys === ['business.reschedule']) {
+                return ['business.reschedule' => '24h'];
+            }
+
+            if ($keys === ['business.cancel']) {
+                return ['business.cancel' => '24h'];
+            }
+
+            return [];
+        });
 
         $service = $this->makeService(
             $this->createMock(BookingSettingsService::class),
@@ -278,6 +288,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
 
         $result = $service->lookupAppointment('token-far', 'test@example.com');
         $this->assertTrue($result['can_reschedule'], 'Appointment 48h out should be reschedulable with 24h policy');
+        $this->assertTrue($result['can_cancel'], 'Appointment 48h out should be cancellable with 24h policy');
     }
 
     public function testLookupAppointmentIncludesCanRescheduleFalseWhenInsideWindow(): void
@@ -300,7 +311,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('formatCurrency')->willReturn('$0.00');
 
         $settings = $this->createMock(SettingModel::class);
-        $settings->method('getByKeys')->with(['business.reschedule'])->willReturn(['business.reschedule' => '24h']);
+        $settings->method('getByKeys')->willReturnCallback(static function (array $keys): array {
+            if ($keys === ['business.reschedule']) {
+                return ['business.reschedule' => '24h'];
+            }
+
+            if ($keys === ['business.cancel']) {
+                return ['business.cancel' => '24h'];
+            }
+
+            return [];
+        });
 
         $service = $this->makeService(
             $this->createMock(BookingSettingsService::class),
@@ -317,6 +338,7 @@ final class PublicBookingServiceTest extends CIUnitTestCase
 
         $result = $service->lookupAppointment('token-close', 'test@example.com');
         $this->assertFalse($result['can_reschedule'], 'Appointment 6h out should NOT be reschedulable with 24h policy');
+        $this->assertFalse($result['can_cancel'], 'Appointment 6h out should NOT be cancellable with 24h policy');
     }
 
     public function testGetAvailableSlotsFormatsDisplayPayload(): void
@@ -543,6 +565,79 @@ final class PublicBookingServiceTest extends CIUnitTestCase
             'provider_id' => 9,
             'service_id' => 4,
             'slot_start' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+2 days')->format(DATE_ATOM),
+        ]);
+    }
+
+    public function testCancelRejectsAppointmentsInsidePolicyWindow(): void
+    {
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+6 hours')->format('Y-m-d H:i:s');
+        $appointmentRecord = [
+            'id' => 51,
+            'provider_id' => 9,
+            'service_id' => 4,
+            'customer_id' => 500,
+            'start_at' => $startAt,
+            'end_at' => (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))->modify('+45 minutes')->format('Y-m-d H:i:s'),
+            'status' => 'confirmed',
+            'notes' => null,
+            'public_token' => 'token-cancel',
+            'customer_email' => 'lookup@example.com',
+            'customer_phone' => '+15559998888',
+            'location_id' => null,
+        ];
+
+        $appointments = $this->getMockBuilder(AppointmentModel::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['builder'])
+            ->getMock();
+        $appointments->method('builder')->willReturn($this->createAppointmentBuilder($appointmentRecord));
+
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->willReturnCallback(static function (array $keys): array {
+            if ($keys === ['business.cancel']) {
+                return ['business.cancel' => '12h'];
+            }
+
+            if ($keys === ['business.reschedule']) {
+                return ['business.reschedule' => '24h'];
+            }
+
+            return [];
+        });
+
+        $booking = $this->createMock(AppointmentBookingService::class);
+        $booking->expects($this->never())->method('updateAppointment');
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $appointments,
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock([
+                'id' => 4,
+                'name' => 'Follow-up',
+                'duration_min' => 45,
+                'price' => 110,
+                'active' => 1,
+            ]),
+            $this->createUserModelMock([
+                'id' => 9,
+                'name' => 'Dr. Singh',
+                'color' => '#117733',
+                'role' => 'provider',
+                'is_active' => true,
+            ]),
+            $this->createLocalizationMock('UTC'),
+            $settings,
+            $this->createLocationModelMock([], []),
+            $booking
+        );
+
+        $this->expectException(PublicBookingException::class);
+        $this->expectExceptionMessage('This appointment is too close to cancel online.');
+
+        $service->cancel('token-cancel', [
+            'email' => 'lookup@example.com',
         ]);
     }
 

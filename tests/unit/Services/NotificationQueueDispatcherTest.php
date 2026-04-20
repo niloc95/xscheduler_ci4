@@ -92,6 +92,52 @@ final class NotificationQueueDispatcherTest extends CIUnitTestCase
         $this->assertSame('cancelled', $logService->entries[0]['status']);
     }
 
+    public function testDispatchFailsInternalRowWhenRecipientMetadataIsMissing(): void
+    {
+        $queueModel = new FakeNotificationQueueModel([111], [
+            [
+                'id' => 111,
+                'business_id' => 1,
+                'channel' => 'email',
+                'event_type' => 'appointment_confirmed',
+                'appointment_id' => 510,
+                'recipient_type' => 'internal',
+                'recipient_user_id' => 0,
+                'attempts' => 0,
+                'max_attempts' => 3,
+                'correlation_id' => '',
+            ],
+        ]);
+        $logService = new FakeNotificationDeliveryLogService();
+
+        $dispatcher = new TestNotificationQueueDispatcher(
+            $queueModel,
+            $logService,
+            new FakeNotificationOptOutService()
+        );
+        $dispatcher->ruleEnabled = true;
+        $dispatcher->integrationActive = true;
+        $dispatcher->appointments[510] = [
+            'id' => 510,
+            'customer_email' => 'customer@example.com',
+            'customer_phone' => '+15550005555',
+            'customer_first_name' => 'Casey',
+            'customer_last_name' => 'Customer',
+            'service_name' => 'Consult',
+            'provider_name' => 'Dr. Rivera',
+            'start_at' => '2026-05-02 13:00:00',
+        ];
+
+        $stats = $dispatcher->dispatch();
+
+        $this->assertSame(1, $stats['failed']);
+        $this->assertSame(0, $stats['sent']);
+        $this->assertSame('failed', $queueModel->rowsById[111]['status']);
+        $this->assertSame('Internal recipient metadata missing', $queueModel->rowsById[111]['last_error']);
+        $this->assertSame('failed', $logService->entries[0]['status']);
+        $this->assertSame('Internal recipient metadata missing', $logService->entries[0]['error_message']);
+    }
+
     public function testDispatchMarksSuccessfulEmailSendAsSent(): void
     {
         $queueModel = new FakeNotificationQueueModel([12], [
@@ -227,6 +273,133 @@ final class NotificationQueueDispatcherTest extends CIUnitTestCase
         $this->assertNotSame('', (string) ($queueModel->rowsById[14]['run_after'] ?? ''));
         $this->assertSame('failed', $logService->entries[0]['status']);
         $this->assertSame('retry@example.com', $logService->entries[0]['recipient']);
+    }
+
+    public function testSendEmailPassesAppointmentProviderNameNotCustomerName(): void
+    {
+        $dispatcher = new CapturingEmailDispatcher();
+
+        $appt = [
+            'id'                  => 900,
+            'hash'                => 'abc123',
+            'customer_email'      => 'customer@example.com',
+            'customer_first_name' => 'Nilesh',
+            'customer_last_name'  => 'Cara',
+            'customer_phone'      => '+27821000000',
+            'service_name'        => 'General Consultation',
+            'service_duration'    => '45',
+            'provider_name'       => 'Dr Cara',       // appointment provider — must appear in template data
+            'start_at'            => '2026-05-02 08:00:00',
+            'stored_timezone'     => 'Africa/Johannesburg',
+            'location_name'       => '',
+            'location_address'    => '',
+            'location_contact'    => '',
+            'booking_channel'     => 'web',
+            'created_at'          => '2026-05-01 10:00:00',
+        ];
+
+        // Call the real sendEmail() through the capturing subclass
+        $dispatcher->callSendEmail(1, 'appointment_confirmed', $appt);
+
+        $captured = $dispatcher->capturedTemplateData;
+        $this->assertNotNull($captured, 'sendEmail() must capture template data');
+        $this->assertSame('Dr Cara', $captured['provider_name'], 'provider_name must be the appointment provider, not the customer');
+        $this->assertSame('Nilesh Cara', $captured['customer_name'], 'customer_name must remain the customer');
+    }
+
+    public function testSendEmailSetsRecipientEmailToCustomerForCustomerClass(): void
+    {
+        $dispatcher = new CapturingEmailDispatcher();
+
+        $appt = [
+            'id'                  => 901,
+            'hash'                => 'def456',
+            'customer_email'      => 'booking_customer@example.com',
+            'customer_first_name' => 'Jane',
+            'customer_last_name'  => 'Smith',
+            'customer_phone'      => '+27821000001',
+            'service_name'        => 'Check-up',
+            'service_duration'    => '30',
+            'provider_name'       => 'Dr. Watson',
+            'start_at'            => '2026-05-03 09:00:00',
+            'stored_timezone'     => 'Africa/Johannesburg',
+            'location_name'       => '',
+            'location_address'    => '',
+            'location_contact'    => '',
+            'booking_channel'     => 'web',
+            'created_at'          => '2026-05-01 12:00:00',
+        ];
+
+        $dispatcher->callSendEmail(1, 'appointment_confirmed', $appt);
+
+        // No recipient_class set → defaults to 'customer' → to must equal customer_email
+        $this->assertSame('booking_customer@example.com', $dispatcher->capturedTo);
+    }
+
+    public function testSendEmailUsesRecipientEmailAndProviderNameForInternalClass(): void
+    {
+        $dispatcher = new CapturingEmailDispatcher();
+
+        $appt = [
+            'id'                  => 902,
+            'hash'                => 'ghi789',
+            'recipient_class'     => 'internal',
+            'recipient_email'     => 'provider@clinic.com',
+            'recipient_name'      => 'Dr. Watson',    // receiving staff's own display name
+            'customer_email'      => 'customer@example.com',
+            'customer_first_name' => 'Nilesh',
+            'customer_last_name'  => 'Cara',
+            'customer_phone'      => '+27821000002',
+            'service_name'        => 'Consultation',
+            'service_duration'    => '30',
+            'provider_name'       => 'Dr. Watson',    // appointment provider (may differ if staff assigned)
+            'start_at'            => '2026-05-03 10:00:00',
+            'stored_timezone'     => 'Africa/Johannesburg',
+            'location_name'       => '',
+            'location_address'    => '',
+            'location_contact'    => '',
+            'booking_channel'     => 'web',
+            'created_at'          => '2026-05-01 08:00:00',
+        ];
+
+        $dispatcher->callSendEmail(1, 'appointment_confirmed', $appt);
+
+        // Internal recipient → to must equal recipient_email, not customer_email
+        $this->assertSame('provider@clinic.com', $dispatcher->capturedTo);
+
+        // provider_name in template data must still be the appointment provider, not the salutation name
+        $this->assertSame('Dr. Watson', $dispatcher->capturedTemplateData['provider_name']);
+
+        // customer_name must be the actual customer
+        $this->assertSame('Nilesh Cara', $dispatcher->capturedTemplateData['customer_name']);
+    }
+}
+
+/**
+ * Captures template data assembled inside sendEmail() via the onEmailTemplateData hook.
+ * The actual SMTP send will fail gracefully in test (no config), the test only asserts
+ * on captured template data — not the return value.
+ */
+final class CapturingEmailDispatcher extends NotificationQueueDispatcher
+{
+    public ?array $capturedTemplateData = null;
+    public ?string $capturedTo = null;
+
+    public function callSendEmail(int $businessId, string $eventType, array $appt): array
+    {
+        // Capture the addressed-to before delegation
+        $this->capturedTo = (string) ($appt['recipient_email'] ?? $appt['customer_email'] ?? '');
+        return $this->sendEmail($businessId, $eventType, $appt);
+    }
+
+    protected function onEmailTemplateData(array $templateData): void
+    {
+        $this->capturedTemplateData = $templateData;
+    }
+
+    protected function resolveNotificationTimezone(array $appt): string
+    {
+        return 'UTC';
     }
 }
 

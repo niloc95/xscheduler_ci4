@@ -120,7 +120,7 @@
                                             </button>
                                         </form>
                                     <?php endif; ?>
-                                    <?php if ($currentUser['role'] === 'admin'): ?>
+                                    <?php if (has_role('admin')): ?>
                                         <button type="button"
                                                 class="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                                                 title="Delete User"

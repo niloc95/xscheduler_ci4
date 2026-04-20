@@ -19,37 +19,45 @@
         <input type="hidden" name="token" value="<?= esc($token) ?>">
 
         <div>
-            <md-outlined-text-field
-                label="New Password"
-                type="password"
-                name="password"
-                required
-                class="w-full"
-                <?= isset($validation) && $validation->hasError('password') ? 'error' : '' ?>>
-                <span slot="leading-icon" class="material-symbols-outlined">lock</span>
-            </md-outlined-text-field>
+            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+            <div class="relative">
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                    class="w-full px-4 py-3 pl-12 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-200"
+                    placeholder="Enter new password"
+                    <?= isset($validation) && $validation->hasError('password') ? 'aria-invalid="true"' : '' ?>
+                >
+                <span class="absolute left-4 top-1/2 transform -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-gray-500">lock</span>
+            </div>
             <?php if (isset($validation) && $validation->hasError('password')): ?>
-                <div class="mt-1 text-sm text-red-600">
+                <div class="mt-1 text-sm text-red-600 dark:text-red-400">
                     <?= $validation->getError('password') ?>
                 </div>
             <?php endif; ?>
-            <div class="mt-1 text-xs text-gray-500">
+            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Password must be at least 8 characters long
             </div>
         </div>
 
         <div>
-            <md-outlined-text-field
-                label="Confirm Password"
-                type="password"
-                name="password_confirm"
-                required
-                class="w-full"
-                <?= isset($validation) && $validation->hasError('password_confirm') ? 'error' : '' ?>>
-                <span slot="leading-icon" class="material-symbols-outlined">lock</span>
-            </md-outlined-text-field>
+            <label for="password_confirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
+            <div class="relative">
+                <input
+                    type="password"
+                    id="password_confirm"
+                    name="password_confirm"
+                    required
+                    class="w-full px-4 py-3 pl-12 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-200"
+                    placeholder="Confirm new password"
+                    <?= isset($validation) && $validation->hasError('password_confirm') ? 'aria-invalid="true"' : '' ?>
+                >
+                <span class="absolute left-4 top-1/2 transform -translate-y-1/2 material-symbols-outlined text-gray-400 dark:text-gray-500">lock</span>
+            </div>
             <?php if (isset($validation) && $validation->hasError('password_confirm')): ?>
-                <div class="mt-1 text-sm text-red-600">
+                <div class="mt-1 text-sm text-red-600 dark:text-red-400">
                     <?= $validation->getError('password_confirm') ?>
                 </div>
             <?php endif; ?>

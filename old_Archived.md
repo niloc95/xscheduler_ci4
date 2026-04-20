@@ -423,7 +423,8 @@ Channels per event: `email`, `sms`, `whatsapp`.
 
 **Internal template layer (2026-04-13):**
 - 5 seeded internal email templates now exist in `xs_message_templates` with `recipient_class = 'internal'`.
-- Internal templates are provider/staff facing and are loaded directly from `xs_message_templates` by `NotificationTemplateService::getTemplate(..., 'internal')`.
+- Internal templates are provider/staff facing and are loaded from `xs_message_templates` by `NotificationTemplateService::getTemplate(..., 'internal')`.
+- If no internal row exists (for example migration drift in production), `NotificationTemplateService` falls back to code-level `DEFAULT_INTERNAL_TEMPLATES` before customer defaults.
 - Internal notifications currently use the `email` channel only.
 
 ### Public Booking Flow
@@ -911,6 +912,7 @@ Always read from `$user['roles']` first; fall back to `[$user['role']]` only for
 - Internal appointment notifications are queue-only: `NotificationQueueService::enqueueInternalEvent()` writes `recipient_type = 'internal'` + `recipient_user_id`, and `NotificationQueueDispatcher` resolves the real email/name from `xs_users` just before send.
 - Internal recipient eligibility is determined by `UserModel::getNotifiableUsersForProvider()` and `xs_users.notify_on_appointments`; both admin user-management and self-service profile surfaces write that preference.
 - Notification time rendering must use an explicit timezone: `NotificationQueueDispatcher` now resolves display timezone from `xs_appointments.stored_timezone` first and falls back to `TimezoneService::businessTimezone()`; do not rely on implicit session timezone when rendering queued notifications.
+- Production delivery prerequisites for appointment email notifications: `xs_business_notification_rules.is_enabled = 1` for the event/channel, `xs_business_integrations.is_active = 1` for `email`, and a non-empty encrypted SMTP config in `xs_business_integrations.encrypted_config`; otherwise queue rows are cancelled/failed (for example: `Rule disabled` or `Integration inactive` / `Email integration is not configured`).
 
 ### Appointment Event Contract
 - `appointment_pending` is the canonical event for pending bookings.
@@ -1797,14 +1799,18 @@ Exception: the login path in `Auth::attemptLogin()` writes the full array includ
 - `app/Controllers/ProviderSchedule.php` is no longer allowed to make auth decisions from `$currentUser['role']` alone; session `roles[]` plus DB fallback are the required source of truth.
 - `app/Controllers/Api/V1/Providers.php` index listing is intentionally schema-safe: it filters scoped user rows via `getRolesForUser()` rather than assuming `xs_users.role = 'provider'` is authoritative.
 - Internal provider/staff appointment notifications must go through `NotificationQueueService::enqueueInternalEvent()` and `NotificationQueueDispatcher`; do not introduce direct email sends from controllers or views.
-- `NotificationTemplateService` now has a recipient-class split: customer flows use settings/default templates, internal provider/staff flows use `xs_message_templates.recipient_class = 'internal'` rows.
+- `NotificationTemplateService` has a recipient-class split: customer flows use settings/default templates, internal provider/staff flows use `xs_message_templates.recipient_class = 'internal'` rows with a code-level internal fallback when DB rows are missing.
 - The provider/staff appointment-notification preference is `xs_users.notify_on_appointments`; admin edits flow through `UserManagementMutationService`, self-service edits flow through `POST /profile/update-notifications`.
 - Appointment creation must persist `xs_appointments.stored_timezone` and notification rendering must pass explicit timezone to `TimezoneService::toDisplay(...)` to avoid UTC/session drift in outbound messages.
+- `NotificationQueueDispatcher::sendEmail()` must map `{provider_name}` to the appointment provider (`$appt['provider_name']`), not to recipient/customer display names.
+- Business-hours settings time fields are localization-driven in UI and normalized server-side in `SettingsApiService`; invalid times must return API validation errors (not generic 500s).
+- Recent edited files (2026-04-14): `app/Services/NotificationQueueDispatcher.php`, `app/Services/NotificationTemplateService.php`, `tests/unit/Services/NotificationQueueDispatcherTest.php`, `tests/unit/Services/NotificationTemplateServiceTest.php`, `app/Services/Settings/SettingsApiService.php`, `app/Controllers/Api/V1/Settings.php`, `tests/unit/Services/SettingsApiServiceTest.php`, `app/Services/Settings/SettingsPageService.php`, `app/Views/settings/tabs/business.php`, `resources/js/modules/settings/settings-form-ui.js`.
 
 ---
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 Status: Active hardening
 Phase 3: ✅ Multi-role RBAC fully hardened (RoleFilter, AuthorizationService, BaseApiController, UserManagementContextService, Providers API including authoritative provider listing, provider-schedule.js, ProviderSchedule.php standalone auth, Profile.php, UserManagement.php self-edit, user list multi-role display, self-admin role preservation); session write contract enforced from v140
 Phase 4 (2026-04-12): ✅ Canonical Mutation Pipeline (appointment-mutation-coordinator.js singleton; drag-drop + modal status/notes/cancel migrated; appointment:changed event; TD-02 TD-03 closed) + Default Appointment Status Setting (booking.default_appointment_status; migration seeded; settings UI; notification control point documented) + xs_customers schema restored (hash + custom_fields columns added, hashes backfilled) + Material Symbols Rounded added to app layout
 Phase 5 (2026-04-13): ✅ Internal provider/staff notification hardening (`xs_users.notify_on_appointments`; internal queue recipients via `recipient_type`/`recipient_user_id`; internal email templates via `recipient_class`; admin + self-service notification preference surfaces; dispatcher resolves internal recipients at send time)
+Phase 6 (2026-04-14): ✅ Notification and localization hardening (`{provider_name}` email mapping fixed to appointment provider; internal template code fallback added for migration-drift safety; business-hours time normalization + API validation mapping for localization formats)

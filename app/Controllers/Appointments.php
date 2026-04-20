@@ -17,7 +17,7 @@
  * POST /appointments/store        : Create new appointment
  * GET  /appointments/edit/:hash   : Show edit form for appointment
  * POST /appointments/update/:hash : Update existing appointment
- * GET  /appointments/view/:hash   : View appointment details (redirects to calendar)
+ * GET  /appointments/view/:hash   : Legacy deep-link endpoint (redirects to /appointments?open={hash})
  * POST /appointments/delete/:hash : Soft delete appointment
  * 
  * PURPOSE:
@@ -158,9 +158,9 @@ class Appointments extends BaseController
         // Get real appointments from database
         $appointments = $this->appointmentModel->getDashboardAppointments(null, $context, 100);
         
-        // Get active providers with colors for legend
+        // Get active providers with colors for legend (§4.4: use xs_user_roles)
         $activeProvidersBuilder = $this->userModel
-            ->where('role', 'provider')
+            ->whereHasRole('provider')
             ->where('color IS NOT NULL')
             ->where('color !=', '')
             ->orderBy('name', 'ASC');
@@ -177,9 +177,9 @@ class Appointments extends BaseController
 
         $activeProviders = $activeProvidersBuilder->findAll();
         
-        // Get ALL providers for filter dropdown (including those without colors)
+        // Get ALL providers for filter dropdown (§4.4: use xs_user_roles)
         $allProvidersBuilder = $this->userModel
-            ->where('role', 'provider')
+            ->whereHasRole('provider')
             ->orderBy('name', 'ASC');
 
         if ($staffScopedProviderIds !== null) {
@@ -236,23 +236,20 @@ class Appointments extends BaseController
     }
 
     /**
-     * View specific appointment
-     * Redirects to calendar - viewing is handled by JavaScript modal
+     * Legacy appointment deep-link compatibility endpoint.
+     *
+     * New canonical target is /appointments?open={hash} so the scheduler
+     * opens AppointmentDetailsModal as the single details surface.
      */
-    public function view($appointmentId = null)
+    public function view($appointmentHash = null)
     {
-        // Check authentication
-        if (!session()->get('isLoggedIn')) {
-            return redirect()->to(base_url('auth/login'));
+        $appointmentHash = trim((string) $appointmentHash);
+
+        if ($appointmentHash === '') {
+            return redirect()->to(base_url('appointments'));
         }
 
-        if (!$appointmentId) {
-            return redirect()->to(base_url('appointments'))->with('error', 'Appointment not found.');
-        }
-
-        // Redirect to appointments page with query parameter to open modal
-        // The JavaScript will detect this and open the appointment modal
-        return redirect()->to(base_url('appointments?open=' . $appointmentId));
+        return redirect()->to(base_url('appointments?open=' . rawurlencode($appointmentHash)));
     }
 
     /**

@@ -74,6 +74,7 @@ use App\Models\NotificationQueueModel;
 use App\Services\NotificationDeliveryLogService;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationOptOutService;
+use App\Services\BookingLinkService;
 
 class NotificationQueueDispatcher
 {
@@ -239,15 +240,23 @@ class NotificationQueueDispatcher
             $recipientType   = (string) ($row['recipient_type'] ?? 'customer');
             $recipientUserId = (int)   ($row['recipient_user_id'] ?? 0);
 
+            if ($recipientType === 'internal' && $recipientUserId <= 0) {
+                $this->markFailed($model, $row, 'Internal recipient metadata missing', true);
+                $logSvc->logAttempt($businessId, $id, $correlationId ?: null, $channel, $eventType, $appointmentId, null, 'failed', $attemptNumber, 'Internal recipient metadata missing');
+                $stats['failed']++;
+                continue;
+            }
+
             if ($recipientType === 'internal' && $recipientUserId > 0) {
                 $recipientUser = (new \App\Models\UserModel())->select('id, name, email')->find($recipientUserId);
-                if (!$recipientUser || empty($recipientUser['email'])) {
+                $recipientEmail = trim((string) ($recipientUser['email'] ?? ''));
+                if (!$recipientUser || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
                     $this->markFailed($model, $row, 'Internal recipient user not found', true);
                     $logSvc->logAttempt($businessId, $id, $correlationId ?: null, $channel, $eventType, $appointmentId, null, 'failed', $attemptNumber, 'Internal recipient user not found');
                     $stats['failed']++;
                     continue;
                 }
-                $appt['recipient_email'] = (string) $recipientUser['email'];
+                $appt['recipient_email'] = $recipientEmail;
                 $appt['recipient_name']  = (string) ($recipientUser['name'] ?? '');
                 $appt['recipient_class'] = 'internal';
             } else {
@@ -333,7 +342,7 @@ class NotificationQueueDispatcher
         $builder = $model->builder();
 
         $row = $builder
-            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, c.phone as customer_phone, s.name as service_name, u.name as provider_name', false)
+            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, c.phone as customer_phone, s.name as service_name, s.duration_min as service_duration, u.name as provider_name', false)
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
@@ -362,13 +371,25 @@ class NotificationQueueDispatcher
             ->where('business_id', $businessId)
             ->where('channel', $channel)
             ->first();
-        return (bool) ($row['is_active'] ?? false);
+
+        if ((bool) ($row['is_active'] ?? false)) {
+            return true;
+        }
+
+        // Development-only fallback: allow email notifications through Config\Email
+        // (.env) when no active xs_business_integrations row is present.
+        if ($channel === 'email') {
+            return (new NotificationEmailService())->canUseDevelopmentFallbackSmtp();
+        }
+
+        return false;
     }
 
     protected function sendEmail(int $businessId, string $eventType, array $appt): array
     {
         $recipientClass = (string) ($appt['recipient_class'] ?? 'customer');
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = (string) ($appt['recipient_email'] ?? $appt['customer_email'] ?? '');
         if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return ['ok' => false, 'error' => 'Missing/invalid recipient email.'];
@@ -380,24 +401,50 @@ class NotificationQueueDispatcher
             $customerName = 'Customer';
         }
 
-        // For internal recipients the display name is the staff/provider's own name
-        $recipientName = $recipientClass === 'internal'
-            ? (string) ($appt['recipient_name'] ?? 'Provider')
-            : $customerName;
+        $appointmentRef = (string) ($appt['hash'] ?? '');
+        if ($appointmentRef === '') {
+            $appointmentRef = (string) ($appt['id'] ?? '');
+        }
+
+        $bookedTimestamp = '';
+        if (!empty($appt['created_at'])) {
+            $bookedTimestamp = TimezoneService::toDisplay((string) $appt['created_at'], $displayTimezone);
+        }
+
+        $bookedVia = (string) ($appt['booking_channel'] ?? 'web');
+        if ($bookedVia === 'public') {
+            $bookedVia = 'Web';
+        } elseif ($bookedVia === 'internal') {
+            $bookedVia = 'Admin';
+        }
 
         $templateData = [
+            'appointment_id'   => (int) ($appt['id'] ?? 0),
+            'booking_id'       => (string) ($appt['id'] ?? ''),
             'customer_name'    => $customerName,
             'customer_email'   => (string) ($appt['customer_email'] ?? ''),
             'customer_phone'   => (string) ($appt['customer_phone'] ?? ''),
             'service_name'     => (string) ($appt['service_name'] ?? 'Service'),
-            'provider_name'    => $recipientName,
+            'service_duration' => (string) ($appt['service_duration'] ?? ''),
+            'provider_name'    => (string) ($appt['provider_name'] ?? 'Provider'),
             'start_datetime'   => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link'  => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url'      => base_url('booking'),
+            'reschedule_link'  => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url'      => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
+            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments?open=' . rawurlencode($appointmentRef)) : base_url('appointments'),
+            'internal_edit_link' => $appointmentRef !== '' ? base_url('appointments/edit/' . $appointmentRef) : base_url('appointments'),
+            'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
+            'booked_via' => $bookedVia,
+            'booked_timestamp' => $bookedTimestamp,
+            'location_name' => (string) ($appt['location_name'] ?? ''),
+            'location_address' => (string) ($appt['location_address'] ?? ''),
+            'location_contact' => (string) ($appt['location_contact'] ?? ''),
         ];
+
+        // Hook for testing: subclasses may inspect or capture template data.
+        $this->onEmailTemplateData($templateData);
 
         // Render template with placeholders
         $templateSvc = new NotificationTemplateService();
@@ -413,6 +460,7 @@ class NotificationQueueDispatcher
     protected function sendSmsReminder(int $businessId, array $appt): array
     {
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
             return ['ok' => false, 'error' => 'Missing/invalid customer phone (+E.164).'];
@@ -432,8 +480,8 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url' => base_url('booking'),
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
@@ -455,6 +503,7 @@ class NotificationQueueDispatcher
     protected function sendWhatsApp(int $businessId, string $eventType, array $appt): array
     {
         $displayTimezone = $this->resolveNotificationTimezone($appt);
+        $bookingLinkService = new BookingLinkService();
         $to = trim((string) ($appt['customer_phone'] ?? ''));
         if (!$this->isValidE164($to)) {
             return ['ok' => false, 'error' => 'Missing/invalid customer phone (+E.164).'];
@@ -474,8 +523,8 @@ class NotificationQueueDispatcher
             'start_datetime' => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'reschedule_link' => !empty($appt['hash']) ? base_url('booking/r/' . $appt['hash']) : base_url('booking'),
-            'booking_url' => base_url('booking'),
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
             'appointment_hash' => (string) ($appt['hash'] ?? ''),
         ];
 
@@ -616,5 +665,16 @@ class NotificationQueueDispatcher
         }
 
         return null;
+    }
+
+    /**
+     * Extension hook called with the assembled email template data just before rendering.
+     * No-op in production; subclasses may override for inspection in tests.
+     *
+     * @param array $templateData
+     */
+    protected function onEmailTemplateData(array $templateData): void
+    {
+        // intentionally empty
     }
 }

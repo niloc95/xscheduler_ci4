@@ -233,6 +233,131 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->assertSame('Inside reschedule policy window', $persisted['notes'] ?? null);
     }
 
+    public function testPublicBookingCanBeCancelledFromManageFlow(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+        $email = 'cancel.manage.' . uniqid('', true) . '@example.com';
+        $token = 'cancel-ok-' . bin2hex(random_bytes(6));
+
+        $db->table('customers')->insert([
+            'first_name' => 'Cancel',
+            'last_name' => 'Allowed',
+            'email' => $email,
+            'phone' => '+15551237777',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $customerId = (int) $db->insertID();
+        $this->customerIds[] = $customerId;
+
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+            ->modify('+2 days')
+            ->format('Y-m-d H:i:s');
+        $endAt = (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))
+            ->modify('+30 minutes')
+            ->format('Y-m-d H:i:s');
+
+        $db->table('appointments')->insert([
+            'customer_id' => $customerId,
+            'provider_id' => $this->providerId,
+            'service_id' => $this->serviceId,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+            'status' => 'confirmed',
+            'public_token' => $token,
+            'notes' => 'Cancelable appointment',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $appointmentId = (int) $db->insertID();
+        $this->appointmentIds[] = $appointmentId;
+
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email));
+        $lookup->assertOK();
+        $lookupPayload = json_decode($lookup->getJSON(), true);
+        $this->assertTrue((bool) ($lookupPayload['data']['can_cancel'] ?? false));
+
+        $this->primeCsrfCookie();
+
+        $cancel = $this->withHeaders($this->csrfJsonHeaders())
+            ->withBodyFormat('json')
+            ->patch('/booking/' . $token . '/cancel', [
+                'email' => $email,
+            ]);
+
+        $cancel->assertOK();
+        $cancelPayload = json_decode($cancel->getJSON(), true);
+        $this->assertSame('cancelled', $cancelPayload['data']['status'] ?? null);
+        $this->assertFalse((bool) ($cancelPayload['data']['can_cancel'] ?? true));
+
+        $persisted = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
+        $this->assertSame('cancelled', $persisted['status'] ?? null);
+    }
+
+    public function testPublicBookingCancelRejectsAppointmentsInsidePolicyWindow(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+        $email = 'cancel.window.' . uniqid('', true) . '@example.com';
+        $token = 'cancel-window-' . bin2hex(random_bytes(6));
+
+        $this->seedSetting($db, 'business.cancel', '12h', 'string');
+
+        $db->table('customers')->insert([
+            'first_name' => 'Cancel',
+            'last_name' => 'Window',
+            'email' => $email,
+            'phone' => '+15550002222',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $customerId = (int) $db->insertID();
+        $this->customerIds[] = $customerId;
+
+        $startAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+            ->modify('+6 hours')
+            ->format('Y-m-d H:i:s');
+        $endAt = (new \DateTimeImmutable($startAt, new \DateTimeZone('UTC')))
+            ->modify('+30 minutes')
+            ->format('Y-m-d H:i:s');
+
+        $db->table('appointments')->insert([
+            'customer_id' => $customerId,
+            'provider_id' => $this->providerId,
+            'service_id' => $this->serviceId,
+            'start_at' => $startAt,
+            'end_at' => $endAt,
+            'status' => 'confirmed',
+            'public_token' => $token,
+            'notes' => 'Inside cancel policy window',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $appointmentId = (int) $db->insertID();
+        $this->appointmentIds[] = $appointmentId;
+
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email));
+        $lookup->assertOK();
+        $lookupPayload = json_decode($lookup->getJSON(), true);
+        $this->assertFalse((bool) ($lookupPayload['data']['can_cancel'] ?? true));
+
+        $this->primeCsrfCookie();
+
+        $cancel = $this->withHeaders($this->csrfJsonHeaders())
+            ->withBodyFormat('json')
+            ->patch('/booking/' . $token . '/cancel', [
+                'email' => $email,
+            ]);
+
+        $cancel->assertStatus(403);
+        $cancelPayload = json_decode($cancel->getJSON(), true);
+        $this->assertSame('This appointment is too close to cancel online.', $cancelPayload['error'] ?? null);
+
+        $persisted = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
+        $this->assertSame('confirmed', $persisted['status'] ?? null);
+    }
+
     private function csrfJsonHeaders(): array
     {
         return [
@@ -320,6 +445,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->seedSetting($db, 'booking.notes_display', '1', 'boolean');
         $this->seedSetting($db, 'booking.notes_required', '0', 'boolean');
         $this->seedSetting($db, 'business.reschedule', '24h', 'string');
+        $this->seedSetting($db, 'business.cancel', '24h', 'string');
     }
 
     private function seedSetting($db, string $key, string $value, string $type): void
