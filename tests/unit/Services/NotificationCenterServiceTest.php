@@ -111,4 +111,22 @@ final class NotificationCenterServiceTest extends CIUnitTestCase
         $this->assertCount(1, $result);
         $this->assertSame('queue_2', $result[0]['id']);
     }
+
+    public function testResolveBusinessIdUsesSessionBusinessContext(): void
+    {
+        $service = new class extends NotificationCenterService {
+            public function exposeBusinessId(): int
+            {
+                return $this->resolveBusinessId();
+            }
+        };
+
+        session()->set('business_id', 42);
+
+        try {
+            $this->assertSame(42, $service->exposeBusinessId());
+        } finally {
+            session()->remove('business_id');
+        }
+    }
 }

@@ -238,6 +238,24 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
         }
     }
 
+    public function testNotificationSettingsServiceResolvesBusinessIdFromSessionContext(): void
+    {
+        $service = new class extends NotificationSettingsService {
+            public function exposeBusinessId(): int
+            {
+                return $this->resolveBusinessId();
+            }
+        };
+
+        session()->set('business_id', 24);
+
+        try {
+            $this->assertSame(24, $service->exposeBusinessId());
+        } finally {
+            session()->remove('business_id');
+        }
+    }
+
     public function testNotificationSettingsServiceSaveEmailReturnsStrictIntegrationError(): void
     {
         $settingModel = $this->createMock(SettingModel::class);
@@ -643,6 +661,13 @@ final class SpyNotificationWhatsAppService extends NotificationWhatsAppService
             'eventType' => $eventType,
             'templateName' => $templateName,
             'locale' => $locale,
+        ];
+
+        return ['ok' => true];
+    }
+}
+
+final class TestNotificationSettingsService extends NotificationSettingsService
 {
     public function __construct(
         private readonly SettingModel $settingModel,

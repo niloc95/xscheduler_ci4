@@ -18,6 +18,7 @@
  * -----------------------------------------------------------------------------
  * current_user_role()          : Get current user's role string
  * current_user_id()            : Get current user's ID
+ * current_business_id()        : Get current business ID
  * has_role($roles)             : Check if user has specific role(s)
  * has_permission($perms)       : Check if user has permission(s)
  * is_admin()                   : Check if user is admin
@@ -72,6 +73,47 @@ if (!function_exists('current_user_id')) {
     function current_user_id(): ?int
     {
         return session()->get('user_id');
+    }
+}
+
+if (!function_exists('current_business_id')) {
+    /**
+     * Get the active business ID from request or session context.
+     */
+    function current_business_id(?int $default = null): int
+    {
+        $fallback = $default ?? \App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT;
+
+        $request = null;
+        try {
+            $request = service('request');
+        } catch (\Throwable $e) {
+            $request = null;
+        }
+
+        $sessionUser = session()->get('user');
+        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
+
+        $candidates = [
+            $request?->getGet('business_id'),
+            $request?->getGet('businessId'),
+            $request?->getPost('business_id'),
+            $request?->getPost('businessId'),
+            session()->get('business_id'),
+            session()->get('active_business_id'),
+            $sessionUser['business_id'] ?? null,
+            $sessionUser['active_business_id'] ?? null,
+            $sessionUser['businessId'] ?? null,
+            $sessionUser['activeBusinessId'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        return max(1, (int) $fallback);
     }
 }
 

@@ -98,19 +98,20 @@ class NotificationQueueDispatcher
      * Dispatch queued notifications.
      * Returns stats: ['claimed'=>int,'sent'=>int,'failed'=>int,'cancelled'=>int,'skipped'=>int]
      */
-    public function dispatch(int $businessId = self::BUSINESS_ID_DEFAULT, int $limit = 100): array
+    public function dispatch(int $businessId = self::BUSINESS_ID_DEFAULT, int $limit = 100, ?string $eventType = null): array
     {
         $stats = ['claimed' => 0, 'sent' => 0, 'failed' => 0, 'cancelled' => 0, 'skipped' => 0];
 
         $limit = max(1, min(500, $limit));
         $lockToken = bin2hex(random_bytes(16));
+        $eventType = is_string($eventType) && trim($eventType) !== '' ? trim($eventType) : null;
 
         $model = $this->getQueueModel();
         $now = new \DateTimeImmutable('now');
         $nowStr = $now->format('Y-m-d H:i:s');
         $staleBefore = $now->modify('-15 minutes')->format('Y-m-d H:i:s');
 
-        $ids = $model
+        $candidateQuery = $model
             ->select('id')
             ->where('business_id', $businessId)
             ->where('status', 'queued')
@@ -121,7 +122,13 @@ class NotificationQueueDispatcher
             ->groupStart()
                 ->where('lock_token IS NULL', null, false)
                 ->orWhere('locked_at <', $staleBefore)
-            ->groupEnd()
+            ->groupEnd();
+
+        if ($eventType !== null) {
+            $candidateQuery->where('event_type', $eventType);
+        }
+
+        $ids = $candidateQuery
             ->orderBy('id', 'ASC')
             ->limit($limit)
             ->findColumn('id');
@@ -161,11 +168,16 @@ class NotificationQueueDispatcher
 
         $stats['claimed'] = count($claimedIds);
 
-        $rows = $model
+        $rowsQuery = $model
             ->where('business_id', $businessId)
             ->whereIn('id', $claimedIds)
-            ->where('lock_token', $lockToken)
-            ->findAll();
+            ->where('lock_token', $lockToken);
+
+        if ($eventType !== null) {
+            $rowsQuery->where('event_type', $eventType);
+        }
+
+        $rows = $rowsQuery->findAll();
 
         $sentPerChannel = ['email' => 0, 'sms' => 0, 'whatsapp' => 0];
         $perChannelLimit = ['email' => 100, 'sms' => 60, 'whatsapp' => 60];
@@ -235,6 +247,13 @@ class NotificationQueueDispatcher
                 continue;
             }
 
+            if ($eventType === 'appointment_reminder' && $this->isReminderRowStale($row, $appt)) {
+                $this->markCancelled($model, $row, 'Reminder no longer matches appointment schedule');
+                $logSvc->logAttempt($businessId, $id, $correlationId ?: null, $channel, $eventType, $appointmentId, null, 'cancelled', $attemptNumber, 'Reminder no longer matches appointment schedule');
+                $stats['cancelled']++;
+                continue;
+            }
+
             // For internal queue rows, resolve the recipient user and inject their
             // details into $appt so sendEmail() can address it correctly.
             $recipientType   = (string) ($row['recipient_type'] ?? 'customer');
@@ -248,7 +267,7 @@ class NotificationQueueDispatcher
             }
 
             if ($recipientType === 'internal' && $recipientUserId > 0) {
-                $recipientUser = (new \App\Models\UserModel())->select('id, name, email')->find($recipientUserId);
+                $recipientUser = $this->resolveInternalRecipientUser($recipientUserId);
                 $recipientEmail = trim((string) ($recipientUser['email'] ?? ''));
                 if (!$recipientUser || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
                     $this->markFailed($model, $row, 'Internal recipient user not found', true);
@@ -294,7 +313,7 @@ class NotificationQueueDispatcher
                 $logSvc->logAttempt($businessId, $id, $correlationId ?: null, $channel, $eventType, $appointmentId, $recipient, 'success', $attemptNumber, null);
                 $stats['sent']++;
 
-                if ($eventType === 'appointment_reminder') {
+                if ($eventType === 'appointment_reminder' && $this->shouldMarkReminderSent($row)) {
                     $this->markReminderSentIfSupported($appointmentId);
                 }
                 continue;
@@ -542,6 +561,46 @@ class NotificationQueueDispatcher
         
         $svc = new NotificationWhatsAppService();
         return $svc->sendMessage($businessId, $to, $eventType, $params, $templateData, [], $message);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function resolveInternalRecipientUser(int $recipientUserId): ?array
+    {
+        $row = (new \App\Models\UserModel())->select('id, name, email')->find($recipientUserId);
+        return is_array($row) ? $row : null;
+    }
+
+    protected function isReminderRowStale(array $row, array $appt): bool
+    {
+        $rowFingerprint = strtolower(trim((string) ($row['schedule_fingerprint'] ?? '')));
+        if ($rowFingerprint === '') {
+            return false;
+        }
+
+        $currentFingerprint = $this->resolveReminderScheduleFingerprint($appt);
+        if ($currentFingerprint === null || $currentFingerprint === '') {
+            return false;
+        }
+
+        return !hash_equals($rowFingerprint, $currentFingerprint);
+    }
+
+    protected function resolveReminderScheduleFingerprint(array $appt): ?string
+    {
+        $raw = implode('|', [
+            (string) ($appt['start_at'] ?? ''),
+            (string) ($appt['end_at'] ?? ''),
+            (string) ($appt['updated_at'] ?? ''),
+        ]);
+
+        return $raw !== '||' ? sha1($raw) : null;
+    }
+
+    protected function shouldMarkReminderSent(array $row): bool
+    {
+        return (string) ($row['recipient_type'] ?? 'customer') === 'customer';
     }
 
     protected function markReminderSentIfSupported(int $appointmentId): void

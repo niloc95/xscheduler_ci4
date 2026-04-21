@@ -169,7 +169,7 @@ function initBlockedPeriodsUI(root) {
     };
 
     const persistBlockPeriods = async () => {
-        const { response, payload: result } = await apiRequest(settingsApiUrl, {
+        const { response, payload } = await apiRequest(settingsApiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -180,13 +180,10 @@ function initBlockedPeriodsUI(root) {
         });
 
         if (!response.ok) {
-            throw new Error(parseErrorMessage(result, `Save failed (HTTP ${response.status})`));
-        }
-        if (!result?.ok) {
-            throw new Error(result?.message || 'Unable to save block period.');
+            throw new Error(parseErrorMessage(payload, `Save failed (HTTP ${response.status})`));
         }
 
-        return result;
+        return unwrapApiData(payload);
     };
 
     addButton?.addEventListener('click', () => openModal('add'));

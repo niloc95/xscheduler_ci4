@@ -11,8 +11,9 @@
  * 
  * PURPOSE:
  * -----------------------------------------------------------------------------
- * Provides a simple interface for sending appointment notifications across
- * multiple channels (email, SMS, WhatsApp) based on business notification rules.
+ * Provides a simple interface for sending appointment notifications.
+ * Immediate/manual sends still route through dedicated channel services,
+ * while reminder processing now delegates to the canonical queue pipeline.
  * 
  * NOTIFICATION EVENTS:
  * -----------------------------------------------------------------------------
@@ -28,17 +29,9 @@
  *   Send email notification for an appointment event
  * 
  * sendDueReminderEmails($businessId)
- *   Process and send all due reminder emails
+ *   Legacy compatibility shim for reminder processing.
+ *   Delegates to the canonical queue enqueue + dispatch flow.
  *   Returns: ['scanned' => int, 'sent' => int, 'skipped' => int]
- * 
- * sendEventSms($eventType, $appointmentId, $businessId)
- *   Send SMS notification for an appointment event
- * 
- * sendDueReminderSms($businessId)
- *   Process and send all due SMS reminders
- * 
- * sendEventWhatsApp($eventType, $appointmentId, $businessId)
- *   Send WhatsApp notification for an appointment event
  * 
  * NOTIFICATION FLOW:
  * -----------------------------------------------------------------------------
@@ -47,18 +40,17 @@
  * 3. Load appointment context (customer, service, provider)
  * 4. Build message from template
  * 5. Send via appropriate channel service
- * 6. Update appointment flags (e.g., reminder_sent)
+ * 6. Let the owning queue/dispatcher pipeline update compatibility state when applicable
  * 
  * REMINDER PROCESSING:
  * -----------------------------------------------------------------------------
- * Called by scheduled commands to process reminders:
- * - Gets offset minutes from business rules
- * - Finds appointments due for reminder
- * - Sends notifications and marks as sent
+ * Legacy reminder entry points are retained only as compatibility shims.
+ * Canonical reminder behavior is owned by NotificationQueueService and
+ * NotificationQueueDispatcher.
  * 
  * @see         app/Services/NotificationEmailService.php
  * @see         app/Services/NotificationSmsService.php
- * @see         app/Commands/SendAppointmentReminders.php
+ * @see         app/Commands/DispatchNotificationQueue.php
  * @package     App\Services
  * @author      Nilesh Nagin Cara
  * @copyright   2024-2026 Nilesh Nagin Cara
@@ -68,7 +60,6 @@
 namespace App\Services;
 
 use App\Models\AppointmentModel;
-use App\Services\Appointment\AppointmentStatus;
 use App\Models\BusinessNotificationRuleModel;
 use App\Services\NotificationCatalog;
 
@@ -105,97 +96,32 @@ class AppointmentNotificationService
     }
 
     /**
-     * Sends due reminder emails and marks reminder_sent = 1.
+     * Legacy compatibility shim for reminder processing.
      *
      * Returns stats: ['scanned' => int, 'sent' => int, 'skipped' => int]
      */
     public function sendDueReminderEmails(int $businessId = self::BUSINESS_ID_DEFAULT): array
     {
-        $stats = ['scanned' => 0, 'sent' => 0, 'skipped' => 0];
+        $enqueueStats = $this->getNotificationQueueService()->enqueueDueReminders($businessId);
 
-        if (!$this->isEmailEnabledForEvent($businessId, 'appointment_reminder')) {
-            return $stats;
+        if ((int) ($enqueueStats['enqueued'] ?? 0) <= 0) {
+            return [
+                'scanned' => (int) ($enqueueStats['scanned'] ?? 0),
+                'sent' => 0,
+                'skipped' => (int) ($enqueueStats['skipped'] ?? 0),
+            ];
         }
 
-        $emailSvc = new NotificationEmailService();
-        $integration = $emailSvc->getPublicIntegration($businessId);
-        if (empty($integration['is_active'])) {
-            return $stats;
-        }
+        $dispatchStats = $this->getNotificationQueueDispatcher()->dispatch($businessId, 100, 'appointment_reminder');
 
-        $offsetMinutes = $this->getReminderOffsetMinutes($businessId);
-        if ($offsetMinutes === null) {
-            return $stats;
-        }
-
-        $now = new \DateTimeImmutable('now');
-        $windowEnd = $now->modify('+30 days');
-
-        $model = new AppointmentModel();
-        $builder = $model->builder();
-
-        // Avoid breaking if reminder_sent column doesn't exist.
-        $db = \Config\Database::connect();
-        $fields = $db->getFieldNames($model->table);
-        $hasReminderSent = in_array('reminder_sent', $fields, true);
-
-        $builder->select('xs_appointments.id');
-        $builder->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
-        $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
-        $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
-        if ($hasReminderSent) {
-            $builder->where('xs_appointments.reminder_sent', 0);
-        }
-
-        $ids = array_map(static fn($row) => (int) ($row['id'] ?? 0), $builder->get()->getResultArray());
-
-        foreach ($ids as $appointmentId) {
-            if ($appointmentId <= 0) {
-                continue;
-            }
-
-            $appt = $this->getAppointmentContext($appointmentId);
-            $stats['scanned']++;
-
-            if (!$appt || empty($appt['start_at'])) {
-                $stats['skipped']++;
-                continue;
-            }
-
-            try {
-                $start = new \DateTimeImmutable((string) $appt['start_at']);
-            } catch (\Throwable $e) {
-                $stats['skipped']++;
-                continue;
-            }
-
-            $dueAt = $start->modify('-' . $offsetMinutes . ' minutes');
-            if ($now < $dueAt) {
-                $stats['skipped']++;
-                continue;
-            }
-
-            $to = (string) ($appt['customer_email'] ?? '');
-            if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-                $stats['skipped']++;
-                continue;
-            }
-
-            [$subject, $body] = $this->buildEmailMessage('appointment_reminder', $appt);
-            $send = $emailSvc->sendEmail($businessId, $to, $subject, $body);
-            if (!($send['ok'] ?? false)) {
-                $stats['skipped']++;
-                continue;
-            }
-
-            if ($hasReminderSent) {
-                $model->update($appointmentId, ['reminder_sent' => 1]);
-            }
-
-            $stats['sent']++;
-        }
-
-        return $stats;
+        return [
+            'scanned' => (int) ($enqueueStats['scanned'] ?? 0),
+            'sent' => (int) ($dispatchStats['sent'] ?? 0),
+            'skipped' => (int) ($enqueueStats['skipped'] ?? 0)
+                + (int) ($dispatchStats['skipped'] ?? 0)
+                + (int) ($dispatchStats['cancelled'] ?? 0)
+                + (int) ($dispatchStats['failed'] ?? 0),
+        ];
     }
 
     public function resetReminderSentIfTimeChanged(int $appointmentId, ?string $oldStartTime, ?string $newStartTime): void
@@ -230,10 +156,14 @@ class AppointmentNotificationService
         return (int) ($row['is_enabled'] ?? 0) === 1;
     }
 
-    private function getReminderOffsetMinutes(int $businessId): ?int
+    protected function getNotificationQueueService(): NotificationQueueService
     {
-        helper('notification');
-        return notification_get_reminder_offset_minutes($businessId, 'email');
+        return new NotificationQueueService();
+    }
+
+    protected function getNotificationQueueDispatcher(): NotificationQueueDispatcher
+    {
+        return new NotificationQueueDispatcher();
     }
 
     /**

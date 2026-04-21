@@ -27,6 +27,8 @@
  * - sent_at         : When successfully sent
  * - idempotency_key : Prevents duplicate sends
  * - correlation_id  : Links related notifications
+ * - reminder_offset_minutes : Reminder offset for appointment_reminder rows
+ * - schedule_fingerprint : Appointment schedule version for reminder staleness checks
  * 
  * QUEUE FLOW:
  * -----------------------------------------------------------------------------
@@ -76,6 +78,8 @@ class NotificationQueueModel extends BaseModel
         'appointment_id',
         'recipient_type',
         'recipient_user_id',
+        'reminder_offset_minutes',
+        'schedule_fingerprint',
         'status',
         'attempts',
         'max_attempts',
@@ -94,6 +98,8 @@ class NotificationQueueModel extends BaseModel
         'event_type' => 'required|string|max_length[64]',
         'idempotency_key' => 'required|string|max_length[128]',
         'correlation_id' => 'permit_empty|string|max_length[64]',
+        'reminder_offset_minutes' => 'permit_empty|is_natural',
+        'schedule_fingerprint' => 'permit_empty|string|max_length[40]',
     ];
 
     protected function normalizeSchemaFields(array $data): array

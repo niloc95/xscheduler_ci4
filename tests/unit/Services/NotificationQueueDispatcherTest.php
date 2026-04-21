@@ -181,6 +181,103 @@ final class NotificationQueueDispatcherTest extends CIUnitTestCase
         $this->assertSame([501], $dispatcher->reminderMarkedForAppointments);
     }
 
+    public function testDispatchDoesNotMarkReminderSentForInternalReminderRows(): void
+    {
+        $queueModel = new FakeNotificationQueueModel([121], [
+            [
+                'id' => 121,
+                'business_id' => 1,
+                'channel' => 'email',
+                'event_type' => 'appointment_reminder',
+                'appointment_id' => 511,
+                'recipient_type' => 'internal',
+                'recipient_user_id' => 999,
+                'attempts' => 0,
+                'max_attempts' => 3,
+                'correlation_id' => '',
+            ],
+        ]);
+        $logService = new FakeNotificationDeliveryLogService();
+
+        $dispatcher = new TestNotificationQueueDispatcher(
+            $queueModel,
+            $logService,
+            new FakeNotificationOptOutService()
+        );
+        $dispatcher->ruleEnabled = true;
+        $dispatcher->integrationActive = true;
+        $dispatcher->appointments[511] = [
+            'id' => 511,
+            'customer_email' => 'customer@example.com',
+            'customer_phone' => '+15550006666',
+            'customer_first_name' => 'Casey',
+            'customer_last_name' => 'Customer',
+            'service_name' => 'Consult',
+            'provider_name' => 'Dr. Rivera',
+            'start_at' => '2026-05-02 13:00:00',
+        ];
+        $dispatcher->internalUsers[999] = [
+            'id' => 999,
+            'name' => 'Internal User',
+            'email' => 'internal@example.com',
+        ];
+        $dispatcher->emailResult = ['ok' => true];
+
+        $stats = $dispatcher->dispatch();
+
+        $this->assertSame(1, $stats['sent']);
+        $this->assertSame('sent', $queueModel->rowsById[121]['status']);
+        $this->assertSame([], $dispatcher->reminderMarkedForAppointments);
+    }
+
+    public function testDispatchCancelsStaleReminderRowsBeforeSending(): void
+    {
+        $queueModel = new FakeNotificationQueueModel([122], [
+            [
+                'id' => 122,
+                'business_id' => 1,
+                'channel' => 'email',
+                'event_type' => 'appointment_reminder',
+                'appointment_id' => 512,
+                'recipient_type' => 'customer',
+                'schedule_fingerprint' => sha1('old-start|old-end|old-updated'),
+                'attempts' => 0,
+                'max_attempts' => 3,
+                'correlation_id' => '',
+            ],
+        ]);
+        $logService = new FakeNotificationDeliveryLogService();
+
+        $dispatcher = new TestNotificationQueueDispatcher(
+            $queueModel,
+            $logService,
+            new FakeNotificationOptOutService()
+        );
+        $dispatcher->ruleEnabled = true;
+        $dispatcher->integrationActive = true;
+        $dispatcher->appointments[512] = [
+            'id' => 512,
+            'customer_email' => 'guest@example.com',
+            'customer_phone' => '+15550007777',
+            'customer_first_name' => 'Pat',
+            'customer_last_name' => 'Doe',
+            'service_name' => 'Consult',
+            'provider_name' => 'Dr. Rivera',
+            'start_at' => '2026-05-02 10:00:00',
+            'end_at' => '2026-05-02 10:30:00',
+            'updated_at' => '2026-05-01 09:00:00',
+        ];
+
+        $stats = $dispatcher->dispatch();
+
+        $this->assertSame(1, $stats['cancelled']);
+        $this->assertSame(0, $stats['sent']);
+        $this->assertSame('cancelled', $queueModel->rowsById[122]['status']);
+        $this->assertSame('Reminder no longer matches appointment schedule', $queueModel->rowsById[122]['last_error']);
+        $this->assertSame('cancelled', $logService->entries[0]['status']);
+        $this->assertSame('Reminder no longer matches appointment schedule', $logService->entries[0]['error_message']);
+    }
+
     public function testDispatchCancelsOptedOutRecipientBeforeSending(): void
     {
         $queueModel = new FakeNotificationQueueModel([13], [
@@ -408,6 +505,7 @@ final class TestNotificationQueueDispatcher extends NotificationQueueDispatcher
     public bool $ruleEnabled = true;
     public bool $integrationActive = true;
     public array $appointments = [];
+    public array $internalUsers = [];
     public array $emailResult = ['ok' => true];
     public array $smsResult = ['ok' => true];
     public array $whatsAppResult = ['ok' => true];
@@ -441,6 +539,11 @@ final class TestNotificationQueueDispatcher extends NotificationQueueDispatcher
     protected function sendWhatsApp(int $businessId, string $eventType, array $appt): array
     {
         return $this->whatsAppResult;
+    }
+
+    protected function resolveInternalRecipientUser(int $recipientUserId): ?array
+    {
+        return $this->internalUsers[$recipientUserId] ?? null;
     }
 
     protected function markReminderSentIfSupported(int $appointmentId): void

@@ -37,7 +37,7 @@ class NotificationCenterService
     public function getNotifications(string $filter = 'all'): array
     {
         $notifications = [];
-        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
+        $businessId = $this->resolveBusinessId();
 
         try {
             $logBuilder = $this->deliveryLogModel->builder();
@@ -109,7 +109,7 @@ class NotificationCenterService
 
     public function getUnreadCount(): int
     {
-        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
+        $businessId = $this->resolveBusinessId();
         $count = 0;
 
         try {
@@ -128,6 +128,13 @@ class NotificationCenterService
         }
 
         return $count;
+    }
+
+    protected function resolveBusinessId(): int
+    {
+        helper('permissions');
+
+        return current_business_id();
     }
 
     private function formatDeliveryLog(array $log): array

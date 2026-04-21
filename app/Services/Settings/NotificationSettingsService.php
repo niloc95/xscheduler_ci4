@@ -40,6 +40,13 @@ class NotificationSettingsService
         return new NotificationTemplateService();
     }
 
+    protected function resolveBusinessId(): int
+    {
+        helper('permissions');
+
+        return current_business_id();
+    }
+
     public function getIndexData(): array
     {
         $notificationRules = [];
@@ -50,25 +57,26 @@ class NotificationSettingsService
         $whatsAppTemplates = [];
         $deliveryLogs = [];
         $messageTemplates = [];
+        $businessId = $this->resolveBusinessId();
 
         try {
             $notificationPolicy = new NotificationPolicyService();
-            $notificationRules = $notificationPolicy->getRules(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            $integrationStatus = $notificationPolicy->getIntegrationStatus(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            $emailIntegration = (new NotificationEmailService())->getPublicIntegration(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            $smsIntegration = (new NotificationSmsService())->getPublicIntegration(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            $whatsAppIntegration = (new NotificationWhatsAppService())->getPublicIntegration(NotificationCatalog::BUSINESS_ID_DEFAULT);
+            $notificationRules = $notificationPolicy->getRules($businessId);
+            $integrationStatus = $notificationPolicy->getIntegrationStatus($businessId);
+            $emailIntegration = (new NotificationEmailService())->getPublicIntegration($businessId);
+            $smsIntegration = (new NotificationSmsService())->getPublicIntegration($businessId);
+            $whatsAppIntegration = (new NotificationWhatsAppService())->getPublicIntegration($businessId);
 
             $whatsAppService = new NotificationWhatsAppService();
             foreach (array_keys(NotificationCatalog::EVENTS) as $eventType) {
-                $whatsAppTemplates[$eventType] = $whatsAppService->getActiveTemplate(NotificationCatalog::BUSINESS_ID_DEFAULT, $eventType) ?? [
+                $whatsAppTemplates[$eventType] = $whatsAppService->getActiveTemplate($businessId, $eventType) ?? [
                     'template_name' => '',
                     'locale' => 'en_US',
                 ];
             }
 
             $deliveryLogs = (new NotificationDeliveryLogModel())
-                ->where('business_id', NotificationCatalog::BUSINESS_ID_DEFAULT)
+                ->where('business_id', $businessId)
                 ->orderBy('created_at', 'DESC')
                 ->limit(50)
                 ->findAll();
@@ -94,7 +102,7 @@ class NotificationSettingsService
 
     public function save(array $post, ?int $userId): array
     {
-        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
+        $businessId = $this->resolveBusinessId();
         $intent = trim((string) ($post['intent'] ?? 'save'));
         $intent = $intent === '' ? 'save' : $intent;
 

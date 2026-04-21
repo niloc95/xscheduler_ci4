@@ -24,12 +24,21 @@ class NotificationQueueService
         if ($appointmentId <= 0) {
             return ['ok' => false, 'error' => 'Invalid appointmentId'];
         }
+        $extraPayload = [];
         $marker = $idempotencyMarker;
         if ($eventType === 'appointment_rescheduled') {
             $marker = $this->resolveRescheduleFingerprint($appointmentId);
         }
+        if ($eventType === 'appointment_reminder') {
+            $reminderMetadata = $this->resolveReminderMetadata($appointmentId, $idempotencyMarker);
+            $marker = $reminderMetadata['idempotency_marker'];
+            $extraPayload = [
+                'reminder_offset_minutes' => $reminderMetadata['offset_minutes'],
+                'schedule_fingerprint' => $reminderMetadata['schedule_fingerprint'],
+            ];
+        }
         $idem = $this->buildIdempotencyKey($channel, $eventType, $appointmentId, $marker);
-        return $this->enqueueRaw($businessId, $channel, $eventType, $appointmentId, $idem, $runAfter);
+        return $this->enqueueRaw($businessId, $channel, $eventType, $appointmentId, $idem, $runAfter, 'customer', null, $extraPayload);
     }
 
     /**
@@ -42,12 +51,21 @@ class NotificationQueueService
         }
         $channel   = trim($channel);
         $eventType = trim($eventType);
+        $extraPayload = [];
         $marker = $idempotencyMarker;
         if ($eventType === 'appointment_rescheduled') {
             $marker = $this->resolveRescheduleFingerprint($appointmentId);
         }
+        if ($eventType === 'appointment_reminder') {
+            $reminderMetadata = $this->resolveReminderMetadata($appointmentId, $idempotencyMarker);
+            $marker = $reminderMetadata['idempotency_marker'];
+            $extraPayload = [
+                'reminder_offset_minutes' => $reminderMetadata['offset_minutes'],
+                'schedule_fingerprint' => $reminderMetadata['schedule_fingerprint'],
+            ];
+        }
         $idemKey = $this->buildInternalIdempotencyKey($businessId, $channel, $eventType, $appointmentId, $recipientUserId, $marker);
-        return $this->enqueueRaw($businessId, $channel, $eventType, $appointmentId, $idemKey, $runAfter, 'internal', $recipientUserId);
+        return $this->enqueueRaw($businessId, $channel, $eventType, $appointmentId, $idemKey, $runAfter, 'internal', $recipientUserId, $extraPayload);
     }
 
     /**
@@ -78,16 +96,10 @@ class NotificationQueueService
         $windowEnd = $now->modify('+30 days');
         $model     = new AppointmentModel();
         $builder   = $model->builder();
-        $db        = \Config\Database::connect();
-        $fields    = $db->getFieldNames($model->table);
-        $hasReminderSent = in_array('reminder_sent', $fields, true);
         $builder->select('xs_appointments.id, xs_appointments.start_at');
         $builder->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
         $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
         $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
-        if ($hasReminderSent) {
-            $builder->where('xs_appointments.reminder_sent', 0);
-        }
         $appointments = $builder->get()->getResultArray();
         foreach ($appointments as $appt) {
             $stats['scanned']++;
@@ -150,7 +162,7 @@ class NotificationQueueService
     /**
      * Insert a row into xs_notification_queue.
      */
-    private function enqueueRaw(int $businessId, string $channel, string $eventType, int $appointmentId, string $idempotencyKey, ?\DateTimeImmutable $runAfter, string $recipientType = 'customer', ?int $recipientUserId = null): array
+    private function enqueueRaw(int $businessId, string $channel, string $eventType, int $appointmentId, string $idempotencyKey, ?\DateTimeImmutable $runAfter, string $recipientType = 'customer', ?int $recipientUserId = null, array $extraPayload = []): array
     {
         $now   = date('Y-m-d H:i:s');
         $model = new NotificationQueueModel();
@@ -171,6 +183,9 @@ class NotificationQueueService
             'created_at'        => $now,
             'updated_at'        => $now,
         ];
+        foreach ($extraPayload as $field => $value) {
+            $payload[$field] = $value;
+        }
         try {
             $id = $model->insert($payload);
             if (!$id) {
@@ -217,6 +232,77 @@ class NotificationQueueService
                 return null;
             }
             $raw = implode('|', [(string) ($row['start_at'] ?? ''), (string) ($row['end_at'] ?? ''), (string) ($row['updated_at'] ?? '')]);
+            return $raw !== '||' ? sha1($raw) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array{idempotency_marker:?string,offset_minutes:?int,schedule_fingerprint:?string}
+     */
+    private function resolveReminderMetadata(int $appointmentId, ?string $marker): array
+    {
+        $offsetMinutes = $this->extractReminderOffsetMinutes($marker);
+        $scheduleFingerprint = $this->extractScheduleFingerprint($marker) ?? $this->resolveReminderScheduleFingerprint($appointmentId);
+
+        $parts = [];
+        if ($offsetMinutes !== null) {
+            $parts[] = 'offset:' . $offsetMinutes;
+        } elseif (is_string($marker) && trim($marker) !== '') {
+            $parts[] = trim($marker);
+        }
+        if ($scheduleFingerprint) {
+            $parts[] = 'sch:' . $scheduleFingerprint;
+        }
+
+        return [
+            'idempotency_marker' => $parts !== [] ? implode(':', $parts) : null,
+            'offset_minutes' => $offsetMinutes,
+            'schedule_fingerprint' => $scheduleFingerprint,
+        ];
+    }
+
+    private function extractReminderOffsetMinutes(?string $marker): ?int
+    {
+        if (!is_string($marker) || trim($marker) === '') {
+            return null;
+        }
+
+        if (preg_match('/(?:^|:)offset:(\d+)(?:$|:)/', $marker, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        return ctype_digit(trim($marker)) ? (int) trim($marker) : null;
+    }
+
+    private function extractScheduleFingerprint(?string $marker): ?string
+    {
+        if (!is_string($marker) || trim($marker) === '') {
+            return null;
+        }
+
+        if (preg_match('/(?:^|:)sch:([0-9a-f]{40})(?:$|:)/i', $marker, $matches) === 1) {
+            return strtolower((string) $matches[1]);
+        }
+
+        return null;
+    }
+
+    private function resolveReminderScheduleFingerprint(int $appointmentId): ?string
+    {
+        try {
+            $row = (new AppointmentModel())->select('start_at, end_at, updated_at')->find($appointmentId);
+            if (!is_array($row)) {
+                return null;
+            }
+
+            $raw = implode('|', [
+                (string) ($row['start_at'] ?? ''),
+                (string) ($row['end_at'] ?? ''),
+                (string) ($row['updated_at'] ?? ''),
+            ]);
+
             return $raw !== '||' ? sha1($raw) : null;
         } catch (\Throwable $e) {
             return null;
