@@ -434,21 +434,32 @@ function initCustomerModeControls(form) {
 
             searchTimeout = setTimeout(async () => {
                 try {
-                    const { response, payload: text } = await apiRequest(`${searchUrl}?q=${encodeURIComponent(query)}`, {
+                    const { response, payload } = await apiRequest(`${searchUrl}?q=${encodeURIComponent(query)}`, {
                         method: 'GET',
                     });
                     if (!response.ok) throw new Error('Search failed');
 
-                    let result;
-                    try {
-                        result = JSON.parse(text);
-                    } catch {
-                        const jsonMatch = text.match(/\{[\s\S]*"success"[\s\S]*\}/);
-                        if (jsonMatch) {
-                            result = JSON.parse(jsonMatch[0]);
-                        } else {
-                            throw new Error('Invalid response format');
+                    let result = payload;
+
+                    if (typeof result === 'string') {
+                        try {
+                            result = JSON.parse(result);
+                        } catch {
+                            const jsonMatch = result.match(/\{[\s\S]*"success"[\s\S]*\}/);
+                            if (jsonMatch) {
+                                result = JSON.parse(jsonMatch[0]);
+                            } else {
+                                throw new Error('Invalid response format');
+                            }
                         }
+                    }
+
+                    if (!result || typeof result !== 'object') {
+                        throw new Error('Invalid response format');
+                    }
+
+                    if (result.success === false) {
+                        throw new Error(result.error || result.message || 'Search failed');
                     }
 
                     const customers = result.customers || result.data || [];

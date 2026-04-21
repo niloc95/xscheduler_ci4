@@ -10,7 +10,6 @@
 <?php
     $profileErrors = $profile_errors ?? [];
     $passwordErrors = $password_errors ?? [];
-    $tabState = $active_tab ?? 'profile';
     $profileFormDefaults = array_merge([
         'first_name' => '',
         'last_name' => '',
@@ -20,571 +19,422 @@
     $alertSuccess = $flashSuccess ?? null;
     $alertError = $flashError ?? null;
     $profileImageUrl = $profileImageUrl ?? null;
-?>
-<!-- Page Header -->
-<div class="mb-6"></div>
+    $profileInitials = $profileInitials ?? 'U';
+    $accountSummary = $account_summary ?? [];
+    $summaryCards = $summary_cards ?? [];
+    $recentActivity = $recent_activity ?? [];
+    $notificationsEnabled = !empty($user['notify_on_appointments']);
+    $showNotifications = !empty($showNotificationsTab);
+    $availableTabs = ['profile', 'password'];
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Profile Overview -->
-        <div class="lg:col-span-1">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <!-- Profile Picture -->
-                <div class="text-center mb-6">
-                    <div class="relative inline-block">
-                        <?php if ($profileImageUrl): ?>
-                            <img src="<?= esc($profileImageUrl) ?>"
-                                 alt="Profile photo"
-                                 class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
-                        <?php else: ?>
-                            <div class="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                                <?= strtoupper(substr($user['name'], 0, 2)) ?>
-                            </div>
-                        <?php endif; ?>
-                        <button type="button"
-                                class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg transition-colors duration-200"
-                                onclick="document.getElementById('profile-picture-upload').click()">
-                            <span class="material-symbols-rounded text-base align-middle">photo_camera</span>
-                        </button>
-                        <form id="profile-picture-form" action="<?= base_url('/profile/upload-picture') ?>" method="post" enctype="multipart/form-data" class="hidden">
+    if ($showNotifications) {
+        $availableTabs[] = 'notifications';
+    }
+
+    $tabState = in_array(($active_tab ?? 'profile'), $availableTabs, true) ? $active_tab : 'profile';
+
+    $toneClasses = [
+        'sky' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+        'amber' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+        'emerald' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    ];
+
+    $inputClasses = static function (bool $hasError): string {
+        return 'w-full rounded-lg border px-3 py-2 text-gray-900 transition-colors duration-200 focus:border-transparent focus:ring-2 dark:bg-gray-700 dark:text-gray-100 ' . (
+            $hasError
+                ? 'border-red-500 focus:ring-red-500 dark:border-red-400'
+                : 'border-gray-300 focus:ring-blue-500 dark:border-gray-600'
+        );
+    };
+
+    $tabButtonClasses = static function (bool $isActive): string {
+        return 'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 ' . (
+            $isActive
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+        );
+    };
+?>
+
+<div class="space-y-6" data-profile-page data-default-tab="<?= esc($tabState) ?>">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <aside class="space-y-6">
+            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="h-24 bg-gradient-to-r from-sky-500 via-cyan-500 to-blue-600"></div>
+                <div class="px-6 pb-6">
+                    <div class="-mt-12 flex items-end justify-between gap-4">
+                        <div class="relative">
+                            <?php if ($profileImageUrl): ?>
+                                <img src="<?= esc($profileImageUrl) ?>"
+                                     alt="Profile photo"
+                                     class="h-24 w-24 rounded-2xl border-4 border-white object-cover shadow-lg dark:border-gray-800">
+                            <?php else: ?>
+                                <div class="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-slate-900 text-2xl font-semibold text-white shadow-lg dark:border-gray-800">
+                                    <?= esc($profileInitials) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <button type="button"
+                                    class="absolute -bottom-2 -right-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition-colors duration-200 hover:bg-blue-700"
+                                    data-profile-image-trigger>
+                                <span class="material-symbols-rounded text-base">photo_camera</span>
+                            </button>
+                        </div>
+
+                        <form action="<?= base_url('/profile/upload-picture') ?>"
+                              method="post"
+                              enctype="multipart/form-data"
+                              class="hidden"
+                              data-profile-image-form>
                             <?= csrf_field() ?>
-                            <input type="file" id="profile-picture-upload" name="profile_picture" accept="image/*" onchange="this.form.submit()">
+                            <input type="file"
+                                   id="profile-picture-upload"
+                                   name="profile_picture"
+                                   accept="image/*"
+                                   class="hidden"
+                                   data-profile-image-input>
                         </form>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mt-4"><?= esc($user['name']) ?></h2>
-                    <p class="text-gray-600 dark:text-gray-400 capitalize"><?= esc($user_role) ?></p>
-                    <p class="text-sm text-gray-500 dark:text-gray-500"><?= esc($user['email']) ?></p>
-                </div>
 
-                <!-- Quick Actions -->
-                <div class="space-y-3">
-            <button type="button"
-                data-profile-tab-trigger="profile"
-                class="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                        <span class="material-symbols-rounded mr-2 text-base align-middle">edit</span>
-                        Edit Profile
-                    </button>
-                    <button type="button"
-                            data-profile-tab-trigger="password"
-                            class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium rounded-lg transition-colors duration-200">
-                        <span class="material-symbols-rounded mr-2 text-base align-middle">lock_reset</span>
-                        Change Password
-                    </button>
-                </div>
-            </div>
+                    <div class="mt-4 space-y-1">
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-white"><?= esc($user['name']) ?></h2>
+                        <p class="text-sm font-medium uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400"><?= esc($user_role) ?></p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400"><?= esc($user['email']) ?></p>
+                    </div>
 
-            <!-- Account Info -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Information</h3>
-                <div class="space-y-4">
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Member Since</p>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white"><?= $profile_stats['member_since'] ?></p>
-                    </div>
-                    <?php if (isset($user['phone']) && !empty($user['phone'])): ?>
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Phone</p>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white"><?= esc($user['phone']) ?></p>
-                    </div>
-                    <?php endif; ?>
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Account Status</p>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            Active
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700" data-profile-tabs data-active-tab="<?= esc($tabState) ?>">
-                <div class="flex border-b border-gray-200 dark:border-gray-700">
-                    <?php
-                        $isProfileActive = $tabState === 'profile';
-                        $isPasswordActive = $tabState === 'password';
-                        $profileTabClasses = 'flex-1 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 ' . (
-                            $isProfileActive
-                                ? 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600'
-                        );
-                        $passwordTabClasses = 'flex-1 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 ' . (
-                            $isPasswordActive
-                                ? 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600'
-                        );
-                    ?>
-                        <?php
-                            $isNotificationsActive = $tabState === 'notifications';
-                            $showNotificationsTab = in_array($user_role, ['provider', 'staff'], true);
-                            $notificationsTabClasses = 'flex-1 px-4 py-3 text-sm font-medium transition-colors duration-200 border-b-2 ' . (
-                                $isNotificationsActive
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600'
-                            );
-                        ?>
-                    <button type="button"
-                            data-profile-tab-button="profile"
-                            class="<?= esc($profileTabClasses) ?>">
-                        Profile Information
-                    </button>
-                    <button type="button"
-                            data-profile-tab-button="password"
-                            class="<?= esc($passwordTabClasses) ?>">
-                        Change Password
-                    </button>
-                        <?php if ($showNotificationsTab): ?>
+                    <div class="mt-6 space-y-3">
                         <button type="button"
-                                data-profile-tab-button="notifications"
-                                class="<?= esc($notificationsTabClasses) ?>">
-                            Notifications
+                                data-profile-tab-trigger="profile"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                            <span class="material-symbols-rounded text-base">edit</span>
+                            Edit profile
                         </button>
+                        <button type="button"
+                                data-profile-tab-trigger="password"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                            <span class="material-symbols-rounded text-base">lock_reset</span>
+                            Change password
+                        </button>
+                        <?php if ($showNotifications): ?>
+                            <button type="button"
+                                    data-profile-tab-trigger="notifications"
+                                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                                <span class="material-symbols-rounded text-base">notifications</span>
+                                Notification settings
+                            </button>
                         <?php endif; ?>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Account summary</h3>
+                    <span class="material-symbols-rounded text-gray-400">manage_accounts</span>
                 </div>
 
-                <div class="p-6 space-y-6">
+                <div class="space-y-4">
+                    <?php foreach ($accountSummary as $item): ?>
+                        <div class="flex items-start gap-3">
+                            <div class="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                                <span class="material-symbols-rounded text-base"><?= esc($item['icon']) ?></span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-medium uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500"><?= esc($item['label']) ?></p>
+                                <?php if (!empty($item['badge'])): ?>
+                                    <span class="mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold <?= esc($item['classes'] ?? '') ?>">
+                                        <?= esc($item['value']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <p class="mt-1 text-sm font-medium text-gray-900 dark:text-white"><?= esc($item['value']) ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        </aside>
+
+        <div class="space-y-6">
+            <section class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="border-b border-gray-200 px-6 py-5 dark:border-gray-700">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Profile settings</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">These values are loaded from your live account record and saved directly to your user profile.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button"
+                                    data-profile-tab-button="profile"
+                                    class="<?= esc($tabButtonClasses($tabState === 'profile')) ?>">
+                                Profile
+                            </button>
+                            <button type="button"
+                                    data-profile-tab-button="password"
+                                    class="<?= esc($tabButtonClasses($tabState === 'password')) ?>">
+                                Password
+                            </button>
+                            <?php if ($showNotifications): ?>
+                                <button type="button"
+                                        data-profile-tab-button="notifications"
+                                        class="<?= esc($tabButtonClasses($tabState === 'notifications')) ?>">
+                                    Notifications
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6 p-6">
                     <?php if ($alertSuccess): ?>
                         <?= ui_alert(esc($alertSuccess), 'success'); ?>
                     <?php endif; ?>
 
-                    <?php if ($alertError && empty($profileErrors['general']) && empty($passwordErrors)): ?>
+                    <?php if ($alertError && empty($profileErrors['general']) && empty($passwordErrors['general'])): ?>
                         <?= ui_alert(esc($alertError), 'error'); ?>
                     <?php endif; ?>
 
-                    <?php if (!empty($profileErrors['general']) && $tabState === 'profile'): ?>
-                        <?= ui_alert(esc($profileErrors['general']), 'error'); ?>
-                    <?php endif; ?>
-
-                    <form id="profileForm" method="post" action="<?= base_url('/profile/update-profile') ?>" class="space-y-6 <?= $tabState === 'profile' ? '' : 'hidden' ?>">
+                    <form id="profileForm"
+                          method="post"
+                          action="<?= base_url('/profile/update-profile') ?>"
+                          class="space-y-6 <?= $tabState === 'profile' ? '' : 'hidden' ?>"
+                          data-profile-tab-panel="profile">
                         <?= csrf_field() ?>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <?php
-                                $firstNameError = isset($profileErrors['first_name']);
-                                $firstNameClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                                $firstNameClasses .= $firstNameError
-                                    ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                    : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                            ?>
+
+                        <?php if (!empty($profileErrors['general'])): ?>
+                            <?= ui_alert(esc($profileErrors['general']), 'error'); ?>
+                        <?php endif; ?>
+
+                        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                             <div>
-                                <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label for="first_name" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     First Name <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text"
                                        id="first_name"
                                        name="first_name"
                                        value="<?= esc(old('first_name', $profileFormDefaults['first_name'])) ?>"
-                                       class="<?= esc($firstNameClasses) ?>"
+                                       class="<?= esc($inputClasses(isset($profileErrors['first_name']))) ?>"
                                        required>
-                                <?php if ($firstNameError): ?>
+                                <?php if (isset($profileErrors['first_name'])): ?>
                                     <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($profileErrors['first_name']) ?></p>
                                 <?php endif; ?>
                             </div>
 
-                            <?php
-                                $lastNameError = isset($profileErrors['last_name']);
-                                $lastNameClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                                $lastNameClasses .= $lastNameError
-                                    ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                    : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                            ?>
                             <div>
-                                <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Last Name
-                                </label>
+                                <label for="last_name" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Last Name</label>
                                 <input type="text"
                                        id="last_name"
                                        name="last_name"
                                        value="<?= esc(old('last_name', $profileFormDefaults['last_name'])) ?>"
-                                       class="<?= esc($lastNameClasses) ?>">
-                                <?php if ($lastNameError): ?>
+                                       class="<?= esc($inputClasses(isset($profileErrors['last_name']))) ?>">
+                                <?php if (isset($profileErrors['last_name'])): ?>
                                     <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($profileErrors['last_name']) ?></p>
                                 <?php endif; ?>
                             </div>
                         </div>
 
-                        <?php
-                            $emailError = isset($profileErrors['email']);
-                            $emailClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                            $emailClasses .= $emailError
-                                ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                        ?>
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="email" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Email Address <span class="text-red-500">*</span>
                             </label>
                             <input type="email"
                                    id="email"
                                    name="email"
                                    value="<?= esc(old('email', $profileFormDefaults['email'])) ?>"
-                                   class="<?= esc($emailClasses) ?>"
+                                   class="<?= esc($inputClasses(isset($profileErrors['email']))) ?>"
                                    required>
-                            <?php if ($emailError): ?>
+                            <?php if (isset($profileErrors['email'])): ?>
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($profileErrors['email']) ?></p>
                             <?php endif; ?>
                         </div>
 
-                        <?php
-                            $phoneError = isset($profileErrors['phone']);
-                            $phoneClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                            $phoneClasses .= $phoneError
-                                ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                        ?>
                         <div>
-                            <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Phone Number
-                            </label>
+                            <label for="phone" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
                             <input type="tel"
                                    id="phone"
                                    name="phone"
                                    value="<?= esc(old('phone', $profileFormDefaults['phone'])) ?>"
-                                   class="<?= esc($phoneClasses) ?>"
+                                   class="<?= esc($inputClasses(isset($profileErrors['phone']))) ?>"
                                    placeholder="Optional">
-                            <?php if ($phoneError): ?>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">The country selector is applied automatically when available.</p>
+                            <?php if (isset($profileErrors['phone'])): ?>
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($profileErrors['phone']) ?></p>
                             <?php endif; ?>
                         </div>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                                <span class="material-symbols-rounded mr-2 text-base align-middle">save</span>
-                                Save Changes
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                                <span class="material-symbols-rounded text-base">save</span>
+                                Save changes
                             </button>
                         </div>
                     </form>
 
-                    <?php if (!empty($passwordErrors['general']) && $tabState === 'password'): ?>
-                        <?= ui_alert(esc($passwordErrors['general']), 'error'); ?>
-                    <?php endif; ?>
-
-                    <form id="passwordForm" method="post" action="<?= base_url('/profile/change-password') ?>" class="space-y-6 <?= $tabState === 'password' ? '' : 'hidden' ?>">
+                    <form id="passwordForm"
+                          method="post"
+                          action="<?= base_url('/profile/change-password') ?>"
+                          class="space-y-6 <?= $tabState === 'password' ? '' : 'hidden' ?>"
+                          data-profile-tab-panel="password">
                         <?= csrf_field() ?>
-                        <?php
-                            $currentPasswordError = isset($passwordErrors['current_password']);
-                            $currentPasswordClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                            $currentPasswordClasses .= $currentPasswordError
-                                ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                        ?>
+
+                        <?php if (!empty($passwordErrors['general'])): ?>
+                            <?= ui_alert(esc($passwordErrors['general']), 'error'); ?>
+                        <?php endif; ?>
+
                         <div>
-                            <label for="current_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="current_password" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Current Password <span class="text-red-500">*</span>
                             </label>
                             <input type="password"
                                    id="current_password"
                                    name="current_password"
-                                   class="<?= esc($currentPasswordClasses) ?>"
+                                   class="<?= esc($inputClasses(isset($passwordErrors['current_password']))) ?>"
                                    required>
-                            <?php if ($currentPasswordError): ?>
+                            <?php if (isset($passwordErrors['current_password'])): ?>
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($passwordErrors['current_password']) ?></p>
                             <?php endif; ?>
                         </div>
 
-                        <?php
-                            $newPasswordError = isset($passwordErrors['new_password']);
-                            $newPasswordClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                            $newPasswordClasses .= $newPasswordError
-                                ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                        ?>
                         <div>
-                            <label for="new_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="new_password" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 New Password <span class="text-red-500">*</span>
                             </label>
                             <input type="password"
                                    id="new_password"
                                    name="new_password"
-                                   class="<?= esc($newPasswordClasses) ?>"
+                                   class="<?= esc($inputClasses(isset($passwordErrors['new_password']))) ?>"
                                    required>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Minimum 8 characters</p>
-                            <?php if ($newPasswordError): ?>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Minimum 8 characters. Reuse of the current password is blocked.</p>
+                            <?php if (isset($passwordErrors['new_password'])): ?>
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($passwordErrors['new_password']) ?></p>
                             <?php endif; ?>
                         </div>
 
-                        <?php
-                            $confirmPasswordError = isset($passwordErrors['confirm_password']);
-                            $confirmPasswordClasses = 'w-full px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-200 ';
-                            $confirmPasswordClasses .= $confirmPasswordError
-                                ? 'border border-red-500 dark:border-red-400 focus:ring-red-500'
-                                : 'border border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-                        ?>
                         <div>
-                            <label for="confirm_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="confirm_password" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Confirm New Password <span class="text-red-500">*</span>
                             </label>
                             <input type="password"
                                    id="confirm_password"
                                    name="confirm_password"
-                                   class="<?= esc($confirmPasswordClasses) ?>"
+                                   class="<?= esc($inputClasses(isset($passwordErrors['confirm_password']))) ?>"
                                    required>
-                            <?php if ($confirmPasswordError): ?>
+                            <?php if (isset($passwordErrors['confirm_password'])): ?>
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400"><?= esc($passwordErrors['confirm_password']) ?></p>
                             <?php endif; ?>
                         </div>
 
                         <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                                <span class="material-symbols-rounded mr-2 text-base align-middle">lock_reset</span>
-                                Update Password
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                                <span class="material-symbols-rounded text-base">lock_reset</span>
+                                Update password
                             </button>
                         </div>
                     </form>
-                </div>
-            </div>
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php if ($user_role === 'customer'): ?>
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">calendar_month</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Appointments</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $profile_stats['total_appointments'] ?></p>
-                            </div>
-                        </div>
-                    </div>
+                    <?php if ($showNotifications): ?>
+                        <form id="notificationsForm"
+                              method="post"
+                              action="<?= base_url('/profile/update-notifications') ?>"
+                              class="space-y-6 <?= $tabState === 'notifications' ? '' : 'hidden' ?>"
+                              data-profile-tab-panel="notifications">
+                            <?= csrf_field() ?>
 
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">attach_money</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($profile_stats['total_spent'], 2) ?></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-purple-600 dark:text-purple-400 text-2xl">workspace_premium</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Loyalty Points</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $profile_stats['loyalty_points'] ?></p>
-                            </div>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-green-600 dark:text-green-400 text-2xl">attach_money</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white">$<?= number_format($profile_stats['total_revenue'], 2) ?></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-amber-600 dark:text-amber-400 text-2xl">star</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Average Rating</p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $profile_stats['average_rating'] ?></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-2xl">group</span>
-                                </div>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    <?= $user_role === 'admin' ? 'Total Users' : 'Clients Served' ?>
-                                </p>
-                                <p class="text-2xl font-semibold text-gray-900 dark:text-white">
-                                    <?= $user_role === 'admin' ? $profile_stats['total_users'] : $profile_stats['clients_served'] ?>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- Recent Activity -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <?php foreach ($recent_activity as $activity): ?>
-                            <div class="flex items-start space-x-3">
-                                <div class="flex-shrink-0">
-                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                        <?php if ($activity['icon'] === 'calendar-check'): ?>
-                                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-base">event_available</span>
-                                        <?php elseif ($activity['icon'] === 'user'): ?>
-                                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-base">person</span>
-                                        <?php elseif ($activity['icon'] === 'calendar-plus'): ?>
-                                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-base">event</span>
-                                        <?php else: ?>
-                                            <span class="material-symbols-rounded text-blue-600 dark:text-blue-400 text-base">star</span>
-                                        <?php endif; ?>
+                            <div class="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/40">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h4 class="text-base font-semibold text-gray-900 dark:text-white">Appointment notifications</h4>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Receive updates when appointments are booked, rescheduled, cancelled, or when reminders are sent.</p>
                                     </div>
+                                    <span class="material-symbols-rounded text-gray-400">notifications</span>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm text-gray-900 dark:text-white"><?= esc($activity['description']) ?></p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400"><?= $activity['time'] ?></p>
+
+                                <label class="mt-5 flex cursor-pointer items-start gap-3">
+                                    <input type="hidden" name="notify_on_appointments" value="0">
+                                    <input type="checkbox"
+                                           id="profile_notify_on_appointments"
+                                           name="notify_on_appointments"
+                                           value="1"
+                                           <?= $notificationsEnabled ? 'checked' : '' ?>
+                                           class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
+                                    <span>
+                                        <span class="block text-sm font-medium text-gray-900 dark:text-white">Email me about my appointment queue</span>
+                                        <span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">This preference is stored on your live user record.</span>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                                    <span class="material-symbols-rounded text-base">save</span>
+                                    Save preferences
+                                </button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <?php if (!empty($summaryCards)): ?>
+                <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <?php foreach ($summaryCards as $card): ?>
+                        <?php $cardToneClasses = $toneClasses[$card['tone'] ?? 'sky'] ?? $toneClasses['sky']; ?>
+                        <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400"><?= esc($card['label']) ?></p>
+                                    <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white"><?= number_format((int) ($card['value'] ?? 0)) ?></p>
+                                </div>
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl <?= esc($cardToneClasses) ?>">
+                                    <span class="material-symbols-rounded text-xl"><?= esc($card['icon']) ?></span>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400"><?= esc($card['description']) ?></p>
+                        </article>
+                    <?php endforeach; ?>
+                </section>
+            <?php endif; ?>
 
-            <!-- Settings Quick Links -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Account Settings</h3>
+            <section class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="border-b border-gray-200 px-6 py-5 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Recent activity</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This feed comes from the account audit trail, not placeholder content.</p>
                 </div>
+
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <a href="<?= base_url('/profile/privacy') ?>" 
-                           class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200">
-                            <span class="material-symbols-rounded text-gray-600 dark:text-gray-400 mr-3 text-2xl">verified_user</span>
-                            <div>
-                                <h4 class="font-medium text-gray-900 dark:text-white">Privacy Settings</h4>
-
-                            <script>
-                            /* Tab logic handled by script block at bottom of page */
-                            </script>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Control your privacy preferences</p>
-                            </div>
-                        </a>
-
-                        <a href="<?= base_url('/profile/account') ?>" 
-                           class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200">
-                            <span class="material-symbols-rounded text-gray-600 dark:text-gray-400 mr-3 text-2xl">manage_accounts</span>
-                            <div>
-                                <h4 class="font-medium text-gray-900 dark:text-white">Account Settings</h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Security and preferences</p>
-                            </div>
-                        </a>
-                    </div>
+                    <?php if (empty($recentActivity)): ?>
+                        <div class="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-gray-600">
+                            <span class="material-symbols-rounded text-3xl text-gray-400">history</span>
+                            <p class="mt-3 text-sm font-medium text-gray-900 dark:text-white">No account activity has been recorded yet.</p>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">New sign-ins and profile changes will appear here automatically.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="space-y-4">
+                            <?php foreach ($recentActivity as $activity): ?>
+                                <article class="flex items-start gap-4 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+                                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                                        <span class="material-symbols-rounded text-base"><?= esc($activity['icon']) ?></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white"><?= esc($activity['title']) ?></h4>
+                                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400"><?= esc($activity['description']) ?></p>
+                                            </div>
+                                            <div class="text-left sm:text-right">
+                                                <p class="text-sm font-medium text-gray-700 dark:text-gray-200"><?= esc($activity['time']) ?></p>
+                                                <p class="text-xs text-gray-400 dark:text-gray-500"><?= esc($activity['timestamp']) ?></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
+            </section>
         </div>
     </div>
 </div>
-
-                    <?php if ($showNotificationsTab): ?>
-                    <form id="notificationsForm" method="post" action="<?= base_url('/profile/update-notifications') ?>" class="space-y-6 <?= $isNotificationsActive ? '' : 'hidden' ?>">
-                        <?= csrf_field() ?>
-                        <div>
-                            <h3 class="text-base font-medium text-gray-800 dark:text-gray-200 mb-1">Appointment Notifications</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose whether you receive email notifications when appointments are booked, rescheduled, cancelled, or when reminders are sent.</p>
-                            <label class="flex items-center space-x-3 cursor-pointer">
-                                <input type="hidden" name="notify_on_appointments" value="0">
-                                <input type="checkbox"
-                                       id="profile_notify_on_appointments"
-                                       name="notify_on_appointments"
-                                       value="1"
-                                       <?= !empty($user['notify_on_appointments']) ? 'checked' : '' ?>
-                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Receive email notifications for my appointments</span>
-                            </label>
-                        </div>
-                        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                            <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
-                                <span class="material-symbols-rounded mr-2 text-base align-middle">save</span>
-                                Save Preferences
-                            </button>
-                        </div>
-                    </form>
-                    <?php endif; ?>
-
-                    <script>
-                    (function () {
-                        const container = document.querySelector('[data-profile-tabs]');
-                        if (!container || container.dataset.tabsInitialized === 'true') {
-                            return;
-                        }
-                        container.dataset.tabsInitialized = 'true';
-
-                        const forms = {
-                            profile: container.querySelector('#profileForm'),
-                            password: container.querySelector('#passwordForm'),
-                            notifications: container.querySelector('#notificationsForm'),
-                        };
-
-                        const tabButtons = container.querySelectorAll('[data-profile-tab-button]');
-                        const externalTriggers = document.querySelectorAll('[data-profile-tab-trigger]');
-
-                        const setActiveClasses = function (target) {
-                            tabButtons.forEach(function (button) {
-                                const isActive = button.dataset.profileTabButton === target;
-                                button.classList.toggle('border-blue-600', isActive);
-                                button.classList.toggle('text-blue-600', isActive);
-                                button.classList.toggle('bg-blue-50', isActive);
-                                button.classList.toggle('dark:bg-blue-900/20', isActive);
-                                button.classList.toggle('border-transparent', !isActive);
-                                button.classList.toggle('text-gray-500', !isActive);
-                                button.classList.toggle('dark:text-gray-400', !isActive);
-                            });
-                        };
-
-                        const showForm = function (target) {
-                            Object.keys(forms).forEach(function (key) {
-                                if (forms[key]) {
-                                    forms[key].classList.toggle('hidden', key !== target);
-                                }
-                            });
-                        };
-
-                        const activateTab = function (target) {
-                            if (!forms[target]) {
-                                return;
-                            }
-                            container.dataset.activeTab = target;
-                            if (window.history && window.history.replaceState) {
-                                window.history.replaceState(null, '', '#'+ target);
-                            }
-                            showForm(target);
-                            setActiveClasses(target);
-                        };
-
-                        tabButtons.forEach(function (button) {
-                            button.addEventListener('click', function () {
-                                activateTab(button.dataset.profileTabButton);
-                            });
-                        });
-
-                        externalTriggers.forEach(function (trigger) {
-                            trigger.addEventListener('click', function () {
-                                activateTab(trigger.dataset.profileTabTrigger);
-                                container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            });
-                        });
-
-                        const hashTab = window.location.hash ? window.location.hash.slice(1) : '';
-                        const initialTab = forms[hashTab] ? hashTab : (container.dataset.activeTab || 'profile');
-                        activateTab(initialTab);
-                    })();
-                    </script>
 <?= $this->endSection() ?>

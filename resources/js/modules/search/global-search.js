@@ -43,6 +43,14 @@ function formatDateTime(value) {
  * @returns {object|null} Parsed JSON or null
  */
 export function extractJSON(text) {
+    if (text && typeof text === 'object') {
+        return text;
+    }
+
+    if (typeof text !== 'string' || text.trim() === '') {
+        return null;
+    }
+
     // Strategy 1: Try parsing as-is
     try {
         return JSON.parse(text);

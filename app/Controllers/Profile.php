@@ -51,18 +51,24 @@
 
 namespace App\Controllers;
 
+use App\Models\AuditLogModel;
 use App\Models\UserModel;
 use App\Services\PhoneNumberService;
+use App\Services\ProfilePageService;
 
 class Profile extends BaseController
 {
     protected UserModel $userModel;
+    protected AuditLogModel $auditLogModel;
     protected PhoneNumberService $phoneNumberService;
+    protected ProfilePageService $profilePageService;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
+        $this->auditLogModel = new AuditLogModel();
         $this->phoneNumberService = new PhoneNumberService();
+        $this->profilePageService = new ProfilePageService($this->userModel, null, $this->auditLogModel);
         helper(['permissions', 'form', 'ui']);
     }
 
@@ -80,48 +86,22 @@ class Profile extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
-        $userRecord = $this->userModel->find($userId);
-        if (!$userRecord) {
+        $sessionUser = session()->get('user') ?? [];
+        $userRole = current_user_role() ?: ($sessionUser['role'] ?? 'customer');
+        $data = $this->profilePageService->buildViewData($userId, $userRole, [
+            'profile_errors' => session()->getFlashdata('profile_errors') ?? [],
+            'password_errors' => session()->getFlashdata('password_errors') ?? [],
+            'active_tab' => session()->getFlashdata('active_tab') ?? 'profile',
+        ]);
+
+        if ($data === null) {
             session()->setFlashdata('error', 'We could not load your account. Please sign in again.');
             return redirect()->to(base_url('auth/logout'));
         }
 
-        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
-        $currentUser = session()->get('user') ?? [];
-        session()->set('user', array_merge($currentUser, [
-            'name' => $userRecord['name'],
-            'email' => $userRecord['email'],
-            'role' => $userRecord['role'],
-            'profile_image' => $userRecord['profile_image'] ?? null,
-        ]));
-
-        $nameParts = $this->splitName($userRecord['name'] ?? '');
-        $userRole = $userRecord['role'] ?? current_user_role();
-
-        $profileStats = $this->generateProfileStats($userRecord, $userRole);
-        $recentActivity = $this->generateRecentActivity($userRecord, $userRole);
-        $profileImageUrl = $this->buildProfileImageUrl($userRecord['profile_image'] ?? null);
-
-        $data = [
-            'title' => 'My Profile',
-            'current_page' => 'profile',
-            'user_role' => $userRole,
-            'user' => $userRecord,
-            'profile_stats' => $profileStats,
-            'recent_activity' => $recentActivity,
-            'profileImageUrl' => $profileImageUrl,
-            'profileForm' => [
-                'first_name' => $nameParts['first_name'],
-                'last_name' => $nameParts['last_name'],
-                'email' => $userRecord['email'] ?? '',
-                'phone' => $userRecord['phone'] ?? '',
-            ],
-            'profile_errors' => session()->getFlashdata('profile_errors') ?? [],
-            'password_errors' => session()->getFlashdata('password_errors') ?? [],
-            'active_tab' => session()->getFlashdata('active_tab') ?? 'profile',
-            'flashSuccess' => session()->getFlashdata('success'),
-            'flashError' => session()->getFlashdata('error'),
-        ];
+        $this->refreshSessionUser($data['user']);
+        $data['flashSuccess'] = session()->getFlashdata('success');
+        $data['flashError'] = session()->getFlashdata('error');
 
         return view('profile/index', $data);
     }
@@ -198,23 +178,31 @@ class Profile extends BaseController
                 ->with('error', 'Unable to update profile. Please try again.');
         }
 
-        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
-        $currentUser = session()->get('user') ?? [];
-        session()->set('user', array_merge($currentUser, [
-            'name' => $updateData['name'],
-            'email' => $updateData['email'],
-            'role' => $userRecord['role'],
-            'profile_image' => $userRecord['profile_image'] ?? null,
-        ]));
+        $updatedUser = $this->userModel->find($userId) ?: array_merge($userRecord, $updateData);
+        $this->refreshSessionUser($updatedUser);
+        $this->logProfileActivity(
+            'user_updated',
+            $userId,
+            [
+                'name' => $userRecord['name'] ?? null,
+                'email' => $userRecord['email'] ?? null,
+                'phone' => $userRecord['phone'] ?? null,
+            ],
+            [
+                'name' => $updateData['name'],
+                'email' => $updateData['email'],
+                'phone' => $updateData['phone'],
+            ]
+        );
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Profile updated successfully.',
-                'redirect' => base_url('profile')
+                'redirect' => base_url('profile#profile')
             ]);
         }
-        return redirect()->to(base_url('profile'))
+        return redirect()->to(base_url('profile#profile'))
             ->with('success', 'Profile updated successfully.')
             ->with('active_tab', 'profile');
     }
@@ -311,14 +299,16 @@ class Profile extends BaseController
                 ->with('active_tab', 'password');
         }
 
+            $this->logProfileActivity('password_changed', $userId, null, ['source' => 'profile']);
+
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Password updated successfully.',
-                'redirect' => base_url('profile')
+                'redirect' => base_url('profile#password')
             ]);
         }
-        return redirect()->to(base_url('profile'))
+            return redirect()->to(base_url('profile#password'))
             ->with('success', 'Password updated successfully.')
             ->with('active_tab', 'password');
     }
@@ -428,7 +418,7 @@ class Profile extends BaseController
 
         $relative = 'assets/profile/' . $safeName;
 
-        if (!$this->userModel->update($userId, ['profile_image' => $relative])) {
+        if (!$this->userModel->updateUser($userId, ['profile_image' => $relative], $userId)) {
             @unlink($absolute);
             if ($this->request->isAJAX()) {
                 return $this->response->setStatusCode(500)->setJSON([
@@ -441,23 +431,23 @@ class Profile extends BaseController
                 ->with('active_tab', 'profile');
         }
 
-        // Merge into existing session to preserve multi-role RBAC keys (roles, active_role).
-        $currentUser = session()->get('user') ?? [];
-        session()->set('user', array_merge($currentUser, [
-            'name' => $userRecord['name'],
-            'email' => $userRecord['email'],
-            'role' => $userRecord['role'],
-            'profile_image' => $relative,
-        ]));
+        $updatedUser = $this->userModel->find($userId) ?: array_merge($userRecord, ['profile_image' => $relative]);
+        $this->refreshSessionUser($updatedUser);
+        $this->logProfileActivity(
+            'profile_photo_updated',
+            $userId,
+            ['profile_image' => $userRecord['profile_image'] ?? null],
+            ['profile_image' => $relative]
+        );
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Profile photo updated successfully.',
-                'redirect' => base_url('profile')
+                'redirect' => base_url('profile#profile')
             ]);
         }
-        return redirect()->to(base_url('profile'))
+        return redirect()->to(base_url('profile#profile'))
             ->with('success', 'Profile photo updated successfully.')
             ->with('active_tab', 'profile');
     }
@@ -530,212 +520,6 @@ class Profile extends BaseController
         return redirect()->to(base_url('profile'));
     }
 
-    /**
-     * Generate profile statistics based on user role
-     */
-    private function generateProfileStats($user, $role)
-    {
-        // Get user creation date for "Member Since"
-        $memberSince = 'N/A';
-        if (isset($user['created_at'])) {
-            $memberSince = date('F j, Y', strtotime($user['created_at']));
-        } elseif (isset($user['id'])) {
-            // If created_at is not available, try to get it from database
-            $userData = $this->userModel->find($user['id']);
-            if ($userData && isset($userData['created_at'])) {
-                $memberSince = date('F j, Y', strtotime($userData['created_at']));
-            } else {
-                $memberSince = 'January 1, 2024'; // Default fallback
-            }
-        }
-
-        // Base stats for all users
-        $stats = [
-            'member_since' => $memberSince,
-            'total_appointments' => 0,
-            'total_spent' => 0,
-            'loyalty_points' => 0,
-        ];
-
-        // Role-specific statistics
-        switch ($role) {
-            case 'admin':
-                $stats = array_merge($stats, [
-                    'total_revenue' => 12450.00,
-                    'average_rating' => '4.8/5',
-                    'total_users' => 156,
-                    'clients_served' => 156,
-                ]);
-                break;
-                
-            case 'provider':
-                $stats = array_merge($stats, [
-                    'total_revenue' => 8750.00,
-                    'average_rating' => '4.9/5',
-                    'total_users' => 0,
-                    'clients_served' => 89,
-                ]);
-                $stats['total_appointments'] = 124;
-                break;
-                
-            case 'staff':
-                $stats = array_merge($stats, [
-                    'total_revenue' => 0,
-                    'average_rating' => '4.7/5',
-                    'total_users' => 0,
-                    'clients_served' => 45,
-                ]);
-                $stats['total_appointments'] = 67;
-                break;
-                
-            default: // client
-                $stats = array_merge($stats, [
-                    'total_revenue' => 0,
-                    'average_rating' => 'N/A',
-                    'total_users' => 0,
-                    'clients_served' => 0,
-                ]);
-                $stats['total_appointments'] = 8;
-                $stats['total_spent'] = 425.00;
-                $stats['loyalty_points'] = 125;
-                break;
-        }
-
-        return $stats;
-    }
-
-    /**
-     * Generate recent activity data based on user role
-     */
-    private function generateRecentActivity($user, $role)
-    {
-        // Base activity for all users
-        $activities = [];
-
-        // Role-specific activity
-        switch ($role) {
-            case 'admin':
-                $activities = [
-                    [
-                        'icon' => 'user',
-                        'description' => 'New user registration: Sarah Johnson',
-                        'time' => '2 hours ago'
-                    ],
-                    [
-                        'icon' => 'calendar-check',
-                        'description' => 'Appointment completed with Mike Davis',
-                        'time' => '4 hours ago'
-                    ],
-                    [
-                        'icon' => 'star',
-                        'description' => 'New 5-star review received',
-                        'time' => '1 day ago'
-                    ],
-                    [
-                        'icon' => 'calendar-plus',
-                        'description' => 'System backup completed successfully',
-                        'time' => '2 days ago'
-                    ],
-                ];
-                break;
-                
-            case 'provider':
-                $activities = [
-                    [
-                        'icon' => 'calendar-check',
-                        'description' => 'Appointment completed with Emily Rodriguez',
-                        'time' => '1 hour ago'
-                    ],
-                    [
-                        'icon' => 'star',
-                        'description' => 'Received 5-star review from John Smith',
-                        'time' => '3 hours ago'
-                    ],
-                    [
-                        'icon' => 'calendar-plus',
-                        'description' => 'New appointment scheduled for tomorrow',
-                        'time' => '5 hours ago'
-                    ],
-                    [
-                        'icon' => 'user',
-                        'description' => 'Profile updated successfully',
-                        'time' => '1 day ago'
-                    ],
-                ];
-                break;
-                
-            case 'staff':
-                $activities = [
-                    [
-                        'icon' => 'calendar-check',
-                        'description' => 'Appointment assisted for Dr. Wilson',
-                        'time' => '30 minutes ago'
-                    ],
-                    [
-                        'icon' => 'calendar-plus',
-                        'description' => 'Scheduled follow-up appointment',
-                        'time' => '2 hours ago'
-                    ],
-                    [
-                        'icon' => 'user',
-                        'description' => 'Updated client contact information',
-                        'time' => '4 hours ago'
-                    ],
-                    [
-                        'icon' => 'star',
-                        'description' => 'Completed training module',
-                        'time' => '1 day ago'
-                    ],
-                ];
-                break;
-                
-            default: // client
-                $activities = [
-                    [
-                        'icon' => 'calendar-check',
-                        'description' => 'Appointment completed with Dr. Smith',
-                        'time' => '3 days ago'
-                    ],
-                    [
-                        'icon' => 'calendar-plus',
-                        'description' => 'New appointment booked for next week',
-                        'time' => '5 days ago'
-                    ],
-                    [
-                        'icon' => 'star',
-                        'description' => 'Left review for recent service',
-                        'time' => '1 week ago'
-                    ],
-                    [
-                        'icon' => 'user',
-                        'description' => 'Profile information updated',
-                        'time' => '2 weeks ago'
-                    ],
-                ];
-                break;
-        }
-
-        return $activities;
-    }
-
-    private function splitName(string $name): array
-    {
-        $name = trim($name);
-        if ($name === '') {
-            return [
-                'first_name' => '',
-                'last_name' => '',
-            ];
-        }
-
-        $parts = preg_split('/\s+/', $name, 2) ?: [];
-
-        return [
-            'first_name' => $parts[0] ?? $name,
-            'last_name' => $parts[1] ?? '',
-        ];
-    }
-
     private function normalizeNullable($value): ?string
     {
         $value = trim((string) $value);
@@ -775,28 +559,6 @@ class Profile extends BaseController
         }
 
         return null;
-    }
-
-    private function buildProfileImageUrl(?string $stored): ?string
-    {
-        if (!$stored) {
-            return null;
-        }
-
-        $normalized = ltrim($stored, '/');
-        if ($normalized === '') {
-            return null;
-        }
-
-        if (str_starts_with($normalized, 'assets/')) {
-            return base_url($normalized);
-        }
-
-        if (str_starts_with($normalized, 'uploads/')) {
-            return base_url('writable/'.$normalized);
-        }
-
-        return base_url($normalized);
     }
 
     private function resizeImageInPlace(string $path, string $mime, int $newW, int $newH): void
@@ -876,9 +638,53 @@ class Profile extends BaseController
         }
 
         $userId = (int) session()->get('user_id');
-        $notify = (int) (bool) $this->request->getPost('notify_on_appointments');
+        if ($userId <= 0) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON(['success' => false, 'message' => 'Unauthenticated']);
+            }
+            return redirect()->to(base_url('auth/login'));
+        }
 
-        $this->userModel->update($userId, ['notify_on_appointments' => $notify]);
+        $notify = (int) (bool) $this->request->getPost('notify_on_appointments');
+        $userRecord = $this->userModel->find($userId);
+
+        if (!$userRecord) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'success' => false,
+                    'message' => 'Your account is no longer available. Please sign in again.',
+                    'redirect' => base_url('auth/login'),
+                ]);
+            }
+
+            return redirect()->to(base_url('auth/login'))
+                ->with('error', 'Your account is no longer available. Please sign in again.');
+        }
+
+        if (!$this->userModel->updateUser($userId, ['notify_on_appointments' => $notify], $userId)) {
+            $message = 'Unable to save notification preferences right now.';
+
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(500)->setJSON([
+                    'success' => false,
+                    'message' => $message,
+                    'redirect' => base_url('profile') . '#notifications',
+                ]);
+            }
+
+            return redirect()->to(base_url('profile') . '#notifications')
+                ->with('error', $message)
+                ->with('active_tab', 'notifications');
+        }
+
+        $updatedUser = $this->userModel->find($userId) ?: array_merge($userRecord, ['notify_on_appointments' => $notify]);
+        $this->refreshSessionUser($updatedUser);
+        $this->logProfileActivity(
+            'notification_preferences_updated',
+            $userId,
+            ['notify_on_appointments' => (bool) ($userRecord['notify_on_appointments'] ?? false)],
+            ['notify_on_appointments' => (bool) $notify]
+        );
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON([
@@ -914,5 +720,29 @@ class Profile extends BaseController
         }
 
         return $exists;
+    }
+
+    private function refreshSessionUser(array $userRecord): void
+    {
+        $currentUser = session()->get('user') ?? [];
+
+        session()->set('user', array_merge($currentUser, [
+            'name' => $userRecord['name'] ?? ($currentUser['name'] ?? ''),
+            'email' => $userRecord['email'] ?? ($currentUser['email'] ?? ''),
+            'role' => $userRecord['role'] ?? ($currentUser['role'] ?? null),
+            'profile_image' => $userRecord['profile_image'] ?? null,
+            'notify_on_appointments' => array_key_exists('notify_on_appointments', $userRecord)
+                ? (bool) $userRecord['notify_on_appointments']
+                : ($currentUser['notify_on_appointments'] ?? null),
+        ]));
+    }
+
+    private function logProfileActivity(string $action, int $userId, ?array $oldValue = null, ?array $newValue = null): void
+    {
+        try {
+            $this->auditLogModel->log($action, $userId, 'user', $userId, $oldValue, $newValue);
+        } catch (\Throwable $e) {
+            log_message('warning', 'Failed to write profile audit log: ' . $e->getMessage());
+        }
     }
 }

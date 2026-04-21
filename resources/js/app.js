@@ -30,6 +30,7 @@ import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
 import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
+import { initProfilePage } from './modules/profile/profile-page.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 import { initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
@@ -119,6 +120,9 @@ function initializeComponents() {
 
     // Add country-code selectors to all canonical phone fields.
     initPhoneCountrySelectors(document);
+
+    // Initialize the live profile page tab and avatar interactions.
+    initProfilePage(document);
     
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();

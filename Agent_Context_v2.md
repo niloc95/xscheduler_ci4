@@ -1,6 +1,6 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.2
+version: 2.3
 status: Active hardening
 last_updated: 2026-04-21
 source_documents:
@@ -333,6 +333,20 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - Tailwind + consolidated SCSS only
 - No inline style attributes in app-facing templates
 
+### 6.6 Shared Fetch Contract
+
+- `resources/js/core/api.js` `apiRequest()` returns `{ response, payload }`.
+- For `application/json` responses, `payload` is already parsed JSON. Consumers must not assume string methods such as `match()` are available unless they first confirm `typeof payload === 'string'`.
+- Text or HTML responses may still return string payloads.
+- Shared frontend helpers such as `extractJSON()` must accept already-parsed objects so search surfaces remain compatible with the shared fetch layer.
+
+### 6.7 Profile Surface Contract
+
+- `/profile` is a live account surface backed by `App\Services\ProfilePageService`; do not reintroduce placeholder summary cards or fake recent activity.
+- `app/Views/profile/index.php` is SPA-safe and is initialized through `resources/js/modules/profile/profile-page.js` from `resources/js/app.js`.
+- Profile mutations must preserve session role context via `array_merge` and write audit-log events for `user_updated`, `password_changed`, `profile_photo_updated`, and `notification_preferences_updated`.
+- Provider and staff notification preferences edited from `/profile` must persist to `xs_users.notify_on_appointments`.
+
 ## 7) Backend Service Boundaries
 
 ### 7.1 Canonical Services
@@ -345,6 +359,7 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - TimezoneService
 - UserManagementMutationService
 - UserManagementContextService
+- ProfilePageService
 - CustomerAppointmentService
 - MailerService
 - NotificationQueueDispatcher
@@ -1443,12 +1458,23 @@ Status legend: `done`, `in_progress`, `queued`.
 | 18 | `scheduler-week-view.js` decomposition | done | Day grid rendering extracted to `week-view-day-grid.js`. |
 | 19 | `app.js` decomposition | done | Shared UI helpers extracted to `resources/js/modules/app/shared-ui.js`. |
 
+### 17.4 Recent Behavior Hardening Log
+
+Status legend: `done`, `in_progress`, `queued`.
+
+| Item | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| 20 | `/profile` live view hardening | done | Added `ProfilePageService`, replaced placeholder profile cards/activity with authoritative data, moved tab/avatar behavior to `resources/js/modules/profile/profile-page.js`, and covered the flow with `tests/integration/ProfileJourneyTest.php`. |
+| 21 | Appointment customer-search payload contract | done | Appointment-form search now accepts parsed JSON payloads from `resources/js/core/api.js`, and shared `extractJSON()` accepts object payloads so sibling search surfaces do not fail on `.match()` calls. |
+
 ## 18) Audit Progress Board
 
 ### 18.1 Verified in Current Pass
 
 - Mandatory quality gates (14.4) were rerun after tranche updates.
 - Targeted decomposition items 14-19 are now implemented and linked in 17.3.
+- `/profile` now renders authoritative account data and audit activity through `ProfilePageService`, with SPA-safe tab/image behavior and integration coverage recorded in 17.4 item 20.
+- Appointment create customer search now respects the shared parsed-payload contract from `apiRequest()`, with the hardening recorded in 17.4 item 21.
 - Frontend test + build validation is required after each decomposition tranche.
 
 ### 18.2 Remaining Debt Outside 14-19
