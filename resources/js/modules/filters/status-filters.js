@@ -14,6 +14,7 @@
  */
 
 import { getBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 let statsRefreshAbortController = null;
 
@@ -129,22 +130,20 @@ export async function refreshAppointmentStats(options = {}) {
             url.searchParams.set('status', activeStatus);
         }
 
-        const response = await fetch(url, {
+        const { response, payload } = await apiRequest(url.toString(), {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
             },
             credentials: 'same-origin',
-            cache: 'no-store',
-            signal: statsRefreshAbortController.signal
+            signal: statsRefreshAbortController.signal,
         });
 
         if (!response.ok) {
             throw new Error(`Failed to refresh stats: HTTP ${response.status}`);
         }
 
-        const payload = await response.json();
         const stats = payload.data || payload;
         const meta = payload.meta || {};
 

@@ -314,6 +314,210 @@ class DashboardLandingTest extends CIUnitTestCase
         $this->assertFalse($authService->canViewSettings('provider'));
     }
 
+    /**
+     * Test: Staff user sees only assigned providers
+     */
+    public function testStaffProviderScopeReturnsAssignedProviders(): void
+    {
+        $db = \Config\Database::connect();
+        $now = date('Y-m-d H:i:s');
+
+        // Create second provider
+        $db->table('users')->insert([
+            'name' => 'Dr. Second Provider',
+            'email' => 'provider2@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'provider',
+            'status' => 'active',
+            'is_active' => 1,
+            'color' => '#10B981',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $secondProviderId = (int) $db->insertID();
+
+        // Create staff user
+        $db->table('users')->insert([
+            'name' => 'Staff Member',
+            'email' => 'staff@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'staff',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $staffId = (int) $db->insertID();
+
+        // Assign staff to first provider only
+        $db->table('provider_staff_assignments')->insert([
+            'provider_id' => $this->providerId,
+            'staff_id' => $staffId,
+            'status' => 'active',
+            'assigned_at' => $now,
+        ]);
+
+        $authService = new AuthorizationService();
+        
+        $staffUser = $db->table('users')->where('id', $staffId)->get()->getRowArray();
+        
+        // Staff scope should return array of assigned provider IDs
+        $scope = $authService->getProviderScope('staff', null, $staffUser);
+        
+        $this->assertIsArray($scope);
+        $this->assertContains($this->providerId, $scope);
+        $this->assertNotContains($secondProviderId, $scope);
+    }
+
+    /**
+     * Test: Staff with no assignments gets empty array
+     */
+    public function testStaffNoAssignmentsReturnsEmptyArray(): void
+    {
+        $db = \Config\Database::connect();
+        $now = date('Y-m-d H:i:s');
+
+        // Create unassigned staff user
+        $db->table('users')->insert([
+            'name' => 'Unassigned Staff',
+            'email' => 'unassigned@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'staff',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $staffId = (int) $db->insertID();
+
+        $authService = new AuthorizationService();
+        
+        $staffUser = $db->table('users')->where('id', $staffId)->get()->getRowArray();
+        
+        // Staff with no assignments should get empty array
+        $scope = $authService->getProviderScope('staff', null, $staffUser);
+        
+        $this->assertIsArray($scope);
+        $this->assertEmpty($scope);
+    }
+
+    /**
+     * Test: active_role takes precedence in getUserRole
+     */
+    public function testGetUserRoleUsesActivRoleFirst(): void
+    {
+        $authService = new AuthorizationService();
+
+        // User with active_role set (multi-role user)
+        $user = [
+            'id' => 5,
+            'role' => 'staff',
+            'active_role' => 'provider', // Takes precedence
+        ];
+
+        $role = $authService->getUserRole($user);
+        
+        $this->assertEquals('provider', $role);
+    }
+
+    /**
+     * Test: Dashboard schedule pane is scoped for staff
+     */
+    public function testDashboardSchedulePaneScoppedForStaff(): void
+    {
+        $db = \Config\Database::connect();
+        $now = date('Y-m-d H:i:s');
+
+        // Create staff and assign to provider
+        $db->table('users')->insert([
+            'name' => 'Staff For Schedule Test',
+            'email' => 'staff_sched@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'staff',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $staffId = (int) $db->insertID();
+
+        $db->table('provider_staff_assignments')->insert([
+            'provider_id' => $this->providerId,
+            'staff_id' => $staffId,
+            'status' => 'active',
+            'assigned_at' => $now,
+        ]);
+
+        $staffUser = $db->table('users')->where('id', $staffId)->get()->getRowArray();
+        
+        // Simulate logged-in staff
+        session()->set([
+            'user_id' => $staffId,
+            'user' => $staffUser,
+            'isLoggedIn' => true,
+        ]);
+
+        $authService = new AuthorizationService();
+        $scope = $authService->getProviderScope('staff', null, $staffUser);
+
+        $dashboardService = new DashboardService();
+        
+        // Schedule should use the scope (which is an array of provider IDs)
+        $schedule = $dashboardService->getTodaySchedule($scope);
+        
+        // Should be an array (may be empty if no appointments for the assigned provider today)
+        $this->assertIsArray($schedule);
+    }
+
+    /**
+     * Test: Metrics endpoint respects staff scope
+     */
+    public function testMetricsEndpointRespectStaffScope(): void
+    {
+        $db = \Config\Database::connect();
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('users')->insert([
+            'name' => 'Staff For Metrics Test',
+            'email' => 'staff_metrics@test.com',
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'staff',
+            'status' => 'active',
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $staffId = (int) $db->insertID();
+
+        $db->table('provider_staff_assignments')->insert([
+            'provider_id' => $this->providerId,
+            'staff_id' => $staffId,
+            'status' => 'active',
+            'assigned_at' => $now,
+        ]);
+
+        $staffUser = $db->table('users')->where('id', $staffId)->get()->getRowArray();
+        
+        session()->set([
+            'user_id' => $staffId,
+            'user' => $staffUser,
+            'isLoggedIn' => true,
+        ]);
+
+        $authService = new AuthorizationService();
+        $scope = $authService->getProviderScope('staff', null, $staffUser);
+
+        $dashboardService = new DashboardService();
+        
+        // Metrics should be calculated for the staff's assigned providers
+        $metrics = $dashboardService->getTodayMetrics($scope);
+        
+        $this->assertIsArray($metrics);
+        $this->assertArrayHasKey('total', $metrics);
+        $this->assertArrayHasKey('pending', $metrics);
+        $this->assertArrayHasKey('confirmed', $metrics);
+    }
+
     protected function tearDown(): void
     {
         session()->destroy();

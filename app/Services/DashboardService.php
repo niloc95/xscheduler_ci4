@@ -144,11 +144,16 @@ class DashboardService
      * - Pending/unconfirmed appointments
      * - Cancelled/rescheduled today
      * 
-     * @param int|null $providerId Provider ID for scope filtering (null for admin)
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
      * @return array Metrics data
      */
-    public function getTodayMetrics(?int $providerId = null): array
+    public function getTodayMetrics(int|array|null $providerId = null): array
     {
+        // Staff with no assignments: return zero metrics immediately
+        if (is_array($providerId) && empty($providerId)) {
+            return ['total' => 0, 'upcoming' => 0, 'pending' => 0, 'cancelled' => 0, 'confirmed' => 0];
+        }
+
         // Calculate local-today boundaries in UTC for correct business-day queries
         $localTz = $this->localizationService->getTimezone();
         $tz = new \DateTimeZone($localTz);
@@ -165,7 +170,9 @@ class DashboardService
         // across sequential countAllResults(false) calls.
         $scopedBuilder = function () use ($providerId) {
             $builder = $this->appointmentModel->builder();
-            if ($providerId !== null) {
+            if (is_array($providerId)) {
+                $builder->whereIn('provider_id', $providerId);
+            } elseif ($providerId !== null) {
                 $builder->where('provider_id', $providerId);
             }
 
@@ -221,11 +228,16 @@ class DashboardService
      * Returns appointments grouped by provider for today.
      * Includes time range, customer name, and status.
      * 
-     * @param int|null $providerId Provider ID for scope filtering (null for admin)
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
      * @return array Schedule data grouped by provider
      */
-    public function getTodaySchedule(?int $providerId = null): array
+    public function getTodaySchedule(int|array|null $providerId = null): array
     {
+        // Staff with no assignments: return empty immediately
+        if (is_array($providerId) && empty($providerId)) {
+            return [];
+        }
+
         // Calculate local-today boundaries in UTC
         $localTz = $this->localizationService->getTimezone();
         $tz = new \DateTimeZone($localTz);
@@ -253,13 +265,14 @@ class DashboardService
         ->orderBy('xs_appointments.start_at', 'ASC');
 
         // Apply provider scope
-        if ($providerId !== null) {
+        if (is_array($providerId)) {
+            $builder->whereIn('xs_appointments.provider_id', $providerId);
+        } elseif ($providerId !== null) {
             $builder->where('xs_appointments.provider_id', $providerId);
         }
 
         $appointments = $builder->get()->getResultArray();
 
-        // Group by provider
         $schedule = [];
         foreach ($appointments as $appt) {
             $providerName = $appt['provider_name'] ?? 'Unknown Provider';
@@ -295,16 +308,23 @@ class DashboardService
      * - Upcoming blocked periods
      * - Overbooking conflicts
      * 
-     * @param int|null $providerId Provider ID for scope filtering
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
      * @return array Alert data with action URLs
      */
-    public function getAlerts(?int $providerId = null): array
+    public function getAlerts(int|array|null $providerId = null): array
     {
+        // Staff with no assignments: no alerts
+        if (is_array($providerId) && empty($providerId)) {
+            return [];
+        }
+
         $alerts = [];
 
         // Check for pending confirmations
         $builder = $this->appointmentModel->builder();
-        if ($providerId !== null) {
+        if (is_array($providerId)) {
+            $builder->whereIn('provider_id', $providerId);
+        } elseif ($providerId !== null) {
             $builder->where('provider_id', $providerId);
         }
         
@@ -359,11 +379,13 @@ class DashboardService
         return $alerts;
     }
 
-    protected function countPendingConfirmationAlerts(?int $providerId, string $dayStartUtc): int
+    protected function countPendingConfirmationAlerts(int|array|null $providerId, string $dayStartUtc): int
     {
         $builder = $this->appointmentModel->builder();
 
-        if ($providerId !== null) {
+        if (is_array($providerId)) {
+            $builder->whereIn('provider_id', $providerId);
+        } elseif ($providerId !== null) {
             $builder->where('provider_id', $providerId);
         }
 
@@ -376,11 +398,15 @@ class DashboardService
     /**
      * Get upcoming appointments (next 7 days, max 10)
      * 
-     * @param int|null $providerId Provider ID for scope filtering
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
      * @return array Upcoming appointments
      */
-    public function getUpcomingAppointments(?int $providerId = null): array
+    public function getUpcomingAppointments(int|array|null $providerId = null): array
     {
+        if (is_array($providerId) && empty($providerId)) {
+            return [];
+        }
+
         // Calculate local today and next-week boundaries in UTC
         $localTz = $this->localizationService->getTimezone();
         $tz = new \DateTimeZone($localTz);
@@ -409,7 +435,9 @@ class DashboardService
         ->limit(10);
 
         // Apply provider scope
-        if ($providerId !== null) {
+        if (is_array($providerId)) {
+            $builder->whereIn('xs_appointments.provider_id', $providerId);
+        } elseif ($providerId !== null) {
             $builder->where('xs_appointments.provider_id', $providerId);
         }
 
@@ -445,11 +473,16 @@ class DashboardService
      * - on_break: Currently on break
      * - off: Not working today or past working hours
      * 
-     * @param int|null $providerId Provider ID for scope filtering
+     * @param int|int[]|null $providerId Scope: null=admin (all), int=provider, int[]=staff
      * @return array Provider availability data
      */
-    public function getProviderAvailability(?int $providerId = null): array
+    public function getProviderAvailability(int|array|null $providerId = null): array
     {
+        // Staff with no assignments: return empty immediately
+        if (is_array($providerId) && empty($providerId)) {
+            return [];
+        }
+
         $db = \Config\Database::connect();
         $usersHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_users') : true;
         $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
@@ -468,7 +501,9 @@ class DashboardService
             $builder->where('status', 'active');
         }
 
-        if ($providerId !== null) {
+        if (is_array($providerId)) {
+            $builder->whereIn('id', $providerId);
+        } elseif ($providerId !== null) {
             $builder->where('id', $providerId);
         }
 
@@ -822,12 +857,19 @@ class DashboardService
     /**
      * Cache helper for metrics (5-minute TTL)
      * 
-     * @param int|null $providerId
+     * @param int|int[]|null $providerId
      * @return array
      */
-    public function getCachedMetrics(?int $providerId = null): array
+    public function getCachedMetrics(int|array|null $providerId = null): array
     {
-        $cacheKey = "dashboard_metrics_" . ($providerId ?? 'admin');
+        // Use a stable cache key: for arrays, sort and join IDs to get a consistent key
+        if (is_array($providerId)) {
+            $sorted = $providerId;
+            sort($sorted);
+            $cacheKey = "dashboard_metrics_staff_" . implode('_', $sorted);
+        } else {
+            $cacheKey = "dashboard_metrics_" . ($providerId ?? 'admin');
+        }
         
         return $this->rememberCache($cacheKey, 300, function() use ($providerId) {
             return $this->getTodayMetrics($providerId);

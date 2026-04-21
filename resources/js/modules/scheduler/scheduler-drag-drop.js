@@ -7,6 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 import { appointmentMutationCoordinator } from '../appointments/appointment-mutation-coordinator.js';
 
 export class DragDropManager {
@@ -224,6 +225,7 @@ export class DragDropManager {
 
         try {
             const timezone = this.scheduler.options.timezone;
+
             const payload = {
                 provider_id: providerId,
                 start_time: newStart.toFormat('yyyy-MM-dd HH:mm:ss'),
@@ -233,16 +235,14 @@ export class DragDropManager {
                 location_id: this.draggedAppointment?.locationId ?? null,
             };
 
-            const response = await fetch(withBaseUrl('/api/availability/check'), {
+            const { response, payload: data } = await apiRequest(withBaseUrl('/api/availability/check'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify(payload),
+                body: payload,
             });
 
-            const data = await response.json();
             if (!response.ok) {
                 return {
                     available: false,

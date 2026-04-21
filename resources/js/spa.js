@@ -33,6 +33,7 @@ window.xsRegisterViewInit = function(initFn) {
 };
 
 import { getBaseUrl } from './utils/url-helpers.js';
+import { apiRequest } from './core/api.js';
 
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
@@ -168,14 +169,21 @@ const SPA = (() => {
   };
 
   const fetchPage = async (url) => {
-    const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const { response: res, payload: textPayload } = await apiRequest(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/html',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      rotateCsrf: false,
+    });
     if (res.status === 401) {
       // Session expired — full reload to trigger login redirect
       window.location.href = url;
       throw new Error('Session expired');
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
+    const text = typeof textPayload === 'string' ? textPayload : '';
     // Try to extract only the content inside #spa-content if rendered server-side
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
@@ -312,19 +320,23 @@ const SPA = (() => {
       const method = form.method.toUpperCase() || 'POST';
       const action = form.action || window.location.href;
 
-      const res = await fetch(action, {
-        method: method,
+      const { response: res, payload: payloadTextOrJson } = await apiRequest(action, {
+        method,
         body: formData,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        rotateCsrf: true,
       });
 
-      // Read body once for both OK and error responses
-      const text = await res.text();
       let data;
-      try {
-        data = JSON.parse(text);
-      } catch (_) {
-        data = null;
+      if (payloadTextOrJson && typeof payloadTextOrJson === 'object') {
+        data = payloadTextOrJson;
+      } else {
+        const text = typeof payloadTextOrJson === 'string' ? payloadTextOrJson : '';
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          data = null;
+        }
       }
 
       if (!res.ok) {

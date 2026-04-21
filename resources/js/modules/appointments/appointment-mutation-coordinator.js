@@ -35,6 +35,8 @@
  *   });
  */
 
+import { apiRequest } from '../../core/api.js';
+
 class AppointmentMutationCoordinator {
     constructor() {
         /** @type {boolean} Concurrent mutation guard */
@@ -136,21 +138,11 @@ class AppointmentMutationCoordinator {
         let result;
         try {
             const payload = typeof transformRequest === 'function' ? transformRequest(body) : body;
-            const headers = this._buildHeaders(authContext);
-            const response = await fetch(endpoint, {
+            const { response, payload: responseData } = await apiRequest(endpoint, {
                 method,
-                headers,
-                body: JSON.stringify(payload),
+                body: payload,
+                authContext,
             });
-
-            // Rotate CSRF from response
-            this._rotateCsrf(authContext, response.headers);
-
-            let responseData = null;
-            const contentType = response.headers.get('content-type') ?? '';
-            if (contentType.includes('application/json')) {
-                responseData = await response.json();
-            }
 
             if (!response.ok) {
                 const mutationError = this._classifyError(response.status, responseData);
@@ -200,53 +192,6 @@ class AppointmentMutationCoordinator {
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
-
-    /**
-     * Build fetch headers for the given auth context.
-     * @param {'authenticated'|'public'} authContext
-     * @returns {Record<string,string>}
-     */
-    _buildHeaders(authContext) {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        };
-
-        if (authContext === 'authenticated') {
-            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-                ?? window.__CSRF_TOKEN__
-                ?? null;
-            if (token) headers['X-CSRF-TOKEN'] = token;
-        } else if (authContext === 'public') {
-            const root = document.querySelector('[data-booking-root]') ?? document.body;
-            const token = root.dataset?.csrfValue ?? null;
-            if (token) headers['X-CSRF-TOKEN'] = token;
-        }
-
-        return headers;
-    }
-
-    /**
-     * Rotate CSRF token from response headers after a successful exchange.
-     * @param {'authenticated'|'public'} authContext
-     * @param {Headers} responseHeaders
-     */
-    _rotateCsrf(authContext, responseHeaders) {
-        const newToken = responseHeaders.get('X-CSRF-TOKEN');
-        if (!newToken) return;
-
-        if (authContext === 'authenticated') {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            if (meta) meta.setAttribute('content', newToken);
-            if (typeof window.__CSRF_TOKEN__ !== 'undefined') {
-                window.__CSRF_TOKEN__ = newToken;
-            }
-        } else if (authContext === 'public') {
-            const root = document.querySelector('[data-booking-root]') ?? document.body;
-            if (root.dataset) root.dataset.csrfValue = newToken;
-        }
-    }
 
     /**
      * Enable or disable all loadingTargets elements.

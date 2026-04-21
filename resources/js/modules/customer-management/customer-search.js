@@ -1,6 +1,7 @@
 import { extractJSON } from '../search/global-search.js';
 import { escapeHtml } from '../../utils/html.js';
 import { getBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 function formatDate(dateString) {
     if (!dateString) {
@@ -143,18 +144,18 @@ export function initCustomerManagementSearch() {
             }
 
             const baseUrl = getBaseUrl();
-            const response = await fetch(`${baseUrl}/customer-management/search?q=${encodeURIComponent(query)}`, {
+            const { response, payload: text } = await apiRequest(`${baseUrl}/customer-management/search?q=${encodeURIComponent(query)}`, {
+                method: 'GET',
                 headers: {
                     Accept: 'application/json'
                 },
-                signal: activeController.signal
+                signal: activeController.signal,
             });
 
             if (!response.ok) {
                 throw new Error(`Search failed: ${response.status}`);
             }
 
-            const text = await response.text();
             const data = extractJSON(text);
 
             if (!data) {

@@ -1,86 +1,12 @@
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 import { normalizeLocalPhoneForCountry } from '../../utils/phone-country-selector.js';
+import { getBrowserTimezone, getBrowserTimezoneHeaders, getTimezoneOffsetForTimezone } from '../../core/datetime.js';
+import { syncCsrfIntoForm, rotateCsrfFromResponse } from '../../core/csrf.js';
+import { apiRequest } from '../../core/api.js';
 
 function getAppointmentForm() {
     return document.querySelector('[data-appointment-form="true"]')
         || document.querySelector('form[action*="/appointments/store"], form[action*="/appointments/update"]');
-}
-
-function getBrowserTimezone() {
-    try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    } catch {
-        return 'UTC';
-    }
-}
-
-function getTimezoneOffset() {
-    // Derive UTC offset in minutes from the same IANA timezone as getBrowserTimezone(),
-    // keeping X-Client-Offset consistent with X-Client-Timezone (both browser TZ).
-    try {
-        const tz = getBrowserTimezone();
-        const now = new Date();
-        // Build a UTC timestamp for the same wall-clock time in the target timezone
-        const localMs = new Date(
-            now.toLocaleString('en-CA', { timeZone: tz, hour12: false })
-                .replace(' ', 'T') + 'Z'
-        ).getTime();
-        return Math.round((now.getTime() - localMs) / 60000);
-    } catch {
-        return new Date().getTimezoneOffset();
-    }
-}
-
-function attachTimezoneHeaders() {
-    return {
-        'X-Client-Timezone': getBrowserTimezone(),
-        'X-Client-Offset': String(getTimezoneOffset()),
-    };
-}
-
-function getCsrfContext(form) {
-    const csrfInput = form?.querySelector('input[name]');
-    const namedInput = form?.querySelector('input[name="csrf_test_name"]')
-        || form?.querySelector('input[name^="csrf_"]');
-    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const headerName = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-    const tokenName = namedInput?.name || 'csrf_test_name';
-    const tokenValue = metaToken || namedInput?.value || window.__CSRF_TOKEN__ || '';
-
-    return {
-        headerName,
-        tokenName,
-        tokenValue,
-        input: namedInput || csrfInput || null,
-    };
-}
-
-function syncCsrfIntoForm(form) {
-    const csrf = getCsrfContext(form);
-    if (csrf.input && csrf.tokenValue) {
-        csrf.input.value = csrf.tokenValue;
-    }
-
-    return csrf;
-}
-
-function updateCsrfFromResponse(response, form) {
-    const nextToken = response?.headers?.get('X-CSRF-TOKEN') || response?.headers?.get('x-csrf-token');
-    if (!nextToken) {
-        return;
-    }
-
-    const metaToken = document.querySelector('meta[name="csrf-token"]');
-    if (metaToken) {
-        metaToken.setAttribute('content', nextToken);
-    }
-
-    window.__CSRF_TOKEN__ = nextToken;
-
-    const csrf = getCsrfContext(form);
-    if (csrf.input) {
-        csrf.input.value = nextToken;
-    }
 }
 
 function normalizeCustomerPhonePayload(form, formData) {
@@ -161,10 +87,10 @@ export async function initAppointmentForm() {
                 formData.set(csrf.tokenName, csrf.tokenValue);
             }
 
-            const response = await fetch(formActionUrl, {
+            const { response, payload: resultPayload } = await apiRequest(formActionUrl, {
                 method: 'POST',
                 headers: {
-                    ...attachTimezoneHeaders(),
+                    ...getBrowserTimezoneHeaders(),
                     'X-Requested-With': 'XMLHttpRequest',
                     ...(csrf.tokenValue ? { [csrf.headerName]: csrf.tokenValue } : {}),
                 },
@@ -172,7 +98,7 @@ export async function initAppointmentForm() {
                 body: formData,
             });
 
-            updateCsrfFromResponse(response, form);
+            rotateCsrfFromResponse(response, 'authenticated', form);
 
             if (!response.ok) {
                 const errorPayload = await parseErrorPayload(response);
@@ -201,7 +127,7 @@ export async function initAppointmentForm() {
             const contentType = response.headers.get('content-type');
 
             if (contentType && contentType.includes('application/json')) {
-                const result = await response.json();
+                const result = resultPayload || {};
                 if (result.success || result.data) {
                     showNotification('success', 'Appointment booked successfully!');
                     setTimeout(() => {
@@ -508,10 +434,11 @@ function initCustomerModeControls(form) {
 
             searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`${searchUrl}?q=${encodeURIComponent(query)}`);
+                    const { response, payload: text } = await apiRequest(`${searchUrl}?q=${encodeURIComponent(query)}`, {
+                        method: 'GET',
+                    });
                     if (!response.ok) throw new Error('Search failed');
 
-                    const text = await response.text();
                     let result;
                     try {
                         result = JSON.parse(text);
@@ -647,8 +574,9 @@ function createSummaryUpdater(form) {
 function syncClientTimezoneFields(form) {
     const tzField = form?.querySelector('#client_timezone');
     const offsetField = form?.querySelector('#client_offset');
-    if (tzField) tzField.value = getBrowserTimezone();
-    if (offsetField) offsetField.value = getTimezoneOffset();
+    const timezone = getBrowserTimezone();
+    if (tzField) tzField.value = timezone;
+    if (offsetField) offsetField.value = getTimezoneOffsetForTimezone(timezone);
 }
 
 function attachVisibilityRefresh() {

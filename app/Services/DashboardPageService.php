@@ -48,7 +48,7 @@ class DashboardPageService
 
         $userRole = $this->authService->getUserRole($currentUser);
         $providerId = $this->authService->getProviderId($currentUser);
-        $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+        $providerScope = $this->authService->getProviderScope($userRole, $providerId, $currentUser);
 
         $this->authService->enforce(
             $this->authService->canViewDashboardMetrics($userRole),
@@ -70,9 +70,9 @@ class DashboardPageService
         $providerId = $sessionData['providerId'];
         $providerScope = $sessionData['providerScope'];
         $userId = (int) session()->get('user_id');
-        $scopeProviderId = is_array($providerScope)
-            ? ($providerScope['provider_id'] ?? $providerId)
-            : $providerScope;
+        // $providerScope is null (admin), int (provider), or int[] (staff).
+        // Pass it directly; DashboardService methods handle all three shapes.
+        $scopeProviderId = $providerScope;
 
         $context = $this->dashboardService->getDashboardContext($userId, $userRole, $providerId);
         $appointmentScope = $this->appointmentDashboardContextService->build($userRole, $userId, $currentUser);
@@ -233,7 +233,7 @@ class DashboardPageService
             ];
         }
 
-        $providerScope = $this->authService->getProviderScope($userRole, $providerId);
+        $providerScope = $this->authService->getProviderScope($userRole, $providerId, $currentUser);
         $metrics = $this->dashboardService->getTodayMetrics($providerScope);
 
         return [
@@ -291,12 +291,9 @@ class DashboardPageService
             ];
         }
 
-        $providerScope    = $this->authService->getProviderScope($userRole, $providerId);
-        $scopeProviderId  = is_array($providerScope)
-            ? ($providerScope['provider_id'] ?? $providerId)
-            : $providerScope;
+        $providerScope = $this->authService->getProviderScope($userRole, $providerId, $currentUser);
 
-        $schedule = $this->dashboardService->getTodaySchedule($scopeProviderId);
+        $schedule = $this->dashboardService->getTodaySchedule($providerScope);
 
         return [
             'statusCode' => 200,

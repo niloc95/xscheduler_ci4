@@ -12,6 +12,7 @@ import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials } from './appointment-colors.js';
 import { formatCurrency } from '../../currency.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 import { escapeHtml } from '../../utils/html.js';
 import { fetchSlotsForDate, groupSlotsByHour } from './availability-slots.js';
 
@@ -803,12 +804,14 @@ export class RightPanel {
         }
 
         try {
-            const response = await fetch(withBaseUrl(`/api/v1/providers/${providerId}/services`));
+            const { response, payload } = await apiRequest(withBaseUrl(`/api/v1/providers/${providerId}/services`), {
+                method: 'GET',
+            });
             if (!response.ok) {
                 return [];
             }
 
-            const data = await response.json();
+            const data = payload || {};
             const services = (data?.data || []).map(service => ({
                 id: Number(service.id),
                 name: service.name,
@@ -831,12 +834,14 @@ export class RightPanel {
         }
 
         try {
-            const response = await fetch(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`));
+            const { response, payload } = await apiRequest(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`), {
+                method: 'GET',
+            });
             if (!response.ok) {
                 return [];
             }
 
-            const data = await response.json();
+            const data = payload || {};
             const locations = (data?.data || []).map(location => ({
                 id: Number(location.id),
                 name: location.name,

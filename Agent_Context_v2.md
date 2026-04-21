@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.1
+version: 2.2
 status: Active hardening
-last_updated: 2026-04-19
+last_updated: 2026-04-21
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -62,11 +62,23 @@ Provide clear, actionable fixes
 Include file-level recommendations
 Avoid vague suggestions - always propose a concrete solution
 
+8. Scheduling and Availability Audit (Domain-Specific)
+When auditing scheduling code, verify:
+- Every `xs_business_hours` query includes a `provider_id` filter — no unscoped reads
+- Global business bounds are read from `xs_settings` (keys `business.work_start`, `business.work_end`), not from per-provider tables
+- `SettingModel::getByKeys()` is used (not the non-existent `getValue()`)
+- `AvailabilityService::constrainToBusinessHours()` is called for every slot-generation path
+- `TimezoneService::businessTimezone()` is the source for the business timezone — never hardcoded `'UTC'`
+
 ## ⚠️ Rule #2 — No Assumptions
 
 Do not assume code is correct.
 Always verify usage before keeping anything.
 If uncertain → trace usage or flag it.
+
+**Query Scope Rule:** Every query against a per-entity table (`xs_business_hours`, `xs_provider_schedules`, `xs_locations`, `xs_blocked_times`) MUST include an entity-scoping `WHERE` clause. An unfiltered query on these tables returns a random row from whichever entity was inserted first — never a "global" value. Verify every `WHERE` clause before keeping code.
+
+**API Contract Rule:** `SettingModel` exposes `getByKeys(array)`, `getByPrefix(string)`, `getAllAsMap()`, and `upsert()`. There is no `getValue()` method. Always use `getByKeys(['key'])` to read a single setting.
 
 ## 🧠 Rule #3 — Before You Change Code (Mandatory Checklist)
 
@@ -85,6 +97,8 @@ Before making any code changes, the agent must validate the following:
 [] If writing a migration, does it extend MigrationBase?
 [] Did I avoid dead-code surfaces and stale symbols?
 [] Have I verified consistency with SPA.JS and APP.JS patterns?
+[] Am I querying `xs_business_hours` with a `provider_id` filter? (All rows are per-provider; no global-only rows exist. An unfiltered query returns the first-inserted provider's hours — not a system-wide default.)
+[] Am I reading global time bounds (`business.work_start`, `business.work_end`) from `xs_settings` via `SettingModel::getByKeys()`, not from `xs_business_hours`?
 
 ## 🔥 Why This Is Strong
 
@@ -345,9 +359,16 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - app/Models/UserModel.php
 - app/Models/SettingModel.php
 - app/Services/MailerService.php
+- app/Services/AvailabilityService.php
+- app/Services/BusinessHoursService.php
+- app/Services/Calendar/DayViewService.php
+- app/Services/Calendar/WeekViewService.php
+- app/Services/Calendar/ProviderWorkingHoursTrait.php
 - resources/js/spa.js
 - resources/js/app.js
 - resources/js/public-booking.js
+- resources/js/modules/scheduler/scheduler-core.js
+- resources/js/modules/scheduler/time-grid-utils.js
 - vite.config.js
 
 ### 7.3 Unified Email Transport Contract
@@ -496,6 +517,130 @@ Expected behavior:
 - in scheduler context, reload via loadData() and re-render
 - dispatch appointment:changed event
 - coordinator owns toast and loading state
+
+### 8.7 Business Hours Architecture (Owner Section)
+
+#### 8.7.1 Two Distinct Concepts — Do Not Conflate
+
+| Concept | Source | Scope | Purpose |
+| --- | --- | --- | --- |
+| Global business hours | `xs_settings` keys `business.work_start`, `business.work_end` | System-wide outer bounds | The widest window any appointment can be booked in |
+| Provider schedule | `xs_business_hours` rows (always per `provider_id` + `weekday`) | Per-provider | The specific hours a given provider is available |
+
+**Critical:** `xs_business_hours` has NO global-only rows. Every row always has a `provider_id`. Querying this table without a `provider_id` filter returns an arbitrary provider's row — not a global business hour. This exact mistake caused all providers' slots to start at 10:00 (root cause fixed in commit `34a74a0`).
+
+#### 8.7.2 Canonical Service Responsibilities
+
+| Service / Method | Responsibility |
+| --- | --- |
+| `BusinessHoursService::getBusinessHoursForDay($weekday)` | Returns global hours from `xs_settings`. `$weekday` is kept for interface compatibility; global hours apply uniformly to all weekdays. |
+| `BusinessHoursService::getWeeklyHours()` | Returns Mon–Fri (weekdays 1–5) keyed by weekday, sourced from `xs_settings`. |
+| `BusinessHoursService::validateAppointmentTime($start, $end)` | Validates an appointment falls within global hours. Returns `['valid'=>bool,'reason'=>?string,'hours'=>?array]`. |
+| `AvailabilityService::constrainToBusinessHours($date, $providerHours)` | Narrows a provider's hours to the global bounds. Uses `SettingModel::getByKeys(['business.work_start','business.work_end'])`. Returns `null` if the window collapses to zero. |
+| `BusinessHourModel` | Queries `xs_business_hours` filtered by `provider_id` + `weekday`. Correct place to read individual provider schedules. Never use this without a `provider_id` filter. |
+
+#### 8.7.3 Global Business Hours Setting Keys
+
+| Key | Meaning | Example |
+| --- | --- | --- |
+| `business.work_start` | Global open time | `'06:00'` |
+| `business.work_end` | Global close time | `'17:00'` |
+
+Read via: `SettingModel::getByKeys(['business.work_start', 'business.work_end'])`.
+
+`SettingModel` has no `getValue()` method. Use `getByKeys()` for all reads (including single keys).
+
+#### 8.7.4 ProviderWorkingHoursTrait — Active Debt
+
+`app/Services/Calendar/ProviderWorkingHoursTrait::getBusinessHours()` falls back to calling `$settings->getValue('booking.day_start', '08:00')`. `SettingModel` has no `getValue()` method and this will throw `BadMethodCallException` at runtime when `$this->timeGrid` is not available. The fix is to replace the fallback with `SettingModel::getByKeys(['booking.day_start', 'booking.day_end'])`. This path is hit for the "placeholder provider" (provider_id = 0) case.
+
+### 8.8 Availability and Slot Generation Pipeline
+
+The server-side slot-generation pipeline operates in this sequence:
+
+1. **Resolve provider schedule** — Query `xs_business_hours` with `provider_id` + `weekday` filter to get the provider's start/end and breaks for the requested day.
+2. **Constrain to global bounds** — `AvailabilityService::constrainToBusinessHours()` reads `business.work_start` / `business.work_end` from `xs_settings` and narrows the provider window. If the provider window falls entirely outside global hours the day returns no slots.
+3. **Remove blocked times** — Query `xs_blocked_times` where `provider_id` matches and the blocked interval overlaps the working window.
+4. **Remove booked appointments** — Query `xs_appointments` for confirmed/pending appointments within the window for that provider.
+5. **Generate time slots** — Divide remaining free time into increments from `booking.slot_duration` setting.
+6. **Return slots** — Each slot is a UTC-anchored datetime.
+
+#### 8.8.1 Key Variables Required Before Calling Availability
+
+| Variable | Source | Notes |
+| --- | --- | --- |
+| `$providerId` | `xs_users.id` | Required; 0 is only a UI placeholder |
+| `$date` | Request input | ISO date `YYYY-MM-DD` |
+| `$serviceId` | `xs_services.id` | Determines slot duration |
+| `$timezone` | `localization.timezone` from `xs_settings` | `?string`, `null` resolves via `TimezoneService::businessTimezone()` |
+| `business.work_start` / `business.work_end` | `xs_settings` | Global outer bounds |
+| Provider's `xs_business_hours` rows | `provider_id` + `weekday` | Per-provider schedule |
+| `xs_blocked_times` rows | Provider + date range | Provider non-availability intervals |
+| `booking.slot_duration` | `xs_settings` | Slot increment in minutes |
+
+### 8.9 Calendar Architecture and Data Flow
+
+#### 8.9.1 Server-Side View Model API
+
+The calendar uses pre-computed server-side render models via `CalendarController`.
+
+| Endpoint | Service | View |
+| --- | --- | --- |
+| `GET /api/calendar/day?date=YYYY-MM-DD` | `DayViewService` | Day view |
+| `GET /api/calendar/week?date=YYYY-MM-DD` | `WeekViewService` | Week view |
+| `GET /api/calendar/month?year=&month=` | `MonthViewService` | Month view |
+
+Common query params: `provider_id`, `service_id`, `location_id`, `status`.
+
+Response envelope: `{ "data": { ...viewModel... }, "meta": { "view", "date", "generated_at" } }`
+
+`viewModel.businessHours` (`{ startTime, endTime }`) is sourced from `ProviderWorkingHoursTrait::getBusinessHours()` using `booking.day_start` / `booking.day_end` settings — these control the calendar grid display window, not booking availability.
+
+#### 8.9.2 Client-Side Scheduler Modules
+
+| File | Role |
+| --- | --- |
+| `scheduler-core.js` | Orchestrator. Owns `this.calendarModel`, `this.appointments`, `loadData()`, `loadCalendarModel()`, `loadAppointments()`. |
+| `scheduler-day-view.js` | Day column rendering. Derives `this.businessHours` via `_resolveBusinessHours(config, calendarModel)`. |
+| `scheduler-week-view.js` | Week grid rendering. |
+| `scheduler-month-view.js` | Month grid rendering. |
+| `time-grid-utils.js` | `getBusinessHours(config)` — extracts `startHour`/`endHour` from config or `calendarModel.businessHours`. Returns `{ startHour, endHour, startTime, endTime, hoursPerDay }`. |
+| `settings-manager.js` | Bootstraps `window.appTimezone` from `/api/v1/settings/localization`. |
+| `appointment-details-modal.js` | Renders the appointment detail modal (entry: `/appointments?open={hash}`). |
+
+#### 8.9.3 Data Load Paths
+
+**Server mode (default):**
+- `loadData()` → `loadCalendarModel()` → `GET /api/calendar/{view}` → `calendarModel` set → appointments synced from `calendarModel.appointments` → `render(calendarModel)` → `DayView._resolveBusinessHours()` uses `calendarModel.businessHours`.
+
+**Non-server mode (fallback):**
+- `loadData()` → `loadAppointments()` → `GET /api/appointments` → flat array → `render(null)` → `DayView._resolveBusinessHours()` falls back to `config.businessHours` or `config.slotMinTime`/`config.slotMaxTime`, then hardcoded `'08:00'`/`'17:00'`.
+
+#### 8.9.4 Calendar Grid Hours vs Booking Availability
+
+These are two separate concerns:
+
+| Concern | Source | Where used |
+| --- | --- | --- |
+| Calendar grid display window | `booking.day_start` / `booking.day_end` in `xs_settings` | `ProviderWorkingHoursTrait`, passed as `viewModel.businessHours` to JS |
+| Booking availability bounds | `business.work_start` / `business.work_end` in `xs_settings` | `BusinessHoursService`, `AvailabilityService::constrainToBusinessHours()` |
+| Provider working hours | `xs_business_hours` (per `provider_id` + `weekday`) | `AvailabilityService` slot generation, `BusinessHourModel` |
+
+#### 8.9.5 Role Scoping (Automatic)
+
+- Providers: `CalendarController` scopes to their own appointments only regardless of query params.
+- Admins/Staff: see all appointments; can filter by `provider_id` query param.
+- Do not rely on `provider_id` query param as the sole authorization mechanism — role-based scoping is enforced server-side.
+
+#### 8.9.6 Datetime Parsing on the Client
+
+All scheduler views parse API datetimes as UTC via Luxon:
+
+```js
+DateTime.fromISO(val, { zone: 'utc' }).setZone(window.appTimezone)
+```
+
+`window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`. Never parse appointment datetimes as local time.
 
 ## 9) Customers, Providers, and User Management
 
@@ -1079,6 +1224,8 @@ Notes:
 - xs_provider_schedules does not include location_id in this runtime.
 - xs_location_days is currently a minimal 3-column table.
 - xs_notification_queue uses modern locking/idempotency columns; do not assume legacy queue columns.
+- xs_business_hours has NO global-only rows. Every row has a `provider_id`. Do not query this table without a `provider_id` filter expecting a global business hour result.
+- Global business hours (system-wide outer bounds) live in `xs_settings` keys `business.work_start` and `business.work_end`, NOT in `xs_business_hours`.
 
 ### 12.6 Timezone Integrity Rules (Single Source of Truth)
 
@@ -1151,6 +1298,9 @@ Each high-risk contract has one owner section in this file.
 | Database schema and compatibility | 12) Database Schema and Relationships | 8), 9), 10), 11), 13) |
 | Migration base requirement | 13.1) Migration Base Requirement | 3), 12), 14) |
 | Unified email transport | 7.3) Unified Email Transport Contract | 11.2), 11.8) |
+| Business hours architecture | 8.7) Business Hours Architecture | 8.8), 12), 14) |
+| Availability and slot generation | 8.8) Availability and Slot Generation Pipeline | 8.7), 10), 12) |
+| Calendar data flow and grid bounds | 8.9) Calendar Architecture and Data Flow | 6), 8.5), 14) |
 
 Rule: Do not duplicate full contract text in non-owner sections. Use reference links and concise reminders only.
 
@@ -1206,6 +1356,12 @@ rg "style=\"|<style>" app/Views resources/js
 
 # 5) Detect deprecated appointment linkage usage
 rg "appointments\.user_id|\buser_id\b" app/ resources/
+
+# 6) Detect unfiltered xs_business_hours queries (must always have provider_id filter)
+rg "table\('business_hours'\)|from.*xs_business_hours" app/
+
+# 7) Detect SettingModel::getValue() calls (method does not exist; use getByKeys instead)
+rg "->getValue\(" app/Services app/Controllers app/Models
 ```
 
 Any result must be reviewed and justified or fixed.
@@ -1241,8 +1397,11 @@ npm run build
 ### 16.1 Active Debt Themes
 
 - Scheduler loading-path discipline must remain strict.
-- Remaining frontend utility consolidation is ongoing.
+- Frontend large-module decomposition is active and tracked in Appendix 17.3 (items 14-19).
 - Schema-compatibility in mixed local DB states must remain guarded.
+- `ProviderWorkingHoursTrait::getBusinessHours()` calls `$settings->getValue()` which does not exist on `SettingModel`. Fix: replace with `getByKeys(['booking.day_start','booking.day_end'])` (see §8.7.4).
+- Integration test DB has a migration sequence gap near `2025-10-22-174832`; `BusinessHoursServiceIntegrationTest` and some journey tests cannot run against the test DB until the gap is repaired.
+- Calendar selector unit tests are now runner-aligned via `npm run test:unit:calendar` (Vitest).
 
 ### 16.2 Forbidden Patterns (Condensed)
 
@@ -1270,3 +1429,45 @@ When behavior changes:
 3. Re-run mandatory quality gates in Section 14.
 4. If schema changed, update Section 12 and Section 13 together.
 5. If RBAC/session contracts changed, update Section 4 and rerun role/session grep checks.
+
+### 17.3 Execution Log: Items 14-19
+
+Status legend: `done`, `in_progress`, `queued`.
+
+| Item | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| 14 | `public-booking.js` decomposition | done | State/constants extracted to `resources/js/modules/public-booking/state.js`. |
+| 15 | `scheduler-core.js` decomposition | done | Calendar model URL building extracted to `resources/js/modules/scheduler/calendar-model-url.js`. |
+| 16 | Selector test runner alignment | done | Added `test:unit:calendar` script and Vitest dependency in `package.json`. |
+| 17 | `scheduler-day-view.js` decomposition | done | View constants/status metadata extracted to `scheduler-day-view-config.js`. |
+| 18 | `scheduler-week-view.js` decomposition | done | Day grid rendering extracted to `week-view-day-grid.js`. |
+| 19 | `app.js` decomposition | done | Shared UI helpers extracted to `resources/js/modules/app/shared-ui.js`. |
+
+## 18) Audit Progress Board
+
+### 18.1 Verified in Current Pass
+
+- Mandatory quality gates (14.4) were rerun after tranche updates.
+- Targeted decomposition items 14-19 are now implemented and linked in 17.3.
+- Frontend test + build validation is required after each decomposition tranche.
+
+### 18.2 Remaining Debt Outside 14-19
+
+- `ProviderWorkingHoursTrait::getBusinessHours()` still requires `SettingModel::getByKeys()` migration.
+- Test DB migration-sequence gap near `2025-10-22-174832` still blocks part of integration suite.
+
+## 19) Next Hardening Queue
+
+### 19.1 Immediate Follow-up Work
+
+1. Split `scheduler-today-view.js` into render/data helpers while preserving existing event contracts.
+2. Continue reducing inline script usage in non-target legacy views (module-bootstrapped parity).
+3. Add CI coverage for `npm run test:unit:calendar` in frontend validation workflow.
+
+### 19.2 Verification Rule
+
+Each queue item in 19.1 must end with:
+
+- `npm run test:frontend:lifecycle`
+- `npm run test:unit:calendar`
+- `npm run build`

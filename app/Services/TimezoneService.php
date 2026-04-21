@@ -95,7 +95,8 @@ class TimezoneService
         // 1) Settings DB
         try {
             $settingModel = new \App\Models\SettingModel();
-            $settingTz = (string) ($settingModel->getValue('localization.timezone') ?? '');
+            $settings = $settingModel->getByKeys(['localization.timezone']);
+            $settingTz = (string) ($settings['localization.timezone'] ?? '');
             if ($settingTz !== '' && self::isValidTimezone($settingTz)) {
                 return $settingTz;
             }

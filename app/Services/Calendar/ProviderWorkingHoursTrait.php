@@ -61,6 +61,13 @@ trait ProviderWorkingHoursTrait
         }
 
         $settings = new SettingModel();
+        $values = $settings->getByKeys([
+            'booking.day_start',
+            'booking.day_end',
+            'booking.break_start',
+            'booking.break_end',
+        ]);
+
         return [
             'startTime'  => (string) $settings->getValue('business.work_start', '08:00'),
             'endTime'    => (string) $settings->getValue('business.work_end', '17:00'),

@@ -198,4 +198,92 @@ final class DashboardBoundaryServicesTest extends CIUnitTestCase
         $this->assertNull($service->getProviderScope('admin', null));
         $this->assertSame(7, $service->getProviderScope('provider', 7));
     }
+
+    public function testAuthorizationServiceFallsBackToSessionUserIdForProviderId(): void
+    {
+        session()->set('user_id', 23);
+
+        $service = new AuthorizationService();
+
+        $this->assertSame(23, $service->getProviderId([
+            'role' => 'provider',
+            'roles' => ['provider'],
+        ]));
+    }
+
+    public function testDashboardPageServiceBuildLandingViewDataPassesArrayProviderScope(): void
+    {
+        session()->set('user_id', 14);
+
+        $userModel = $this->createMock(UserModel::class);
+        $userModel->method('getStats')->willReturn(['total' => 2]);
+        $userModel->method('getTrend')->willReturn(['percentage' => 0, 'direction' => 'neutral']);
+
+        $serviceModel = new class extends ServiceModel {
+            public function __construct()
+            {
+            }
+
+            public function getStats(): array
+            {
+                return ['total' => 1];
+            }
+
+            public function orderBy($column = null, $direction = '', ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function findAll(?int $limit = null, int $offset = 0)
+            {
+                return [];
+            }
+        };
+
+        $appointmentModel = $this->createMock(AppointmentModel::class);
+        $appointmentModel->method('getStats')->willReturn(['upcoming' => 1, 'today' => 1]);
+        $appointmentModel->method('getRevenue')->willReturn(0);
+        $appointmentModel->method('getTrend')->willReturn(['percentage' => 0, 'direction' => 'neutral']);
+        $appointmentModel->method('getPendingTrend')->willReturn(['percentage' => 0, 'direction' => 'neutral']);
+        $appointmentModel->method('getRevenueTrend')->willReturn(['percentage' => 0, 'direction' => 'neutral']);
+        $appointmentModel->method('getRecentActivity')->willReturn([]);
+
+        $dashboardService = $this->createMock(DashboardService::class);
+        $dashboardService->method('getDashboardContext')->willReturn(['business_name' => 'WebScheduler']);
+        $dashboardService->expects($this->once())->method('getCachedMetrics')->with([14, 22])->willReturn(['total' => 1]);
+        $dashboardService->expects($this->once())->method('getTodaySchedule')->with([14, 22])->willReturn([]);
+        $dashboardService->expects($this->once())->method('getAlerts')->with([14, 22])->willReturn([]);
+        $dashboardService->expects($this->once())->method('getUpcomingAppointments')->with([14, 22])->willReturn([]);
+        $dashboardService->expects($this->once())->method('getProviderAvailability')->with([14, 22])->willReturn([]);
+        $dashboardService->method('formatRecentActivities')->with([])->willReturn([]);
+
+        $authService = $this->createMock(AuthorizationService::class);
+        $authService->method('canViewBookingStatus')->with('staff')->willReturn(false);
+
+        $appointmentScopeService = $this->createMock(AppointmentDashboardContextService::class);
+        $appointmentScopeService->method('build')->willReturn([
+            'role' => 'staff',
+            'provider_ids' => [14, 22],
+            'filter_by_staff' => true,
+        ]);
+
+        $service = new DashboardPageService(
+            $userModel,
+            $serviceModel,
+            $appointmentModel,
+            $dashboardService,
+            $authService,
+            $appointmentScopeService
+        );
+
+        $payload = $service->buildLandingViewData([
+            'currentUser' => ['name' => 'Staff User', 'role' => 'staff'],
+            'userRole' => 'staff',
+            'providerId' => null,
+            'providerScope' => [14, 22],
+        ]);
+
+        $this->assertSame([14, 22], $payload['provider_scope']);
+        $this->assertSame(1, $payload['metrics']['total']);
+    }
 }

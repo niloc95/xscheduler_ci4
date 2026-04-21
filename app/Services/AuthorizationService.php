@@ -133,18 +133,19 @@ class AuthorizationService
     }
 
     /**
-     * Get provider scope for data filtering
+     * Get provider scope for data filtering.
      *
      * Returns:
-     * - null for admin (no scope restriction)
-     * - provider ID for providers (restrict to own data)
-     * - null for staff (handled by specific permissions)
+     * - null     for admin (no scope restriction — sees all data)
+     * - int      for providers (restrict to own provider ID)
+     * - int[]    for staff (list of assigned provider IDs; empty = no assignments)
      *
      * @param string|array $userRole User role or roles array
-     * @param int|null $providerId Provider ID if user is provider
-     * @return int|null Provider ID for scope or null for admin
+     * @param int|null     $providerId Provider ID when user is a provider
+     * @param array|null   $user Full user data from session (required for staff scope)
+     * @return int|int[]|null
      */
-    public function getProviderScope(string|array $userRole, ?int $providerId = null): ?int
+    public function getProviderScope(string|array $userRole, ?int $providerId = null, ?array $user = null): int|array|null
     {
         $role = $this->resolveRole($userRole);
 
@@ -156,7 +157,17 @@ class AuthorizationService
             return $providerId; // Restrict to own data
         }
 
-        return null; // Staff sees no data by default (requires explicit permission)
+        if ($role === self::ROLE_STAFF && $user !== null) {
+            $staffId = (int) ($user['id'] ?? session()->get('user_id') ?? 0);
+            if ($staffId > 0) {
+                $psm = new \App\Models\ProviderStaffModel();
+                $rows = $psm->getProvidersForStaff($staffId, 'active');
+                return array_map('intval', array_column($rows, 'id'));
+            }
+            return []; // Staff with no user data: empty panes
+        }
+
+        return []; // Unresolved staff: empty panes (no global fallback)
     }
 
     /**
@@ -291,8 +302,9 @@ class AuthorizationService
     }
 
     /**
-     * Get user role from session or user data
-     * 
+     * Get user role from session or user data.
+     * active_role takes precedence for multi-role users (Agent Context §4.3).
+     *
      * @param array|null $user User data from session
      * @return string Role constant
      */
@@ -302,7 +314,8 @@ class AuthorizationService
             return self::ROLE_STAFF; // Default to least privileged
         }
 
-        $role = $user['role'] ?? 'staff';
+        // active_role is authoritative for users with multiple roles
+        $role = $user['active_role'] ?? $user['role'] ?? 'staff';
         
         // Normalize role names
         if ($role === 'owner') {
@@ -331,7 +344,9 @@ class AuthorizationService
         }
 
         if (in_array('provider', $roles, true)) {
-            return (int) ($user['id'] ?? 0) ?: null;
+            $providerId = (int) ($user['id'] ?? session()->get('user_id') ?? 0);
+
+            return $providerId ?: null;
         }
 
         return null;
