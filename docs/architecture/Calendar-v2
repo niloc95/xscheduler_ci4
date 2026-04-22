@@ -1,0 +1,867 @@
+WebSchedulr — Split Panel Layout Engineering Prompt
+
+What You Are Building
+Replace the current single-pane calendar with a persistent split layout: left 62% is the scrollable calendar pane (all four views), right 38% is a fixed contextual panel that never scrolls away and always shows provider load and available slots.
+The prototype is at webschedulr-split.html. Every interaction, component, and data shape in this prompt maps directly to that file. Read it before writing any code.
+
+Layout Contract (Non-Negotiable)
+┌─ sidebar 200px ─┬─────────────── main (flex:1) ────────────────────┐
+│                 │  toolbar 54px (fixed)                             │
+│  Navigation     ├──────────────────────────────────────────────────┤
+│  + Provider     │  content-split (flex:1, overflow:hidden)          │
+│  toggles        │                                                   │
+│                 │  ┌── cal-pane 62% ──┬── right-panel 38% ───────┐ │
+│                 │  │                  │                           │ │
+│                 │  │  Scrollable      │  FIXED — never scrolls   │ │
+│                 │  │  calendar view   │                           │ │
+│                 │  │  (Today /        │  ┌─ Provider Cards ─────┐ │ │
+│                 │  │   Day /          │  │ Load bar + counts    │ │ │
+│                 │  │   Week /         │  └──────────────────────┘ │ │
+│                 │  │   Month)         │  ┌─ Available Slots ────┐ │ │
+│                 │  │                  │  │ Grouped by hour      │ │ │
+│                 │  │                  │  │ Provider dots        │ │ │
+│                 │  │                  │  └──────────────────────┘ │ │
+│                 │  └──────────────────┴───────────────────────────┘ │
+└─────────────────┴──────────────────────────────────────────────────┘
+CSS rules that enforce this — add to scheduler.css:
+css/* Shell */
+.scheduler-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Content split — sits below toolbar */
+.content-split {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Left: calendar */
+.cal-pane {
+  width: 62%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+/* Right: fixed panel */
+.right-panel {
+  width: 38%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-0);
+  overflow: hidden; /* panel itself does NOT scroll */
+}
+
+/* Panel body scrolls internally */
+.rp-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+```
+
+---
+
+### View Architecture
+
+Four views render into `.cal-pane`. The right panel renders independently and reacts to the same state.
+```
+SchedulerCore.state
+  ├── currentView    'today' | 'day' | 'week' | 'month'
+  ├── currentDate    Luxon DateTime (timezone-aware)
+  ├── appointments   filtered array
+  ├── providers      array
+  └── visibleProviders  Set<number>
+        │
+        ├──► CalPane.render(state)   → writes to #cal-pane
+        └──► RightPanel.render(state) → writes to #right-panel-body
+Both panels receive the same state object and render independently. They never share DOM mutation — CalPane writes left, RightPanel writes right, no cross-contamination.
+
+View 1 — Today (scheduler-today-view.js) NEW FILE
+This is a new view. Create it.
+Purpose: Operational morning briefing. Staff arrives, opens this, sees everything for the day at a glance.
+javascriptexport class TodayView {
+  constructor(scheduler) { this.scheduler = scheduler; }
+
+  render(container, data) {
+    const { currentDate, appointments, providers } = data;
+
+    // Filter to today only
+    const todayAppts = appointments
+      .filter(a => a.startDateTime.hasSame(currentDate, 'day'))
+      .sort((a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis());
+
+    const now = DateTime.now().setZone(this.scheduler.options.timezone);
+    const upcoming = todayAppts.filter(a => a.endDateTime > now);
+    const completed = todayAppts.filter(a => a.endDateTime <= now);
+
+    // Stats for hero banner
+    const visibleProviders = providers.filter(p =>
+      this.scheduler.visibleProviders.has(p.id)
+    );
+    const totalSlots = visibleProviders.length * (BIZ_END_H - BIZ_START_H) * 2;
+    const usedSlots = todayAppts.reduce((acc, a) =>
+      acc + Math.ceil(a.durationMinutes / 30), 0
+    );
+    const freeSlots = Math.max(0, totalSlots - usedSlots);
+
+    container.innerHTML = this._buildHtml({
+      currentDate, upcoming, completed, freeSlots,
+      total: todayAppts.length
+    });
+
+    this._attachListeners(container);
+  }
+
+  _buildHtml({ currentDate, upcoming, completed, freeSlots, total }) {
+    return `
+      <div class="today-view">
+        <!-- Hero banner — ocean gradient, full width -->
+        <div class="today-hero">
+          <div class="today-date">${currentDate.toFormat('EEEE, MMMM d')}</div>
+          <div class="today-sub">Here's your schedule for today</div>
+          <div class="today-stats">
+            <div class="today-stat"><span class="stat-n">${total}</span><span class="stat-l">Total</span></div>
+            <div class="today-stat"><span class="stat-n">${upcoming.length}</span><span class="stat-l">Upcoming</span></div>
+            <div class="today-stat"><span class="stat-n">${completed.length}</span><span class="stat-l">Done</span></div>
+            <div class="today-stat"><span class="stat-n" style="color:#7dd3fc">${freeSlots}</span><span class="stat-l">Free Slots</span></div>
+          </div>
+        </div>
+
+        <!-- Upcoming appointments -->
+        ${upcoming.length ? `
+          <div class="today-section-label">Upcoming · ${upcoming.length}</div>
+          <div class="today-list" id="today-upcoming">
+            ${upcoming.map(a => this._apptRow(a)).join('')}
+          </div>
+        ` : ''}
+
+        <!-- Completed appointments -->
+        ${completed.length ? `
+          <div class="today-section-label" style="margin-top:12px">Completed · ${completed.length}</div>
+          <div class="today-list today-list--faded" id="today-completed">
+            ${completed.map(a => this._apptRow(a)).join('')}
+          </div>
+        ` : ''}
+
+        ${!total ? '<div class="today-empty">No appointments today</div>' : ''}
+      </div>
+    `;
+  }
+
+  _apptRow(appt) {
+    // See prototype for HTML structure
+    // Border-left uses provider.color
+    // Status pill uses STATUS_COLORS map
+    // Click → scheduler.openAppointmentDetails(appt.id)
+  }
+
+  _attachListeners(container) {
+    container.querySelectorAll('[data-appointment-id]').forEach(el => {
+      el.addEventListener('click', () =>
+        this.scheduler.openAppointmentDetails(parseInt(el.dataset.appointmentId))
+      );
+    });
+  }
+}
+
+View 2 — Month (scheduler-month-view.js) REFACTOR
+Keep: renderMiniCalendar(), appointment fetching.
+Remove: The old slot panel that lived below the grid.
+Change: Clicking a cell now calls scheduler.changeView('day') instead of loading slots inline.
+javascript// Cell click handler
+_onCellClick(dateStr, event) {
+  // If click was on a chip, open appointment details instead
+  if (event.target.closest('[data-appointment-id]')) return;
+
+  // Navigate to day view
+  const date = DateTime.fromISO(dateStr, { zone: this.scheduler.options.timezone });
+  this.scheduler.currentDate = date;
+  this.scheduler.changeView('day');
+}
+
+// Provider presence dots — one per visible provider
+// Filled = has ≥1 appointment that day
+// Ring only = 0 appointments
+_providerDots(date) {
+  return this.visibleProviders.map(provider => {
+    const hasAppts = this.appointments.some(a =>
+      a.startDateTime.hasSame(date, 'day') && a.providerId === provider.id
+    );
+    return `<div class="m-prov-dot"
+      style="background:${hasAppts ? provider.color : 'transparent'};
+             border: 1.5px solid ${provider.color}${hasAppts ? '' : '44'}">
+    </div>`;
+  }).join('');
+}
+
+// Availability bar — bottom of each non-other-month cell
+_availBar(date) {
+  const totalSlots = this.visibleProviders.length * (BIZ_END_H - BIZ_START_H) * 2;
+  const dayAppts = this.appointments.filter(a => a.startDateTime.hasSame(date, 'day'));
+  const used = dayAppts.reduce((acc, a) => acc + Math.ceil(a.durationMinutes / 30), 0);
+  const pct = Math.max(0, Math.min(100, (1 - used / Math.max(1, totalSlots)) * 100));
+  const color = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444';
+  return `<div class="m-avail-bar">
+    <div class="m-avail-fill" style="width:${pct}%;background:${color}"></div>
+  </div>`;
+}
+
+View 3 — Week (scheduler-week-view.js) FULL REWRITE
+The current 50/50 split week view is deleted entirely. Replace with a proper 7-column time grid.
+javascriptexport class WeekView {
+  render(container, data) {
+    const { currentDate, appointments, providers, config } = data;
+
+    const BIZ_START = parseInt(config.slotMinTime); // 8
+    const BIZ_END   = parseInt(config.slotMaxTime); // 17
+    const HOUR_H    = 64; // px — matches --hour-height CSS variable
+    const GRID_H    = (BIZ_END - BIZ_START) * HOUR_H;
+
+    const ws = this._weekStart(currentDate);
+    const days = Array.from({ length: 7 }, (_, i) => ws.plus({ days: i }));
+
+    container.innerHTML = `
+      <div class="week-view">
+
+        <!-- Provider filter chips -->
+        <div class="week-provider-filter">
+          ${providers.map(p => this._providerChip(p)).join('')}
+        </div>
+
+        <!-- Day column headers -->
+        <div class="week-col-headers">
+          <div class="week-time-spacer"></div>
+          ${days.map(d => this._colHeader(d, currentDate)).join('')}
+        </div>
+
+        <!-- Scrollable time grid -->
+        <div class="week-grid-scroll" id="weekGridScroll">
+          <div class="week-grid" style="min-height:${GRID_H + 16}px">
+            <div class="week-time-col">
+              ${this._timeLabels(BIZ_START, BIZ_END, HOUR_H)}
+            </div>
+            ${days.map(d => this._dayColumn(d, appointments, BIZ_START, HOUR_H, GRID_H)).join('')}
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    this._attachListeners(container);
+  }
+
+  _weekStart(dt) {
+    // ISO week — Monday = 1
+    const wd = dt.weekday; // Luxon: Mon=1, Sun=7
+    return dt.minus({ days: wd - 1 }).startOf('day');
+  }
+
+  _colHeader(day, currentDate) {
+    const isToday = day.hasSame(DateTime.now(), 'day');
+    const isSel   = day.hasSame(currentDate, 'day');
+    return `
+      <div class="week-col-header" data-date="${day.toISODate()}">
+        <span class="wk-wd ${isToday ? 'wk-wd--today' : ''}">${day.toFormat('EEE')}</span>
+        <div class="wk-day-num ${isToday ? 'wk-day-num--today' : isSel ? 'wk-day-num--sel' : ''}">
+          ${day.day}
+        </div>
+      </div>
+    `;
+  }
+
+  _dayColumn(day, appointments, bizStart, hourH, gridH) {
+    const isToday  = day.hasSame(DateTime.now(), 'day');
+    const isWeekend = day.weekday >= 6;
+    const dayAppts  = resolveOverlaps(
+      appointments.filter(a => a.startDateTime.hasSame(day, 'day'))
+    );
+
+    // Now line
+    const now = DateTime.now().setZone(this.scheduler.options.timezone);
+    const nowOffset = isToday
+      ? ((now.hour - bizStart) * 60 + now.minute) / 60 * hourH
+      : -1;
+
+    const apptBlocks = dayAppts.map(a => {
+      const top = ((a.startDateTime.hour - bizStart) * 60 + a.startDateTime.minute) / 60 * hourH;
+      const height = Math.max(a.durationMinutes / 60 * hourH - 3, 20);
+      const colW = `${Math.round(100 / a._colCount) - 1}%`;
+      const colL = `${Math.round(a._col * 100 / a._colCount)}%`;
+      const isTiny  = height < 28;
+      const isShort = height < 44;
+      return `
+        <div class="appt-block"
+          style="top:${top}px;height:${height}px;
+                 background:${a.providerColor};
+                 left:calc(3px + ${colL});width:calc(${colW} - 6px)"
+          data-appointment-id="${a.id}">
+          <div class="appt-block-title">
+            ${isTiny ? a.customerName.split(' ')[0] : a.customerName}
+          </div>
+          ${!isTiny  ? `<div class="appt-block-sub">${a.serviceName}</div>` : ''}
+          ${!isShort ? `<div class="appt-block-time">${a.startDateTime.toFormat('h:mma')}–${a.endDateTime.toFormat('h:mma')}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="week-day-col ${isToday ? 'week-day-col--today' : ''} ${isWeekend ? 'week-day-col--weekend' : ''}"
+           style="height:${gridH}px">
+        ${this._hourLines(bizStart, bizStart + gridH / hourH, hourH)}
+        ${nowOffset >= 0 ? `<div class="now-line" style="top:${nowOffset}px"></div>` : ''}
+        ${apptBlocks}
+      </div>
+    `;
+  }
+
+  _hourLines(startH, endH, hourH) {
+    let html = '';
+    for (let h = startH; h <= endH; h++) {
+      const top = (h - startH) * hourH;
+      html += `<div class="hour-line"     style="top:${top}px"></div>`;
+      html += `<div class="half-hour-line" style="top:${top + hourH / 2}px"></div>`;
+    }
+    return html;
+  }
+
+  _attachListeners(container) {
+    // Appointment click → flyout
+    container.querySelectorAll('[data-appointment-id]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        this.scheduler.openAppointmentDetails(parseInt(el.dataset.appointmentId));
+      });
+    });
+    // Day header click → drill to Day view
+    container.querySelectorAll('[data-date]').forEach(el => {
+      el.addEventListener('click', () => {
+        const date = DateTime.fromISO(el.dataset.date, { zone: this.scheduler.options.timezone });
+        this.scheduler.currentDate = date;
+        this.scheduler.changeView('day');
+      });
+    });
+    // Provider chip click → toggle
+    container.querySelectorAll('[data-provider-id]').forEach(el => {
+      el.addEventListener('click', () =>
+        this.scheduler.toggleProvider(parseInt(el.dataset.providerId))
+      );
+    });
+  }
+}
+
+View 4 — Day (scheduler-day-view.js) REFACTOR
+Remove: the appointment list layout, the sidebar mini calendar, the old availability panel.
+Add: per-provider vertical stripes, now-line, overlap handling.
+javascriptexport class DayView {
+  render(container, data) {
+    const { currentDate, appointments, providers, config } = data;
+
+    const BIZ_START = parseInt(config.slotMinTime);
+    const BIZ_END   = parseInt(config.slotMaxTime);
+    const HOUR_H    = 64;
+    const GRID_H    = (BIZ_END - BIZ_START) * HOUR_H;
+
+    const activeProviders = providers.filter(p =>
+      this.scheduler.visibleProviders.has(p.id)
+    );
+    const colTemplate = `repeat(${activeProviders.length || 1}, 1fr)`;
+
+    const now = DateTime.now().setZone(this.scheduler.options.timezone);
+    const isToday = currentDate.hasSame(now, 'day');
+    const nowOffset = isToday
+      ? ((now.hour - BIZ_START) * 60 + now.minute) / 60 * HOUR_H
+      : -1;
+
+    container.innerHTML = `
+      <div class="day-view">
+
+        <!-- Provider column headers -->
+        <div class="day-provider-header">
+          <div class="day-time-spacer"></div>
+          <div class="day-provider-cols" style="grid-template-columns:${colTemplate}">
+            ${activeProviders.map(p => {
+              const cnt = appointments.filter(a =>
+                a.startDateTime.hasSame(currentDate, 'day') && a.providerId === p.id
+              ).length;
+              return `<div class="day-provider-col-header">
+                <div class="provider-avatar" style="background:${p.color}">${p.initials}</div>
+                <span class="provider-col-name">${p.name.replace('Dr. ', '')}</span>
+                <span class="provider-col-count">${cnt}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Scrollable time grid -->
+        <div class="day-grid-scroll">
+          <div class="day-grid" style="padding-bottom:16px">
+            <div class="time-col-labels">
+              ${this._timeLabels(BIZ_START, BIZ_END, HOUR_H)}
+            </div>
+            <div class="day-provider-stripes"
+                 style="display:grid;grid-template-columns:${colTemplate};
+                        position:relative;min-height:${GRID_H}px">
+              ${nowOffset >= 0 ? `
+                <div class="now-line" style="top:${nowOffset}px;position:absolute;
+                     left:0;right:0;z-index:10">
+                  <div class="now-line-dot"></div>
+                </div>` : ''}
+              ${activeProviders.map(p =>
+                this._providerStripe(p, appointments, currentDate, BIZ_START, HOUR_H, GRID_H)
+              ).join('')}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    this._attachListeners(container);
+  }
+
+  _providerStripe(provider, appointments, date, bizStart, hourH, gridH) {
+    const appts = resolveOverlaps(
+      appointments.filter(a =>
+        a.startDateTime.hasSame(date, 'day') && a.providerId === provider.id
+      )
+    );
+    const blocks = appts.map(a => {
+      const top    = ((a.startDateTime.hour - bizStart) * 60 + a.startDateTime.minute) / 60 * hourH;
+      const height = Math.max(a.durationMinutes / 60 * hourH - 4, 24);
+      const colW   = `${Math.round(100 / a._colCount) - 2}%`;
+      const colL   = `${Math.round(a._col * 100 / a._colCount)}%`;
+      const isTiny  = height < 28;
+      const isShort = height < 42;
+      return `
+        <div class="appt-block day-appt-block"
+          style="top:${top}px;height:${height}px;background:${provider.color};
+                 left:calc(4px + ${colL});width:calc(${colW} - 8px)"
+          data-appointment-id="${a.id}">
+          <div class="appt-block-title">${a.customerName}</div>
+          ${!isTiny  ? `<div class="appt-block-sub">${a.serviceName}</div>` : ''}
+          ${!isShort ? `<div class="appt-block-time">${a.startDateTime.toFormat('h:mma')}–${a.endDateTime.toFormat('h:mma')}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="day-provider-stripe" style="position:relative;min-height:${gridH}px">
+        ${this._hourLines(bizStart, bizStart + gridH / hourH, hourH)}
+        ${blocks}
+      </div>
+    `;
+  }
+}
+
+Right Panel (right-panel.js) NEW FILE
+This is a standalone module. It renders into .right-panel and is called by SchedulerCore after every state change.
+javascriptexport class RightPanel {
+  constructor(scheduler) {
+    this.scheduler = scheduler;
+    this.container = document.getElementById('right-panel-body');
+    this._slotCache = new Map(); // key: `${providerId}:${dateStr}` → slots[]
+  }
+
+  async render(state) {
+    const { currentView, currentDate, providers, appointments } = state;
+    this._updateHeader(currentView, currentDate);
+
+    const activeProviders = providers.filter(p =>
+      this.scheduler.visibleProviders.has(p.id)
+    );
+
+    // Provider cards
+    const providerCardsHtml = this._renderProviderCards(
+      activeProviders, appointments, currentView, currentDate
+    );
+
+    // Slot panel
+    const slotPanelHtml = await this._renderSlotPanel(
+      activeProviders, currentView, currentDate
+    );
+
+    this.container.innerHTML = `
+      <div class="rp-section">
+        <div class="rp-section-label">
+          Providers
+          <span>${activeProviders.length} active</span>
+        </div>
+        ${providerCardsHtml}
+      </div>
+      ${slotPanelHtml}
+    `;
+
+    this._attachListeners();
+  }
+
+  /* ── Provider Cards ── */
+  _renderProviderCards(providers, appointments, view, date) {
+    const dateRange = this._dateRange(view, date);
+
+    return providers.map(provider => {
+      const provAppts = appointments.filter(a =>
+        a.providerId === provider.id &&
+        dateRange.some(d => a.startDateTime.hasSame(d, 'day'))
+      );
+      const totalSlots  = dateRange.length * (BIZ_END_H - BIZ_START_H) * 2;
+      const usedSlots   = provAppts.reduce((acc, a) => acc + Math.ceil(a.durationMinutes / 30), 0);
+      const freeSlots   = Math.max(0, totalSlots - usedSlots);
+      const loadPct     = Math.min(100, Math.round(usedSlots / Math.max(1, totalSlots) * 100));
+      const loadColor   = loadPct > 75 ? '#ef4444' : loadPct > 50 ? '#f59e0b' : '#10b981';
+      const confirmed   = provAppts.filter(a => a.status === 'confirmed').length;
+      const pending     = provAppts.filter(a => a.status === 'pending').length;
+
+      return `
+        <div class="rp-provider-card" data-provider-id="${provider.id}"
+             style="--pcolor:${provider.color}">
+          <div class="rp-prov-stripe" style="background:${provider.color}"></div>
+          <div class="rp-prov-avatar" style="background:${provider.color}">${provider.initials}</div>
+          <div class="rp-prov-info">
+            <div class="rp-prov-name">${provider.name.replace('Dr. ', '')}</div>
+            <div class="rp-prov-role">${provider.role || ''}</div>
+            <div class="rp-load-bar">
+              <div class="rp-load-fill"
+                   style="width:${loadPct}%;background:${loadColor}"></div>
+            </div>
+          </div>
+          <div class="rp-prov-stats">
+            <div class="rp-stat">
+              <span class="rp-stat-n">${provAppts.length}</span>
+              <span class="rp-stat-l">Appts</span>
+            </div>
+            <div class="rp-stat">
+              <span class="rp-stat-n" style="color:#10b981">${freeSlots}</span>
+              <span class="rp-stat-l">Free</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /* ── Slot Panel ── */
+  async _renderSlotPanel(providers, view, date) {
+    // For month view, slot date = today; for others, slot date = currentDate
+    const slotDate = (view === 'month')
+      ? DateTime.now().setZone(this.scheduler.options.timezone).startOf('day')
+      : date.startOf('day');
+
+    const serviceId = this.scheduler.getActiveServiceFilter();
+    if (!serviceId) {
+      return `
+        <div class="rp-section rp-slots-section">
+          <div class="rp-section-label">Available Slots</div>
+          <div class="rp-no-service">
+            <div class="rp-no-svc-icon">🗓</div>
+            <div class="rp-no-svc-title">Select a service</div>
+            <div class="rp-no-svc-sub">Choose a service in the filter bar to see available time slots</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Fetch slots per provider (uses _slotCache to avoid re-fetching)
+    const slotsByProvider = await Promise.all(
+      providers.map(p => this._fetchSlots(p.id, serviceId, slotDate))
+    );
+
+    // Build hour-grouped slot map
+    // key: "HH:MM" → array of { provider, available }
+    const slotMap = {};
+    slotsByProvider.forEach((slots, idx) => {
+      const provider = providers[idx];
+      slots.forEach(slot => {
+        const key = slot.startTime; // "08:00", "08:30", etc.
+        if (!slotMap[key]) slotMap[key] = [];
+        slotMap[key].push({ provider, available: slot.available });
+      });
+    });
+
+    // Group by hour
+    const byHour = {};
+    Object.entries(slotMap).forEach(([time, provSlots]) => {
+      const hour = time.split(':')[0];
+      if (!byHour[hour]) byHour[hour] = [];
+      byHour[hour].push({ time, provSlots });
+    });
+
+    const slotDateLabel = slotDate.hasSame(DateTime.now(), 'day')
+      ? 'Today'
+      : slotDate.toFormat('EEE d MMM');
+
+    const slotsHtml = Object.keys(byHour)
+      .sort()
+      .map(hour => {
+        const slots = byHour[hour];
+        const anyFree = slots.some(s => s.provSlots.some(p => p.available));
+        if (!anyFree) return '';
+        const h = parseInt(hour);
+        const hLabel = h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
+        return `
+          <div class="slot-hour-group">
+            <div class="slot-hour-label">${hLabel}</div>
+            <div class="slot-row">
+              ${slots
+                .filter(s => s.provSlots.some(p => p.available))
+                .map(({ time, provSlots }) => {
+                  const freeProvs = provSlots.filter(p => p.available);
+                  const [hh, mm] = time.split(':');
+                  const h12 = parseInt(hh) % 12 || 12;
+                  const ap = parseInt(hh) < 12 ? 'a' : 'p';
+                  const lbl = `${h12}:${mm}${ap}`;
+                  const url = `/appointments/create?date=${slotDate.toISODate()}&time=${time}&service_id=${serviceId}`;
+                  return `
+                    <a class="slot-pill slot-pill--free"
+                       href="${url}"
+                       title="${freeProvs.map(p => p.provider.name).join(', ')}">
+                      ${freeProvs.map(p =>
+                        `<div class="slot-prov-dot" style="background:${p.provider.color}"></div>`
+                      ).join('')}
+                      ${lbl}
+                    </a>
+                  `;
+                }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    return `
+      <div class="rp-section rp-slots-section">
+        <div class="rp-section-label">
+          Available Slots — ${slotDateLabel}
+          <span id="free-slot-count">...</span>
+        </div>
+        <div class="slots-grid">${slotsHtml || '<div class="rp-fully-booked">Fully booked for this day</div>'}</div>
+      </div>
+    `;
+  }
+
+  /* ── Fetch slots with cache ── */
+  async _fetchSlots(providerId, serviceId, date) {
+    const key = `${providerId}:${serviceId}:${date.toISODate()}`;
+    if (this._slotCache.has(key)) return this._slotCache.get(key);
+
+    try {
+      const res = await fetch(withBaseUrl(
+        `/api/availability/slots?provider_id=${providerId}&service_id=${serviceId}&date=${date.toISODate()}&timezone=UTC`
+      ), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      const slots = data?.data?.slots ?? [];
+      this._slotCache.set(key, slots);
+      // Expire cache after 2 minutes
+      setTimeout(() => this._slotCache.delete(key), 120_000);
+      return slots;
+    } catch {
+      return [];
+    }
+  }
+
+  /* ── Date range helper ── */
+  _dateRange(view, date) {
+    if (view === 'today' || view === 'day') return [date];
+    if (view === 'week') {
+      const ws = date.startOf('week');
+      return Array.from({ length: 7 }, (_, i) => ws.plus({ days: i }));
+    }
+    // month
+    const start = date.startOf('month');
+    const days  = date.daysInMonth;
+    return Array.from({ length: days }, (_, i) => start.plus({ days: i }));
+  }
+
+  _updateHeader(view, date) {
+    const labels = {
+      today: 'Today\'s Overview',
+      day:   'Day Overview',
+      week:  'Week Overview',
+      month: 'Monthly Overview',
+    };
+    document.getElementById('rp-title').textContent = labels[view];
+
+    let dateStr = '';
+    if (view === 'today' || view === 'day') {
+      dateStr = date.toFormat('EEE, MMMM d yyyy');
+    } else if (view === 'week') {
+      const ws = date.startOf('week');
+      dateStr = `${ws.toFormat('MMM d')} – ${ws.plus({ days: 6 }).toFormat('MMM d')}`;
+    } else {
+      dateStr = date.toFormat('MMMM yyyy');
+    }
+    document.getElementById('rp-date').textContent = dateStr;
+  }
+
+  _attachListeners() {
+    this.container.querySelectorAll('[data-provider-id]').forEach(el => {
+      el.addEventListener('click', () => {
+        // Optionally filter the calendar to this provider only
+      });
+    });
+  }
+
+  invalidateSlotCache() {
+    this._slotCache.clear();
+  }
+}
+
+SchedulerCore Wiring
+javascript// In scheduler-core.js
+
+import { RightPanel } from './right-panel.js';
+import { TodayView }  from './scheduler-today-view.js';
+
+// Add to constructor:
+this.rightPanel = new RightPanel(this);
+this.views.today = new TodayView(this);
+
+// Replace _performRender():
+async _performRender() {
+  const container = this.container;
+  const calPane = container.querySelector('#cal-pane') || container;
+
+  const renderData = {
+    currentView:  this.currentView,
+    currentDate:  this.currentDate,
+    appointments: this.getFilteredAppointments(),
+    providers:    this.providers,
+    config:       this.calendarConfig,
+    settings:     this.settingsManager,
+    calendarModel: this.calendarModel,
+  };
+
+  // Render calendar view (left pane)
+  const view = this.views[this.currentView];
+  if (view) view.render(calPane, renderData);
+
+  // Render right panel (always, every view change)
+  // Note: await because slot fetching is async
+  await this.rightPanel.render(renderData);
+}
+
+// After any appointment create/update/cancel:
+onAppointmentMutated() {
+  this.rightPanel.invalidateSlotCache();
+  this.loadData().then(() => this._performRender());
+}
+
+// Expose active service filter for right panel to read:
+getActiveServiceFilter() {
+  return document.getElementById('filter-service')?.value || null;
+}
+
+Shared Utility (extract once, use everywhere)
+javascript// resources/js/modules/scheduler/time-grid-utils.js
+
+export const BIZ_START_H = 8;
+export const BIZ_END_H   = 17;
+export const HOUR_HEIGHT  = 64; // Must match CSS --hour-height
+
+export function topPx(dt, bizStart = BIZ_START_H) {
+  return ((dt.hour - bizStart) * 60 + dt.minute) / 60 * HOUR_HEIGHT;
+}
+
+export function heightPx(durationMinutes) {
+  return Math.max(durationMinutes / 60 * HOUR_HEIGHT - 3, 20);
+}
+
+export function resolveOverlaps(appointments) {
+  const sorted = [...appointments].sort(
+    (a, b) => a.startDateTime.toMillis() - b.startDateTime.toMillis()
+  );
+  const colEnds = [];
+  const result = sorted.map(appt => {
+    let col = 0;
+    while (colEnds[col] && colEnds[col] > appt.startDateTime.toMillis()) col++;
+    colEnds[col] = appt.endDateTime.toMillis();
+    return { ...appt, _col: col };
+  });
+  const maxCol = result.reduce((m, a) => Math.max(m, a._col), 0);
+  return result.map(a => ({ ...a, _colCount: maxCol + 1 }));
+}
+
+export function generateTimeLabels(startH = BIZ_START_H, endH = BIZ_END_H) {
+  const labels = [];
+  for (let h = startH; h <= endH; h++) {
+    labels.push({
+      hour: h,
+      label: h === 0 ? '12am'
+           : h < 12  ? `${h}am`
+           : h === 12 ? '12pm'
+           : `${h - 12}pm`,
+    });
+  }
+  return labels;
+}
+```
+
+---
+
+### Acceptance Checklist
+```
+Layout
+  [ ] Left pane is exactly 62% width, right panel exactly 38%
+  [ ] Right panel never scrolls with the page — only rp-body scrolls internally
+  [ ] On mobile (< 768px): panels stack vertically, right panel collapses below
+  [ ] Toolbar is always visible, never scrolls away
+
+Today View
+  [ ] Hero banner shows total / upcoming / completed / free slots
+  [ ] Upcoming list shows appointments sorted by start time
+  [ ] Completed list is visually faded (opacity: 0.65)
+  [ ] Clicking any row opens the appointment flyout
+
+Month View
+  [ ] 42-cell grid (6 × 7), Monday-first
+  [ ] Provider dots top-right of each cell (filled = has appts, ring = empty)
+  [ ] Max 3 chips + "+N more" overflow
+  [ ] Availability bar at bottom of each cell, color-coded
+  [ ] Clicking a cell navigates to Day view for that date
+
+Week View
+  [ ] Full 7-column time grid, NOT a split/slot list
+  [ ] Appointments are absolutely positioned by start time and duration
+  [ ] Today column has distinct background
+  [ ] Now-line appears in today's column at correct position
+  [ ] Overlapping appointments in same column split horizontally
+  [ ] Clicking a day number navigates to Day view
+
+Day View
+  [ ] One column per visible provider, side by side
+  [ ] Appointments positioned on time grid (not in a list)
+  [ ] Now-line spans all provider columns
+  [ ] Overlap within a provider column splits horizontally
+  [ ] Header shows provider avatar + name + appointment count
+
+Right Panel — Provider Cards
+  [ ] One card per visible provider
+  [ ] Load bar updates per view context (day/week/month date range)
+  [ ] Load bar color: green < 50%, amber 50-75%, red > 75%
+  [ ] Appointment count and free slot count are accurate
+
+Right Panel — Available Slots
+  [ ] Calls /api/availability/slots (not computed locally)
+  [ ] Shows "Select a service" message when no service filter is active
+  [ ] Slots grouped by hour
+  [ ] Provider color dots indicate which providers are free for that slot
+  [ ] Booked slots are hidden (only free slots displayed)
+  [ ] Clicking a slot routes to /appointments/create with correct params
+  [ ] Slot cache invalidated after any appointment mutation
+
+General
+  [ ] All date/time operations use Luxon DateTime with scheduler.options.timezone
+  [ ] No new Date() in any business logic
+  [ ] Provider visibility toggle updates both panes simultaneously
+  [ ] npm run build passes with no errors
+
+Reference implementation: webschedulr-split.html. Every component in this prompt is demonstrated there with working data.
