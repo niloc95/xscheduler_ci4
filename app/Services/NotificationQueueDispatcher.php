@@ -492,18 +492,47 @@ class NotificationQueueDispatcher
             $customerName = 'Customer';
         }
 
+        $appointmentRef = (string) ($appt['hash'] ?? '');
+        if ($appointmentRef === '') {
+            $appointmentRef = (string) ($appt['id'] ?? '');
+        }
+
+        $bookedTimestamp = '';
+        if (!empty($appt['created_at'])) {
+            $bookedTimestamp = TimezoneService::toDisplay((string) $appt['created_at'], $displayTimezone);
+        }
+
+        $bookedVia = (string) ($appt['booking_channel'] ?? 'web');
+        if ($bookedVia === 'public') {
+            $bookedVia = 'Web';
+        } elseif ($bookedVia === 'internal') {
+            $bookedVia = 'Admin';
+        }
+
         $templateData = [
-            'customer_name' => $customerName,
-            'customer_phone' => $to,
-            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
-            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
-            'start_datetime' => !empty($appt['start_at'])
+            'appointment_id'     => (int) ($appt['id'] ?? 0),
+            'booking_id'         => (string) ($appt['id'] ?? ''),
+            'customer_name'      => $customerName,
+            'customer_email'     => (string) ($appt['customer_email'] ?? ''),
+            'customer_phone'     => $to,
+            'service_name'       => (string) ($appt['service_name'] ?? 'Service'),
+            'service_duration'   => (string) ($appt['service_duration'] ?? ''),
+            'provider_name'      => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime'     => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'display_timezone' => $displayTimezone,
-            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
-            'booking_url' => $bookingLinkService->bookingHomeUrl(),
-            'appointment_hash' => (string) ($appt['hash'] ?? ''),
+            'display_timezone'   => $displayTimezone,
+            'reschedule_link'    => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url'        => $bookingLinkService->bookingHomeUrl(),
+            'appointment_hash'   => (string) ($appt['hash'] ?? ''),
+            'location_name'      => (string) ($appt['location_name'] ?? ''),
+            'location_address'   => (string) ($appt['location_address'] ?? ''),
+            'location_contact'   => (string) ($appt['location_contact'] ?? ''),
+            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments?open=' . rawurlencode($appointmentRef)) : base_url('appointments'),
+            'internal_edit_link' => $appointmentRef !== '' ? base_url('appointments/edit/' . $appointmentRef) : base_url('appointments'),
+            'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
+            'booked_via'         => $bookedVia,
+            'booked_timestamp'   => $bookedTimestamp,
         ];
 
         // Render template with placeholders
@@ -535,19 +564,48 @@ class NotificationQueueDispatcher
             $customerName = 'Customer';
         }
 
+        $appointmentRef = (string) ($appt['hash'] ?? '');
+        if ($appointmentRef === '') {
+            $appointmentRef = (string) ($appt['id'] ?? '');
+        }
+
+        $bookedTimestamp = '';
+        if (!empty($appt['created_at'])) {
+            $bookedTimestamp = TimezoneService::toDisplay((string) $appt['created_at'], $displayTimezone);
+        }
+
+        $bookedVia = (string) ($appt['booking_channel'] ?? 'web');
+        if ($bookedVia === 'public') {
+            $bookedVia = 'Web';
+        } elseif ($bookedVia === 'internal') {
+            $bookedVia = 'Admin';
+        }
+
         // Prepare data for template rendering
         $templateData = [
-            'customer_name' => $customerName,
-            'customer_phone' => $to,
-            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
-            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
-            'start_datetime' => !empty($appt['start_at'])
+            'appointment_id'     => (int) ($appt['id'] ?? 0),
+            'booking_id'         => (string) ($appt['id'] ?? ''),
+            'customer_name'      => $customerName,
+            'customer_email'     => (string) ($appt['customer_email'] ?? ''),
+            'customer_phone'     => $to,
+            'service_name'       => (string) ($appt['service_name'] ?? 'Service'),
+            'service_duration'   => (string) ($appt['service_duration'] ?? ''),
+            'provider_name'      => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime'     => !empty($appt['start_at'])
                 ? TimezoneService::toDisplay($appt['start_at'], $displayTimezone)
                 : '',
-            'display_timezone' => $displayTimezone,
-            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
-            'booking_url' => $bookingLinkService->bookingHomeUrl(),
-            'appointment_hash' => (string) ($appt['hash'] ?? ''),
+            'display_timezone'   => $displayTimezone,
+            'reschedule_link'    => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url'        => $bookingLinkService->bookingHomeUrl(),
+            'appointment_hash'   => (string) ($appt['hash'] ?? ''),
+            'location_name'      => (string) ($appt['location_name'] ?? ''),
+            'location_address'   => (string) ($appt['location_address'] ?? ''),
+            'location_contact'   => (string) ($appt['location_contact'] ?? ''),
+            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments?open=' . rawurlencode($appointmentRef)) : base_url('appointments'),
+            'internal_edit_link' => $appointmentRef !== '' ? base_url('appointments/edit/' . $appointmentRef) : base_url('appointments'),
+            'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
+            'booked_via'         => $bookedVia,
+            'booked_timestamp'   => $bookedTimestamp,
         ];
 
         // Render template with placeholders
@@ -611,7 +669,14 @@ class NotificationQueueDispatcher
         if (!in_array('reminder_sent', $fields, true)) {
             return;
         }
-        $model->update($appointmentId, ['reminder_sent' => 1]);
+
+        // Update reminder compatibility flag without touching updated_at,
+        // otherwise schedule_fingerprint (which includes updated_at) changes
+        // mid-dispatch and sibling reminder rows get cancelled as stale.
+        $model->builder()
+            ->where('id', $appointmentId)
+            ->set('reminder_sent', 1)
+            ->update();
     }
 
     protected function releaseLock(NotificationQueueModel $model, array $row): void

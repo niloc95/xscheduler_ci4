@@ -3,10 +3,12 @@
  * Settings Tab: Notifications
  *
  * Email/SMS/WhatsApp integration config, event-channel rules matrix,
- * delivery logs, message templates. POSTs to /settings/notifications.
+ * and message templates. POSTs to /settings/notifications.
  * Included by settings/index.php — all view variables are available
  * via CI4's $this->include() data sharing.
  */
+
+$notificationBusinessContext = is_array($notificationBusinessContext ?? null) ? $notificationBusinessContext : [];
 ?>
             <!-- Notifications Settings Form (Phase 1: Rules only, no sending) -->
             <form id="notifications-settings-form" method="POST" action="<?= base_url('settings/notifications') ?>" class="mt-4 space-y-6" data-tab-form="notifications" data-no-spa="true">
@@ -16,10 +18,15 @@
                     <div class="flex items-center justify-between mb-3">
                         <div>
                             <h3 class="text-base font-medium text-gray-900 dark:text-gray-100">Notifications</h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure which events should trigger notifications. Sending will be enabled in later phases.</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure rules, integrations, and templates for the active business context. Delivery activity now lives in the Notifications page.</p>
                         </div>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">Rules only</span>
                     </div>
+
+                    <?= view('components/notification-business-context', [
+                        'businessContext' => $notificationBusinessContext,
+                        'containerClass' => 'rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30',
+                    ]) ?>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="form-field">
@@ -547,78 +554,6 @@
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="mt-6">
-                        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Delivery Logs (Phase 6)</h4>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Recent notification delivery attempts from the queue dispatcher.</p>
-
-                        <?php
-                            $deliveryLogs = $notificationDeliveryLogs ?? [];
-                            $maskRecipient = function (?string $recipient): string {
-                                $recipient = trim((string) $recipient);
-                                if ($recipient === '') {
-                                    return '';
-                                }
-                                if (strpos($recipient, '@') !== false) {
-                                    [$local, $domain] = array_pad(explode('@', $recipient, 2), 2, '');
-                                    $local = (string) $local;
-                                    $domain = (string) $domain;
-                                    $head = $local !== '' ? substr($local, 0, 1) : '';
-                                    return $head . '***@' . $domain;
-                                }
-                                // phone: show last 4
-                                $digits = preg_replace('/\D+/', '', $recipient);
-                                $last4 = $digits !== '' ? substr($digits, -4) : '';
-                                return '+***' . $last4;
-                            };
-                        ?>
-
-                        <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">When</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Channel</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Event</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Recipient</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Correlation</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Error</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    <?php if (empty($deliveryLogs)): ?>
-                                        <tr class="bg-white dark:bg-gray-800">
-                                            <td colspan="7" class="px-4 py-3 text-gray-600 dark:text-gray-400">No delivery logs yet.</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($deliveryLogs as $log): ?>
-                                            <?php
-                                                $status = (string) ($log['status'] ?? '');
-                                                $statusClass = 'text-gray-700 dark:text-gray-300';
-                                                if ($status === 'success') {
-                                                    $statusClass = 'text-green-700 dark:text-green-300';
-                                                } elseif ($status === 'failed') {
-                                                    $statusClass = 'text-red-700 dark:text-red-300';
-                                                } elseif ($status === 'cancelled') {
-                                                    $statusClass = 'text-yellow-700 dark:text-yellow-300';
-                                                }
-                                            ?>
-                                            <tr class="bg-white dark:bg-gray-800">
-                                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300"><?= esc((string) ($log['created_at'] ?? '')) ?></td>
-                                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300"><?= esc((string) ($log['channel'] ?? '')) ?></td>
-                                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300"><?= esc((string) ($log['event_type'] ?? '')) ?></td>
-                                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300"><?= esc($maskRecipient($log['recipient'] ?? null)) ?></td>
-                                                <td class="px-4 py-3 font-semibold <?= $statusClass ?>"><?= esc($status) ?></td>
-                                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300"><?= esc((string) ($log['correlation_id'] ?? '')) ?></td>
-                                                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400"><?= esc((string) ($log['error_message'] ?? '')) ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

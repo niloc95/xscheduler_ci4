@@ -53,11 +53,26 @@ final class NotificationsJourneyTest extends CIUnitTestCase
 
         $response->assertOK();
         $response->assertSee('Notifications');
+        $response->assertSee('Activity Feed');
+        $response->assertSee('Delivery Logs');
         $response->assertSee('Appointment Reminder - Pending');
         $response->assertSee('Appointment Confirmed - Failed');
         $response->assertSee('/notifications/mark-read/log_' . $this->deliveryLogId);
         $response->assertSee('/notifications/mark-all-read');
-        $response->assertSee('/notifications/delete/');
+        $response->assertSee('/notifications/delete/queue_' . $this->queuedNotificationId);
+        $response->assertSee('business_id=1');
+    }
+
+    public function testAdminDeliveryLogsTabRendersConsolidatedDeliveryLogSurface(): void
+    {
+        $response = $this->withSession($this->adminSession())
+            ->get('/notifications?tab=delivery-logs&business_id=1');
+
+        $response->assertOK();
+        $response->assertSee('Delivery Logs');
+        $response->assertSee('Filter Delivery Logs');
+        $response->assertSee('SMTP unavailable');
+        $response->assertSee('Business 1');
     }
 
     public function testMarkReadAndMarkAllReadLinksRoundTripForAuthenticatedUsers(): void

@@ -151,6 +151,96 @@ class PublicBookingService
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
             'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
             'defaultPhoneCountryCode' => $this->phoneNumberService->getDefaultCountryCode(),
+            'seo' => $this->buildSeoContext(),
+        ];
+    }
+
+    /**
+     * Build SEO context for the public booking page.
+     *
+     * Sources all values from xs_settings (general.* keys) so that the
+     * booking view can render server-side meta tags without any business logic.
+     *
+     * @return array{title: string, description: string, canonical: string, image: string, robots: string, schema: array}
+     */
+    public function buildSeoContext(): array
+    {
+        $keys = [
+            'general.business_name',
+            'general.company_name',
+            'general.business_address',
+            'general.city',
+            'general.telephone_number',
+            'general.mobile_number',
+            'general.company_phone',
+            'general.meta_description',
+            'general.meta_image',
+            'booking.indexable',
+        ];
+
+        $s = $this->settings->getByKeys($keys);
+
+        $businessName = $s['general.business_name']
+            ?? $s['general.company_name']
+            ?? 'WebSchedulr';
+
+        $address  = $s['general.business_address'] ?? '';
+        $city     = $s['general.city'] ?? '';
+        $phone    = $s['general.telephone_number']
+            ?? $s['general.mobile_number']
+            ?? $s['general.company_phone']
+            ?? '';
+
+        $metaDescription = $s['general.meta_description'] ?? '';
+        if ($metaDescription === '') {
+            $metaDescription = 'Book your appointment online at ' . $businessName . '.';
+            if ($city !== '') {
+                $metaDescription .= ' Located in ' . $city . '.';
+            }
+        }
+
+        $metaImage  = $s['general.meta_image'] ?? '';
+        if ($metaImage === '') {
+            $metaImage = base_url('assets/og-default.png');
+        }
+
+        $indexable = isset($s['booking.indexable']) ? (bool) $s['booking.indexable'] : true;
+
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type'    => 'LocalBusiness',
+            'name'     => $businessName,
+            'url'      => base_url('booking'),
+        ];
+
+        if ($address !== '') {
+            $schema['address'] = [
+                '@type'           => 'PostalAddress',
+                'streetAddress'   => $address,
+                'addressLocality' => $city,
+            ];
+        } elseif ($city !== '') {
+            $schema['address'] = [
+                '@type'           => 'PostalAddress',
+                'addressLocality' => $city,
+            ];
+        }
+
+        if ($phone !== '') {
+            $schema['telephone'] = $phone;
+        }
+
+        if ($metaImage !== '' && strpos($metaImage, 'og-default.png') === false) {
+            $schema['image'] = $metaImage;
+        }
+
+        return [
+            'title'       => 'Book at ' . $businessName,
+            'description' => $metaDescription,
+            'canonical'   => base_url('booking'),
+            'image'       => $metaImage,
+            'robots'      => $indexable ? 'index, follow' : 'noindex, nofollow',
+            'schema'      => $schema,
         ];
     }
 

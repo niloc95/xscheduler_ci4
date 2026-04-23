@@ -39,6 +39,8 @@ class AppointmentManualNotificationService
 
     public function send(int $appointmentId, string $channel, ?string $eventType = null): array
     {
+        $businessId = $this->resolveBusinessId();
+
         $appointment = $this->appointmentModel->find($appointmentId);
         if (!$appointment) {
             return [
@@ -65,18 +67,25 @@ class AppointmentManualNotificationService
         }
 
         return match ($normalizedChannel) {
-            'email' => $this->sendEmail($appointmentId, $resolvedEventType),
-            'sms' => $this->sendSms($appointmentId, $resolvedEventType),
-            'whatsapp' => $this->queueWhatsApp($appointmentId, $resolvedEventType),
+            'email' => $this->sendEmail($appointmentId, $resolvedEventType, $businessId),
+            'sms' => $this->sendSms($appointmentId, $resolvedEventType, $businessId),
+            'whatsapp' => $this->queueWhatsApp($appointmentId, $resolvedEventType, $businessId),
         };
     }
 
-    private function sendEmail(int $appointmentId, string $eventType): array
+    protected function resolveBusinessId(): int
+    {
+        helper('permissions');
+
+        return current_business_id(NotificationCatalog::BUSINESS_ID_DEFAULT);
+    }
+
+    private function sendEmail(int $appointmentId, string $eventType, int $businessId): array
     {
         $sent = $this->appointmentNotificationService->sendEventEmail(
             $eventType,
             $appointmentId,
-            NotificationCatalog::BUSINESS_ID_DEFAULT
+            $businessId
         );
 
         if (!$sent) {
@@ -98,7 +107,7 @@ class AppointmentManualNotificationService
         ];
     }
 
-    private function sendSms(int $appointmentId, string $eventType): array
+    private function sendSms(int $appointmentId, string $eventType, int $businessId): array
     {
         $appointment = $this->appointmentQueryService->getDetailById($appointmentId);
         if (!$appointment || empty($appointment['customer_phone'])) {
@@ -134,7 +143,7 @@ class AppointmentManualNotificationService
         }
 
         $result = $this->notificationSmsService->sendSms(
-            NotificationCatalog::BUSINESS_ID_DEFAULT,
+            $businessId,
             (string) $appointment['customer_phone'],
             $message
         );
@@ -158,13 +167,13 @@ class AppointmentManualNotificationService
         ];
     }
 
-    private function queueWhatsApp(int $appointmentId, string $eventType): array
+    private function queueWhatsApp(int $appointmentId, string $eventType, int $businessId): array
     {
         $this->appointmentEventService->dispatch(
             $eventType,
             $appointmentId,
             ['whatsapp'],
-            NotificationCatalog::BUSINESS_ID_DEFAULT
+            $businessId
         );
 
         return [

@@ -96,7 +96,7 @@ final class AppointmentManualNotificationServiceTest extends CIUnitTestCase
         $emailService = $this->createMock(AppointmentNotificationService::class);
         $emailService->expects($this->once())
             ->method('sendEventEmail')
-            ->with('appointment_confirmed', 15, 1)
+            ->with('appointment_pending', 15, 1)
             ->willReturn(false);
 
         $service = $this->makeService(
@@ -234,6 +234,75 @@ final class AppointmentManualNotificationServiceTest extends CIUnitTestCase
         $this->assertTrue($result['success']);
         $this->assertSame('whatsapp', $result['data']['channel']);
         $this->assertSame('WhatsApp notification queued for delivery', $result['data']['message']);
+    }
+
+    public function testSendUsesResolvedBusinessIdAcrossChannels(): void
+    {
+        $appointmentModel = $this->createMock(AppointmentModel::class);
+        $appointmentModel->expects($this->exactly(3))
+            ->method('find')
+            ->willReturn([
+                'id' => 55,
+                'status' => 'confirmed',
+            ]);
+
+        $queryService = $this->createMock(AppointmentQueryService::class);
+        $queryService->expects($this->once())
+            ->method('getDetailById')
+            ->with(55)
+            ->willReturn([
+                'customer_name' => 'Pat Doe',
+                'customer_email' => 'pat@example.com',
+                'customer_phone' => '+15550001111',
+                'service_name' => 'Exam',
+                'service_duration' => 30,
+                'provider_name' => 'Dr. Rivera',
+                'start_at' => '2026-05-01 10:00:00',
+                'location_name' => 'Main Office',
+                'location_address' => '123 Main',
+                'location_contact' => '+15551234567',
+            ]);
+
+        $emailService = $this->createMock(AppointmentNotificationService::class);
+        $emailService->expects($this->once())
+            ->method('sendEventEmail')
+            ->with('appointment_confirmed', 55, 24)
+            ->willReturn(true);
+
+        $smsService = $this->createMock(NotificationSmsService::class);
+        $smsService->expects($this->once())
+            ->method('sendSms')
+            ->with(24, '+15550001111', 'Ready to send')
+            ->willReturn(['ok' => true]);
+
+        $templateService = $this->createMock(NotificationTemplateService::class);
+        $templateService->expects($this->once())
+            ->method('render')
+            ->with('appointment_confirmed', 'sms', $this->isType('array'))
+            ->willReturn(['body' => 'Ready to send']);
+
+        $eventService = $this->createMock(AppointmentEventService::class);
+        $eventService->expects($this->once())
+            ->method('dispatch')
+            ->with('appointment_confirmed', 55, ['whatsapp'], 24);
+
+        $service = new class(
+            $appointmentModel,
+            $queryService,
+            $emailService,
+            $smsService,
+            $templateService,
+            $eventService
+        ) extends AppointmentManualNotificationService {
+            protected function resolveBusinessId(): int
+            {
+                return 24;
+            }
+        };
+
+        $this->assertTrue($service->send(55, 'email', 'appointment_confirmed')['success']);
+        $this->assertTrue($service->send(55, 'sms', 'appointment_confirmed')['success']);
+        $this->assertTrue($service->send(55, 'whatsapp', 'appointment_confirmed')['success']);
     }
 
     private function makeService(

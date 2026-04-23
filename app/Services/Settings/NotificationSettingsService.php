@@ -2,9 +2,9 @@
 
 namespace App\Services\Settings;
 
-use App\Models\NotificationDeliveryLogModel;
 use App\Models\SettingModel;
 use App\Services\NotificationCatalog;
+use App\Services\NotificationBusinessOptionsService;
 use App\Services\NotificationEmailService;
 use App\Services\NotificationPolicyService;
 use App\Services\NotificationSmsService;
@@ -40,6 +40,11 @@ class NotificationSettingsService
         return new NotificationTemplateService();
     }
 
+    protected function getBusinessOptionsService(): NotificationBusinessOptionsService
+    {
+        return new NotificationBusinessOptionsService();
+    }
+
     protected function resolveBusinessId(): int
     {
         helper('permissions');
@@ -55,9 +60,10 @@ class NotificationSettingsService
         $smsIntegration = [];
         $whatsAppIntegration = [];
         $whatsAppTemplates = [];
-        $deliveryLogs = [];
         $messageTemplates = [];
         $businessId = $this->resolveBusinessId();
+        $businessOptions = $this->getBusinessOptionsService()->getOptions($businessId);
+        $businessContext = $this->buildBusinessContext($businessId, $businessOptions);
 
         try {
             $notificationPolicy = new NotificationPolicyService();
@@ -75,12 +81,6 @@ class NotificationSettingsService
                 ];
             }
 
-            $deliveryLogs = (new NotificationDeliveryLogModel())
-                ->where('business_id', $businessId)
-                ->orderBy('created_at', 'DESC')
-                ->limit(50)
-                ->findAll();
-
             $messageTemplates = $this->loadMessageTemplates();
         } catch (\Throwable $e) {
             log_message('warning', 'Settings: notification data unavailable — ' . $e->getMessage());
@@ -94,10 +94,65 @@ class NotificationSettingsService
             'notificationWhatsAppIntegration' => $whatsAppIntegration,
             'notificationWhatsAppTemplates' => $whatsAppTemplates,
             'notificationEvents' => NotificationCatalog::EVENTS,
-            'notificationDeliveryLogs' => $deliveryLogs,
             'notificationMessageTemplates' => $messageTemplates,
             'notificationDefaultTemplates' => $this->getTemplateService()->getDefaultTemplates(),
+            'notificationCurrentBusinessId' => $businessId,
+            'notificationBusinessOptions' => $businessOptions,
+            'notificationBusinessContext' => $businessContext,
         ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $businessOptions
+     * @return array<string, mixed>
+     */
+    private function buildBusinessContext(int $businessId, array $businessOptions): array
+    {
+        $options = [];
+
+        foreach ($businessOptions as $option) {
+            $optionBusinessId = (int) ($option['id'] ?? 0);
+            if ($optionBusinessId <= 0) {
+                continue;
+            }
+
+            $options[] = [
+                'id' => $optionBusinessId,
+                'label' => (string) ($option['label'] ?? ('Business ' . $optionBusinessId)),
+                'is_active' => $optionBusinessId === $businessId,
+                'url' => $this->buildUrl('settings', ['business_id' => $optionBusinessId], 'notifications'),
+            ];
+        }
+
+        return [
+            'title' => 'Business Context',
+            'description' => 'Use the same business query parameter when you jump from Settings into delivery activity, so the Notifications page opens on the matching business immediately.',
+            'options' => $options,
+            'action' => [
+                'href' => $this->buildUrl('notifications', ['tab' => 'delivery-logs', 'business_id' => $businessId]),
+                'label' => 'Open Delivery Logs',
+                'icon' => 'receipt_long',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, scalar|null> $query
+     */
+    private function buildUrl(string $path, array $query = [], string $fragment = ''): string
+    {
+        $filtered = array_filter($query, static fn(mixed $value): bool => $value !== null && $value !== '');
+        $url = base_url($path);
+
+        if ($filtered !== []) {
+            $url .= '?' . http_build_query($filtered);
+        }
+
+        if ($fragment !== '') {
+            $url .= '#' . ltrim($fragment, '#');
+        }
+
+        return $url;
     }
 
     public function save(array $post, ?int $userId): array
