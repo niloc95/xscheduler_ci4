@@ -101,7 +101,9 @@ export async function initAppointmentForm() {
             rotateCsrfFromResponse(response, 'authenticated', form);
 
             if (!response.ok) {
-                const errorPayload = await parseErrorPayload(response);
+                // Use resultPayload already parsed by apiRequest() instead of reading response again
+                // to avoid "body stream already read" error
+                const errorPayload = resultPayload || {};
 
                 if (response.status === 403) {
                     throw new Error("You don't have permission to perform this action.");
@@ -603,26 +605,6 @@ function attachVisibilityRefresh() {
             if (form) syncClientTimezoneFields(form);
         }
     }, { once: false });
-}
-
-async function parseErrorPayload(response) {
-    const contentType = response.headers.get('content-type') || '';
-    const errorText = await response.text();
-
-    if (!errorText) {
-        return null;
-    }
-
-    if (contentType.includes('application/json')) {
-        try {
-            return JSON.parse(errorText);
-        } catch (_) {
-            console.warn('[appointments-form] Failed to parse JSON error payload');
-        }
-    }
-
-    console.error('[appointments-form] Server error:', errorText);
-    return null;
 }
 
 function normalizeServerErrors(payload, statusCode) {
