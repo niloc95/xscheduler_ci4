@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.3
+version: 2.5
 status: Active hardening
-last_updated: 2026-04-21
+last_updated: 2026-04-23
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -117,6 +117,7 @@ Use this file first when making architecture, API, scheduling, booking, notifica
 | Change appointment flows or scheduler behavior | 8) Appointments and Scheduling Contract |
 | Change public booking behavior | 10) Public Booking Contract |
 | Modify notification behavior | 11) Notifications Contract |
+| Understand reminder offset independent triggering | 11.8a) Reminder Offsets Behavior |
 | Update persistence logic or queries | 12) Database Schema and Relationships |
 | Add migrations safely | 13) Migration and Schema-Drift Rules |
 | Avoid duplication, orphans, naming collisions | 14) Mandatory Quality Gates |
@@ -365,6 +366,52 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - NotificationQueueDispatcher
 
 ### 7.2 Key System Files
+
+### 7.4 Business Context Resolver Contract
+
+**Owner section.** All business-ID resolution rules live here. §11 contains reference-only reminders.
+
+#### 7.4.1 `current_business_id()` Helper
+
+`app/Helpers/permissions_helper.php` exposes `current_business_id(?int $default = null): int`.
+It is the single canonical way to resolve the active business context for the current request.
+Load it with `helper('permissions')` (already loaded by `BaseController`).
+
+#### 7.4.2 Resolution Priority (Strict)
+
+1. **Request params** — `GET`/`POST` `business_id` or `businessId`
+2. **Session keys** — `session()->get('business_id')` or `session()->get('active_business_id')`
+3. **Session user sub-keys** — `session()->get('user')['business_id' | 'active_business_id' | 'businessId' | 'activeBusinessId']`
+4. **Fallback** — `$default ?? NotificationCatalog::BUSINESS_ID_DEFAULT` (value `1`)
+
+The result is always `max(1, resolved_value)`.
+
+#### 7.4.3 Service-Level Usage Pattern
+
+Services that scope data to a business must use a protected delegate:
+
+```php
+protected function resolveBusinessId(): int {
+  helper('permissions');
+  return current_business_id();
+}
+```
+
+This makes the resolver overridable in unit tests without request/session scaffolding.
+
+#### 7.4.4 Current Service Coverage
+
+| Service | Scope switch |
+| --- | --- |
+| `NotificationCenterService` | `getNotifications()`, `getUnreadCount()` |
+| `NotificationSettingsService` | `getIndexData()`, `save()` |
+
+Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in service methods that serve UI requests. Route all UI-facing scoping through `resolveBusinessId()` / `current_business_id()`.
+
+#### 7.4.5 Auth Channel Exception
+
+`Auth::sendResetEmail()` still passes `NotificationCatalog::BUSINESS_ID_DEFAULT` directly to `MailerService`. This is intentional — password reset has no session context. Do not route it through `current_business_id()`.
+
 
 - app/Config/Routes.php
 - app/Config/Filters.php
@@ -736,6 +783,11 @@ SMTP transport for notifications is owned by `MailerService`. See §7.3 for
 the full transport resolution priority, from-address rules, `send()` response
 contract, and dev fallback behavior. Do not document transport details here.
 
+Business-ID scoping for all notification service methods that serve UI requests is owned by
+`current_business_id()` in `permissions_helper`. See §7.4 for full resolution priority and
+service usage pattern. Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in
+UI-facing service methods.
+
 ### 11.3 Dispatch Architecture Notes
 
 - Booking-time notifications are queued synchronously inline during the appointment mutation request; they are not deferred until the first cron tick.
@@ -772,6 +824,8 @@ Key queue fields:
 - sent_at
 - idempotency_key
 - correlation_id
+- reminder_offset_minutes (reminder rows only — offset that triggered this row; used for stale-reminder cancellation)
+- schedule_fingerprint (SHA1 of `start_at|end_at|updated_at`; dispatcher cancels reminder rows whose fingerprint no longer matches the live appointment)
 
 ### 11.6 Architecture Flow
 
@@ -802,6 +856,69 @@ Internal notifications:
 Dev-only SMTP fallback for email: see §7.3.2 for transport priority and §7.3.5
 for the queue gate that activates the fallback. The fallback covers both
 queue-enqueue checks and queue-dispatch checks transparently.
+
+### 11.8a Reminder Offsets Behavior
+
+#### 11.8a.1 Independent Offset Processing
+
+**Each reminder offset triggers independently. No offset blocks another.**
+
+Configuration (Settings → Notifications → Customer Reminder Offsets):
+- Primary offset: e.g., 4320 minutes (3 days before)
+- Secondary offset: e.g., 60 minutes (1 hour before)
+- Offsets are stored as an array in `xs_business_notification_rules.reminder_offsets_json`
+
+`NotificationQueueService::enqueueDueReminders()` processes each offset separately:
+
+```
+For each appointment where start_at in (now, +30 days]:
+  For each channel (email, sms, whatsapp):
+    For each offset in that channel's offset list:
+      dueAt = start_at - offset_minutes
+      If now >= dueAt → enqueue a row with marker 'offset:N'
+      Else → skip (not yet due)
+```
+
+There is no cross-offset dependency. An offset that is already past-due does not affect a future offset that has not yet arrived.
+
+#### 11.8a.2 Appointment Booked 1 Day in Advance — Concrete Example
+
+Config: `[4320 min (3 days), 60 min (1 hour)]`
+Booking time: today 14:00 UTC. Appointment: tomorrow 14:00 UTC.
+
+| Offset | dueAt | now >= dueAt | Result |
+|--------|-------|-------------|--------|
+| 4320 min (3 days) | 3 days ago | ✅ TRUE | Enqueued immediately (catch-up) |
+| 60 min (1 hour) | tomorrow 13:00 | ❌ FALSE | Skipped — enqueued when tomorrow 13:00 arrives |
+
+Both reminders will send. The first being past-due at booking time does not block the second.
+
+#### 11.8a.3 Queue Row Identity
+
+Each offset creates its own queue row with:
+- `reminder_offset_minutes` — the specific offset value that triggered this row
+- `idempotency_key` — includes marker `'offset:N'` so the same offset for the same appointment is never double-enqueued
+- `schedule_fingerprint` — SHA1(`start_at|end_at|updated_at`); dispatcher cancels a reminder row if the fingerprint no longer matches the live appointment (i.e., appointment was rescheduled after enqueue)
+
+#### 11.8a.4 reminder_sent Flag — Compatibility Only
+
+After a **customer** reminder dispatches successfully, `reminder_sent = 1` is set on the appointment row via `NotificationQueueDispatcher::markReminderSentIfSupported()`.
+
+**This flag is NOT checked as an enqueue-time filter.** `enqueueDueReminders()` does not skip appointments with `reminder_sent = 1`. The flag is for display purposes only.
+
+> **Known hazard (fixed 2026-04-23, commit e5bf2e7):** Previously, the flag write used `model->update(['reminder_sent' => 1])`, which also updated `updated_at`. That changed the schedule fingerprint mid-dispatch, causing sibling reminder rows for the same appointment to be cancelled as stale. The fix writes `reminder_sent` via query builder `set()` without touching `updated_at`.
+
+#### 11.8a.5 Debugging Reminder Offsets
+
+```bash
+# Force an appointment into a reminder-due window, then enqueue + dispatch
+php spark notifications:test-reminder <appointmentId> [businessId] [minutesUntilStart]
+
+# Example: set appointment to start 45 min from now
+php spark notifications:test-reminder 96 1 45
+```
+
+Output shows per-offset queue rows with their `reminder_offset_minutes`, `status` (`sent` / `queued` / `cancelled`), and `schedule_fingerprint`. A healthy run shows one row per offset per recipient, all with `status=sent` and `Cancelled: 0`.
 
 ### 11.9 Template Contract
 
@@ -1159,11 +1276,15 @@ Columns:
 - correlation_id
 - created_at
 - updated_at
+- reminder_offset_minutes
+- schedule_fingerprint
 
 Notes:
 - uses attempts/max_attempts (not legacy attempt_count)
 - includes locked_at, lock_token, correlation_id
 - internal rows resolve recipient from xs_users at dispatch
+- reminder rows include reminder_offset_minutes and schedule_fingerprint (added 2026-04-21 migration)
+- dispatcher cancels a reminder row if schedule_fingerprint no longer matches the live appointment
 
 ##### xs_notification_delivery_logs
 Columns:
@@ -1466,6 +1587,8 @@ Status legend: `done`, `in_progress`, `queued`.
 | --- | --- | --- | --- |
 | 20 | `/profile` live view hardening | done | Added `ProfilePageService`, replaced placeholder profile cards/activity with authoritative data, moved tab/avatar behavior to `resources/js/modules/profile/profile-page.js`, and covered the flow with `tests/integration/ProfileJourneyTest.php`. |
 | 21 | Appointment customer-search payload contract | done | Appointment-form search now accepts parsed JSON payloads from `resources/js/core/api.js`, and shared `extractJSON()` accepts object payloads so sibling search surfaces do not fail on `.match()` calls. |
+| 22 | Business context resolver for notification services | done | Added `current_business_id()` to `permissions_helper.php`. `NotificationCenterService` and `NotificationSettingsService` now resolve scope via `resolveBusinessId()` instead of `NotificationCatalog::BUSINESS_ID_DEFAULT`. Full resolver contract documented in §7.4. |
+| 23 | Reminder queue metadata and stale-reminder cancellation | done | Added `reminder_offset_minutes` and `schedule_fingerprint` columns to `xs_notification_queue` (migration `2026-04-21-150000`). `NotificationQueueService` writes fingerprint on enqueue; `NotificationQueueDispatcher` cancels reminder rows whose fingerprint no longer matches the live appointment, and resolves internal recipients via `resolveInternalRecipientUser()`. |
 
 ## 18) Audit Progress Board
 
@@ -1476,11 +1599,15 @@ Status legend: `done`, `in_progress`, `queued`.
 - `/profile` now renders authoritative account data and audit activity through `ProfilePageService`, with SPA-safe tab/image behavior and integration coverage recorded in 17.4 item 20.
 - Appointment create customer search now respects the shared parsed-payload contract from `apiRequest()`, with the hardening recorded in 17.4 item 21.
 - Frontend test + build validation is required after each decomposition tranche.
+- `current_business_id()` helper added to `permissions_helper.php`; `NotificationCenterService` and `NotificationSettingsService` switched off hardcoded constant — business context resolver documented in §7.4 (17.4 item 22).
+- Reminder queue metadata (`reminder_offset_minutes`, `schedule_fingerprint`) added to `xs_notification_queue`; stale-reminder cancellation logic in `NotificationQueueDispatcher` — schema updated in §12.3, queue fields in §11.5 (17.4 item 23).
+- Two new resolver-focused unit tests passing: `testResolveBusinessIdUsesSessionBusinessContext` (NotificationCenterServiceTest) and `testNotificationSettingsServiceResolvesBusinessIdFromSessionContext` (SettingsBoundaryServicesTest).
 
 ### 18.2 Remaining Debt Outside 14-19
 
 - `ProviderWorkingHoursTrait::getBusinessHours()` still requires `SettingModel::getByKeys()` migration.
 - Test DB migration-sequence gap near `2025-10-22-174832` still blocks part of integration suite.
+- `testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (SettingsBoundaryServicesTest) fails because the mock expectation `expects($this->once())` on `getByKeys` is violated when `LocalizationSettingsService` makes a second internal call. Fix: change expectation to `expects($this->atLeastOnce())` or mock `LocalizationSettingsService` separately. Pre-existing; not introduced in this session.
 
 ## 19) Next Hardening Queue
 
@@ -1489,6 +1616,8 @@ Status legend: `done`, `in_progress`, `queued`.
 1. Split `scheduler-today-view.js` into render/data helpers while preserving existing event contracts.
 2. Continue reducing inline script usage in non-target legacy views (module-bootstrapped parity).
 3. Add CI coverage for `npm run test:unit:calendar` in frontend validation workflow.
+4. Fix pre-existing mock expectation count failure in `SettingsBoundaryServicesTest::testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (see §18.2).
+5. Add an admin-visible business selector / `?business_id=` query-param handoff to the Notifications and Settings pages — `current_business_id()` already reads `?business_id=` from GET params, so no PHP changes are needed; only a UI affordance is required.
 
 ### 19.2 Verification Rule
 
