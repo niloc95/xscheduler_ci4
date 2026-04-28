@@ -27,14 +27,8 @@
     <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
     
-    <!-- Prevent FOUC: Apply dark mode immediately -->
-    <script>
-        (function() {
-            const theme = localStorage.getItem('xs-theme') || 
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
+    <!-- Theme bootstrap -->
+    <script type="module" src="<?= vite_js('resources/js/theme-bootstrap.js') ?>"></script>
     
     <!-- Stylesheets (resolved from Vite manifest) -->
     <?php
@@ -54,19 +48,16 @@
     <!-- Material Web Components -->
     <script type="module" src="<?= vite_js('resources/js/material-web.js') ?>"></script>
     
-    <!-- Global Config -->
-    <script>
-        window.__BASE_URL__ = '<?= base_url() ?>';
-        window.__CSRF_TOKEN__ = '<?= csrf_hash() ?>';
-        window.__BUSINESS_NAME__ = '<?= esc(setting('general.business_name', 'WebScheduler'), 'js') ?>';
-        window.__DEFAULT_PHONE_COUNTRY_CODE__ = '<?= esc((string) setting('localization.default_phone_country_code', '+27'), 'js') ?>';
-    </script>
     <meta name="csrf-header" content="X-CSRF-TOKEN">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
     
     <?= $this->renderSection('head') ?>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen antialiased transition-colors duration-200">
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen antialiased transition-colors duration-200"
+    data-base-url="<?= esc(rtrim(base_url(), '/')) ?>"
+    data-csrf-token="<?= esc(csrf_hash()) ?>"
+    data-business-name="<?= esc(setting('general.business_name', 'WebScheduler')) ?>"
+    data-default-phone-country-code="<?= esc((string) setting('localization.default_phone_country_code', '+27')) ?>">
     <!-- Sidebar (Fixed position - outside flow) -->
     <?php 
     // Auto-include sidebar if section not provided
@@ -127,26 +118,6 @@
                                 <span id="header-greeting-sep" class="mx-1">·</span>
                                 <span><?= esc($displayRole) ?></span>
                             </p>
-                            <script>
-                                (function() {
-                                    const clockEl = document.getElementById('header-live-clock');
-                                    if (!clockEl) return;
-
-                                    const formatTime = () => {
-                                        const timezone = window.appTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-                                        const now = new Date();
-                                        clockEl.textContent = now.toLocaleTimeString('en-GB', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            second: '2-digit',
-                                            timeZone: timezone
-                                        });
-                                    };
-
-                                    formatTime();
-                                    setInterval(formatTime, 1000);
-                                })();
-                            </script>
                         </div>
                         </div>
                         
@@ -187,11 +158,18 @@
                             
                             <!-- User Menu -->
                             <?php $user = session()->get('user'); ?>
+                            <?php $headerAvatar = avatar_data(is_array($user) ? $user : [], 'U'); ?>
                             <div class="relative" id="user-menu-wrapper">
                                 <button id="user-menu-btn" type="button" class="flex min-h-11 items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                    <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
-                                        <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
-                                    </div>
+                                    <?php if (!empty($headerAvatar['image_url'])): ?>
+                                        <img src="<?= esc($headerAvatar['image_url']) ?>"
+                                             alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
+                                             class="w-9 h-9 rounded-full object-cover" />
+                                    <?php else: ?>
+                                        <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
+                                            <?= esc($headerAvatar['initials']) ?>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="hidden lg:block text-left">
                                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= esc($user['name'] ?? 'User') ?></p>
                                         <p class="text-xs text-gray-500 dark:text-gray-400"><?= esc($displayRole) ?></p>
@@ -300,117 +278,10 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
     
     <!-- Scripts (resolved from Vite manifest) -->
+    <script type="module" src="<?= vite_js('resources/js/layout/app-layout-init.js') ?>"></script>
     <script type="module" src="<?= vite_js('resources/js/app.js') ?>"></script>
     <script type="module" src="<?= vite_js('resources/js/dark-mode.js') ?>"></script>
     <script type="module" src="<?= vite_js('resources/js/spa.js') ?>"></script>
     <script type="module" src="<?= vite_js('resources/js/unified-sidebar.js') ?>"></script>
-    
-    <!-- Layout JavaScript -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Keep CSS header height token in sync with actual header size
-            const headerEl = document.querySelector('.xs-header');
-
-            function syncHeaderHeight() {
-                if (!headerEl) return;
-                const height = headerEl.offsetHeight;
-                if (height > 0) {
-                    document.documentElement.style.setProperty('--xs-header-height', `${height}px`);
-                }
-            }
-
-            // Initial sync
-            syncHeaderHeight();
-
-            // Keep in sync on resize/content changes
-            window.addEventListener('resize', syncHeaderHeight);
-
-            if (window.ResizeObserver && headerEl) {
-                const headerObserver = new ResizeObserver(() => syncHeaderHeight());
-                headerObserver.observe(headerEl);
-            }
-
-            // Header title sync function for SPA navigation
-            function syncHeaderTitle() {
-                const headerEl = document.getElementById('header-title');
-                const spaContent = document.getElementById('spa-content');
-                if (!headerEl || !spaContent) return;
-                
-                // Priority order for finding page title:
-                // 1. data-page-title attribute on #spa-content itself
-                // 2. data-page-title on any child element (e.g., dashboard intro div)
-                // 3. First h1 or h2 heading in the content
-                let pageTitle = spaContent.getAttribute('data-page-title');
-                
-                if (!pageTitle) {
-                    const titleEl = spaContent.querySelector('[data-page-title]');
-                    if (titleEl) pageTitle = titleEl.getAttribute('data-page-title');
-                }
-                
-                // Fallback: look for first prominent heading
-                if (!pageTitle) {
-                    const heading = spaContent.querySelector('h1:not(#header-title), h2.text-xl, h2.text-2xl');
-                    if (heading) {
-                        pageTitle = heading.textContent.trim();
-                    }
-                }
-                
-                if (pageTitle && pageTitle !== headerEl.textContent.trim()) {
-                    headerEl.textContent = pageTitle;
-                    document.title = pageTitle + ' • WebScheduler';
-                }
-            }
-            
-            // Sync on initial load
-            syncHeaderTitle();
-            
-            // Hide greeting on schedule/appointment views to save header space
-            function syncGreetingVisibility() {
-                const greetingEl = document.getElementById('header-greeting');
-                const greetingSep = document.getElementById('header-greeting-sep');
-                if (!greetingEl) return;
-                // If header has controls slot, it's a schedule view — hide greeting
-                const hasControls = document.getElementById('header-controls-slot');
-                greetingEl.style.display = hasControls ? 'none' : '';
-                if (greetingSep) greetingSep.style.display = hasControls ? 'none' : '';
-            }
-
-            syncGreetingVisibility();
-
-            // Sync on SPA navigation
-            document.addEventListener('spa:navigated', function() {
-                // Small delay to ensure DOM is updated
-                requestAnimationFrame(() => {
-                    syncHeaderTitle();
-                    syncGreetingVisibility();
-                    syncHeaderHeight();
-                });
-            });
-            
-            // User menu toggle
-            const userMenuBtn = document.getElementById('user-menu-btn');
-            const userMenu = document.getElementById('user-menu');
-            
-            if (userMenuBtn && userMenu) {
-                userMenuBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    userMenu.classList.toggle('hidden');
-                });
-                
-                document.addEventListener('click', function(e) {
-                    if (!userMenu.contains(e.target) && !userMenuBtn.contains(e.target)) {
-                        userMenu.classList.add('hidden');
-                    }
-                });
-            }
-            
-            // Close sidebar on escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeSidebar();
-                }
-            });
-        });
-    </script>
 </body>
 </html>

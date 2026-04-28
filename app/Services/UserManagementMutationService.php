@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use CodeIgniter\HTTP\Files\UploadedFile;
 use App\Models\AuditLogModel;
 use App\Models\BusinessHourModel;
 use App\Models\LocationModel;
@@ -137,6 +138,8 @@ class UserManagementMutationService
             $userData['color'] = !empty($payload['color'])
                 ? $payload['color']
                 : $this->userModel->getAvailableProviderColor();
+            $userData = array_merge($userData, $this->extractProviderProfilePayload($payload));
+            $userData['slug'] = $this->resolveProviderSlug($payload['slug'] ?? null, $payload['name'] ?? null, null);
             log_message('info', 'Assigned color ' . $userData['color'] . ' to new provider');
 
             [$scheduleClean, $scheduleErrors] = $this->scheduleValidation->validateProviderSchedule($scheduleInput);
@@ -232,6 +235,9 @@ class UserManagementMutationService
 
     public function updateUser(int $userId, int $currentUserId, array $currentUser, array $existingUser, array $payload): array
     {
+        $newProfileImageAbsolute = null;
+        $oldProfileImageToDelete = null;
+
         $updateData = [
             'name' => $payload['name'] ?? null,
             'email' => $payload['email'] ?? null,
@@ -345,6 +351,17 @@ class UserManagementMutationService
         if ($hasProviderRole) {
             $scheduleInput = $this->mergeMissingScheduleFieldsFromExisting($userId, $scheduleInput);
 
+            $updateData = array_merge($updateData, $this->extractProviderProfilePayload($payload));
+
+            $existingSlug = trim((string) ($existingUser['slug'] ?? ''));
+            $requestedSlug = $payload['slug'] ?? null;
+            if ($existingSlug === '') {
+                $updateData['slug'] = $this->resolveProviderSlug($requestedSlug, $payload['name'] ?? ($existingUser['name'] ?? null), $userId);
+            } elseif ($requestedSlug !== null && trim((string) $requestedSlug) !== $existingSlug) {
+                // Slug is locked once set; ignore attempts to rotate it through edits.
+                $updateData['slug'] = $existingSlug;
+            }
+
             if (($currentUser['role'] ?? '') === 'admin' && !empty($payload['color'])) {
                 $updateData['color'] = $payload['color'];
             }
@@ -359,6 +376,24 @@ class UserManagementMutationService
                     'scheduleErrors' => $scheduleErrors,
                 ];
             }
+
+            $imageMutation = $this->processProviderProfileImageMutation(
+                $userId,
+                $existingUser,
+                $payload,
+                $updateData
+            );
+
+            if (!$imageMutation['success']) {
+                return [
+                    'success' => false,
+                    'statusCode' => $imageMutation['statusCode'] ?? 422,
+                    'message' => $imageMutation['message'] ?? 'Unable to process profile image upload.',
+                ];
+            }
+
+            $newProfileImageAbsolute = $imageMutation['newFileAbsolute'] ?? null;
+            $oldProfileImageToDelete = $imageMutation['oldFileToDelete'] ?? null;
         }
 
         $db = \Config\Database::connect();
@@ -439,6 +474,10 @@ class UserManagementMutationService
 
             $db->transComplete();
         } catch (\Throwable $exception) {
+            if ($newProfileImageAbsolute && is_file($newProfileImageAbsolute)) {
+                @unlink($newProfileImageAbsolute);
+            }
+
             if ($db->transStatus() !== false) {
                 $db->transRollback();
             }
@@ -453,6 +492,10 @@ class UserManagementMutationService
                 'statusCode' => 500,
                 'message' => 'Failed to update user because provider schedule or location data could not be saved.',
             ];
+        }
+
+        if ($oldProfileImageToDelete && is_file($oldProfileImageToDelete)) {
+            @unlink($oldProfileImageToDelete);
         }
 
         $updatedUser = null;
@@ -663,5 +706,296 @@ class UserManagementMutationService
         }
 
         return $exists;
+    }
+
+    /**
+     * Provider profile fields are optional and should not overwrite with empty strings.
+     */
+    private function extractProviderProfilePayload(array $payload): array
+    {
+        $out = [];
+
+        foreach (['title', 'bio', 'education', 'qualifications'] as $field) {
+            if (!array_key_exists($field, $payload)) {
+                continue;
+            }
+
+            $value = trim((string) ($payload[$field] ?? ''));
+            $out[$field] = $value === '' ? null : $value;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Generate a unique provider slug. If an explicit slug is provided, it wins.
+     */
+    private function resolveProviderSlug($requestedSlug, $name, ?int $excludeUserId): string
+    {
+        $base = trim((string) $requestedSlug);
+        if ($base === '') {
+            $base = trim((string) $name);
+        }
+
+        $slug = $this->slugify($base);
+        if ($slug === '') {
+            $slug = 'provider';
+        }
+
+        return $this->ensureUniqueProviderSlug($slug, $excludeUserId);
+    }
+
+    private function slugify(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
+        return trim($value, '-');
+    }
+
+    private function ensureUniqueProviderSlug(string $baseSlug, ?int $excludeUserId): string
+    {
+        $db = \Config\Database::connect();
+        $table = $db->prefixTable('users');
+
+        $candidate = $baseSlug;
+        $suffix = 2;
+
+        while (true) {
+            $builder = $db->table($table)->select('id')->where('slug', $candidate);
+            if ($excludeUserId !== null) {
+                $builder->where('id !=', $excludeUserId);
+            }
+
+            $exists = (bool) $builder->get()->getRowArray();
+            if (!$exists) {
+                return $candidate;
+            }
+
+            $candidate = $baseSlug . '-' . $suffix;
+            $suffix++;
+        }
+    }
+
+    /**
+     * Validates and stages provider profile image changes.
+     *
+     * @param array<string, mixed> $existingUser
+     * @param array<string, mixed> $payload
+     * @param array<string, mixed> $updateData
+     * @return array{success: bool, statusCode?: int, message?: string, newFileAbsolute?: ?string, oldFileToDelete?: ?string}
+     */
+    private function processProviderProfileImageMutation(int $userId, array $existingUser, array $payload, array &$updateData): array
+    {
+        $removeRequested = ((string) ($payload['remove_profile_image'] ?? '0')) === '1';
+        $uploadedFile = $payload['profile_picture'] ?? null;
+        $hasUpload = $uploadedFile instanceof UploadedFile
+            && $uploadedFile->getError() !== UPLOAD_ERR_NO_FILE;
+
+        if (!$removeRequested && !$hasUpload) {
+            return ['success' => true, 'newFileAbsolute' => null, 'oldFileToDelete' => null];
+        }
+
+        $existingStored = (string) ($existingUser['profile_image'] ?? '');
+        $oldAbsolute = $this->resolveProfileImagePath($existingStored);
+
+        if ($hasUpload) {
+            if (!$uploadedFile->isValid()) {
+                return [
+                    'success' => false,
+                    'statusCode' => 422,
+                    'message' => 'Profile image upload failed: ' . $uploadedFile->getErrorString(),
+                ];
+            }
+
+            if ($uploadedFile->hasMoved()) {
+                return [
+                    'success' => false,
+                    'statusCode' => 422,
+                    'message' => 'Profile image upload failed: file has already been processed.',
+                ];
+            }
+
+            if ((int) $uploadedFile->getSize() > (2 * 1024 * 1024)) {
+                return [
+                    'success' => false,
+                    'statusCode' => 422,
+                    'message' => 'Profile image too large. Maximum size is 2MB.',
+                ];
+            }
+
+            $clientMime = strtolower((string) $uploadedFile->getClientMimeType());
+            $realMime = strtolower((string) $uploadedFile->getMimeType());
+            $extension = strtolower((string) ($uploadedFile->getExtension() ?: pathinfo($uploadedFile->getName(), PATHINFO_EXTENSION)));
+
+            $allowedMimes = [
+                'image/png',
+                'image/x-png',
+                'image/jpeg',
+                'image/pjpeg',
+                'image/webp',
+                'image/gif',
+            ];
+            $allowedExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+
+            $mimeOk = in_array($clientMime, $allowedMimes, true) || in_array($realMime, $allowedMimes, true);
+            $extOk = in_array($extension, $allowedExtensions, true);
+
+            if (!$mimeOk || !$extOk) {
+                return [
+                    'success' => false,
+                    'statusCode' => 422,
+                    'message' => 'Unsupported image format. Use PNG, JPG, WEBP, or GIF.',
+                ];
+            }
+
+            $targetDir = $this->profileUploadDirectory();
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            if (!is_dir($targetDir) || !is_writable($targetDir)) {
+                return [
+                    'success' => false,
+                    'statusCode' => 500,
+                    'message' => 'Profile image directory is not writable.',
+                ];
+            }
+
+            try {
+                $safeName = 'provider_' . $userId . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+            } catch (\Throwable) {
+                $safeName = 'provider_' . $userId . '_' . date('Ymd_His') . '_' . uniqid('', true) . '.' . $extension;
+            }
+
+            if (!$uploadedFile->move($targetDir, $safeName)) {
+                return [
+                    'success' => false,
+                    'statusCode' => 500,
+                    'message' => 'Unable to store uploaded profile image.',
+                ];
+            }
+
+            $absolute = rtrim($targetDir, '/') . '/' . $safeName;
+            $mimeForResize = $realMime !== '' ? $realMime : $clientMime;
+            $this->resizeImageToMaxDimension($absolute, $mimeForResize, 600);
+
+            $relative = 'assets/profile/' . $safeName;
+            $updateData['profile_image'] = $relative;
+
+            return [
+                'success' => true,
+                'newFileAbsolute' => $absolute,
+                'oldFileToDelete' => $oldAbsolute,
+            ];
+        }
+
+        $updateData['profile_image'] = null;
+        return [
+            'success' => true,
+            'newFileAbsolute' => null,
+            'oldFileToDelete' => $oldAbsolute,
+        ];
+    }
+
+    private function profileUploadDirectory(): string
+    {
+        return rtrim(FCPATH, '/') . '/assets/profile';
+    }
+
+    private function resolveProfileImagePath(string $stored): ?string
+    {
+        $normalized = ltrim(trim($stored), '/');
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (str_starts_with($normalized, 'assets/profile/')) {
+            return rtrim(FCPATH, '/') . '/' . $normalized;
+        }
+
+        if (str_starts_with($normalized, 'uploads/')) {
+            return rtrim(WRITEPATH, '/') . '/' . $normalized;
+        }
+
+        return null;
+    }
+
+    private function resizeImageToMaxDimension(string $path, string $mime, int $max): void
+    {
+        $source = null;
+        switch ($mime) {
+            case 'image/jpeg':
+                $source = @imagecreatefromjpeg($path);
+                break;
+            case 'image/png':
+            case 'image/x-png':
+                $source = @imagecreatefrompng($path);
+                break;
+            case 'image/gif':
+                $source = @imagecreatefromgif($path);
+                break;
+            case 'image/webp':
+                if (function_exists('imagecreatefromwebp')) {
+                    $source = @imagecreatefromwebp($path);
+                }
+                break;
+        }
+
+        if (!$source) {
+            return;
+        }
+
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+        if ($sourceWidth <= 0 || $sourceHeight <= 0) {
+            imagedestroy($source);
+            return;
+        }
+
+        if ($sourceWidth <= $max && $sourceHeight <= $max) {
+            imagedestroy($source);
+            return;
+        }
+
+        if ($sourceWidth >= $sourceHeight) {
+            $newWidth = $max;
+            $newHeight = (int) round($sourceHeight * ($max / $sourceWidth));
+        } else {
+            $newHeight = $max;
+            $newWidth = (int) round($sourceWidth * ($max / $sourceHeight));
+        }
+
+        $newWidth = max(1, $newWidth);
+        $newHeight = max(1, $newHeight);
+
+        $dest = imagecreatetruecolor($newWidth, $newHeight);
+        if (in_array($mime, ['image/png', 'image/x-png', 'image/gif'], true)) {
+            imagecolortransparent($dest, imagecolorallocatealpha($dest, 0, 0, 0, 127));
+            imagealphablending($dest, false);
+            imagesavealpha($dest, true);
+        }
+
+        imagecopyresampled($dest, $source, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
+
+        switch ($mime) {
+            case 'image/jpeg':
+                @imagejpeg($dest, $path, 85);
+                break;
+            case 'image/png':
+            case 'image/x-png':
+                @imagepng($dest, $path, 6);
+                break;
+            case 'image/gif':
+                @imagegif($dest, $path);
+                break;
+            case 'image/webp':
+                if (function_exists('imagewebp')) {
+                    @imagewebp($dest, $path, 85);
+                }
+                break;
+        }
+
+        imagedestroy($source);
+        imagedestroy($dest);
     }
 }

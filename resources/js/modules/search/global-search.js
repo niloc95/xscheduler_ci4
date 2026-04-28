@@ -15,6 +15,7 @@
 
 import { getBaseUrl } from '../../utils/url-helpers.js';
 import { escapeHtml } from '../../utils/html.js';
+import { apiRequest } from '../../core/api.js';
 
 /**
  * Format date/time for display
@@ -42,6 +43,14 @@ function formatDateTime(value) {
  * @returns {object|null} Parsed JSON or null
  */
 export function extractJSON(text) {
+    if (text && typeof text === 'object') {
+        return text;
+    }
+
+    if (typeof text !== 'string' || text.trim() === '') {
+        return null;
+    }
+
     // Strategy 1: Try parsing as-is
     try {
         return JSON.parse(text);
@@ -166,12 +175,12 @@ async function performSearch(query, target, controller) {
 
     try {
         const baseUrl = getBaseUrl();
-        const response = await fetch(`${baseUrl}/dashboard/search?q=${encodeURIComponent(query.trim())}`, {
+        const { response, payload: text } = await apiRequest(`${baseUrl}/dashboard/search?q=${encodeURIComponent(query.trim())}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json'
             },
-            signal: controller.signal
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -179,7 +188,6 @@ async function performSearch(query, target, controller) {
         }
 
         // Get response as text (handles debug toolbar)
-        const text = await response.text();
         const data = extractJSON(text);
 
         if (!data) {

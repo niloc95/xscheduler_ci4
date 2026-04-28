@@ -3,6 +3,7 @@
 namespace App\Tests\Integration;
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
 
 /**
@@ -10,12 +11,15 @@ use CodeIgniter\Test\FeatureTestTrait;
  */
 final class AppointmentsApiJourneyTest extends CIUnitTestCase
 {
+    use DatabaseTestTrait;
     use FeatureTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
 
     private int $providerId;
     private int $serviceId;
+    private int $locationId;
     private array $appointmentIds = [];
     private array $customerIds = [];
 
@@ -49,6 +53,10 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
         }
 
         if (isset($this->providerId)) {
+            if (isset($this->locationId)) {
+                $db->table('location_days')->where('location_id', $this->locationId)->delete();
+                $db->table('locations')->where('id', $this->locationId)->delete();
+            }
             $db->table('users')->where('id', $this->providerId)->delete();
             $db->table('business_hours')->where('provider_id', $this->providerId)->delete();
         }
@@ -64,6 +72,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230000',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '10:00',
             'notes' => 'Initial API booking',
@@ -140,6 +149,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230001',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '11:00',
             'notes' => 'Original booking for conflict test',
@@ -160,6 +170,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230002',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '11:00',
             'notes' => 'Duplicate booking attempt',
@@ -211,6 +222,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230003',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '13:00',
             'notes' => 'First appointment before reschedule attempt',
@@ -230,6 +242,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230004',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '14:00',
             'notes' => 'Blocking appointment for reschedule conflict',
@@ -286,6 +299,7 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
             'phone' => '+15551230005',
             'providerId' => $this->providerId,
             'serviceId' => $this->serviceId,
+            'location_id' => $this->locationId,
             'date' => '2026-05-18',
             'start' => '15:00',
             'notes' => 'Appointment to cancel through API delete',
@@ -349,6 +363,23 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
         ]);
         $this->providerId = (int) $db->insertID();
 
+        $db->table('locations')->insert([
+            'provider_id' => $this->providerId,
+            'name' => 'API Journey Location',
+            'address' => '1 API Test Street',
+            'contact_number' => '0000000000',
+            'is_primary' => 1,
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->locationId = (int) $db->insertID();
+
+        $db->table('location_days')->insert([
+            'location_id' => $this->locationId,
+            'day_of_week' => 1,
+        ]);
+
         $db->table('services')->insert([
             'name' => 'Appointments API Service',
             'description' => 'Regression service for appointments API journey',
@@ -381,6 +412,8 @@ final class AppointmentsApiJourneyTest extends CIUnitTestCase
         }
 
         $this->seedSetting($db, 'localization.timezone', 'UTC', 'string');
+        $this->seedSetting($db, 'business.work_start', '09:00', 'string');
+        $this->seedSetting($db, 'business.work_end', '17:00', 'string');
         $this->seedSetting($db, 'notifications.default_language', 'English', 'string');
     }
 

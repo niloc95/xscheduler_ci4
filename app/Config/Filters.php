@@ -64,6 +64,20 @@ use CodeIgniter\Filters\SecureHeaders;
 
 class Filters extends BaseFilters
 {
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Disable the debug toolbar in the testing environment so it does not
+        // inject HTML into JSON responses and corrupt test assertions.
+        if (ENVIRONMENT === 'testing') {
+            $this->required['after'] = array_filter(
+                $this->required['after'],
+                static fn (string $f) => $f !== 'toolbar',
+            );
+        }
+    }
+
     /**
      * Configures aliases for Filter classes to
      * make reading things nicer and simpler.

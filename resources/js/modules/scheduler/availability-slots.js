@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 export async function fetchSlotsForDate({ providerIds = [], dateIso, serviceId, locationId = null }) {
     if (!Array.isArray(providerIds) || !providerIds.length || !serviceId || !dateIso) {
@@ -22,12 +23,14 @@ export async function fetchSlotsForDate({ providerIds = [], dateIso, serviceId, 
                     params.set('location_id', String(normalizedLocation));
                 }
 
-                const response = await fetch(withBaseUrl(`/api/availability/slots?${params.toString()}`));
+                const { response, payload } = await apiRequest(withBaseUrl(`/api/availability/slots?${params.toString()}`), {
+                    method: 'GET',
+                });
                 if (!response.ok) {
                     return;
                 }
 
-                const data = await response.json();
+                const data = payload || {};
                 const rawSlots = data?.data?.slots || [];
 
                 rawSlots.forEach((slot) => {

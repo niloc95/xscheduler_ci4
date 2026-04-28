@@ -9,6 +9,7 @@ import { DateTime } from 'luxon';
 import { logger } from './logger.js';
 import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 export class SettingsManager {
     constructor() {
@@ -68,10 +69,11 @@ export class SettingsManager {
 
     async loadLocalizationSettings() {
         try {
-            const response = await fetch(`${getBaseUrl()}/api/v1/settings/localization`);
+            const { response, payload } = await apiRequest(`${getBaseUrl()}/api/v1/settings/localization`, {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load localization settings');
-            
-            const data = await response.json();
+            const data = payload || {};
             const raw = data.data || data;
             
             // Normalize to camelCase (API may return snake_case)
@@ -219,10 +221,11 @@ export class SettingsManager {
 
     async loadBookingSettings() {
         try {
-            const response = await fetch(`${getBaseUrl()}/api/v1/settings/booking`);
+            const { response, payload } = await apiRequest(`${getBaseUrl()}/api/v1/settings/booking`, {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load booking settings');
-            
-            const data = await response.json();
+            const data = payload || {};
             this.settings.booking = data.data || data;
             
             return this.settings.booking;
@@ -315,10 +318,11 @@ export class SettingsManager {
 
     async loadBusinessHours() {
         try {
-            const response = await fetch(`${getBaseUrl()}/api/v1/settings/business-hours`);
+            const { response, payload } = await apiRequest(`${getBaseUrl()}/api/v1/settings/business-hours`, {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load business hours');
-            
-            const data = await response.json();
+            const data = payload || {};
             this.settings.businessHours = data.data || data;
             
             return this.settings.businessHours;
@@ -449,10 +453,11 @@ export class SettingsManager {
 
     async loadProviderSchedule(providerId) {
         try {
-            const response = await fetch(withBaseUrl(`/api/providers/${providerId}/schedule`));
+            const { response, payload } = await apiRequest(withBaseUrl(`/api/providers/${providerId}/schedule`), {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load provider schedule');
-            
-            const data = await response.json();
+            const data = payload || {};
             const raw = data.schedule || data.data || data;
             
             // Normalize DB format to day-name keyed format

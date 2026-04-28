@@ -1,4 +1,5 @@
 import { initSettingsFormEnhancements } from './settings-form-ui.js';
+import { apiRequest } from '../../core/api.js';
 
 const escapeHtml = (value) => {
     if (typeof window.xsEscapeHtml === 'function') {
@@ -20,31 +21,6 @@ const debugLog = (...args) => {
     }
 };
 
-const getCsrfHeaders = () => {
-    if (typeof window.xsGetCsrf !== 'function') {
-        return {};
-    }
-
-    const { header, token } = window.xsGetCsrf();
-    return token ? { [header]: token } : {};
-};
-
-const updateCsrfTokenFromResponse = (response) => {
-    const newToken = response?.headers?.get('X-CSRF-TOKEN') || response?.headers?.get('x-csrf-token');
-    if (!newToken) {
-        return;
-    }
-
-    const metaToken = document.querySelector('meta[name="csrf-token"]');
-    if (metaToken) {
-        metaToken.setAttribute('content', newToken);
-    }
-
-    document.querySelectorAll('input[type="hidden"][name*="csrf"]').forEach((input) => {
-        input.value = newToken;
-    });
-};
-
 const unwrapApiData = (payload) => payload?.data ?? payload;
 
 const notify = (type, title, message, autoClose = type !== 'error') => {
@@ -64,13 +40,8 @@ const notify = (type, title, message, autoClose = type !== 'error') => {
     }
 };
 
-const parseErrorMessage = async (response, fallbackMessage) => {
-    try {
-        const payload = await response.json();
-        return payload?.messages?.error || payload?.error?.message || payload?.message || fallbackMessage;
-    } catch (_) {
-        return fallbackMessage;
-    }
+const parseErrorMessage = (payload, fallbackMessage) => {
+    return payload?.messages?.error || payload?.error?.message || payload?.message || fallbackMessage;
 };
 
 const clonePeriods = (periods) => JSON.parse(JSON.stringify(periods));
@@ -198,30 +169,21 @@ function initBlockedPeriodsUI(root) {
     };
 
     const persistBlockPeriods = async () => {
-        const response = await fetch(settingsApiUrl, {
+        const { response, payload } = await apiRequest(settingsApiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...getCsrfHeaders(),
             },
-            credentials: 'same-origin',
-            body: JSON.stringify({
+            body: {
                 'business.blocked_periods': JSON.stringify(blockPeriods),
-            }),
+            },
         });
 
         if (!response.ok) {
-            throw new Error(await parseErrorMessage(response, `Save failed (HTTP ${response.status})`));
+            throw new Error(parseErrorMessage(payload, `Save failed (HTTP ${response.status})`));
         }
 
-        const result = await response.json();
-        if (!result?.ok) {
-            throw new Error(result?.message || 'Unable to save block period.');
-        }
-
-        return result;
+        return unwrapApiData(payload);
     };
 
     addButton?.addEventListener('click', () => openModal('add'));
@@ -395,24 +357,20 @@ function initDatabaseSettingsTab(root) {
     };
 
     const fetchJson = async (url, options = {}, fallbackMessage = 'Request failed') => {
-        const response = await fetch(url, {
-            credentials: 'same-origin',
-            ...options,
+        const { response, payload } = await apiRequest(url, {
+            method: options.method || 'GET',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...getCsrfHeaders(),
                 ...(options.headers || {}),
             },
+            body: options.body || null,
         });
 
-        updateCsrfTokenFromResponse(response);
-
         if (!response.ok) {
-            throw new Error(await parseErrorMessage(response, fallbackMessage));
+            throw new Error(parseErrorMessage(payload, fallbackMessage));
         }
 
-        return unwrapApiData(await response.json());
+        return unwrapApiData(payload);
     };
 
     const fetchLatestBackupFromList = async () => {

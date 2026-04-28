@@ -211,6 +211,7 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
             ->select('appointment_id, channel, event_type')
             ->where('event_type', 'appointment_reminder')
             ->where('recipient_type', 'customer')
+            ->whereIn('appointment_id', [$dueAppointmentId, $laterAppointmentId])
             ->orderBy('appointment_id', 'ASC')
             ->get()
             ->getResultArray();
@@ -285,6 +286,125 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
         $keys = array_column($rows, 'idempotency_key');
         $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:4320', $keys);
         $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:60', $keys);
+    }
+
+    public function testEnqueueDueRemindersIgnoresReminderSentFlagForQueueControl(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $appointmentId = $this->seedAppointment('+30 minutes');
+        $now = date('Y-m-d H:i:s');
+
+        $appointmentFields = $db->getFieldNames('appointments');
+        if (!in_array('reminder_sent', $appointmentFields, true)) {
+            $this->markTestSkipped('reminder_sent column is not available in test schema.');
+        }
+
+        $db->table('appointments')
+            ->where('id', $appointmentId)
+            ->update([
+                'reminder_sent' => 1,
+                'updated_at' => $now,
+            ]);
+
+        $db->table('business_notification_rules')->insert([
+            'business_id' => 1,
+            'event_type' => 'appointment_reminder',
+            'channel' => 'email',
+            'is_enabled' => 1,
+            'reminder_offset_minutes' => 60,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $db->table('business_integrations')->insert([
+            'business_id' => 1,
+            'channel' => 'email',
+            'provider_name' => 'smtp',
+            'encrypted_config' => 'configured',
+            'is_active' => 1,
+            'health_status' => 'ok',
+            'last_tested_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $service = new NotificationQueueService();
+        $stats = $service->enqueueDueReminders();
+
+        $rows = $db->table('notification_queue')
+            ->select('appointment_id, event_type, recipient_type')
+            ->where('appointment_id', $appointmentId)
+            ->where('event_type', 'appointment_reminder')
+            ->where('recipient_type', 'customer')
+            ->get()
+            ->getResultArray();
+
+        $this->assertGreaterThanOrEqual(1, $stats['scanned']);
+        $this->assertCount(1, $rows);
+        $this->assertSame($appointmentId, (int) $rows[0]['appointment_id']);
+    }
+
+    public function testEnqueueDueRemindersCreatesNewIdentityAfterScheduleChanges(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $appointmentId = $this->seedAppointment('+30 minutes');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('business_notification_rules')->insert([
+            'business_id' => 1,
+            'event_type' => 'appointment_reminder',
+            'channel' => 'email',
+            'is_enabled' => 1,
+            'reminder_offset_minutes' => 60,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $db->table('business_integrations')->insert([
+            'business_id' => 1,
+            'channel' => 'email',
+            'provider_name' => 'smtp',
+            'encrypted_config' => 'configured',
+            'is_active' => 1,
+            'health_status' => 'ok',
+            'last_tested_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $service = new NotificationQueueService();
+
+        $first = $service->enqueueDueReminders();
+
+        $existing = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
+        $this->assertIsArray($existing);
+
+        $startAt = new \DateTimeImmutable((string) ($existing['start_at'] ?? ''), new \DateTimeZone('UTC'));
+        $endAt = new \DateTimeImmutable((string) ($existing['end_at'] ?? ''), new \DateTimeZone('UTC'));
+
+        $db->table('appointments')
+            ->where('id', $appointmentId)
+            ->update([
+                'start_at' => $startAt->modify('+5 minutes')->format('Y-m-d H:i:s'),
+                'end_at' => $endAt->modify('+5 minutes')->format('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s', strtotime($now) + 5),
+            ]);
+
+        $second = $service->enqueueDueReminders();
+
+        $rows = $db->table('notification_queue')
+            ->select('idempotency_key')
+            ->where('appointment_id', $appointmentId)
+            ->where('event_type', 'appointment_reminder')
+            ->where('recipient_type', 'customer')
+            ->orderBy('id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $this->assertSame(1, (int) ($first['enqueued'] ?? 0));
+        $this->assertSame(1, (int) ($second['enqueued'] ?? 0));
+        $this->assertCount(2, $rows);
+        $this->assertCount(2, array_unique(array_column($rows, 'idempotency_key')));
     }
 
     private function seedAppointment(string $relativeStart): int

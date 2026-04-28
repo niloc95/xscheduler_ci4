@@ -54,15 +54,21 @@
 namespace App\Controllers;
 
 use App\Models\NotificationQueueModel;
+use App\Services\Appointment\AppointmentManualNotificationService;
 use App\Services\NotificationCenterService;
 
 class Notifications extends BaseController
 {
     protected NotificationCenterService $notificationCenterService;
+    private ?AppointmentManualNotificationService $appointmentManualNotificationService = null;
 
-    public function __construct(?NotificationCenterService $notificationCenterService = null)
+    public function __construct(
+        ?NotificationCenterService $notificationCenterService = null,
+        ?AppointmentManualNotificationService $appointmentManualNotificationService = null,
+    )
     {
         $this->notificationCenterService = $notificationCenterService ?? new NotificationCenterService();
+        $this->appointmentManualNotificationService = $appointmentManualNotificationService;
         helper('permissions');
     }
 
@@ -78,8 +84,12 @@ class Notifications extends BaseController
 
         $currentUser = session()->get('user');
         $currentRole = current_user_role();
-        $filter = $this->request->getGet('filter') ?? 'all';
-        return view('notifications/index', $this->notificationCenterService->buildIndexData($filter, $currentUser, $currentRole));
+
+        return view('notifications/index', $this->notificationCenterService->buildIndexData(
+            $this->request->getGet() ?? [],
+            is_array($currentUser) ? $currentUser : null,
+            $currentRole
+        ));
     }
 
     /**
@@ -97,8 +107,8 @@ class Notifications extends BaseController
             // Delivery logs are already "sent" - marking as read is UI-only
             // Could store read state in session or separate table if needed
         }
-        
-        return redirect()->back()->with('success', 'Notification marked as read');
+
+        return $this->respondAction(true, 'Notification marked as read');
     }
 
     /**
@@ -111,8 +121,8 @@ class Notifications extends BaseController
         }
 
         // For now, this is UI-only. Could implement with session or user preferences table.
-        
-        return redirect()->back()->with('success', 'All notifications marked as read');
+
+        return $this->respondAction(true, 'All notifications marked as read');
     }
 
     /**
@@ -124,17 +134,64 @@ class Notifications extends BaseController
             return redirect()->to(base_url('auth/login'));
         }
 
+        if (!has_role('admin')) {
+            return $this->respondAction(false, 'Only administrators can cancel queued notifications.', 403);
+        }
+
         // Parse notification ID (format: log_123 or queue_456)
         if ($notificationId && strpos($notificationId, 'queue_') === 0) {
             $id = (int) str_replace('queue_', '', $notificationId);
             if ($id > 0) {
                 $queueModel = new NotificationQueueModel();
-                // Cancel the queued notification
-                $queueModel->update($id, ['status' => 'cancelled', 'last_error' => 'Manually cancelled']);
+                $updated = $queueModel->builder()
+                    ->where('id', $id)
+                    ->where('business_id', current_business_id())
+                    ->update([
+                        'status' => 'cancelled',
+                        'last_error' => 'Manually cancelled',
+                    ]);
+
+                if ($updated) {
+                    return $this->respondAction(true, 'Queued notification cancelled.');
+                }
             }
         }
-        
-        return redirect()->back()->with('success', 'Notification deleted');
+
+        return $this->respondAction(false, 'Unable to cancel the selected notification.', 404);
+    }
+
+    public function resend()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to(base_url('auth/login'));
+        }
+
+        if (!has_role('admin')) {
+            return $this->respondAction(false, 'Only administrators can resend notifications.', 403);
+        }
+
+        $appointmentId = (int) ($this->request->getPost('appointment_id') ?? 0);
+        $channel = trim((string) ($this->request->getPost('channel') ?? ''));
+        $eventType = trim((string) ($this->request->getPost('event_type') ?? ''));
+
+        if ($appointmentId <= 0 || $channel === '') {
+            return $this->respondAction(false, 'Appointment and channel are required to resend a notification.', 400, [
+                'appointment_id' => $appointmentId,
+                'channel' => $channel,
+            ]);
+        }
+
+        $result = $this->getAppointmentManualNotificationService()->send($appointmentId, $channel, $eventType !== '' ? $eventType : null);
+        if (!($result['success'] ?? false)) {
+            return $this->respondAction(
+                false,
+                (string) ($result['message'] ?? 'Failed to resend notification.'),
+                (int) ($result['statusCode'] ?? 400),
+                is_array($result['errors'] ?? null) ? $result['errors'] : []
+            );
+        }
+
+        return $this->respondAction(true, (string) ($result['data']['message'] ?? 'Notification resent successfully.'));
     }
 
     /**
@@ -143,6 +200,54 @@ class Notifications extends BaseController
     public function settings()
     {
         return redirect()->to(base_url('settings#notifications'));
+    }
+
+    private function getAppointmentManualNotificationService(): AppointmentManualNotificationService
+    {
+        if ($this->appointmentManualNotificationService === null) {
+            $this->appointmentManualNotificationService = new AppointmentManualNotificationService();
+        }
+
+        return $this->appointmentManualNotificationService;
+    }
+
+    private function respondAction(bool $success, string $message, int $statusCode = 200, array $errors = [])
+    {
+        $redirect = $this->resolveRedirectTarget();
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setStatusCode($statusCode)->setJSON([
+                'success' => $success,
+                'message' => $message,
+                'redirect' => $redirect,
+                'errors' => $errors,
+            ]);
+        }
+
+        return redirect()->to($redirect)->with($success ? 'success' : 'error', $message);
+    }
+
+    private function resolveRedirectTarget(): string
+    {
+        $fallback = base_url('notifications');
+        $target = trim((string) ($this->request->getPost('redirect_to')
+            ?? $this->request->getGet('redirect_to')
+            ?? $this->request->getServer('HTTP_REFERER')
+            ?? $fallback));
+
+        if ($target === '') {
+            return $fallback;
+        }
+
+        if (str_starts_with($target, base_url('/'))) {
+            return $target;
+        }
+
+        if (str_starts_with($target, '/')) {
+            return base_url(ltrim($target, '/'));
+        }
+
+        return $fallback;
     }
 
 }

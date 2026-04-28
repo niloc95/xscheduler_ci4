@@ -5,6 +5,8 @@
  * Can be used independently or integrated with the settings manager.
  */
 import { getBaseUrl } from './utils/url-helpers.js';
+import { onDomReady } from './core/lifecycle.js';
+import { apiRequest } from './core/api.js';
 
 const DEFAULT_CURRENCY = 'ZAR';
 const DEFAULT_SYMBOL = 'R';
@@ -35,9 +37,8 @@ class CurrencyFormatter {
         try {
             const baseUrl = getBaseUrl();
             const url = `${baseUrl}/api/v1/settings/localization`;
-            const response = await fetch(url);
+            const { response, payload: data } = await apiRequest(url, { method: 'GET' });
             if (response.ok) {
-                const data = await response.json();
                 const context = data.data?.context || data.data;
                 this.currency = context.currency || DEFAULT_CURRENCY;
                 this.symbol = context.currency_symbol || DEFAULT_SYMBOL;
@@ -110,11 +111,7 @@ export function formatCurrency(amount, options = {}) {
 
 window.currencyFormatter = currencyFormatter;
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => currencyFormatter.init());
-} else {
-    currencyFormatter.init();
-}
+onDomReady(() => currencyFormatter.init());
 
 // Export for module usage
 export default CurrencyFormatter;

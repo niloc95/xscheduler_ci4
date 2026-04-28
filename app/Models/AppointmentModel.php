@@ -964,6 +964,9 @@ class AppointmentModel extends BaseModel
 
     /**
      * Get appointments by service with revenue
+     *
+     * @deprecated Use BookingMetricsService::getByService() as the canonical source.
+     *             This method is retained only for backward compatibility.
      */
     public function getByService(int $limit = 10): array
     {

@@ -3,13 +3,16 @@
 namespace App\Tests\Integration;
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
 
 final class ServicesJourneyTest extends CIUnitTestCase
 {
+    use DatabaseTestTrait;
     use FeatureTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
 
     private int $adminId;
     private int $providerId;

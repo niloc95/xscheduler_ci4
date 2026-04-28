@@ -119,6 +119,25 @@ $overLimit    = count($locations) > $maxLocations;
                         </div>
                     </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="form-label">City</label>
+                            <input type="text"
+                                   value="<?= esc($location['city'] ?? '') ?>"
+                                   placeholder="e.g., Johannesburg"
+                                   class="form-input"
+                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'city', this.value)">
+                        </div>
+                        <div>
+                            <label class="form-label">Area / Suburb</label>
+                            <input type="text"
+                                   value="<?= esc($location['area'] ?? '') ?>"
+                                   placeholder="e.g., Rosebank"
+                                   class="form-input"
+                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'area', this.value)">
+                        </div>
+                    </div>
+
                     <div class="mt-4">
                         <label class="form-label">Physical Address</label>
                         <textarea rows="2"
@@ -184,6 +203,8 @@ window.LocationManager = {
                     provider_id: this.providerId,
                     name: 'New Location',
                     address: '',
+                    city: '',
+                    area: '',
                     contact_number: '',
                 }),
             });
@@ -383,6 +404,20 @@ window.LocationManager = {
                     <input type="tel" value="${this._esc(loc.contact_number || '')}"
                            placeholder="e.g., +27 11 555 1234" class="form-input"
                            onchange="LocationManager.updateLocation(${loc.id}, 'contact_number', this.value)">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label class="form-label">City</label>
+                    <input type="text" value="${this._esc(loc.city || '')}"
+                           placeholder="e.g., Johannesburg" class="form-input"
+                           onchange="LocationManager.updateLocation(${loc.id}, 'city', this.value)">
+                </div>
+                <div>
+                    <label class="form-label">Area / Suburb</label>
+                    <input type="text" value="${this._esc(loc.area || '')}"
+                           placeholder="e.g., Rosebank" class="form-input"
+                           onchange="LocationManager.updateLocation(${loc.id}, 'area', this.value)">
                 </div>
             </div>
             <div class="mt-4">

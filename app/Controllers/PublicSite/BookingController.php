@@ -36,31 +36,106 @@ class BookingController extends BaseController
         return view('public/booking', ['context' => $context]);
     }
 
+    public function providerPage(string $slug)
+    {
+        $context = $this->booking->buildViewContextForProviderSlug($slug);
+        return view('public/booking', ['context' => $context]);
+    }
+
+    public function servicePage(string $slug)
+    {
+        $context = $this->booking->buildViewContextForServiceSlug($slug, null);
+        return view('public/booking', ['context' => $context]);
+    }
+
+    public function serviceInCity(string $slug, string $city)
+    {
+        $context = $this->booking->buildViewContextForServiceSlug($slug, $city);
+        return view('public/booking', ['context' => $context]);
+    }
+
+    public function discover()
+    {
+        helper('logging');
+
+        try {
+            $service = trim((string) ($this->request->getGet('service') ?? ''));
+            $city = trim((string) ($this->request->getGet('city') ?? ''));
+            $area = trim((string) ($this->request->getGet('area') ?? ''));
+
+            if ($service === '') {
+                return $this->respondJson([
+                    'error' => 'service is required.',
+                ], 422);
+            }
+
+            $result = $this->booking->discoverByServiceAndLocation($service, $city !== '' ? $city : null, $area !== '' ? $area : null);
+
+            log_structured('info', 'public_booking.discover_success', [
+                'service_query' => $service,
+                'city_query' => $city,
+                'area_query' => $area,
+                'provider_count' => count($result['providers'] ?? []),
+                'location_count' => count($result['locations'] ?? []),
+            ]);
+
+            $acceptsJson = stripos($this->request->getHeaderLine('Accept'), 'application/json') !== false;
+            if ($this->request->isAJAX() || $acceptsJson) {
+                return $this->respondJson(['data' => $result]);
+            }
+
+            $context = $result['context'] ?? $this->booking->buildViewContext();
+            return view('public/booking', ['context' => $context]);
+        } catch (PublicBookingException $e) {
+            log_structured('warning', 'public_booking.discover_failed', [
+                'message' => $e->getMessage(),
+                'errors' => $e->getErrors(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+            return $this->respondJson([
+                'error' => $e->getMessage(),
+                'details' => $e->getErrors(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            log_message('error', '[PublicBooking] Discover failed: ' . $e->getMessage());
+            log_structured('error', 'public_booking.discover_exception', [
+                'exception_message' => $e->getMessage(),
+                'exception_class' => get_class($e),
+            ]);
+            return $this->respondJson(['error' => 'Unable to process discover query.'], 500);
+        }
+    }
+
     public function slots()
     {
         helper('logging');
 
         try {
+            $providerSlug = trim((string) ($this->request->getGet('provider_slug') ?? ''));
             $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
             $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
             $date = $this->request->getGet('date');
             $locationId = (int) ($this->request->getGet('location_id') ?? 0) ?: null;
 
-            if ($providerId <= 0 || $serviceId <= 0 || !$date) {
+            if (($providerSlug === '' && $providerId <= 0) || $serviceId <= 0 || !$date) {
                 log_structured('warning', 'public_booking.slots_validation_failed', [
                     'provider_id' => $providerId,
+                    'provider_slug' => $providerSlug,
                     'service_id' => $serviceId,
                     'date' => (string) $date,
                     'location_id' => $locationId,
                 ]);
                 return $this->respondJson([
-                    'error' => 'provider_id, service_id, and date are required.',
+                    'error' => 'provider_slug (or provider_id), service_id, and date are required.',
                 ], 422);
             }
+
+            $providerId = $this->booking->resolvePublicProviderId($providerSlug !== '' ? $providerSlug : null, $providerId > 0 ? $providerId : null);
 
             $slots = $this->booking->getAvailableSlots($providerId, $serviceId, $date, $locationId);
             log_structured('info', 'public_booking.slots_loaded', [
                 'provider_id' => $providerId,
+                'provider_slug' => $providerSlug,
                 'service_id' => $serviceId,
                 'date' => (string) $date,
                 'location_id' => $locationId,
@@ -92,21 +167,23 @@ class BookingController extends BaseController
         helper('logging');
 
         try {
+            $providerSlug = trim((string) ($this->request->getGet('provider_slug') ?? ''));
             $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
             $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
             $startDate = $this->request->getGet('start_date');
             $days = (int) ($this->request->getGet('days') ?? 60);
             $locationId = (int) ($this->request->getGet('location_id') ?? 0) ?: null;
 
-            if ($providerId <= 0 || $serviceId <= 0) {
+            if (($providerSlug === '' && $providerId <= 0) || $serviceId <= 0) {
                 log_structured('warning', 'public_booking.calendar_validation_failed', [
                     'provider_id' => $providerId,
+                    'provider_slug' => $providerSlug,
                     'service_id' => $serviceId,
                     'start_date' => (string) $startDate,
                     'days' => $days,
                 ]);
                 return $this->respondJson([
-                    'error' => 'provider_id and service_id are required.',
+                    'error' => 'provider_slug (or provider_id) and service_id are required.',
                 ], 422);
             }
 
@@ -122,9 +199,12 @@ class BookingController extends BaseController
                 ], 422);
             }
 
+            $providerId = $this->booking->resolvePublicProviderId($providerSlug !== '' ? $providerSlug : null, $providerId > 0 ? $providerId : null);
+
             $calendar = $this->booking->getAvailabilityCalendar($providerId, $serviceId, $startDate, $days, $locationId);
             log_structured('info', 'public_booking.calendar_loaded', [
                 'provider_id' => $providerId,
+                'provider_slug' => $providerSlug,
                 'service_id' => $serviceId,
                 'start_date' => (string) $startDate,
                 'days' => $days,

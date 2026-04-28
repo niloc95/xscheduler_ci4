@@ -66,6 +66,7 @@ use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Services\Appointment\AppointmentStatus;
+use App\Services\BookingMetricsService;
 use App\Services\LocalizationSettingsService;
 
 /**
@@ -85,14 +86,16 @@ class CustomerAppointmentService
     protected ServiceModel $services;
     protected UserModel $users;
     protected ProviderStaffModel $providerStaff;
+    protected BookingMetricsService $bookingMetrics;
 
     public function __construct()
     {
-        $this->appointments = new AppointmentModel();
-        $this->customers = new CustomerModel();
-        $this->services = new ServiceModel();
-        $this->users = new UserModel();
-        $this->providerStaff = new ProviderStaffModel();
+        $this->appointments   = new AppointmentModel();
+        $this->customers      = new CustomerModel();
+        $this->services       = new ServiceModel();
+        $this->users          = new UserModel();
+        $this->providerStaff  = new ProviderStaffModel();
+        $this->bookingMetrics = new BookingMetricsService($this->appointments);
     }
 
     /**
@@ -184,87 +187,15 @@ class CustomerAppointmentService
     }
 
     /**
-     * Get appointment statistics for a customer
-     * 
+     * Get appointment statistics for a customer.
+     * Delegates to BookingMetricsService as the canonical source.
+     *
      * @param int $customerId Customer ID
      * @return array Statistics summary
      */
     public function getStats(int $customerId): array
     {
-        $now = date('Y-m-d H:i:s');
-
-        $newBuilder = fn () => $this->appointments->builder();
-
-        $total = $newBuilder()
-            ->where('customer_id', $customerId)
-            ->countAllResults();
-
-        $upcoming = $newBuilder()
-            ->where('customer_id', $customerId)
-            ->where('start_at >=', $now)
-            ->whereIn('status', AppointmentStatus::UPCOMING)
-            ->countAllResults();
-
-        $completed = $newBuilder()
-            ->where('customer_id', $customerId)
-            ->where('status', AppointmentStatus::COMPLETED)
-            ->countAllResults();
-
-        $cancelled = $newBuilder()
-            ->where('customer_id', $customerId)
-            ->where('status', AppointmentStatus::CANCELLED)
-            ->countAllResults();
-
-        $noShow = $newBuilder()
-            ->where('customer_id', $customerId)
-            ->where('status', AppointmentStatus::NO_SHOW)
-            ->countAllResults();
-
-        // Get most used provider
-        $favoriteProvider = $newBuilder()
-            ->select('provider_id, COUNT(*) as count')
-            ->where('customer_id', $customerId)
-            ->groupBy('provider_id')
-            ->orderBy('count', 'DESC')
-            ->limit(1)
-            ->get()
-            ->getRowArray();
-
-        // Get most used service
-        $favoriteService = $newBuilder()
-            ->select('service_id, COUNT(*) as count')
-            ->where('customer_id', $customerId)
-            ->groupBy('service_id')
-            ->orderBy('count', 'DESC')
-            ->limit(1)
-            ->get()
-            ->getRowArray();
-
-        // Get first and last appointment dates
-        $firstAppointment = $newBuilder()
-            ->select('MIN(start_at) as first_date')
-            ->where('customer_id', $customerId)
-            ->get()
-            ->getRowArray();
-
-        $lastAppointment = $newBuilder()
-            ->select('MAX(start_at) as last_date')
-            ->where('customer_id', $customerId)
-            ->where('start_at <', $now)
-            ->get()
-            ->getRowArray();
-
-        return [
-            'total' => $total,
-            'upcoming' => $upcoming,
-            'completed' => $completed,
-            'cancelled' => $cancelled,
-            'no_show' => $noShow,
-            'favorite_provider_id' => isset($favoriteProvider['provider_id']) ? (int) $favoriteProvider['provider_id'] : null,
-            'favorite_service_id' => isset($favoriteService['service_id']) ? (int) $favoriteService['service_id'] : null,
-            'first_appointment' => $firstAppointment['first_date'] ?? null,
-            'last_appointment' => $lastAppointment['last_date'] ?? null,
-        ];
+        return $this->bookingMetrics->getCustomerStats($customerId);
     }
 
     /**

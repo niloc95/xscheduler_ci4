@@ -15,6 +15,7 @@
     "mailpit:stop": "sh scripts/mailpit-dev.sh stop",
     "mailpit:status": "sh scripts/mailpit-dev.sh status",
     "test:frontend:lifecycle": "node --test tests/frontend/*.test.js",
+    "test:unit:calendar": "vitest run tests/unit/calendar/selectors.test.js",
     "test:integration:mysql": "bash scripts/run-mysql-integration-tests.sh",
     "package": "npm run build && node scripts/package.js",
     "package:archive": "npm run build && node scripts/package.js --archive-logs",
@@ -59,6 +60,7 @@
     "autoprefixer": "^10.4.21",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "vitest": "^3.2.4"
   }
 }

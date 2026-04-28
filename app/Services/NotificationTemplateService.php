@@ -606,7 +606,8 @@ class NotificationTemplateService
         if (!empty($data['start_datetime'])) {
             try {
                 $loc = new LocalizationSettingsService();
-                $dt = new \DateTime($data['start_datetime']);
+                $displayTz = $data['display_timezone'] ?? 'UTC';
+                $dt = new \DateTime($data['start_datetime'], new \DateTimeZone($displayTz));
                 $timeStr      = $loc->formatTimeForDisplay($dt->format('H:i:s'));
                 $appointmentDate     = $dt->format('l, F j, Y');
                 $appointmentTime     = $timeStr;
@@ -630,7 +631,7 @@ class NotificationTemplateService
         $apptId = (int) ($data['booking_id'] ?? $data['appointment_id'] ?? 0);
         if (!empty($data['start_datetime'])) {
             try {
-                $refYear = (new \DateTime($data['start_datetime']))->format('Y');
+                $refYear = (new \DateTime($data['start_datetime'], new \DateTimeZone($data['display_timezone'] ?? 'UTC')))->format('Y');
             } catch (\Exception $e) {
                 $refYear = date('Y');
             }
@@ -663,15 +664,17 @@ class NotificationTemplateService
         $calendarLink = '';
         if (!empty($data['start_datetime'])) {
             try {
-                $calDt    = new \DateTime($data['start_datetime']);
-                $calStart = $calDt->format('Ymd\THis\Z');
+                $calDisplayTz = $data['display_timezone'] ?? 'UTC';
+                $calDt    = new \DateTime($data['start_datetime'], new \DateTimeZone($calDisplayTz));
+                $calDtUtc = (clone $calDt)->setTimezone(new \DateTimeZone('UTC'));
+                $calStart = $calDtUtc->format('Ymd\THis\Z');
                 $calDurationMinutes = (int) ($data['service_duration'] ?? $data['service']['duration'] ?? 60);
                 if ($calDurationMinutes < 1) {
                     $calDurationMinutes = 60;
                 }
-                $calEndDt = clone $calDt;
-                $calEndDt->modify('+' . $calDurationMinutes . ' minutes');
-                $calEnd      = $calEndDt->format('Ymd\THis\Z');
+                $calEndUtc = clone $calDtUtc;
+                $calEndUtc->modify('+' . $calDurationMinutes . ' minutes');
+                $calEnd      = $calEndUtc->format('Ymd\THis\Z');
                 $calTitle    = urlencode(
                     ($data['service_name'] ?? $data['service']['name'] ?? 'Appointment')
                     . ' with '

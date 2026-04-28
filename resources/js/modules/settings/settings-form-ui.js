@@ -1,3 +1,5 @@
+import { apiRequest } from '../../core/api.js';
+
 const GENERAL_FIELD_MAP = {
     company_name: 'general.company_name',
     company_email: 'general.company_email',
@@ -72,30 +74,6 @@ function debugLog(...args) {
     if (typeof window.xsDebugLog === 'function') {
         window.xsDebugLog(...args);
     }
-}
-
-function updateCsrfFromResponse(response, csrfInput = null) {
-    if (!response) {
-        return;
-    }
-
-    const newToken = response.headers.get('X-CSRF-TOKEN') || response.headers.get('x-csrf-token');
-    if (!newToken) {
-        return;
-    }
-
-    const metaToken = document.querySelector('meta[name="csrf-token"]');
-    if (metaToken) {
-        metaToken.setAttribute('content', newToken);
-    }
-
-    if (csrfInput) {
-        csrfInput.value = newToken;
-    }
-
-    document.querySelectorAll('input[type="hidden"][name*="csrf"]').forEach((input) => {
-        input.value = newToken;
-    });
 }
 
 function showToast(type, title, message, autoClose = type !== 'error') {
@@ -192,14 +170,6 @@ async function buildHttpError(response, fallbackMessage) {
     }
 
     return `${fallbackMessage} (HTTP ${response.status})${errorId ? ` [Error ID: ${errorId}]` : ''}`;
-}
-
-function getCsrf(csrfInput = null) {
-    const base = typeof window.xsGetCsrf === 'function' ? window.xsGetCsrf() : {};
-    return {
-        header: base.header || window.appConfig?.csrfHeaderName || 'X-CSRF-TOKEN',
-        token: base.token || window.appConfig?.csrfToken || csrfInput?.value || '',
-    };
 }
 
 function previewImage(imgEl, file) {
@@ -422,7 +392,6 @@ function initGeneralSettingsForm(root) {
             return;
         }
 
-        const { header, token } = getCsrf(csrfInput);
         const payload = {};
         Object.entries(GENERAL_FIELD_MAP).forEach(([name, key]) => {
             const input = form.elements[name];
@@ -443,23 +412,18 @@ function initGeneralSettingsForm(root) {
         setSavingState(true);
 
         try {
-            const response = await fetch(apiEndpoint, {
+            const { response, payload: result } = await apiRequest(apiEndpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...(token ? { [header]: token } : {}),
                 },
-                body: JSON.stringify(payload),
+                body: payload,
             });
 
-            updateCsrfFromResponse(response, csrfInput);
             if (!response.ok) {
                 throw new Error(await buildHttpError(response, 'Save failed'));
             }
 
-            const result = await response.json();
             if (isApiFailure(result)) {
                 throw new Error(getApiMessage(result, 'Unable to save settings.'));
             }
@@ -474,28 +438,23 @@ function initGeneralSettingsForm(root) {
                     continue;
                 }
 
-                const uploadToken = csrfInput?.value || token;
                 const formData = new FormData();
                 formData.append(upload.fieldName, upload.input.files[0]);
                 if (csrfInput?.name && csrfInput.value) {
                     formData.append(csrfInput.name, csrfInput.value);
                 }
 
-                const uploadResponse = await fetch(upload.endpoint, {
+                const { response: uploadResponse, payload: uploadResult } = await apiRequest(upload.endpoint, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
-                        ...(uploadToken ? { [header]: uploadToken } : {}),
                     },
                     body: formData,
                 });
 
-                updateCsrfFromResponse(uploadResponse, csrfInput);
                 if (!uploadResponse.ok) {
                     throw new Error(`${upload.label} upload failed (HTTP ${uploadResponse.status})`);
                 }
-
-                const uploadResult = await uploadResponse.json();
                 if (isApiFailure(uploadResult)) {
                     throw new Error(getApiMessage(uploadResult, `${upload.label} upload failed.`));
                 }
@@ -568,7 +527,6 @@ function initTabForm(root, tabName) {
         }
 
         const csrfInput = form.querySelector('input[type="hidden"][name*="csrf"]');
-        const { header, token } = getCsrf(csrfInput);
         const payload = {};
         const timeFormat = String(form.querySelector('input[name="time_format"]')?.value || '24h').toLowerCase();
         let businessTimeValidationError = null;
@@ -631,23 +589,17 @@ function initTabForm(root, tabName) {
         saveBtn.disabled = true;
 
         try {
-            const response = await fetch(apiEndpoint, {
+            const { response, payload: result } = await apiRequest(apiEndpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...(token ? { [header]: token } : {}),
                 },
-                body: JSON.stringify(payload),
+                body: payload,
             });
 
-            updateCsrfFromResponse(response, csrfInput);
             if (!response.ok) {
                 throw new Error(await buildHttpError(response, 'Save failed'));
             }
-
-            const result = await response.json();
             if (isApiFailure(result)) {
                 throw new Error(getApiMessage(result, 'Unable to save settings.'));
             }

@@ -103,6 +103,9 @@ class TestAppointmentReminder extends BaseCommand
         CLI::write('Now (UTC):          ' . $nowUtc->format('Y-m-d H:i:s'));
         CLI::write('Start set to (UTC): ' . $startUtc->format('Y-m-d H:i:s'));
         CLI::write('End set to (UTC):   ' . $endUtc->format('Y-m-d H:i:s'));
+        if (in_array('reminder_sent', $fields, true)) {
+            CLI::write('Reminder flag:      compatibility reset to 0 for this test run');
+        }
 
         $queueService = new NotificationQueueService();
         $enqStats     = $queueService->enqueueDueReminders($businessId);
@@ -141,13 +144,18 @@ class TestAppointmentReminder extends BaseCommand
         }
 
         foreach ($rows as $row) {
+            $fingerprint = trim((string) ($row['schedule_fingerprint'] ?? ''));
             CLI::write(sprintf(
-                '- #%d channel=%s status=%s attempts=%d run_after=%s',
+                '- #%d channel=%s recipient=%s user=%s offset=%s status=%s attempts=%d run_after=%s fingerprint=%s',
                 (int) ($row['id'] ?? 0),
                 (string) ($row['channel'] ?? ''),
+                (string) ($row['recipient_type'] ?? 'customer'),
+                (string) (($row['recipient_user_id'] ?? null) !== null ? (string) $row['recipient_user_id'] : '-'),
+                (string) (($row['reminder_offset_minutes'] ?? null) !== null ? (string) $row['reminder_offset_minutes'] : '-'),
                 (string) ($row['status'] ?? ''),
                 (int) ($row['attempts'] ?? 0),
-                (string) ($row['run_after'] ?? '')
+                (string) ($row['run_after'] ?? ''),
+                $fingerprint !== '' ? substr($fingerprint, 0, 12) : '-'
             ));
         }
 

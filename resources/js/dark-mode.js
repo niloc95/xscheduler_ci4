@@ -3,6 +3,8 @@
  * Provides theme switching functionality with localStorage persistence
  */
 
+import { onDomReady } from './core/lifecycle.js';
+
 class DarkModeManager {
     constructor() {
         this.theme = this.getStoredTheme() || this.getPreferredTheme();
@@ -156,14 +158,9 @@ class DarkModeManager {
 }
 
 // Initialize dark mode ASAP, even if DOMContentLoaded already fired
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        window.darkMode = new DarkModeManager();
-    });
-} else {
-    // Document already parsed
+onDomReady(() => {
     window.darkMode = new DarkModeManager();
-}
+});
 
 // §6.2: re-wire toggle buttons after each SPA navigation so dynamically
 // loaded content can contain [data-theme-toggle] buttons.

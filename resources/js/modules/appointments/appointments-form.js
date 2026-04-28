@@ -1,73 +1,13 @@
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
 import { normalizeLocalPhoneForCountry } from '../../utils/phone-country-selector.js';
+import { getBrowserTimezone, getBrowserTimezoneHeaders, getTimezoneOffsetForTimezone } from '../../core/datetime.js';
+import { syncCsrfIntoForm, rotateCsrfFromResponse } from '../../core/csrf.js';
+import { apiRequest } from '../../core/api.js';
+import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
 
 function getAppointmentForm() {
     return document.querySelector('[data-appointment-form="true"]')
         || document.querySelector('form[action*="/appointments/store"], form[action*="/appointments/update"]');
-}
-
-function getBrowserTimezone() {
-    try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    } catch {
-        return 'UTC';
-    }
-}
-
-function getTimezoneOffset() {
-    return new Date().getTimezoneOffset();
-}
-
-function attachTimezoneHeaders() {
-    return {
-        'X-Client-Timezone': getBrowserTimezone(),
-        'X-Client-Offset': String(getTimezoneOffset()),
-    };
-}
-
-function getCsrfContext(form) {
-    const csrfInput = form?.querySelector('input[name]');
-    const namedInput = form?.querySelector('input[name="csrf_test_name"]')
-        || form?.querySelector('input[name^="csrf_"]');
-    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const headerName = document.querySelector('meta[name="csrf-header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-    const tokenName = namedInput?.name || 'csrf_test_name';
-    const tokenValue = metaToken || namedInput?.value || window.__CSRF_TOKEN__ || '';
-
-    return {
-        headerName,
-        tokenName,
-        tokenValue,
-        input: namedInput || csrfInput || null,
-    };
-}
-
-function syncCsrfIntoForm(form) {
-    const csrf = getCsrfContext(form);
-    if (csrf.input && csrf.tokenValue) {
-        csrf.input.value = csrf.tokenValue;
-    }
-
-    return csrf;
-}
-
-function updateCsrfFromResponse(response, form) {
-    const nextToken = response?.headers?.get('X-CSRF-TOKEN') || response?.headers?.get('x-csrf-token');
-    if (!nextToken) {
-        return;
-    }
-
-    const metaToken = document.querySelector('meta[name="csrf-token"]');
-    if (metaToken) {
-        metaToken.setAttribute('content', nextToken);
-    }
-
-    window.__CSRF_TOKEN__ = nextToken;
-
-    const csrf = getCsrfContext(form);
-    if (csrf.input) {
-        csrf.input.value = nextToken;
-    }
 }
 
 function normalizeCustomerPhonePayload(form, formData) {
@@ -148,10 +88,10 @@ export async function initAppointmentForm() {
                 formData.set(csrf.tokenName, csrf.tokenValue);
             }
 
-            const response = await fetch(formActionUrl, {
+            const { response, payload: resultPayload } = await apiRequest(formActionUrl, {
                 method: 'POST',
                 headers: {
-                    ...attachTimezoneHeaders(),
+                    ...getBrowserTimezoneHeaders(),
                     'X-Requested-With': 'XMLHttpRequest',
                     ...(csrf.tokenValue ? { [csrf.headerName]: csrf.tokenValue } : {}),
                 },
@@ -159,10 +99,12 @@ export async function initAppointmentForm() {
                 body: formData,
             });
 
-            updateCsrfFromResponse(response, form);
+            rotateCsrfFromResponse(response, 'authenticated', form);
 
             if (!response.ok) {
-                const errorPayload = await parseErrorPayload(response);
+                // Use resultPayload already parsed by apiRequest() instead of reading response again
+                // to avoid "body stream already read" error
+                const errorPayload = resultPayload || {};
 
                 if (response.status === 403) {
                     throw new Error("You don't have permission to perform this action.");
@@ -188,7 +130,7 @@ export async function initAppointmentForm() {
             const contentType = response.headers.get('content-type');
 
             if (contentType && contentType.includes('application/json')) {
-                const result = await response.json();
+                const result = resultPayload || {};
                 if (result.success || result.data) {
                     showNotification('success', 'Appointment booked successfully!');
                     setTimeout(() => {
@@ -345,8 +287,8 @@ function initCustomerModeControls(form) {
     const selectCustomer = (customer) => {
         selectedCustomer = customer;
 
-        const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown Customer';
-        const initial = fullName.substring(0, 1).toUpperCase();
+        const fullName = getDisplayName(customer, 'Unknown Customer');
+        const initial = getAvatarInitials(fullName, { defaultInitial: 'C' });
         const email = customer.email || '';
         const phone = customer.phone || customer.phone_number || '';
 
@@ -388,8 +330,8 @@ function initCustomerModeControls(form) {
         }
 
         const resultsHTML = customers.slice(0, 5).map((customer) => {
-            const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown Customer';
-            const initial = fullName.substring(0, 1).toUpperCase();
+            const fullName = getDisplayName(customer, 'Unknown Customer');
+            const initial = getAvatarInitials(fullName, { defaultInitial: 'C' });
             const email = customer.email || '';
             const phone = customer.phone || customer.phone_number || '';
             const contactInfo = [email, phone].filter(Boolean).join(' • ');
@@ -495,20 +437,32 @@ function initCustomerModeControls(form) {
 
             searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`${searchUrl}?q=${encodeURIComponent(query)}`);
+                    const { response, payload } = await apiRequest(`${searchUrl}?q=${encodeURIComponent(query)}`, {
+                        method: 'GET',
+                    });
                     if (!response.ok) throw new Error('Search failed');
 
-                    const text = await response.text();
-                    let result;
-                    try {
-                        result = JSON.parse(text);
-                    } catch {
-                        const jsonMatch = text.match(/\{[\s\S]*"success"[\s\S]*\}/);
-                        if (jsonMatch) {
-                            result = JSON.parse(jsonMatch[0]);
-                        } else {
-                            throw new Error('Invalid response format');
+                    let result = payload;
+
+                    if (typeof result === 'string') {
+                        try {
+                            result = JSON.parse(result);
+                        } catch {
+                            const jsonMatch = result.match(/\{[\s\S]*"success"[\s\S]*\}/);
+                            if (jsonMatch) {
+                                result = JSON.parse(jsonMatch[0]);
+                            } else {
+                                throw new Error('Invalid response format');
+                            }
                         }
+                    }
+
+                    if (!result || typeof result !== 'object') {
+                        throw new Error('Invalid response format');
+                    }
+
+                    if (result.success === false) {
+                        throw new Error(result.error || result.message || 'Search failed');
                     }
 
                     const customers = result.customers || result.data || [];
@@ -634,8 +588,9 @@ function createSummaryUpdater(form) {
 function syncClientTimezoneFields(form) {
     const tzField = form?.querySelector('#client_timezone');
     const offsetField = form?.querySelector('#client_offset');
-    if (tzField) tzField.value = getBrowserTimezone();
-    if (offsetField) offsetField.value = getTimezoneOffset();
+    const timezone = getBrowserTimezone();
+    if (tzField) tzField.value = timezone;
+    if (offsetField) offsetField.value = getTimezoneOffsetForTimezone(timezone);
 }
 
 function attachVisibilityRefresh() {
@@ -651,26 +606,6 @@ function attachVisibilityRefresh() {
             if (form) syncClientTimezoneFields(form);
         }
     }, { once: false });
-}
-
-async function parseErrorPayload(response) {
-    const contentType = response.headers.get('content-type') || '';
-    const errorText = await response.text();
-
-    if (!errorText) {
-        return null;
-    }
-
-    if (contentType.includes('application/json')) {
-        try {
-            return JSON.parse(errorText);
-        } catch (_) {
-            console.warn('[appointments-form] Failed to parse JSON error payload');
-        }
-    }
-
-    console.error('[appointments-form] Server error:', errorText);
-    return null;
 }
 
 function normalizeServerErrors(payload, statusCode) {

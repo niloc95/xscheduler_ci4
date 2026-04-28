@@ -13,6 +13,7 @@ import {
 } from '../calendar/calendar-utils.js';
 import { formatCurrency } from '../../currency.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 function formatLocalizedCurrency(amount) {
   return formatCurrency(amount, {
@@ -140,18 +141,16 @@ export function initTimeSlotsUI(options) {
     }
 
     let response;
+    let payload;
     try {
-      response = await fetch(withBaseUrl(`/api/availability/calendar?${params.toString()}`), {
-        headers: {
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      });
+      ({ response, payload } = await apiRequest(withBaseUrl(`/api/availability/calendar?${params.toString()}`), {
+        method: 'GET',
+      }));
     } catch (networkError) {
       throw new Error('Unable to reach availability service. Check your connection.');
     }
 
-    const payload = await response.json().catch(() => ({}));
+    payload = payload || {};
     if (!response.ok) {
       const message = payload?.error?.message || payload?.error || 'Failed to load availability calendar';
       throw new Error(message);
@@ -234,9 +233,11 @@ export function initTimeSlotsUI(options) {
     }
 
     try {
-      const res = await fetch(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`));
+      const { response: res, payload: resultPayload } = await apiRequest(withBaseUrl(`/api/locations?provider_id=${providerId}&include_days=1`), {
+        method: 'GET',
+      });
       if (!res.ok) throw new Error('Failed to load locations');
-      const result = await res.json();
+      const result = resultPayload || {};
       const locations = result.data || [];
 
       if (locations.length === 0) {
@@ -278,12 +279,14 @@ export function initTimeSlotsUI(options) {
     }
 
     try {
-      const res = await fetch(withBaseUrl(`/api/v1/providers/${providerId}/services`));
+      const { response: res, payload: resultPayload } = await apiRequest(withBaseUrl(`/api/v1/providers/${providerId}/services`), {
+        method: 'GET',
+      });
       if (!res.ok) {
         console.error('[time-slots-ui] Service API error:', res.status);
         throw new Error('Failed to load services');
       }
-      const result = await res.json();
+      const result = resultPayload || {};
       const services = result.data || [];
 
       if (services.length === 0) {

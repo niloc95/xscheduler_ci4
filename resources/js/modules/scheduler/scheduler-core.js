@@ -17,7 +17,9 @@ import { SettingsManager } from './settings-manager.js';
 import { AppointmentDetailsModal } from './appointment-details-modal.js';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { formatDateNavLabel, syncDateNavLabel } from './date-nav-label.js';
+import { buildCalendarModelUrl } from './calendar-model-url.js';
 import { getBaseUrl, withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 // Stats System - following Car Analogy architecture
 import { getStatsForView, STATUS_DEFINITIONS, getStatusDef, getViewTitle } from './stats/index.js';
@@ -165,9 +167,11 @@ export class SchedulerCore {
 
     async loadCalendarConfig() {
         try {
-            const response = await fetch(withBaseUrl('/api/v1/settings/calendar-config'));
+            const { response, payload } = await apiRequest(withBaseUrl('/api/v1/settings/calendar-config'), {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load calendar config');
-            const data = await response.json();
+            const data = payload || {};
             if (this.isDestroyed) return;
             this.calendarConfig = data.data || data;
             this.debugLog('📅 Calendar config loaded:', this.calendarConfig);
@@ -188,9 +192,11 @@ export class SchedulerCore {
 
     async loadProviders() {
         try {
-            const response = await fetch(withBaseUrl('/api/providers?includeColors=true'));
+            const { response, payload } = await apiRequest(withBaseUrl('/api/providers?includeColors=true'), {
+                method: 'GET',
+            });
             if (!response.ok) throw new Error('Failed to load providers');
-            const data = await response.json();
+            const data = payload || {};
             if (this.isDestroyed) return;
             this.providers = data.data || data || [];
             this.debugLog('👥 Providers loaded:', this.providers.length);
@@ -223,28 +229,16 @@ export class SchedulerCore {
     async loadCalendarModel() {
         try {
             const baseUrl = this.options.apiCalendarBaseUrl ?? `${getBaseUrl()}/api/calendar`;
-            const date    = this.currentDate.toISODate();
-            const view    = this.currentView;
-
-            let url;
-            if (view === 'month') {
-                url = `${baseUrl}/month?year=${this.currentDate.year}&month=${this.currentDate.month}`;
-            } else {
-                url = `${baseUrl}/${view}?date=${date}`;
-            }
-
-            // Append active filter params
-            const f = this.activeFilters || {};
-            if (f.providerId) url += `&provider_id=${f.providerId}`;
-            if (f.serviceId)  url += `&service_id=${f.serviceId}`;
-            if (f.locationId) url += `&location_id=${f.locationId}`;
-            if (f.status)     url += `&status=${f.status}`;
+            const url = buildCalendarModelUrl(baseUrl, this.currentView, this.currentDate, this.activeFilters || {});
 
             this.debugLog('🗓️ Loading calendar model from:', url);
-            const response = await fetch(url, { cache: 'no-store' });
+            const { response, payload } = await apiRequest(url, {
+                method: 'GET',
+                headers: { 'Cache-Control': 'no-store' },
+            });
             if (!response.ok) throw new Error(`Calendar model fetch failed: ${response.status}`);
 
-            const data = await response.json();
+            const data = payload || {};
             if (this.isDestroyed) return null;
             this.calendarModel = data.data || data;
 
@@ -278,14 +272,14 @@ export class SchedulerCore {
             const cacheBust = Date.now();
             const url = `${this.options.apiBaseUrl}?start=${start}&end=${end}&length=1000&_=${cacheBust}`;
             this.debugLog('🔄 Loading appointments from:', url);
-            const response = await fetch(url, {
-                cache: 'no-store',
+            const { response, payload } = await apiRequest(url, {
+                method: 'GET',
                 headers: {
-                    'Cache-Control': 'no-cache'
-                }
+                    'Cache-Control': 'no-cache',
+                },
             });
             if (!response.ok) throw new Error('Failed to load appointments');
-            const data = await response.json();
+            const data = payload || {};
             if (this.isDestroyed) return [];
             this.debugLog('📥 Raw API response:', data);
             const rawAppointments = data.data || data || [];

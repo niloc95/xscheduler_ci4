@@ -127,6 +127,47 @@
                 </div>
 
                 <?php $selectedRoles = old('roles') ?? []; ?>
+                <div id="providerPublicProfileSection" class="<?= in_array('provider', (array) $selectedRoles) ? '' : 'hidden' ?>">
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">Public Provider Profile</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Shown on public booking pages. Empty fields are hidden automatically.</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label for="title" class="form-label">Professional Title</label>
+                                <input type="text"
+                                       id="title"
+                                       name="title"
+                                       value="<?= esc(old('title')) ?>"
+                                       class="form-input"
+                                       placeholder="e.g., Dr, Dentist, GP">
+                            </div>
+                            <div class="form-group">
+                                <label for="slug" class="form-label">Public URL Slug</label>
+                                <input type="text"
+                                       id="slug"
+                                       name="slug"
+                                       value="<?= esc(old('slug')) ?>"
+                                       class="form-input"
+                                       placeholder="Auto-generated from name if blank">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="bio" class="form-label">Background / History</label>
+                            <textarea id="bio" name="bio" rows="3" class="form-input" placeholder="Short background shown to booking customers."><?= esc(old('bio')) ?></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="education" class="form-label">Education</label>
+                            <textarea id="education" name="education" rows="2" class="form-input" placeholder="Degrees, institutions, certifications."><?= esc(old('education')) ?></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="qualifications" class="form-label">Qualifications</label>
+                            <textarea id="qualifications" name="qualifications" rows="2" class="form-input" placeholder="Professional registrations and qualifications."><?= esc(old('qualifications')) ?></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="providerScheduleSection" class="<?= in_array('provider', (array) $selectedRoles) ? '' : 'hidden' ?>">
                     <?= $this->include('user-management/components/provider-schedule') ?>
                 </div>
@@ -331,12 +372,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show/hide provider sections
         const providerSchedule = document.getElementById('providerScheduleSection');
         const providerAssignments = document.getElementById('providerAssignmentsSection');
+        const providerPublicProfile = document.getElementById('providerPublicProfileSection');
         
         if (providerSchedule) {
             providerSchedule.classList.toggle('hidden', !isProvider);
         }
         if (providerAssignments) {
             providerAssignments.classList.toggle('hidden', !isProvider);
+        }
+        if (providerPublicProfile) {
+            providerPublicProfile.classList.toggle('hidden', !isProvider);
         }
         
         // Show/hide staff assignment sections

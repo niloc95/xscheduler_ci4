@@ -211,7 +211,7 @@ final class TestDashboardService extends DashboardService
         );
     }
 
-    public function getTodayMetrics(?int $providerId = null): array
+    public function getTodayMetrics(int|array|null $providerId = null): array
     {
         $key = (string) ($providerId ?? 'admin');
         $this->metricCallCount[$key] = ($this->metricCallCount[$key] ?? 0) + 1;
@@ -223,7 +223,7 @@ final class TestDashboardService extends DashboardService
         ];
     }
 
-    protected function countPendingConfirmationAlerts(?int $providerId, string $dayStartUtc): int
+    protected function countPendingConfirmationAlerts(int|array|null $providerId, string $dayStartUtc): int
     {
         $this->capturedProviderIdForAlerts = $providerId;
         return $this->pendingAlertCount;

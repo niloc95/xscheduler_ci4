@@ -61,7 +61,7 @@ class ServiceModel extends BaseModel
     protected $table            = 'xs_services';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
-    'name', 'description', 'duration_min', 'price', 'category_id', 'active'
+    'name', 'slug', 'description', 'duration_min', 'price', 'category_id', 'active'
     ];
 
     // Dates
@@ -69,7 +69,9 @@ class ServiceModel extends BaseModel
 
     // Validation
     protected $validationRules      = [
+        'id'           => 'permit_empty|is_natural_no_zero',
         'name'         => 'required|min_length[2]|max_length[255]',
+        'slug'         => 'permit_empty|alpha_dash|max_length[150]|is_unique[xs_services.slug,id,{id}]',
         'duration_min' => 'required|integer|greater_than[0]',
         'price'        => 'permit_empty|decimal',
         'category_id'  => 'permit_empty|integer',
@@ -227,6 +229,9 @@ class ServiceModel extends BaseModel
 
     /**
      * Get popular services with booking counts and revenue
+     *
+     * @deprecated Use BookingMetricsService::getPopularServices() as the canonical source.
+     *             This method is retained only for backward compatibility.
      */
     public function getPopularServicesWithStats(int $limit = 10): array
     {

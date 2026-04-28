@@ -71,7 +71,8 @@ class UserModel extends BaseModel
         'name', 'email', 'phone', 'password_hash', 'role', 'permissions',
         'provider_id',
         'status', 'last_login', 'is_active', 'reset_token', 'reset_expires',
-        'profile_image', 'color', 'notify_on_appointments'
+        'profile_image', 'title', 'bio', 'education', 'qualifications', 'slug',
+        'color', 'notify_on_appointments'
     ];
 
     // Model callbacks to ensure provider color is always assigned
@@ -131,7 +132,8 @@ class UserModel extends BaseModel
     protected $validationRules      = [
         'name'  => 'required|min_length[2]|max_length[255]',
         'email' => 'required|valid_email|is_unique[xs_users.email,id,{id}]',
-        'role'  => 'required|in_list[admin,provider,staff]'
+        'role'  => 'required|in_list[admin,provider,staff]',
+        'slug'  => 'permit_empty|alpha_dash|max_length[150]|is_unique[xs_users.slug,id,{id}]'
     ];
     protected $validationMessages   = [];
     protected $skipValidation       = false;

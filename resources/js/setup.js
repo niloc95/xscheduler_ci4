@@ -4,6 +4,8 @@
  */
 import { getBaseUrl } from './utils/url-helpers.js';
 import { escapeHtml } from './utils/html.js';
+import { onDomReady } from './core/lifecycle.js';
+import { apiRequest } from './core/api.js';
 
 class SetupWizard {
     constructor() {
@@ -155,11 +157,6 @@ class SetupWizard {
     }
 
     async testConnection() {
-        // Get the CSRF token from the meta tag or window object
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
-                         window.appConfig?.csrfToken || 
-                         document.querySelector('input[name="csrf_test_name"]')?.value;
-
         const connectionData = {
             db_driver: 'MySQLi',
             db_hostname: document.getElementById('mysql_hostname').value,
@@ -172,22 +169,17 @@ class SetupWizard {
         this.setConnectionTestState(true);
 
         try {
-            // Use relative URL for better compatibility and send JSON
-            const response = await fetch('setup/test-connection', {
+            const { response, payload: result } = await apiRequest('setup/test-connection', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken })
                 },
-                body: JSON.stringify(connectionData)
+                body: connectionData,
             });
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-
-            const result = await response.json();
             this.showConnectionResult(result.success, result.message, {
                 env_updated: result.env_updated,
                 setup_reset: result.setup_reset,
@@ -273,20 +265,14 @@ class SetupWizard {
 
         try {
             this.updateProgress(40, 'Setting up database...');
-            
-            // Use relative URL for better compatibility
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
-                              window.appConfig?.csrfToken || 
-                              document.querySelector('input[name="csrf_test_name"]')?.value;
 
-            const response = await fetch('setup/process', {
+            const { response, payload: result } = await apiRequest('setup/process', {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',
-                    ...(csrfToken && { 'X-CSRF-TOKEN': csrfToken })
                 },
-                body: formData
+                body: formData,
             });
 
             // If server redirected (non-AJAX fallback), follow it in the browser
@@ -296,8 +282,6 @@ class SetupWizard {
                 window.location.href = response.url || `${getBaseUrl()}/auth/login`;
                 return;
             }
-
-            const result = await response.json();
 
             if (result.success) {
                 this.updateProgress(80, 'Finalizing setup...');
@@ -477,7 +461,7 @@ class SetupWizard {
     }
 }
 
-// Initialize setup wizard when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize setup wizard when DOM is ready
+onDomReady(() => {
     new SetupWizard();
 });

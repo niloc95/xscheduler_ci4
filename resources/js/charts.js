@@ -5,6 +5,7 @@
 import Chart from 'chart.js/auto';
 import { getBaseUrl } from './utils/url-helpers.js';
 import { isDarkMode } from './utils/dark-mode-detector.js';
+import { apiRequest } from './core/api.js';
 
 // Store chart instances to prevent duplicates
 const chartInstances = {};
@@ -175,9 +176,11 @@ async function fetchChartData(forceRefresh = false) {
     }
     
     try {
-        const response = await fetch(`${getBaseUrl()}/dashboard/charts?period=${currentPeriod}`);
+        const { response, payload } = await apiRequest(`${getBaseUrl()}/dashboard/charts?period=${currentPeriod}`, {
+            method: 'GET',
+        });
         if (response.ok) {
-            chartDataCache = await response.json();
+            chartDataCache = payload;
             cacheTimestamp = now;
             return chartDataCache;
         }

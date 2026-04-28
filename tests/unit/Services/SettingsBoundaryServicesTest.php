@@ -1,6 +1,8 @@
 <?php
 
 namespace Tests\Unit\Services;
+
+use App\Services\NotificationBusinessOptionsService;
 use App\Models\SettingModel;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationEmailService;
@@ -236,6 +238,84 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
         } finally {
             $db->table('settings')->whereIn('setting_key', $keys)->delete();
         }
+    }
+
+    public function testNotificationSettingsServiceResolvesBusinessIdFromSessionContext(): void
+    {
+        $service = new class extends NotificationSettingsService {
+            public function exposeBusinessId(): int
+            {
+                return $this->resolveBusinessId();
+            }
+        };
+
+        session()->set('business_id', 24);
+
+        try {
+            $this->assertSame(24, $service->exposeBusinessId());
+        } finally {
+            session()->remove('business_id');
+        }
+    }
+
+    public function testNotificationBusinessOptionsServiceIgnoresQueueAndDeliveryLogResidue(): void
+    {
+        $service = new NotificationBusinessOptionsService();
+
+        $options = $service->getOptions(1);
+
+        $ids = array_map(static fn(array $option): int => (int) ($option['id'] ?? 0), $options);
+
+        $this->assertContains(1, $ids);
+        $this->assertNotContains(101211, $ids);
+    }
+
+    public function testNotificationBusinessOptionsServiceReturnsSingleEntryWithFriendlyLabel(): void
+    {
+        $service = new NotificationBusinessOptionsService();
+
+        $options = $service->getOptions(5);
+
+        $this->assertCount(1, $options);
+        $this->assertSame(5, $options[0]['id']);
+        $this->assertSame('Current Business', $options[0]['label']);
+    }
+
+    public function testNotificationSettingsServiceGetIndexDataReturnsBusinessOptionsWithoutDeliveryLogs(): void
+    {
+        $optionsService = new class extends NotificationBusinessOptionsService {
+            public function getOptions(int $selectedBusinessId): array
+            {
+                return [['id' => $selectedBusinessId, 'label' => 'Business ' . $selectedBusinessId]];
+            }
+        };
+
+        $service = new class($optionsService) extends NotificationSettingsService {
+            public function __construct(private readonly NotificationBusinessOptionsService $optionsService)
+            {
+            }
+
+            protected function resolveBusinessId(): int
+            {
+                return 9;
+            }
+
+            protected function getBusinessOptionsService(): NotificationBusinessOptionsService
+            {
+                return $this->optionsService;
+            }
+        };
+
+        $result = $service->getIndexData();
+
+        $this->assertSame(9, $result['notificationCurrentBusinessId']);
+        $this->assertSame([['id' => 9, 'label' => 'Business 9']], $result['notificationBusinessOptions']);
+        $this->assertArrayNotHasKey('notificationDeliveryLogs', $result);
+        $this->assertSame('Business Context', $result['notificationBusinessContext']['title']);
+        $this->assertStringContainsString('your business', $result['notificationBusinessContext']['description']);
+        $this->assertTrue($result['notificationBusinessContext']['options'][0]['is_active']);
+        $this->assertStringContainsString('/settings', $result['notificationBusinessContext']['options'][0]['url']);
+        $this->assertStringContainsString('tab=delivery-logs', $result['notificationBusinessContext']['action']['href']);
     }
 
     public function testNotificationSettingsServiceSaveEmailReturnsStrictIntegrationError(): void
@@ -643,6 +723,13 @@ final class SpyNotificationWhatsAppService extends NotificationWhatsAppService
             'eventType' => $eventType,
             'templateName' => $templateName,
             'locale' => $locale,
+        ];
+
+        return ['ok' => true];
+    }
+}
+
+final class TestNotificationSettingsService extends NotificationSettingsService
 {
     public function __construct(
         private readonly SettingModel $settingModel,

@@ -3,6 +3,7 @@
 namespace App\Tests\Integration;
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
 
 /**
@@ -10,12 +11,15 @@ use CodeIgniter\Test\FeatureTestTrait;
  */
 final class PublicBookingJourneyTest extends CIUnitTestCase
 {
+    use DatabaseTestTrait;
     use FeatureTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
 
     private int $providerId;
     private int $serviceId;
+    private int $locationId;
     private array $appointmentIds = [];
     private array $customerIds = [];
 
@@ -49,6 +53,10 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         }
 
         if (isset($this->providerId)) {
+            if (isset($this->locationId)) {
+                $db->table('location_days')->where('location_id', $this->locationId)->delete();
+                $db->table('locations')->where('id', $this->locationId)->delete();
+            }
             $db->table('business_hours')->where('provider_id', $this->providerId)->delete();
             $db->table('users')->where('id', $this->providerId)->delete();
         }
@@ -68,6 +76,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
             ->withBodyFormat('json')
             ->post('/booking', [
                 'provider_id' => $this->providerId,
+                'location_id' => $this->locationId,
                 'service_id' => $this->serviceId,
                 'slot_start' => $initialStart,
                 'first_name' => 'Pat',
@@ -194,6 +203,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $db->table('appointments')->insert([
             'customer_id' => $customerId,
             'provider_id' => $this->providerId,
+            'location_id' => $this->locationId,
             'service_id' => $this->serviceId,
             'start_at' => $startAt,
             'end_at' => $endAt,
@@ -261,6 +271,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $db->table('appointments')->insert([
             'customer_id' => $customerId,
             'provider_id' => $this->providerId,
+            'location_id' => $this->locationId,
             'service_id' => $this->serviceId,
             'start_at' => $startAt,
             'end_at' => $endAt,
@@ -325,6 +336,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $db->table('appointments')->insert([
             'customer_id' => $customerId,
             'provider_id' => $this->providerId,
+            'location_id' => $this->locationId,
             'service_id' => $this->serviceId,
             'start_at' => $startAt,
             'end_at' => $endAt,
@@ -399,6 +411,28 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         ]);
         $this->providerId = (int) $db->insertID();
 
+        $db->table('locations')->insert([
+            'provider_id' => $this->providerId,
+            'name' => 'Public Booking Journey Location',
+            'address' => '1 Public Test Street',
+            'contact_number' => '0000000000',
+            'is_primary' => 1,
+            'is_active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->locationId = (int) $db->insertID();
+
+        $db->table('location_days')->insert([
+            'location_id' => $this->locationId,
+            'day_of_week' => 1,
+        ]);
+
+        $db->table('location_days')->insert([
+            'location_id' => $this->locationId,
+            'day_of_week' => 2,
+        ]);
+
         $db->table('services')->insert([
             'name' => 'Public Booking Service',
             'description' => 'Regression service for the public booking journey',
@@ -432,6 +466,8 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         ]);
 
         $this->seedSetting($db, 'localization.timezone', 'UTC', 'string');
+        $this->seedSetting($db, 'business.work_start', '09:00', 'string');
+        $this->seedSetting($db, 'business.work_end', '17:00', 'string');
         $this->seedSetting($db, 'booking.email_display', '1', 'boolean');
         $this->seedSetting($db, 'booking.email_required', '1', 'boolean');
         $this->seedSetting($db, 'booking.first_names_display', '1', 'boolean');

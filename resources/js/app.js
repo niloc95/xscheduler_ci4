@@ -30,8 +30,11 @@ import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
 import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
+import { initProfilePage } from './modules/profile/profile-page.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
+import { initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
+import { getAvatarInitials, getDisplayName } from './utils/avatar.js';
 
 // Import appointment navigation module
 import { prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -62,60 +65,9 @@ window.initRevenueTrendChart = initRevenueTrendChart;
 window.initTimeSlotChart = initTimeSlotChart;
 window.initServiceDistributionChart = initServiceDistributionChart;
 
-// Shared service provider picker used by create/edit service views.
-window.initProviderPicker = window.initProviderPicker || function(root) {
-    const picker = root?.querySelector('[data-provider-picker]');
-    if (!picker) return;
-
-    const checkboxes = Array.from(picker.querySelectorAll('input[name="provider_ids[]"]'));
-    const countLabel = picker.querySelector('[data-provider-selection-count]');
-    const selectAllBtn = picker.querySelector('[data-provider-picker-action="select-all"]');
-    const clearAllBtn = picker.querySelector('[data-provider-picker-action="clear-all"]');
-
-    const sync = () => {
-        let count = 0;
-
-        checkboxes.forEach((cb) => {
-            const card = cb.closest('label');
-            if (!card) return;
-
-            if (cb.checked) {
-                count += 1;
-                card.classList.add('border-primary-300', 'bg-primary-50/70', 'dark:border-primary-700', 'dark:bg-primary-900/20');
-                card.classList.remove('border-gray-200', 'dark:border-gray-700');
-            } else {
-                card.classList.remove('border-primary-300', 'bg-primary-50/70', 'dark:border-primary-700', 'dark:bg-primary-900/20');
-                card.classList.add('border-gray-200', 'dark:border-gray-700');
-            }
-        });
-
-        if (countLabel) {
-            countLabel.textContent = String(count);
-        }
-    };
-
-    checkboxes.forEach((cb) => cb.addEventListener('change', sync));
-
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', () => {
-            checkboxes.forEach((cb) => {
-                cb.checked = true;
-            });
-            sync();
-        });
-    }
-
-    if (clearAllBtn) {
-        clearAllBtn.addEventListener('click', () => {
-            checkboxes.forEach((cb) => {
-                cb.checked = false;
-            });
-            sync();
-        });
-    }
-
-    sync();
-};
+window.initProviderPicker = window.initProviderPicker || initProviderPicker;
+window.xsGetAvatarInitials = window.xsGetAvatarInitials || getAvatarInitials;
+window.xsGetDisplayName = window.xsGetDisplayName || getDisplayName;
 
 export { 
     initRevenueTrendChart, 
@@ -171,6 +123,9 @@ function initializeComponents() {
 
     // Add country-code selectors to all canonical phone fields.
     initPhoneCountrySelectors(document);
+
+    // Initialize the live profile page tab and avatar interactions.
+    initProfilePage(document);
     
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();
@@ -199,36 +154,11 @@ function getAppRelativePathname() {
     }
 }
 
-function initServiceManagementForms() {
-    const form = document.getElementById('createServiceForm') || document.getElementById('editServiceForm');
-    if (!form) {
-        return;
-    }
-
-    if (typeof window.initProviderPicker === 'function' && form.dataset.providerPickerInitialized !== 'true') {
-        form.dataset.providerPickerInitialized = 'true';
-        window.initProviderPicker(form);
-    }
-
-    form.dataset.serviceViewInitialized = 'true';
-}
-
 /**
  * Global password-visibility toggle.
  * Used by user-management create/edit forms.
  */
-window.togglePassword = function(fieldId) {
-    const field = document.getElementById(fieldId);
-    const icon = document.getElementById(fieldId + '-icon');
-    if (!field || !icon) return;
-    if (field.type === 'password') {
-        field.type = 'text';
-        icon.textContent = 'visibility_off';
-    } else {
-        field.type = 'password';
-        icon.textContent = 'visibility';
-    }
-};
+window.togglePassword = togglePassword;
 
 bindAppLifecycleEvents({
     documentRef: document,

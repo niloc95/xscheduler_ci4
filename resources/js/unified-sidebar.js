@@ -3,6 +3,9 @@
  * Clean, consistent sidebar behavior
  */
 
+import { apiRequest } from './core/api.js';
+import { onDomReady } from './core/lifecycle.js';
+
 class UnifiedSidebar {
     constructor() {
         this.sidebar = document.getElementById('main-sidebar');
@@ -164,24 +167,22 @@ class UnifiedSidebar {
 
     async handleRoleSwitch(newRole) {
         try {
-            const response = await fetch('/api/auth/switch-role', {
+            const { response, payload } = await apiRequest('/api/auth/switch-role', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': this.getCsrfToken()
                 },
-                body: JSON.stringify({ role: newRole })
+                body: { role: newRole },
             });
 
             if (!response.ok) {
-                const error = await response.json();
+                const error = payload || {};
                 console.error('Role switch failed:', error);
                 alert('Failed to switch role. Please try again.');
                 return;
             }
 
-            const result = await response.json();
+            const result = payload || {};
             console.log('Role switched successfully:', result);
             
             // Show success message
@@ -197,21 +198,6 @@ class UnifiedSidebar {
             console.error('Error switching role:', error);
             alert('An error occurred while switching roles. Please try again.');
         }
-    }
-
-    getCsrfToken() {
-        // Try to get CSRF token from meta tag
-        let token = document.querySelector('meta[name="csrf-token"]')?.content;
-        
-        // Fallback: try from cookie
-        if (!token) {
-            const name = 'XSRF-TOKEN';
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) token = parts.pop().split(';').shift();
-        }
-        
-        return token || '';
     }
 
     showNotification(message, type = 'info') {
@@ -251,21 +237,13 @@ function initUnifiedSidebar() {
 }
 
 // Auto-initialize
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initUnifiedSidebar();
-        // Assign instance after creation
-        if (unifiedSidebar instanceof UnifiedSidebar) {
-            window.unifiedSidebar = unifiedSidebar;
-        }
-    });
-} else {
+onDomReady(() => {
     initUnifiedSidebar();
     // Assign instance after creation
     if (unifiedSidebar instanceof UnifiedSidebar) {
         window.unifiedSidebar = unifiedSidebar;
     }
-}
+});
 
 // Export for global access
 window.UnifiedSidebar = UnifiedSidebar;

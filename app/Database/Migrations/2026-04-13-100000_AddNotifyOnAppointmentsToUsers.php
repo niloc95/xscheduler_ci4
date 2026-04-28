@@ -10,16 +10,8 @@ class AddNotifyOnAppointmentsToUsers extends MigrationBase
     {
         $table = $this->db->prefixTable('users');
 
-        if (!$this->db->fieldExists('notify_on_appointments', $table)) {
-            $this->forge->addColumn('users', [
-                'notify_on_appointments' => [
-                    'type'       => 'TINYINT',
-                    'constraint' => 1,
-                    'unsigned'   => true,
-                    'null'       => false,
-                    'default'    => 1,
-                ],
-            ]);
+        if (! $this->hasColumn($table, 'notify_on_appointments')) {
+            $this->db->query("ALTER TABLE `{$table}` ADD COLUMN `notify_on_appointments` TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
         }
     }
 
@@ -27,8 +19,18 @@ class AddNotifyOnAppointmentsToUsers extends MigrationBase
     {
         $table = $this->db->prefixTable('users');
 
-        if ($this->db->fieldExists('notify_on_appointments', $table)) {
-            $this->forge->dropColumn('users', 'notify_on_appointments');
+        if ($this->hasColumn($table, 'notify_on_appointments')) {
+            $this->db->query("ALTER TABLE `{$table}` DROP COLUMN `notify_on_appointments`");
         }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $query = $this->db->query(
+            'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$this->db->database, $table, $column]
+        );
+
+        return $query->getFirstRow() !== null;
     }
 }

@@ -70,7 +70,7 @@ $removeUrl = base_url('provider-staff/remove');
                     <div>
                         <div class="flex items-center space-x-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold">
-                                <?= strtoupper(substr($staff['name'] ?? 'S', 0, 1)) ?>
+                                <?= esc(avatar_initials((string) ($staff['name'] ?? ''), 'S')) ?>
                             </div>
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
@@ -211,8 +211,15 @@ $removeUrl = base_url('provider-staff/remove');
             return;
         }
 
+        const getInitials = window.xsGetAvatarInitials || ((name, options = {}) => {
+            const fallback = (options.defaultInitial || 'S').toUpperCase();
+            const raw = (name || '').trim();
+            if (!raw) return fallback;
+            return raw.substring(0, 2).toUpperCase();
+        });
+
         const markup = items.map((staff) => {
-            const initial = (staff.name || 'S').trim().charAt(0).toUpperCase();
+            const initial = getInitials(staff.name || '', { defaultInitial: 'S' });
             const role = (staff.role || 'staff').charAt(0).toUpperCase() + (staff.role || 'staff').slice(1);
             const email = staff.email ? `<div class="text-sm text-gray-500 dark:text-gray-400">${staff.email}</div>` : '';
             const phone = staff.phone ? `<div class="text-sm text-gray-400 dark:text-gray-500">${staff.phone}</div>` : '';

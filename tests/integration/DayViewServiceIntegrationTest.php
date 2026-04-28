@@ -25,6 +25,7 @@ final class DayViewServiceIntegrationTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
     protected DayViewService $service;
     protected AppointmentModel $appointmentModel;
     protected ProviderScheduleModel $scheduleModel;

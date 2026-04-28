@@ -7,6 +7,7 @@
  */
 
 import { getBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 
 /**
  * Update the filter indicator badge on the toggle button
@@ -107,10 +108,11 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
             serviceSelect.disabled = true;
 
             try {
-                const response = await fetch(`${getBaseUrl()}/api/v1/providers/${providerId}/services`);
+                const { response, payload: result } = await apiRequest(`${getBaseUrl()}/api/v1/providers/${providerId}/services`, {
+                    method: 'GET',
+                });
                 if (!response.ok) throw new Error('Failed to load services');
 
-                const result = await response.json();
                 const services = result.data || [];
 
                 // Rebuild service dropdown with provider-specific services

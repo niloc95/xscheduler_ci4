@@ -1,34 +1,18 @@
-import { normalizeCalendarPayload } from './modules/calendar/calendar-utils.js';
 import { formatCurrency } from './currency.js';
 import { escapeHtml } from './utils/html.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
+import { apiRequest } from './core/api.js';
+import { rotateCsrfFromResponse } from './core/csrf.js';
+import {
+  FIELD_LABELS,
+  UI_CLASSES,
+  createCalendarState,
+  createBookingDraft,
+  createManageDraft,
+} from './modules/public-booking/state.js';
 
 const root = document.getElementById('public-booking-root');
 
-const FIELD_LABELS = {
-  first_name: 'First name',
-  last_name: 'Last name',
-  email: 'Email address',
-  phone: 'Phone number',
-  address: 'Address',
-  notes: 'Notes',
-};
-
-// UI Component Classes - Extracted to avoid duplication
-const UI_CLASSES = {
-  buttonPrimary: 'inline-flex w-full items-center justify-center rounded-2xl border border-transparent bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:bg-blue-300',
-  buttonSecondary: 'inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600',
-  inputBase: 'mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus-visible:ring-blue-200',
-  selectBase: 'mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus-visible:ring-blue-200',
-  cardBase: 'rounded-2xl border border-slate-200 px-4 py-3',
-  cardInfo: 'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600',
-  cardError: 'rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800',
-  cardWarning: 'rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700',
-  cardDashed: 'rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-600',
-  slotButton: 'w-full rounded-2xl border px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
-  datePill: 'rounded-2xl border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
-  tabButton: 'w-full rounded-2xl px-5 py-3 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200',
-};
 
 if (!root) {
   console.warn('[public-booking] Root element not found.');
@@ -281,19 +265,17 @@ function bootstrapPublicBooking() {
         phone_country_code: state.manage.contact?.phone_country_code || state.manage.lookupForm?.phone_country_code || '',
       };
 
-      const response = await fetch(`${bookingBase}/${encodeURIComponent(reference)}/cancel`, {
+      const { response, payload: data } = await apiRequest(`${bookingBase}/${encodeURIComponent(reference)}/cancel`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          ...(state.csrf.value ? { [state.csrf.header]: state.csrf.value } : {}),
         },
-        body: JSON.stringify(payload),
+        body: payload,
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const data = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
 
       if (!response.ok) {
@@ -329,7 +311,7 @@ function bootstrapPublicBooking() {
 
   function handleProviderChange(value, target = 'booking') {
     // Auto-resolve location: if provider has exactly 1 location, pre-select it
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(value));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(value));
     const locations = provider?.locations ?? [];
     const autoLocationId = locations.length === 1 ? String(locations[0].id) : '';
 
@@ -375,7 +357,7 @@ function bootstrapPublicBooking() {
    */
   function handleLocationChange(value, target = 'booking') {
     const draft = getDraft(target);
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(draft.providerId));
     const loc = (provider?.locations ?? []).find(l => String(l.id) === String(value)) ?? null;
 
     updateDraft(target, prev => ({
@@ -405,15 +387,16 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const response = await fetch(`${appBase}/api/v1/providers/${providerId}/services`, {
+      const encodedProviderSlug = encodeURIComponent(String(providerId));
+      const { response, payload } = await apiRequest(`${appBase}/api/v1/providers/slug/${encodedProviderSlug}/services`, {
+        method: 'GET',
         headers: {
           Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
         },
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const payload = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(payload);
 
       if (!response.ok) {
@@ -453,7 +436,7 @@ function bootstrapPublicBooking() {
     // Resolve location: if user explicitly selected one, use it; otherwise auto-resolve from date
     let loc;
     if (draft.selectedLocationId) {
-      const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+      const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(draft.providerId));
       loc = (provider?.locations ?? []).find(l => String(l.id) === String(draft.selectedLocationId)) ?? null;
     } else {
       loc = resolveLocationForDate(draft.providerId, value);
@@ -560,12 +543,13 @@ function bootstrapPublicBooking() {
         url = `${bookingBase}/search?${params.toString()}`;
       }
 
-      const response = await fetch(url, {
+      const { response, payload: data } = await apiRequest(url, {
+        method: 'GET',
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const data = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
 
       if (!response.ok) {
@@ -621,11 +605,12 @@ function bootstrapPublicBooking() {
       if (phone) params.set('phone', phone);
       if (phoneCountryCode) params.set('phone_country_code', phoneCountryCode);
       const url = `${bookingBase}/${encodeURIComponent(token)}?${params.toString()}`;
-      const response = await fetch(url, {
+      const { response, payload: data } = await apiRequest(url, {
+        method: 'GET',
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        authContext: 'public',
       });
-      updateCsrfFromHeaders(response.headers);
-      const data = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
       if (!response.ok) {
         const details = data?.details ?? {};
@@ -691,7 +676,7 @@ function bootstrapPublicBooking() {
 
     updateManageForm(prev => ({
       ...prev,
-      providerId: String(appointment.provider_id ?? ''),
+      providerId: String(appointment.provider?.slug ?? appointment.provider_id ?? ''),
       serviceId: String(appointment.service_id ?? ''),
       appointmentDate,
       selectedSlot: appointment.start ? { start: appointment.start, end: appointment.end, label: slotLabel } : null,
@@ -786,19 +771,17 @@ function bootstrapPublicBooking() {
         method = 'PATCH';
       }
 
-      const response = await fetch(endpoint, {
+      const { response, payload: data } = await apiRequest(endpoint, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          ...(state.csrf.value ? { [state.csrf.header]: state.csrf.value } : {}),
         },
-        body: JSON.stringify(payload),
+        body: payload,
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const data = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
 
       if (!response.ok) {
@@ -879,7 +862,7 @@ function bootstrapPublicBooking() {
     }));
 
     const query = new URLSearchParams({
-      provider_id: draft.providerId,
+      provider_slug: draft.providerId,
       service_id: draft.serviceId,
       days: '60',
     });
@@ -888,15 +871,15 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const response = await fetch(`${bookingBase}/calendar?${query.toString()}`, {
+      const { response, payload } = await apiRequest(`${bookingBase}/calendar?${query.toString()}`, {
+        method: 'GET',
         headers: {
           Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
         },
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const payload = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(payload);
 
       if (!response.ok) {
@@ -967,7 +950,7 @@ function bootstrapPublicBooking() {
     updateDraft(target, prev => ({ ...prev, slotsLoading: true, slotsError: '', slots: [] }));
 
     const query = new URLSearchParams({
-      provider_id: draft.providerId,
+      provider_slug: draft.providerId,
       service_id: draft.serviceId,
       date: draft.appointmentDate,
     });
@@ -976,15 +959,15 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const response = await fetch(`${bookingBase}/slots?${query.toString()}`, {
+      const { response, payload: data } = await apiRequest(`${bookingBase}/slots?${query.toString()}`, {
+        method: 'GET',
         headers: {
           Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
         },
+        authContext: 'public',
       });
 
-      updateCsrfFromHeaders(response.headers);
-      const data = await safeJson(response);
+      rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
 
       if (!response.ok) {
@@ -1009,7 +992,7 @@ function bootstrapPublicBooking() {
 
   function buildPayload(draft, extras = {}) {
     const payload = {
-      provider_id: Number(draft.providerId),
+      provider_slug: String(draft.providerId || ''),
       service_id: Number(draft.serviceId),
       slot_start: draft.selectedSlot?.start ?? null,
       notes: draft.form.notes ?? '',
@@ -1026,18 +1009,6 @@ function bootstrapPublicBooking() {
     });
 
     return { ...payload, ...extras };
-  }
-
-  function updateCsrfFromHeaders(headers) {
-    if (!headers || !state.csrf.header) {
-      return;
-    }
-    const headerName = state.csrf.header;
-    const newValue = headers.get(headerName) || headers.get(headerName.toLowerCase());
-    if (newValue && newValue !== state.csrf.value) {
-      state.csrf = { ...state.csrf, value: newValue };
-      root.dataset.csrfValue = newValue;
-    }
   }
 
   /**
@@ -1321,8 +1292,8 @@ function bootstrapPublicBooking() {
 
   function renderSelections(currentState, ctx) {
     const providerOptions = (ctx.providers ?? []).map(provider => {
-      const optionValue = escapeHtml(String(provider.id ?? ''));
-      const isSelected = String(provider.id) === String(currentState.providerId) ? 'selected' : '';
+      const optionValue = escapeHtml(String(provider.slug ?? ''));
+      const isSelected = String(provider.slug ?? '') === String(currentState.providerId) ? 'selected' : '';
       return `
         <option value="${optionValue}" ${isSelected}>
           ${escapeHtml(provider.name ?? provider.displayName ?? 'Provider')}
@@ -1349,7 +1320,7 @@ function bootstrapPublicBooking() {
       : '';
 
     // Build location selector (only when the selected provider has 2+ locations)
-    const selectedProvider = (ctx.providers ?? []).find(p => String(p.id) === String(currentState.providerId));
+    const selectedProvider = (ctx.providers ?? []).find(p => String(p.slug ?? '') === String(currentState.providerId));
     const providerLocations = selectedProvider?.locations ?? [];
     const showLocationSelector = providerLocations.length > 1;
     const locationOptions = providerLocations.map(loc => {
@@ -1372,6 +1343,8 @@ function bootstrapPublicBooking() {
       </div>
     ` : '';
 
+    const providerProfileCard = renderProviderProfileCard(selectedProvider);
+
     return `
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block text-sm font-medium text-slate-700">
@@ -1393,9 +1366,57 @@ function bootstrapPublicBooking() {
         </label>
       </div>
       ${locationSelector}
+      ${providerProfileCard}
       <div class="grid gap-4 md:grid-cols-2">
         ${renderDatePickerField(currentState)}
         ${renderSchedulingTips()}
+      </div>
+    `;
+  }
+
+  function renderProviderProfileCard(provider) {
+    if (!provider) {
+      return '';
+    }
+
+    const title = (provider.title || '').trim();
+    const bio = (provider.bio || '').trim();
+    const education = (provider.education || '').trim();
+    const qualifications = (provider.qualifications || '').trim();
+    const imageUrl = (provider.profile_image_url || '').trim();
+
+    if (!title && !bio && !education && !qualifications && !imageUrl) {
+      return '';
+    }
+
+    const titleHtml = title
+      ? `<p class="text-sm font-medium text-slate-700">${escapeHtml(title)}</p>`
+      : '';
+    const bioHtml = bio
+      ? `<p class="mt-2 text-sm text-slate-600">${escapeHtml(bio)}</p>`
+      : '';
+    const educationHtml = education
+      ? `<p class="mt-2 text-xs text-slate-500"><span class="font-semibold text-slate-600">Education:</span> ${escapeHtml(education)}</p>`
+      : '';
+    const qualificationsHtml = qualifications
+      ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Qualifications:</span> ${escapeHtml(qualifications)}</p>`
+      : '';
+    const imageHtml = imageUrl
+      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-16 w-16 rounded-full object-cover border border-slate-200">`
+      : '';
+
+    return `
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex items-start gap-3">
+          ${imageHtml}
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-slate-900">${escapeHtml(provider.name || 'Provider')}</p>
+            ${titleHtml}
+            ${bioHtml}
+            ${educationHtml}
+            ${qualificationsHtml}
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1789,7 +1810,10 @@ function bootstrapPublicBooking() {
     if (appointment?.provider?.name) {
       return appointment.provider.name;
     }
-    const provider = (ctx.providers ?? []).find(item => Number(item.id) === Number(appointment?.provider_id));
+    const providerSlug = appointment?.provider?.slug ?? appointment?.provider_slug ?? null;
+    const provider = providerSlug
+      ? (ctx.providers ?? []).find(item => String(item.slug ?? '') === String(providerSlug))
+      : null;
     return provider?.name ?? provider?.displayName ?? 'Assigned provider';
   }
 
@@ -1835,16 +1859,6 @@ function bootstrapPublicBooking() {
     return '';
   }
 
-  function createCalendarState(source = null) {
-    // Use shared normalizer for data, add UI state properties
-    const normalized = normalizeCalendarPayload(source);
-    return {
-      ...normalized,
-      loading: false,
-      error: '',
-    };
-  }
-
   function syncCalendarSelection(prevState, calendar, preferredDate = null) {
     const availableDates = Array.isArray(calendar.availableDates) ? calendar.availableDates : [];
 
@@ -1873,7 +1887,7 @@ function bootstrapPublicBooking() {
     // If user has a selected location, use that; otherwise auto-resolve from day-of-week
     let resolvedLocation;
     if (prevState.selectedLocationId) {
-      const provider = (context.providers ?? []).find(p => String(p.id) === String(prevState.providerId));
+      const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(prevState.providerId));
       resolvedLocation = (provider?.locations ?? []).find(l => String(l.id) === String(prevState.selectedLocationId)) ?? null;
     } else {
       resolvedLocation = resolveLocationForDate(prevState.providerId, appointmentDate);
@@ -1922,7 +1936,7 @@ function bootstrapPublicBooking() {
     if (!providerId || !dateStr) {
       return null;
     }
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(providerId));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(providerId));
     if (!provider?.locations?.length) {
       return null;
     }
@@ -1938,96 +1952,6 @@ function bootstrapPublicBooking() {
     }
     // Fallback: no location matched for this day — return null (don't guess)
     return null;
-  }
-
-  function createInitialFormState(ctx) {
-    const base = {
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      address: '',
-      notes: '',
-    };
-    const fieldConfig = ctx.fieldConfig ?? {};
-    Object.keys(fieldConfig).forEach(key => {
-      if (base[key] === undefined) {
-        base[key] = '';
-      }
-    });
-    const customConfig = ctx.customFieldConfig ?? {};
-    Object.keys(customConfig).forEach(key => {
-      base[key] = customConfig[key].type === 'checkbox' ? '0' : '';
-    });
-    return base;
-  }
-
-  function createBookingDraft(ctx, defaultDate) {
-    const providerId = ctx.providers?.[0]?.id?.toString() ?? '';
-    const serviceId = ctx.services?.[0]?.id?.toString() ?? '';
-
-    // Auto-select location if provider has exactly 1
-    const firstProvider = (ctx.providers ?? []).find(p => String(p.id) === providerId);
-    const providerLocations = firstProvider?.locations ?? [];
-    const autoLocationId = providerLocations.length === 1 ? String(providerLocations[0].id) : '';
-
-    const calendarState = createCalendarState();
-    return {
-      providerId,
-      serviceId,
-      selectedLocationId: autoLocationId,
-      services: ctx.services ?? [],
-      servicesLoading: false,
-      appointmentDate: defaultDate,
-      slots: [],
-      slotsLoading: false,
-      slotsError: '',
-      selectedSlot: null,
-      resolvedLocation: null,
-      prefetched: null,
-      calendar: calendarState,
-      form: createInitialFormState(ctx),
-      errors: {},
-      globalError: '',
-      submitting: false,
-      success: null,
-    };
-  }
-
-  function createManageDraft(ctx, defaultDate) {
-    const prefilledReference = String(ctx.manageReference ?? '');
-    return {
-      stage: 'lookup',
-      hasPrefilledReference: Boolean(prefilledReference.trim()),
-      lookupForm: { reference: prefilledReference, email: '', phone: '', phone_country_code: '' },
-      lookupErrors: {},
-      lookupError: '',
-      lookupLoading: false,
-      appointment: null,
-      searchResults: [],
-      success: null,
-      contact: { email: '', phone: '', phone_country_code: '' },
-      cancelSubmitting: false,
-      cancelError: '',
-      formState: {
-        providerId: '',
-        serviceId: '',
-        selectedLocationId: '',
-        services: ctx.services ?? [],
-        servicesLoading: false,
-        appointmentDate: defaultDate,
-        slots: [],
-        slotsLoading: false,
-        slotsError: '',
-        selectedSlot: null,
-        resolvedLocation: null,
-        calendar: createCalendarState(),
-        form: createInitialFormState(ctx),
-        errors: {},
-        globalError: '',
-        submitting: false,
-      },
-    };
   }
 
   async function safeJson(response) {

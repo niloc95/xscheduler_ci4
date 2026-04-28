@@ -3,6 +3,7 @@
 namespace App\Tests\Integration;
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
 
 /**
@@ -10,9 +11,14 @@ use CodeIgniter\Test\FeatureTestTrait;
  */
 final class SettingsApiV1AuthTest extends CIUnitTestCase
 {
+    use DatabaseTestTrait;
     use FeatureTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
+
+    private int $adminId;
+    private string $adminEmail;
 
     protected function setUp(): void
     {
@@ -20,6 +26,18 @@ final class SettingsApiV1AuthTest extends CIUnitTestCase
 
         $this->ensureSetupFlag();
         $this->configureTestingDatabaseEnvironment();
+        $this->seedAuthenticatedAdmin();
+    }
+
+    protected function tearDown(): void
+    {
+        $db = \Config\Database::connect('tests');
+
+        if (isset($this->adminId)) {
+            $db->table('users')->where('id', $this->adminId)->delete();
+        }
+
+        parent::tearDown();
     }
 
     public function testUpdateRequiresApiAuthentication(): void
@@ -232,14 +250,41 @@ final class SettingsApiV1AuthTest extends CIUnitTestCase
     {
         return [
             'isLoggedIn' => true,
-            'user_id' => 1,
+            'user_id' => $this->adminId,
             'user' => [
-                'id' => 1,
+                'id' => $this->adminId,
                 'name' => 'Admin User',
-                'email' => 'admin@example.com',
+                'email' => $this->adminEmail,
                 'role' => 'admin',
             ],
         ];
+    }
+
+    private function seedAuthenticatedAdmin(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+        $this->adminEmail = 'settings-auth-admin-' . uniqid('', true) . '@example.com';
+
+        $payload = [
+            'name' => 'Settings Auth Admin',
+            'email' => $this->adminEmail,
+            'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
+            'role' => 'admin',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        if ($db->fieldExists('status', 'users')) {
+            $payload['status'] = 'active';
+        }
+
+        if ($db->fieldExists('is_active', 'users')) {
+            $payload['is_active'] = 1;
+        }
+
+        $db->table('users')->insert($payload);
+        $this->adminId = (int) $db->insertID();
     }
 
     private function ensureSetupFlag(): void

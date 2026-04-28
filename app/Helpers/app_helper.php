@@ -49,6 +49,7 @@
  */
 
 use App\Models\SettingModel;
+use App\Models\UserModel;
 
 // ─────────────────────────────────────────────────────────────
 // Timezone helpers for views
@@ -103,8 +104,140 @@ if (!function_exists('provider_image_url')) {
         if (!$path) return null;
         $path = ltrim($path, '/');
         if (str_starts_with($path, 'assets/providers/')) return base_url($path);
+        if (str_starts_with($path, 'assets/profile/')) return base_url($path);
         if (str_starts_with($path, 'uploads/providers/')) return base_url('assets/p/' . basename($path));
         return base_url('writable/' . $path);
+    }
+}
+
+if (!function_exists('avatar_upper')) {
+    function avatar_upper(string $value): string
+    {
+        return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+    }
+}
+
+if (!function_exists('avatar_slice')) {
+    function avatar_slice(string $value, int $start, int $length): string
+    {
+        if (function_exists('mb_substr')) {
+            return (string) mb_substr($value, $start, $length, 'UTF-8');
+        }
+
+        return (string) substr($value, $start, $length);
+    }
+}
+
+if (!function_exists('avatar_display_name')) {
+    function avatar_display_name(array $entity): string
+    {
+        $name = trim((string) ($entity['name'] ?? ''));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return trim((string) (($entity['first_name'] ?? '') . ' ' . ($entity['last_name'] ?? '')));
+    }
+}
+
+if (!function_exists('avatar_initials')) {
+    function avatar_initials(?string $name, string $default = 'U'): string
+    {
+        $candidate = trim((string) $name);
+        if ($candidate === '') {
+            return $default;
+        }
+
+        $candidate = preg_replace('/^(dr|mr|mrs|ms|prof|rev)\.?\s+/i', '', $candidate) ?? $candidate;
+
+        // Remove one or more trailing credentials/suffixes.
+        do {
+            $updated = preg_replace('/(?:,?\s+|\.\s*)(md|phd|dds|do|rn|np|pa|dvm|jr|sr|ii|iii|iv)\.?$/i', '', $candidate);
+            if (!is_string($updated) || $updated === $candidate) {
+                break;
+            }
+            $candidate = trim($updated);
+        } while ($candidate !== '');
+
+        $parts = preg_split('/\s+/u', trim($candidate)) ?: [];
+        $parts = array_values(array_filter($parts, static fn($part) => $part !== ''));
+
+        if (empty($parts)) {
+            return $default;
+        }
+
+        if (count($parts) === 1) {
+            return avatar_upper(avatar_slice($parts[0], 0, 2));
+        }
+
+        $first = avatar_slice((string) $parts[0], 0, 1);
+        $last = avatar_slice((string) $parts[count($parts) - 1], 0, 1);
+
+        return avatar_upper($first . $last);
+    }
+}
+
+if (!function_exists('avatar_profile_image_url')) {
+    function avatar_profile_image_url(array $entity, string $imageField = 'profile_image'): ?string
+    {
+        $storedImage = $entity[$imageField] ?? null;
+
+        if (!$storedImage && $imageField === 'profile_image') {
+            $userId = (int) ($entity['id'] ?? 0);
+
+            if ($userId > 0) {
+                static $userImageCache = [];
+
+                if (!array_key_exists($userId, $userImageCache)) {
+                    try {
+                        $userRecord = (new UserModel())->find($userId);
+                        $userImageCache[$userId] = $userRecord['profile_image'] ?? null;
+                    } catch (\Throwable $e) {
+                        $userImageCache[$userId] = null;
+                    }
+                }
+
+                $storedImage = $userImageCache[$userId];
+            }
+        }
+
+        if (!$storedImage || !is_string($storedImage)) {
+            return null;
+        }
+
+        $normalized = ltrim($storedImage, '/');
+
+        if (str_starts_with($normalized, 'assets/')) {
+            $assetPath = rtrim(FCPATH, '/') . '/' . $normalized;
+            return is_file($assetPath) ? base_url($normalized) : null;
+        }
+
+        if (str_starts_with($normalized, 'uploads/')) {
+            $uploadPath = rtrim(WRITEPATH, '/') . '/' . $normalized;
+            return is_file($uploadPath) ? base_url('writable/' . $normalized) : null;
+        }
+
+        $filePath = WRITEPATH . 'uploads/profile_images/' . $normalized;
+
+        if (!is_file($filePath)) {
+            return null;
+        }
+
+        return base_url('uploads/profile_images/' . $normalized);
+    }
+}
+
+if (!function_exists('avatar_data')) {
+    function avatar_data(array $entity, string $default = 'U', string $imageField = 'profile_image'): array
+    {
+        $name = avatar_display_name($entity);
+
+        return [
+            'name' => $name,
+            'image_url' => avatar_profile_image_url($entity, $imageField),
+            'initials' => avatar_initials($name, $default),
+        ];
     }
 }
 

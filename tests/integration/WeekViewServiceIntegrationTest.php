@@ -25,6 +25,7 @@ final class WeekViewServiceIntegrationTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
     protected WeekViewService $service;
     protected AppointmentModel $appointmentModel;
     protected ProviderScheduleModel $scheduleModel;

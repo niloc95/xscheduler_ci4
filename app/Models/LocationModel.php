@@ -108,6 +108,8 @@ class LocationModel extends BaseModel
         'provider_id',
         'name',
         'address',
+        'city',
+        'area',
         'contact_number',
         'is_primary',
         'is_active',
@@ -117,6 +119,8 @@ class LocationModel extends BaseModel
         'provider_id'    => 'required|integer',
         'name'           => 'required|min_length[2]|max_length[255]',
         'address'        => 'permit_empty|max_length[500]',
+        'city'           => 'permit_empty|max_length[100]',
+        'area'           => 'permit_empty|max_length[100]',
         'contact_number' => 'permit_empty|max_length[50]',
     ];
 

@@ -28,13 +28,20 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('dashboard_content') ?>
+    <?php $customerAvatar = avatar_data($customer ?? [], 'C'); ?>
     <!-- Customer Info Header -->
     <div class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                    <?= strtoupper(substr(($customer['first_name'] ?? 'C'), 0, 1)) ?>
-                </div>
+                <?php if (!empty($customerAvatar['image_url'])): ?>
+                    <img src="<?= esc($customerAvatar['image_url']) ?>"
+                         alt="<?= esc($customerAvatar['name'] ?: 'Customer') ?>"
+                         class="w-16 h-16 rounded-full object-cover" />
+                <?php else: ?>
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                        <?= esc($customerAvatar['initials']) ?>
+                    </div>
+                <?php endif; ?>
                 <div>
                     <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">
                         <?= esc(trim(($customer['first_name'] ?? '') . ' ' . ($customer['last_name'] ?? ''))) ?>

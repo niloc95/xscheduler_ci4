@@ -8,13 +8,15 @@ class AddHashToCustomers extends MigrationBase
 {
     public function up()
     {
+        $customersTable = $this->db->prefixTable('customers');
+
         // Guard: skip if customers table doesn't exist yet
-        if (!$this->db->tableExists('customers')) {
+        if (!$this->db->tableExists($customersTable)) {
             return;
         }
 
         // Skip if hash column already exists
-        if ($this->db->fieldExists('hash', 'customers')) {
+        if ($this->hasColumn($customersTable, 'hash')) {
             return;
         }
 
@@ -33,8 +35,7 @@ class AddHashToCustomers extends MigrationBase
         $this->forge->processIndexes('customers');
 
         // Generate hashes for existing customers
-        $db = \Config\Database::connect();
-        $builder = $db->table('customers'); // CodeIgniter automatically adds the prefix
+        $builder = $this->db->table($customersTable);
         $customers = $builder->select('id')->get()->getResultArray();
 
         $encryptionKey = config('Encryption')->key ?? 'default-secret-key';
@@ -56,7 +57,9 @@ class AddHashToCustomers extends MigrationBase
 
     public function down()
     {
-        if (!$this->db->tableExists('customers')) {
+        $customersTable = $this->db->prefixTable('customers');
+
+        if (!$this->db->tableExists($customersTable)) {
             return;
         }
 
@@ -70,13 +73,23 @@ class AddHashToCustomers extends MigrationBase
         }
         
         // Remove hash column
-        if ($this->db->fieldExists('hash', 'customers')) {
+        if ($this->hasColumn($customersTable, 'hash')) {
             try {
                 $this->forge->dropColumn('customers', 'hash');
             } catch (\Throwable $e) {
                 // Legacy refresh paths may already have removed the column.
             }
         }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $query = $this->db->query(
+            'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$this->db->database, $table, $column]
+        );
+
+        return $query->getFirstRow() !== null;
     }
 
     private function hasIndex(string $table, string $index): bool

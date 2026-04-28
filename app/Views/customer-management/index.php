@@ -82,12 +82,19 @@ ob_start();
         </thead>
         <tbody id="customersTableBody">
         <?php if (!empty($customers)): foreach ($customers as $c): ?>
+            <?php $customerAvatar = avatar_data($c, 'C'); ?>
             <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                     <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
-                            <?= strtoupper(substr(($c['first_name'] ?? ($c['name'] ?? 'C')), 0, 1)) ?>
-                        </div>
+                        <?php if (!empty($customerAvatar['image_url'])): ?>
+                            <img src="<?= esc($customerAvatar['image_url']) ?>"
+                                 alt="<?= esc($customerAvatar['name'] ?: ($c['name'] ?? 'Customer')) ?>"
+                                 class="w-10 h-10 rounded-full object-cover mr-3" />
+                        <?php else: ?>
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
+                                <?= esc($customerAvatar['initials']) ?>
+                            </div>
+                        <?php endif; ?>
                         <div>
                             <div class="font-medium"><?= esc($c['name'] ?? trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''))) ?></div>
                             <?php if (!empty($c['address'])): ?><div class="xs-text-small"><?= esc($c['address']) ?></div><?php endif; ?>

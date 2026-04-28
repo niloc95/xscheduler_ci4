@@ -20,6 +20,7 @@ import { DateTime } from 'luxon';
 import { DEFAULT_PROVIDER_COLOR } from './constants.js';
 import { formatCurrency } from '../../currency.js';
 import { withBaseUrl } from '../../utils/url-helpers.js';
+import { apiRequest } from '../../core/api.js';
 import { appointmentMutationCoordinator } from '../appointments/appointment-mutation-coordinator.js';
 
 export class AppointmentDetailsModal {
@@ -731,17 +732,15 @@ export class AppointmentDetailsModal {
         showNotifyToast(`Sending ${channelLabel}...`, 'info');
         
         try {
-            const response = await fetch(withBaseUrl(`/api/appointments/${appointment.id}/notify`), {
+            const { response, payload: result } = await apiRequest(withBaseUrl(`/api/appointments/${appointment.id}/notify`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
+                body: {
                     channel: channel
-                })
+                },
             });
-            
-            const result = await response.json();
             
             if (!response.ok) {
                 const errorMsg = result.error?.message || `Failed to send ${channelLabel}`;

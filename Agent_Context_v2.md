@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.1
+version: 2.6
 status: Active hardening
-last_updated: 2026-04-19
+last_updated: 2026-04-28
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -62,11 +62,23 @@ Provide clear, actionable fixes
 Include file-level recommendations
 Avoid vague suggestions - always propose a concrete solution
 
+8. Scheduling and Availability Audit (Domain-Specific)
+When auditing scheduling code, verify:
+- Every `xs_business_hours` query includes a `provider_id` filter — no unscoped reads
+- Global business bounds are read from `xs_settings` (keys `business.work_start`, `business.work_end`), not from per-provider tables
+- `SettingModel::getByKeys()` is used (not the non-existent `getValue()`)
+- `AvailabilityService::constrainToBusinessHours()` is called for every slot-generation path
+- `TimezoneService::businessTimezone()` is the source for the business timezone — never hardcoded `'UTC'`
+
 ## ⚠️ Rule #2 — No Assumptions
 
 Do not assume code is correct.
 Always verify usage before keeping anything.
 If uncertain → trace usage or flag it.
+
+**Query Scope Rule:** Every query against a per-entity table (`xs_business_hours`, `xs_provider_schedules`, `xs_locations`, `xs_blocked_times`) MUST include an entity-scoping `WHERE` clause. An unfiltered query on these tables returns a random row from whichever entity was inserted first — never a "global" value. Verify every `WHERE` clause before keeping code.
+
+**API Contract Rule:** `SettingModel` exposes `getByKeys(array)`, `getByPrefix(string)`, `getAllAsMap()`, and `upsert()`. There is no `getValue()` method. Always use `getByKeys(['key'])` to read a single setting.
 
 ## 🧠 Rule #3 — Before You Change Code (Mandatory Checklist)
 
@@ -85,6 +97,8 @@ Before making any code changes, the agent must validate the following:
 [] If writing a migration, does it extend MigrationBase?
 [] Did I avoid dead-code surfaces and stale symbols?
 [] Have I verified consistency with SPA.JS and APP.JS patterns?
+[] Am I querying `xs_business_hours` with a `provider_id` filter? (All rows are per-provider; no global-only rows exist. An unfiltered query returns the first-inserted provider's hours — not a system-wide default.)
+[] Am I reading global time bounds (`business.work_start`, `business.work_end`) from `xs_settings` via `SettingModel::getByKeys()`, not from `xs_business_hours`?
 
 ## 🔥 Why This Is Strong
 
@@ -103,6 +117,7 @@ Use this file first when making architecture, API, scheduling, booking, notifica
 | Change appointment flows or scheduler behavior | 8) Appointments and Scheduling Contract |
 | Change public booking behavior | 10) Public Booking Contract |
 | Modify notification behavior | 11) Notifications Contract |
+| Understand reminder offset independent triggering | 11.8a) Reminder Offsets Behavior |
 | Update persistence logic or queries | 12) Database Schema and Relationships |
 | Add migrations safely | 13) Migration and Schema-Drift Rules |
 | Avoid duplication, orphans, naming collisions | 14) Mandatory Quality Gates |
@@ -319,6 +334,84 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - Tailwind + consolidated SCSS only
 - No inline style attributes in app-facing templates
 
+### 6.6 Shared Fetch Contract
+
+- `resources/js/core/api.js` `apiRequest()` returns `{ response, payload }`.
+- For `application/json` responses, `payload` is already parsed JSON. Consumers must not assume string methods such as `match()` are available unless they first confirm `typeof payload === 'string'`.
+- Text or HTML responses may still return string payloads.
+- Shared frontend helpers such as `extractJSON()` must accept already-parsed objects so search surfaces remain compatible with the shared fetch layer.
+
+### 6.7 Profile Surface Contract
+
+- `/profile` is a live account surface backed by `App\Services\ProfilePageService`; do not reintroduce placeholder summary cards or fake recent activity.
+- `app/Views/profile/index.php` is SPA-safe and is initialized through `resources/js/modules/profile/profile-page.js` from `resources/js/app.js`.
+- Profile mutations must preserve session role context via `array_merge` and write audit-log events for `user_updated`, `password_changed`, `profile_photo_updated`, and `notification_preferences_updated`.
+- Provider and staff notification preferences edited from `/profile` must persist to `xs_users.notify_on_appointments`.
+
+### 6.8 Avatar System Contract (Owner Section)
+
+All avatar rendering — profile images and initials fallback — has a single source of truth on both PHP and JS sides.
+
+#### 6.8.1 PHP Helpers (`app/Helpers/app_helper.php`)
+
+Four canonical helpers, loaded via `helper('app')`:
+
+| Helper | Purpose |
+| --- | --- |
+| `avatar_initials(string $name, string $default = 'U'): string` | Derives 1-2 letter initials from a display name. Strips titles (Dr., Prof., Mr., Mrs., Ms., Rev.) and suffixes (MD, PhD, DDS, DO, RN, NP, PA, DVM, Jr., Sr., II, III, IV). Multi-word → first + last initial. Single-word → first 2 chars. Empty → `$default`. |
+| `avatar_display_name(array $user, string $fallback = 'User'): string` | Prefers `$user['name']`; falls back to `first_name` + `last_name` concatenation. |
+| `avatar_profile_image_url(array $user): ?string` | Resolves profile image URL. Paths starting with `assets/` map to `FCPATH`; paths starting with `uploads/` or `writable/` map to `WRITEPATH`. Returns `null` if no usable path. |
+| `avatar_data(array $user, string $defaultInitial = 'U'): array` | Returns `['imageUrl' => ?string, 'initials' => string, 'displayName' => string]`. Use this in views for image-first rendering with initials fallback. |
+
+`ProfilePageService::buildProfileImageUrl()` and `buildProfileInitials()` delegate to these helpers.
+
+#### 6.8.2 JS Utility (`resources/js/utils/avatar.js`)
+
+Single ESM module — import directly in other modules:
+
+```js
+import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
+```
+
+| Export | Signature | Behaviour |
+| --- | --- | --- |
+| `getDisplayName(entity, fallback)` | `(object, string) → string` | Prefers `entity.name`; falls back to `first_name` + `last_name`. |
+| `getAvatarInitials(name, options)` | `(string, { defaultInitial? }) → string` | Same normalization rules as PHP: strip titles/suffixes, multi-word → first+last initial, single-word → first 2 chars. `options.defaultInitial` defaults to `'U'`. |
+
+For inline `<script>` blocks in PHP views (which cannot use ESM imports), use the globals exposed by `resources/js/app.js`:
+
+```js
+window.xsGetAvatarInitials(name, defaultInitial)
+window.xsGetDisplayName(entity, fallback)
+```
+
+#### 6.8.3 Canonical Default Initials by Context
+
+| Context | Default |
+| --- | --- |
+| User / staff / header | `'U'` |
+| Customer | `'C'` |
+| Staff assignment widget | `'S'` |
+| Provider assignment widget | `'P'` |
+| Scheduler provider chip | `'?'` |
+
+#### 6.8.4 Covered Surfaces
+
+- `app/Views/layouts/app.php` — header user avatar (image-first via `avatar_data()`)
+- `app/Views/user-management/index.php` — PHP rows + JS `userRow()` via `window.xsGetAvatarInitials`
+- `app/Views/customer-management/index.php` — `avatar_data()` with `defaultInitial: 'C'`
+- `app/Views/customer-management/history.php` — large customer header avatar
+- `app/Views/appointments/form.php` — customer avatar placeholder (`'C'`)
+- `app/Views/user-management/components/provider-staff.php` — server PHP + JS `renderStaff()` widget
+- `app/Views/user-management/components/staff-providers.php` — server PHP + JS `renderProviders()` widget
+- `resources/js/modules/scheduler/appointment-colors.js` — `getProviderInitials()` delegates to `getAvatarInitials`
+- `resources/js/modules/customer-management/customer-search.js`
+- `resources/js/modules/appointments/appointments-form.js`
+
+#### 6.8.5 Do Not Duplicate
+
+Do not reimplement initials logic in any view, controller, or JS module. Always call the shared helper. A one-letter initial in a completed surface is a regression against this contract.
+
 ## 7) Backend Service Boundaries
 
 ### 7.1 Canonical Services
@@ -331,11 +424,58 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - TimezoneService
 - UserManagementMutationService
 - UserManagementContextService
+- ProfilePageService
 - CustomerAppointmentService
 - MailerService
 - NotificationQueueDispatcher
 
 ### 7.2 Key System Files
+
+### 7.4 Business Context Resolver Contract
+
+**Owner section.** All business-ID resolution rules live here. §11 contains reference-only reminders.
+
+#### 7.4.1 `current_business_id()` Helper
+
+`app/Helpers/permissions_helper.php` exposes `current_business_id(?int $default = null): int`.
+It is the single canonical way to resolve the active business context for the current request.
+Load it with `helper('permissions')` (already loaded by `BaseController`).
+
+#### 7.4.2 Resolution Priority (Strict)
+
+1. **Request params** — `GET`/`POST` `business_id` or `businessId`
+2. **Session keys** — `session()->get('business_id')` or `session()->get('active_business_id')`
+3. **Session user sub-keys** — `session()->get('user')['business_id' | 'active_business_id' | 'businessId' | 'activeBusinessId']`
+4. **Fallback** — `$default ?? NotificationCatalog::BUSINESS_ID_DEFAULT` (value `1`)
+
+The result is always `max(1, resolved_value)`.
+
+#### 7.4.3 Service-Level Usage Pattern
+
+Services that scope data to a business must use a protected delegate:
+
+```php
+protected function resolveBusinessId(): int {
+  helper('permissions');
+  return current_business_id();
+}
+```
+
+This makes the resolver overridable in unit tests without request/session scaffolding.
+
+#### 7.4.4 Current Service Coverage
+
+| Service | Scope switch |
+| --- | --- |
+| `NotificationCenterService` | `getNotifications()`, `getUnreadCount()` |
+| `NotificationSettingsService` | `getIndexData()`, `save()` |
+
+Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in service methods that serve UI requests. Route all UI-facing scoping through `resolveBusinessId()` / `current_business_id()`.
+
+#### 7.4.5 Auth Channel Exception
+
+`Auth::sendResetEmail()` still passes `NotificationCatalog::BUSINESS_ID_DEFAULT` directly to `MailerService`. This is intentional — password reset has no session context. Do not route it through `current_business_id()`.
+
 
 - app/Config/Routes.php
 - app/Config/Filters.php
@@ -345,9 +485,16 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - app/Models/UserModel.php
 - app/Models/SettingModel.php
 - app/Services/MailerService.php
+- app/Services/AvailabilityService.php
+- app/Services/BusinessHoursService.php
+- app/Services/Calendar/DayViewService.php
+- app/Services/Calendar/WeekViewService.php
+- app/Services/Calendar/ProviderWorkingHoursTrait.php
 - resources/js/spa.js
 - resources/js/app.js
 - resources/js/public-booking.js
+- resources/js/modules/scheduler/scheduler-core.js
+- resources/js/modules/scheduler/time-grid-utils.js
 - vite.config.js
 
 ### 7.3 Unified Email Transport Contract
@@ -497,6 +644,130 @@ Expected behavior:
 - dispatch appointment:changed event
 - coordinator owns toast and loading state
 
+### 8.7 Business Hours Architecture (Owner Section)
+
+#### 8.7.1 Two Distinct Concepts — Do Not Conflate
+
+| Concept | Source | Scope | Purpose |
+| --- | --- | --- | --- |
+| Global business hours | `xs_settings` keys `business.work_start`, `business.work_end` | System-wide outer bounds | The widest window any appointment can be booked in |
+| Provider schedule | `xs_business_hours` rows (always per `provider_id` + `weekday`) | Per-provider | The specific hours a given provider is available |
+
+**Critical:** `xs_business_hours` has NO global-only rows. Every row always has a `provider_id`. Querying this table without a `provider_id` filter returns an arbitrary provider's row — not a global business hour. This exact mistake caused all providers' slots to start at 10:00 (root cause fixed in commit `34a74a0`).
+
+#### 8.7.2 Canonical Service Responsibilities
+
+| Service / Method | Responsibility |
+| --- | --- |
+| `BusinessHoursService::getBusinessHoursForDay($weekday)` | Returns global hours from `xs_settings`. `$weekday` is kept for interface compatibility; global hours apply uniformly to all weekdays. |
+| `BusinessHoursService::getWeeklyHours()` | Returns Mon–Fri (weekdays 1–5) keyed by weekday, sourced from `xs_settings`. |
+| `BusinessHoursService::validateAppointmentTime($start, $end)` | Validates an appointment falls within global hours. Returns `['valid'=>bool,'reason'=>?string,'hours'=>?array]`. |
+| `AvailabilityService::constrainToBusinessHours($date, $providerHours)` | Narrows a provider's hours to the global bounds. Uses `SettingModel::getByKeys(['business.work_start','business.work_end'])`. Returns `null` if the window collapses to zero. |
+| `BusinessHourModel` | Queries `xs_business_hours` filtered by `provider_id` + `weekday`. Correct place to read individual provider schedules. Never use this without a `provider_id` filter. |
+
+#### 8.7.3 Global Business Hours Setting Keys
+
+| Key | Meaning | Example |
+| --- | --- | --- |
+| `business.work_start` | Global open time | `'06:00'` |
+| `business.work_end` | Global close time | `'17:00'` |
+
+Read via: `SettingModel::getByKeys(['business.work_start', 'business.work_end'])`.
+
+`SettingModel` has no `getValue()` method. Use `getByKeys()` for all reads (including single keys).
+
+#### 8.7.4 ProviderWorkingHoursTrait — Active Debt
+
+`app/Services/Calendar/ProviderWorkingHoursTrait::getBusinessHours()` falls back to calling `$settings->getValue('booking.day_start', '08:00')`. `SettingModel` has no `getValue()` method and this will throw `BadMethodCallException` at runtime when `$this->timeGrid` is not available. The fix is to replace the fallback with `SettingModel::getByKeys(['booking.day_start', 'booking.day_end'])`. This path is hit for the "placeholder provider" (provider_id = 0) case.
+
+### 8.8 Availability and Slot Generation Pipeline
+
+The server-side slot-generation pipeline operates in this sequence:
+
+1. **Resolve provider schedule** — Query `xs_business_hours` with `provider_id` + `weekday` filter to get the provider's start/end and breaks for the requested day.
+2. **Constrain to global bounds** — `AvailabilityService::constrainToBusinessHours()` reads `business.work_start` / `business.work_end` from `xs_settings` and narrows the provider window. If the provider window falls entirely outside global hours the day returns no slots.
+3. **Remove blocked times** — Query `xs_blocked_times` where `provider_id` matches and the blocked interval overlaps the working window.
+4. **Remove booked appointments** — Query `xs_appointments` for confirmed/pending appointments within the window for that provider.
+5. **Generate time slots** — Divide remaining free time into increments from `booking.slot_duration` setting.
+6. **Return slots** — Each slot is a UTC-anchored datetime.
+
+#### 8.8.1 Key Variables Required Before Calling Availability
+
+| Variable | Source | Notes |
+| --- | --- | --- |
+| `$providerId` | `xs_users.id` | Required; 0 is only a UI placeholder |
+| `$date` | Request input | ISO date `YYYY-MM-DD` |
+| `$serviceId` | `xs_services.id` | Determines slot duration |
+| `$timezone` | `localization.timezone` from `xs_settings` | `?string`, `null` resolves via `TimezoneService::businessTimezone()` |
+| `business.work_start` / `business.work_end` | `xs_settings` | Global outer bounds |
+| Provider's `xs_business_hours` rows | `provider_id` + `weekday` | Per-provider schedule |
+| `xs_blocked_times` rows | Provider + date range | Provider non-availability intervals |
+| `booking.slot_duration` | `xs_settings` | Slot increment in minutes |
+
+### 8.9 Calendar Architecture and Data Flow
+
+#### 8.9.1 Server-Side View Model API
+
+The calendar uses pre-computed server-side render models via `CalendarController`.
+
+| Endpoint | Service | View |
+| --- | --- | --- |
+| `GET /api/calendar/day?date=YYYY-MM-DD` | `DayViewService` | Day view |
+| `GET /api/calendar/week?date=YYYY-MM-DD` | `WeekViewService` | Week view |
+| `GET /api/calendar/month?year=&month=` | `MonthViewService` | Month view |
+
+Common query params: `provider_id`, `service_id`, `location_id`, `status`.
+
+Response envelope: `{ "data": { ...viewModel... }, "meta": { "view", "date", "generated_at" } }`
+
+`viewModel.businessHours` (`{ startTime, endTime }`) is sourced from `ProviderWorkingHoursTrait::getBusinessHours()` using `booking.day_start` / `booking.day_end` settings — these control the calendar grid display window, not booking availability.
+
+#### 8.9.2 Client-Side Scheduler Modules
+
+| File | Role |
+| --- | --- |
+| `scheduler-core.js` | Orchestrator. Owns `this.calendarModel`, `this.appointments`, `loadData()`, `loadCalendarModel()`, `loadAppointments()`. |
+| `scheduler-day-view.js` | Day column rendering. Derives `this.businessHours` via `_resolveBusinessHours(config, calendarModel)`. |
+| `scheduler-week-view.js` | Week grid rendering. |
+| `scheduler-month-view.js` | Month grid rendering. |
+| `time-grid-utils.js` | `getBusinessHours(config)` — extracts `startHour`/`endHour` from config or `calendarModel.businessHours`. Returns `{ startHour, endHour, startTime, endTime, hoursPerDay }`. |
+| `settings-manager.js` | Bootstraps `window.appTimezone` from `/api/v1/settings/localization`. |
+| `appointment-details-modal.js` | Renders the appointment detail modal (entry: `/appointments?open={hash}`). |
+
+#### 8.9.3 Data Load Paths
+
+**Server mode (default):**
+- `loadData()` → `loadCalendarModel()` → `GET /api/calendar/{view}` → `calendarModel` set → appointments synced from `calendarModel.appointments` → `render(calendarModel)` → `DayView._resolveBusinessHours()` uses `calendarModel.businessHours`.
+
+**Non-server mode (fallback):**
+- `loadData()` → `loadAppointments()` → `GET /api/appointments` → flat array → `render(null)` → `DayView._resolveBusinessHours()` falls back to `config.businessHours` or `config.slotMinTime`/`config.slotMaxTime`, then hardcoded `'08:00'`/`'17:00'`.
+
+#### 8.9.4 Calendar Grid Hours vs Booking Availability
+
+These are two separate concerns:
+
+| Concern | Source | Where used |
+| --- | --- | --- |
+| Calendar grid display window | `booking.day_start` / `booking.day_end` in `xs_settings` | `ProviderWorkingHoursTrait`, passed as `viewModel.businessHours` to JS |
+| Booking availability bounds | `business.work_start` / `business.work_end` in `xs_settings` | `BusinessHoursService`, `AvailabilityService::constrainToBusinessHours()` |
+| Provider working hours | `xs_business_hours` (per `provider_id` + `weekday`) | `AvailabilityService` slot generation, `BusinessHourModel` |
+
+#### 8.9.5 Role Scoping (Automatic)
+
+- Providers: `CalendarController` scopes to their own appointments only regardless of query params.
+- Admins/Staff: see all appointments; can filter by `provider_id` query param.
+- Do not rely on `provider_id` query param as the sole authorization mechanism — role-based scoping is enforced server-side.
+
+#### 8.9.6 Datetime Parsing on the Client
+
+All scheduler views parse API datetimes as UTC via Luxon:
+
+```js
+DateTime.fromISO(val, { zone: 'utc' }).setZone(window.appTimezone)
+```
+
+`window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`. Never parse appointment datetimes as local time.
+
 ## 9) Customers, Providers, and User Management
 
 ### 9.1 Customer vs User Domain Split
@@ -576,6 +847,11 @@ SMTP transport for notifications is owned by `MailerService`. See §7.3 for
 the full transport resolution priority, from-address rules, `send()` response
 contract, and dev fallback behavior. Do not document transport details here.
 
+Business-ID scoping for all notification service methods that serve UI requests is owned by
+`current_business_id()` in `permissions_helper`. See §7.4 for full resolution priority and
+service usage pattern. Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in
+UI-facing service methods.
+
 ### 11.3 Dispatch Architecture Notes
 
 - Booking-time notifications are queued synchronously inline during the appointment mutation request; they are not deferred until the first cron tick.
@@ -612,6 +888,8 @@ Key queue fields:
 - sent_at
 - idempotency_key
 - correlation_id
+- reminder_offset_minutes (reminder rows only — offset that triggered this row; used for stale-reminder cancellation)
+- schedule_fingerprint (SHA1 of `start_at|end_at|updated_at`; dispatcher cancels reminder rows whose fingerprint no longer matches the live appointment)
 
 ### 11.6 Architecture Flow
 
@@ -642,6 +920,69 @@ Internal notifications:
 Dev-only SMTP fallback for email: see §7.3.2 for transport priority and §7.3.5
 for the queue gate that activates the fallback. The fallback covers both
 queue-enqueue checks and queue-dispatch checks transparently.
+
+### 11.8a Reminder Offsets Behavior
+
+#### 11.8a.1 Independent Offset Processing
+
+**Each reminder offset triggers independently. No offset blocks another.**
+
+Configuration (Settings → Notifications → Customer Reminder Offsets):
+- Primary offset: e.g., 4320 minutes (3 days before)
+- Secondary offset: e.g., 60 minutes (1 hour before)
+- Offsets are stored as an array in `xs_business_notification_rules.reminder_offsets_json`
+
+`NotificationQueueService::enqueueDueReminders()` processes each offset separately:
+
+```
+For each appointment where start_at in (now, +30 days]:
+  For each channel (email, sms, whatsapp):
+    For each offset in that channel's offset list:
+      dueAt = start_at - offset_minutes
+      If now >= dueAt → enqueue a row with marker 'offset:N'
+      Else → skip (not yet due)
+```
+
+There is no cross-offset dependency. An offset that is already past-due does not affect a future offset that has not yet arrived.
+
+#### 11.8a.2 Appointment Booked 1 Day in Advance — Concrete Example
+
+Config: `[4320 min (3 days), 60 min (1 hour)]`
+Booking time: today 14:00 UTC. Appointment: tomorrow 14:00 UTC.
+
+| Offset | dueAt | now >= dueAt | Result |
+|--------|-------|-------------|--------|
+| 4320 min (3 days) | 3 days ago | ✅ TRUE | Enqueued immediately (catch-up) |
+| 60 min (1 hour) | tomorrow 13:00 | ❌ FALSE | Skipped — enqueued when tomorrow 13:00 arrives |
+
+Both reminders will send. The first being past-due at booking time does not block the second.
+
+#### 11.8a.3 Queue Row Identity
+
+Each offset creates its own queue row with:
+- `reminder_offset_minutes` — the specific offset value that triggered this row
+- `idempotency_key` — includes marker `'offset:N'` so the same offset for the same appointment is never double-enqueued
+- `schedule_fingerprint` — SHA1(`start_at|end_at|updated_at`); dispatcher cancels a reminder row if the fingerprint no longer matches the live appointment (i.e., appointment was rescheduled after enqueue)
+
+#### 11.8a.4 reminder_sent Flag — Compatibility Only
+
+After a **customer** reminder dispatches successfully, `reminder_sent = 1` is set on the appointment row via `NotificationQueueDispatcher::markReminderSentIfSupported()`.
+
+**This flag is NOT checked as an enqueue-time filter.** `enqueueDueReminders()` does not skip appointments with `reminder_sent = 1`. The flag is for display purposes only.
+
+> **Known hazard (fixed 2026-04-23, commit e5bf2e7):** Previously, the flag write used `model->update(['reminder_sent' => 1])`, which also updated `updated_at`. That changed the schedule fingerprint mid-dispatch, causing sibling reminder rows for the same appointment to be cancelled as stale. The fix writes `reminder_sent` via query builder `set()` without touching `updated_at`.
+
+#### 11.8a.5 Debugging Reminder Offsets
+
+```bash
+# Force an appointment into a reminder-due window, then enqueue + dispatch
+php spark notifications:test-reminder <appointmentId> [businessId] [minutesUntilStart]
+
+# Example: set appointment to start 45 min from now
+php spark notifications:test-reminder 96 1 45
+```
+
+Output shows per-offset queue rows with their `reminder_offset_minutes`, `status` (`sent` / `queued` / `cancelled`), and `schedule_fingerprint`. A healthy run shows one row per offset per recipient, all with `status=sent` and `Cancelled: 0`.
 
 ### 11.9 Template Contract
 
@@ -999,11 +1340,15 @@ Columns:
 - correlation_id
 - created_at
 - updated_at
+- reminder_offset_minutes
+- schedule_fingerprint
 
 Notes:
 - uses attempts/max_attempts (not legacy attempt_count)
 - includes locked_at, lock_token, correlation_id
 - internal rows resolve recipient from xs_users at dispatch
+- reminder rows include reminder_offset_minutes and schedule_fingerprint (added 2026-04-21 migration)
+- dispatcher cancels a reminder row if schedule_fingerprint no longer matches the live appointment
 
 ##### xs_notification_delivery_logs
 Columns:
@@ -1079,6 +1424,40 @@ Notes:
 - xs_provider_schedules does not include location_id in this runtime.
 - xs_location_days is currently a minimal 3-column table.
 - xs_notification_queue uses modern locking/idempotency columns; do not assume legacy queue columns.
+- xs_business_hours has NO global-only rows. Every row has a `provider_id`. Do not query this table without a `provider_id` filter expecting a global business hour result.
+- Global business hours (system-wide outer bounds) live in `xs_settings` keys `business.work_start` and `business.work_end`, NOT in `xs_business_hours`.
+
+### 12.6 Timezone Integrity Rules (Single Source of Truth)
+
+**Rule:** All datetime values stored in `xs_*` tables are UTC. Convert to local only at display time.
+
+**Single source of truth:** `localization.timezone` in `xs_settings` (read via `LocalizationSettingsService::getTimezone()`).
+
+**Canonical PHP service:** `TimezoneService` — use these methods and no others for datetime conversion:
+- `TimezoneService::toDisplay($utcString, $tz)` — UTC → display timezone string (`Y-m-d H:i:s`)
+- `TimezoneService::toStorage($localString, $tz)` — local → UTC for DB writes
+- `TimezoneService::businessTimezone()` — reads `localization.timezone`, cached per-request
+
+**Never do:**
+- `new \DateTime($localString)` without a `\DateTimeZone` argument when the string is in a non-UTC timezone
+- Pass `start_at` (UTC) directly to template rendering; always convert via `toDisplay()` first
+- Use `date()` / `new \DateTime()` without explicit timezone when building notification content
+
+**Notification pipeline contract:**
+- `NotificationQueueDispatcher` converts `start_at` (UTC) → `start_datetime` (display TZ local string) before calling template service
+- `NotificationQueueDispatcher` passes `display_timezone` key in all `$templateData` arrays
+- `NotificationTemplateService::buildPlaceholders()` creates `new \DateTime($data['start_datetime'], new \DateTimeZone($data['display_timezone'] ?? 'UTC'))` — always explicit timezone
+- Google Calendar links require UTC: convert `start_datetime` from display TZ → UTC before formatting with `\Z`
+
+**JS contract:**
+- `window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`
+- All scheduler views (SchedulerCore, DayView) parse API datetimes as UTC via Luxon: `DateTime.fromISO(val, {zone:'utc'}).setZone(appTimezone)`
+- Public booking JS uses `context.timezone` (from `PublicBookingService::buildViewContext()`) — do not omit this key
+- `X-Client-Timezone` / `client_timezone` are browser hints only; `localization.timezone` always takes priority
+
+**AvailabilityService contract:**
+- `isSlotAvailable()` `$timezone` parameter is `?string` with `null` resolving via `TimezoneService::businessTimezone()`
+- Always pass the correct business/booking timezone explicitly; do not rely on the default
 
 ## 13) Migration and Schema-Drift Rules
 
@@ -1108,6 +1487,7 @@ Each high-risk contract has one owner section in this file.
 
 | Contract | Owner Section | Reference-Only Sections |
 | --- | --- | --- |
+| Avatar initials and image rendering | 6.8) Avatar System Contract | 7) (ProfilePageService), 14) |
 | RBAC role resolution | 4) Authentication and Authorization Contract | 5), 9), 14) |
 | Session write merge rule | 4.5) Session Write Contract | 9), 14) |
 | API envelope and errors | 3.4) API Envelope Contract | 5), 6) |
@@ -1119,6 +1499,9 @@ Each high-risk contract has one owner section in this file.
 | Database schema and compatibility | 12) Database Schema and Relationships | 8), 9), 10), 11), 13) |
 | Migration base requirement | 13.1) Migration Base Requirement | 3), 12), 14) |
 | Unified email transport | 7.3) Unified Email Transport Contract | 11.2), 11.8) |
+| Business hours architecture | 8.7) Business Hours Architecture | 8.8), 12), 14) |
+| Availability and slot generation | 8.8) Availability and Slot Generation Pipeline | 8.7), 10), 12) |
+| Calendar data flow and grid bounds | 8.9) Calendar Architecture and Data Flow | 6), 8.5), 14) |
 
 Rule: Do not duplicate full contract text in non-owner sections. Use reference links and concise reminders only.
 
@@ -1174,6 +1557,12 @@ rg "style=\"|<style>" app/Views resources/js
 
 # 5) Detect deprecated appointment linkage usage
 rg "appointments\.user_id|\buser_id\b" app/ resources/
+
+# 6) Detect unfiltered xs_business_hours queries (must always have provider_id filter)
+rg "table\('business_hours'\)|from.*xs_business_hours" app/
+
+# 7) Detect SettingModel::getValue() calls (method does not exist; use getByKeys instead)
+rg "->getValue\(" app/Services app/Controllers app/Models
 ```
 
 Any result must be reviewed and justified or fixed.
@@ -1209,8 +1598,11 @@ npm run build
 ### 16.1 Active Debt Themes
 
 - Scheduler loading-path discipline must remain strict.
-- Remaining frontend utility consolidation is ongoing.
+- Frontend large-module decomposition is active and tracked in Appendix 17.3 (items 14-19).
 - Schema-compatibility in mixed local DB states must remain guarded.
+- `ProviderWorkingHoursTrait::getBusinessHours()` calls `$settings->getValue()` which does not exist on `SettingModel`. Fix: replace with `getByKeys(['booking.day_start','booking.day_end'])` (see §8.7.4).
+- Integration test DB has a migration sequence gap near `2025-10-22-174832`; `BusinessHoursServiceIntegrationTest` and some journey tests cannot run against the test DB until the gap is repaired.
+- Calendar selector unit tests are now runner-aligned via `npm run test:unit:calendar` (Vitest).
 
 ### 16.2 Forbidden Patterns (Condensed)
 
@@ -1238,3 +1630,66 @@ When behavior changes:
 3. Re-run mandatory quality gates in Section 14.
 4. If schema changed, update Section 12 and Section 13 together.
 5. If RBAC/session contracts changed, update Section 4 and rerun role/session grep checks.
+
+### 17.3 Execution Log: Items 14-19
+
+Status legend: `done`, `in_progress`, `queued`.
+
+| Item | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| 14 | `public-booking.js` decomposition | done | State/constants extracted to `resources/js/modules/public-booking/state.js`. |
+| 15 | `scheduler-core.js` decomposition | done | Calendar model URL building extracted to `resources/js/modules/scheduler/calendar-model-url.js`. |
+| 16 | Selector test runner alignment | done | Added `test:unit:calendar` script and Vitest dependency in `package.json`. |
+| 17 | `scheduler-day-view.js` decomposition | done | View constants/status metadata extracted to `scheduler-day-view-config.js`. |
+| 18 | `scheduler-week-view.js` decomposition | done | Day grid rendering extracted to `week-view-day-grid.js`. |
+| 19 | `app.js` decomposition | done | Shared UI helpers extracted to `resources/js/modules/app/shared-ui.js`. |
+
+### 17.4 Recent Behavior Hardening Log
+
+Status legend: `done`, `in_progress`, `queued`.
+
+| Item | Scope | Status | Notes |
+| --- | --- | --- | --- |
+| 20 | `/profile` live view hardening | done | Added `ProfilePageService`, replaced placeholder profile cards/activity with authoritative data, moved tab/avatar behavior to `resources/js/modules/profile/profile-page.js`, and covered the flow with `tests/integration/ProfileJourneyTest.php`. |
+| 21 | Appointment customer-search payload contract | done | Appointment-form search now accepts parsed JSON payloads from `resources/js/core/api.js`, and shared `extractJSON()` accepts object payloads so sibling search surfaces do not fail on `.match()` calls. |
+| 22 | Business context resolver for notification services | done | Added `current_business_id()` to `permissions_helper.php`. `NotificationCenterService` and `NotificationSettingsService` now resolve scope via `resolveBusinessId()` instead of `NotificationCatalog::BUSINESS_ID_DEFAULT`. Full resolver contract documented in §7.4. |
+| 23 | Reminder queue metadata and stale-reminder cancellation | done | Added `reminder_offset_minutes` and `schedule_fingerprint` columns to `xs_notification_queue` (migration `2026-04-21-150000`). `NotificationQueueService` writes fingerprint on enqueue; `NotificationQueueDispatcher` cancels reminder rows whose fingerprint no longer matches the live appointment, and resolves internal recipients via `resolveInternalRecipientUser()`. |
+| 24 | Unified avatar / initials system | done | Single PHP source of truth (`avatar_initials()`, `avatar_display_name()`, `avatar_profile_image_url()`, `avatar_data()`) in `app/Helpers/app_helper.php`. Single JS source of truth in `resources/js/utils/avatar.js` (`getAvatarInitials`, `getDisplayName`). Globals `window.xsGetAvatarInitials` / `window.xsGetDisplayName` exposed from `app.js` for inline PHP-view scripts. All avatar surfaces updated (header, user list, customer list, customer history, appointments form, provider-staff widget, staff-providers widget, scheduler). Title/suffix stripping and two-letter fallback enforced consistently. Parity tests: `tests/frontend/avatar-utils.test.js` (6 tests) and `tests/unit/Helpers/AvatarHelperTest.php` (3 tests, 12 assertions). Full contract in §6.8. |
+
+## 18) Audit Progress Board
+
+### 18.1 Verified in Current Pass
+
+- Mandatory quality gates (14.4) were rerun after tranche updates.
+- Targeted decomposition items 14-19 are now implemented and linked in 17.3.
+- `/profile` now renders authoritative account data and audit activity through `ProfilePageService`, with SPA-safe tab/image behavior and integration coverage recorded in 17.4 item 20.
+- Appointment create customer search now respects the shared parsed-payload contract from `apiRequest()`, with the hardening recorded in 17.4 item 21.
+- Frontend test + build validation is required after each decomposition tranche.
+- `current_business_id()` helper added to `permissions_helper.php`; `NotificationCenterService` and `NotificationSettingsService` switched off hardcoded constant — business context resolver documented in §7.4 (17.4 item 22).
+- Reminder queue metadata (`reminder_offset_minutes`, `schedule_fingerprint`) added to `xs_notification_queue`; stale-reminder cancellation logic in `NotificationQueueDispatcher` — schema updated in §12.3, queue fields in §11.5 (17.4 item 23).
+- Two new resolver-focused unit tests passing: `testResolveBusinessIdUsesSessionBusinessContext` (NotificationCenterServiceTest) and `testNotificationSettingsServiceResolvesBusinessIdFromSessionContext` (SettingsBoundaryServicesTest).
+- Unified avatar/initials system implemented across all PHP views and JS modules; single PHP helper and single JS module replace all ad-hoc initials logic. Title/suffix stripping and two-letter fallback enforced consistently. Parity tests added for both PHP and JS layers. Full contract in §6.8 (17.4 item 24).
+
+### 18.2 Remaining Debt Outside 14-19
+
+- `ProviderWorkingHoursTrait::getBusinessHours()` still requires `SettingModel::getByKeys()` migration.
+- Test DB migration-sequence gap near `2025-10-22-174832` still blocks part of integration suite.
+- `testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (SettingsBoundaryServicesTest) fails because the mock expectation `expects($this->once())` on `getByKeys` is violated when `LocalizationSettingsService` makes a second internal call. Fix: change expectation to `expects($this->atLeastOnce())` or mock `LocalizationSettingsService` separately. Pre-existing; not introduced in this session.
+
+## 19) Next Hardening Queue
+
+### 19.1 Immediate Follow-up Work
+
+1. Split `scheduler-today-view.js` into render/data helpers while preserving existing event contracts.
+2. Continue reducing inline script usage in non-target legacy views (module-bootstrapped parity).
+3. Add CI coverage for `npm run test:unit:calendar` in frontend validation workflow.
+4. Fix pre-existing mock expectation count failure in `SettingsBoundaryServicesTest::testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (see §18.2).
+5. Add an admin-visible business selector / `?business_id=` query-param handoff to the Notifications and Settings pages — `current_business_id()` already reads `?business_id=` from GET params, so no PHP changes are needed; only a UI affordance is required.
+
+### 19.2 Verification Rule
+
+Each queue item in 19.1 must end with:
+
+- `npm run test:frontend:lifecycle`
+- `npm run test:unit:calendar`
+- `npm run build`
