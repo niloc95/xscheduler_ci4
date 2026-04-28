@@ -13,16 +13,36 @@ class NotificationBusinessOptionsService
         return array_map(
             static fn(int $businessId): array => [
                 'id' => $businessId,
-                'label' => 'Business ' . $businessId,
+                'label' => 'Current Business',
             ],
             $this->getBusinessIds($selectedBusinessId)
         );
     }
 
     /**
+     * Returns the single allowed business ID for this UX mode.
+     * Scoped to the resolved session business only — does not scan configuration
+     * tables to avoid exposing unrelated business IDs in the UI.
+     *
+     * Seam: override getConfiguredBusinessIds() to enable an authorized
+     * multi-business mode without changing controllers or views.
+     *
      * @return int[]
      */
     public function getBusinessIds(int $selectedBusinessId): array
+    {
+        $id = max(1, $selectedBusinessId);
+
+        return [$id];
+    }
+
+    /**
+     * Returns all business IDs present in notification configuration tables.
+     * Reserved for future authorized multi-business contexts.
+     *
+     * @return int[]
+     */
+    protected function getConfiguredBusinessIds(int $selectedBusinessId): array
     {
         $businessIds = [$selectedBusinessId];
 

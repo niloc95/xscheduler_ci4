@@ -9,6 +9,8 @@ use App\Models\UserModel;
 use DateTimeImmutable;
 use DateTimeZone;
 
+helper('app');
+
 class ProfilePageService
 {
     protected UserModel $userModel;
@@ -46,8 +48,8 @@ class ProfilePageService
             'current_page' => 'profile',
             'user_role' => $userRole,
             'user' => $user,
-            'profileImageUrl' => $this->buildProfileImageUrl($user),
-            'profileInitials' => $this->buildProfileInitials($user['name'] ?? ''),
+            'profileImageUrl' => avatar_profile_image_url($user),
+            'profileInitials' => avatar_initials($user['name'] ?? '', 'U'),
             'profileForm' => [
                 'first_name' => old('first_name', $nameParts['first_name']),
                 'last_name' => old('last_name', $nameParts['last_name']),
@@ -230,53 +232,12 @@ class ProfilePageService
 
     protected function buildProfileImageUrl(array $user): ?string
     {
-        $storedImage = $user['profile_image'] ?? null;
-
-        if (!$storedImage) {
-            return null;
-        }
-
-        $normalized = ltrim($storedImage, '/');
-
-        if (str_starts_with($normalized, 'assets/')) {
-            $assetPath = rtrim(FCPATH, '/') . '/' . $normalized;
-
-            return is_file($assetPath) ? base_url($normalized) : null;
-        }
-
-        if (str_starts_with($normalized, 'uploads/')) {
-            $uploadPath = rtrim(WRITEPATH, '/') . '/' . $normalized;
-
-            return is_file($uploadPath) ? base_url('writable/' . $normalized) : null;
-        }
-
-        $filePath = WRITEPATH . 'uploads/profile_images/' . $normalized;
-
-        if (!is_file($filePath)) {
-            return null;
-        }
-
-        return base_url('uploads/profile_images/' . $normalized);
+        return avatar_profile_image_url($user);
     }
 
     protected function buildProfileInitials(string $name): string
     {
-        $parts = preg_split('/\s+/', trim($name)) ?: [];
-        $initials = '';
-
-        foreach ($parts as $part) {
-            if ($part === '') {
-                continue;
-            }
-
-            $initials .= strtoupper(substr($part, 0, 1));
-
-            if (strlen($initials) >= 2) {
-                break;
-            }
-        }
-
-        return $initials !== '' ? $initials : 'U';
+        return avatar_initials($name, 'U');
     }
 
     protected function splitName(string $name): array

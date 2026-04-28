@@ -19,6 +19,7 @@ final class BusinessHoursServiceIntegrationTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
     protected BusinessHoursService $service;
     private int $providerId;
     /** @var string[] Setting keys seeded by each test (cleaned up in tearDown) */

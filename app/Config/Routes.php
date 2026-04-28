@@ -210,6 +210,7 @@ $routes->group('help', function($routes) {
 // Public booking experience
 // Note: Legacy /scheduler and GET /book routes removed (deprecated since v2.0, sunset 2026-03-01)
 // New dedicated public booking experience (Option B)
+$routes->get('sitemap.xml', 'PublicSite\SitemapController::index', ['filter' => ['setup', 'public_rate_limit']]);
 $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => ['setup', 'public_rate_limit']]);
 
 $routes->group('booking', ['filter' => 'setup'], function($routes) {
@@ -218,6 +219,10 @@ $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
     $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
     $routes->get('search', 'PublicSite\BookingController::search', ['filter' => 'public_rate_limit']);
+    $routes->get('discover', 'PublicSite\BookingController::discover', ['filter' => 'public_rate_limit']);
+    $routes->get('p/(:segment)', 'PublicSite\BookingController::providerPage/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('s/(:segment)', 'PublicSite\BookingController::servicePage/$1', ['filter' => 'public_rate_limit']);
+    $routes->get('s/(:segment)/(:segment)', 'PublicSite\BookingController::serviceInCity/$1/$2', ['filter' => 'public_rate_limit']);
     $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit', 'csrf']]);
     $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => 'public_rate_limit']);
     $routes->patch('(:segment)/cancel', 'PublicSite\BookingController::cancel/$1', ['filter' => ['public_rate_limit', 'csrf']]);
@@ -307,6 +312,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
         $routes->get('settings/booking', 'Api\\V1\\Settings::booking');
         $routes->get('settings/business-hours', 'Api\\V1\\Settings::businessHours');
         // Provider services - public for booking form
+        $routes->get('providers/slug/(:segment)/services', 'Api\\V1\\Providers::servicesBySlug/$1');
         $routes->get('providers/(:num)/services', 'Api\\V1\\Providers::services/$1');
         // Provider appointments - for monthly schedule view
         $routes->get('providers/(:num)/appointments', 'Api\\V1\\Providers::appointments/$1');

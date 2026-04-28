@@ -28,7 +28,7 @@
 					<p class="card-subtitle">Update the details for this user account</p>
 				</div>
 
-				<form method="post" action="<?= base_url('user-management/update/' . ($user['id'] ?? 0)) ?>" class="user-form" id="editUserForm" data-no-spa="true">
+				<form method="post" action="<?= base_url('user-management/update/' . ($user['id'] ?? 0)) ?>" class="user-form" id="editUserForm" data-no-spa="true" enctype="multipart/form-data">
 					<?= csrf_field() ?>
 
 					<div class="card-body space-y-6">
@@ -128,6 +128,11 @@
 						}
 						$isProvider = in_array('provider', (array) $selectedRoles, true);
 						$canEditColor = ($currentUser['role'] ?? '') === 'admin';
+						helper('app');
+						$currentProfileImage = old('profile_image', $user['profile_image'] ?? null);
+						$currentProfileImageUrl = function_exists('provider_image_url')
+							? provider_image_url($currentProfileImage)
+							: (!empty($currentProfileImage) ? base_url((string) $currentProfileImage) : null);
 						?>
 						<?php if ($isProvider && $canEditColor): ?>
 						<div class="form-group provider-color-field">
@@ -157,6 +162,80 @@
 							</div>
 						</div>
 						<?php endif; ?>
+
+					<!-- Provider Public Profile -->
+					<div id="providerPublicProfileSection" class="<?= in_array('provider', (array) $selectedRoles) ? '' : 'hidden' ?>">
+						<div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-4">
+							<div>
+								<h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">Public Provider Profile</h3>
+								<p class="text-sm text-slate-500 dark:text-slate-400">These details are exposed on public booking pages when present.</p>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+								<div class="form-group">
+									<label class="form-label">Profile Image</label>
+									<div class="flex items-start gap-4">
+										<div id="providerProfileImagePreviewWrap" class="h-20 w-20 rounded-full overflow-hidden border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-300 text-xs">
+											<?php if (!empty($currentProfileImageUrl)): ?>
+												<img id="providerProfileImagePreview" src="<?= esc($currentProfileImageUrl) ?>" alt="Provider profile image" class="h-full w-full object-cover">
+											<?php else: ?>
+												<span id="providerProfileImageFallback">No image</span>
+												<img id="providerProfileImagePreview" src="" alt="Provider profile image" class="hidden h-full w-full object-cover">
+											<?php endif; ?>
+										</div>
+										<div class="flex-1 space-y-2">
+											<input type="file"
+												   id="profile_picture"
+												   name="profile_picture"
+												   accept="image/png,image/jpeg,image/webp,image/gif"
+												   class="form-input"
+												   data-provider-image-input>
+											<label class="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+												<input type="checkbox" name="remove_profile_image" value="1" data-provider-image-remove class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+												Remove current image
+											</label>
+											<p class="text-xs text-slate-500 dark:text-slate-400">PNG, JPG, WEBP, or GIF up to 2MB. Images are resized for fast booking cards.</p>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div class="form-group">
+									<label for="title" class="form-label">Professional Title</label>
+									<input type="text"
+										   id="title"
+										   name="title"
+										   value="<?= esc(old('title', $user['title'] ?? '')) ?>"
+										   class="form-input"
+										   placeholder="e.g., Dr, Dentist, GP">
+								</div>
+								<div class="form-group">
+									<label for="slug" class="form-label">Public URL Slug</label>
+									<input type="text"
+										   id="slug"
+										   name="slug"
+										   value="<?= esc(old('slug', $user['slug'] ?? '')) ?>"
+										   class="form-input"
+										   <?= !empty($user['slug']) ? 'readonly' : '' ?>
+										   placeholder="Auto-generated from name if blank">
+									<?php if (!empty($user['slug'])): ?>
+										<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Slug is locked after first save to preserve SEO URLs.</p>
+									<?php endif; ?>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="bio" class="form-label">Background / History</label>
+								<textarea id="bio" name="bio" rows="3" class="form-input" placeholder="Short background shown to booking customers."><?= esc(old('bio', $user['bio'] ?? '')) ?></textarea>
+							</div>
+							<div class="form-group">
+								<label for="education" class="form-label">Education</label>
+								<textarea id="education" name="education" rows="2" class="form-input" placeholder="Degrees, institutions, certifications."><?= esc(old('education', $user['education'] ?? '')) ?></textarea>
+							</div>
+							<div class="form-group">
+								<label for="qualifications" class="form-label">Qualifications</label>
+								<textarea id="qualifications" name="qualifications" rows="2" class="form-input" placeholder="Professional registrations and qualifications."><?= esc(old('qualifications', $user['qualifications'] ?? '')) ?></textarea>
+							</div>
+						</div>
+					</div>
 
 
 					<!-- Provider Locations Section (FIRST — configure locations before schedule) -->
@@ -382,6 +461,10 @@
 // Handle role checkbox changes
 document.addEventListener('DOMContentLoaded', function() {
 	const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');
+	const imageInput = document.querySelector('[data-provider-image-input]');
+	const removeImage = document.querySelector('[data-provider-image-remove]');
+	const imagePreview = document.getElementById('providerProfileImagePreview');
+	const imageFallback = document.getElementById('providerProfileImageFallback');
 	
 	function updateSectionVisibility() {
 		const isProvider = document.getElementById('role_provider')?.checked || false;
@@ -390,6 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		// Show/hide provider sections
 		const providerLocations = document.getElementById('providerLocationsWrapper');
 		const providerSchedule = document.getElementById('providerScheduleSection');
+		const providerPublicProfile = document.getElementById('providerPublicProfileSection');
 		const providerStaff = document.querySelector('[data-provider-staff-manager]');
 		
 		if (providerLocations) {
@@ -397,6 +481,9 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 		if (providerSchedule) {
 			providerSchedule.classList.toggle('hidden', !isProvider);
+		}
+		if (providerPublicProfile) {
+			providerPublicProfile.classList.toggle('hidden', !isProvider);
 		}
 		if (providerStaff) {
 			providerStaff.classList.toggle('hidden', !isProvider);
@@ -413,6 +500,44 @@ document.addEventListener('DOMContentLoaded', function() {
 	roleCheckboxes.forEach(checkbox => {
 		checkbox.addEventListener('change', updateSectionVisibility);
 	});
+
+	if (imageInput && imagePreview) {
+		imageInput.addEventListener('change', function () {
+			const file = imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
+			if (!file) {
+				return;
+			}
+
+			if (removeImage) {
+				removeImage.checked = false;
+			}
+
+			const objectUrl = URL.createObjectURL(file);
+			imagePreview.src = objectUrl;
+			imagePreview.classList.remove('hidden');
+			if (imageFallback) {
+				imageFallback.classList.add('hidden');
+			}
+		});
+	}
+
+	if (removeImage && imagePreview) {
+		removeImage.addEventListener('change', function () {
+			if (!removeImage.checked) {
+				return;
+			}
+
+			if (imageInput) {
+				imageInput.value = '';
+			}
+
+			imagePreview.src = '';
+			imagePreview.classList.add('hidden');
+			if (imageFallback) {
+				imageFallback.classList.remove('hidden');
+			}
+		});
+	}
 	
 	// Initialize visibility on page load
 	updateSectionVisibility();

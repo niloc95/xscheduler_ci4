@@ -54,6 +54,7 @@ use App\Models\UserModel;
 use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
+use App\Services\BookingMetricsService;
 use CodeIgniter\Controller;
 
 class Analytics extends BaseController
@@ -63,12 +64,15 @@ class Analytics extends BaseController
     protected $customerModel;
     protected $serviceModel;
 
+    protected BookingMetricsService $bookingMetrics;
+
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->appointmentModel = new AppointmentModel();
         $this->customerModel = new CustomerModel();
         $this->serviceModel = new ServiceModel();
+        $this->bookingMetrics = new BookingMetricsService($this->appointmentModel);
         helper(['permissions', 'currency']);
     }
 
@@ -253,7 +257,7 @@ class Analytics extends BaseController
             return [
                 // Using new consolidated status method
                 'by_status' => $this->appointmentModel->getStatusStats(['format' => 'simple']),
-                'by_service' => $this->appointmentModel->getByService(10),
+                'by_service' => $this->bookingMetrics->getByService(10),
                 'by_time_slot' => $this->appointmentModel->getByTimeSlot()
             ];
         } catch (\Exception $e) {
@@ -272,7 +276,7 @@ class Analytics extends BaseController
     private function getServiceAnalytics($timeframe = '30d')
     {
         try {
-            $popularServices = $this->serviceModel->getPopularServicesWithStats(10);
+            $popularServices = $this->bookingMetrics->getPopularServices(10);
             $performance = $this->serviceModel->getPerformanceMetrics();
             
             // Format popular services for view

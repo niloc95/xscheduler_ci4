@@ -34,7 +34,14 @@
           <p class="card-subtitle">Update pricing, providers, and visibility.</p>
         </div>
         <div class="card-body space-y-6">
-                <?= $this->include('services/_form', ['service' => $service, 'categories' => $categories, 'providers' => $providers, 'linkedProviders' => $linkedProviders ?? []]) ?>
+                <?= $this->include('services/_form', [
+                  'service' => $service,
+                  'categories' => $categories,
+                  'providers' => $providers,
+                  'linkedProviders' => $linkedProviders ?? [],
+                  'slugLocked' => $slugLocked ?? true,
+                  'canUnlockSlug' => $canUnlockSlug ?? false,
+                ]) ?>
         </div>
 
         <div class="card-footer flex flex-wrap justify-end gap-3">

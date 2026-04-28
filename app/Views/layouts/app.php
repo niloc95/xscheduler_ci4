@@ -158,11 +158,18 @@
                             
                             <!-- User Menu -->
                             <?php $user = session()->get('user'); ?>
+                            <?php $headerAvatar = avatar_data(is_array($user) ? $user : [], 'U'); ?>
                             <div class="relative" id="user-menu-wrapper">
                                 <button id="user-menu-btn" type="button" class="flex min-h-11 items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                    <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
-                                        <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
-                                    </div>
+                                    <?php if (!empty($headerAvatar['image_url'])): ?>
+                                        <img src="<?= esc($headerAvatar['image_url']) ?>"
+                                             alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
+                                             class="w-9 h-9 rounded-full object-cover" />
+                                    <?php else: ?>
+                                        <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
+                                            <?= esc($headerAvatar['initials']) ?>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="hidden lg:block text-left">
                                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= esc($user['name'] ?? 'User') ?></p>
                                         <p class="text-xs text-gray-500 dark:text-gray-400"><?= esc($displayRole) ?></p>

@@ -52,7 +52,12 @@
                 </div>
 
                 <div class="card-body space-y-6">
-                    <?= $this->include('services/_form', ['categories' => $categories, 'providers' => $providers]) ?>
+                    <?= $this->include('services/_form', [
+                        'categories' => $categories,
+                        'providers' => $providers,
+                        'slugLocked' => $slugLocked ?? false,
+                        'canUnlockSlug' => $canUnlockSlug ?? false,
+                    ]) ?>
                 </div>
 
                 <div class="card-footer flex flex-wrap justify-end gap-3">

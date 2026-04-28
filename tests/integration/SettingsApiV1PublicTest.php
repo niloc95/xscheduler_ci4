@@ -3,6 +3,7 @@
 namespace App\Tests\Integration;
 
 use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
 
 /**
@@ -10,9 +11,11 @@ use CodeIgniter\Test\FeatureTestTrait;
  */
 final class SettingsApiV1PublicTest extends CIUnitTestCase
 {
+    use DatabaseTestTrait;
     use FeatureTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
 
     protected function setUp(): void
     {
@@ -142,8 +145,8 @@ final class SettingsApiV1PublicTest extends CIUnitTestCase
             'localization.time_format',
             'localization.first_day',
             'localization.locale',
-            'booking.day_start',
-            'booking.day_end',
+            'business.work_start',
+            'business.work_end',
             'calendar.slot_duration',
             'calendar.default_view',
             'calendar.show_weekends',
@@ -159,8 +162,8 @@ final class SettingsApiV1PublicTest extends CIUnitTestCase
                 ['setting_key' => 'localization.time_format', 'setting_value' => '12h', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
                 ['setting_key' => 'localization.first_day', 'setting_value' => 'monday', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
                 ['setting_key' => 'localization.locale', 'setting_value' => 'nl', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
-                ['setting_key' => 'booking.day_start', 'setting_value' => '07:30:00', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
-                ['setting_key' => 'booking.day_end', 'setting_value' => '18:15:00', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
+                ['setting_key' => 'business.work_start', 'setting_value' => '07:30:00', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
+                ['setting_key' => 'business.work_end', 'setting_value' => '18:15:00', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
                 ['setting_key' => 'calendar.slot_duration', 'setting_value' => '20', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
                 ['setting_key' => 'calendar.default_view', 'setting_value' => 'month', 'setting_type' => 'string', 'created_at' => $now, 'updated_at' => $now],
                 ['setting_key' => 'calendar.show_weekends', 'setting_value' => '0', 'setting_type' => 'boolean', 'created_at' => $now, 'updated_at' => $now],

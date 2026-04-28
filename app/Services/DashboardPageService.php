@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AppointmentModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Services\BookingMetricsService;
 
 class DashboardPageService
 {
@@ -14,6 +15,7 @@ class DashboardPageService
     protected DashboardService $dashboardService;
     protected AuthorizationService $authService;
     protected AppointmentDashboardContextService $appointmentDashboardContextService;
+    protected BookingMetricsService $bookingMetrics;
 
     public function __construct(
         ?UserModel $userModel = null,
@@ -21,7 +23,8 @@ class DashboardPageService
         ?AppointmentModel $appointmentModel = null,
         ?DashboardService $dashboardService = null,
         ?AuthorizationService $authService = null,
-        ?AppointmentDashboardContextService $appointmentDashboardContextService = null
+        ?AppointmentDashboardContextService $appointmentDashboardContextService = null,
+        ?BookingMetricsService $bookingMetrics = null
     )
     {
         $this->userModel = $userModel ?? new UserModel();
@@ -30,6 +33,7 @@ class DashboardPageService
         $this->dashboardService = $dashboardService ?? new DashboardService();
         $this->authService = $authService ?? new AuthorizationService();
         $this->appointmentDashboardContextService = $appointmentDashboardContextService ?? new AppointmentDashboardContextService();
+        $this->bookingMetrics = $bookingMetrics ?? new BookingMetricsService($this->appointmentModel);
     }
 
     /**
@@ -84,6 +88,8 @@ class DashboardPageService
         $userStats = $this->userModel->getStats();
         $appointmentStats = $this->appointmentModel->getStats();
         $serviceStats = $this->serviceModel->getStats();
+        // Override the naive bookings total with the canonical BookingMetricsService value
+        $serviceStats['bookings'] = $this->bookingMetrics->getTotalBookings($scopeProviderId);
         $monthlyRevenue = $this->appointmentModel->getRevenue('month');
         $weeklyRevenue = $this->appointmentModel->getRevenue('week');
 

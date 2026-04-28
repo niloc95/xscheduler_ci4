@@ -10,7 +10,7 @@ class AddRecipientColumnsToNotificationQueue extends MigrationBase
     {
         $table = $this->db->prefixTable('notification_queue');
 
-        if (!$this->db->fieldExists('recipient_type', $table)) {
+        if (!$this->hasColumn($table, 'recipient_type')) {
             $this->forge->addColumn('notification_queue', [
                 'recipient_type' => [
                     'type'       => 'ENUM',
@@ -19,6 +19,11 @@ class AddRecipientColumnsToNotificationQueue extends MigrationBase
                     'default'    => 'customer',
                     'after'      => 'appointment_id',
                 ],
+            ]);
+        }
+
+        if (!$this->hasColumn($table, 'recipient_user_id')) {
+            $this->forge->addColumn('notification_queue', [
                 'recipient_user_id' => [
                     'type'       => 'INT',
                     'constraint' => 11,
@@ -36,15 +41,7 @@ class AddRecipientColumnsToNotificationQueue extends MigrationBase
         $prefixedQueue = $this->db->prefixTable('notification_queue');
         $prefixedUsers = $this->db->prefixTable('users');
 
-        $fkExists = $this->db->query(
-            "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-             WHERE TABLE_NAME = ? AND COLUMN_NAME = 'recipient_user_id'
-               AND REFERENCED_TABLE_NAME = ?
-               AND TABLE_SCHEMA = DATABASE()",
-            [$prefixedQueue, $prefixedUsers]
-        )->getFirstRow();
-
-        if (!$fkExists) {
+        if ($this->hasColumn($prefixedQueue, 'recipient_user_id') && !$this->foreignKeyExists($prefixedQueue, 'fk_nq_recipient_user')) {
             $this->db->query(
                 "ALTER TABLE `{$prefixedQueue}`
                  ADD CONSTRAINT `fk_nq_recipient_user`
@@ -59,19 +56,36 @@ class AddRecipientColumnsToNotificationQueue extends MigrationBase
     {
         $table = $this->db->prefixTable('notification_queue');
 
-        // Drop FK first
-        try {
+        if ($this->foreignKeyExists($table, 'fk_nq_recipient_user')) {
             $this->db->query("ALTER TABLE `{$table}` DROP FOREIGN KEY `fk_nq_recipient_user`");
-        } catch (\Throwable $e) {
-            // FK may not exist
         }
 
-        if ($this->db->fieldExists('recipient_user_id', $table)) {
+        if ($this->hasColumn($table, 'recipient_user_id')) {
             $this->forge->dropColumn('notification_queue', 'recipient_user_id');
         }
 
-        if ($this->db->fieldExists('recipient_type', $table)) {
+        if ($this->hasColumn($table, 'recipient_type')) {
             $this->forge->dropColumn('notification_queue', 'recipient_type');
         }
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $query = $this->db->query(
+            'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$this->db->database, $table, $column]
+        );
+
+        return $query->getFirstRow() !== null;
+    }
+
+    private function foreignKeyExists(string $table, string $keyName): bool
+    {
+        $query = $this->db->query(
+            'SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = ? LIMIT 1',
+            [$this->db->database, $table, $keyName, 'FOREIGN KEY']
+        );
+
+        return $query->getFirstRow() !== null;
     }
 }

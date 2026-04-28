@@ -286,8 +286,9 @@ class DashboardLandingTest extends CIUnitTestCase
 
         $this->assertSame('provider', $context['role']);
         $this->assertSame($this->providerId, $context['provider_id']);
-        $this->assertTrue((bool) ($context['filter_by_provider'] ?? false));
-        $this->assertFalse((bool) ($context['filter_by_staff'] ?? true));
+        $this->assertSame('provider', $context['user_role']);
+        $this->assertArrayHasKey('customer_id', $context);
+        $this->assertNull($context['customer_id']);
     }
 
     /**

@@ -73,7 +73,7 @@ $removeUrl = base_url('staff-providers/remove');
                     <div>
                         <div class="flex items-center space-x-3">
                             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                <?= strtoupper(substr($provider['name'] ?? 'P', 0, 1)) ?>
+                                <?= esc(avatar_initials((string) ($provider['name'] ?? ''), 'P')) ?>
                             </div>
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
@@ -221,8 +221,15 @@ $removeUrl = base_url('staff-providers/remove');
                 return;
             }
 
+            const getInitials = window.xsGetAvatarInitials || function(name, options) {
+                var fallback = (options && options.defaultInitial ? options.defaultInitial : 'P').toUpperCase();
+                var raw = (name || '').trim();
+                if (!raw) return fallback;
+                return raw.substring(0, 2).toUpperCase();
+            };
+
             const markup = items.map(function(provider) {
-                const initial = (provider.name || 'P').trim().charAt(0).toUpperCase();
+                const initial = getInitials(provider.name || '', { defaultInitial: 'P' });
                 const email = provider.email ? '<div class="text-sm text-gray-500 dark:text-gray-400">' + provider.email + '</div>' : '';
                 const assignedAtLabel = formatAssignedAt(provider.assigned_at);
                 const assignedAt = assignedAtLabel ? '<div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Assigned ' + assignedAtLabel + '</div>' : '';

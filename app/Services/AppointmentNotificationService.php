@@ -175,7 +175,7 @@ class AppointmentNotificationService
         $builder = $model->builder();
 
         $row = $builder
-            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, s.name as service_name, u.name as provider_name', false)
+            ->select('xs_appointments.*, c.first_name as customer_first_name, c.last_name as customer_last_name, c.email as customer_email, c.phone as customer_phone, s.name as service_name, s.duration_min as service_duration, u.name as provider_name', false)
             ->join('xs_customers c', 'c.id = xs_appointments.customer_id', 'left')
             ->join('xs_services s', 's.id = xs_appointments.service_id', 'left')
             ->join('xs_users u', 'u.id = xs_appointments.provider_id', 'left')
@@ -187,55 +187,78 @@ class AppointmentNotificationService
     }
 
     /**
-     * Phase 2: placeholder content only.
-     * Later phases should use message_templates + localization.
-     *
      * @param array<string,mixed> $appt
      * @return array{0:string,1:string}
      */
     private function buildEmailMessage(string $eventType, array $appt): array
     {
+        $bookingLinkService = new BookingLinkService();
+        $templateSvc = new NotificationTemplateService();
+
         $customerName = trim((string) ($appt['customer_first_name'] ?? '') . ' ' . (string) ($appt['customer_last_name'] ?? ''));
+        if ($customerName === '') {
+            $customerName = trim((string) ($appt['customer_name'] ?? ''));
+        }
         if ($customerName === '') {
             $customerName = 'Customer';
         }
 
-        $providerName = (string) ($appt['provider_name'] ?? 'Provider');
-        $serviceName = (string) ($appt['service_name'] ?? 'Service');
-        // DB stores UTC — convert to local time for customer-facing notification
-        $start = !empty($appt['start_at'])
-            ? TimezoneService::toDisplay($appt['start_at'])
-            : '';
-
-        $subjectMap = [
-            'appointment_pending' => 'Appointment Pending',
-            'appointment_confirmed' => 'Appointment Confirmed',
-            'appointment_reminder' => 'Appointment Reminder',
-            'appointment_cancelled' => 'Appointment Cancelled',
-        ];
-        $subject = $subjectMap[$eventType] ?? 'Appointment Update';
-
-        $lines = [];
-        $lines[] = "Hi {$customerName},";
-        $lines[] = '';
-
-        if ($eventType === 'appointment_cancelled') {
-            $lines[] = "Your appointment has been cancelled.";
-        } elseif ($eventType === 'appointment_pending') {
-            $lines[] = "Your appointment request has been received and is pending confirmation.";
-        } elseif ($eventType === 'appointment_reminder') {
-            $lines[] = "This is a reminder for your upcoming appointment.";
-        } else {
-            $lines[] = "Your appointment is confirmed.";
+        $displayTimezone = TimezoneService::businessTimezone();
+        $appointmentRef = (string) ($appt['hash'] ?? '');
+        if ($appointmentRef === '') {
+            $appointmentRef = (string) ($appt['id'] ?? '');
         }
 
-        $lines[] = '';
-        $lines[] = "Provider: {$providerName}";
-        $lines[] = "Service: {$serviceName}";
-        $lines[] = "When: {$start}";
-        $lines[] = '';
-        $lines[] = '— WebScheduler';
+        $bookedTimestamp = '';
+        if (!empty($appt['created_at'])) {
+            $bookedTimestamp = TimezoneService::toDisplay((string) $appt['created_at'], $displayTimezone);
+        }
 
-        return [$subject, implode("\n", $lines)];
+        $bookedVia = (string) ($appt['booking_channel'] ?? 'web');
+        if ($bookedVia === 'public') {
+            $bookedVia = 'Web';
+        } elseif ($bookedVia === 'internal') {
+            $bookedVia = 'Admin';
+        }
+
+        $templateData = [
+            'appointment_id' => (int) ($appt['id'] ?? 0),
+            'booking_id' => (string) ($appt['id'] ?? ''),
+            'customer_name' => $customerName,
+            'customer_email' => (string) ($appt['customer_email'] ?? ''),
+            'customer_phone' => (string) ($appt['customer_phone'] ?? ''),
+            'service_name' => (string) ($appt['service_name'] ?? 'Service'),
+            'service_duration' => (string) ($appt['service_duration'] ?? ''),
+            'provider_name' => (string) ($appt['provider_name'] ?? 'Provider'),
+            'start_datetime' => !empty($appt['start_at'])
+                ? TimezoneService::toDisplay((string) $appt['start_at'], $displayTimezone)
+                : '',
+            'display_timezone' => $displayTimezone,
+            'reschedule_link' => $bookingLinkService->manageReferenceUrl((string) ($appt['hash'] ?? ''), (string) ($appt['public_token'] ?? '')),
+            'booking_url' => $bookingLinkService->bookingHomeUrl(),
+            'appointment_hash' => (string) ($appt['hash'] ?? ''),
+            'internal_view_link' => $appointmentRef !== '' ? base_url('appointments?open=' . rawurlencode($appointmentRef)) : base_url('appointments'),
+            'internal_edit_link' => $appointmentRef !== '' ? base_url('appointments/edit/' . $appointmentRef) : base_url('appointments'),
+            'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
+            'booked_via' => $bookedVia,
+            'booked_timestamp' => $bookedTimestamp,
+            'location_name' => (string) ($appt['location_name'] ?? ''),
+            'location_address' => (string) ($appt['location_address'] ?? ''),
+            'location_contact' => (string) ($appt['location_contact'] ?? ''),
+        ];
+
+        $rendered = $templateSvc->render($eventType, 'email', $templateData, 'customer');
+
+        $subject = trim((string) ($rendered['subject'] ?? ''));
+        $body = trim((string) ($rendered['body'] ?? ''));
+
+        if ($subject === '') {
+            $subject = 'Appointment Update';
+        }
+        if ($body === '') {
+            $body = "Your appointment has been updated.\n\n— WebScheduler";
+        }
+
+        return [$subject, $body];
     }
 }

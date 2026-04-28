@@ -3,6 +3,7 @@ import { normalizeLocalPhoneForCountry } from '../../utils/phone-country-selecto
 import { getBrowserTimezone, getBrowserTimezoneHeaders, getTimezoneOffsetForTimezone } from '../../core/datetime.js';
 import { syncCsrfIntoForm, rotateCsrfFromResponse } from '../../core/csrf.js';
 import { apiRequest } from '../../core/api.js';
+import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
 
 function getAppointmentForm() {
     return document.querySelector('[data-appointment-form="true"]')
@@ -286,8 +287,8 @@ function initCustomerModeControls(form) {
     const selectCustomer = (customer) => {
         selectedCustomer = customer;
 
-        const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown Customer';
-        const initial = fullName.substring(0, 1).toUpperCase();
+        const fullName = getDisplayName(customer, 'Unknown Customer');
+        const initial = getAvatarInitials(fullName, { defaultInitial: 'C' });
         const email = customer.email || '';
         const phone = customer.phone || customer.phone_number || '';
 
@@ -329,8 +330,8 @@ function initCustomerModeControls(form) {
         }
 
         const resultsHTML = customers.slice(0, 5).map((customer) => {
-            const fullName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Unknown Customer';
-            const initial = fullName.substring(0, 1).toUpperCase();
+            const fullName = getDisplayName(customer, 'Unknown Customer');
+            const initial = getAvatarInitials(fullName, { defaultInitial: 'C' });
             const email = customer.email || '';
             const phone = customer.phone || customer.phone_number || '';
             const contactInfo = [email, phone].filter(Boolean).join(' • ');

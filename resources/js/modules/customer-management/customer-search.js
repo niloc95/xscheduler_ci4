@@ -2,6 +2,7 @@ import { extractJSON } from '../search/global-search.js';
 import { escapeHtml } from '../../utils/html.js';
 import { getBaseUrl } from '../../utils/url-helpers.js';
 import { apiRequest } from '../../core/api.js';
+import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
 
 function formatDate(dateString) {
     if (!dateString) {
@@ -71,8 +72,8 @@ function renderCustomers(tableBody, customers) {
     let html = '';
 
     customers.forEach((customer) => {
-        const initial = (customer.first_name || customer.name || 'C').charAt(0).toUpperCase();
-        const fullName = customer.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+        const fullName = getDisplayName(customer, 'Unknown Customer');
+        const initial = getAvatarInitials(fullName, { defaultInitial: 'C' });
         const email = customer.email || '—';
         const phone = customer.phone || '—';
         const address = customer.address || '';

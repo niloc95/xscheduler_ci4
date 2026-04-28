@@ -311,7 +311,7 @@ function bootstrapPublicBooking() {
 
   function handleProviderChange(value, target = 'booking') {
     // Auto-resolve location: if provider has exactly 1 location, pre-select it
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(value));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(value));
     const locations = provider?.locations ?? [];
     const autoLocationId = locations.length === 1 ? String(locations[0].id) : '';
 
@@ -357,7 +357,7 @@ function bootstrapPublicBooking() {
    */
   function handleLocationChange(value, target = 'booking') {
     const draft = getDraft(target);
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(draft.providerId));
     const loc = (provider?.locations ?? []).find(l => String(l.id) === String(value)) ?? null;
 
     updateDraft(target, prev => ({
@@ -387,7 +387,8 @@ function bootstrapPublicBooking() {
     }
 
     try {
-      const { response, payload } = await apiRequest(`${appBase}/api/v1/providers/${providerId}/services`, {
+      const encodedProviderSlug = encodeURIComponent(String(providerId));
+      const { response, payload } = await apiRequest(`${appBase}/api/v1/providers/slug/${encodedProviderSlug}/services`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -435,7 +436,7 @@ function bootstrapPublicBooking() {
     // Resolve location: if user explicitly selected one, use it; otherwise auto-resolve from date
     let loc;
     if (draft.selectedLocationId) {
-      const provider = (context.providers ?? []).find(p => String(p.id) === String(draft.providerId));
+      const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(draft.providerId));
       loc = (provider?.locations ?? []).find(l => String(l.id) === String(draft.selectedLocationId)) ?? null;
     } else {
       loc = resolveLocationForDate(draft.providerId, value);
@@ -675,7 +676,7 @@ function bootstrapPublicBooking() {
 
     updateManageForm(prev => ({
       ...prev,
-      providerId: String(appointment.provider_id ?? ''),
+      providerId: String(appointment.provider?.slug ?? appointment.provider_id ?? ''),
       serviceId: String(appointment.service_id ?? ''),
       appointmentDate,
       selectedSlot: appointment.start ? { start: appointment.start, end: appointment.end, label: slotLabel } : null,
@@ -861,7 +862,7 @@ function bootstrapPublicBooking() {
     }));
 
     const query = new URLSearchParams({
-      provider_id: draft.providerId,
+      provider_slug: draft.providerId,
       service_id: draft.serviceId,
       days: '60',
     });
@@ -949,7 +950,7 @@ function bootstrapPublicBooking() {
     updateDraft(target, prev => ({ ...prev, slotsLoading: true, slotsError: '', slots: [] }));
 
     const query = new URLSearchParams({
-      provider_id: draft.providerId,
+      provider_slug: draft.providerId,
       service_id: draft.serviceId,
       date: draft.appointmentDate,
     });
@@ -991,7 +992,7 @@ function bootstrapPublicBooking() {
 
   function buildPayload(draft, extras = {}) {
     const payload = {
-      provider_id: Number(draft.providerId),
+      provider_slug: String(draft.providerId || ''),
       service_id: Number(draft.serviceId),
       slot_start: draft.selectedSlot?.start ?? null,
       notes: draft.form.notes ?? '',
@@ -1291,8 +1292,8 @@ function bootstrapPublicBooking() {
 
   function renderSelections(currentState, ctx) {
     const providerOptions = (ctx.providers ?? []).map(provider => {
-      const optionValue = escapeHtml(String(provider.id ?? ''));
-      const isSelected = String(provider.id) === String(currentState.providerId) ? 'selected' : '';
+      const optionValue = escapeHtml(String(provider.slug ?? ''));
+      const isSelected = String(provider.slug ?? '') === String(currentState.providerId) ? 'selected' : '';
       return `
         <option value="${optionValue}" ${isSelected}>
           ${escapeHtml(provider.name ?? provider.displayName ?? 'Provider')}
@@ -1319,7 +1320,7 @@ function bootstrapPublicBooking() {
       : '';
 
     // Build location selector (only when the selected provider has 2+ locations)
-    const selectedProvider = (ctx.providers ?? []).find(p => String(p.id) === String(currentState.providerId));
+    const selectedProvider = (ctx.providers ?? []).find(p => String(p.slug ?? '') === String(currentState.providerId));
     const providerLocations = selectedProvider?.locations ?? [];
     const showLocationSelector = providerLocations.length > 1;
     const locationOptions = providerLocations.map(loc => {
@@ -1342,6 +1343,8 @@ function bootstrapPublicBooking() {
       </div>
     ` : '';
 
+    const providerProfileCard = renderProviderProfileCard(selectedProvider);
+
     return `
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block text-sm font-medium text-slate-700">
@@ -1363,9 +1366,57 @@ function bootstrapPublicBooking() {
         </label>
       </div>
       ${locationSelector}
+      ${providerProfileCard}
       <div class="grid gap-4 md:grid-cols-2">
         ${renderDatePickerField(currentState)}
         ${renderSchedulingTips()}
+      </div>
+    `;
+  }
+
+  function renderProviderProfileCard(provider) {
+    if (!provider) {
+      return '';
+    }
+
+    const title = (provider.title || '').trim();
+    const bio = (provider.bio || '').trim();
+    const education = (provider.education || '').trim();
+    const qualifications = (provider.qualifications || '').trim();
+    const imageUrl = (provider.profile_image_url || '').trim();
+
+    if (!title && !bio && !education && !qualifications && !imageUrl) {
+      return '';
+    }
+
+    const titleHtml = title
+      ? `<p class="text-sm font-medium text-slate-700">${escapeHtml(title)}</p>`
+      : '';
+    const bioHtml = bio
+      ? `<p class="mt-2 text-sm text-slate-600">${escapeHtml(bio)}</p>`
+      : '';
+    const educationHtml = education
+      ? `<p class="mt-2 text-xs text-slate-500"><span class="font-semibold text-slate-600">Education:</span> ${escapeHtml(education)}</p>`
+      : '';
+    const qualificationsHtml = qualifications
+      ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Qualifications:</span> ${escapeHtml(qualifications)}</p>`
+      : '';
+    const imageHtml = imageUrl
+      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-16 w-16 rounded-full object-cover border border-slate-200">`
+      : '';
+
+    return `
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex items-start gap-3">
+          ${imageHtml}
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-slate-900">${escapeHtml(provider.name || 'Provider')}</p>
+            ${titleHtml}
+            ${bioHtml}
+            ${educationHtml}
+            ${qualificationsHtml}
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1759,7 +1810,10 @@ function bootstrapPublicBooking() {
     if (appointment?.provider?.name) {
       return appointment.provider.name;
     }
-    const provider = (ctx.providers ?? []).find(item => Number(item.id) === Number(appointment?.provider_id));
+    const providerSlug = appointment?.provider?.slug ?? appointment?.provider_slug ?? null;
+    const provider = providerSlug
+      ? (ctx.providers ?? []).find(item => String(item.slug ?? '') === String(providerSlug))
+      : null;
     return provider?.name ?? provider?.displayName ?? 'Assigned provider';
   }
 
@@ -1833,7 +1887,7 @@ function bootstrapPublicBooking() {
     // If user has a selected location, use that; otherwise auto-resolve from day-of-week
     let resolvedLocation;
     if (prevState.selectedLocationId) {
-      const provider = (context.providers ?? []).find(p => String(p.id) === String(prevState.providerId));
+      const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(prevState.providerId));
       resolvedLocation = (provider?.locations ?? []).find(l => String(l.id) === String(prevState.selectedLocationId)) ?? null;
     } else {
       resolvedLocation = resolveLocationForDate(prevState.providerId, appointmentDate);
@@ -1882,7 +1936,7 @@ function bootstrapPublicBooking() {
     if (!providerId || !dateStr) {
       return null;
     }
-    const provider = (context.providers ?? []).find(p => String(p.id) === String(providerId));
+    const provider = (context.providers ?? []).find(p => String(p.slug ?? '') === String(providerId));
     if (!provider?.locations?.length) {
       return null;
     }

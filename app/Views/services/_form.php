@@ -17,6 +17,13 @@ $serviceDuration = old('duration_min', $service['duration_min'] ?? '');
 $servicePrice = old('price', $service['price'] ?? '');
 $serviceCategoryId = old('category_id', $service['category_id'] ?? '');
 $serviceDescription = old('description', $service['description'] ?? '');
+$serviceSlug = old('slug', $service['slug'] ?? '');
+
+$incomingUnlock = old('unlock_slug');
+$canUnlockSlug = isset($canUnlockSlug) ? (bool) $canUnlockSlug : false;
+$slugLocked = isset($slugLocked) ? (bool) $slugLocked : (!empty($service) && trim((string) ($service['slug'] ?? '')) !== '');
+$unlockRequested = $canUnlockSlug && ((string) $incomingUnlock === '1');
+$slugReadOnly = $slugLocked && !$unlockRequested;
 
 $oldActive = old('active');
 if ($oldActive !== null) {
@@ -33,6 +40,35 @@ if ($oldActive !== null) {
     <div>
         <label class="form-label">Duration (min)</label>
         <input type="number" name="duration_min" value="<?= esc((string) $serviceDuration) ?>" min="1" required class="form-input" />
+    </div>
+    <div>
+        <label class="form-label">Slug</label>
+        <input type="text"
+               name="slug"
+               value="<?= esc((string) $serviceSlug) ?>"
+               pattern="[a-z0-9-]+"
+               placeholder="e.g. haircut-deluxe"
+               class="form-input"
+               <?= $slugReadOnly ? 'readonly data-slug-input="locked"' : 'data-slug-input="editable"' ?> />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Lowercase letters, numbers, and hyphens only.
+        </p>
+        <?php if ($slugLocked && !$canUnlockSlug): ?>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Slug is locked after publish.
+            </p>
+        <?php endif; ?>
+        <?php if ($slugLocked && $canUnlockSlug): ?>
+            <label class="mt-2 inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                <input type="checkbox"
+                       name="unlock_slug"
+                       value="1"
+                       data-slug-unlock
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                       <?= $unlockRequested ? 'checked' : '' ?> />
+                Unlock slug editing for this update (admin only)
+            </label>
+        <?php endif; ?>
     </div>
     <div>
         <label class="form-label">Price</label>
@@ -117,3 +153,22 @@ if ($oldActive !== null) {
         <label for="activeCheckbox" class="text-sm text-gray-700 dark:text-gray-300">Active</label>
     </div>
 </div>
+
+<?php if ($slugLocked && $canUnlockSlug): ?>
+<script>
+    (function () {
+        const unlock = document.querySelector('[data-slug-unlock]');
+        const slugInput = document.querySelector('input[name="slug"]');
+        if (!unlock || !slugInput) {
+            return;
+        }
+
+        const refresh = function () {
+            slugInput.readOnly = !unlock.checked;
+        };
+
+        unlock.addEventListener('change', refresh);
+        refresh();
+    })();
+</script>
+<?php endif; ?>

@@ -59,10 +59,10 @@ function createInitialFormState(ctx) {
 }
 
 export function createBookingDraft(ctx, defaultDate) {
-  const providerId = ctx.providers?.[0]?.id?.toString() ?? '';
+  const providerId = ctx.providers?.[0]?.slug?.toString() ?? '';
   const serviceId = ctx.services?.[0]?.id?.toString() ?? '';
 
-  const firstProvider = (ctx.providers ?? []).find((provider) => String(provider.id) === providerId);
+  const firstProvider = (ctx.providers ?? []).find((provider) => String(provider.slug ?? '') === providerId);
   const providerLocations = firstProvider?.locations ?? [];
   const autoLocationId = providerLocations.length === 1 ? String(providerLocations[0].id) : '';
 

@@ -168,17 +168,18 @@ class SettingModel extends BaseModel
 
     private function hasUpdatedByColumn(): bool
     {
-        if (self::$hasUpdatedByColumn !== null) {
-            return self::$hasUpdatedByColumn;
-        }
-
         try {
-            self::$hasUpdatedByColumn = (bool) $this->db->fieldExists('updated_by', $this->table);
-        } catch (\Throwable $e) {
-            self::$hasUpdatedByColumn = false;
-        }
+            $database = $this->db->getDatabase();
+            $tableName = $this->table;
+            $query = $this->db->query(
+                'SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ? LIMIT 1',
+                [$database, $tableName, 'updated_by']
+            );
 
-        return self::$hasUpdatedByColumn;
+            return $query->getNumRows() > 0;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     private function encodeJsonValue($val): string

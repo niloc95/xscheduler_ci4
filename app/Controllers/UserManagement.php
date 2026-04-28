@@ -209,6 +209,11 @@ class UserManagement extends BaseController
             'email' => $this->request->getPost('email'),
             'phone' => $this->request->getPost('phone'),
             'phone_country_code' => $this->request->getPost('phone_country_code'),
+            'title' => $this->request->getPost('title'),
+            'bio' => $this->request->getPost('bio'),
+            'education' => $this->request->getPost('education'),
+            'qualifications' => $this->request->getPost('qualifications'),
+            'slug' => $this->request->getPost('slug'),
             'roles' => $this->request->getPost('roles') ?? [],
             'role' => $this->request->getPost('role'),
             'password' => $this->request->getPost('password'),
@@ -335,6 +340,11 @@ class UserManagement extends BaseController
             'email' => $this->request->getPost('email'),
             'phone' => $this->request->getPost('phone'),
             'phone_country_code' => $this->request->getPost('phone_country_code'),
+            'title' => $this->request->getPost('title'),
+            'bio' => $this->request->getPost('bio'),
+            'education' => $this->request->getPost('education'),
+            'qualifications' => $this->request->getPost('qualifications'),
+            'slug' => $this->request->getPost('slug'),
             'is_active' => $this->request->getPost('is_active'),
             'notify_on_appointments' => $this->request->getPost('notify_on_appointments'),
             'password' => $this->request->getPost('password'),
@@ -342,6 +352,8 @@ class UserManagement extends BaseController
             'role' => $this->request->getPost('role'),
             'color' => $this->request->getPost('color'),
             'schedule' => $this->request->getPost('schedule') ?? [],
+            'remove_profile_image' => $this->request->getPost('remove_profile_image'),
+            'profile_picture' => $this->request->getFile('profile_picture'),
         ]);
 
         if (!$result['success']) {

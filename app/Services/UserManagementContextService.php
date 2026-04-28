@@ -331,6 +331,11 @@ class UserManagementContextService
             'password' => 'required|min_length[8]',
             'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]',
+            'title' => 'permit_empty|max_length[100]',
+            'bio' => 'permit_empty|max_length[5000]',
+            'education' => 'permit_empty|max_length[5000]',
+            'qualifications' => 'permit_empty|max_length[5000]',
+            'slug' => 'permit_empty|alpha_dash|max_length[150]',
         ];
     }
 
@@ -340,6 +345,11 @@ class UserManagementContextService
             'name' => 'required|min_length[2]|max_length[255]',
             'email' => "required|valid_email|is_unique[xs_users.email,id,{$userId}]",
             'phone' => 'permit_empty|max_length[20]',
+            'title' => 'permit_empty|max_length[100]',
+            'bio' => 'permit_empty|max_length[5000]',
+            'education' => 'permit_empty|max_length[5000]',
+            'qualifications' => 'permit_empty|max_length[5000]',
+            'slug' => 'permit_empty|alpha_dash|max_length[150]',
         ];
 
         if ($includePasswordRules) {

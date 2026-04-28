@@ -34,6 +34,7 @@ import { initProfilePage } from './modules/profile/profile-page.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 import { initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
+import { getAvatarInitials, getDisplayName } from './utils/avatar.js';
 
 // Import appointment navigation module
 import { prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -65,6 +66,8 @@ window.initTimeSlotChart = initTimeSlotChart;
 window.initServiceDistributionChart = initServiceDistributionChart;
 
 window.initProviderPicker = window.initProviderPicker || initProviderPicker;
+window.xsGetAvatarInitials = window.xsGetAvatarInitials || getAvatarInitials;
+window.xsGetDisplayName = window.xsGetDisplayName || getDisplayName;
 
 export { 
     initRevenueTrendChart, 

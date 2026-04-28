@@ -17,6 +17,7 @@ final class AppointmentModelIntegrationTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     protected $namespace = 'App';
+    protected $refresh = true;
     protected AppointmentModel $model;
     private array $providerIds = [];
 

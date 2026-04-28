@@ -118,7 +118,7 @@ class NotificationSettingsService
 
             $options[] = [
                 'id' => $optionBusinessId,
-                'label' => (string) ($option['label'] ?? ('Business ' . $optionBusinessId)),
+                'label' => (string) ($option['label'] ?? 'Current Business'),
                 'is_active' => $optionBusinessId === $businessId,
                 'url' => $this->buildUrl('settings', ['business_id' => $optionBusinessId], 'notifications'),
             ];
@@ -126,7 +126,7 @@ class NotificationSettingsService
 
         return [
             'title' => 'Business Context',
-            'description' => 'Use the same business query parameter when you jump from Settings into delivery activity, so the Notifications page opens on the matching business immediately.',
+            'description' => 'Notification settings for your business. Use the link below to review delivery activity.',
             'options' => $options,
             'action' => [
                 'href' => $this->buildUrl('notifications', ['tab' => 'delivery-logs', 'business_id' => $businessId]),

@@ -154,14 +154,47 @@ class Providers extends BaseApiController
             return $this->error(404, 'Provider not found');
         }
 
+        return $this->buildServicesResponseForProvider($provider);
+    }
+
+    /**
+     * GET /api/v1/providers/slug/{slug}/services
+     * Fetch services offered by a provider resolved by public slug.
+     */
+    public function servicesBySlug($slug = null)
+    {
+        $slug = trim((string) $slug);
+        if ($slug === '') {
+            return $this->error(400, 'Provider slug is required');
+        }
+
+        $userModel = new UserModel();
+        $provider = $userModel->where('slug', $slug)->first();
+        $providerId = (int) ($provider['id'] ?? 0);
+
+        if ($providerId <= 0 || !in_array('provider', $userModel->getRolesForUser($providerId), true)) {
+            return $this->error(404, 'Provider not found');
+        }
+
+        return $this->buildServicesResponseForProvider($provider);
+    }
+
+    private function buildServicesResponseForProvider(array $provider)
+    {
+        $providerId = (int) ($provider['id'] ?? 0);
+        if ($providerId <= 0) {
+            return $this->error(404, 'Provider not found');
+        }
+
         $serviceModel = new ServiceModel();
-        $services = $serviceModel->getActiveByProvider($id);
+        $services = $serviceModel->getActiveByProvider($providerId);
 
         // Format response
         $items = array_map(function ($s) {
             return [
                 'id' => (int) $s['id'],
                 'name' => $s['name'],
+                'slug' => $s['slug'] ?? null,
                 'description' => $s['description'] ?? null,
                 'duration' => (int) $s['duration_min'],
                 'durationMin' => (int) $s['duration_min'], // alias
@@ -173,7 +206,8 @@ class Providers extends BaseApiController
         }, $services);
 
         return $this->ok($items, [
-            'providerId' => $id,
+            'providerId' => $providerId,
+            'providerSlug' => $provider['slug'] ?? null,
             'providerName' => $provider['name'] ?? ($provider['first_name'] ?? '') . ' ' . ($provider['last_name'] ?? ''),
             'total' => count($items),
         ]);

@@ -77,16 +77,35 @@ class CreateUserRolesTable extends MigrationBase
             ->getResultArray();
 
         if (!empty($users)) {
-            $rows = array_map(
-                static fn(array $u): array => [
+            $existingRows = $this->db->table($userRolesTable)
+                ->select('user_id, role')
+                ->whereIn('role', ['admin', 'provider', 'staff'])
+                ->get()
+                ->getResultArray();
+
+            $existingPairs = [];
+            foreach ($existingRows as $row) {
+                $existingPairs[(int) $row['user_id'] . '|' . (string) $row['role']] = true;
+            }
+
+            $rows = [];
+            foreach ($users as $u) {
+                $key = (int) $u['id'] . '|' . (string) $u['role'];
+                if (isset($existingPairs[$key])) {
+                    continue;
+                }
+
+                $rows[] = [
                     'user_id'    => (int) $u['id'],
                     'role'       => $u['role'],
                     'created_at' => $now,
-                ],
-                $users
-            );
-            $this->db->table($userRolesTable)->insertBatch($rows);
-            log_message('info', '[CreateUserRolesTable] Backfilled ' . count($rows) . ' user-role rows from xs_users.');
+                ];
+            }
+
+            if (!empty($rows)) {
+                $this->db->table($userRolesTable)->insertBatch($rows);
+                log_message('info', '[CreateUserRolesTable] Backfilled ' . count($rows) . ' missing user-role rows from xs_users.');
+            }
         }
     }
 

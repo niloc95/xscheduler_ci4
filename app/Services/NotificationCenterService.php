@@ -210,7 +210,27 @@ class NotificationCenterService
     {
         helper('permissions');
 
-        return current_business_id();
+        // Resolve from session/user context only — GET params are intentionally
+        // excluded here so that stale ?business_id= query strings cannot inject
+        // a foreign business context into the Notifications surface.
+        $sessionUser = session()->get('user');
+        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
+
+        $candidates = [
+            session()->get('business_id'),
+            session()->get('active_business_id'),
+            $sessionUser['business_id'] ?? null,
+            $sessionUser['active_business_id'] ?? null,
+            $sessionUser['businessId'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        return \App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT;
     }
 
     /**
@@ -240,8 +260,8 @@ class NotificationCenterService
     ): array {
         $pageHeading = $notificationTab === 'delivery-logs' ? 'Delivery Logs' : 'Activity Feed';
         $pageDescription = $notificationTab === 'delivery-logs'
-            ? 'Audit recent delivery attempts, switch business context explicitly, and resend channel-specific notifications from one place.'
-            : 'Recent notification activity for the active business context, including queued retries and recent delivery outcomes.';
+            ? 'Audit recent delivery attempts and review channel-specific notification outcomes.'
+            : 'Recent notification activity, including queued retries and recent delivery outcomes.';
 
         $currentQuery = $notificationTab === 'delivery-logs' && $isAdmin
             ? $this->buildDeliveryLogQuery($businessId, $deliveryLogFilters)
@@ -258,8 +278,8 @@ class NotificationCenterService
             'deliveryLogsFormAction' => base_url('notifications'),
             'activityFilters' => $this->buildActivityFilterOptions($businessId, $feedFilter),
             'businessContext' => [
-                'title' => 'Business Context',
-                'description' => 'Switch business explicitly while keeping the current notifications surface in sync.',
+                'title' => 'Notification Activity',
+                'description' => 'Recent notification activity for your business, including queued retries and delivery outcomes.',
                 'options' => $this->buildBusinessContextOptions(
                     $businessId,
                     $businessOptions,
@@ -474,6 +494,7 @@ class NotificationCenterService
         $channel = (string) ($log['channel'] ?? '');
         $status = (string) ($log['status'] ?? '');
         $createdAt = (string) ($log['created_at'] ?? '');
+        $createdAtDisplay = $createdAt !== '' ? TimezoneService::toDisplay($createdAt) : '';
         $appointmentId = (int) ($log['appointment_id'] ?? 0);
         $customerName = trim((string) ($log['customer_first_name'] ?? '') . ' ' . (string) ($log['customer_last_name'] ?? ''));
 
@@ -493,6 +514,7 @@ class NotificationCenterService
             'provider' => (string) ($log['provider'] ?? ''),
             'error_message' => (string) ($log['error_message'] ?? ''),
             'created_at' => $createdAt,
+            'created_at_display' => $createdAtDisplay,
             'time_ago' => $createdAt !== '' ? $this->timeAgo($createdAt) : '',
             'appointment_context' => $this->buildDeliveryLogContext(
                 $customerName !== '' ? $customerName : 'Customer',
@@ -581,7 +603,16 @@ class NotificationCenterService
 
     private function timeAgo(string $datetime): string
     {
-        $time = strtotime($datetime);
+        // Database timestamps are stored in UTC. Parse explicitly as UTC so
+        // strtotime()-style assumptions about the PHP server's local timezone
+        // (e.g. Africa/Johannesburg = UTC+2) do not shift the result.
+        try {
+            $dt = new \DateTime($datetime, new \DateTimeZone('UTC'));
+            $time = $dt->getTimestamp();
+        } catch (\Throwable $e) {
+            $time = time();
+        }
+
         $diff = time() - $time;
 
         if ($diff < 60) {
@@ -600,7 +631,14 @@ class NotificationCenterService
             return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
         }
 
-        return date('M j, Y', $time);
+        // Render the fallback date label in the business/display timezone.
+        try {
+            $displayTz = new \DateTimeZone(TimezoneService::businessTimezone());
+            $dt->setTimezone($displayTz);
+            return $dt->format('M j, Y');
+        } catch (\Throwable $e) {
+            return date('M j, Y', $time);
+        }
     }
 
     /**
@@ -615,8 +653,17 @@ class NotificationCenterService
         $total = count($realNotifications);
         $today = count(array_filter($realNotifications, static function (array $notification): bool {
             $rawTime = (string) ($notification['raw_time'] ?? '');
-
-            return $rawTime !== '' && date('Y-m-d', strtotime($rawTime)) === date('Y-m-d');
+            if ($rawTime === '') {
+                return false;
+            }
+            try {
+                $displayTz = new \DateTimeZone(TimezoneService::businessTimezone());
+                $dt = new \DateTime($rawTime, new \DateTimeZone('UTC'));
+                $dt->setTimezone($displayTz);
+                return $dt->format('Y-m-d') === (new \DateTime('now', $displayTz))->format('Y-m-d');
+            } catch (\Throwable $e) {
+                return false;
+            }
         }));
 
         return [

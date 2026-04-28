@@ -60,23 +60,27 @@ namespace App\Controllers;
 use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\CategoryModel;
+use App\Services\BookingMetricsService;
 
 class Services extends BaseController
 {
     protected UserModel $userModel;
     protected ServiceModel $serviceModel;
     protected CategoryModel $categoryModel;
+    protected BookingMetricsService $bookingMetrics;
     private string $providerServicePivotTable;
 
     public function __construct(
         ?UserModel $userModel = null,
         ?ServiceModel $serviceModel = null,
-        ?CategoryModel $categoryModel = null
+        ?CategoryModel $categoryModel = null,
+        ?BookingMetricsService $bookingMetrics = null
     )
     {
         $this->userModel = $userModel ?? new UserModel();
         $this->serviceModel = $serviceModel ?? new ServiceModel();
         $this->categoryModel = $categoryModel ?? new CategoryModel();
+        $this->bookingMetrics = $bookingMetrics ?? new BookingMetricsService();
         $this->providerServicePivotTable = $this->serviceModel->db !== null
             ? $this->serviceModel->db->prefixTable('providers_services')
             : 'providers_services';
@@ -134,8 +138,17 @@ class Services extends BaseController
             'avg_price' => $stats['avg_price'] ?? 0,
         ];
 
+        // Pre-fetch per-service booking counts (all statuses)
+        $providerScope = has_role('admin') ? null : ((int)($currentUser['id'] ?? 0) ?: null);
+        try {
+            $bookingCountsByService = $this->bookingMetrics->getCountsByServiceId($providerScope);
+        } catch (\Throwable $e) {
+            log_message('error', 'Services: getCountsByServiceId failed — ' . $e->getMessage());
+            $bookingCountsByService = [];
+        }
+
         // Map services to keys used in the view without changing markup
-        $viewServices = array_map(function ($s) {
+        $viewServices = array_map(function ($s) use ($bookingCountsByService) {
             return [
                 'id' => (int)$s['id'],
                 'name' => $s['name'],
@@ -146,7 +159,7 @@ class Services extends BaseController
                 'price' => isset($s['price']) ? (float)$s['price'] : 0,
                 'provider' => ($s['provider_names'] ?? '') ?: '—',
                 'status' => ((int)($s['active'] ?? 1)) === 1 ? 'active' : 'inactive',
-                'bookings_count' => 0,
+                'bookings_count' => (int)($bookingCountsByService[(int)$s['id']] ?? 0),
             ];
         }, $services);
 
@@ -226,6 +239,8 @@ class Services extends BaseController
             'current_page' => 'services',
             'categories' => $categories,
             'providers' => $providers,
+            'slugLocked' => false,
+            'canUnlockSlug' => false,
             // Shared form contract
             'action_url' => site_url('services/store'),
             'data' => [],
@@ -271,6 +286,8 @@ class Services extends BaseController
             'categories' => $categories,
             'providers' => $providers,
             'linkedProviders' => $linkedProviders,
+            'slugLocked' => trim((string) ($service['slug'] ?? '')) !== '',
+            'canUnlockSlug' => has_role(['admin']),
             // Shared form contract
             'action_url' => site_url('services/update/' . (int)$serviceId),
             'data' => $service,
@@ -312,6 +329,7 @@ class Services extends BaseController
         }
 
         $serviceData = $this->buildServicePayload($input, true);
+        $serviceData['slug'] = $this->resolveServiceSlug($input['slug'] ?? null, $serviceData['name'] ?? '', null);
 
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service store - Prepared data: ' . json_encode($serviceData));
@@ -389,6 +407,23 @@ class Services extends BaseController
         }
         
         $serviceData = $this->buildServicePayload($input, false);
+
+        $existing = $this->serviceModel->find((int) $serviceId);
+        if (!$existing) {
+            return $this->response->setStatusCode(404)->setJSON(['error' => 'Service not found']);
+        }
+
+        $existingSlug = trim((string) ($existing['slug'] ?? ''));
+        $allowSlugUnlock = has_role(['admin']) && ((string) ($input['unlock_slug'] ?? '0') === '1');
+
+        if ($existingSlug !== '' && !$allowSlugUnlock) {
+            $serviceData['slug'] = $existingSlug;
+        } else {
+            $serviceData['slug'] = $this->resolveServiceSlug($input['slug'] ?? null, $serviceData['name'] ?? '', (int) $serviceId);
+        }
+
+        // Provide the current record ID so model uniqueness rules can exclude it.
+        $serviceData['id'] = (int) $serviceId;
 
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service update - Prepared data: ' . json_encode($serviceData));
@@ -481,6 +516,50 @@ class Services extends BaseController
             'category_id' => !empty($input['category_id']) ? (int) $input['category_id'] : null,
             'active' => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
         ];
+    }
+
+    private function resolveServiceSlug($requestedSlug, string $name, ?int $excludeServiceId): string
+    {
+        $base = trim((string) $requestedSlug);
+        if ($base === '') {
+            $base = $name;
+        }
+
+        $slug = $this->slugify($base);
+        if ($slug === '') {
+            $slug = 'service';
+        }
+
+        return $this->ensureUniqueServiceSlug($slug, $excludeServiceId);
+    }
+
+    private function slugify(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
+        return trim($value, '-');
+    }
+
+    private function ensureUniqueServiceSlug(string $baseSlug, ?int $excludeServiceId): string
+    {
+        $table = $this->serviceModel->db->prefixTable('services');
+        $candidate = $baseSlug;
+        $suffix = 2;
+
+        while (true) {
+            $builder = $this->serviceModel->db->table($table)->select('id')->where('slug', $candidate);
+            if ($excludeServiceId !== null) {
+                $builder->where('id !=', $excludeServiceId);
+            }
+
+            $exists = (bool) $builder->get()->getRowArray();
+            if (!$exists) {
+                return $candidate;
+            }
+
+            $candidate = $baseSlug . '-' . $suffix;
+            $suffix++;
+        }
     }
 
     private function normalizeProviderIds($providerIds): array

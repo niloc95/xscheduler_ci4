@@ -9,12 +9,11 @@ class UpdateUserRoles extends MigrationBase
     public function up()
     {
         $db = $this->db;
+        $usersTable = $db->prefixTable('users');
 
-        if (!$db->tableExists('users')) {
+        if (!$db->tableExists($usersTable)) {
             return;
         }
-
-        $usersTable = $db->prefixTable('users');
 
         // Update the users table to support new role structure (prefix-safe)
         $this->modifyEnumColumn('users', [
@@ -29,7 +28,7 @@ class UpdateUserRoles extends MigrationBase
         // Add additional user fields if they don't exist
         $newFields = [];
 
-        if (!$db->fieldExists('provider_id', 'users')) {
+        if (!$this->hasColumn($usersTable, 'provider_id')) {
             $newFields['provider_id'] = [
                 'type' => 'INT',
                 'constraint' => 11,
@@ -37,14 +36,14 @@ class UpdateUserRoles extends MigrationBase
             ];
         }
 
-        if (!$db->fieldExists('permissions', 'users')) {
+        if (!$this->hasColumn($usersTable, 'permissions')) {
             $newFields['permissions'] = [
                 'type' => 'TEXT',
                 'null' => true,
             ];
         }
 
-        if (!$db->fieldExists('is_active', 'users')) {
+        if (!$this->hasColumn($usersTable, 'is_active')) {
             $newFields['is_active'] = [
                 'type' => 'BOOLEAN',
                 'default' => true,
@@ -57,7 +56,7 @@ class UpdateUserRoles extends MigrationBase
         }
 
         // Add foreign key constraint for provider_id (staff belongs to provider) if it doesn't exist
-        $foreignKeys = $db->getForeignKeyData('users');
+        $foreignKeys = $db->getForeignKeyData($usersTable);
         $hasProviderFK = false;
 
         foreach ($foreignKeys as $fk) {
@@ -67,7 +66,7 @@ class UpdateUserRoles extends MigrationBase
             }
         }
 
-        if (!$hasProviderFK && $db->fieldExists('provider_id', 'users')) {
+        if (!$hasProviderFK && $this->hasColumn($usersTable, 'provider_id')) {
             try {
                 $this->mysqlOnly("ALTER TABLE `{$usersTable}` ADD CONSTRAINT `users_provider_fk` FOREIGN KEY (`provider_id`) REFERENCES `{$usersTable}`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
             } catch (\Exception $e) {
@@ -76,11 +75,11 @@ class UpdateUserRoles extends MigrationBase
             }
         }
 
-        if ($db->fieldExists('role', 'users')) {
+        if ($this->hasColumn($usersTable, 'role')) {
             $this->createIndexIfMissing('users', 'idx_users_role', ['role']);
         }
 
-        if ($db->fieldExists('is_active', 'users')) {
+        if ($this->hasColumn($usersTable, 'is_active')) {
             $this->createIndexIfMissing('users', 'idx_users_active', ['is_active']);
         }
     }
@@ -88,12 +87,11 @@ class UpdateUserRoles extends MigrationBase
     public function down()
     {
         $db = $this->db;
+        $usersTable = $db->prefixTable('users');
 
-        if (!$db->tableExists('users')) {
+        if (!$db->tableExists($usersTable)) {
             return;
         }
-
-        $usersTable = $db->prefixTable('users');
 
         // Remove foreign key if it exists
         try {
@@ -103,21 +101,21 @@ class UpdateUserRoles extends MigrationBase
         }
         
         // Remove added columns
-        if ($db->fieldExists('provider_id', 'users')) {
+        if ($this->hasColumn($usersTable, 'provider_id')) {
             try {
                 $this->forge->dropColumn('users', 'provider_id');
             } catch (\Throwable $e) {
                 // Column may already be absent on some refresh paths.
             }
         }
-        if ($db->fieldExists('permissions', 'users')) {
+        if ($this->hasColumn($usersTable, 'permissions')) {
             try {
                 $this->forge->dropColumn('users', 'permissions');
             } catch (\Throwable $e) {
                 // Column may already be absent on some refresh paths.
             }
         }
-        if ($db->fieldExists('is_active', 'users')) {
+        if ($this->hasColumn($usersTable, 'is_active')) {
             try {
                 $this->forge->dropColumn('users', 'is_active');
             } catch (\Throwable $e) {
@@ -133,6 +131,16 @@ class UpdateUserRoles extends MigrationBase
                 'default' => 'customer',
             ],
         ]);
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $query = $this->db->query(
+            'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$this->db->database, $table, $column]
+        );
+
+        return $query->getFirstRow() !== null;
     }
 
 }

@@ -370,7 +370,7 @@ $statusBadgeMap = [
                                 ?>
                                 <tr class="align-top">
                                     <td class="px-4 py-4 text-gray-700 dark:text-gray-300">
-                                        <div class="font-medium"><?= esc((string) ($row['created_at'] ?? '')) ?></div>
+                                        <div class="font-medium"><?= esc((string) ($row['created_at_display'] ?? $row['created_at'] ?? '')) ?></div>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400"><?= esc((string) ($row['time_ago'] ?? '')) ?></div>
                                     </td>
                                     <td class="px-4 py-4 text-gray-700 dark:text-gray-300">

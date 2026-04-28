@@ -322,7 +322,7 @@ $pageSubtitle = $isEditMode
                         </div>
                         <div id="selected_customer_display" class="hidden items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <div class="flex items-center gap-3">
-                                <div id="selected_customer_avatar" class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold text-sm">U</div>
+                                <div id="selected_customer_avatar" class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-semibold text-sm">C</div>
                                 <div>
                                     <p id="selected_customer_name" class="text-sm font-medium text-gray-900 dark:text-white"></p>
                                     <p id="selected_customer_email" class="text-xs text-gray-600 dark:text-gray-400"></p>

@@ -49,12 +49,19 @@
                 </thead>
                 <tbody id="users-table-body">
                 <?php if (!empty($users)): foreach ($users as $user): ?>
+                    <?php $rowAvatar = avatar_data($user, 'U'); ?>
                     <tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
-                                    <?= strtoupper(substr($user['name'] ?? 'U', 0, 1)) ?>
-                                </div>
+                                <?php if (!empty($rowAvatar['image_url'])): ?>
+                                    <img src="<?= esc($rowAvatar['image_url']) ?>"
+                                         alt="<?= esc($rowAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
+                                         class="w-10 h-10 rounded-full object-cover mr-3" />
+                                <?php else: ?>
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">
+                                        <?= esc($rowAvatar['initials']) ?>
+                                    </div>
+                                <?php endif; ?>
                                 <div>
                                     <div class="font-medium"><?= esc($user['name'] ?? 'Unknown') ?></div>
                                     <div class="text-gray-500 dark:text-gray-400 text-sm"><?= esc($user['email'] ?? '') ?></div>
@@ -261,6 +268,20 @@
         }
     }
 
+    function getAvatarInitials(name, fallback = 'U') {
+        const canonical = window.xsGetAvatarInitials;
+        if (typeof canonical === 'function') {
+            return canonical(name, fallback);
+        }
+
+        const raw = (name || '').trim();
+        if (!raw) {
+            return fallback;
+        }
+
+        return raw.substring(0, 2).toUpperCase();
+    }
+
     async function fetchCounts() {
         try {
             const response = await fetch(baseUrl('api/user-counts'));
@@ -285,6 +306,11 @@
         const isActive = user.is_active ?? true;
         const name = user.name || '-';
         const email = user.email || '-';
+        const avatarInitials = getAvatarInitials(name, 'U');
+        const avatarUrl = typeof user.profile_image_url === 'string' ? user.profile_image_url.trim() : '';
+        const avatarHtml = avatarUrl
+            ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(name)}" class="w-10 h-10 rounded-full object-cover mr-3" />`
+            : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${escapeHtml(avatarInitials)}</div>`;
         let assignmentsHtml = '<span class="text-gray-400 dark:text-gray-500 italic text-sm">None</span>';
 
         if (user.assignments) {
@@ -300,7 +326,7 @@
             : '';
 
         return `<tr class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">`
-            + `<td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm mr-3">${escapeHtml(name.substring(0, 1).toUpperCase())}</div><div><div class="font-medium">${escapeHtml(name)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${user.phone ? `<div class="text-gray-400 dark:text-gray-500 text-xs">${escapeHtml(user.phone)}</div>` : ''}</div></div></td>`
+            + `<td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center">${avatarHtml}<div><div class="font-medium">${escapeHtml(name)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${user.phone ? `<div class="text-gray-400 dark:text-gray-500 text-xs">${escapeHtml(user.phone)}</div>` : ''}</div></div></td>`
             + `<td class="px-6 py-4">${renderRoleBadges(user)}</td>`
             + `<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">${isActive ? 'Active' : 'Inactive'}</span></td>`
             + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${assignmentsHtml}</td>`

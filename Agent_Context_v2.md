@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.5
+version: 2.6
 status: Active hardening
-last_updated: 2026-04-23
+last_updated: 2026-04-28
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -347,6 +347,70 @@ Use document.documentElement.dataset.theme as canonical theme source.
 - `app/Views/profile/index.php` is SPA-safe and is initialized through `resources/js/modules/profile/profile-page.js` from `resources/js/app.js`.
 - Profile mutations must preserve session role context via `array_merge` and write audit-log events for `user_updated`, `password_changed`, `profile_photo_updated`, and `notification_preferences_updated`.
 - Provider and staff notification preferences edited from `/profile` must persist to `xs_users.notify_on_appointments`.
+
+### 6.8 Avatar System Contract (Owner Section)
+
+All avatar rendering — profile images and initials fallback — has a single source of truth on both PHP and JS sides.
+
+#### 6.8.1 PHP Helpers (`app/Helpers/app_helper.php`)
+
+Four canonical helpers, loaded via `helper('app')`:
+
+| Helper | Purpose |
+| --- | --- |
+| `avatar_initials(string $name, string $default = 'U'): string` | Derives 1-2 letter initials from a display name. Strips titles (Dr., Prof., Mr., Mrs., Ms., Rev.) and suffixes (MD, PhD, DDS, DO, RN, NP, PA, DVM, Jr., Sr., II, III, IV). Multi-word → first + last initial. Single-word → first 2 chars. Empty → `$default`. |
+| `avatar_display_name(array $user, string $fallback = 'User'): string` | Prefers `$user['name']`; falls back to `first_name` + `last_name` concatenation. |
+| `avatar_profile_image_url(array $user): ?string` | Resolves profile image URL. Paths starting with `assets/` map to `FCPATH`; paths starting with `uploads/` or `writable/` map to `WRITEPATH`. Returns `null` if no usable path. |
+| `avatar_data(array $user, string $defaultInitial = 'U'): array` | Returns `['imageUrl' => ?string, 'initials' => string, 'displayName' => string]`. Use this in views for image-first rendering with initials fallback. |
+
+`ProfilePageService::buildProfileImageUrl()` and `buildProfileInitials()` delegate to these helpers.
+
+#### 6.8.2 JS Utility (`resources/js/utils/avatar.js`)
+
+Single ESM module — import directly in other modules:
+
+```js
+import { getAvatarInitials, getDisplayName } from '../../utils/avatar.js';
+```
+
+| Export | Signature | Behaviour |
+| --- | --- | --- |
+| `getDisplayName(entity, fallback)` | `(object, string) → string` | Prefers `entity.name`; falls back to `first_name` + `last_name`. |
+| `getAvatarInitials(name, options)` | `(string, { defaultInitial? }) → string` | Same normalization rules as PHP: strip titles/suffixes, multi-word → first+last initial, single-word → first 2 chars. `options.defaultInitial` defaults to `'U'`. |
+
+For inline `<script>` blocks in PHP views (which cannot use ESM imports), use the globals exposed by `resources/js/app.js`:
+
+```js
+window.xsGetAvatarInitials(name, defaultInitial)
+window.xsGetDisplayName(entity, fallback)
+```
+
+#### 6.8.3 Canonical Default Initials by Context
+
+| Context | Default |
+| --- | --- |
+| User / staff / header | `'U'` |
+| Customer | `'C'` |
+| Staff assignment widget | `'S'` |
+| Provider assignment widget | `'P'` |
+| Scheduler provider chip | `'?'` |
+
+#### 6.8.4 Covered Surfaces
+
+- `app/Views/layouts/app.php` — header user avatar (image-first via `avatar_data()`)
+- `app/Views/user-management/index.php` — PHP rows + JS `userRow()` via `window.xsGetAvatarInitials`
+- `app/Views/customer-management/index.php` — `avatar_data()` with `defaultInitial: 'C'`
+- `app/Views/customer-management/history.php` — large customer header avatar
+- `app/Views/appointments/form.php` — customer avatar placeholder (`'C'`)
+- `app/Views/user-management/components/provider-staff.php` — server PHP + JS `renderStaff()` widget
+- `app/Views/user-management/components/staff-providers.php` — server PHP + JS `renderProviders()` widget
+- `resources/js/modules/scheduler/appointment-colors.js` — `getProviderInitials()` delegates to `getAvatarInitials`
+- `resources/js/modules/customer-management/customer-search.js`
+- `resources/js/modules/appointments/appointments-form.js`
+
+#### 6.8.5 Do Not Duplicate
+
+Do not reimplement initials logic in any view, controller, or JS module. Always call the shared helper. A one-letter initial in a completed surface is a regression against this contract.
 
 ## 7) Backend Service Boundaries
 
@@ -1423,6 +1487,7 @@ Each high-risk contract has one owner section in this file.
 
 | Contract | Owner Section | Reference-Only Sections |
 | --- | --- | --- |
+| Avatar initials and image rendering | 6.8) Avatar System Contract | 7) (ProfilePageService), 14) |
 | RBAC role resolution | 4) Authentication and Authorization Contract | 5), 9), 14) |
 | Session write merge rule | 4.5) Session Write Contract | 9), 14) |
 | API envelope and errors | 3.4) API Envelope Contract | 5), 6) |
@@ -1589,6 +1654,7 @@ Status legend: `done`, `in_progress`, `queued`.
 | 21 | Appointment customer-search payload contract | done | Appointment-form search now accepts parsed JSON payloads from `resources/js/core/api.js`, and shared `extractJSON()` accepts object payloads so sibling search surfaces do not fail on `.match()` calls. |
 | 22 | Business context resolver for notification services | done | Added `current_business_id()` to `permissions_helper.php`. `NotificationCenterService` and `NotificationSettingsService` now resolve scope via `resolveBusinessId()` instead of `NotificationCatalog::BUSINESS_ID_DEFAULT`. Full resolver contract documented in §7.4. |
 | 23 | Reminder queue metadata and stale-reminder cancellation | done | Added `reminder_offset_minutes` and `schedule_fingerprint` columns to `xs_notification_queue` (migration `2026-04-21-150000`). `NotificationQueueService` writes fingerprint on enqueue; `NotificationQueueDispatcher` cancels reminder rows whose fingerprint no longer matches the live appointment, and resolves internal recipients via `resolveInternalRecipientUser()`. |
+| 24 | Unified avatar / initials system | done | Single PHP source of truth (`avatar_initials()`, `avatar_display_name()`, `avatar_profile_image_url()`, `avatar_data()`) in `app/Helpers/app_helper.php`. Single JS source of truth in `resources/js/utils/avatar.js` (`getAvatarInitials`, `getDisplayName`). Globals `window.xsGetAvatarInitials` / `window.xsGetDisplayName` exposed from `app.js` for inline PHP-view scripts. All avatar surfaces updated (header, user list, customer list, customer history, appointments form, provider-staff widget, staff-providers widget, scheduler). Title/suffix stripping and two-letter fallback enforced consistently. Parity tests: `tests/frontend/avatar-utils.test.js` (6 tests) and `tests/unit/Helpers/AvatarHelperTest.php` (3 tests, 12 assertions). Full contract in §6.8. |
 
 ## 18) Audit Progress Board
 
@@ -1602,6 +1668,7 @@ Status legend: `done`, `in_progress`, `queued`.
 - `current_business_id()` helper added to `permissions_helper.php`; `NotificationCenterService` and `NotificationSettingsService` switched off hardcoded constant — business context resolver documented in §7.4 (17.4 item 22).
 - Reminder queue metadata (`reminder_offset_minutes`, `schedule_fingerprint`) added to `xs_notification_queue`; stale-reminder cancellation logic in `NotificationQueueDispatcher` — schema updated in §12.3, queue fields in §11.5 (17.4 item 23).
 - Two new resolver-focused unit tests passing: `testResolveBusinessIdUsesSessionBusinessContext` (NotificationCenterServiceTest) and `testNotificationSettingsServiceResolvesBusinessIdFromSessionContext` (SettingsBoundaryServicesTest).
+- Unified avatar/initials system implemented across all PHP views and JS modules; single PHP helper and single JS module replace all ad-hoc initials logic. Title/suffix stripping and two-letter fallback enforced consistently. Parity tests added for both PHP and JS layers. Full contract in §6.8 (17.4 item 24).
 
 ### 18.2 Remaining Debt Outside 14-19
 
