@@ -46,6 +46,10 @@ class PhoneNumberService
             if ($digits === null || $digits === '' || $digits[0] === '0') {
                 return null;
             }
+            // E.164: 10–15 digits after the '+' for stricter real-world validity
+            if (strlen($digits) < 10 || strlen($digits) > 15) {
+                return null;
+            }
             return '+' . substr($digits, 0, 15);
         }
 
@@ -63,10 +67,17 @@ class PhoneNumberService
         }
 
         if (str_starts_with($digits, $countryDigits)) {
-            return '+' . substr($digits, 0, 15);
+            $synthesized = substr($digits, 0, 15);
+        } else {
+            $synthesized = substr($countryDigits . $digitsNoLeadingZero, 0, 15);
         }
 
-        return '+' . substr($countryDigits . $digitsNoLeadingZero, 0, 15);
+        // Minimum 10 digits after the leading '+', maximum 15 (E.164)
+        if (strlen($synthesized) < 10 || strlen($synthesized) > 15) {
+            return null;
+        }
+
+        return '+' . $synthesized;
     }
 
     public function normalizeCountryCode(?string $countryCode): ?string

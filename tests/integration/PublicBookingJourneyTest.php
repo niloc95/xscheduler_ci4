@@ -127,7 +127,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $forbiddenLookup->assertStatus(403);
 
         $forbiddenPayload = json_decode($forbiddenLookup->getJSON(), true);
-        $this->assertSame('Contact verification failed.', $forbiddenPayload['error'] ?? null);
+        $this->assertSame('Contact verification failed.', $forbiddenPayload['error']['message'] ?? null);
 
         $this->primeCsrfCookie();
 
@@ -155,7 +155,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $oldTokenLookup->assertStatus(404);
 
         $oldTokenPayload = json_decode($oldTokenLookup->getJSON(), true);
-        $this->assertSame('We could not find a booking for that reference.', $oldTokenPayload['error'] ?? null);
+        $this->assertSame('We could not find a booking for that reference.', $oldTokenPayload['error']['message'] ?? null);
 
         $newTokenLookup = $this->get('/booking/' . $newToken . '?email=' . rawurlencode($email));
         $newTokenLookup->assertOK();
@@ -234,8 +234,8 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $response->assertStatus(403);
 
         $payload = json_decode($response->getJSON(), true);
-        $this->assertSame('This appointment is too close to reschedule online.', $payload['error'] ?? null);
-        $this->assertSame([], $payload['details'] ?? []);
+        $this->assertSame('This appointment is too close to reschedule online.', $payload['error']['message'] ?? null);
+        $this->assertSame([], $payload['error']['details'] ?? []);
 
         $persisted = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
         $this->assertSame($token, $persisted['public_token'] ?? null);
@@ -364,7 +364,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
 
         $cancel->assertStatus(403);
         $cancelPayload = json_decode($cancel->getJSON(), true);
-        $this->assertSame('This appointment is too close to cancel online.', $cancelPayload['error'] ?? null);
+        $this->assertSame('This appointment is too close to cancel online.', $cancelPayload['error']['message'] ?? null);
 
         $persisted = $db->table('appointments')->where('id', $appointmentId)->get()->getRowArray();
         $this->assertSame('confirmed', $persisted['status'] ?? null);

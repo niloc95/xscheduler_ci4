@@ -439,9 +439,28 @@ class BookingController extends BaseController
         return [];
     }
 
+    /**
+     * Build a normalised JSON response.
+     *
+     * Success payloads are passed through as-is.  Error payloads
+     * (any key named 'error') are normalised into the canonical API
+     * envelope:  {"error": {"message": "...", "code": "...", "details": {}}}
+     * A refreshed CSRF pair is appended to every response so the frontend
+     * can update its token after each state-changing request.
+     */
     private function respondJson(array $payload, int $status = 200)
     {
-        // Include refreshed CSRF token so JS can update on regenerate
+        // Normalise flat error shapes to the canonical API envelope.
+        if (array_key_exists('error', $payload) && !is_array($payload['error'])) {
+            $payload['error'] = [
+                'message' => (string) $payload['error'],
+                'code'    => 'booking_error',
+                'details' => $payload['details'] ?? [],
+            ];
+            unset($payload['details']);
+        }
+
+        // Include refreshed CSRF token so JS can update on regenerate.
         $payload['csrf'] = [
             'name'  => csrf_token(),
             'value' => csrf_hash(),

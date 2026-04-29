@@ -279,8 +279,8 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        const details = data?.details ?? {};
-        throw new SubmissionError(data?.error ?? 'Unable to cancel the booking.', details);
+        const details = data?.error?.details ?? data?.details ?? {};
+        throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to cancel the booking.', details);
       }
 
       updateManage(prev => ({
@@ -400,7 +400,7 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(payload);
 
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Unable to load services.');
+        throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load services.');
       }
 
       const services = (payload?.data ?? payload ?? []).map(svc => ({
@@ -553,8 +553,8 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        const details = data?.details ?? {};
-        throw new SubmissionError(data?.error ?? 'Unable to locate that booking.', details);
+        const details = data?.error?.details ?? data?.details ?? {};
+        throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to locate that booking.', details);
       }
 
       updateManage(prev => ({ ...prev, lookupLoading: false }));
@@ -613,8 +613,8 @@ function bootstrapPublicBooking() {
       rotateCsrfFromResponse(response, 'public');
       updateCsrfFromBody(data);
       if (!response.ok) {
-        const details = data?.details ?? {};
-        throw new SubmissionError(data?.error ?? 'Unable to load that booking.', details);
+        const details = data?.error?.details ?? data?.details ?? {};
+        throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to load that booking.', details);
       }
       updateManage(prev => ({ ...prev, lookupLoading: false }));
       enterRescheduleStage(data?.data, { email, phone, phone_country_code: phoneCountryCode });
@@ -785,9 +785,9 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        const details = data?.details ?? {};
+        const details = data?.error?.details ?? data?.details ?? {};
         throw new SubmissionError(
-          data?.error ?? (target === 'booking' ? 'Unable to save your booking.' : 'Unable to update the booking.'),
+          data?.error?.message ?? data?.error ?? (target === 'booking' ? 'Unable to save your booking.' : 'Unable to update the booking.'),
           details
         );
       }
@@ -883,7 +883,7 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(payload);
 
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Unable to load availability.');
+        throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load availability.');
       }
 
       const calendarPayload = payload?.data ?? payload ?? {};
@@ -971,7 +971,7 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        throw new Error(data?.error ?? 'Unable to load availability.');
+        throw new Error(data?.error?.message ?? data?.error ?? 'Unable to load availability.');
       }
 
       const slotList = Array.isArray(data?.data) ? data.data : [];

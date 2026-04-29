@@ -88,6 +88,13 @@ class PublicBookingRateLimiter implements FilterInterface
 
         if ($entry['count'] >= $limit) {
             $retryAfter = max(1, $entry['expires_at'] - $now);
+            log_message('warning', sprintf(
+                '[PublicBookingRateLimiter] Rate limit exceeded: bucket=%s ip=%s count=%d limit=%d',
+                $bucket,
+                $ip,
+                $entry['count'],
+                $limit
+            ));
             return Services::response()
                 ->setStatusCode(429)
                 ->setJSON([

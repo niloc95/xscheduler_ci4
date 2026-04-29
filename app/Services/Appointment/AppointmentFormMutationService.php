@@ -220,8 +220,8 @@ class AppointmentFormMutationService
         }
 
         return array_merge($rules, [
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_first_name' => "required|min_length[2]|max_length[120]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]",
+            'customer_last_name' => "permit_empty|max_length[160]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]",
             'customer_email' => 'required|valid_email|max_length[255]',
             'customer_phone' => 'required|min_length[10]|max_length[32]',
             'customer_address' => 'permit_empty|max_length[255]',
@@ -236,8 +236,8 @@ class AppointmentFormMutationService
             'appointment_date' => 'required|valid_date',
             'appointment_time' => 'required',
             'status' => AppointmentStatus::VALIDATION_RULE,
-            'customer_first_name' => 'required|min_length[2]|max_length[120]',
-            'customer_last_name' => 'permit_empty|max_length[160]',
+            'customer_first_name' => "required|min_length[2]|max_length[120]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]",
+            'customer_last_name' => "permit_empty|max_length[160]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]",
             'customer_email' => 'required|valid_email|max_length[255]',
             'customer_phone' => 'required|min_length[10]|max_length[32]',
             'customer_address' => 'permit_empty|max_length[255]',

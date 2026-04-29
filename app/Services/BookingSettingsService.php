@@ -170,13 +170,20 @@ class BookingSettingsService
             }
 
             $fieldKey = "custom_field_{$i}";
-            $title = trim((string) ($settings["booking.custom_field_{$i}_title"] ?? ''));
-            $type = strtolower((string) ($settings["booking.custom_field_{$i}_type"] ?? 'text'));
+
+            // Sanitize the stored title: strip HTML tags, enforce max length of 100 chars.
+            $rawTitle = strip_tags(trim((string) ($settings["booking.custom_field_{$i}_title"] ?? '')));
+            $rawTitle = substr($rawTitle, 0, 100);
+            $title = $rawTitle !== '' ? $rawTitle : "Custom Field {$i}";
+
+            // Restrict type to the supported enum; fall back to 'text' for anything else.
+            $rawType = strtolower(trim((string) ($settings["booking.custom_field_{$i}_type"] ?? 'text')));
+            $type = in_array($rawType, ['text', 'textarea', 'select', 'checkbox'], true) ? $rawType : 'text';
 
             $customFields[$fieldKey] = [
-                'index' => $i,
-                'title' => $title !== '' ? $title : "Custom Field {$i}",
-                'type' => in_array($type, ['text', 'textarea', 'select', 'checkbox'], true) ? $type : 'text',
+                'index'    => $i,
+                'title'    => $title,
+                'type'     => $type,
                 'required' => $this->toBool($settings["booking.custom_field_{$i}_required"] ?? '0'),
             ];
         }
@@ -214,6 +221,7 @@ class BookingSettingsService
                 case 'first_name':
                 case 'last_name':
                     $fieldRules[] = 'max_length[100]';
+                    $fieldRules[] = "regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]";
                     break;
                 
                 case 'email':

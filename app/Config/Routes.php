@@ -216,18 +216,21 @@ $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['fil
 $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->get('', 'PublicSite\BookingController::index', ['filter' => 'public_rate_limit']);
     $routes->get('legal', 'PublicSite\LegalController::index', ['filter' => 'public_rate_limit']);
-    $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit']);
-    $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit']);
-    $routes->get('search', 'PublicSite\BookingController::search', ['filter' => 'public_rate_limit']);
+    // Slot/calendar discovery — high read volume, generous bucket.
+    $routes->get('slots', 'PublicSite\BookingController::slots', ['filter' => 'public_rate_limit:booking-slots,30,60']);
+    $routes->get('calendar', 'PublicSite\BookingController::calendar', ['filter' => 'public_rate_limit:booking-calendar,30,60']);
+    // Contact search — tighter limit to resist enumeration.
+    $routes->get('search', 'PublicSite\BookingController::search', ['filter' => 'public_rate_limit:booking-search,10,60']);
     $routes->get('discover', 'PublicSite\BookingController::discover', ['filter' => 'public_rate_limit']);
     $routes->get('p/(:segment)', 'PublicSite\BookingController::providerPage/$1', ['filter' => 'public_rate_limit']);
     $routes->get('s/(:segment)', 'PublicSite\BookingController::servicePage/$1', ['filter' => 'public_rate_limit']);
     $routes->get('s/(:segment)/(:segment)', 'PublicSite\BookingController::serviceInCity/$1/$2', ['filter' => 'public_rate_limit']);
-    $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit', 'csrf']]);
+    // Booking creation — tightest bucket to resist spam booking.
+    $routes->post('', 'PublicSite\BookingController::store', ['filter' => ['public_rate_limit:booking-create,5,60', 'csrf']]);
     $routes->get('r/(:segment)', 'PublicSite\BookingController::reference/$1', ['filter' => 'public_rate_limit']);
-    $routes->patch('(:segment)/cancel', 'PublicSite\BookingController::cancel/$1', ['filter' => ['public_rate_limit', 'csrf']]);
+    $routes->patch('(:segment)/cancel', 'PublicSite\BookingController::cancel/$1', ['filter' => ['public_rate_limit:booking-mutate,10,60', 'csrf']]);
     $routes->get('(:segment)', 'PublicSite\BookingController::show/$1', ['filter' => 'public_rate_limit']);
-    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => ['public_rate_limit', 'csrf']]);
+    $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => ['public_rate_limit:booking-mutate,10,60', 'csrf']]);
 });
 
 // Public customer portal - My Appointments (no auth, uses customer hash)

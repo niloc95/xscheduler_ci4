@@ -169,6 +169,20 @@ class AppointmentBookingService
                 return $this->error('Invalid service selected');
             }
 
+            // Step 1b: Validate provider offers the selected service (prevents hidden-field tampering)
+            $providerId = isset($data['provider_id']) ? (int) $data['provider_id'] : 0;
+            $serviceId  = (int) ($data['service_id'] ?? 0);
+            if (!$this->providerOffersService($providerId, $serviceId)) {
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'provider_service_mismatch',
+                    'provider_id' => $providerId,
+                    'service_id' => $serviceId,
+                ]);
+                return $this->error('Selected provider does not offer this service.');
+            }
+
             // Step 2: Resolve timezone
             if (!TimezoneService::isValidTimezone($timezone)) {
                 $timezone = $this->localizationSettingsService->getTimezone();
@@ -887,6 +901,26 @@ class AppointmentBookingService
             'message' => $message,
             'errors' => []
         ];
+    }
+
+    /**
+     * Check whether a provider actively offers a given service.
+     * Used in Step 1b of createAppointment to prevent hidden-field tampering.
+     */
+    private function providerOffersService(int $providerId, int $serviceId): bool
+    {
+        if ($providerId <= 0 || $serviceId <= 0) {
+            return false;
+        }
+
+        $rows = $this->serviceModel->getActiveByProvider($providerId);
+        foreach ($rows as $row) {
+            if ((int) ($row['id'] ?? 0) === $serviceId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -566,8 +566,34 @@ class PublicBookingService
 
     public function createBooking(array $payload): array
     {
+        // Honeypot: bots typically fill every visible field including hidden traps.
+        // The 'website' field is rendered as display:none in the public form; any
+        // non-empty value indicates automated submission.
+        if (!empty($payload['website'])) {
+            log_structured('warning', 'public_booking.honeypot_triggered', [
+                'honeypot_value_length' => strlen((string) ($payload['website'])),
+            ]);
+            // Return a fake success to confuse bots without revealing detection.
+            throw new PublicBookingException('Unable to complete booking at this time.', 422, []);
+        }
+
         $provider = $this->resolveProviderFromPayload($payload);
         $service = $this->resolveService((int) ($payload['service_id'] ?? 0));
+
+        // Defense-in-depth: confirm the provider actually offers this service before
+        // proceeding to slot/customer resolution or delegating to AppointmentBookingService.
+        if (!$this->providerOffersService((int) $provider['id'], (int) $service['id'])) {
+            log_structured('warning', 'public_booking.provider_service_mismatch', [
+                'provider_id' => (int) $provider['id'],
+                'service_id'  => (int) $service['id'],
+            ]);
+            throw new PublicBookingException(
+                'Selected provider does not offer this service.',
+                422,
+                ['service_id' => 'provider_mismatch']
+            );
+        }
+
         $slot = $this->normalizeSlotPayload($payload, $service['duration_min']);
         $locationId = $this->resolveBookingLocation($provider['id'], $payload['location_id'] ?? null);
 
@@ -1370,6 +1396,7 @@ class PublicBookingService
         $firstName = $this->sanitizeString($payload['first_name'] ?? null, 100);
         $lastName = $this->sanitizeString($payload['last_name'] ?? null, 100);
         $email = $this->sanitizeString($payload['email'] ?? null, 150);
+        $rawPhone = trim((string) ($payload['phone'] ?? ''));
         $phone = $this->normalizePhone($payload['phone'] ?? null, $payload['phone_country_code'] ?? null);
         $address = $this->sanitizeString($payload['address'] ?? null, 255);
         $notes = $this->sanitizeString($payload['customer_notes'] ?? $payload['notes'] ?? null, 1000);
@@ -1377,11 +1404,24 @@ class PublicBookingService
         if (($fieldConfig['first_name']['required'] ?? false) && $firstName === null) {
             throw new PublicBookingException('First name is required.', 422, ['first_name' => 'required']);
         }
+        if ($firstName !== null && !preg_match("/^[\p{L}\p{M}\'-\. ]+$/u", $firstName)) {
+            throw new PublicBookingException('First name must contain only letters, spaces, hyphens, apostrophes, or periods.', 422, ['first_name' => 'invalid']);
+        }
         if (($fieldConfig['last_name']['required'] ?? false) && $lastName === null) {
             throw new PublicBookingException('Last name is required.', 422, ['last_name' => 'required']);
         }
+        if ($lastName !== null && !preg_match("/^[\p{L}\p{M}\'-\. ]+$/u", $lastName)) {
+            throw new PublicBookingException('Last name must contain only letters, spaces, hyphens, apostrophes, or periods.', 422, ['last_name' => 'invalid']);
+        }
         if (($fieldConfig['email']['required'] ?? false) && $email === null) {
             throw new PublicBookingException('Email is required.', 422, ['email' => 'required']);
+        }
+        if ($rawPhone !== '' && $phone === null) {
+            throw new PublicBookingException(
+                'Please provide a valid phone number in E.164 format (for example +27821234567).',
+                422,
+                ['phone' => 'invalid']
+            );
         }
         if (($fieldConfig['phone']['required'] ?? false) && $phone === null) {
             throw new PublicBookingException('Phone number is required.', 422, ['phone' => 'required']);

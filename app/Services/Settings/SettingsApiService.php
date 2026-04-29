@@ -111,6 +111,58 @@ class SettingsApiService
         }
     }
 
+    /**
+     * Exhaustive whitelist of booking.* keys that admin booking settings may write.
+     * Any booking.* key absent from this list is silently skipped in updateSettings().
+     * Non-booking.* keys pass through (they are owned by other settings surfaces).
+     */
+    private const ALLOWED_BOOKING_KEYS = [
+        // Standard customer-field visibility/required flags
+        'booking.first_names_display',
+        'booking.first_names_required',
+        'booking.surname_display',
+        'booking.surname_required',
+        'booking.email_display',
+        'booking.email_required',
+        'booking.phone_display',
+        'booking.phone_required',
+        'booking.address_display',
+        'booking.address_required',
+        'booking.notes_display',
+        'booking.notes_required',
+        // Scheduling behaviour
+        'booking.default_appointment_status',
+        'booking.slot_duration',
+        'booking.cancellation_window',
+        'booking.reschedule_window',
+        'booking.buffer_minutes',
+        // Custom fields (6 slots × 4 sub-keys)
+        'booking.custom_field_1_enabled',
+        'booking.custom_field_1_title',
+        'booking.custom_field_1_type',
+        'booking.custom_field_1_required',
+        'booking.custom_field_2_enabled',
+        'booking.custom_field_2_title',
+        'booking.custom_field_2_type',
+        'booking.custom_field_2_required',
+        'booking.custom_field_3_enabled',
+        'booking.custom_field_3_title',
+        'booking.custom_field_3_type',
+        'booking.custom_field_3_required',
+        'booking.custom_field_4_enabled',
+        'booking.custom_field_4_title',
+        'booking.custom_field_4_type',
+        'booking.custom_field_4_required',
+        'booking.custom_field_5_enabled',
+        'booking.custom_field_5_title',
+        'booking.custom_field_5_type',
+        'booking.custom_field_5_required',
+        'booking.custom_field_6_enabled',
+        'booking.custom_field_6_title',
+        'booking.custom_field_6_type',
+        'booking.custom_field_6_required',
+    ];
+
     public function updateSettings(array $payload, ?int $userId): int
     {
         unset($payload['csrf_test_name'], $payload['form_source']);
@@ -119,6 +171,13 @@ class SettingsApiService
 
         foreach ($payload as $key => $value) {
             if (!is_string($key) || $key === '') {
+                continue;
+            }
+
+            // Enforce a strict whitelist for booking.* keys so that arbitrary
+            // booking configuration cannot be injected via the settings API.
+            if (str_starts_with($key, 'booking.') && !in_array($key, self::ALLOWED_BOOKING_KEYS, true)) {
+                log_message('warning', '[SettingsApiService] Rejected unknown booking setting key: ' . $key);
                 continue;
             }
 
