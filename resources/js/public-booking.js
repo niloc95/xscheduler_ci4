@@ -406,6 +406,7 @@ function bootstrapPublicBooking() {
       const services = (payload?.data ?? payload ?? []).map(svc => ({
         id: svc.id,
         name: svc.name,
+        description: svc.description,
         duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
         durationMinutes: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
@@ -1315,9 +1316,6 @@ function bootstrapPublicBooking() {
     }).join('');
 
     const selectedService = availableServices.find(service => String(service.id) === String(currentState.serviceId));
-    const serviceSummary = selectedService
-      ? `<p class="text-sm text-slate-500">${escapeHtml(selectedService.name ?? 'Service')} &middot; ${(selectedService.duration ?? selectedService.durationMinutes ?? 0) || 0} min${selectedService.formattedPrice ? ` &middot; ${escapeHtml(selectedService.formattedPrice)}` : ''}</p>`
-      : '';
 
     // Build location selector (only when the selected provider has 2+ locations)
     const selectedProvider = (ctx.providers ?? []).find(p => String(p.slug ?? '') === String(currentState.providerId));
@@ -1344,9 +1342,16 @@ function bootstrapPublicBooking() {
     ` : '';
 
     const providerProfileCard = renderProviderProfileCard(selectedProvider);
+    const serviceCard = renderServiceCard(selectedService);
+    const providerEmptyState = currentState.providerId
+      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Provider profile details are not available.</div>`
+      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a provider to preview details.</div>`;
+    const serviceEmptyState = currentState.serviceId
+      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Service details are not available.</div>`
+      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a service to preview details.</div>`;
 
     return `
-      <div class="grid gap-4 md:grid-cols-2">
+      <div class="space-y-4">
         <label class="block text-sm font-medium text-slate-700">
           Provider
           <select name="provider_id" data-provider-select class="${UI_CLASSES.selectBase}" ${ctx.providers?.length ? '' : 'disabled'}>
@@ -1361,16 +1366,22 @@ function bootstrapPublicBooking() {
             <option value="" ${currentState.serviceId ? '' : 'selected'}>${currentState.servicesLoading ? 'Loading services...' : (currentState.providerId ? 'Choose a service' : 'Select a provider first')}</option>
             ${serviceOptions}
           </select>
-          ${serviceSummary}
           ${renderFieldError('service_id', currentState.errors)}
         </label>
       </div>
       ${locationSelector}
-      ${providerProfileCard}
-      <div class="grid gap-4 md:grid-cols-2">
+      <section class="space-y-3">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Selected provider &amp; service</h3>
+        <div class="grid gap-3 md:grid-cols-2">
+          ${providerProfileCard || providerEmptyState}
+          ${serviceCard || serviceEmptyState}
+        </div>
+      </section>
+      <section class="space-y-3">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
         ${renderDatePickerField(currentState)}
         ${renderSchedulingTips()}
-      </div>
+      </section>
     `;
   }
 
@@ -1385,10 +1396,6 @@ function bootstrapPublicBooking() {
     const qualifications = (provider.qualifications || '').trim();
     const imageUrl = (provider.profile_image_url || '').trim();
 
-    if (!title && !bio && !education && !qualifications && !imageUrl) {
-      return '';
-    }
-
     const titleHtml = title
       ? `<p class="text-sm font-medium text-slate-700">${escapeHtml(title)}</p>`
       : '';
@@ -1402,11 +1409,11 @@ function bootstrapPublicBooking() {
       ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Qualifications:</span> ${escapeHtml(qualifications)}</p>`
       : '';
     const imageHtml = imageUrl
-      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-16 w-16 rounded-full object-cover border border-slate-200">`
-      : '';
+      ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-12 w-12 rounded-full object-cover border border-slate-200 transition-all duration-200">`
+      : `<div class="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition-all duration-200">${escapeHtml((provider.name || 'P').trim().charAt(0).toUpperCase() || 'P')}</div>`;
 
     return `
-      <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <div class="min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-200">
         <div class="flex items-start gap-3">
           ${imageHtml}
           <div class="min-w-0">
@@ -1417,6 +1424,40 @@ function bootstrapPublicBooking() {
             ${qualificationsHtml}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  function renderServiceCard(service) {
+    if (!service) {
+      return '';
+    }
+
+    const name = (service.name || '').trim();
+    const description = (service.description || '').trim();
+    const duration = service.duration ?? service.durationMinutes ?? null;
+    const formattedPrice = (service.formattedPrice || '').trim();
+
+    if (!name && !description && !duration && !formattedPrice) {
+      return '';
+    }
+
+    const descriptionHtml = description
+      ? `<p class="mt-1 text-sm text-slate-600">${escapeHtml(description)}</p>`
+      : '';
+    const durationHtml = duration
+      ? `<p class="mt-2 text-xs text-slate-500"><span class="font-semibold text-slate-600">Duration:</span> ${escapeHtml(String(duration))} min</p>`
+      : '';
+    const priceHtml = formattedPrice
+      ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Price:</span> ${escapeHtml(formattedPrice)}</p>`
+      : '';
+
+    return `
+      <div class="min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-200">
+        <p class="text-sm font-semibold text-slate-900">${escapeHtml(name || 'Service')}</p>
+        ${descriptionHtml}
+        ${durationHtml}
+        ${priceHtml}
       </div>
     `;
   }
