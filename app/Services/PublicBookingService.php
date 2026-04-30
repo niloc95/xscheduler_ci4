@@ -100,6 +100,7 @@ class PublicBookingService
     private LocationModel $locations;
     private AppointmentBookingService $bookingService;
     private PhoneNumberService $phoneNumberService;
+    private CustomerService $customerService;
 
     /** @var array<string, bool> */
     private array $columnExistsCache = [];
@@ -115,6 +116,7 @@ class PublicBookingService
         ?SettingModel $settings = null,
         ?LocationModel $locations = null,
         ?AppointmentBookingService $bookingService = null,
+        ?CustomerService $customerService = null,
     ) {
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->availability = $availability ?? new AvailabilityService();
@@ -127,6 +129,7 @@ class PublicBookingService
         $this->locations = $locations ?? new LocationModel();
         $this->bookingService = $bookingService ?? new AppointmentBookingService();
         $this->phoneNumberService = new PhoneNumberService($this->settings);
+        $this->customerService = $customerService ?? new CustomerService($this->customers, $this->phoneNumberService);
     }
 
     public function buildViewContext(): array
@@ -703,7 +706,12 @@ class PublicBookingService
     public function reschedule(string $token, array $payload): array
     {
         $appointment = $this->fetchAppointmentByReference($token);
-        $this->verifyContactAccess($appointment, $payload['email'] ?? null, $payload['phone'] ?? null);
+        $this->verifyContactAccess(
+            $appointment,
+            $payload['email'] ?? null,
+            $payload['phone'] ?? null,
+            $payload['phone_country_code'] ?? null
+        );
         $this->assertRescheduleWindow($appointment['start_at']);
 
         $providerId = (int) ($payload['provider_id'] ?? $appointment['provider_id']);
@@ -1361,33 +1369,18 @@ class PublicBookingService
         $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
         $data = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
 
-        if ($existingId) {
-            $this->customers->update($existingId, $data);
-            return $existingId;
-        }
-
-        if (!empty($data['email'])) {
-            $existing = $this->customers->where('email', $data['email'])->first();
-            if ($existing) {
-                $this->customers->update((int) $existing['id'], $data);
-                return (int) $existing['id'];
-            }
-        }
-
-        if (!empty($data['phone']) && empty($data['email'])) {
-            $existing = $this->customers->where('phone', $data['phone'])->first();
-            if ($existing) {
-                $this->customers->update((int) $existing['id'], $data);
-                return (int) $existing['id'];
-            }
-        }
-
-        $insertId = $this->customers->insert($data, true);
-        if (!$insertId) {
+        try {
+            $upsert = $this->customerService->upsertCustomer(array_merge($data, [
+                'customer_id' => $existingId,
+                'phone_country_code' => $payload['phone_country_code'] ?? null,
+            ]));
+        } catch (\InvalidArgumentException $e) {
+            throw new PublicBookingException($e->getMessage(), 422, ['phone' => 'invalid']);
+        } catch (\Throwable $e) {
             throw new PublicBookingException('Unable to save customer information.');
         }
 
-        return (int) $insertId;
+        return (int) ($upsert['id'] ?? 0);
     }
 
     private function extractCustomerFields(array $payload, array $fieldConfig, array $customConfig): array
@@ -1661,21 +1654,46 @@ class PublicBookingService
 
     private function verifyContactAccess(array $appointment, ?string $email, ?string $phone, ?string $phoneCountryCode = null): void
     {
-        $expectedEmail = strtolower((string) ($appointment['customer_email'] ?? ''));
+        helper('logging');
+
+        $expectedEmail = strtolower(trim((string) ($appointment['customer_email'] ?? '')));
         $expectedPhone = $this->normalizePhone($appointment['customer_phone'] ?? null, null);
+        $providedEmail = $email ? strtolower(trim($email)) : null;
+        $providedPhone = $this->normalizePhone($phone, $phoneCountryCode);
 
-        if ($expectedEmail) {
-            if (!$email || strtolower(trim($email)) !== $expectedEmail) {
-                throw new PublicBookingException('Contact verification failed.', 403);
-            }
-            return;
+        $tokenPrefix = substr((string) ($appointment['public_token'] ?? $appointment['hash'] ?? ''), 0, 8);
+
+        if ($expectedEmail === '' || $expectedPhone === null) {
+            log_structured('warning', 'public_booking.verification_mismatch', [
+                'token_prefix' => $tokenPrefix,
+                'reason' => 'stored_contact_incomplete',
+            ]);
+            throw new PublicBookingException('Contact verification failed.', 403, ['contact' => 'mismatch']);
         }
 
-        if ($expectedPhone) {
-            if (!$phone || $this->normalizePhone($phone, $phoneCountryCode) !== $expectedPhone) {
-                throw new PublicBookingException('Contact verification failed.', 403);
-            }
+        if ($providedEmail === null || $providedPhone === null) {
+            log_structured('warning', 'public_booking.verification_mismatch', [
+                'token_prefix' => $tokenPrefix,
+                'reason' => 'missing_contact_input',
+                'provided_email' => $providedEmail !== null,
+                'provided_phone' => $providedPhone !== null,
+            ]);
+            throw new PublicBookingException('Contact verification failed.', 403, ['contact' => 'mismatch']);
         }
+
+        if ($providedEmail !== $expectedEmail || $providedPhone !== $expectedPhone) {
+            log_structured('warning', 'public_booking.verification_mismatch', [
+                'token_prefix' => $tokenPrefix,
+                'reason' => 'email_or_phone_mismatch',
+                'email_match' => $providedEmail === $expectedEmail,
+                'phone_match' => $providedPhone === $expectedPhone,
+            ]);
+            throw new PublicBookingException('Contact verification failed.', 403, ['contact' => 'mismatch']);
+        }
+
+        log_structured('info', 'public_booking.verification_success', [
+            'token_prefix' => $tokenPrefix,
+        ]);
     }
 
     /**

@@ -69,6 +69,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->primeCsrfCookie();
 
         $email = 'public.booking.' . uniqid('', true) . '@example.com';
+        $phone = '+15551238888';
         $initialStart = '2026-05-18T11:00:00+00:00';
         $rescheduledStart = '2026-05-19T14:00:00+00:00';
 
@@ -82,7 +83,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
                 'first_name' => 'Pat',
                 'last_name' => 'Guest',
                 'email' => $email,
-                'phone' => '+15551238888',
+                'phone' => $phone,
                 'notes' => 'Initial public booking request',
             ]);
 
@@ -111,7 +112,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->appointmentIds[] = $appointmentId;
         $this->customerIds[] = $customerId;
 
-        $lookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode($email));
+        $lookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode($email) . '&phone=' . rawurlencode($phone));
         $lookup->assertOK();
 
         $lookupPayload = json_decode($lookup->getJSON(), true);
@@ -123,7 +124,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->assertSame('Guest', $lookupData['customer']['last_name'] ?? null);
         $this->assertTrue((bool) ($lookupData['can_reschedule'] ?? false));
 
-        $forbiddenLookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode('wrong@example.com'));
+        $forbiddenLookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode('wrong@example.com') . '&phone=' . rawurlencode($phone));
         $forbiddenLookup->assertStatus(403);
 
         $forbiddenPayload = json_decode($forbiddenLookup->getJSON(), true);
@@ -135,6 +136,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
             ->withBodyFormat('json')
             ->patch('/booking/' . $initialToken, [
                 'email' => $email,
+                'phone' => $phone,
                 'slot_start' => $rescheduledStart,
                 'notes' => 'Rescheduled by customer',
             ]);
@@ -151,13 +153,13 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $this->assertSame('Rescheduled by customer', $updated['notes'] ?? null);
         $this->assertSame($email, $updated['customer']['email'] ?? null);
 
-        $oldTokenLookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode($email));
+        $oldTokenLookup = $this->get('/booking/' . $initialToken . '?email=' . rawurlencode($email) . '&phone=' . rawurlencode($phone));
         $oldTokenLookup->assertStatus(404);
 
         $oldTokenPayload = json_decode($oldTokenLookup->getJSON(), true);
         $this->assertSame('We could not find a booking for that reference.', $oldTokenPayload['error']['message'] ?? null);
 
-        $newTokenLookup = $this->get('/booking/' . $newToken . '?email=' . rawurlencode($email));
+        $newTokenLookup = $this->get('/booking/' . $newToken . '?email=' . rawurlencode($email) . '&phone=' . rawurlencode($phone));
         $newTokenLookup->assertOK();
 
         $newTokenPayload = json_decode($newTokenLookup->getJSON(), true);
@@ -216,7 +218,9 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $appointmentId = (int) $db->insertID();
         $this->appointmentIds[] = $appointmentId;
 
-        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($db->table('customers')->where('id', $customerId)->get()->getRowArray()['email'] ?? ''));
+        $lookupEmail = $db->table('customers')->where('id', $customerId)->get()->getRowArray()['email'] ?? '';
+        $lookupPhone = $db->table('customers')->where('id', $customerId)->get()->getRowArray()['phone'] ?? '';
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($lookupEmail) . '&phone=' . rawurlencode($lookupPhone));
         $lookup->assertOK();
         $lookupPayload = json_decode($lookup->getJSON(), true);
         $this->assertFalse((bool) (($lookupPayload['data']['can_reschedule'] ?? true)));
@@ -226,7 +230,8 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $response = $this->withHeaders($this->csrfJsonHeaders())
             ->withBodyFormat('json')
             ->patch('/booking/' . $token, [
-                'email' => $db->table('customers')->where('id', $customerId)->get()->getRowArray()['email'] ?? null,
+                'email' => $lookupEmail,
+                'phone' => $lookupPhone,
                 'slot_start' => '2026-05-19T14:00:00+00:00',
                 'notes' => 'Attempted late reschedule',
             ]);
@@ -284,7 +289,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $appointmentId = (int) $db->insertID();
         $this->appointmentIds[] = $appointmentId;
 
-        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email));
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email) . '&phone=' . rawurlencode('+15551237777'));
         $lookup->assertOK();
         $lookupPayload = json_decode($lookup->getJSON(), true);
         $this->assertTrue((bool) ($lookupPayload['data']['can_cancel'] ?? false));
@@ -295,6 +300,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
             ->withBodyFormat('json')
             ->patch('/booking/' . $token . '/cancel', [
                 'email' => $email,
+                'phone' => '+15551237777',
             ]);
 
         $cancel->assertOK();
@@ -349,7 +355,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
         $appointmentId = (int) $db->insertID();
         $this->appointmentIds[] = $appointmentId;
 
-        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email));
+        $lookup = $this->get('/booking/' . $token . '?email=' . rawurlencode($email) . '&phone=' . rawurlencode('+15550002222'));
         $lookup->assertOK();
         $lookupPayload = json_decode($lookup->getJSON(), true);
         $this->assertFalse((bool) ($lookupPayload['data']['can_cancel'] ?? true));
@@ -360,6 +366,7 @@ final class PublicBookingJourneyTest extends CIUnitTestCase
             ->withBodyFormat('json')
             ->patch('/booking/' . $token . '/cancel', [
                 'email' => $email,
+                'phone' => '+15550002222',
             ]);
 
         $cancel->assertStatus(403);

@@ -6,8 +6,10 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Services\AppointmentBookingService;
 use App\Services\AppointmentNotificationService;
+use App\Services\CustomerService;
 use App\Services\PhoneNumberService;
 use CodeIgniter\Validation\ValidationInterface;
+use Config\Database;
 
 class AppointmentFormMutationService
 {
@@ -19,6 +21,7 @@ class AppointmentFormMutationService
     private AppointmentModel $appointmentModel;
     private AppointmentNotificationService $appointmentNotificationService;
     private PhoneNumberService $phoneNumberService;
+    private CustomerService $customerService;
 
     public function __construct(
         ?ValidationInterface $validation = null,
@@ -29,6 +32,7 @@ class AppointmentFormMutationService
         ?AppointmentModel $appointmentModel = null,
         ?AppointmentNotificationService $appointmentNotificationService = null,
         ?PhoneNumberService $phoneNumberService = null,
+        ?CustomerService $customerService = null,
     ) {
         $this->validation = $validation ?? \Config\Services::validation();
         $this->appointmentDateTimeNormalizer = $appointmentDateTimeNormalizer ?? new AppointmentDateTimeNormalizer();
@@ -38,6 +42,7 @@ class AppointmentFormMutationService
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
         $this->appointmentNotificationService = $appointmentNotificationService ?? new AppointmentNotificationService();
         $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
+        $this->customerService = $customerService ?? new CustomerService($this->customerModel, $this->phoneNumberService);
     }
 
     public function createFromFormPayload(array $payload, string $clientTimezone): array
@@ -118,12 +123,30 @@ class AppointmentFormMutationService
         }
 
         $startTimeStored = $normalizedStart['utc'] ?? '';
-        $customerData = $this->appointmentFormSubmissionService->buildCustomerUpdateData($payload);
-        $customerData['phone'] = $normalizedPhone;
-        $this->customerModel->update((int) $existingAppointment['customer_id'], $customerData);
+        $db = Database::connect();
+        $db->transStart();
+
+        try {
+            $customerData = $this->appointmentFormSubmissionService->buildCustomerUpdateData($payload);
+            $customerData['phone'] = $normalizedPhone;
+            $customerData['phone_country_code'] = $payload['customer_phone_country_code'] ?? null;
+            $customerData['customer_id'] = (int) ($existingAppointment['customer_id'] ?? 0);
+            $customerUpsert = $this->customerService->upsertCustomer($customerData);
+        } catch (\InvalidArgumentException $e) {
+            $db->transRollback();
+            return $this->validationFailure([
+                'customer_phone' => 'Please enter a valid phone number in E.164 format.',
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            return $this->errorResult(422, 'Unable to save customer details.', [
+                'customer' => 'update_failed',
+            ]);
+        }
 
         $appointmentData = $this->appointmentFormSubmissionService->buildUpdateAppointmentData($payload, $normalizedStart);
         $appointmentData['booking_channel'] = 'admin';
+        $appointmentData['customer_id'] = (int) ($customerUpsert['id'] ?? $existingAppointment['customer_id']);
         $status = (string) ($payload['status'] ?? '');
         $timeChanged = $startTimeStored !== (string) ($existingAppointment['start_at'] ?? '');
         $event = $timeChanged
@@ -138,16 +161,26 @@ class AppointmentFormMutationService
             ['email', 'whatsapp']
         );
 
-        if (($result['success'] ?? false) === true) {
-            try {
-                $this->appointmentNotificationService->resetReminderSentIfTimeChanged(
-                    (int) $existingAppointment['id'],
-                    (string) ($existingAppointment['start_at'] ?? ''),
-                    (string) $startTimeStored
-                );
-            } catch (\Throwable $e) {
-                log_message('error', '[AppointmentFormMutationService] Failed resetting reminder flag: {msg}', ['msg' => $e->getMessage()]);
-            }
+        if (($result['success'] ?? false) !== true) {
+            $db->transRollback();
+            return $this->normalizeBookingResult($result, false);
+        }
+
+        $db->transComplete();
+        if (!$db->transStatus()) {
+            return $this->errorResult(422, 'Unable to save appointment changes.', [
+                'appointment' => 'update_failed',
+            ]);
+        }
+
+        try {
+            $this->appointmentNotificationService->resetReminderSentIfTimeChanged(
+                (int) $existingAppointment['id'],
+                (string) ($existingAppointment['start_at'] ?? ''),
+                (string) $startTimeStored
+            );
+        } catch (\Throwable $e) {
+            log_message('error', '[AppointmentFormMutationService] Failed resetting reminder flag: {msg}', ['msg' => $e->getMessage()]);
         }
 
         return $this->normalizeBookingResult($result, false);

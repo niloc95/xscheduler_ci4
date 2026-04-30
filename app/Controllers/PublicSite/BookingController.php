@@ -280,6 +280,18 @@ class BookingController extends BaseController
             $email = $this->request->getGet('email');
             $phone = $this->request->getGet('phone');
             $phoneCountryCode = $this->request->getGet('phone_country_code');
+
+            $missing = $this->missingContactFields([
+                'email' => $email,
+                'phone' => $phone,
+            ]);
+            if ($missing !== []) {
+                return $this->respondJson([
+                    'error' => 'Email and phone are required for booking access.',
+                    'details' => $missing,
+                ], 422);
+            }
+
             $result = $this->booking->lookupAppointment($token, $email, $phone, $phoneCountryCode);
             log_structured('info', 'public_booking.lookup_success', [
                 'token_prefix' => substr($token, 0, 8),
@@ -347,6 +359,18 @@ class BookingController extends BaseController
 
         try {
             $payload = $this->payload();
+
+            $missing = $this->missingContactFields([
+                'email' => $payload['email'] ?? null,
+                'phone' => $payload['phone'] ?? null,
+            ]);
+            if ($missing !== []) {
+                return $this->respondJson([
+                    'error' => 'Email and phone are required for booking access.',
+                    'details' => $missing,
+                ], 422);
+            }
+
             log_structured('info', 'public_booking.reschedule_attempt', [
                 'token_prefix' => substr($token, 0, 8),
                 'provider_id' => isset($payload['provider_id']) ? (int) $payload['provider_id'] : null,
@@ -388,6 +412,18 @@ class BookingController extends BaseController
 
         try {
             $payload = $this->payload();
+
+            $missing = $this->missingContactFields([
+                'email' => $payload['email'] ?? null,
+                'phone' => $payload['phone'] ?? null,
+            ]);
+            if ($missing !== []) {
+                return $this->respondJson([
+                    'error' => 'Email and phone are required for booking access.',
+                    'details' => $missing,
+                ], 422);
+            }
+
             log_structured('info', 'public_booking.cancel_attempt', [
                 'token_prefix' => substr($token, 0, 8),
             ]);
@@ -437,6 +473,21 @@ class BookingController extends BaseController
         }
 
         return [];
+    }
+
+    private function missingContactFields(array $input): array
+    {
+        $errors = [];
+
+        if (trim((string) ($input['email'] ?? '')) === '') {
+            $errors['email'] = 'required';
+        }
+
+        if (trim((string) ($input['phone'] ?? '')) === '') {
+            $errors['phone'] = 'required';
+        }
+
+        return $errors;
     }
 
     /**
