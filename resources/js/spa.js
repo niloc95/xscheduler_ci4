@@ -155,6 +155,8 @@ const SPA = (() => {
     try { const u = new URL(url, window.location.origin); return u.origin === window.location.origin; } catch { return false; }
   };
 
+  const shouldSkipSPA = (el) => el?.dataset?.noSpa === 'true' || el?.classList.contains('no-spa');
+
   const shouldIntercept = (a) => {
     if (!a || a.target || a.hasAttribute('download')) return false;
     const href = a.getAttribute('href');
@@ -164,7 +166,7 @@ const SPA = (() => {
     if (a.hasAttribute('data-navlink')) return false;
     if (a.closest('.fc')) return false;
     // opt-out
-    if (a.dataset?.noSpa === 'true' || a.classList.contains('no-spa')) return false;
+    if (shouldSkipSPA(a)) return false;
     return true;
   };
 
@@ -217,6 +219,13 @@ const SPA = (() => {
     if (!el) return;
     el.setAttribute('aria-busy', busy ? 'true' : 'false');
     el.classList.toggle('opacity-50', busy);
+  };
+
+  const dispatchFlash = (type, message, autoClose = true, duration = 5000) => {
+    if (!message) return;
+    document.dispatchEvent(new CustomEvent('xs:flash', {
+      detail: { type, message, autoClose, duration }
+    }));
   };
 
   const runViewInitializers = () => {
@@ -300,10 +309,9 @@ const SPA = (() => {
     if (e.defaultPrevented) return;
     const form = e.target.closest('form');
     if (!form) return;
-    if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) {
-      return;
-    }
-    if (form.method.toUpperCase() !== 'POST' && form.method.toUpperCase() !== 'PUT') return;
+    if (shouldSkipSPA(form)) return;
+    const method = (form.method || 'POST').toUpperCase();
+    if (method !== 'POST' && method !== 'PUT') return;
     if (!sameOrigin(form.action)) return;
 
     e.preventDefault();
@@ -342,10 +350,7 @@ const SPA = (() => {
       if (!res.ok) {
         // Use parsed JSON error details when available
         const errMsg = (data && (data.message || data.error)) || `HTTP ${res.status}`;
-        const flashEvent = new CustomEvent('xs:flash', {
-          detail: { type: 'error', message: errMsg }
-        });
-        document.dispatchEvent(flashEvent);
+        dispatchFlash('error', errMsg);
 
         // Inject validation errors into the form if present
         if (data && data.errors && typeof data.errors === 'object') {
@@ -372,15 +377,11 @@ const SPA = (() => {
 
         // Show success message AFTER navigation so the toast survives
         if (data.message) {
-          document.dispatchEvent(new CustomEvent('xs:flash', {
-            detail: { type: 'success', message: data.message }
-          }));
+          dispatchFlash('success', data.message);
         }
       } else {
         // Handle error response
-        document.dispatchEvent(new CustomEvent('xs:flash', {
-          detail: { type: 'error', message: data.message || 'An error occurred' }
-        }));
+        dispatchFlash('error', data.message || 'An error occurred');
 
         // Inject validation errors into the form
         if (data.errors && typeof data.errors === 'object') {
@@ -389,9 +390,7 @@ const SPA = (() => {
       }
     } catch (e) {
       console.error('Form submission failed:', e);
-      document.dispatchEvent(new CustomEvent('xs:flash', {
-        detail: { type: 'error', message: 'Form submission failed: ' + e.message }
-      }));
+      dispatchFlash('error', 'Form submission failed: ' + e.message);
     } finally {
       setBusy(false);
     }
@@ -463,9 +462,7 @@ const SPA = (() => {
       if (!btn) return;
       const form = btn.closest('form');
       if (!form) return;
-      if (form.dataset.noSpa === 'true' || form.classList.contains('no-spa')) {
-        return;
-      }
+      if (shouldSkipSPA(form)) return;
       form.noValidate = true;
     }, true);
 
