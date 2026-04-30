@@ -1196,8 +1196,10 @@ function bootstrapPublicBooking() {
 
   function renderRescheduleStage(manageState, ctx) {
     const helper = 'We will send your updated confirmation immediately after you save.';
+    const existingCustomFields = manageState.appointment?.custom_fields ?? null;
     const form = renderForm(manageState.formState, ctx, {
       formId: 'public-reschedule-form',
+      existingCustomFields,
       actionOptions: {
         submitLabel: 'Save new time',
         pendingLabel: 'Updating booking...',
@@ -1273,6 +1275,7 @@ function bootstrapPublicBooking() {
       ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(currentState.globalError)}</div>`
       : '';
     const formId = options.formId ?? 'public-booking-form';
+    const existingCustomFields = options.existingCustomFields ?? null;
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1282,7 +1285,7 @@ function bootstrapPublicBooking() {
           ${renderLocationCard(currentState)}
           ${renderSlotSection(currentState)}
           ${renderCustomerSection(currentState, ctx)}
-          ${renderCustomFields(currentState, ctx)}
+          ${renderCustomFields(currentState, ctx, existingCustomFields)}
           ${renderNotesField(currentState, ctx)}
           ${renderPolicy(ctx)}
           ${renderActions(currentState, options.actionOptions)}
@@ -1627,7 +1630,7 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderCustomFields(currentState, ctx) {
+  function renderCustomFields(currentState, ctx, existingCustomFields) {
     const customConfig = ctx.customFieldConfig ?? {};
     const keys = Object.keys(customConfig);
 
@@ -1635,7 +1638,7 @@ function bootstrapPublicBooking() {
       return '';
     }
 
-    const inputs = keys.map(key => renderCustomField(key, customConfig[key], currentState)).filter(Boolean).join('');
+    const inputs = keys.map(key => renderCustomField(key, customConfig[key], currentState, existingCustomFields)).filter(Boolean).join('');
 
     if (!inputs) {
       return '';
@@ -1759,17 +1762,27 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderCustomField(key, config, currentState) {
+  function renderCustomField(key, config, currentState, existingCustomFields) {
     if (!config || config.display === false) {
       return '';
     }
 
     const label = config.title ?? `Custom field ${config.index}`;
+    const isSensitive = !!config.is_sensitive;
+    const existingEntry = (existingCustomFields ?? []).find(f => f.field_key === key);
+    const existingMasked = existingEntry?.value_masked ?? '';
+    const isRequiredForSubmission = !!config.required && !existingMasked;
+
+    const existingHint = existingMasked
+      ? `<p class="mt-1 text-xs text-slate-500">Current: <span class="font-medium text-slate-700">${escapeHtml(existingMasked)}</span></p>`
+      : '';
+
     if (config.type === 'textarea') {
       return `
         <label class="block text-sm font-medium text-slate-700">
-          ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
+          ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
           <textarea name="${key}" rows="3" class="${UI_CLASSES.inputBase}">${escapeHtml(currentState.form[key] ?? '')}</textarea>
+          ${existingHint}
           ${renderFieldError(key, currentState.errors)}
         </label>
       `;
@@ -1782,14 +1795,17 @@ function bootstrapPublicBooking() {
           <span>${escapeHtml(label)}</span>
           <input type="checkbox" name="${key}" class="h-4 w-4" ${checked}>
         </label>
+        ${existingHint}
         ${renderFieldError(key, currentState.errors)}
       `;
     }
 
+    const placeholder = isSensitive && existingMasked ? existingMasked : '';
     return `
       <label class="block text-sm font-medium text-slate-700">
-        ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
-        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" class="${UI_CLASSES.inputBase}">
+        ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
+        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" placeholder="${escapeHtml(placeholder)}" class="${UI_CLASSES.inputBase}">
+        ${existingHint}
         ${renderFieldError(key, currentState.errors)}
       </label>
     `;

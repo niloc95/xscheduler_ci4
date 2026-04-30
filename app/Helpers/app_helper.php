@@ -117,6 +117,29 @@ if (!function_exists('avatar_upper')) {
     }
 }
 
+if (!function_exists('mask_sensitive_value')) {
+    /**
+     * Mask a value while keeping only the last N characters visible.
+     */
+    function mask_sensitive_value($value, int $visible = 4): string
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+            return '';
+        }
+
+        $len = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+        $keep = max(1, min($visible, $len));
+        $maskedCount = max(0, $len - $keep);
+
+        $suffix = function_exists('mb_substr')
+            ? mb_substr($text, $len - $keep, null, 'UTF-8')
+            : substr($text, -$keep);
+
+        return str_repeat('*', $maskedCount > 0 ? $maskedCount : 4) . $suffix;
+    }
+}
+
 if (!function_exists('avatar_slice')) {
     function avatar_slice(string $value, int $start, int $length): string
     {

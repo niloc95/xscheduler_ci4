@@ -138,10 +138,11 @@
                 <div class="space-y-4">
                     <?php foreach ($customFields as $fieldName => $customField): ?>
                         <?php $existingValue = $customFieldValues[$fieldName] ?? ''; ?>
+                        <?php $isRequiredForEdit = $customFieldRequiredState[$fieldName] ?? !empty($customField['required']); ?>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 <?= esc($customField['title']) ?>
-                                <?php if (!empty($customField['required'])): ?>
+                                <?php if ($isRequiredForEdit): ?>
                                     <span class="text-red-500">*</span>
                                 <?php endif; ?>
                             </label>
@@ -149,7 +150,7 @@
                                 <textarea
                                     name="<?= esc($fieldName) ?>"
                                     rows="3"
-                                    <?php if (!empty($customField['required'])): ?>required<?php endif; ?>
+                                    <?php if ($isRequiredForEdit): ?>required<?php endif; ?>
                                     class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                                 ><?= esc(old($fieldName, $existingValue)) ?></textarea>
                             <?php else: ?>
@@ -157,7 +158,7 @@
                                     type="text"
                                     name="<?= esc($fieldName) ?>"
                                     value="<?= esc(old($fieldName, $existingValue)) ?>"
-                                    <?php if (!empty($customField['required'])): ?>required<?php endif; ?>
+                                    <?php if ($isRequiredForEdit): ?>required<?php endif; ?>
                                     class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                                 />
                             <?php endif; ?>

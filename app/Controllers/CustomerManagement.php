@@ -64,6 +64,7 @@ use App\Models\CustomerModel;
 use App\Services\BookingSettingsService;
 use App\Services\CustomerDeletionService;
 use App\Services\CustomerAppointmentService;
+use App\Services\CustomerCustomFieldService;
 use App\Services\PhoneNumberService;
 
 class CustomerManagement extends BaseController
@@ -73,6 +74,7 @@ class CustomerManagement extends BaseController
     protected CustomerAppointmentService $appointmentService;
     protected CustomerDeletionService $customerDeletionService;
     protected PhoneNumberService $phoneNumberService;
+    protected CustomerCustomFieldService $customerCustomFieldService;
 
     public function __construct(
         ?CustomerModel $customers = null,
@@ -80,6 +82,7 @@ class CustomerManagement extends BaseController
         ?CustomerAppointmentService $appointmentService = null,
         ?CustomerDeletionService $customerDeletionService = null,
         ?PhoneNumberService $phoneNumberService = null,
+        ?CustomerCustomFieldService $customerCustomFieldService = null,
     )
     {
         $this->customers = $customers ?? new CustomerModel();
@@ -87,6 +90,7 @@ class CustomerManagement extends BaseController
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
         $this->customerDeletionService = $customerDeletionService ?? new CustomerDeletionService($this->customers);
         $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
+        $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService($this->customers);
     }
 
     /**
@@ -249,7 +253,7 @@ class CustomerManagement extends BaseController
 
             // Save custom fields JSON (even if all values are empty)
             // This ensures the database has a consistent structure for all enabled fields
-            $payload['custom_fields'] = json_encode($customFieldPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $payload['custom_fields'] = $this->customerCustomFieldService->encodeValues($customFieldPayload);
             log_message('info', '[CustomerManagement::store] Custom fields JSON for new customer: ' . $payload['custom_fields']);
         } else {
             log_message('info', '[CustomerManagement::store] No custom fields enabled in settings');
@@ -322,12 +326,12 @@ class CustomerManagement extends BaseController
         
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customFields = $this->bookingSettings->getCustomFieldConfiguration();
-        $customFieldValues = [];
-        if (!empty($customer['custom_fields'])) {
-            $decoded = json_decode((string) $customer['custom_fields'], true);
-            if (is_array($decoded)) {
-                $customFieldValues = $decoded;
-            }
+        $customFieldValues = $this->customerCustomFieldService->decodeValues($customer['custom_fields'] ?? null);
+        $customFieldRequiredState = [];
+
+        foreach ($customFields as $fieldName => $config) {
+            $customFieldRequiredState[$fieldName] = !empty($config['required'])
+                && !$this->customerCustomFieldService->hasStoredValue($customer['custom_fields'] ?? null, $fieldName);
         }
         
         $data = [
@@ -340,6 +344,7 @@ class CustomerManagement extends BaseController
             'fieldConfig' => $fieldConfig,
             'customFields' => $customFields,
             'customFieldValues' => $customFieldValues,
+            'customFieldRequiredState' => $customFieldRequiredState,
         ];
         return view('customer-management/edit', $data);
     }
@@ -364,7 +369,7 @@ class CustomerManagement extends BaseController
         $id = $customer['id'];
 
         // Use dynamic validation rules from booking settings
-        $rules = $this->bookingSettings->getValidationRulesForUpdate($id);
+        $rules = $this->bookingSettings->getValidationRulesForUpdate($id, $customer['custom_fields'] ?? null);
 
         if (!$this->validate($rules)) {
             if ($this->request->isAJAX()) {
@@ -407,13 +412,8 @@ class CustomerManagement extends BaseController
             
             // Load existing custom fields from database to preserve disabled fields
             $existing = [];
-            if (!empty($customer['custom_fields'])) {
-                $decoded = json_decode((string) $customer['custom_fields'], true);
-                if (is_array($decoded)) {
-                    $existing = $decoded;
-                    log_message('info', '[CustomerManagement::update] Loaded existing custom fields: ' . json_encode($existing));
-                }
-            }
+            $existing = $this->customerCustomFieldService->decodeValues($customer['custom_fields'] ?? null);
+            log_message('info', '[CustomerManagement::update] Loaded existing custom fields: ' . json_encode($existing));
 
             // Update only the currently enabled custom fields
             foreach ($customFields as $fieldName => $config) {
@@ -432,7 +432,7 @@ class CustomerManagement extends BaseController
 
             // Save the merged custom fields (existing disabled fields + updated enabled fields)
             // This preserves data for disabled fields while updating enabled ones
-            $payload['custom_fields'] = json_encode($existing, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $payload['custom_fields'] = $this->customerCustomFieldService->encodeValues($existing);
             log_message('info', '[CustomerManagement::update] Final custom fields JSON: ' . $payload['custom_fields']);
         } else {
             log_message('info', '[CustomerManagement::update] No custom fields enabled in settings for customer ID: ' . $id);

@@ -134,8 +134,8 @@ final class BookingSettingsServiceTest extends CIUnitTestCase
 
         $rules = $service->getValidationRules();
 
-        $this->assertSame('required|max_length[100]', $rules['first_name']);
-        $this->assertSame('permit_empty|max_length[100]', $rules['last_name']);
+        $this->assertSame("required|max_length[100]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]", $rules['first_name']);
+        $this->assertSame("permit_empty|max_length[100]|regex_match[/^[\\p{L}\\p{M}'\\-\\. ]+$/u]", $rules['last_name']);
         $this->assertSame('required|valid_email|is_unique[customers.email]', $rules['email']);
         $this->assertSame('permit_empty', $rules['phone']);
         $this->assertSame('permit_empty|max_length[255]', $rules['address']);
@@ -171,6 +171,47 @@ final class BookingSettingsServiceTest extends CIUnitTestCase
 
         $rules = $service->getValidationRulesForUpdate(42);
 
+        $this->assertSame('required|valid_email|is_unique[customers.email,id,42]', $rules['email']);
+    }
+
+    public function testGetValidationRulesForUpdateRelaxesRequiredCustomFieldWhenStoredValueExists(): void
+    {
+        $settingModel = $this->createMock(SettingModel::class);
+        $settingModel->expects($this->exactly(2))
+            ->method('getByKeys')
+            ->willReturnOnConsecutiveCalls(
+                [
+                    'booking.first_names_display' => '1',
+                    'booking.first_names_required' => '0',
+                    'booking.surname_display' => '1',
+                    'booking.surname_required' => '0',
+                    'booking.email_display' => '1',
+                    'booking.email_required' => '1',
+                    'booking.phone_display' => '0',
+                    'booking.phone_required' => '0',
+                    'booking.address_display' => '0',
+                    'booking.address_required' => '0',
+                    'booking.notes_display' => '0',
+                    'booking.notes_required' => '0',
+                ],
+                [
+                    'booking.custom_field_1_enabled' => '1',
+                    'booking.custom_field_1_title' => 'Medical Aid Number',
+                    'booking.custom_field_1_type' => 'text',
+                    'booking.custom_field_1_required' => '1',
+                    'booking.custom_field_2_enabled' => '1',
+                    'booking.custom_field_2_title' => 'National ID',
+                    'booking.custom_field_2_type' => 'text',
+                    'booking.custom_field_2_required' => '1',
+                ]
+            );
+
+        $service = new BookingSettingsService($settingModel);
+
+        $rules = $service->getValidationRulesForUpdate(42, '{"custom_field_1":"MA-12345"}');
+
+        $this->assertSame('permit_empty|max_length[255]', $rules['custom_field_1']);
+        $this->assertSame('required|max_length[255]', $rules['custom_field_2']);
         $this->assertSame('required|valid_email|is_unique[customers.email,id,42]', $rules['email']);
     }
 

@@ -14,6 +14,8 @@
  * - Localization support
  */
 
+helper('app');
+
 $isEditMode = !empty($appointment['id']) || !empty($appointment['appointment_id']);
 $isPastAppointment = $isPastAppointment ?? false;
 $formAction = $isEditMode 
@@ -245,38 +247,56 @@ $pageSubtitle = $isEditMode
                         <?php endif; ?>
 
                         <!-- Custom Fields -->
+                        <?php $existingCustomFieldValues = $existingCustomFieldValues ?? []; ?>
                         <?php foreach ($customFields as $fieldKey => $fieldMeta): ?>
+                        <?php $existingValue = (string) ($existingCustomFieldValues[$fieldKey] ?? ''); ?>
+                        <?php $isSensitiveField = !empty($fieldMeta['is_sensitive']); ?>
+                        <?php $isRequiredForEdit = $fieldMeta['required'] && $existingValue === ''; ?>
                         <div class="<?= $fieldMeta['type'] === 'textarea' ? 'md:col-span-2' : '' ?>">
-                            <label for="<?= esc($fieldKey) ?>" class="form-label <?= $fieldMeta['required'] ? 'required' : '' ?>"><?= esc($fieldMeta['title']) ?></label>
-                            
+                            <label for="<?= esc($fieldKey) ?>" class="form-label <?= $isRequiredForEdit ? 'required' : '' ?>"><?= esc($fieldMeta['title']) ?></label>
+
+                            <?php if ($existingValue !== '' && $isSensitiveField): ?>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    Current: <span class="font-medium text-gray-700 dark:text-gray-300"><?= esc(mask_sensitive_value($existingValue)) ?></span>
+                                    &mdash; <span class="italic">leave blank to keep unchanged</span>
+                                </p>
+                            <?php endif; ?>
+
                             <?php if ($fieldMeta['type'] === 'textarea'): ?>
-                                <textarea id="<?= esc($fieldKey) ?>" 
-                                          name="<?= esc($fieldKey) ?>" 
+                                <?php $prefill = $isSensitiveField ? '' : $existingValue; ?>
+                                <textarea id="<?= esc($fieldKey) ?>"
+                                          name="<?= esc($fieldKey) ?>"
                                           rows="3"
-                                          <?= $fieldMeta['required'] ? 'required' : '' ?>
-                                          class="form-input"><?= esc(old($fieldKey, $appointment[$fieldKey] ?? '')) ?></textarea>
-                            
+                                          <?= $isRequiredForEdit ? 'required' : '' ?>
+                                          class="form-input"><?= esc(old($fieldKey, $prefill)) ?></textarea>
+
                             <?php elseif ($fieldMeta['type'] === 'checkbox'): ?>
+                                <?php $checkDefault = old($fieldKey, $existingValue !== '' ? $existingValue : '0'); ?>
                                 <div class="flex items-center">
-                                    <input type="checkbox" 
-                                           id="<?= esc($fieldKey) ?>" 
-                                           name="<?= esc($fieldKey) ?>" 
+                                    <input type="checkbox"
+                                           id="<?= esc($fieldKey) ?>"
+                                           name="<?= esc($fieldKey) ?>"
                                            value="1"
-                                           <?= old($fieldKey, $appointment[$fieldKey] ?? '') ? 'checked' : '' ?>
-                                           <?= $fieldMeta['required'] ? 'required' : '' ?>
+                                           <?= in_array($checkDefault, ['1', 'true', 'yes', 'on'], true) ? 'checked' : '' ?>
+                                         <?= $isRequiredForEdit ? 'required' : '' ?>
                                            class="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500" />
                                     <label for="<?= esc($fieldKey) ?>" class="ml-2 text-sm text-gray-600 dark:text-gray-400">
                                         Check if applicable
                                     </label>
                                 </div>
-                            
+
                             <?php else: ?>
-                                <input type="text" 
-                                       id="<?= esc($fieldKey) ?>" 
-                                       name="<?= esc($fieldKey) ?>" 
-                                       value="<?= esc(old($fieldKey, $appointment[$fieldKey] ?? '')) ?>"
-                                       <?= $fieldMeta['required'] ? 'required' : '' ?>
+                                <?php $prefill = $isSensitiveField ? '' : $existingValue; ?>
+                                <input type="text"
+                                       id="<?= esc($fieldKey) ?>"
+                                       name="<?= esc($fieldKey) ?>"
+                                       value="<?= esc(old($fieldKey, $prefill)) ?>"
+                                        <?= $isRequiredForEdit ? 'required' : '' ?>
                                        class="form-input" />
+                            <?php endif; ?>
+
+                            <?php if ($existingValue !== '' && !$isSensitiveField): ?>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave blank to remove this value.</p>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>

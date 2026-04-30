@@ -782,14 +782,6 @@ class AppointmentBookingService
             return ['success' => true, 'customerId' => (int)$data['customer_id']];
         }
 
-        // Handle custom fields
-        $customFieldsData = [];
-        for ($i = 1; $i <= 6; $i++) {
-            if (isset($data["custom_field_{$i}"]) && $data["custom_field_{$i}"] !== '') {
-                $customFieldsData["custom_field_{$i}"] = $data["custom_field_{$i}"];
-            }
-        }
-
         try {
             $result = $this->customerService->upsertCustomer([
                 'customer_id' => $data['customer_id'] ?? null,
@@ -800,7 +792,6 @@ class AppointmentBookingService
                 'phone_country_code' => $data['customer_phone_country_code'] ?? null,
                 'address' => $data['customer_address'] ?? null,
                 'notes' => $data['customer_notes'] ?? null,
-                'custom_fields' => $customFieldsData !== [] ? $customFieldsData : null,
             ]);
 
             return ['success' => true, 'customerId' => (int) ($result['id'] ?? 0)];

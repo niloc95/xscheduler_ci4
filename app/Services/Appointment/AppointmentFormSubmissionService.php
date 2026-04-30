@@ -37,11 +37,6 @@ class AppointmentFormSubmissionService
             'address' => $input['customer_address'] ?? null,
         ];
 
-        $customFields = $this->extractCustomFieldValues($input);
-        if ($customFields !== []) {
-            $customerData['custom_fields'] = json_encode($customFields);
-        }
-
         return $customerData;
     }
 

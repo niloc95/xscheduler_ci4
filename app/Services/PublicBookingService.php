@@ -101,6 +101,7 @@ class PublicBookingService
     private AppointmentBookingService $bookingService;
     private PhoneNumberService $phoneNumberService;
     private CustomerService $customerService;
+    private CustomerCustomFieldService $customerCustomFieldService;
 
     /** @var array<string, bool> */
     private array $columnExistsCache = [];
@@ -117,7 +118,10 @@ class PublicBookingService
         ?LocationModel $locations = null,
         ?AppointmentBookingService $bookingService = null,
         ?CustomerService $customerService = null,
+        ?CustomerCustomFieldService $customerCustomFieldService = null,
     ) {
+        helper('app');
+
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->availability = $availability ?? new AvailabilityService();
         $this->appointments = $appointments ?? new AppointmentModel();
@@ -130,6 +134,7 @@ class PublicBookingService
         $this->bookingService = $bookingService ?? new AppointmentBookingService();
         $this->phoneNumberService = new PhoneNumberService($this->settings);
         $this->customerService = $customerService ?? new CustomerService($this->customers, $this->phoneNumberService);
+        $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService($this->customers);
     }
 
     public function buildViewContext(): array
@@ -603,6 +608,7 @@ class PublicBookingService
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
         $customerFields = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
+        $customFieldValues = $this->extractAppointmentCustomFieldValues($payload, $customConfig, true);
 
         $token = $this->generateToken();
 
@@ -625,13 +631,6 @@ class PublicBookingService
             'booking_channel' => 'public',
         ];
 
-        if (!empty($customerFields['custom_fields'])) {
-            $decoded = json_decode($customerFields['custom_fields'], true) ?: [];
-            foreach ($decoded as $key => $value) {
-                $bookingPayload[$key] = $value;
-            }
-        }
-
         $result = $this->bookingService->createAppointment($bookingPayload, $this->localization->getTimezone());
         if (!$result['success']) {
             throw new PublicBookingException(
@@ -641,7 +640,16 @@ class PublicBookingService
             );
         }
 
-        $appointment = $this->appointments->find((int) $result['appointmentId']);
+        $appointmentId = (int) ($result['appointmentId'] ?? 0);
+        $appointment = $this->appointments->find($appointmentId);
+
+        if (is_array($appointment)) {
+            $customerId = (int) ($appointment['customer_id'] ?? 0);
+            if ($customerId > 0 && $customFieldValues !== []) {
+                $this->customerCustomFieldService->mergeForCustomer($customerId, $customFieldValues, []);
+            }
+        }
+
         return $this->formatPublicAppointment($appointment, $token);
     }
 
@@ -728,6 +736,10 @@ class PublicBookingService
 
         $customerId = $this->storeCustomer($payload, (int) $appointment['customer_id']);
         $newToken = $this->generateToken();
+        $customConfig = $this->bookingSettings->getCustomFieldConfiguration();
+        $existingCustomFieldValues = $this->customerCustomFieldService->getForCustomer($customerId);
+        $customFieldValues = $this->extractAppointmentCustomFieldValues($payload, $customConfig, true, $existingCustomFieldValues);
+        $clearFlags = $this->extractAppointmentCustomFieldClearFlags($payload, $customConfig);
 
         $updatePayload = [
             'provider_id' => $provider['id'],
@@ -742,6 +754,9 @@ class PublicBookingService
             'booking_channel' => 'public',
         ];
 
+        $db = \Config\Database::connect();
+        $db->transStart();
+
         $result = $this->bookingService->updateAppointment(
             (int) $appointment['id'],
             $updatePayload,
@@ -751,11 +766,19 @@ class PublicBookingService
         );
 
         if (!$result['success']) {
+            $db->transRollback();
             throw new PublicBookingException(
                 $result['message'] ?? 'Unable to reschedule appointment. Please try again later.',
                 $this->resolveBookingFailureStatus($result),
                 $this->resolveBookingFailureErrors($result)
             );
+        }
+
+        $this->customerCustomFieldService->mergeForCustomer($customerId, $customFieldValues, $clearFlags);
+
+        $db->transComplete();
+        if (!$db->transStatus()) {
+            throw new PublicBookingException('Unable to save appointment updates. Please try again later.', 422, ['appointment' => 'update_failed']);
         }
 
         $updated = $this->appointments->find((int) $appointment['id']);
@@ -1448,24 +1471,6 @@ class PublicBookingService
             $fields['notes'] = $notes;
         }
 
-        $customPayload = [];
-        foreach ($customConfig as $field => $config) {
-            if (!array_key_exists($field, $payload)) {
-                continue;
-            }
-            $value = $this->sanitizeCustomField($payload[$field], $config['type']);
-            if ($value === null) {
-                if ($config['required']) {
-                    throw new PublicBookingException('Please complete all required custom fields.', 422, [$field => 'required']);
-                }
-                continue;
-            }
-            $customPayload[$field] = $value;
-        }
-
-        if (!empty($customPayload)) {
-            $fields['custom_fields'] = json_encode($customPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        }
 
         if (empty($fields['first_name']) && !empty($fields['last_name'])) {
             $fields['first_name'] = 'Guest';
@@ -1479,6 +1484,58 @@ class PublicBookingService
         }
 
         return $fields;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractAppointmentCustomFieldValues(
+        array $payload,
+        array $customConfig,
+        bool $respectRequired,
+        array|string|null $storedValues = null
+    ): array
+    {
+        $values = [];
+
+        foreach ($customConfig as $field => $config) {
+            $rawValue = array_key_exists($field, $payload) ? $payload[$field] : null;
+            $value = $this->sanitizeCustomField($rawValue, $config['type']);
+            $hasStoredValue = $this->customerCustomFieldService->hasStoredValue($storedValues, $field);
+
+            if ($value === null) {
+                if ($respectRequired && !empty($config['required']) && !$hasStoredValue) {
+                    throw new PublicBookingException('Please complete all required custom fields.', 422, [$field => 'required']);
+                }
+                continue;
+            }
+
+            $values[$field] = $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractAppointmentCustomFieldClearFlags(array $payload, array $customConfig): array
+    {
+        $flags = [];
+
+        foreach ($customConfig as $field => $_config) {
+            $clearKey = 'clear__' . $field;
+            if (!array_key_exists($clearKey, $payload)) {
+                continue;
+            }
+
+            $rawValue = strtolower(trim((string) $payload[$clearKey]));
+            if (in_array($rawValue, ['1', 'true', 'yes', 'on'], true)) {
+                $flags[$field] = '1';
+            }
+        }
+
+        return $flags;
     }
 
     private function sanitizeString(?string $value, int $maxLength): ?string
@@ -1615,6 +1672,7 @@ class PublicBookingService
             'location_name' => $appointment['location_name'] ?? null,
             'location_address' => $appointment['location_address'] ?? null,
             'location_contact' => $appointment['location_contact'] ?? null,
+            'custom_fields' => $this->buildPublicCustomFieldPayload($customer['custom_fields'] ?? null),
             // Reschedule eligibility — computed server-side so the SPA can gate the form
             'can_reschedule' => $this->canReschedule($appointment['start_at']),
             // Cancellation eligibility — computed server-side so the SPA can gate cancel action
@@ -1628,6 +1686,15 @@ class PublicBookingService
         $startLabel = $this->localization->formatTimeForDisplay($start->format('H:i:s'));
         $endLabel   = $this->localization->formatTimeForDisplay($end->format('H:i:s'));
         return sprintf('%s at %s – %s', $dateLabel, $startLabel, $endLabel);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildPublicCustomFieldPayload(array|string|null $storedValues): array
+    {
+        $config = $this->bookingSettings->getCustomFieldConfiguration();
+        return $this->customerCustomFieldService->buildPublicPayload($config, $storedValues);
     }
 
     private function fetchAppointmentByReference(string $reference): array

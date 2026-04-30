@@ -69,12 +69,17 @@ use App\Models\SettingModel;
 class BookingSettingsService
 {
     protected SettingModel $settingModel;
+    private CustomerCustomFieldService $customerCustomFieldService;
     private ?array $fieldConfigCache = null;
     private ?array $customFieldConfigCache = null;
 
-    public function __construct(?SettingModel $settingModel = null)
+    public function __construct(
+        ?SettingModel $settingModel = null,
+        ?CustomerCustomFieldService $customerCustomFieldService = null
+    )
     {
         $this->settingModel = $settingModel ?? new SettingModel();
+        $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService();
     }
 
     /**
@@ -158,6 +163,7 @@ class BookingSettingsService
             $keys[] = "booking.custom_field_{$i}_title";
             $keys[] = "booking.custom_field_{$i}_type";
             $keys[] = "booking.custom_field_{$i}_required";
+            $keys[] = "booking.custom_field_{$i}_sensitive";
         }
 
         $settings = $this->settingModel->getByKeys($keys);
@@ -185,6 +191,7 @@ class BookingSettingsService
                 'title'    => $title,
                 'type'     => $type,
                 'required' => $this->toBool($settings["booking.custom_field_{$i}_required"] ?? '0'),
+                'is_sensitive' => $this->toBool($settings["booking.custom_field_{$i}_sensitive"] ?? '0'),
             ];
         }
 
@@ -277,9 +284,21 @@ class BookingSettingsService
      * @param int $customerId Customer ID to exclude from unique email check
      * @return array Validation rules
      */
-    public function getValidationRulesForUpdate(int $customerId): array
+    public function getValidationRulesForUpdate(int $customerId, array|string|null $existingCustomFieldValues = null): array
     {
         $rules = $this->getValidationRules();
+
+        foreach ($this->getCustomFieldConfiguration() as $field => $settings) {
+            if (empty($settings['required']) || !isset($rules[$field])) {
+                continue;
+            }
+
+            if (!$this->customerCustomFieldService->hasStoredValue($existingCustomFieldValues, $field)) {
+                continue;
+            }
+
+            $rules[$field] = preg_replace('/^required(?=\||$)/', 'permit_empty', $rules[$field], 1) ?? $rules[$field];
+        }
         
         // Update email rule to exclude current customer from unique check
         if (isset($rules['email'])) {
