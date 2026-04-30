@@ -24,8 +24,7 @@ function bootstrapPublicBooking() {
   const context = parseContext();
   const appBase = resolveAppBaseUrl(context);
   const bookingBase = context.bookingBaseUrl || '/booking';
-  const today = new Date();
-  const defaultDate = today.toISOString().slice(0, 10);
+  const defaultDate = new Date().toISOString().slice(0, 10);
 
   let state = {
     view: context.manageReference ? 'manage' : 'book',
@@ -292,15 +291,6 @@ function bootstrapPublicBooking() {
         appointment: data?.data ?? prev.appointment,
       }));
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          cancelSubmitting: false,
-          cancelError: error.message,
-        }));
-        return;
-      }
-
       updateManage(prev => ({
         ...prev,
         cancelSubmitting: false,
@@ -408,7 +398,6 @@ function bootstrapPublicBooking() {
         name: svc.name,
         description: svc.description,
         duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
-        durationMinutes: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
         formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
       }));
@@ -443,12 +432,6 @@ function bootstrapPublicBooking() {
       loc = resolveLocationForDate(draft.providerId, value);
     }
 
-    updateDraft(target, prev => ({
-      ...prev,
-      resolvedLocation: loc,
-      errors: { ...prev.errors, slot_start: undefined },
-    }));
-
     const availableDates = draft.calendar?.availableDates ?? [];
     if (availableDates.includes(value)) {
       syncSlotsFromCalendar(target, value);
@@ -457,11 +440,13 @@ function bootstrapPublicBooking() {
 
     updateDraft(target, prev => ({
       ...prev,
+      resolvedLocation: loc,
       appointmentDate: value,
       selectedSlot: null,
       slots: [],
       slotsError: '',
       prefetched: null,
+      errors: { ...prev.errors, slot_start: undefined },
     }));
     fetchSlots(target, { forceRemote: true });
   }
@@ -818,20 +803,12 @@ function bootstrapPublicBooking() {
         }));
       }
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateDraft(target, prev => ({
-          ...prev,
-          submitting: false,
-          globalError: error.message,
-          errors: { ...prev.errors, ...error.details },
-        }));
-        return;
-      }
-
+      const details = error instanceof SubmissionError ? error.details : {};
       updateDraft(target, prev => ({
         ...prev,
         submitting: false,
         globalError: error.message ?? 'Something went wrong. Please try again.',
+        errors: { ...prev.errors, ...details },
       }));
     }
   }
@@ -1257,11 +1234,11 @@ function bootstrapPublicBooking() {
             <dt class="text-sm font-medium text-slate-500">Current time</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(slotSummary)}</dd>
           </div>
-          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+          <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Provider</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(providerLabel)}</dd>
           </div>
-          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+          <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Service</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(serviceLabel)}</dd>
           </div>
@@ -1438,7 +1415,7 @@ function bootstrapPublicBooking() {
 
     const name = (service.name || '').trim();
     const description = (service.description || '').trim();
-    const duration = service.duration ?? service.durationMinutes ?? null;
+    const duration = service.duration ?? null;
     const formattedPrice = (service.formattedPrice || '').trim();
 
     if (!name && !description && !duration && !formattedPrice) {
@@ -1586,7 +1563,7 @@ function bootstrapPublicBooking() {
       const stateClass = isSelected
         ? 'border-blue-600 bg-blue-50 text-blue-900'
         : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
-      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDatePillLabel(date))}</button>`;
+      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDateSelectLabel(date))}</button>`;
     }).join('');
 
     const moreCount = Math.max(0, dates.length - 6);
@@ -1819,17 +1796,14 @@ function bootstrapPublicBooking() {
   }
 
   function formatSlotLabel(slot) {
-    const start = slot?.start ? new Date(slot.start) : null;
-    const end = slot?.end ? new Date(slot.end) : null;
-    if (!start || !end) {
+    // Delegate to formatSlotSummary but extract only the time portion
+    const summary = formatSlotSummary(slot);
+    if (!summary) {
       return 'Selected time';
     }
-    const use12h = context?.timeFormat !== '24h';
-    const appTz = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const timeFormatter = new Intl.DateTimeFormat('en', {
-      hour: 'numeric', minute: '2-digit', hour12: use12h, timeZone: appTz,
-    });
-    return `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+    // Extract "HH:MM – HH:MM" from "Day, Month Date, HH:MM – HH:MM"
+    const match = summary.match(/(\d{1,2}:\d{2}\s?[AP]M|\d{1,2}:\d{2})\s–\s(\d{1,2}:\d{2}\s?[AP]M|\d{1,2}:\d{2})/);
+    return match ? `${match[1]} – ${match[2]}` : 'Selected time';
   }
 
   function formatSlotSummary(slot) {
@@ -1900,6 +1874,9 @@ function bootstrapPublicBooking() {
     }
   }
 
+  // Resolves app base URL from context or window globals.
+  // Note: This intentionally runs standalone without importing url-helpers.js
+  // to allow the booking module to function independently.
   function resolveAppBaseUrl(ctx) {
     if (ctx?.appBaseUrl) {
       return String(ctx.appBaseUrl).replace(/\/+$/, '');
@@ -1979,11 +1956,6 @@ function bootstrapPublicBooking() {
     return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  // Keep as a function declaration (not const alias) to avoid TDZ during first render.
-  function formatDatePillLabel(dateStr) {
-    return formatDateSelectLabel(dateStr);
-  }
-
   /**
    * Helper: Find the matching location object for a given providerId + date string.
    * Checks configured location days from ctx.providers[].locations[].days[].
@@ -2011,13 +1983,7 @@ function bootstrapPublicBooking() {
     return null;
   }
 
-  async function safeJson(response) {
-    try {
-      return await response.json();
-    } catch (error) {
-      return null;
-    }
-  }
+
 
   function cloneState(value) {
     if (typeof structuredClone === 'function') {
