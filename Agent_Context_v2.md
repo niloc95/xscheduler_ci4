@@ -1693,3 +1693,36 @@ Each queue item in 19.1 must end with:
 - `npm run test:frontend:lifecycle`
 - `npm run test:unit:calendar`
 - `npm run build`
+
+## Custom Field Required Semantics (Apr 2026)
+
+### Rule: Required fields are satisfied by stored values
+
+**Canonical contract**: A custom field marked as `required` in booking settings is only required if the linked customer does NOT already have a non-empty value stored in `xs_customers.custom_fields`.
+
+**When required enforcement applies**:
+- **Initial booking/create**: Enforced strictly; all required custom fields must be provided.
+- **Later edits/reschedule**: Relaxed; customer may update a single field without re-entering others if they already have stored values.
+
+**Implementation seams**:
+- `CustomerCustomFieldService::hasStoredValue($storedValues, $fieldKey)` → returns bool; true if field exists in decoded JSON and value is non-empty
+- `BookingSettingsService::getValidationRulesForUpdate($customerId, $existingCustomFieldValues)` → accepts optional stored values; relaxes required rules when stored values exist
+- Three surfaces apply this rule:
+  1. **Customer edit form**: `CustomerManagement::edit()` computes `$customFieldRequiredState` array; `app/Views/customer-management/edit.php` renders field-by-field required attribute conditionally
+  2. **Admin appointment edit form**: `app/Views/appointments/form.php` computes `$isRequiredForEdit = $fieldMeta['required'] && $existingValue === ''` for each field
+  3. **Public booking manage**: `PublicBookingService::reschedule()` passes stored customer values to `extractAppointmentCustomFieldValues()`; `resources/js/public-booking.js` only shows required marker when `!existingMasked`
+
+**Example workflow**:
+1. Initial booking: Customer fills required Medical Aid → value stored in `xs_customers.custom_fields`
+2. Later customer edit: Medical Aid field NOT marked required (stored value exists) → customer may change address and save without re-entering Medical Aid
+3. Public reschedule: Medical Aid NOT marked required in form → blank submission accepted, existing value preserved via selective merge
+
+**Edge case semantics**:
+- Sensitive fields on reschedule: Form input starts empty but shows "Current: ****5201" hint. Blank submission is no-op (doesn't overwrite stored value).
+- Non-sensitive fields on edit: Show "Leave blank to remove this value" hint. Blank submission is no-op (selective merge only takes non-empty values).
+- Explicit clear: `clear__fieldKey=1` in payload still removes value regardless of blank status (explicit intent wins).
+
+**Test coverage**:
+- `Tests\Unit\Services\BookingSettingsServiceTest::testGetValidationRulesForUpdateRelaxesRequiredCustomFieldWhenStoredValueExists` → confirms rules relax when stored values present
+- `Tests\Unit\PublicBookingServiceTest::testExtractAppointmentCustomFieldValuesRequiresInitialCaptureWhenMissing` → confirms first capture strict
+- `Tests\Unit\PublicBookingServiceTest::testExtractAppointmentCustomFieldValuesAllowsBlankWhenStoredValueAlreadyExists` → confirms reschedule relax
