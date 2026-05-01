@@ -408,19 +408,6 @@ export class MonthView {
         this.renderDailySection(data);
     }
 
-    getContrastColor(hexColor) {
-        // Convert hex to RGB
-        const hex = hexColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        
-        // Calculate luminance
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        
-        return luminance > 0.5 ? '#000000' : '#FFFFFF';
-    }
-
     /**
      * Toggle expansion of provider appointments in monthly schedule
      */
@@ -630,32 +617,6 @@ export class MonthView {
                 </div>
             </div>
         `;
-    }
-
-    /**
-     * REMOVED: _renderMonthSlotPanel() - Month view no longer shows inline slot panel.
-     * Click day cell to navigate to day view instead.
-     */
-    _renderMonthSlotPanel_REMOVED() {
-        const date = this.selectedDate || DateTime.now();
-        return `<div class="slot-panel" id="month-slot-panel-inner">
-            <div class="slot-panel__header">
-                <h3 class="slot-panel__title">
-                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">event_available</span>
-                    Available Slots — ${date.toFormat('EEE, MMM d')}
-                </h3>
-                <div class="slot-panel__provider-count" id="month-slot-provider-count"></div>
-            </div>
-            <div class="slot-panel__slots">
-                <div class="slot-panel__slots-header">
-                    <span class="slot-panel__slots-label">Time Slots</span>
-                    <span class="slot-panel__slot-count" id="month-slot-count"></span>
-                </div>
-                <div class="slot-panel__slot-list" id="month-slot-list">
-                    <div class="text-sm text-gray-500 dark:text-gray-400">Loading availability...</div>
-                </div>
-            </div>
-        </div>`;
     }
 
     /**

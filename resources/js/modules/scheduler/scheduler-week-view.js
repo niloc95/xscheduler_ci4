@@ -5,7 +5,7 @@
 import { DateTime } from 'luxon';
 import { getProviderColor, getProviderInitials, getStatusColors, getStatusLabel } from './appointment-colors.js';
 import { weekStart } from './time-grid-utils.js';
-import { renderWeekDayHeaders, renderWeekDayCell } from './week-view-day-grid.js';
+import { renderWeekDayHeaders, renderWeekDayCell, getMaxChips } from './week-view-day-grid.js';
 import {
     renderWeekShell,
     renderWeekSlotPanel,
@@ -108,16 +108,16 @@ export class WeekView {
         });
 
         return providerOrder
-            .map((providerId, index) => {
+            .map((providerId) => {
                 const providerAppointments = groupedByProvider.get(providerId) || [];
-                const provider = this.providers.find((p) => Number(p.id) === Number(providerId));
-                const providerColor = getProviderColor(provider);
+                const sectionProvider = this.providers.find((p) => Number(p.id) === Number(providerId));
+                const providerColor = getProviderColor(sectionProvider);
                 const providerName = this._providerNameFor(providerId);
-                const providerInitials = getProviderInitials(provider?.name || provider?.username || providerName);
+                const providerInitials = getProviderInitials(sectionProvider?.name || sectionProvider?.username || providerName);
 
                 const appointmentsHtml = providerAppointments.map((appointment) => {
-                const provider = this.providers.find((p) => Number(p.id) === Number(appointment.providerId));
-                const providerColor = getProviderColor(provider);
+                const appointmentProvider = this.providers.find((p) => Number(p.id) === Number(appointment.providerId));
+                const apptProviderColor = getProviderColor(appointmentProvider);
                 const statusColors = getStatusColors(appointment.status, false);
 
                 return renderWeekAppointmentRow({
@@ -125,8 +125,8 @@ export class WeekView {
                     timeLabel: this._formatAppointmentTime(appointment),
                     providerName: this._providerNameFor(appointment.providerId),
                     serviceName: appointment.serviceName || '',
-                    providerInitials: getProviderInitials(provider?.name || provider?.username),
-                    providerColor,
+                    providerInitials: getProviderInitials(appointmentProvider?.name || appointmentProvider?.username),
+                    providerColor: apptProviderColor,
                     statusLabel: getStatusLabel(appointment.status),
                     statusDotColor: statusColors.dot,
                 });
@@ -243,7 +243,7 @@ export class WeekView {
         const hiddenItems = appointmentsContainer.querySelectorAll('.scheduler-appointment.hidden');
         const visibleItems = appointmentsContainer.querySelectorAll('.scheduler-appointment');
         const textElement = buttonElement.querySelector('.week-expand-text');
-        const maxVisible = window.matchMedia('(max-width: 639px)').matches ? 2 : 3;
+        const maxVisible = getMaxChips();
 
         if (isExpanded) {
             visibleItems.forEach((item, index) => {
