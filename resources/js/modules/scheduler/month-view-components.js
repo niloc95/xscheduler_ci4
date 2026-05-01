@@ -1,5 +1,4 @@
 import { escapeHtml } from '../../utils/html.js';
-import { renderAppointmentChip } from './appointment-chip.js';
 
 export function renderMonthShell({ dayHeadersHtml, calendarGridHtml, emptyStateHtml, slotPanelHtml }) {
     return `
@@ -47,6 +46,4 @@ export function renderMonthAppointmentBlock({ appointment, providerColor, time, 
     `;
 }
 
-export function renderMonthModelAppointmentChip(props) {
-    return renderAppointmentChip(props);
-}
+
