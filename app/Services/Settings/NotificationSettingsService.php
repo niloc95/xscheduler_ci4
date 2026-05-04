@@ -47,9 +47,29 @@ class NotificationSettingsService
 
     protected function resolveBusinessId(): int
     {
-        helper('permissions');
+        // Intentionally session-only — GET/POST params must NOT influence which
+        // business_id notification rules are saved under.  A stale ?business_id=
+        // query string from a notifications page link would otherwise silently
+        // write rules for the wrong business_id.  Mirror the same pattern used
+        // by NotificationCenterService::resolveBusinessId().
+        $sessionUser = session()->get('user');
+        $sessionUser = is_array($sessionUser) ? $sessionUser : [];
 
-        return current_business_id();
+        $candidates = [
+            session()->get('business_id'),
+            session()->get('active_business_id'),
+            $sessionUser['business_id'] ?? null,
+            $sessionUser['active_business_id'] ?? null,
+            $sessionUser['businessId'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_numeric($candidate) && (int) $candidate > 0) {
+                return (int) $candidate;
+            }
+        }
+
+        return NotificationCatalog::BUSINESS_ID_DEFAULT;
     }
 
     public function getIndexData(): array
