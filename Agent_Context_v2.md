@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.6
+version: 2.7
 status: Active hardening
-last_updated: 2026-04-28
+last_updated: 2026-05-04
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -807,9 +807,10 @@ Use CustomerAppointmentService for provider/staff customer scoping:
 
 ### 10.1 Public Routes
 
-- GET /book
-- GET /book/{serviceSlug}
-- GET /book/{serviceSlug}/{providerHash}
+- GET /booking
+- GET /booking/{serviceSlug}
+- GET /booking/{serviceSlug}/{providerSlug}
+- GET /booking/legal
 - GET /my-appointments/{hash}
 
 ### 10.2 Public APIs
@@ -825,6 +826,18 @@ Use CustomerAppointmentService for provider/staff customer scoping:
 - Use hash/token references only
 - Enforce CSRF on form submit
 - Keep slot queries scoped by provider and service
+
+### 10.4 Public Booking Policy and Legal Rules
+
+- `business.reschedule` and `business.cancel` are enforced server-side in `PublicBookingService`; the SPA may only reflect eligibility via `can_reschedule` / `can_cancel` flags and policy summaries.
+- `business.future_limit` is a **public-channel-only** booking guard. Public booking calendar queries and public booking submission must respect it; admin/staff/API appointment creation does not inherit this limit by default.
+- Public booking page context must expose `reschedulePolicy`, `cancelPolicy`, `futureLimitDays`, and a `legalPolicies` object for UI rendering.
+- `legalPolicies` currently carries `cancellationPolicy`, `reschedulingPolicy`, `termsUrl`, `privacyUrl`, and `legalPageUrl`.
+- The public booking UI must reuse the existing in-form policy surface (`renderSchedulingTips()` in `resources/js/public-booking.js`) instead of adding a detached sidebar/right panel unless explicitly requested.
+- Short legal summaries belong in the booking flow; long-form legal text belongs on `/booking/legal`.
+- The `Full legal policies` link from the booking flow opens `/booking/legal` in a new tab; the legal page itself must provide an in-page navigation affordance back to `/booking`.
+- Avoid duplicate policy copy blocks in the form. If rules/legal are shown in `renderSchedulingTips()`, do not render a second standalone policy card with overlapping content.
+- Any legal URL shown from booking context (`termsUrl`, `privacyUrl`) must open with `target="_blank" rel="noopener"`.
 
 ## 11) Notifications Contract
 
@@ -854,11 +867,17 @@ UI-facing service methods.
 
 ### 11.3 Dispatch Architecture Notes
 
-- Booking-time notifications are queued synchronously inline during the appointment mutation request; they are not deferred until the first cron tick.
+- Booking-time notifications are queued synchronously inline during the appointment mutation request, but **dispatch is deferred** to the queue worker / cron (`php spark notifications:dispatch-queue`). Do not perform SMTP or channel delivery inline in the HTTP request path.
 - New booking flows must derive event type from AppointmentStatus::notificationEvent() instead of hardcoding confirmation events.
 - `PATCH /api/appointments/{id}/status` fires notifications server-side for each transition.
 - Frontend events such as `appointments-updated` do not drive notification delivery; notifications are triggered by backend mutation flows.
 - Manual resend flows use `POST /api/appointments/{id}/notify`. Email and SMS resends send immediately, while WhatsApp resends are queued.
+
+### 11.3a HTTP Request Path Rule
+
+- `AppointmentBookingService::queueNotifications()` must enqueue only. It must not instantiate `NotificationQueueDispatcher` for immediate delivery.
+- Inline dispatch during booking/reschedule/cancel requests is a correctness and performance hazard: it blocks the HTTP response on SMTP/channel transport availability and turns transient transport failures into user-facing latency.
+- If Mailpit/SMTP or any external transport is down, the correct behavior is: mutation succeeds, notification rows remain queued/failed for retry, and the cron/dispatcher handles recovery later.
 
 ### 11.4 Event and Template Rules
 

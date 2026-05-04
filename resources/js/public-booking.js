@@ -13,6 +13,9 @@ import {
 
 const root = document.getElementById('public-booking-root');
 
+const MSG_NO_SLOTS = 'No slots available for this date. Try another day.';
+const MSG_NO_AVAILABILITY = 'Unable to load availability.';
+
 
 if (!root) {
   console.warn('[public-booking] Root element not found.');
@@ -30,11 +33,6 @@ function bootstrapPublicBooking() {
     view: context.manageReference ? 'manage' : 'book',
     booking: createBookingDraft(context, defaultDate),
     manage: createManageDraft(context, defaultDate),
-    csrf: {
-      header: root.dataset.csrfHeader || 'X-CSRF-TOKEN',
-      value: root.dataset.csrfValue || '',
-      name: root.dataset.csrfName || 'csrf_token',
-    },
   };
 
   function formatLocalizedCurrency(amount) {
@@ -189,13 +187,11 @@ function bootstrapPublicBooking() {
     const providerSelect = form.querySelector('[data-provider-select]');
     const serviceSelect = form.querySelector('[data-service-select]');
     const locationSelect = form.querySelector('[data-location-select]');
-    const dateInput = form.querySelector('[data-date-input]');
     const dateSelect = form.querySelector('[data-date-select]');
 
     providerSelect?.addEventListener('change', (event) => handleProviderChange(event.target.value, target));
     serviceSelect?.addEventListener('change', (event) => handleServiceChange(event.target.value, target));
     locationSelect?.addEventListener('change', (event) => handleLocationChange(event.target.value, target));
-    dateInput?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     dateSelect?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     form.querySelectorAll('[data-date-pill]').forEach(button => {
       button.addEventListener('click', () => {
@@ -223,6 +219,42 @@ function bootstrapPublicBooking() {
     }
     form.addEventListener('input', handleLookupInput);
     form.addEventListener('submit', handleLookupSubmit);
+  }
+
+  function extractErrorDetails(data) {
+    return data?.error?.details ?? data?.details ?? {};
+  }
+
+  function refreshCsrf(response, data) {
+    rotateCsrfFromResponse(response, 'public');
+    updateCsrfFromBody(data);
+  }
+
+  function handleLookupError(error, fallbackMessage) {
+    if (error instanceof SubmissionError) {
+      updateManage(prev => ({
+        ...prev,
+        lookupLoading: false,
+        lookupError: error.message,
+        lookupErrors: { ...prev.lookupErrors, ...error.details },
+      }));
+      return;
+    }
+
+    updateManage(prev => ({
+      ...prev,
+      lookupLoading: false,
+      lookupError: error.message ?? fallbackMessage,
+    }));
+  }
+
+  function renderDashedCard(text) {
+    return `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">${escapeHtml(text)}</div>`;
+  }
+
+  function getFutureLimitDays() {
+    const days = Number(context.futureLimitDays ?? 60);
+    return days > 0 ? days : 60;
   }
 
   function resetBookingFlow() {
@@ -274,11 +306,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to cancel the booking.', details);
       }
 
@@ -314,7 +345,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       resolvedLocation: null,
       selectedLocationId: autoLocationId,
       calendar: createCalendarState(),
@@ -332,7 +362,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       calendar: { ...createCalendarState(), loading: true, error: '' },
       errors: { ...prev.errors, service_id: undefined, slot_start: undefined },
     }));
@@ -357,7 +386,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       calendar: { ...createCalendarState(), loading: Boolean(prev.serviceId), error: '' },
       errors: { ...prev.errors, location_id: undefined, slot_start: undefined },
     }));
@@ -445,7 +473,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       errors: { ...prev.errors, slot_start: undefined },
     }));
     fetchSlots(target, { forceRemote: true });
@@ -535,11 +562,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to locate that booking.', details);
       }
 
@@ -566,20 +592,7 @@ function bootstrapPublicBooking() {
         }
       }
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          lookupLoading: false,
-          lookupError: error.message,
-          lookupErrors: { ...prev.lookupErrors, ...error.details },
-        }));
-        return;
-      }
-      updateManage(prev => ({
-        ...prev,
-        lookupLoading: false,
-        lookupError: error.message ?? 'Unable to locate that booking.',
-      }));
+      handleLookupError(error, 'Unable to locate that booking.');
     }
   }
 
@@ -596,29 +609,15 @@ function bootstrapPublicBooking() {
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         authContext: 'public',
       });
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to load that booking.', details);
       }
       updateManage(prev => ({ ...prev, lookupLoading: false }));
       enterRescheduleStage(data?.data, { email, phone, phone_country_code: phoneCountryCode });
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          lookupLoading: false,
-          lookupError: error.message,
-          lookupErrors: { ...prev.lookupErrors, ...error.details },
-        }));
-        return;
-      }
-      updateManage(prev => ({
-        ...prev,
-        lookupLoading: false,
-        lookupError: error.message ?? 'Unable to load that booking.',
-      }));
+      handleLookupError(error, 'Unable to load that booking.');
     }
   }
 
@@ -771,7 +770,7 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(
           data?.error?.message ?? data?.error ?? (target === 'booking' ? 'Unable to save your booking.' : 'Unable to update the booking.'),
           details
@@ -824,7 +823,6 @@ function bootstrapPublicBooking() {
         slots: [],
         slotsError: '',
         selectedSlot: null,
-        prefetched: null,
       }));
       return;
     }
@@ -835,8 +833,6 @@ function bootstrapPublicBooking() {
       slots: [],
       slotsError: '',
       selectedSlot: null,
-      prefetched: null,
-      slotsLoading: true,
     }));
 
     const query = new URLSearchParams({
@@ -857,11 +853,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(payload);
+      refreshCsrf(response, payload);
 
       if (!response.ok) {
-        throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load availability.');
+        throw new Error(payload?.error?.message ?? payload?.error ?? MSG_NO_AVAILABILITY);
       }
 
       const calendarPayload = payload?.data ?? payload ?? {};
@@ -872,14 +867,12 @@ function bootstrapPublicBooking() {
           ...prev,
           ...selection,
           calendar: normalizedCalendar,
-          slotsLoading: false,
         };
       });
     } catch (error) {
       updateDraft(target, prev => ({
         ...prev,
-        calendar: { ...prev.calendar, loading: false, error: error.message ?? 'Unable to load availability.' },
-        slotsLoading: false,
+        calendar: { ...prev.calendar, loading: false, error: error.message ?? MSG_NO_AVAILABILITY },
       }));
     }
   }
@@ -917,15 +910,20 @@ function bootstrapPublicBooking() {
     if (!forceRemote && Array.isArray(calendarSlots)) {
       updateDraft(target, prev => ({
         ...prev,
+        calendar: { ...prev.calendar, loading: false },
         slots: calendarSlots,
-        slotsLoading: false,
-        slotsError: calendarSlots.length === 0 ? 'No slots available for this date. Try another day.' : '',
+        slotsError: calendarSlots.length === 0 ? MSG_NO_SLOTS : '',
         selectedSlot: calendarSlots.find(slot => slot.start === prev.selectedSlot?.start) ?? null,
       }));
       return;
     }
 
-    updateDraft(target, prev => ({ ...prev, slotsLoading: true, slotsError: '', slots: [] }));
+    updateDraft(target, prev => ({
+      ...prev,
+      calendar: { ...prev.calendar, loading: true },
+      slotsError: '',
+      slots: [],
+    }));
 
     const query = new URLSearchParams({
       provider_slug: draft.providerId,
@@ -945,11 +943,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        throw new Error(data?.error?.message ?? data?.error ?? 'Unable to load availability.');
+        throw new Error(data?.error?.message ?? data?.error ?? MSG_NO_AVAILABILITY);
       }
 
       const slotList = Array.isArray(data?.data) ? data.data : [];
@@ -958,13 +955,17 @@ function bootstrapPublicBooking() {
 
       updateDraft(target, prev => ({
         ...prev,
-        slotsLoading: false,
+        calendar: { ...prev.calendar, loading: false },
         slots: slotList,
         selectedSlot: stillValid,
-        slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
+        slotsError: slotList.length === 0 ? MSG_NO_SLOTS : '',
       }));
     } catch (error) {
-      updateDraft(target, prev => ({ ...prev, slotsLoading: false, slotsError: error.message ?? 'Unable to load availability.' }));
+      updateDraft(target, prev => ({
+        ...prev,
+        calendar: { ...prev.calendar, loading: false },
+        slotsError: error.message ?? MSG_NO_AVAILABILITY,
+      }));
     }
   }
 
@@ -995,7 +996,6 @@ function bootstrapPublicBooking() {
    */
   function updateCsrfFromBody(data) {
     if (data?.csrf?.value) {
-      state.csrf = { ...state.csrf, value: data.csrf.value };
       root.dataset.csrfValue = data.csrf.value;
     }
   }
@@ -1317,11 +1317,11 @@ function bootstrapPublicBooking() {
     const providerProfileCard = renderProviderProfileCard(selectedProvider);
     const serviceCard = renderServiceCard(selectedService);
     const providerEmptyState = currentState.providerId
-      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Provider profile details are not available.</div>`
-      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a provider to preview details.</div>`;
+      ? renderDashedCard('Provider profile details are not available.')
+      : renderDashedCard('Choose a provider to preview details.');
     const serviceEmptyState = currentState.serviceId
-      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Service details are not available.</div>`
-      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a service to preview details.</div>`;
+      ? renderDashedCard('Service details are not available.')
+      : renderDashedCard('Choose a service to preview details.');
 
     return `
       <div class="space-y-4">
@@ -1436,7 +1436,8 @@ function bootstrapPublicBooking() {
   }
 
   function renderSlotSection(currentState) {
-    const loading = currentState.slotsLoading
+    const isLoading = Boolean(currentState.calendar?.loading);
+    const loading = isLoading
       ? '<p class="text-sm text-slate-500">Checking availability...</p>'
       : '';
 
@@ -1453,7 +1454,7 @@ function bootstrapPublicBooking() {
       ? `<div class="grid gap-2 sm:grid-cols-2">${slotButtons}</div>`
       : ''; 
 
-    const emptyMessage = !currentState.slotsLoading && !currentState.slots.length
+    const emptyMessage = !isLoading && !currentState.slots.length
       ? `<p class="text-sm text-slate-500">${currentState.providerId && currentState.serviceId ? escapeHtml(currentState.slotsError || 'No open times for this day. Try another date.') : 'Select a provider and service to view appointments.'}</p>`
       : '';
 
@@ -1551,12 +1552,13 @@ function bootstrapPublicBooking() {
     const dates = calendar.availableDates ?? [];
     const disabled = calendar.loading;
     const hasSelections = Boolean(state.providerId && state.serviceId);
+    const futureLimitDays = getFutureLimitDays();
 
     if (!dates.length && calendar.loading) {
       return `
         <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm">
           <p class="font-medium text-slate-600">Preparing availability…</p>
-          <p class="text-slate-500">We are checking the next 60 days for openings.</p>
+          <p class="text-slate-500">We are checking the next ${escapeHtml(String(futureLimitDays))} days for openings.</p>
         </div>
       `;
     }
@@ -1582,7 +1584,7 @@ function bootstrapPublicBooking() {
       return `
         <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           <p class="font-semibold">No open days</p>
-          <p>We could not find any openings in the next 60 days. Try another provider or service.</p>
+          <p>We could not find any openings in the next ${escapeHtml(String(futureLimitDays))} days. Try another provider or service.</p>
         </div>
       `;
     }
@@ -1930,8 +1932,7 @@ function bootstrapPublicBooking() {
         resolvedLocation: prevState.resolvedLocation ?? null,
         slots: [],
         selectedSlot: null,
-        slotsError: calendar.error || 'No availability found in the next 60 days.',
-        prefetched: null,
+        slotsError: calendar.error || `No availability found in the next ${getFutureLimitDays()} days.`,
       };
     }
 
@@ -1960,8 +1961,7 @@ function bootstrapPublicBooking() {
       resolvedLocation,
       slots: slotList,
       selectedSlot,
-      slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
-      prefetched: slotList.length ? { date: appointmentDate } : null,
+      slotsError: slotList.length === 0 ? MSG_NO_SLOTS : '',
     };
   }
 
