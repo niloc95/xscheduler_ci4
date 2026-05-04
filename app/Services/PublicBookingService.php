@@ -154,6 +154,8 @@ class PublicBookingService
             'currencySymbol' => $this->localization->getCurrencySymbol(),
             'reschedulePolicy' => $this->getReschedulePolicy(),
             'cancelPolicy' => $this->getCancelPolicy(),
+            'futureLimitDays' => $this->getFutureLimitDays(),
+            'legalPolicies' => $this->getLegalPolicyContext(),
             'appBaseUrl' => rtrim(base_url(), '/'),
             'bookingBaseUrl' => rtrim(base_url('booking'), '/'),
             'logoUrl' => function_exists('setting_url') ? setting_url('general.company_logo', 'assets/settings/default-logo.svg') : base_url('assets/settings/default-logo.svg'),
@@ -1860,6 +1862,35 @@ class PublicBookingService
             '12h' => ['enabled' => true, 'hours' => 12, 'label' => '12 hours'],
             default => ['enabled' => true, 'hours' => 24, 'label' => '24 hours'],
         };
+    }
+
+    /**
+     * Returns the maximum number of days ahead a public customer may book.
+     * Defaults to 60 when the setting is absent (matches legacy hardcoded value).
+     */
+    public function getFutureLimitDays(): int
+    {
+        $settings = $this->settings->getByKeys(['business.future_limit']);
+        $value = (int) ($settings['business.future_limit'] ?? 60);
+        return $value > 0 ? $value : 60;
+    }
+
+    private function getLegalPolicyContext(): array
+    {
+        $legal = $this->settings->getByKeys([
+            'legal.cancellation_policy',
+            'legal.rescheduling_policy',
+            'legal.terms_url',
+            'legal.privacy_url',
+        ]);
+
+        return [
+            'cancellationPolicy' => (string) ($legal['legal.cancellation_policy'] ?? ''),
+            'reschedulingPolicy' => (string) ($legal['legal.rescheduling_policy'] ?? ''),
+            'termsUrl' => (string) ($legal['legal.terms_url'] ?? ''),
+            'privacyUrl' => (string) ($legal['legal.privacy_url'] ?? ''),
+            'legalPageUrl' => (string) base_url('booking/legal'),
+        ];
     }
 
     private function isOutsidePolicyWindow(string $startAt, array $policy): bool

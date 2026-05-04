@@ -156,7 +156,11 @@ class AvailabilityService
         if ($locationId !== null) {
             $dateObj = new \DateTime($date);
             $dayInt = (int) $dateObj->format('w'); // 0=Sun … 6=Sat
-            $locationDays = $this->locationModel->getLocationDays($locationId);
+            $locationDayCacheKey = 'location_days_' . $locationId;
+            if (!isset($this->cache[$locationDayCacheKey])) {
+                $this->cache[$locationDayCacheKey] = $this->locationModel->getLocationDays($locationId);
+            }
+            $locationDays = $this->cache[$locationDayCacheKey];
             if (!in_array($dayInt, $locationDays, true)) {
                 log_message('info', '[AvailabilityService] Location ' . $locationId . ' does not operate on day ' . $dayInt);
                 return [];
@@ -164,7 +168,11 @@ class AvailabilityService
         }
         
         // Step 2: Get service duration
-        $service = $this->serviceModel->find($serviceId);
+        $serviceCacheKey = 'service_' . $serviceId;
+        if (!isset($this->cache[$serviceCacheKey])) {
+            $this->cache[$serviceCacheKey] = $this->serviceModel->find($serviceId);
+        }
+        $service = $this->cache[$serviceCacheKey];
         if (!$service) {
             log_message('error', '[AvailabilityService] Service not found: ' . $serviceId);
             return [];
@@ -481,7 +489,11 @@ class AvailabilityService
         
         // First check xs_provider_schedules (provider-specific schedule)
         // Use the model's dedicated method instead of manual query
-        $providerSchedule = $this->providerScheduleModel->getActiveDay($providerId, $dayOfWeek);
+        $scheduleCacheKey = 'provider_schedule_' . $providerId . '_' . $dayOfWeek;
+        if (!array_key_exists($scheduleCacheKey, $this->cache)) {
+            $this->cache[$scheduleCacheKey] = $this->providerScheduleModel->getActiveDay($providerId, $dayOfWeek);
+        }
+        $providerSchedule = $this->cache[$scheduleCacheKey];
         
         if ($providerSchedule) {
             // Provider has a custom schedule for this day
@@ -493,10 +505,14 @@ class AvailabilityService
         }
         
         // Fall back to xs_business_hours (global business hours per provider)
-        $businessHours = $this->businessHourModel
-            ->where('provider_id', $providerId)
-            ->where('weekday', $weekday)
-            ->first();
+        $businessHoursCacheKey = 'business_hours_' . $providerId . '_' . $weekday;
+        if (!array_key_exists($businessHoursCacheKey, $this->cache)) {
+            $this->cache[$businessHoursCacheKey] = $this->businessHourModel
+                ->where('provider_id', $providerId)
+                ->where('weekday', $weekday)
+                ->first();
+        }
+        $businessHours = $this->cache[$businessHoursCacheKey];
         
         if ($businessHours) {
             $breaks = [];
@@ -523,7 +539,10 @@ class AvailabilityService
         // Global business bounds come from xs_settings (business.work_start / business.work_end).
         // xs_business_hours is exclusively per-provider; querying it without a provider_id
         // filter returns an arbitrary provider's row, not a global constraint.
-        $settings  = $this->settingModel->getByKeys(['business.work_start', 'business.work_end']);
+        if (!isset($this->cache['business_work_hours'])) {
+            $this->cache['business_work_hours'] = $this->settingModel->getByKeys(['business.work_start', 'business.work_end']);
+        }
+        $settings  = $this->cache['business_work_hours'];
         $workStart = trim((string) ($settings['business.work_start'] ?? ''));
         $workEnd   = trim((string) ($settings['business.work_end'] ?? ''));
 
@@ -578,7 +597,11 @@ class AvailabilityService
      */
     private function resolveLocationContext(int $providerId, ?int $locationId): array
     {
-        $activeLocations = $this->locationModel->getProviderLocations($providerId, true);
+        $locationContextCacheKey = 'provider_locations_' . $providerId;
+        if (!isset($this->cache[$locationContextCacheKey])) {
+            $this->cache[$locationContextCacheKey] = $this->locationModel->getProviderLocations($providerId, true);
+        }
+        $activeLocations = $this->cache[$locationContextCacheKey];
         $activeLocationIds = array_values(array_filter(array_map(static fn(array $loc): int => (int) ($loc['id'] ?? 0), $activeLocations)));
 
         if (empty($activeLocationIds)) {

@@ -77,7 +77,6 @@ use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
 use App\Services\CustomerService;
 use App\Services\NotificationCatalog;
-use App\Services\NotificationQueueDispatcher;
 use App\Services\NotificationQueueService;
 use Config\Database;
 use DateTime;
@@ -200,6 +199,30 @@ class AppointmentBookingService
                 $service['duration_min'],
                 $timezone
             );
+
+            // Step 3c: Enforce future booking limit for public bookings only.
+            // Admin/staff/API channels bypass this gate so internal scheduling is unrestricted.
+            if ($channel === 'public') {
+                $limitSettings = model('SettingModel')->getByKeys(['business.future_limit']);
+                $limitDays = (int) ($limitSettings['business.future_limit'] ?? 60);
+                if ($limitDays <= 0) {
+                    $limitDays = 60;
+                }
+                $cutoff = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                $cutoff = $cutoff->add(new \DateInterval('P' . $limitDays . 'D'));
+                if ($timeData['startDateTime'] > $cutoff) {
+                    log_structured('warning', 'appointment.create_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'reason' => 'future_limit_exceeded',
+                        'limit_days' => $limitDays,
+                        'start_at' => $timeData['startDateTime']->format('Y-m-d H:i:s'),
+                    ]);
+                    return $this->error(
+                        sprintf('Appointments cannot be booked more than %d days in advance.', $limitDays)
+                    );
+                }
+            }
 
             // Step 3b: Resolve strict location context
             $locationContext = $this->resolveBookingLocationContext(
@@ -869,18 +892,15 @@ class AppointmentBookingService
             $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications (' . $event . '): ' . implode(', ', $types));
 
-
             // Enqueue internal (provider + staff) email notifications.
             $this->enqueueInternalNotifications($appointmentId, $event);
 
-            // Run the dispatcher immediately so email (and any other channels) are sent
-            // without requiring the cron job to trigger first.
-            $dispatcher = new NotificationQueueDispatcher();
-            $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
+            // Dispatch is intentionally deferred to the cron job
+            // (php spark notifications:dispatch-queue) to avoid blocking the
+            // HTTP response with synchronous SMTP connections.
         } catch (Exception $e) {
-            log_message('error', '[AppointmentBookingService] Notification dispatch failed: ' . $e->getMessage());
-            // Don't fail the booking if notifications fail
+            log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
+            // Don't fail the booking if notification queuing fails
         }
     }
 

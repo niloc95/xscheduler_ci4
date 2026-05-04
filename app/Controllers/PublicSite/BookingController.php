@@ -172,6 +172,7 @@ class BookingController extends BaseController
             $serviceId = (int) ($this->request->getGet('service_id') ?? 0);
             $startDate = $this->request->getGet('start_date');
             $days = (int) ($this->request->getGet('days') ?? 60);
+            $days = min($days, $this->booking->getFutureLimitDays());
             $locationId = (int) ($this->request->getGet('location_id') ?? 0) ?: null;
 
             if (($providerSlug === '' && $providerId <= 0) || $serviceId <= 0) {

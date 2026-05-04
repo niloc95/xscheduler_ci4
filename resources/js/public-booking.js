@@ -842,7 +842,7 @@ function bootstrapPublicBooking() {
     const query = new URLSearchParams({
       provider_slug: draft.providerId,
       service_id: draft.serviceId,
-      days: '60',
+      days: String(context.futureLimitDays ?? 60),
     });
     if (draft.selectedLocationId) {
       query.set('location_id', draft.selectedLocationId);
@@ -1121,8 +1121,6 @@ function bootstrapPublicBooking() {
     const contactError = manageState.lookupErrors?.contact
       ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
       : '';
-    const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
-    const cancelPolicy = ctx.cancelPolicy ?? { enabled: true, label: '24 hours' };
     const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
     const introCopy = hasPrefilledReference
       ? 'Confirm with the email or phone used when booking to continue.'
@@ -1133,10 +1131,6 @@ function bootstrapPublicBooking() {
     const referenceField = hasPrefilledReference
       ? `<input type="hidden" name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}">`
       : '';
-    const policyMessage = policy.enabled || cancelPolicy.enabled
-      ? `Online changes: reschedule up to ${escapeHtml(policy.label ?? '24 hours')} and cancel up to ${escapeHtml(cancelPolicy.label ?? '24 hours')} before the appointment.`
-      : 'Online changes are disabled. Contact the office for assistance.';
-    const policyClass = policy.enabled || cancelPolicy.enabled ? 'text-slate-600' : 'text-amber-600';
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1164,7 +1158,7 @@ function bootstrapPublicBooking() {
             Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
             ${contactError}
           </div>
-          <p class="text-xs font-medium ${policyClass}">${policyMessage}</p>
+          ${renderSchedulingTips(ctx)}
           <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
         </form>
       </section>
@@ -1264,7 +1258,6 @@ function bootstrapPublicBooking() {
           ${renderCustomerSection(currentState, ctx)}
           ${renderCustomFields(currentState, ctx, existingCustomFields)}
           ${renderNotesField(currentState, ctx)}
-          ${renderPolicy(ctx)}
           ${renderActions(currentState, options.actionOptions)}
         </form>
       </section>
@@ -1360,7 +1353,7 @@ function bootstrapPublicBooking() {
       <section class="space-y-3">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
         ${renderDatePickerField(currentState)}
-        ${renderSchedulingTips()}
+        ${renderSchedulingTips(ctx)}
       </section>
     `;
   }
@@ -1503,11 +1496,52 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderSchedulingTips() {
+  function renderSchedulingTips(ctx) {
+    const policy = ctx?.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+    const cancelPolicy = ctx?.cancelPolicy ?? { enabled: true, label: '24 hours' };
+    const futureLimitDays = Number(ctx?.futureLimitDays ?? 60);
+    const legal = ctx?.legalPolicies ?? {};
+
+    const truncatePolicy = (text) => {
+      const compact = String(text ?? '').trim();
+      if (!compact) {
+        return '';
+      }
+      if (compact.length <= 130) {
+        return compact;
+      }
+      return `${compact.slice(0, 127).trimEnd()}...`;
+    };
+
+    const rescheduleRule = policy.enabled
+      ? `Reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before your appointment.`
+      : 'Online rescheduling is disabled. Contact the office for changes.';
+    const cancelRule = cancelPolicy.enabled
+      ? `Cancel online up to ${escapeHtml(cancelPolicy.label ?? '24 hours')} before your appointment.`
+      : 'Online cancellations are disabled. Contact the office for assistance.';
+
+    const cancellationSummary = truncatePolicy(legal.cancellationPolicy);
+    const reschedulingSummary = truncatePolicy(legal.reschedulingPolicy);
+    const legalPageUrl = String(legal.legalPageUrl ?? '/booking/legal');
+    const termsUrl = String(legal.termsUrl ?? '').trim();
+    const privacyUrl = String(legal.privacyUrl ?? '').trim();
+
+    const legalLinks = [
+      `<a href="${escapeHtml(legalPageUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Full legal policies</a>`,
+      termsUrl ? `<a href="${escapeHtml(termsUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Terms</a>` : '',
+      privacyUrl ? `<a href="${escapeHtml(privacyUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Privacy</a>` : '',
+    ].filter(Boolean).join(' &middot; ');
+
     return `
       <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <span class="font-semibold text-slate-700">Scheduling tips</span>
         <span>Only days with openings are shown. Need another time? Try a different provider or service.</span>
+        <span class="mt-2">${rescheduleRule}</span>
+        <span>${cancelRule}</span>
+        <span>Bookings can be made up to ${escapeHtml(String(futureLimitDays > 0 ? futureLimitDays : 60))} days ahead.</span>
+        ${cancellationSummary ? `<span class="mt-2 text-slate-500"><span class="font-medium text-slate-600">Cancellation policy:</span> ${escapeHtml(cancellationSummary)}</span>` : ''}
+        ${reschedulingSummary ? `<span class="text-slate-500"><span class="font-medium text-slate-600">Rescheduling policy:</span> ${escapeHtml(reschedulingSummary)}</span>` : ''}
+        <span class="mt-2 text-xs">${legalLinks}</span>
       </div>
     `;
   }
@@ -1647,12 +1681,6 @@ function bootstrapPublicBooking() {
         ${renderFieldError('notes', currentState.errors)}
       </div>
     `;
-  }
-
-  function renderPolicy(ctx) {
-    const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
-    const label = policy.enabled ? `Need to make a change? You can reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before your appointment.` : 'Contact the office directly if you need to make a change.';
-    return `<p class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">${label}</p>`;
   }
 
   function renderActions(currentState, options = {}) {

@@ -28,6 +28,12 @@ $cookieBody = trim((string) ($cookieNotice ?? ''));
 <body class="bg-slate-50 text-slate-900">
     <main class="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div class="mb-4">
+                <a class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:border-blue-400 hover:text-blue-700" href="<?= esc(base_url('booking')) ?>">
+                    <span aria-hidden="true">&larr;</span>
+                    <span>Back to bookings</span>
+                </a>
+            </div>
             <h1 class="text-2xl font-semibold">Legal</h1>
             <p class="mt-2 text-sm text-slate-600">Review our terms, privacy notice, and booking policies.</p>
 
