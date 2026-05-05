@@ -164,6 +164,7 @@ bindAppLifecycleEvents({
     documentRef: document,
     initializeComponents,
     refreshAppointmentStats,
+    resetSchedulerInitAttempts,
     hasDashboardStats: () => Boolean(
         document.getElementById('upcomingCount') || document.getElementById('completedCount')
     ),
@@ -186,6 +187,10 @@ document.addEventListener('settingsSaved', async () => {
 window.refreshAppointmentStats = refreshAppointmentStats;
 let schedulerInitAttempts = 0;
 const MAX_SCHEDULER_INIT_ATTEMPTS = 10;
+
+function resetSchedulerInitAttempts() {
+    schedulerInitAttempts = 0;
+}
 
 function teardownScheduler() {
     if (window.scheduler && typeof window.scheduler.destroy === 'function') {

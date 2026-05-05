@@ -27,7 +27,8 @@ export default defineConfig({
         'public-booking': path.resolve(process.cwd(), 'resources/js/public-booking.js'),
       },
       output: {
-        entryFileNames: 'assets/[name].js',
+        // Hash entry files too so production clients/CDNs do not serve stale JS.
+        entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]'
       },

@@ -132,6 +132,19 @@ class DarkModeManager {
             button.setAttribute('aria-label', 
                 this.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
             );
+
+            // Keep icon state in sync across all toggle instances.
+            const lightIcon = button.querySelector('[data-theme-icon="light"]');
+            const darkIcon = button.querySelector('[data-theme-icon="dark"]');
+            if (lightIcon && darkIcon) {
+                if (this.theme === 'dark') {
+                    lightIcon.style.display = 'inline-block';
+                    darkIcon.style.display = 'none';
+                } else {
+                    lightIcon.style.display = 'none';
+                    darkIcon.style.display = 'inline-block';
+                }
+            }
         });
     }
 
