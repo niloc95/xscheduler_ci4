@@ -79,26 +79,37 @@ class NotificationQueueService
         foreach ($channels as $channel) {
             $offsets = $this->getReminderOffsetsMinutes($businessId, $channel);
             if ($offsets === []) {
+                log_message('info', '[NotificationQueueService] Skipping channel {ch}: no reminder offsets configured.', ['ch' => $channel]);
                 continue;
             }
             if (!$this->isChannelEnabledForEvent($businessId, 'appointment_reminder', $channel)) {
+                log_message('info', '[NotificationQueueService] Skipping channel {ch}: appointment_reminder rule not enabled.', ['ch' => $channel]);
                 continue;
             }
             if (!$this->isIntegrationActive($businessId, $channel)) {
+                log_message('info', '[NotificationQueueService] Skipping channel {ch}: integration not active.', ['ch' => $channel]);
                 continue;
             }
             $enabledChannels[$channel] = $offsets;
         }
         if (empty($enabledChannels)) {
+            log_message('warning', '[NotificationQueueService] enqueueDueReminders: no enabled channels for business {bid}. Check xs_business_notification_rules and xs_business_integrations.', ['bid' => $businessId]);
             return $stats;
         }
         $now       = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $windowEnd = $now->modify('+30 days');
-        $model     = new AppointmentModel();
-        $builder   = $model->builder();
+
+        // Lookback buffer: scan appointments up to 48 h in the past (still UPCOMING).
+        // This catches reminders that became due while cron was briefly stopped — e.g.
+        // a 24 h-offset reminder for a 9 am appointment when cron missed an overnight
+        // run. Idempotency keys prevent double-sending for already-sent offsets.
+        $lookbackStart = $now->modify('-48 hours');
+
+        $model   = new AppointmentModel();
+        $builder = $model->builder();
         $builder->select('xs_appointments.id, xs_appointments.start_at');
         $builder->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
-        $builder->where('xs_appointments.start_at >', $now->format('Y-m-d H:i:s'));
+        $builder->where('xs_appointments.start_at >=', $lookbackStart->format('Y-m-d H:i:s'));
         $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
         $appointments = $builder->get()->getResultArray();
         foreach ($appointments as $appt) {
@@ -167,15 +178,24 @@ class NotificationQueueService
         $now   = date('Y-m-d H:i:s');
         $model = new NotificationQueueModel();
 
-        // Fast-path dedupe check to avoid duplicate-key exceptions in normal
-        // reminder scans where the same idempotency key may be evaluated again.
+        // Fast-path dedupe check.
+        // Block re-enqueue only for in-flight or successfully sent rows.
+        // Allow re-enqueue when the existing row is cancelled or failed — those
+        // terminal-negative rows must not permanently block future reminder attempts.
         $existing = $model
             ->where('business_id', $businessId)
             ->where('idempotency_key', $idempotencyKey)
             ->first();
 
         if (is_array($existing)) {
-            return ['ok' => true, 'inserted' => false];
+            $existingStatus = (string) ($existing['status'] ?? 'queued');
+            if (in_array($existingStatus, ['queued', 'processing', 'sent'], true)) {
+                // Already in-flight or successfully delivered — do not duplicate.
+                return ['ok' => true, 'inserted' => false];
+            }
+            // Row is cancelled or failed — purge the stale row so a fresh one
+            // is inserted below with a new correlation_id and attempts = 0.
+            $model->delete((int) $existing['id']);
         }
 
         $correlationId = bin2hex(random_bytes(16));
