@@ -84,18 +84,12 @@ class SecurityHeaders implements FilterInterface
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         
-        // Content Security Policy
-        // Allow Google Fonts for Material Symbols (styles + font files)
-        $csp = "default-src 'self'; " .
-         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
-         "img-src 'self' data: https:; " .
-         "font-src 'self' https://fonts.gstatic.com data:; " .
-         "connect-src 'self'; " .
-         "frame-ancestors 'none';";
-        
-        $response->setHeader('Content-Security-Policy', $csp);
-        
+        // Content-Security-Policy is now managed exclusively by
+        // app/Config/ContentSecurityPolicy.php via CI4's CSP engine
+        // (App::$CSPEnabled = true).  Do NOT set the header manually here —
+        // doing so would override the nonce-aware engine and re-introduce
+        // unsafe-inline permanently once Phase 2 nonce hardening is complete.
+
         // Referrer Policy
         $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         

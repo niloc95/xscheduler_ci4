@@ -835,7 +835,7 @@ class Setup extends BaseController
         $envContent = $replaceKey($envContent, 'CI_ENVIRONMENT', $environment);
         $envContent = $replaceKey($envContent, 'app.baseURL', "'{$baseURL}'");
         $envContent = $replaceKey($envContent, 'app.forceGlobalSecureRequests', $environment === 'production' ? 'true' : 'false');
-        $envContent = $replaceKey($envContent, 'app.CSPEnabled', $environment === 'production' ? 'true' : 'false');
+        $envContent = $replaceKey($envContent, 'app.CSPEnabled', 'true'); // Always enabled — policy lives in Config/ContentSecurityPolicy.php
 
         // Database settings
         $envContent = $replaceKey($envContent, 'database.default.DBDriver', $data['db_driver'] ?? 'MySQLi');

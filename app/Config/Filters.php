@@ -141,7 +141,6 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             'request_context',
-            'securityheaders',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',
             'csrf' => ['except' => ['api/*', 'setup/*']],
@@ -149,7 +148,10 @@ class Filters extends BaseFilters
         ],
         'after' => [
             // 'honeypot',
-            // 'secureheaders',
+            // 'secureheaders', // CI4 built-in — not used; we use our custom SecurityHeaders
+            'securityheaders', // Sets X-Frame-Options, HSTS, Referrer-Policy, etc. on the response.
+                               // Must be in 'after' so the after() method executes.
+                               // CI4's CSP engine (App::$CSPEnabled) also finalizes in this phase.
         ],
     ];
 
