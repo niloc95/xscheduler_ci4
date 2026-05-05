@@ -19,6 +19,9 @@
 //
 // IMPORTANT: Always check for duplicate initialization using dataset flags!
 
+import { getBaseUrl } from './utils/url-helpers.js';
+import { apiRequest } from './core/api.js';
+
 // Global registry for view-specific initializer functions
 // Views can register functions that should run on initial load AND after SPA navigation
 window.xsViewInitializers = window.xsViewInitializers || [];
@@ -32,12 +35,8 @@ window.xsRegisterViewInit = function(initFn) {
   }
 };
 
-import { getBaseUrl } from './utils/url-helpers.js';
-import { apiRequest } from './core/api.js';
-
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
-  const header = () => document.querySelector('.xs-header');
   const headerControlsSlot = () => document.getElementById('header-controls-slot');
 
   const normalizePathname = (url) => {
@@ -95,7 +94,7 @@ const SPA = (() => {
   };
 
   const syncHeaderControls = (controlsHtml, hasControls) => {
-    const headerEl = header();
+    const headerEl = document.querySelector('.xs-header');
     if (!headerEl) return;
 
     let slot = headerControlsSlot();
@@ -223,9 +222,7 @@ const SPA = (() => {
 
   const dispatchFlash = (type, message, autoClose = true, duration = 5000) => {
     if (!message) return;
-    document.dispatchEvent(new CustomEvent('xs:flash', {
-      detail: { type, message, autoClose, duration }
-    }));
+    window.XSNotify?.toast({ type, message, autoClose, duration });
   };
 
   const runViewInitializers = () => {
@@ -293,8 +290,6 @@ const SPA = (() => {
       initTabsInSpaContent();
       // re-run per-view initializers if needed
       document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url } }));
-      // Also trigger per-view init functions if registered
-      runViewInitializers();
       // Always reset scroll position to top when switching views
       focusMain(true);
     } catch (e) {
@@ -307,11 +302,11 @@ const SPA = (() => {
 
   const submitHandler = (e) => {
     if (e.defaultPrevented) return;
-    const form = e.target.closest('form');
+    const form = e.target instanceof HTMLFormElement ? e.target : null;
     if (!form) return;
     if (shouldSkipSPA(form)) return;
-    const method = (form.method || 'POST').toUpperCase();
-    if (method !== 'POST' && method !== 'PUT') return;
+    const method = form.method.toUpperCase();
+    if (method !== 'POST') return;
     if (!sameOrigin(form.action)) return;
 
     e.preventDefault();
@@ -325,7 +320,7 @@ const SPA = (() => {
     try {
       setBusy(true);
       const formData = new FormData(form);
-      const method = form.method.toUpperCase() || 'POST';
+      const method = form.method.toUpperCase();
       const action = form.action || window.location.href;
 
       const { response: res, payload: payloadTextOrJson } = await apiRequest(action, {
@@ -439,6 +434,9 @@ const SPA = (() => {
     if (!el) return;
     el.setAttribute('tabindex', '-1');
     el.focus({ preventScroll: true });
+    el.addEventListener('blur', () => {
+      el.removeAttribute('tabindex');
+    }, { once: true });
     if (resetScroll) {
       // Reset to page top; header is sticky so 0 is appropriate
       window.scrollTo({ top: 0, behavior: 'auto' });
@@ -468,25 +466,34 @@ const SPA = (() => {
 
     document.addEventListener('click', clickHandler);
     document.addEventListener('submit', submitHandler);
+    // Route view-level initializers through a single SPA lifecycle event.
+    document.addEventListener('spa:navigated', runViewInitializers);
     window.addEventListener('popstate', popstateHandler);
     // On load, mark current history entry as SPA-aware
     history.replaceState({ spa: true }, '', window.location.href);
     // Initialize tabs for server-rendered initial content
     initTabsInSpaContent();
+    // Ensure view initializers run for the first server-rendered view as well.
+    runViewInitializers();
   };
 
   return { init, navigate, submitForm };
 })();
 
 // XSNotify — global toast API that bridges to xs:flash events
+const emitFlash = (type = 'info', message = '', autoClose = true, duration = 5000) => {
+  if (!message) return;
+  document.dispatchEvent(new CustomEvent('xs:flash', {
+    detail: { type, message, autoClose, duration }
+  }));
+};
+
 window.XSNotify = {
   toast({ type = 'info', title = '', message = '', autoClose = true, duration = 5000 } = {}) {
     // Combine title and message if both provided
     const text = message ? (title ? `${title}: ${message}` : message) : title;
     if (!text) return;
-    document.dispatchEvent(new CustomEvent('xs:flash', {
-      detail: { type, message: text, autoClose, duration }
-    }));
+    emitFlash(type, text, autoClose, duration);
   }
 };
 
@@ -524,14 +531,24 @@ document.addEventListener('xs:flash', (e) => {
 
   alert.className += ' ' + (colors[type] || colors.info);
 
-  // Escape message to prevent XSS
-  const safeMessage = window.xsEscapeHtml ? window.xsEscapeHtml(message) : message;
+  const iconEl = document.createElement('span');
+  iconEl.className = 'material-symbols-outlined flex-shrink-0 text-lg';
+  iconEl.textContent = icons[type] || icons.info;
 
-  alert.innerHTML = `
-    <span class="material-symbols-outlined flex-shrink-0 text-lg">${icons[type] || icons.info}</span>
-    <span class="flex-1">${safeMessage}</span>
-    <button type="button" onclick="this.parentElement.remove()" class="flex-shrink-0 text-lg opacity-50 hover:opacity-100">close</button>
-  `;
+  const textEl = document.createElement('span');
+  textEl.className = 'flex-1';
+  textEl.textContent = String(message);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'flex-shrink-0 text-lg opacity-50 hover:opacity-100';
+  closeBtn.setAttribute('aria-label', 'Close notification');
+  closeBtn.setAttribute('data-flash-close', 'true');
+  closeBtn.textContent = 'close';
+
+  alert.appendChild(iconEl);
+  alert.appendChild(textEl);
+  alert.appendChild(closeBtn);
 
   container.appendChild(alert);
 
@@ -542,6 +559,12 @@ document.addEventListener('xs:flash', (e) => {
       setTimeout(() => alert.remove(), 300);
     }, duration);
   }
+});
+
+document.addEventListener('click', (e) => {
+  const closeBtn = e.target.closest('[data-flash-close="true"]');
+  if (!closeBtn) return;
+  closeBtn.closest('.xs-alert')?.remove();
 });
 
 // Initialize on DOM ready
