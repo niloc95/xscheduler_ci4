@@ -71,7 +71,7 @@ class Setup extends BaseController
 
     public function __construct()
     {
-        helper(['form', 'url', 'setup', 'SetupCompatibility']);
+        helper(['form', 'url', 'setup', 'setupcompatibility']);
     }
 
     public function index()
@@ -1095,7 +1095,7 @@ class Setup extends BaseController
             $port = 3306;
         }
 
-        $result = testDatabaseConnection(
+        $result = \testDatabaseConnection(
             host:       $host,
             db:         $db,
             user:       $user,
