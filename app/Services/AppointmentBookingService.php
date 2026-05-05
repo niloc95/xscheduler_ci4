@@ -77,6 +77,7 @@ use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
 use App\Services\CustomerService;
 use App\Services\NotificationCatalog;
+use App\Services\NotificationQueueDispatcher;
 use App\Services\NotificationQueueService;
 use Config\Database;
 use DateTime;
@@ -895,9 +896,11 @@ class AppointmentBookingService
             // Enqueue internal (provider + staff) email notifications.
             $this->enqueueInternalNotifications($appointmentId, $event);
 
-            // Dispatch is intentionally deferred to the cron job
-            // (php spark notifications:dispatch-queue) to avoid blocking the
-            // HTTP response with synchronous SMTP connections.
+            // Run the dispatcher immediately so email (and any other channels) are sent
+            // without requiring the cron job to trigger first.
+            $dispatcher = new NotificationQueueDispatcher();
+            $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
+            log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
             // Don't fail the booking if notification queuing fails
