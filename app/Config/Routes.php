@@ -52,6 +52,7 @@ $routes->get('/', 'AppFlow::index');
 $routes->get('setup', 'Setup::index');
 $routes->post('setup/process', 'Setup::process');
 $routes->post('setup/test-connection', 'Setup::testConnection');
+$routes->post('setup/testConnection', 'Setup::testConnection');
 
 // Standalone login route (commonly referenced)
 $routes->get('login', 'Auth::login', ['filter' => 'setup']);

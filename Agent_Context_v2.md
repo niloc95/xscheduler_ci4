@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.7
+version: 2.8
 status: Active hardening
-last_updated: 2026-05-04
+last_updated: 2026-05-05
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -1674,6 +1674,8 @@ Status legend: `done`, `in_progress`, `queued`.
 | 22 | Business context resolver for notification services | done | Added `current_business_id()` to `permissions_helper.php`. `NotificationCenterService` and `NotificationSettingsService` now resolve scope via `resolveBusinessId()` instead of `NotificationCatalog::BUSINESS_ID_DEFAULT`. Full resolver contract documented in §7.4. |
 | 23 | Reminder queue metadata and stale-reminder cancellation | done | Added `reminder_offset_minutes` and `schedule_fingerprint` columns to `xs_notification_queue` (migration `2026-04-21-150000`). `NotificationQueueService` writes fingerprint on enqueue; `NotificationQueueDispatcher` cancels reminder rows whose fingerprint no longer matches the live appointment, and resolves internal recipients via `resolveInternalRecipientUser()`. |
 | 24 | Unified avatar / initials system | done | Single PHP source of truth (`avatar_initials()`, `avatar_display_name()`, `avatar_profile_image_url()`, `avatar_data()`) in `app/Helpers/app_helper.php`. Single JS source of truth in `resources/js/utils/avatar.js` (`getAvatarInitials`, `getDisplayName`). Globals `window.xsGetAvatarInitials` / `window.xsGetDisplayName` exposed from `app.js` for inline PHP-view scripts. All avatar surfaces updated (header, user list, customer list, customer history, appointments form, provider-staff widget, staff-providers widget, scheduler). Title/suffix stripping and two-letter fallback enforced consistently. Parity tests: `tests/frontend/avatar-utils.test.js` (6 tests) and `tests/unit/Helpers/AvatarHelperTest.php` (3 tests, 12 assertions). Full contract in §6.8. |
+| 25 | Appointment inline notification dispatch regression fix | done | Restored immediate queue dispatch in `AppointmentBookingService::queueNotifications()` via `NotificationQueueDispatcher::dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT)` so create/update flows no longer depend on cron timing for immediate notifications. Added queue idempotency pre-check hardening in `NotificationQueueService::enqueueRaw()` to avoid duplicate enqueue attempts under retries. |
+| 26 | Setup hosting compatibility mode + resilience hardening | done | Added shared-hosting-safe DB probe path (`app/Helpers/SetupCompatibilityHelper.php`) and compatibility UI module (`resources/js/setup-compat.js`) with smart suggestion banner. Setup controller now accepts JSON `testConnection` requests, forwards `compatibility_mode`, logs raw DB probe errors server-side, and returns sanitized payloads. Added camelCase route alias `setup/testConnection`, persisted `compatibility_mode` through setup processing and `.env` generation, and fixed setup-page CSRF header value (`csrf_hash()` instead of `csrf_token()`) plus robust client-side non-JSON/exception response handling so host-level 403/HTML responses no longer surface as `undefined` or misleading network errors. |
 
 ## 18) Audit Progress Board
 
