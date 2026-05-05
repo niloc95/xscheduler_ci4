@@ -7,6 +7,7 @@ use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
 use App\Services\BookingSettingsService;
+use App\Services\CustomerCustomFieldService;
 use App\Services\LocalizationSettingsService;
 use App\Services\TimezoneService;
 use CodeIgniter\Exceptions\PageNotFoundException;
@@ -19,6 +20,7 @@ class AppointmentFormContextService
     private UserModel $userModel;
     private ServiceModel $serviceModel;
     private ProviderStaffModel $providerStaffModel;
+    private CustomerCustomFieldService $customerCustomFieldService;
 
     public function __construct(
         ?BookingSettingsService $bookingSettingsService = null,
@@ -27,6 +29,7 @@ class AppointmentFormContextService
         ?UserModel $userModel = null,
         ?ServiceModel $serviceModel = null,
         ?ProviderStaffModel $providerStaffModel = null,
+        ?CustomerCustomFieldService $customerCustomFieldService = null,
     ) {
         $this->bookingSettingsService = $bookingSettingsService ?? new BookingSettingsService();
         $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
@@ -34,12 +37,14 @@ class AppointmentFormContextService
         $this->userModel = $userModel ?? new UserModel();
         $this->serviceModel = $serviceModel ?? new ServiceModel();
         $this->providerStaffModel = $providerStaffModel ?? new ProviderStaffModel();
+        $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService();
     }
 
     public function buildCreateViewData(string $userRole, ?int $userId = null): array
     {
         return array_merge($this->buildBaseViewData($userRole, $userId), [
             'title' => 'Book Appointment',
+            'existingCustomFieldValues' => [],
         ]);
     }
 
@@ -51,12 +56,14 @@ class AppointmentFormContextService
         }
 
         $timezone = $this->localizationSettingsService->getTimezone();
-        $appointment = $this->mergeCustomerCustomFields($appointment);
         $appointment = $this->appendDisplayDateTime($appointment, $timezone);
+
+        $existingCustomFieldValues = $this->customerCustomFieldService->decodeValues($appointment['customer_custom_fields'] ?? null);
 
         return array_merge($this->buildBaseViewData($userRole, $userId), [
             'title' => 'Edit Appointment',
             'appointment' => $appointment,
+            'existingCustomFieldValues' => $existingCustomFieldValues,
             'isPastAppointment' => $this->isPastAppointment($appointment),
         ]);
     }
@@ -151,24 +158,6 @@ class AppointmentFormContextService
     {
         $message = strtolower($e->getMessage());
         return str_contains($message, 'unknown column') && str_contains($message, 'c.' . strtolower($column));
-    }
-
-    private function mergeCustomerCustomFields(array $appointment): array
-    {
-        if (empty($appointment['customer_custom_fields'])) {
-            return $appointment;
-        }
-
-        $customFields = json_decode((string) $appointment['customer_custom_fields'], true);
-        if (!is_array($customFields)) {
-            return $appointment;
-        }
-
-        foreach ($customFields as $key => $value) {
-            $appointment[$key] = $value;
-        }
-
-        return $appointment;
     }
 
     private function appendDisplayDateTime(array $appointment, string $timezone): array

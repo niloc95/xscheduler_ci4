@@ -4,6 +4,23 @@ import { getRotatedWeekdayShortNames } from './calendar-grid-shared.js';
 import { renderAppointmentChip } from './appointment-chip.js';
 import { renderWeekDayCell as renderWeekDayCellComponent } from './week-view-components.js';
 
+/** Returns the max appointment chips to show per day cell based on viewport width. */
+export function getMaxChips() {
+  return window.matchMedia('(max-width: 639px)').matches ? 2 : 3;
+}
+
+function renderChipList(appointments, providers, isHidden) {
+  return appointments
+    .map((appointment) => {
+      const provider = providers.find((p) => Number(p.id) === Number(appointment.providerId));
+      const providerColor = getProviderColor(provider);
+      const statusColor = getStatusColors(appointment.status, false).dot;
+      const customerName = appointment.customerName || appointment.title || 'Appointment';
+      return renderAppointmentChip({ appointmentId: appointment.id, providerColor, statusColor, customerName, isHidden });
+    })
+    .join('');
+}
+
 export function renderWeekDayHeaders(days, settings, config) {
   const firstDay = settings?.getFirstDayOfWeek?.() ?? config?.firstDayOfWeek ?? 1;
   const shortDays = getRotatedWeekdayShortNames(days[0], firstDay);
@@ -51,42 +68,9 @@ export function renderWeekDayCell({ day, dayAppointments, selectedDate, timezone
         : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]',
   ].join(' ');
 
-  const maxChips = window.matchMedia('(max-width: 639px)').matches ? 2 : 3;
-  const visibleChips = dayAppointments
-    .slice(0, maxChips)
-    .map((appointment) => {
-      const provider = providers.find((p) => Number(p.id) === Number(appointment.providerId));
-      const providerColor = getProviderColor(provider);
-      const statusColor = getStatusColors(appointment.status, false).dot;
-      const customerName = appointment.customerName || appointment.title || 'Appointment';
-
-      return renderAppointmentChip({
-        appointmentId: appointment.id,
-        providerColor,
-        statusColor,
-        customerName,
-        isHidden: false,
-      });
-    })
-    .join('');
-
-  const hiddenChips = dayAppointments
-    .slice(maxChips)
-    .map((appointment) => {
-      const provider = providers.find((p) => Number(p.id) === Number(appointment.providerId));
-      const providerColor = getProviderColor(provider);
-      const statusColor = getStatusColors(appointment.status, false).dot;
-      const customerName = appointment.customerName || appointment.title || 'Appointment';
-
-      return renderAppointmentChip({
-        appointmentId: appointment.id,
-        providerColor,
-        statusColor,
-        customerName,
-        isHidden: true,
-      });
-    })
-    .join('');
+  const maxChips = getMaxChips();
+  const visibleChips = renderChipList(dayAppointments.slice(0, maxChips), providers, false);
+  const hiddenChips = renderChipList(dayAppointments.slice(maxChips), providers, true);
 
   const hiddenCount = Math.max(0, dayAppointments.length - maxChips);
   const overflowButtonHtml = hiddenCount

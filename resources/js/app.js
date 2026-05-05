@@ -49,7 +49,7 @@ import '../css/scheduler.css';
 import './currency.js';
 
 // Define global escapeHtml utility — single source of truth
-window.xsEscapeHtml = window.xsEscapeHtml || function(str) {
+window.xsEscapeHtml = function(str) {
     if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
@@ -65,7 +65,7 @@ window.initRevenueTrendChart = initRevenueTrendChart;
 window.initTimeSlotChart = initTimeSlotChart;
 window.initServiceDistributionChart = initServiceDistributionChart;
 
-window.initProviderPicker = window.initProviderPicker || initProviderPicker;
+window.initProviderPicker = initProviderPicker;
 window.xsGetAvatarInitials = window.xsGetAvatarInitials || getAvatarInitials;
 window.xsGetDisplayName = window.xsGetDisplayName || getDisplayName;
 
@@ -164,9 +164,6 @@ bindAppLifecycleEvents({
     documentRef: document,
     initializeComponents,
     refreshAppointmentStats,
-    resetSchedulerInitAttempts: () => {
-        schedulerInitAttempts = 0;
-    },
     hasDashboardStats: () => Boolean(
         document.getElementById('upcomingCount') || document.getElementById('completedCount')
     ),
@@ -187,10 +184,6 @@ document.addEventListener('settingsSaved', async () => {
 }, { once: false });
 
 window.refreshAppointmentStats = refreshAppointmentStats;
-
-/**
- * Initialize custom scheduler
- */
 let schedulerInitAttempts = 0;
 const MAX_SCHEDULER_INIT_ATTEMPTS = 10;
 
@@ -203,12 +196,13 @@ function teardownScheduler() {
 
 async function initScheduler() {
     const schedulerContainer = document.getElementById('appointments-inline-calendar');
+    const relativePath = getAppRelativePathname();
     
     if (!schedulerContainer) {
         teardownScheduler();
 
         // SPA navigation may not have injected the appointments view yet
-        if (getAppRelativePathname().includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
+        if (relativePath.includes('/appointments') && schedulerInitAttempts < MAX_SCHEDULER_INIT_ATTEMPTS) {
             schedulerInitAttempts += 1;
             setTimeout(() => initScheduler(), 200);
         }

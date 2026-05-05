@@ -2,7 +2,7 @@ import { escapeHtml } from '../../utils/html.js';
 
 export function renderWeekShell({ dayHeadersHtml, weekGridHtml, slotPanelHtml }) {
     return `
-        <div class="scheduler-month-view scheduler-week-view rounded-xl bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+        <div class="scheduler-week-view rounded-xl bg-surface-0 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-7 px-1 pt-2 pb-1">
                 ${dayHeadersHtml}
             </div>

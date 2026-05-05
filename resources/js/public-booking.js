@@ -13,6 +13,9 @@ import {
 
 const root = document.getElementById('public-booking-root');
 
+const MSG_NO_SLOTS = 'No slots available for this date. Try another day.';
+const MSG_NO_AVAILABILITY = 'Unable to load availability.';
+
 
 if (!root) {
   console.warn('[public-booking] Root element not found.');
@@ -24,18 +27,12 @@ function bootstrapPublicBooking() {
   const context = parseContext();
   const appBase = resolveAppBaseUrl(context);
   const bookingBase = context.bookingBaseUrl || '/booking';
-  const today = new Date();
-  const defaultDate = today.toISOString().slice(0, 10);
+  const defaultDate = new Date().toISOString().slice(0, 10);
 
   let state = {
     view: context.manageReference ? 'manage' : 'book',
     booking: createBookingDraft(context, defaultDate),
     manage: createManageDraft(context, defaultDate),
-    csrf: {
-      header: root.dataset.csrfHeader || 'X-CSRF-TOKEN',
-      value: root.dataset.csrfValue || '',
-      name: root.dataset.csrfName || 'csrf_token',
-    },
   };
 
   function formatLocalizedCurrency(amount) {
@@ -190,13 +187,11 @@ function bootstrapPublicBooking() {
     const providerSelect = form.querySelector('[data-provider-select]');
     const serviceSelect = form.querySelector('[data-service-select]');
     const locationSelect = form.querySelector('[data-location-select]');
-    const dateInput = form.querySelector('[data-date-input]');
     const dateSelect = form.querySelector('[data-date-select]');
 
     providerSelect?.addEventListener('change', (event) => handleProviderChange(event.target.value, target));
     serviceSelect?.addEventListener('change', (event) => handleServiceChange(event.target.value, target));
     locationSelect?.addEventListener('change', (event) => handleLocationChange(event.target.value, target));
-    dateInput?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     dateSelect?.addEventListener('change', (event) => handleDateChange(event.target.value, target));
     form.querySelectorAll('[data-date-pill]').forEach(button => {
       button.addEventListener('click', () => {
@@ -224,6 +219,42 @@ function bootstrapPublicBooking() {
     }
     form.addEventListener('input', handleLookupInput);
     form.addEventListener('submit', handleLookupSubmit);
+  }
+
+  function extractErrorDetails(data) {
+    return data?.error?.details ?? data?.details ?? {};
+  }
+
+  function refreshCsrf(response, data) {
+    rotateCsrfFromResponse(response, 'public');
+    updateCsrfFromBody(data);
+  }
+
+  function handleLookupError(error, fallbackMessage) {
+    if (error instanceof SubmissionError) {
+      updateManage(prev => ({
+        ...prev,
+        lookupLoading: false,
+        lookupError: error.message,
+        lookupErrors: { ...prev.lookupErrors, ...error.details },
+      }));
+      return;
+    }
+
+    updateManage(prev => ({
+      ...prev,
+      lookupLoading: false,
+      lookupError: error.message ?? fallbackMessage,
+    }));
+  }
+
+  function renderDashedCard(text) {
+    return `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">${escapeHtml(text)}</div>`;
+  }
+
+  function getFutureLimitDays() {
+    const days = Number(context.futureLimitDays ?? 60);
+    return days > 0 ? days : 60;
   }
 
   function resetBookingFlow() {
@@ -275,11 +306,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to cancel the booking.', details);
       }
 
@@ -292,15 +322,6 @@ function bootstrapPublicBooking() {
         appointment: data?.data ?? prev.appointment,
       }));
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          cancelSubmitting: false,
-          cancelError: error.message,
-        }));
-        return;
-      }
-
       updateManage(prev => ({
         ...prev,
         cancelSubmitting: false,
@@ -324,7 +345,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       resolvedLocation: null,
       selectedLocationId: autoLocationId,
       calendar: createCalendarState(),
@@ -342,7 +362,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       calendar: { ...createCalendarState(), loading: true, error: '' },
       errors: { ...prev.errors, service_id: undefined, slot_start: undefined },
     }));
@@ -367,7 +386,6 @@ function bootstrapPublicBooking() {
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
       calendar: { ...createCalendarState(), loading: Boolean(prev.serviceId), error: '' },
       errors: { ...prev.errors, location_id: undefined, slot_start: undefined },
     }));
@@ -408,7 +426,6 @@ function bootstrapPublicBooking() {
         name: svc.name,
         description: svc.description,
         duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
-        durationMinutes: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
         formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
       }));
@@ -443,12 +460,6 @@ function bootstrapPublicBooking() {
       loc = resolveLocationForDate(draft.providerId, value);
     }
 
-    updateDraft(target, prev => ({
-      ...prev,
-      resolvedLocation: loc,
-      errors: { ...prev.errors, slot_start: undefined },
-    }));
-
     const availableDates = draft.calendar?.availableDates ?? [];
     if (availableDates.includes(value)) {
       syncSlotsFromCalendar(target, value);
@@ -457,11 +468,12 @@ function bootstrapPublicBooking() {
 
     updateDraft(target, prev => ({
       ...prev,
+      resolvedLocation: loc,
       appointmentDate: value,
       selectedSlot: null,
       slots: [],
       slotsError: '',
-      prefetched: null,
+      errors: { ...prev.errors, slot_start: undefined },
     }));
     fetchSlots(target, { forceRemote: true });
   }
@@ -550,11 +562,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to locate that booking.', details);
       }
 
@@ -581,20 +592,7 @@ function bootstrapPublicBooking() {
         }
       }
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          lookupLoading: false,
-          lookupError: error.message,
-          lookupErrors: { ...prev.lookupErrors, ...error.details },
-        }));
-        return;
-      }
-      updateManage(prev => ({
-        ...prev,
-        lookupLoading: false,
-        lookupError: error.message ?? 'Unable to locate that booking.',
-      }));
+      handleLookupError(error, 'Unable to locate that booking.');
     }
   }
 
@@ -611,29 +609,15 @@ function bootstrapPublicBooking() {
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         authContext: 'public',
       });
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(data?.error?.message ?? data?.error ?? 'Unable to load that booking.', details);
       }
       updateManage(prev => ({ ...prev, lookupLoading: false }));
       enterRescheduleStage(data?.data, { email, phone, phone_country_code: phoneCountryCode });
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateManage(prev => ({
-          ...prev,
-          lookupLoading: false,
-          lookupError: error.message,
-          lookupErrors: { ...prev.lookupErrors, ...error.details },
-        }));
-        return;
-      }
-      updateManage(prev => ({
-        ...prev,
-        lookupLoading: false,
-        lookupError: error.message ?? 'Unable to load that booking.',
-      }));
+      handleLookupError(error, 'Unable to load that booking.');
     }
   }
 
@@ -786,7 +770,7 @@ function bootstrapPublicBooking() {
       updateCsrfFromBody(data);
 
       if (!response.ok) {
-        const details = data?.error?.details ?? data?.details ?? {};
+        const details = extractErrorDetails(data);
         throw new SubmissionError(
           data?.error?.message ?? data?.error ?? (target === 'booking' ? 'Unable to save your booking.' : 'Unable to update the booking.'),
           details
@@ -818,20 +802,12 @@ function bootstrapPublicBooking() {
         }));
       }
     } catch (error) {
-      if (error instanceof SubmissionError) {
-        updateDraft(target, prev => ({
-          ...prev,
-          submitting: false,
-          globalError: error.message,
-          errors: { ...prev.errors, ...error.details },
-        }));
-        return;
-      }
-
+      const details = error instanceof SubmissionError ? error.details : {};
       updateDraft(target, prev => ({
         ...prev,
         submitting: false,
         globalError: error.message ?? 'Something went wrong. Please try again.',
+        errors: { ...prev.errors, ...details },
       }));
     }
   }
@@ -847,7 +823,6 @@ function bootstrapPublicBooking() {
         slots: [],
         slotsError: '',
         selectedSlot: null,
-        prefetched: null,
       }));
       return;
     }
@@ -858,14 +833,12 @@ function bootstrapPublicBooking() {
       slots: [],
       slotsError: '',
       selectedSlot: null,
-      prefetched: null,
-      slotsLoading: true,
     }));
 
     const query = new URLSearchParams({
       provider_slug: draft.providerId,
       service_id: draft.serviceId,
-      days: '60',
+      days: String(context.futureLimitDays ?? 60),
     });
     if (draft.selectedLocationId) {
       query.set('location_id', draft.selectedLocationId);
@@ -880,11 +853,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(payload);
+      refreshCsrf(response, payload);
 
       if (!response.ok) {
-        throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load availability.');
+        throw new Error(payload?.error?.message ?? payload?.error ?? MSG_NO_AVAILABILITY);
       }
 
       const calendarPayload = payload?.data ?? payload ?? {};
@@ -895,14 +867,12 @@ function bootstrapPublicBooking() {
           ...prev,
           ...selection,
           calendar: normalizedCalendar,
-          slotsLoading: false,
         };
       });
     } catch (error) {
       updateDraft(target, prev => ({
         ...prev,
-        calendar: { ...prev.calendar, loading: false, error: error.message ?? 'Unable to load availability.' },
-        slotsLoading: false,
+        calendar: { ...prev.calendar, loading: false, error: error.message ?? MSG_NO_AVAILABILITY },
       }));
     }
   }
@@ -940,15 +910,20 @@ function bootstrapPublicBooking() {
     if (!forceRemote && Array.isArray(calendarSlots)) {
       updateDraft(target, prev => ({
         ...prev,
+        calendar: { ...prev.calendar, loading: false },
         slots: calendarSlots,
-        slotsLoading: false,
-        slotsError: calendarSlots.length === 0 ? 'No slots available for this date. Try another day.' : '',
+        slotsError: calendarSlots.length === 0 ? MSG_NO_SLOTS : '',
         selectedSlot: calendarSlots.find(slot => slot.start === prev.selectedSlot?.start) ?? null,
       }));
       return;
     }
 
-    updateDraft(target, prev => ({ ...prev, slotsLoading: true, slotsError: '', slots: [] }));
+    updateDraft(target, prev => ({
+      ...prev,
+      calendar: { ...prev.calendar, loading: true },
+      slotsError: '',
+      slots: [],
+    }));
 
     const query = new URLSearchParams({
       provider_slug: draft.providerId,
@@ -968,11 +943,10 @@ function bootstrapPublicBooking() {
         authContext: 'public',
       });
 
-      rotateCsrfFromResponse(response, 'public');
-      updateCsrfFromBody(data);
+      refreshCsrf(response, data);
 
       if (!response.ok) {
-        throw new Error(data?.error?.message ?? data?.error ?? 'Unable to load availability.');
+        throw new Error(data?.error?.message ?? data?.error ?? MSG_NO_AVAILABILITY);
       }
 
       const slotList = Array.isArray(data?.data) ? data.data : [];
@@ -981,13 +955,17 @@ function bootstrapPublicBooking() {
 
       updateDraft(target, prev => ({
         ...prev,
-        slotsLoading: false,
+        calendar: { ...prev.calendar, loading: false },
         slots: slotList,
         selectedSlot: stillValid,
-        slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
+        slotsError: slotList.length === 0 ? MSG_NO_SLOTS : '',
       }));
     } catch (error) {
-      updateDraft(target, prev => ({ ...prev, slotsLoading: false, slotsError: error.message ?? 'Unable to load availability.' }));
+      updateDraft(target, prev => ({
+        ...prev,
+        calendar: { ...prev.calendar, loading: false },
+        slotsError: error.message ?? MSG_NO_AVAILABILITY,
+      }));
     }
   }
 
@@ -1018,7 +996,6 @@ function bootstrapPublicBooking() {
    */
   function updateCsrfFromBody(data) {
     if (data?.csrf?.value) {
-      state.csrf = { ...state.csrf, value: data.csrf.value };
       root.dataset.csrfValue = data.csrf.value;
     }
   }
@@ -1144,8 +1121,6 @@ function bootstrapPublicBooking() {
     const contactError = manageState.lookupErrors?.contact
       ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
       : '';
-    const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
-    const cancelPolicy = ctx.cancelPolicy ?? { enabled: true, label: '24 hours' };
     const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
     const introCopy = hasPrefilledReference
       ? 'Confirm with the email or phone used when booking to continue.'
@@ -1156,10 +1131,6 @@ function bootstrapPublicBooking() {
     const referenceField = hasPrefilledReference
       ? `<input type="hidden" name="reference" value="${escapeHtml(manageState.lookupForm.reference ?? '')}">`
       : '';
-    const policyMessage = policy.enabled || cancelPolicy.enabled
-      ? `Online changes: reschedule up to ${escapeHtml(policy.label ?? '24 hours')} and cancel up to ${escapeHtml(cancelPolicy.label ?? '24 hours')} before the appointment.`
-      : 'Online changes are disabled. Contact the office for assistance.';
-    const policyClass = policy.enabled || cancelPolicy.enabled ? 'text-slate-600' : 'text-amber-600';
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1187,7 +1158,7 @@ function bootstrapPublicBooking() {
             Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
             ${contactError}
           </div>
-          <p class="text-xs font-medium ${policyClass}">${policyMessage}</p>
+          ${renderSchedulingTips(ctx)}
           <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
         </form>
       </section>
@@ -1196,8 +1167,10 @@ function bootstrapPublicBooking() {
 
   function renderRescheduleStage(manageState, ctx) {
     const helper = 'We will send your updated confirmation immediately after you save.';
+    const existingCustomFields = manageState.appointment?.custom_fields ?? null;
     const form = renderForm(manageState.formState, ctx, {
       formId: 'public-reschedule-form',
+      existingCustomFields,
       actionOptions: {
         submitLabel: 'Save new time',
         pendingLabel: 'Updating booking...',
@@ -1255,11 +1228,11 @@ function bootstrapPublicBooking() {
             <dt class="text-sm font-medium text-slate-500">Current time</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(slotSummary)}</dd>
           </div>
-          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+          <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Provider</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(providerLabel)}</dd>
           </div>
-          <div class="rounded-2xl border border-slate-200 px-4 py-3">
+          <div class="${UI_CLASSES.cardBase}">
             <dt class="text-sm font-medium text-slate-500">Service</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(serviceLabel)}</dd>
           </div>
@@ -1273,6 +1246,7 @@ function bootstrapPublicBooking() {
       ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(currentState.globalError)}</div>`
       : '';
     const formId = options.formId ?? 'public-booking-form';
+    const existingCustomFields = options.existingCustomFields ?? null;
 
     return `
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1282,9 +1256,8 @@ function bootstrapPublicBooking() {
           ${renderLocationCard(currentState)}
           ${renderSlotSection(currentState)}
           ${renderCustomerSection(currentState, ctx)}
-          ${renderCustomFields(currentState, ctx)}
+          ${renderCustomFields(currentState, ctx, existingCustomFields)}
           ${renderNotesField(currentState, ctx)}
-          ${renderPolicy(ctx)}
           ${renderActions(currentState, options.actionOptions)}
         </form>
       </section>
@@ -1344,11 +1317,11 @@ function bootstrapPublicBooking() {
     const providerProfileCard = renderProviderProfileCard(selectedProvider);
     const serviceCard = renderServiceCard(selectedService);
     const providerEmptyState = currentState.providerId
-      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Provider profile details are not available.</div>`
-      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a provider to preview details.</div>`;
+      ? renderDashedCard('Provider profile details are not available.')
+      : renderDashedCard('Choose a provider to preview details.');
     const serviceEmptyState = currentState.serviceId
-      ? `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Service details are not available.</div>`
-      : `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">Choose a service to preview details.</div>`;
+      ? renderDashedCard('Service details are not available.')
+      : renderDashedCard('Choose a service to preview details.');
 
     return `
       <div class="space-y-4">
@@ -1380,7 +1353,7 @@ function bootstrapPublicBooking() {
       <section class="space-y-3">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
         ${renderDatePickerField(currentState)}
-        ${renderSchedulingTips()}
+        ${renderSchedulingTips(ctx)}
       </section>
     `;
   }
@@ -1435,7 +1408,7 @@ function bootstrapPublicBooking() {
 
     const name = (service.name || '').trim();
     const description = (service.description || '').trim();
-    const duration = service.duration ?? service.durationMinutes ?? null;
+    const duration = service.duration ?? null;
     const formattedPrice = (service.formattedPrice || '').trim();
 
     if (!name && !description && !duration && !formattedPrice) {
@@ -1463,7 +1436,8 @@ function bootstrapPublicBooking() {
   }
 
   function renderSlotSection(currentState) {
-    const loading = currentState.slotsLoading
+    const isLoading = Boolean(currentState.calendar?.loading);
+    const loading = isLoading
       ? '<p class="text-sm text-slate-500">Checking availability...</p>'
       : '';
 
@@ -1480,7 +1454,7 @@ function bootstrapPublicBooking() {
       ? `<div class="grid gap-2 sm:grid-cols-2">${slotButtons}</div>`
       : ''; 
 
-    const emptyMessage = !currentState.slotsLoading && !currentState.slots.length
+    const emptyMessage = !isLoading && !currentState.slots.length
       ? `<p class="text-sm text-slate-500">${currentState.providerId && currentState.serviceId ? escapeHtml(currentState.slotsError || 'No open times for this day. Try another date.') : 'Select a provider and service to view appointments.'}</p>`
       : '';
 
@@ -1523,11 +1497,52 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderSchedulingTips() {
+  function renderSchedulingTips(ctx) {
+    const policy = ctx?.reschedulePolicy ?? { enabled: true, label: '24 hours' };
+    const cancelPolicy = ctx?.cancelPolicy ?? { enabled: true, label: '24 hours' };
+    const futureLimitDays = Number(ctx?.futureLimitDays ?? 60);
+    const legal = ctx?.legalPolicies ?? {};
+
+    const truncatePolicy = (text) => {
+      const compact = String(text ?? '').trim();
+      if (!compact) {
+        return '';
+      }
+      if (compact.length <= 130) {
+        return compact;
+      }
+      return `${compact.slice(0, 127).trimEnd()}...`;
+    };
+
+    const rescheduleRule = policy.enabled
+      ? `Reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before your appointment.`
+      : 'Online rescheduling is disabled. Contact the office for changes.';
+    const cancelRule = cancelPolicy.enabled
+      ? `Cancel online up to ${escapeHtml(cancelPolicy.label ?? '24 hours')} before your appointment.`
+      : 'Online cancellations are disabled. Contact the office for assistance.';
+
+    const cancellationSummary = truncatePolicy(legal.cancellationPolicy);
+    const reschedulingSummary = truncatePolicy(legal.reschedulingPolicy);
+    const legalPageUrl = String(legal.legalPageUrl ?? '/booking/legal');
+    const termsUrl = String(legal.termsUrl ?? '').trim();
+    const privacyUrl = String(legal.privacyUrl ?? '').trim();
+
+    const legalLinks = [
+      `<a href="${escapeHtml(legalPageUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Full legal policies</a>`,
+      termsUrl ? `<a href="${escapeHtml(termsUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Terms</a>` : '',
+      privacyUrl ? `<a href="${escapeHtml(privacyUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Privacy</a>` : '',
+    ].filter(Boolean).join(' &middot; ');
+
     return `
       <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <span class="font-semibold text-slate-700">Scheduling tips</span>
         <span>Only days with openings are shown. Need another time? Try a different provider or service.</span>
+        <span class="mt-2">${rescheduleRule}</span>
+        <span>${cancelRule}</span>
+        <span>Bookings can be made up to ${escapeHtml(String(futureLimitDays > 0 ? futureLimitDays : 60))} days ahead.</span>
+        ${cancellationSummary ? `<span class="mt-2 text-slate-500"><span class="font-medium text-slate-600">Cancellation policy:</span> ${escapeHtml(cancellationSummary)}</span>` : ''}
+        ${reschedulingSummary ? `<span class="text-slate-500"><span class="font-medium text-slate-600">Rescheduling policy:</span> ${escapeHtml(reschedulingSummary)}</span>` : ''}
+        <span class="mt-2 text-xs">${legalLinks}</span>
       </div>
     `;
   }
@@ -1537,12 +1552,13 @@ function bootstrapPublicBooking() {
     const dates = calendar.availableDates ?? [];
     const disabled = calendar.loading;
     const hasSelections = Boolean(state.providerId && state.serviceId);
+    const futureLimitDays = getFutureLimitDays();
 
     if (!dates.length && calendar.loading) {
       return `
         <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm">
           <p class="font-medium text-slate-600">Preparing availability…</p>
-          <p class="text-slate-500">We are checking the next 60 days for openings.</p>
+          <p class="text-slate-500">We are checking the next ${escapeHtml(String(futureLimitDays))} days for openings.</p>
         </div>
       `;
     }
@@ -1568,7 +1584,7 @@ function bootstrapPublicBooking() {
       return `
         <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           <p class="font-semibold">No open days</p>
-          <p>We could not find any openings in the next 60 days. Try another provider or service.</p>
+          <p>We could not find any openings in the next ${escapeHtml(String(futureLimitDays))} days. Try another provider or service.</p>
         </div>
       `;
     }
@@ -1583,7 +1599,7 @@ function bootstrapPublicBooking() {
       const stateClass = isSelected
         ? 'border-blue-600 bg-blue-50 text-blue-900'
         : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
-      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDatePillLabel(date))}</button>`;
+      return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDateSelectLabel(date))}</button>`;
     }).join('');
 
     const moreCount = Math.max(0, dates.length - 6);
@@ -1627,7 +1643,7 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderCustomFields(currentState, ctx) {
+  function renderCustomFields(currentState, ctx, existingCustomFields) {
     const customConfig = ctx.customFieldConfig ?? {};
     const keys = Object.keys(customConfig);
 
@@ -1635,7 +1651,7 @@ function bootstrapPublicBooking() {
       return '';
     }
 
-    const inputs = keys.map(key => renderCustomField(key, customConfig[key], currentState)).filter(Boolean).join('');
+    const inputs = keys.map(key => renderCustomField(key, customConfig[key], currentState, existingCustomFields)).filter(Boolean).join('');
 
     if (!inputs) {
       return '';
@@ -1667,12 +1683,6 @@ function bootstrapPublicBooking() {
         ${renderFieldError('notes', currentState.errors)}
       </div>
     `;
-  }
-
-  function renderPolicy(ctx) {
-    const policy = ctx.reschedulePolicy ?? { enabled: true, label: '24 hours' };
-    const label = policy.enabled ? `Need to make a change? You can reschedule online up to ${escapeHtml(policy.label ?? '24 hours')} before your appointment.` : 'Contact the office directly if you need to make a change.';
-    return `<p class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">${label}</p>`;
   }
 
   function renderActions(currentState, options = {}) {
@@ -1759,17 +1769,27 @@ function bootstrapPublicBooking() {
     `;
   }
 
-  function renderCustomField(key, config, currentState) {
+  function renderCustomField(key, config, currentState, existingCustomFields) {
     if (!config || config.display === false) {
       return '';
     }
 
     const label = config.title ?? `Custom field ${config.index}`;
+    const isSensitive = !!config.is_sensitive;
+    const existingEntry = (existingCustomFields ?? []).find(f => f.field_key === key);
+    const existingMasked = existingEntry?.value_masked ?? '';
+    const isRequiredForSubmission = !!config.required && !existingMasked;
+
+    const existingHint = existingMasked
+      ? `<p class="mt-1 text-xs text-slate-500">Current: <span class="font-medium text-slate-700">${escapeHtml(existingMasked)}</span></p>`
+      : '';
+
     if (config.type === 'textarea') {
       return `
         <label class="block text-sm font-medium text-slate-700">
-          ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
+          ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
           <textarea name="${key}" rows="3" class="${UI_CLASSES.inputBase}">${escapeHtml(currentState.form[key] ?? '')}</textarea>
+          ${existingHint}
           ${renderFieldError(key, currentState.errors)}
         </label>
       `;
@@ -1782,14 +1802,17 @@ function bootstrapPublicBooking() {
           <span>${escapeHtml(label)}</span>
           <input type="checkbox" name="${key}" class="h-4 w-4" ${checked}>
         </label>
+        ${existingHint}
         ${renderFieldError(key, currentState.errors)}
       `;
     }
 
+    const placeholder = isSensitive && existingMasked ? existingMasked : '';
     return `
       <label class="block text-sm font-medium text-slate-700">
-        ${escapeHtml(label)} ${config.required ? '<span class="text-red-500">*</span>' : ''}
-        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" class="${UI_CLASSES.inputBase}">
+        ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
+        <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" placeholder="${escapeHtml(placeholder)}" class="${UI_CLASSES.inputBase}">
+        ${existingHint}
         ${renderFieldError(key, currentState.errors)}
       </label>
     `;
@@ -1803,17 +1826,14 @@ function bootstrapPublicBooking() {
   }
 
   function formatSlotLabel(slot) {
-    const start = slot?.start ? new Date(slot.start) : null;
-    const end = slot?.end ? new Date(slot.end) : null;
-    if (!start || !end) {
+    // Delegate to formatSlotSummary but extract only the time portion
+    const summary = formatSlotSummary(slot);
+    if (!summary) {
       return 'Selected time';
     }
-    const use12h = context?.timeFormat !== '24h';
-    const appTz = context?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const timeFormatter = new Intl.DateTimeFormat('en', {
-      hour: 'numeric', minute: '2-digit', hour12: use12h, timeZone: appTz,
-    });
-    return `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+    // Extract "HH:MM – HH:MM" from "Day, Month Date, HH:MM – HH:MM"
+    const match = summary.match(/(\d{1,2}:\d{2}\s?[AP]M|\d{1,2}:\d{2})\s–\s(\d{1,2}:\d{2}\s?[AP]M|\d{1,2}:\d{2})/);
+    return match ? `${match[1]} – ${match[2]}` : 'Selected time';
   }
 
   function formatSlotSummary(slot) {
@@ -1884,6 +1904,9 @@ function bootstrapPublicBooking() {
     }
   }
 
+  // Resolves app base URL from context or window globals.
+  // Note: This intentionally runs standalone without importing url-helpers.js
+  // to allow the booking module to function independently.
   function resolveAppBaseUrl(ctx) {
     if (ctx?.appBaseUrl) {
       return String(ctx.appBaseUrl).replace(/\/+$/, '');
@@ -1909,8 +1932,7 @@ function bootstrapPublicBooking() {
         resolvedLocation: prevState.resolvedLocation ?? null,
         slots: [],
         selectedSlot: null,
-        slotsError: calendar.error || 'No availability found in the next 60 days.',
-        prefetched: null,
+        slotsError: calendar.error || `No availability found in the next ${getFutureLimitDays()} days.`,
       };
     }
 
@@ -1939,8 +1961,7 @@ function bootstrapPublicBooking() {
       resolvedLocation,
       slots: slotList,
       selectedSlot,
-      slotsError: slotList.length === 0 ? 'No slots available for this date. Try another day.' : '',
-      prefetched: slotList.length ? { date: appointmentDate } : null,
+      slotsError: slotList.length === 0 ? MSG_NO_SLOTS : '',
     };
   }
 
@@ -1961,11 +1982,6 @@ function bootstrapPublicBooking() {
 
   function formatDateSelectLabel(dateStr) {
     return formatDateDisplay(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  // Keep as a function declaration (not const alias) to avoid TDZ during first render.
-  function formatDatePillLabel(dateStr) {
-    return formatDateSelectLabel(dateStr);
   }
 
   /**
@@ -1995,13 +2011,7 @@ function bootstrapPublicBooking() {
     return null;
   }
 
-  async function safeJson(response) {
-    try {
-      return await response.json();
-    } catch (error) {
-      return null;
-    }
-  }
+
 
   function cloneState(value) {
     if (typeof structuredClone === 'function') {

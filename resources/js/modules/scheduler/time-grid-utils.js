@@ -3,43 +3,11 @@
  * 
  * Common utilities for time-grid-based views (Week, Day).
  * Handles:
- * - Position & size calculations (topPx, heightPx)
- * - Shared constants (business hours, hour height)
+ * - Shared constants (business hours)
  * 
  * Overlap resolution is performed server-side by EventLayoutService.
  * Frontend consumes backend layout metadata (_widthPct, _leftPct, _colIndex).
  */
-
-// Shared Constants
-export const HOUR_HEIGHT_PX = 60;           // Height of 1 hour row in pixels
-export const MIN_APPOINTMENT_HEIGHT_PX = 20; // Minimum height for very short appointments
-export const HOUR_TO_MIN_MARGIN_PX = 3;    // Margin between appointment and grid line
-
-/**
- * Calculate top position (px) for an appointment based on start time.
- * 
- * @param {DateTime} startDateTime - Luxon DateTime of appointment start
- * @param {number} businessHourStart - Hour when business starts (e.g., 8 for 8 AM)
- * @param {number} hourHeightPx - Height of one hour in pixels (default: 60)
- * @returns {number} - Top position in pixels
- */
-export function topPx(startDateTime, businessHourStart = 8, hourHeightPx = HOUR_HEIGHT_PX) {
-    const hoursSinceStart = startDateTime.hour - businessHourStart + startDateTime.minute / 60;
-    return Math.max(0, hoursSinceStart * hourHeightPx);
-}
-
-/**
- * Calculate height (px) for an appointment based on duration.
- * Ensures minimum height for visibility.
- * 
- * @param {number} durationMinutes - Duration of the appointment in minutes
- * @param {number} hourHeightPx - Height of one hour in pixels (default: 60)
- * @returns {number} - Height in pixels
- */
-export function heightPx(durationMinutes, hourHeightPx = HOUR_HEIGHT_PX) {
-    const calculatedHeight = (durationMinutes / 60) * hourHeightPx - HOUR_TO_MIN_MARGIN_PX;
-    return Math.max(MIN_APPOINTMENT_HEIGHT_PX, calculatedHeight);
-}
 
 /**
  * Calculate the week start date (Monday-first, ISO 8601).

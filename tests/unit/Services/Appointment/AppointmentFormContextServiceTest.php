@@ -164,7 +164,7 @@ final class AppointmentFormContextServiceTest extends CIUnitTestCase
         $this->assertSame('Edit Appointment', $payload['title']);
         $this->assertSame('provider', $payload['user_role']);
         $this->assertSame('Alex', $payload['appointment']['customer_first_name']);
-        $this->assertSame('VIP', $payload['appointment']['custom_field_1']);
+        $this->assertSame('VIP', $payload['existingCustomFieldValues']['custom_field_1']);
         $this->assertSame('2030-06-15', $payload['appointment']['date']);
         $this->assertSame('11:30', $payload['appointment']['time']);
         $this->assertFalse($payload['isPastAppointment']);

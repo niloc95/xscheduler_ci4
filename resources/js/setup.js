@@ -6,6 +6,7 @@ import { getBaseUrl } from './utils/url-helpers.js';
 import { escapeHtml } from './utils/html.js';
 import { onDomReady } from './core/lifecycle.js';
 import { apiRequest } from './core/api.js';
+import { initCompatibilityMode } from './setup-compat.js';
 
 class SetupWizard {
     constructor() {
@@ -34,9 +35,6 @@ class SetupWizard {
 
         const passwordConfirm = document.getElementById('admin_password_confirm');
         passwordConfirm.addEventListener('input', (e) => this.validatePasswordConfirmation(e.target.value));
-
-        // Test connection
-        this.testConnectionBtn.addEventListener('click', () => this.testConnection());
 
         // Form submission
         this.form.addEventListener('submit', (e) => this.handleSubmission(e));
@@ -464,4 +462,5 @@ class SetupWizard {
 // Initialize setup wizard when DOM is ready
 onDomReady(() => {
     new SetupWizard();
+    initCompatibilityMode();
 });

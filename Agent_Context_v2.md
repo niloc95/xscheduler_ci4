@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.6
+version: 2.8
 status: Active hardening
-last_updated: 2026-04-28
+last_updated: 2026-05-05
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -807,9 +807,10 @@ Use CustomerAppointmentService for provider/staff customer scoping:
 
 ### 10.1 Public Routes
 
-- GET /book
-- GET /book/{serviceSlug}
-- GET /book/{serviceSlug}/{providerHash}
+- GET /booking
+- GET /booking/{serviceSlug}
+- GET /booking/{serviceSlug}/{providerSlug}
+- GET /booking/legal
 - GET /my-appointments/{hash}
 
 ### 10.2 Public APIs
@@ -825,6 +826,18 @@ Use CustomerAppointmentService for provider/staff customer scoping:
 - Use hash/token references only
 - Enforce CSRF on form submit
 - Keep slot queries scoped by provider and service
+
+### 10.4 Public Booking Policy and Legal Rules
+
+- `business.reschedule` and `business.cancel` are enforced server-side in `PublicBookingService`; the SPA may only reflect eligibility via `can_reschedule` / `can_cancel` flags and policy summaries.
+- `business.future_limit` is a **public-channel-only** booking guard. Public booking calendar queries and public booking submission must respect it; admin/staff/API appointment creation does not inherit this limit by default.
+- Public booking page context must expose `reschedulePolicy`, `cancelPolicy`, `futureLimitDays`, and a `legalPolicies` object for UI rendering.
+- `legalPolicies` currently carries `cancellationPolicy`, `reschedulingPolicy`, `termsUrl`, `privacyUrl`, and `legalPageUrl`.
+- The public booking UI must reuse the existing in-form policy surface (`renderSchedulingTips()` in `resources/js/public-booking.js`) instead of adding a detached sidebar/right panel unless explicitly requested.
+- Short legal summaries belong in the booking flow; long-form legal text belongs on `/booking/legal`.
+- The `Full legal policies` link from the booking flow opens `/booking/legal` in a new tab; the legal page itself must provide an in-page navigation affordance back to `/booking`.
+- Avoid duplicate policy copy blocks in the form. If rules/legal are shown in `renderSchedulingTips()`, do not render a second standalone policy card with overlapping content.
+- Any legal URL shown from booking context (`termsUrl`, `privacyUrl`) must open with `target="_blank" rel="noopener"`.
 
 ## 11) Notifications Contract
 
@@ -854,11 +867,17 @@ UI-facing service methods.
 
 ### 11.3 Dispatch Architecture Notes
 
-- Booking-time notifications are queued synchronously inline during the appointment mutation request; they are not deferred until the first cron tick.
+- Booking-time notifications are queued synchronously inline during the appointment mutation request, but **dispatch is deferred** to the queue worker / cron (`php spark notifications:dispatch-queue`). Do not perform SMTP or channel delivery inline in the HTTP request path.
 - New booking flows must derive event type from AppointmentStatus::notificationEvent() instead of hardcoding confirmation events.
 - `PATCH /api/appointments/{id}/status` fires notifications server-side for each transition.
 - Frontend events such as `appointments-updated` do not drive notification delivery; notifications are triggered by backend mutation flows.
 - Manual resend flows use `POST /api/appointments/{id}/notify`. Email and SMS resends send immediately, while WhatsApp resends are queued.
+
+### 11.3a HTTP Request Path Rule
+
+- `AppointmentBookingService::queueNotifications()` must enqueue only. It must not instantiate `NotificationQueueDispatcher` for immediate delivery.
+- Inline dispatch during booking/reschedule/cancel requests is a correctness and performance hazard: it blocks the HTTP response on SMTP/channel transport availability and turns transient transport failures into user-facing latency.
+- If Mailpit/SMTP or any external transport is down, the correct behavior is: mutation succeeds, notification rows remain queued/failed for retry, and the cron/dispatcher handles recovery later.
 
 ### 11.4 Event and Template Rules
 
@@ -1655,6 +1674,8 @@ Status legend: `done`, `in_progress`, `queued`.
 | 22 | Business context resolver for notification services | done | Added `current_business_id()` to `permissions_helper.php`. `NotificationCenterService` and `NotificationSettingsService` now resolve scope via `resolveBusinessId()` instead of `NotificationCatalog::BUSINESS_ID_DEFAULT`. Full resolver contract documented in §7.4. |
 | 23 | Reminder queue metadata and stale-reminder cancellation | done | Added `reminder_offset_minutes` and `schedule_fingerprint` columns to `xs_notification_queue` (migration `2026-04-21-150000`). `NotificationQueueService` writes fingerprint on enqueue; `NotificationQueueDispatcher` cancels reminder rows whose fingerprint no longer matches the live appointment, and resolves internal recipients via `resolveInternalRecipientUser()`. |
 | 24 | Unified avatar / initials system | done | Single PHP source of truth (`avatar_initials()`, `avatar_display_name()`, `avatar_profile_image_url()`, `avatar_data()`) in `app/Helpers/app_helper.php`. Single JS source of truth in `resources/js/utils/avatar.js` (`getAvatarInitials`, `getDisplayName`). Globals `window.xsGetAvatarInitials` / `window.xsGetDisplayName` exposed from `app.js` for inline PHP-view scripts. All avatar surfaces updated (header, user list, customer list, customer history, appointments form, provider-staff widget, staff-providers widget, scheduler). Title/suffix stripping and two-letter fallback enforced consistently. Parity tests: `tests/frontend/avatar-utils.test.js` (6 tests) and `tests/unit/Helpers/AvatarHelperTest.php` (3 tests, 12 assertions). Full contract in §6.8. |
+| 25 | Appointment inline notification dispatch regression fix | done | Restored immediate queue dispatch in `AppointmentBookingService::queueNotifications()` via `NotificationQueueDispatcher::dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT)` so create/update flows no longer depend on cron timing for immediate notifications. Added queue idempotency pre-check hardening in `NotificationQueueService::enqueueRaw()` to avoid duplicate enqueue attempts under retries. |
+| 26 | Setup hosting compatibility mode + resilience hardening | done | Added shared-hosting-safe DB probe path (`app/Helpers/SetupCompatibilityHelper.php`) and compatibility UI module (`resources/js/setup-compat.js`) with smart suggestion banner. Setup controller now accepts JSON `testConnection` requests, forwards `compatibility_mode`, logs raw DB probe errors server-side, and returns sanitized payloads. Added camelCase route alias `setup/testConnection`, persisted `compatibility_mode` through setup processing and `.env` generation, and fixed setup-page CSRF header value (`csrf_hash()` instead of `csrf_token()`) plus robust client-side non-JSON/exception response handling so host-level 403/HTML responses no longer surface as `undefined` or misleading network errors. |
 
 ## 18) Audit Progress Board
 
@@ -1693,3 +1714,36 @@ Each queue item in 19.1 must end with:
 - `npm run test:frontend:lifecycle`
 - `npm run test:unit:calendar`
 - `npm run build`
+
+## Custom Field Required Semantics (Apr 2026)
+
+### Rule: Required fields are satisfied by stored values
+
+**Canonical contract**: A custom field marked as `required` in booking settings is only required if the linked customer does NOT already have a non-empty value stored in `xs_customers.custom_fields`.
+
+**When required enforcement applies**:
+- **Initial booking/create**: Enforced strictly; all required custom fields must be provided.
+- **Later edits/reschedule**: Relaxed; customer may update a single field without re-entering others if they already have stored values.
+
+**Implementation seams**:
+- `CustomerCustomFieldService::hasStoredValue($storedValues, $fieldKey)` → returns bool; true if field exists in decoded JSON and value is non-empty
+- `BookingSettingsService::getValidationRulesForUpdate($customerId, $existingCustomFieldValues)` → accepts optional stored values; relaxes required rules when stored values exist
+- Three surfaces apply this rule:
+  1. **Customer edit form**: `CustomerManagement::edit()` computes `$customFieldRequiredState` array; `app/Views/customer-management/edit.php` renders field-by-field required attribute conditionally
+  2. **Admin appointment edit form**: `app/Views/appointments/form.php` computes `$isRequiredForEdit = $fieldMeta['required'] && $existingValue === ''` for each field
+  3. **Public booking manage**: `PublicBookingService::reschedule()` passes stored customer values to `extractAppointmentCustomFieldValues()`; `resources/js/public-booking.js` only shows required marker when `!existingMasked`
+
+**Example workflow**:
+1. Initial booking: Customer fills required Medical Aid → value stored in `xs_customers.custom_fields`
+2. Later customer edit: Medical Aid field NOT marked required (stored value exists) → customer may change address and save without re-entering Medical Aid
+3. Public reschedule: Medical Aid NOT marked required in form → blank submission accepted, existing value preserved via selective merge
+
+**Edge case semantics**:
+- Sensitive fields on reschedule: Form input starts empty but shows "Current: ****5201" hint. Blank submission is no-op (doesn't overwrite stored value).
+- Non-sensitive fields on edit: Show "Leave blank to remove this value" hint. Blank submission is no-op (selective merge only takes non-empty values).
+- Explicit clear: `clear__fieldKey=1` in payload still removes value regardless of blank status (explicit intent wins).
+
+**Test coverage**:
+- `Tests\Unit\Services\BookingSettingsServiceTest::testGetValidationRulesForUpdateRelaxesRequiredCustomFieldWhenStoredValueExists` → confirms rules relax when stored values present
+- `Tests\Unit\PublicBookingServiceTest::testExtractAppointmentCustomFieldValuesRequiresInitialCaptureWhenMissing` → confirms first capture strict
+- `Tests\Unit\PublicBookingServiceTest::testExtractAppointmentCustomFieldValuesAllowsBlankWhenStoredValueAlreadyExists` → confirms reschedule relax

@@ -55,15 +55,4 @@ export function getRotatedWeekdayShortNames(referenceDate, firstDayOfWeek = 0) {
     return Array.from({ length: 7 }, (_, index) => anchor.plus({ days: index }).toFormat('ccc'));
 }
 
-export function buildAppointmentCountsByDate(appointments = []) {
-    const counts = {};
 
-    appointments.forEach((appointment) => {
-        const dateKey = appointment?.startDateTime?.toISODate?.();
-        if (!dateKey) return;
-
-        counts[dateKey] = (counts[dateKey] || 0) + 1;
-    });
-
-    return counts;
-}

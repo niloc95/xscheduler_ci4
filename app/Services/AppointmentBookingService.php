@@ -75,9 +75,11 @@ use App\Models\AppointmentModel;
 use App\Models\CustomerModel;
 use App\Models\ServiceModel;
 use App\Services\Appointment\AppointmentStatus;
+use App\Services\CustomerService;
 use App\Services\NotificationCatalog;
 use App\Services\NotificationQueueDispatcher;
 use App\Services\NotificationQueueService;
+use Config\Database;
 use DateTime;
 use DateTimeZone;
 use Exception;
@@ -102,6 +104,7 @@ class AppointmentBookingService
     protected AppointmentEventService $appointmentEventService;
     protected AuditLogModel $auditLogModel;
     protected PhoneNumberService $phoneNumberService;
+    protected CustomerService $customerService;
 
     public function __construct(
         ?AppointmentModel $appointmentModel = null,
@@ -115,6 +118,7 @@ class AppointmentBookingService
         ?AppointmentEventService $appointmentEventService = null,
         ?AuditLogModel $auditLogModel = null,
         ?PhoneNumberService $phoneNumberService = null,
+        ?CustomerService $customerService = null,
     )
     {
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
@@ -128,6 +132,7 @@ class AppointmentBookingService
         $this->appointmentEventService = $appointmentEventService ?? new AppointmentEventService();
         $this->auditLogModel = $auditLogModel ?? new AuditLogModel();
         $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
+        $this->customerService = $customerService ?? new CustomerService($this->customerModel, $this->phoneNumberService, $this->auditLogModel);
     }
 
     /**
@@ -196,6 +201,30 @@ class AppointmentBookingService
                 $timezone
             );
 
+            // Step 3c: Enforce future booking limit for public bookings only.
+            // Admin/staff/API channels bypass this gate so internal scheduling is unrestricted.
+            if ($channel === 'public') {
+                $limitSettings = model('SettingModel')->getByKeys(['business.future_limit']);
+                $limitDays = (int) ($limitSettings['business.future_limit'] ?? 60);
+                if ($limitDays <= 0) {
+                    $limitDays = 60;
+                }
+                $cutoff = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                $cutoff = $cutoff->add(new \DateInterval('P' . $limitDays . 'D'));
+                if ($timeData['startDateTime'] > $cutoff) {
+                    log_structured('warning', 'appointment.create_validation_failed', [
+                        'booking_channel' => $channel,
+                        'actor_user_id' => $actorUserId,
+                        'reason' => 'future_limit_exceeded',
+                        'limit_days' => $limitDays,
+                        'start_at' => $timeData['startDateTime']->format('Y-m-d H:i:s'),
+                    ]);
+                    return $this->error(
+                        sprintf('Appointments cannot be booked more than %d days in advance.', $limitDays)
+                    );
+                }
+            }
+
             // Step 3b: Resolve strict location context
             $locationContext = $this->resolveBookingLocationContext(
                 (int) $data['provider_id'],
@@ -251,20 +280,7 @@ class AppointmentBookingService
                 return $this->error($reason, ['conflicts' => $availabilityCheck['conflicts'] ?? []]);
             }
 
-            // Step 6: Handle customer (find or create)
-            $customerResult = $this->resolveCustomer($data);
-            if (!$customerResult['success']) {
-                log_structured('warning', 'appointment.create_validation_failed', [
-                    'booking_channel' => $channel,
-                    'actor_user_id' => $actorUserId,
-                    'reason' => 'customer_resolution_failed',
-                    'errors' => $customerResult['errors'] ?? [],
-                ]);
-                return $customerResult;
-            }
-            $customerId = $customerResult['customerId'];
-
-            // Step 7: Create appointment record
+            // Step 6 + 7: Persist customer upsert + appointment atomically.
             // Resolve default status from settings; caller-supplied status always takes precedence
             $statusSettings = model('SettingModel')->getByKeys(['booking.default_appointment_status']);
             $defaultStatus = AppointmentStatus::normalize(
@@ -282,6 +298,22 @@ class AppointmentBookingService
                 ]);
                 return $this->error('Invalid appointment status', ['errors' => ['status' => 'invalid']]);
             }
+
+            $db = Database::connect();
+            $db->transStart();
+
+            $customerResult = $this->resolveCustomer($data);
+            if (!$customerResult['success']) {
+                $db->transRollback();
+                log_structured('warning', 'appointment.create_validation_failed', [
+                    'booking_channel' => $channel,
+                    'actor_user_id' => $actorUserId,
+                    'reason' => 'customer_resolution_failed',
+                    'errors' => $customerResult['errors'] ?? [],
+                ]);
+                return $customerResult;
+            }
+            $customerId = $customerResult['customerId'];
 
             $appointmentData = [
                 'customer_id' => $customerId,
@@ -310,6 +342,7 @@ class AppointmentBookingService
             $appointmentId = $this->appointmentModel->insert($appointmentData);
 
             if (!$appointmentId) {
+                $db->transRollback();
                 $errors = $this->appointmentModel->errors();
                 log_message('error', '[AppointmentBookingService] Insert failed. Errors: ' . json_encode($errors));
                 log_structured('error', 'appointment.create_failed', [
@@ -318,6 +351,11 @@ class AppointmentBookingService
                     'errors' => $errors,
                 ]);
                 return $this->error('Failed to create appointment', ['validationErrors' => $errors]);
+            }
+
+            $db->transComplete();
+            if (!$db->transStatus()) {
+                return $this->error('Unable to persist booking data. Please try again.');
             }
 
             log_message('info', '[AppointmentBookingService] ✅ Appointment created! ID: ' . $appointmentId);
@@ -768,49 +806,29 @@ class AppointmentBookingService
             return ['success' => true, 'customerId' => (int)$data['customer_id']];
         }
 
-        // Check if customer exists by email
-        if (!empty($data['customer_email'])) {
-            $customer = $this->customerModel->where('email', $data['customer_email'])->first();
-            if ($customer) {
-                log_message('info', '[AppointmentBookingService] Found existing customer by email: ' . $customer['id']);
-                return ['success' => true, 'customerId' => (int)$customer['id']];
-            }
-        }
+        try {
+            $result = $this->customerService->upsertCustomer([
+                'customer_id' => $data['customer_id'] ?? null,
+                'first_name' => $data['customer_first_name'] ?? null,
+                'last_name' => $data['customer_last_name'] ?? null,
+                'email' => $data['customer_email'] ?? null,
+                'phone' => $data['customer_phone'] ?? null,
+                'phone_country_code' => $data['customer_phone_country_code'] ?? null,
+                'address' => $data['customer_address'] ?? null,
+                'notes' => $data['customer_notes'] ?? null,
+            ]);
 
-        // Create new customer
-        $customerData = [
-            'first_name' => $data['customer_first_name'] ?? '',
-            'last_name' => $data['customer_last_name'] ?? '',
-            'email' => $data['customer_email'] ?? '',
-            'phone' => $this->phoneNumberService->normalize(
-                $data['customer_phone'] ?? null,
-                $data['customer_phone_country_code'] ?? null
-            ) ?? '',
-            'address' => $data['customer_address'] ?? '',
-            'notes' => $data['customer_notes'] ?? ''
-        ];
-
-        // Handle custom fields
-        $customFieldsData = [];
-        for ($i = 1; $i <= 6; $i++) {
-            if (isset($data["custom_field_{$i}"]) && $data["custom_field_{$i}"] !== '') {
-                $customFieldsData["custom_field_{$i}"] = $data["custom_field_{$i}"];
-            }
+            return ['success' => true, 'customerId' => (int) ($result['id'] ?? 0)];
+        } catch (\InvalidArgumentException $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => ['customer_phone' => 'invalid'],
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', '[AppointmentBookingService] Customer upsert failed: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Failed to create/update customer record'];
         }
-        if (!empty($customFieldsData)) {
-            $customerData['custom_fields'] = json_encode($customFieldsData);
-        }
-
-        $customerId = $this->customerModel->insert($customerData);
-        
-        if (!$customerId) {
-            $errors = $this->customerModel->errors();
-            log_message('error', '[AppointmentBookingService] Customer creation failed: ' . json_encode($errors));
-            return ['success' => false, 'message' => 'Failed to create customer record', 'errors' => $errors];
-        }
-
-        log_message('info', '[AppointmentBookingService] Created new customer ID: ' . $customerId);
-        return ['success' => true, 'customerId' => (int)$customerId];
     }
 
     /**
@@ -875,7 +893,6 @@ class AppointmentBookingService
             $this->appointmentEventService->dispatch($event, $appointmentId, $types, NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Queued notifications (' . $event . '): ' . implode(', ', $types));
 
-
             // Enqueue internal (provider + staff) email notifications.
             $this->enqueueInternalNotifications($appointmentId, $event);
 
@@ -885,8 +902,8 @@ class AppointmentBookingService
             $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
             log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
         } catch (Exception $e) {
-            log_message('error', '[AppointmentBookingService] Notification dispatch failed: ' . $e->getMessage());
-            // Don't fail the booking if notifications fail
+            log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
+            // Don't fail the booking if notification queuing fails
         }
     }
 

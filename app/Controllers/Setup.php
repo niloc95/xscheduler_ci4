@@ -71,7 +71,7 @@ class Setup extends BaseController
 
     public function __construct()
     {
-        helper(['form', 'url', 'setup']);
+        helper(['form', 'url', 'setup', 'setupcompatibility']);
     }
 
     public function index()
@@ -171,7 +171,11 @@ class Setup extends BaseController
                 'db_port' => (int) ($this->request->getPost('mysql_port') ?: 3306),
                 'db_database' => $this->request->getPost('mysql_database'),
                 'db_username' => $this->request->getPost('mysql_username'),
-                'db_password' => $this->request->getPost('mysql_password')
+                'db_password' => $this->request->getPost('mysql_password'),
+                'compatibility_mode' => filter_var(
+                    $this->request->getPost('compatibility_mode'),
+                    FILTER_VALIDATE_BOOLEAN,
+                ),
             ];
 
             $setupData['database']['mysql'] = [
@@ -860,6 +864,11 @@ class Setup extends BaseController
         // Setup flags
         $envContent = $replaceKey($envContent, 'setup.enabled', 'false');
         $envContent = $replaceKey($envContent, 'setup.allowMultipleRuns', 'false');
+        $envContent = $replaceKey(
+            $envContent,
+            'setup.compatibility_mode',
+            ! empty($data['compatibility_mode']) ? 'true' : 'false',
+        );
 
         // Add setup completion timestamp
         $envContent .= "\n# Setup completed on " . date('Y-m-d H:i:s') . "\n";
@@ -1055,74 +1064,55 @@ class Setup extends BaseController
      */
     public function testConnection(): ResponseInterface
     {
-        try {
-            // Handle both JSON and form data
-            $data = [];
-            $contentType = $this->request->getHeaderLine('Content-Type');
-            
-            if (strpos($contentType, 'application/json') !== false) {
-                // Handle JSON request
-                $json = $this->request->getJSON(true);
-                if (!$json) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Invalid JSON data received'
-                    ])->setStatusCode(400);
-                }
-                $data = $json;
-            } else {
-                // Handle form data
-                $post = $this->request->getPost();
-                $data = [
-                    'db_driver' => 'MySQLi',
-                    'db_hostname' => $post['mysql_hostname'] ?? '',
-                    'db_port' => $post['mysql_port'] ?? '3306',
-                    'db_database' => $post['mysql_database'] ?? '',
-                    'db_username' => $post['mysql_username'] ?? '',
-                    'db_password' => $post['mysql_password'] ?? ''
-                ];
-            }
-
-            // Validate required fields
-            $required = ['db_driver', 'db_hostname', 'db_database', 'db_username'];
-            foreach ($required as $field) {
-                if (empty($data[$field])) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => "Missing required field: {$field}"
-                    ])->setStatusCode(400);
-                }
-            }
-
-            // Ensure port is set and cast to integer for strict drivers
-            if (empty($data['db_port'])) {
-                $data['db_port'] = 3306;
-            } else {
-                $data['db_port'] = (int) $data['db_port'];
-            }
-
-            // Ensure password is set (can be empty)
-            if (!isset($data['db_password'])) {
-                $data['db_password'] = '';
-            }
-
-            // Test the connection
-            $testResult = $this->testDatabaseConnection($data);
-
-            // Just return the test result - don't try to write .env or reset flags
-            // The full setup process will handle that
-            return $this->response->setJSON([
-                'success' => $testResult['success'],
-                'message' => $testResult['message']
-            ]);
-
-        } catch (\Throwable $e) {
-            log_message('error', 'Database connection test failed: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Connection test failed: ' . $e->getMessage()
-            ])->setStatusCode(500);
+        if (strpos($this->request->getHeaderLine('Content-Type'), 'application/json') === false) {
+            return $this->response
+                ->setStatusCode(400)
+                ->setJSON(['success' => false, 'message' => 'Invalid request.']);
         }
+
+        $body = $this->request->getJSON(true) ?? [];
+
+        $host = trim((string) ($body['host'] ?? ''));
+        $db = trim((string) ($body['db'] ?? ''));
+        $user = trim((string) ($body['user'] ?? ''));
+        $pass = (string) ($body['pass'] ?? '');
+        $port = (int) ($body['port'] ?? 3306);
+        $compatMode = filter_var($body['compatibility_mode'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($host === '' || $db === '' || $user === '') {
+            return $this->response
+                ->setStatusCode(422)
+                ->setJSON([
+                    'success'       => false,
+                    'message'       => 'Hostname, database name, and username are required.',
+                    'error'         => null,
+                    'suggestCompat' => false,
+                    'compatMode'    => $compatMode,
+                ]);
+        }
+
+        if ($port < 1 || $port > 65535) {
+            $port = 3306;
+        }
+
+        $result = \testDatabaseConnection(
+            host:       $host,
+            db:         $db,
+            user:       $user,
+            pass:       $pass,
+            port:       $port,
+            compatMode: $compatMode,
+        );
+
+        if (! $result['success'] && ! empty($result['error'])) {
+            log_message('warning', '[Setup::testConnection] DB probe failed: ' . $result['error']);
+        }
+
+        unset($result['error']);
+
+        return $this->response
+            ->setStatusCode($result['success'] ? 200 : 422)
+            ->setJSON($result);
     }
 
     /**

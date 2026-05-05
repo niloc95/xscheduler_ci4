@@ -78,17 +78,40 @@ class SettingModel extends BaseModel
     // ...existing code...
 
     /**
+     * Request-scoped in-memory cache for individual setting values.
+     * Keyed by setting_key. Populated lazily on first fetch.
+     */
+    private static array $requestCache = [];
+
+    /**
      * Get settings by keys (array) preserving associative mapping.
+     * Results are cached for the duration of the request to avoid
+     * redundant queries when the same keys are fetched repeatedly.
      */
     public function getByKeys(array $keys): array
     {
         if (empty($keys)) return [];
-        $rows = $this->select(['setting_key', 'setting_value', 'setting_type'])
-            ->whereIn('setting_key', $keys)
-            ->findAll();
+
+        $missing = array_diff($keys, array_keys(self::$requestCache));
+
+        if (!empty($missing)) {
+            $rows = $this->select(['setting_key', 'setting_value', 'setting_type'])
+                ->whereIn('setting_key', $missing)
+                ->findAll();
+            foreach ($rows as $r) {
+                self::$requestCache[$r['setting_key']] = $this->castValue($r['setting_value'], $r['setting_type'] ?? 'string');
+            }
+            // Ensure missing keys that had no row are stored as null so we don't re-query
+            foreach ($missing as $k) {
+                if (!array_key_exists($k, self::$requestCache)) {
+                    self::$requestCache[$k] = null;
+                }
+            }
+        }
+
         $out = [];
-        foreach ($rows as $r) {
-            $out[$r['setting_key']] = $this->castValue($r['setting_value'], $r['setting_type'] ?? 'string');
+        foreach ($keys as $k) {
+            $out[$k] = self::$requestCache[$k] ?? null;
         }
         return $out;
     }
@@ -140,9 +163,13 @@ class SettingModel extends BaseModel
         }
         $existing = $this->where('setting_key', $key)->first();
         if ($existing) {
-            return (bool) $this->update($existing['id'], $payload);
+            $result = (bool) $this->update($existing['id'], $payload);
+        } else {
+            $result = (bool) $this->insert($payload, true);
         }
-        return (bool) $this->insert($payload, true);
+        // Invalidate request cache so the updated value is visible immediately
+        unset(self::$requestCache[$key]);
+        return $result;
     }
 
     private function castValue(?string $val, string $type)

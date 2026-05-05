@@ -166,6 +166,18 @@ class NotificationQueueService
     {
         $now   = date('Y-m-d H:i:s');
         $model = new NotificationQueueModel();
+
+        // Fast-path dedupe check to avoid duplicate-key exceptions in normal
+        // reminder scans where the same idempotency key may be evaluated again.
+        $existing = $model
+            ->where('business_id', $businessId)
+            ->where('idempotency_key', $idempotencyKey)
+            ->first();
+
+        if (is_array($existing)) {
+            return ['ok' => true, 'inserted' => false];
+        }
+
         $correlationId = bin2hex(random_bytes(16));
         $payload = [
             'business_id'       => $businessId,

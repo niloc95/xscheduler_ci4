@@ -178,6 +178,57 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $this->assertNotEmpty($result['display_range']);
     }
 
+    public function testExtractAppointmentCustomFieldValuesRequiresInitialCaptureWhenMissing(): void
+    {
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createCustomerModelMock(['id' => 55, 'custom_fields' => null]),
+            $this->createServiceModelMock(['id' => 22, 'name' => 'Initial Consult', 'duration_min' => 30, 'price' => 90.0, 'active' => 1]),
+            $this->createUserModelMock(['id' => 3, 'name' => 'Dr. Patel', 'color' => '#3366ff', 'role' => 'provider', 'is_active' => true]),
+            $this->createLocalizationMock('UTC'),
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $this->expectException(PublicBookingException::class);
+        $this->expectExceptionMessage('Please complete all required custom fields.');
+
+        $this->invokePrivateMethod($service, 'extractAppointmentCustomFieldValues', [
+            ['custom_field_1' => ''],
+            ['custom_field_1' => ['required' => true, 'type' => 'text']],
+            true,
+            null,
+        ]);
+    }
+
+    public function testExtractAppointmentCustomFieldValuesAllowsBlankWhenStoredValueAlreadyExists(): void
+    {
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createCustomerModelMock(['id' => 55, 'custom_fields' => '{"custom_field_1":"MA-12345"}']),
+            $this->createServiceModelMock(['id' => 22, 'name' => 'Initial Consult', 'duration_min' => 30, 'price' => 90.0, 'active' => 1]),
+            $this->createUserModelMock(['id' => 3, 'name' => 'Dr. Patel', 'color' => '#3366ff', 'role' => 'provider', 'is_active' => true]),
+            $this->createLocalizationMock('UTC'),
+            $this->createMock(SettingModel::class),
+            $this->createLocationModelMock([], []),
+            $this->createMock(AppointmentBookingService::class)
+        );
+
+        $result = $this->invokePrivateMethod($service, 'extractAppointmentCustomFieldValues', [
+            ['custom_field_1' => ''],
+            ['custom_field_1' => ['required' => true, 'type' => 'text']],
+            true,
+            '{"custom_field_1":"MA-12345"}',
+        ]);
+
+        $this->assertSame([], $result);
+    }
+
     public function testLookupAppointmentReturnsEnrichedMetadata(): void
     {
         $appointmentRecord = [
@@ -690,6 +741,17 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         $localization->method('formatTimeForDisplay')->willReturnCallback(static fn (string $time): string => substr($time, 0, 5));
 
         return $localization;
+    }
+
+    /**
+     * @param array<int, mixed> $arguments
+     */
+    private function invokePrivateMethod(object $instance, string $method, array $arguments = []): mixed
+    {
+        $reflection = new \ReflectionMethod($instance, $method);
+        $reflection->setAccessible(true);
+
+        return $reflection->invokeArgs($instance, $arguments);
     }
 
     /**
