@@ -38,6 +38,7 @@ window.xsRegisterViewInit = function(initFn) {
 const SPA = (() => {
   const content = () => document.getElementById('spa-content');
   const headerControlsSlot = () => document.getElementById('header-controls-slot');
+  const executedScriptSrc = window.__xsSpaExecutedScriptSrc || (window.__xsSpaExecutedScriptSrc = new Set());
 
   const normalizePathname = (url) => {
     try {
@@ -233,6 +234,15 @@ const SPA = (() => {
     }
   };
 
+  // During SPA navigation the active CSP header remains from the current document.
+  // Reuse that nonce for injected scripts; response nonce values from fetched HTML
+  // cannot be trusted to match the active policy.
+  const getActiveScriptNonce = () => {
+    const nonceScript = document.querySelector('script[nonce]');
+    if (!nonceScript) return null;
+    return nonceScript.nonce || nonceScript.getAttribute('nonce') || null;
+  };
+
   const navigate = async (url, push = true, options = {}) => {
     const { forceReload = false } = options;
     const el = content();
@@ -262,22 +272,45 @@ const SPA = (() => {
         el.removeAttribute('data-page-title');
       }
       
-      // Execute any inline or external scripts in the newly injected SPA content
-      // This allows per-view scripts (e.g., user management role cards) to initialize after SPA navigation.
+      // Execute any inline or external scripts in newly injected SPA content.
+      // Force injected scripts to use the currently active nonce to satisfy CSP.
       const scripts = Array.from(el.querySelectorAll('script'));
+      const activeNonce = getActiveScriptNonce();
       scripts.forEach(orig => {
         // Skip if already processed
         if (orig.dataset.spaExecuted === 'true') return;
         try {
+          const originalSrc = orig.getAttribute('src');
+          if (originalSrc) {
+            const absoluteSrc = new URL(originalSrc, window.location.href).href;
+            const allowRepeat = orig.dataset.spaReload === 'true';
+            if (executedScriptSrc.has(absoluteSrc) && !allowRepeat) {
+              orig.remove();
+              return;
+            }
+            executedScriptSrc.add(absoluteSrc);
+          }
+
           const s = document.createElement('script');
           // Copy attributes (src, type, etc.)
           for (const attr of orig.attributes) {
+            if (attr.name === 'nonce') continue;
             s.setAttribute(attr.name, attr.value);
           }
+
+          if (activeNonce) {
+            s.setAttribute('nonce', activeNonce);
+          }
+
           // Inline code
           if (!orig.src) {
+            if (!activeNonce) {
+              console.warn('[XS-SPA] Skipping inline script during SPA nav: no active CSP nonce available.');
+              return;
+            }
             s.textContent = orig.textContent;
           }
+
           s.dataset.spaExecuted = 'true';
           orig.replaceWith(s);
         } catch (scriptErr) {

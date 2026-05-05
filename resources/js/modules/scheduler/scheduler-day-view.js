@@ -115,16 +115,16 @@ export class DayView {
             const apptCount = appointmentsByProvider[provider.id]?.length || 0;
 
             return `
-                <div class="text-center">
-                    <div class="flex flex-col items-center gap-2">
-                        <div class="provider-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm"
+                <div class="px-1 min-w-0">
+                    <div class="flex items-center justify-center gap-2 min-w-0">
+                        <div class="provider-avatar w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm flex-shrink-0"
                              style="background-color: ${providerColor};">
                             ${initials}
                         </div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-full px-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[140px] text-left">
                             ${escapeHtml(provider.name || provider.username)}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
                             ${apptCount} appt${apptCount !== 1 ? 's' : ''}
                         </div>
                     </div>
@@ -146,17 +146,20 @@ export class DayView {
 
         const timeSlots = this._generate15MinSlots(timeRange.startTime, timeRange.endTime);
 
-        const startHour = parseInt(timeRange.startTime.split(':')[0], 10);
-        const endHour = parseInt(timeRange.endTime.split(':')[0], 10);
-        this._activeTimelineStartHour = startHour;
-        this._activeTimelineEndHour = endHour;
+        const startMinutes = this._timeToMinutes(timeRange.startTime);
+        const endMinutes = this._timeToMinutes(timeRange.endTime);
+        this._activeTimelineStartMinutes = startMinutes;
+        this._activeTimelineEndMinutes = endMinutes;
 
         const timeLabels = timeSlots
             .filter((slot) => slot.minute === 0 || slot.minute === 30)
             .map((slot) => {
             const top = this._topPxDay(
-                DateTime.fromFormat(slot.time, 'HH:mm', { zone: this.scheduler.options.timezone }),
-                startHour,
+                DateTime.fromObject(
+                    { hour: slot.hour, minute: slot.minute },
+                    { zone: this.scheduler.options.timezone },
+                ),
+                startMinutes,
             );
             const isHour = slot.minute === 0;
             return `
@@ -175,8 +178,11 @@ export class DayView {
 
             const hourLines = timeSlots.map((slot) => {
                 const top = this._topPxDay(
-                    DateTime.fromFormat(slot.time, 'HH:mm', { zone: this.scheduler.options.timezone }),
-                    startHour,
+                    DateTime.fromObject(
+                        { hour: slot.hour, minute: slot.minute },
+                        { zone: this.scheduler.options.timezone },
+                    ),
+                    startMinutes,
                 );
                 if (slot.minute === 0) {
                     return `<div class="timeline-hour-line absolute left-0 right-0 border-t border-gray-100 dark:border-gray-700/60" style="top:${top}px;"></div>`;
@@ -222,10 +228,10 @@ export class DayView {
     }
 
     _renderAppointmentBlock(appointment, provider, timeRange, layout = null) {
-        const startHour = timeRange ? parseInt(timeRange.startTime.split(':')[0], 10) : this.businessHours.startHour;
+        const startMinutes = timeRange ? this._timeToMinutes(timeRange.startTime) : (this.businessHours.startHour * 60);
         const providerColor = getProviderColor(provider);
 
-        const top = this._topPxDay(appointment.startDateTime, startHour);
+        const top = this._topPxDay(appointment.startDateTime, startMinutes);
         const height = this._heightPxDay(
             appointment.endDateTime.diff(appointment.startDateTime, 'minutes').minutes,
         );
@@ -355,10 +361,8 @@ export class DayView {
 
     _renderNowLine(timeRange) {
         const now = DateTime.now().setZone(this.scheduler.options.timezone);
-        const [sh, sm] = timeRange.startTime.split(':').map(Number);
-        const [eh, em] = timeRange.endTime.split(':').map(Number);
-        const startMinutes = sh * 60 + (sm || 0);
-        const endMinutes   = eh * 60 + (em || 0);
+        const startMinutes = this._timeToMinutes(timeRange.startTime);
+        const endMinutes = this._timeToMinutes(timeRange.endTime);
         const nowMinutes   = now.hour * 60 + now.minute;
 
         // Hide when current time is outside the visible timeline range.
@@ -366,7 +370,7 @@ export class DayView {
             return '';
         }
 
-        const top = this._topPxDay(now, sh);
+        const top = this._topPxDay(now, startMinutes);
 
         return `
             <div class="now-line absolute pointer-events-none flex items-center"
@@ -426,11 +430,9 @@ export class DayView {
             }
 
             const now = DateTime.now().setZone(this.scheduler.options.timezone);
-            const startHour = this._activeTimelineStartHour ?? this.businessHours.startHour;
-            const endHour   = this._activeTimelineEndHour   ?? (startHour + 9);
+            const startMinutes = this._activeTimelineStartMinutes ?? (this.businessHours.startHour * 60);
+            const endMinutes   = this._activeTimelineEndMinutes   ?? (startMinutes + (9 * 60));
             const nowMinutes   = now.hour * 60 + now.minute;
-            const startMinutes = startHour * 60;
-            const endMinutes   = endHour * 60;
 
             if (nowMinutes < startMinutes || nowMinutes >= endMinutes) {
                 nowLine.style.display = 'none';
@@ -438,14 +440,22 @@ export class DayView {
             }
 
             nowLine.style.display = '';
-            nowLine.style.top = `${this._topPxDay(now, startHour)}px`;
+            nowLine.style.top = `${this._topPxDay(now, startMinutes)}px`;
         }, 60000);
     }
 
     _generate15MinSlots(startTime, endTime) {
         const zone = this.scheduler.options.timezone;
-        let cursor = DateTime.fromFormat(startTime, 'HH:mm', { zone });
-        const end = DateTime.fromFormat(endTime, 'HH:mm', { zone });
+        const startMins = this._timeToMinutes(startTime);
+        const endMins = this._timeToMinutes(endTime);
+        let cursor = DateTime.fromObject(
+            { hour: Math.floor(startMins / 60), minute: startMins % 60 },
+            { zone },
+        );
+        const end = DateTime.fromObject(
+            { hour: Math.floor(endMins / 60), minute: endMins % 60 },
+            { zone },
+        );
         const slots = [];
 
         while (cursor < end) {
@@ -460,9 +470,9 @@ export class DayView {
         return slots;
     }
 
-    _topPxDay(dateTime, businessHourStart = 8) {
-        const hoursSinceStart = dateTime.hour - businessHourStart + dateTime.minute / 60;
-        return Math.max(0, hoursSinceStart * DAY_VIEW_HOUR_HEIGHT_PX);
+    _topPxDay(dateTime, timelineStartMinutes = 8 * 60) {
+        const minutesSinceStart = (dateTime.hour * 60 + dateTime.minute) - timelineStartMinutes;
+        return Math.max(0, (minutesSinceStart / 60) * DAY_VIEW_HOUR_HEIGHT_PX);
     }
 
     _heightPxDay(durationMinutes) {
@@ -471,9 +481,15 @@ export class DayView {
     }
 
     _calcTotalHeight(startTime, endTime) {
-        const [sh] = startTime.split(':').map(Number);
-        const [eh] = endTime.split(':').map(Number);
-        return Math.max(1, eh - sh) * DAY_VIEW_HOUR_HEIGHT_PX;
+        const totalMinutes = Math.max(60, this._timeToMinutes(endTime) - this._timeToMinutes(startTime));
+        return (totalMinutes / 60) * DAY_VIEW_HOUR_HEIGHT_PX;
+    }
+
+    _timeToMinutes(time) {
+        const parts = String(time || '').split(':').map(Number);
+        const hour = Number.isFinite(parts[0]) ? parts[0] : 0;
+        const minute = Number.isFinite(parts[1]) ? parts[1] : 0;
+        return (hour * 60) + minute;
     }
 
     _resolveBusinessHours(config, calendarModel) {
@@ -490,9 +506,23 @@ export class DayView {
         // This ensures all providers share a consistent grid regardless of their schedules
         // and prevents appointments from rendering outside the visible grid.
         const bh = this._resolveBusinessHours(this.config, calendarModel);
+        const toMinutes = (time) => {
+            const [h = 0, m = 0] = String(time || '').split(':').map(Number);
+            return (h * 60) + m;
+        };
+
+        let startTime = bh.startTime || '08:00';
+        let endTime = bh.endTime || '17:00';
+
+        // Guard against zero/negative ranges that collapse the day grid.
+        if (toMinutes(endTime) <= toMinutes(startTime)) {
+            startTime = '08:00';
+            endTime = '17:00';
+        }
+
         return {
-            startTime: bh.startTime || '08:00',
-            endTime:   bh.endTime   || '17:00',
+            startTime,
+            endTime,
             source:    'business',
         };
     }
@@ -665,6 +695,9 @@ export class DayView {
             (column?.grid?.slots || []).forEach((slot) => {
                 (slot.appointments || []).forEach((appt) => {
                     const normalized = this._normalizeModelAppointment(appt);
+                    if (!normalized) {
+                        return;
+                    }
                     if (!slotAppts.some((item) => item.id === normalized.id)) {
                         slotAppts.push(normalized);
                     }
@@ -687,10 +720,12 @@ export class DayView {
         const startIso = modelAppointment.start || modelAppointment.start_datetime || modelAppointment.startDateTime;
         const endIso = modelAppointment.end || modelAppointment.end_datetime || modelAppointment.endDateTime;
 
-        const startDateTime = DateTime.fromISO(String(startIso), { zone: 'utc', setZone: true })
-            .setZone(this.scheduler.options.timezone);
-        const endDateTime = DateTime.fromISO(String(endIso), { zone: 'utc', setZone: true })
-            .setZone(this.scheduler.options.timezone);
+        const startDateTime = this._parseModelDateTime(startIso);
+        const endDateTime = this._parseModelDateTime(endIso);
+
+        if (!startDateTime || !endDateTime) {
+            return null;
+        }
 
         return {
             ...modelAppointment,
@@ -704,6 +739,43 @@ export class DayView {
             startDateTime,
             endDateTime,
         };
+    }
+
+    _parseModelDateTime(value) {
+        if (!value) {
+            return null;
+        }
+
+        const timezone = this.scheduler.options.timezone;
+        const raw = String(value).trim();
+
+        // Prefer offset/UTC aware parsing when timezone info exists.
+        const hasOffset = /([zZ]|[+-]\d{2}:?\d{2})$/.test(raw);
+        if (hasOffset) {
+            const isoWithZone = DateTime.fromISO(raw, { setZone: true });
+            if (isoWithZone.isValid) {
+                return isoWithZone.setZone(timezone);
+            }
+        }
+
+        // Naive ISO/local datetime (e.g. 2026-05-05T10:00:00)
+        const isoLocal = DateTime.fromISO(raw, { zone: timezone });
+        if (isoLocal.isValid) {
+            return isoLocal;
+        }
+
+        // SQL UTC/local datetime fallback (e.g. 2026-05-05 10:00:00)
+        const sqlUtc = DateTime.fromSQL(raw, { zone: 'utc' });
+        if (sqlUtc.isValid) {
+            return sqlUtc.setZone(timezone);
+        }
+
+        const sqlLocal = DateTime.fromSQL(raw, { zone: timezone });
+        if (sqlLocal.isValid) {
+            return sqlLocal;
+        }
+
+        return null;
     }
 
     _formatHour(hour) {
