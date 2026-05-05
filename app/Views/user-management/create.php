@@ -360,7 +360,7 @@
         </div>
     </div>
 
-<script>
+<script nonce="{csp-script-nonce}">
 // Handle role checkbox changes for dynamic section visibility
 document.addEventListener('DOMContentLoaded', function() {
     const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');

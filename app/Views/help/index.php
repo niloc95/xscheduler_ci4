@@ -217,7 +217,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{csp-script-nonce}">
 function toggleFaq(button) {
     const content = button.nextElementSibling;
     const icon = button.querySelector('.material-symbols-outlined');

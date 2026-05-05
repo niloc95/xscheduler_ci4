@@ -63,17 +63,20 @@ class ContentSecurityPolicy extends BaseConfig
     public $defaultSrc = 'self';
 
     /**
-     * Phase 1: 'unsafe-inline' + 'unsafe-eval' kept as temporary allowance.
-     * Phase 2 target: ['self', "nonce-{csp-script-nonce}"]
+     * Phase 2: 'unsafe-inline' removed — all inline scripts now carry nonce="{csp-script-nonce}".
+     * 'unsafe-eval' kept; remove in Phase 3 once scheduler tooling is audited.
+     * cdn.jsdelivr.net required for Alpine.js used in setup wizard.
      *
      * @var list<string>|string
      */
-    public $scriptSrc = ["'self'", "'unsafe-inline'", "'unsafe-eval'",
-                          'https://cdnjs.cloudflare.com'];
+    public $scriptSrc = ["'self'", "'unsafe-eval'",
+                          'https://cdnjs.cloudflare.com',
+                          'https://cdn.jsdelivr.net'];
 
     /**
-     * Phase 1: 'unsafe-inline' kept as temporary allowance.
-     * Phase 2 target: ['self', "nonce-{csp-style-nonce}", 'https://fonts.googleapis.com']
+     * Phase 2: 'unsafe-inline' retained in styleSrc — error pages (error_400/403/404/production.php)
+     * render outside the CI4 response pipeline so nonces are never substituted.
+     * Phase 3 target: remove 'unsafe-inline' once error pages are migrated to hash-based or external CSS.
      *
      * @var list<string>|string
      */

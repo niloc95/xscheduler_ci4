@@ -12,7 +12,7 @@
 <?= $this->section('title') ?>xScheduler - Initial Setup<?= $this->endSection() ?>
 
 <?= $this->section('head') ?>
-<script>
+<script nonce="{csp-script-nonce}">
 window.appConfig = {
     baseURL: '<?= base_url() ?>',
     siteURL: '<?= site_url() ?>',

@@ -161,7 +161,7 @@ $overLimit    = count($locations) > $maxLocations;
 
 </div><!-- /providerLocationsSection -->
 
-<script>
+<script nonce="{csp-script-nonce}">
 /**
  * LocationManager — provider locations CRUD via /api/locations.
  *

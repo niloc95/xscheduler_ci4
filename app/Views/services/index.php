@@ -407,7 +407,7 @@ foreach ($categories as $category) {
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script>
+<script nonce="{csp-script-nonce}">
 (function () {
     var form = document.getElementById('quickCategoryForm');
     if (!form || form.dataset.initialized === 'true') return;

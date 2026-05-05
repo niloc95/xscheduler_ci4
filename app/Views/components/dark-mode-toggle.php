@@ -29,7 +29,7 @@
     <span class="sr-only">Toggle dark mode</span>
 </button>
 
-<script>
+<script nonce="{csp-script-nonce}">
 // Initialize toggle button icon visibility
 (function() {
     const updateToggleIcon = () => {

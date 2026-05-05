@@ -24,7 +24,7 @@
     <title><?= $this->renderSection('title') ?: 'Sign In - WebScheduler' ?></title>
     
     <!-- Prevent FOUC -->
-    <script>
+    <script nonce="{csp-script-nonce}">
         (function() {
             const theme = localStorage.getItem('xs-theme') || 
                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');

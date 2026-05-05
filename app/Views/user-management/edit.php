@@ -457,7 +457,7 @@
 		</div>
 	</div>
 
-<script>
+<script nonce="{csp-script-nonce}">
 // Handle role checkbox changes
 document.addEventListener('DOMContentLoaded', function() {
 	const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');

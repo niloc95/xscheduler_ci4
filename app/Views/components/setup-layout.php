@@ -6,7 +6,7 @@
     <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     
     <!-- Dark mode initialization script (must be before any styling) -->
-    <script>
+    <script nonce="{csp-script-nonce}">
         // Prevent flash of unstyled content by applying theme immediately
         (function() {
             const storedTheme = localStorage.getItem('xs-theme');
