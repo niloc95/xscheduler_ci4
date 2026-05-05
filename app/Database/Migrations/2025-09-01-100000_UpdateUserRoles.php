@@ -32,6 +32,7 @@ class UpdateUserRoles extends MigrationBase
             $newFields['provider_id'] = [
                 'type' => 'INT',
                 'constraint' => 11,
+                'unsigned' => true,
                 'null' => true,
             ];
         }
@@ -67,6 +68,15 @@ class UpdateUserRoles extends MigrationBase
         }
 
         if (!$hasProviderFK && $this->hasColumn($usersTable, 'provider_id')) {
+            // Align FK column type with users.id (INT UNSIGNED) before adding FK.
+            if (! $this->isUnsignedIntColumn($usersTable, 'provider_id')) {
+                try {
+                    $this->mysqlOnly("ALTER TABLE `{$usersTable}` MODIFY COLUMN `provider_id` INT UNSIGNED NULL");
+                } catch (\Exception $e) {
+                    log_message('warning', 'Could not normalize provider_id to INT UNSIGNED: ' . $e->getMessage());
+                }
+            }
+
             try {
                 $this->mysqlOnly("ALTER TABLE `{$usersTable}` ADD CONSTRAINT `users_provider_fk` FOREIGN KEY (`provider_id`) REFERENCES `{$usersTable}`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
             } catch (\Exception $e) {
@@ -141,6 +151,24 @@ class UpdateUserRoles extends MigrationBase
         );
 
         return $query->getFirstRow() !== null;
+    }
+
+    private function isUnsignedIntColumn(string $table, string $column): bool
+    {
+        $query = $this->db->query(
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$this->db->database, $table, $column]
+        );
+
+        $row = $query->getFirstRow();
+
+        if ($row === null || !isset($row->COLUMN_TYPE)) {
+            return false;
+        }
+
+        $columnType = strtolower((string) $row->COLUMN_TYPE);
+
+        return str_contains($columnType, 'int') && str_contains($columnType, 'unsigned');
     }
 
 }
