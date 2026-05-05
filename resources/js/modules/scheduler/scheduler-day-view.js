@@ -90,6 +90,8 @@ export class DayView {
             </div>
         `;
 
+        // Apply dynamic styles via DOM (bypasses CSP style-src inline restriction)
+        this._applyDynamicStyles(container);
         this._attachListeners(container, data);
 
         if (isToday) {
@@ -115,16 +117,16 @@ export class DayView {
             const apptCount = appointmentsByProvider[provider.id]?.length || 0;
 
             return `
-                <div class="text-center">
-                    <div class="flex flex-col items-center gap-2">
-                        <div class="provider-avatar w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm"
-                             style="background-color: ${providerColor};">
+                <div class="px-1 min-w-0">
+                    <div class="flex items-center justify-center gap-2 min-w-0">
+                        <div class="provider-avatar w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm flex-shrink-0"
+                             data-style='${this._s({backgroundColor: providerColor})}'>
                             ${initials}
                         </div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-full px-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[140px] text-left">
                             ${escapeHtml(provider.name || provider.username)}
                         </div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
                             ${apptCount} appt${apptCount !== 1 ? 's' : ''}
                         </div>
                     </div>
@@ -133,7 +135,7 @@ export class DayView {
         }).join('');
 
         return `
-            <div class="grid gap-2 mb-4" style="grid-template-columns: 64px repeat(${visibleProviders.length}, 1fr);">
+            <div class="grid gap-2 mb-4" data-style='${this._s({gridTemplateColumns: '64px repeat(' + visibleProviders.length + ', 1fr)'})}'>
                 <div></div>
                 ${providerHeadersHtml}
             </div>
@@ -146,22 +148,57 @@ export class DayView {
 
         const timeSlots = this._generate15MinSlots(timeRange.startTime, timeRange.endTime);
 
-        const startHour = parseInt(timeRange.startTime.split(':')[0], 10);
-        const endHour = parseInt(timeRange.endTime.split(':')[0], 10);
-        this._activeTimelineStartHour = startHour;
-        this._activeTimelineEndHour = endHour;
+        const startMinutes = this._timeToMinutes(timeRange.startTime);
+        const endMinutes = this._timeToMinutes(timeRange.endTime);
+        this._activeTimelineStartMinutes = startMinutes;
+        this._activeTimelineEndMinutes = endMinutes;
+
+        // ── [DAY-VIEW DEBUG] ──────────────────────────────────────────────
+        // Remove this block once stacking is resolved.
+        console.group('[DayView] Timeline debug — ' + (data.currentDate?.toISODate?.() || '?'));
+        console.log('Timeline range:', timeRange.startTime, '→', timeRange.endTime,
+            '| startMins:', startMinutes, '| endMins:', endMinutes,
+            '| totalHeight:', totalHeight + 'px');
+        visibleProviders.forEach((provider) => {
+            const appts = appointmentsByProvider[provider.id] || [];
+            console.group('Provider', provider.id, provider.name || provider.username, '—', appts.length, 'appt(s)');
+            appts.forEach((apt) => {
+                const sd = DateTime.isDateTime(apt.startDateTime) ? apt.startDateTime
+                    : this._parseModelDateTime(apt.startDateTime || apt.start || apt.start_at || apt.start_time);
+                const ed = DateTime.isDateTime(apt.endDateTime) ? apt.endDateTime
+                    : this._parseModelDateTime(apt.endDateTime || apt.end || apt.end_at || apt.end_time);
+                const top = sd ? this._topPxDay(sd, startMinutes) : 'INVALID';
+                const h = (sd && ed && ed > sd)
+                    ? this._heightPxDay(ed.diff(sd, 'minutes').minutes)
+                    : 'INVALID';
+                console.log(
+                    'Apt', apt.id,
+                    '| raw start:', apt.startDateTime ?? apt.start ?? apt.start_at,
+                    '| parsed:', sd?.toISO?.() ?? 'NULL',
+                    '| raw end:', apt.endDateTime ?? apt.end ?? apt.end_at,
+                    '| parsed:', ed?.toISO?.() ?? 'NULL',
+                    '| top:', top, '| height:', h
+                );
+            });
+            console.groupEnd();
+        });
+        console.groupEnd();
+        // ── [/DAY-VIEW DEBUG] ─────────────────────────────────────────────
 
         const timeLabels = timeSlots
             .filter((slot) => slot.minute === 0 || slot.minute === 30)
             .map((slot) => {
             const top = this._topPxDay(
-                DateTime.fromFormat(slot.time, 'HH:mm', { zone: this.scheduler.options.timezone }),
-                startHour,
+                DateTime.fromObject(
+                    { hour: slot.hour, minute: slot.minute },
+                    { zone: this.scheduler.options.timezone },
+                ),
+                startMinutes,
             );
             const isHour = slot.minute === 0;
             return `
                 <div class="timeline-time-label absolute right-2 -translate-y-1/2 select-none whitespace-nowrap ${isHour ? 'text-xs font-semibold text-gray-500 dark:text-gray-400' : 'text-[11px] font-medium text-gray-400 dark:text-gray-500'}"
-                     style="top:${top}px;">
+                     data-style='${this._s({top: top + 'px'})}'>
                     ${isHour ? this._formatHour(slot.hour) : this._formatHalfHour(slot.hour)}
                 </div>
             `;
@@ -175,16 +212,19 @@ export class DayView {
 
             const hourLines = timeSlots.map((slot) => {
                 const top = this._topPxDay(
-                    DateTime.fromFormat(slot.time, 'HH:mm', { zone: this.scheduler.options.timezone }),
-                    startHour,
+                    DateTime.fromObject(
+                        { hour: slot.hour, minute: slot.minute },
+                        { zone: this.scheduler.options.timezone },
+                    ),
+                    startMinutes,
                 );
                 if (slot.minute === 0) {
-                    return `<div class="timeline-hour-line absolute left-0 right-0 border-t border-gray-100 dark:border-gray-700/60" style="top:${top}px;"></div>`;
+                    return `<div class="timeline-hour-line absolute left-0 right-0 border-t border-gray-100 dark:border-gray-700/60" data-style='${this._s({top: top + 'px'})}'></div>`;
                 }
                 if (slot.minute === 30) {
-                    return `<div class="absolute left-0 right-0 border-t border-dashed border-gray-100 dark:border-gray-700/50 pointer-events-none" style="top:${top}px;"></div>`;
+                    return `<div class="absolute left-0 right-0 border-t border-dashed border-gray-100 dark:border-gray-700/50 pointer-events-none" data-style='${this._s({top: top + 'px'})}'></div>`;
                 }
-                return `<div class="absolute left-0 right-0 border-t border-dotted border-gray-100/80 dark:border-gray-700/35 pointer-events-none" style="top:${top}px;"></div>`;
+                return `<div class="absolute left-0 right-0 border-t border-dotted border-gray-100/80 dark:border-gray-700/35 pointer-events-none" data-style='${this._s({top: top + 'px'})}'></div>`;
             }).join('');
 
             const appointmentsHtml = providerAppts
@@ -201,7 +241,7 @@ export class DayView {
                      data-provider-id="${provider.id}"
                      data-working-start="${providerRange.startTime}"
                      data-working-end="${providerRange.endTime}"
-                     style="height:${totalHeight}px;">
+                     data-style='${this._s({height: totalHeight + 'px'})}'>
                     ${hourLines}
                     ${appointmentsHtml}
                     ${!providerRange.isActive ? this._renderNonWorkingDayOverlay() : ''}
@@ -211,8 +251,8 @@ export class DayView {
 
         return `
             <div class="timeline-shell relative grid gap-0"
-                 style="grid-template-columns: 64px repeat(${visibleProviders.length}, 1fr);">
-                <div class="timeline-time-column relative" style="height:${totalHeight}px;">
+                 data-style='${this._s({gridTemplateColumns: '64px repeat(' + visibleProviders.length + ', 1fr)'})}'>
+                <div class="timeline-time-column relative" data-style='${this._s({height: totalHeight + 'px'})}'>
                     ${timeLabels}
                 </div>
                 ${providerColumnsHtml}
@@ -222,12 +262,26 @@ export class DayView {
     }
 
     _renderAppointmentBlock(appointment, provider, timeRange, layout = null) {
-        const startHour = timeRange ? parseInt(timeRange.startTime.split(':')[0], 10) : this.businessHours.startHour;
+        const startDateTime = DateTime.isDateTime(appointment.startDateTime)
+            ? appointment.startDateTime
+            : this._parseModelDateTime(appointment.startDateTime || appointment.start || appointment.start_at || appointment.start_time);
+        const endDateTime = DateTime.isDateTime(appointment.endDateTime)
+            ? appointment.endDateTime
+            : this._parseModelDateTime(appointment.endDateTime || appointment.end || appointment.end_at || appointment.end_time);
+
+        if (!startDateTime || !endDateTime || endDateTime <= startDateTime) {
+            console.warn('[DayView] SKIPPED apt', appointment.id,
+                '— startDateTime:', startDateTime?.toISO?.() ?? String(appointment.startDateTime ?? appointment.start),
+                '| endDateTime:', endDateTime?.toISO?.() ?? String(appointment.endDateTime ?? appointment.end));
+            return '';
+        }
+
+        const startMinutes = timeRange ? this._timeToMinutes(timeRange.startTime) : (this.businessHours.startHour * 60);
         const providerColor = getProviderColor(provider);
 
-        const top = this._topPxDay(appointment.startDateTime, startHour);
+        const top = this._topPxDay(startDateTime, startMinutes);
         const height = this._heightPxDay(
-            appointment.endDateTime.diff(appointment.startDateTime, 'minutes').minutes,
+            endDateTime.diff(startDateTime, 'minutes').minutes,
         );
 
         const totalCols = Math.max(1, Number(layout?.totalCols || 1));
@@ -244,9 +298,9 @@ export class DayView {
         const meta = statusMeta(status);
 
         const timeFormat = this.settings?.getTimeFormat?.() === '24h' ? 'HH:mm' : 'h:mm a';
-        const startTime = appointment.startDateTime.toFormat(timeFormat);
-        const endTime = appointment.endDateTime?.toFormat(timeFormat) ?? '';
-        const durationMin = appointment.endDateTime.diff(appointment.startDateTime, 'minutes').minutes;
+        const startTime = startDateTime.toFormat(timeFormat);
+        const endTime = endDateTime.toFormat(timeFormat);
+        const durationMin = endDateTime.diff(startDateTime, 'minutes').minutes;
         const compactStatusPill = `
             <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold flex-shrink-0 ${meta.bg} ${meta.text}">
                 <span class="w-1.5 h-1.5 rounded-full ${meta.dot}"></span>
@@ -263,7 +317,7 @@ export class DayView {
         if (height < TIER_TIME_ONLY) {
             innerHtml = `
                 <div class="flex items-center gap-1 h-full overflow-hidden px-1.5">
-                    <span class="text-[10px] font-semibold leading-none whitespace-nowrap" style="color:${providerColor};">${startTime}</span>
+                    <span class="text-[10px] font-semibold leading-none whitespace-nowrap" data-style='${this._s({color: providerColor})}'>${startTime}</span>
                     ${statusDot}
                     <span class="text-[10px] font-medium truncate text-gray-700 dark:text-gray-200 leading-none">${escapeHtml(customerName)}</span>
                 </div>
@@ -272,7 +326,7 @@ export class DayView {
             innerHtml = `
                 <div class="flex flex-col justify-center h-full overflow-hidden px-2 py-1 gap-0.5">
                     <div class="flex items-center justify-between gap-1">
-                        <div class="text-[10px] font-semibold leading-none truncate" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                        <div class="text-[10px] font-semibold leading-none truncate" data-style='${this._s({color: providerColor})}'>${startTime}${endTime ? ` - ${endTime}` : ''}</div>
                         ${compactStatusPill.replace('text-[9px]', 'text-[8px]').replace('px-1.5 py-0.5', 'px-1 py-0.5')}
                     </div>
                     <div class="text-xs font-semibold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
@@ -282,7 +336,7 @@ export class DayView {
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-2 py-1.5 gap-1">
                     <div class="flex items-center justify-between gap-1.5">
-                        <div class="text-[10px] font-semibold leading-none truncate" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</div>
+                        <div class="text-[10px] font-semibold leading-none truncate" data-style='${this._s({color: providerColor})}'>${startTime}${endTime ? ` - ${endTime}` : ''}</div>
                         ${compactStatusPill}
                     </div>
                     <div class="text-xs font-bold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
@@ -293,7 +347,7 @@ export class DayView {
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-2.5 py-2 gap-1.5">
                     <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-semibold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</span>
+                        <span class="text-[11px] font-semibold leading-none" data-style='${this._s({color: providerColor})}'>${startTime}${endTime ? ` - ${endTime}` : ''}</span>
                         ${compactStatusPill}
                     </div>
                     <div class="text-sm font-bold truncate text-gray-900 dark:text-white leading-snug">${escapeHtml(customerName)}</div>
@@ -308,8 +362,8 @@ export class DayView {
 
             innerHtml = `
                 <div class="flex flex-col h-full overflow-hidden px-0">
-                    <div class="flex items-center justify-between px-2.5 py-1.5 flex-shrink-0" style="background-color:${providerColor}28;">
-                        <span class="text-xs font-bold leading-none" style="color:${providerColor};">${startTime}${endTime ? ` - ${endTime}` : ''}</span>
+                    <div class="flex items-center justify-between px-2.5 py-1.5 flex-shrink-0" data-style='${this._s({backgroundColor: providerColor + '28'})}'>
+                        <span class="text-xs font-bold leading-none" data-style='${this._s({color: providerColor})}'>${startTime}${endTime ? ` - ${endTime}` : ''}</span>
                         <div class="flex items-center gap-1.5">
                             ${compactStatusPill.replace('text-[9px]', 'text-[10px]').replace('px-1.5 py-0.5', 'px-2 py-0.5')}
                             <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">${durationLabel}</span>
@@ -318,13 +372,13 @@ export class DayView {
 
                     <div class="flex flex-col flex-1 overflow-hidden px-2.5 py-2 gap-1.5">
                         <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white shadow-sm" style="background-color:${providerColor};">
+                            <div class="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white shadow-sm" data-style='${this._s({backgroundColor: providerColor})}'>
                                 ${initials}
                             </div>
                             <div class="font-semibold text-sm text-gray-900 dark:text-white truncate leading-snug">${escapeHtml(customerName)}</div>
                         </div>
 
-                        ${serviceName ? `<div class="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"><span class="material-symbols-outlined text-[13px] flex-shrink-0 mt-px" style="color:${providerColor};">spa</span><span class="truncate">${escapeHtml(serviceName)}</span></div>` : ''}
+                        ${serviceName ? `<div class="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"><span class="material-symbols-outlined text-[13px] flex-shrink-0 mt-px" data-style='${this._s({color: providerColor})}'>spa</span><span class="truncate">${escapeHtml(serviceName)}</span></div>` : ''}
 
                         ${location ? `<div class="flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400"><span class="material-symbols-outlined text-[13px] flex-shrink-0 mt-px">location_on</span><span class="truncate">${escapeHtml(location)}</span></div>` : ''}
 
@@ -336,16 +390,16 @@ export class DayView {
 
         return `
             <div class="appointment-block absolute group cursor-pointer overflow-hidden rounded-lg border-l-[3px] shadow-sm transition-shadow duration-150 hover:shadow-md hover:ring-1 hover:ring-inset"
-                 style="
-                     top: ${top}px;
-                     height: ${height}px;
-                     left: calc(${colLeft}% + 4px);
-                     width: calc(${colWidth}% - 8px);
-                     background-color: ${lightBg};
-                     border-left-color: ${borderCol};
-                     --tw-ring-color: ${borderCol}40;
-                     z-index: ${zIndex};
-                 "
+                 data-style='${this._s({
+                     top: top + 'px',
+                     height: height + 'px',
+                     left: 'calc(' + colLeft + '% + 4px)',
+                     width: 'calc(' + colWidth + '% - 8px)',
+                     backgroundColor: lightBg,
+                     borderLeftColor: borderCol,
+                     '--tw-ring-color': borderCol + '40',
+                     zIndex: String(zIndex),
+                 })}'
                  data-appointment-id="${appointment.id}"
                  title="${escapeHtml(customerName)}${serviceName ? ' - ' + escapeHtml(serviceName) : ''} - ${startTime}${endTime ? ' - ' + endTime : ''}">
                 ${innerHtml}
@@ -355,10 +409,8 @@ export class DayView {
 
     _renderNowLine(timeRange) {
         const now = DateTime.now().setZone(this.scheduler.options.timezone);
-        const [sh, sm] = timeRange.startTime.split(':').map(Number);
-        const [eh, em] = timeRange.endTime.split(':').map(Number);
-        const startMinutes = sh * 60 + (sm || 0);
-        const endMinutes   = eh * 60 + (em || 0);
+        const startMinutes = this._timeToMinutes(timeRange.startTime);
+        const endMinutes = this._timeToMinutes(timeRange.endTime);
         const nowMinutes   = now.hour * 60 + now.minute;
 
         // Hide when current time is outside the visible timeline range.
@@ -366,11 +418,11 @@ export class DayView {
             return '';
         }
 
-        const top = this._topPxDay(now, sh);
+        const top = this._topPxDay(now, startMinutes);
 
         return `
-            <div class="now-line absolute pointer-events-none flex items-center"
-                 style="top:${top}px; left:64px; right:0; z-index:50;"
+            <div class="now-line absolute pointer-events-none flex items-center left-16 right-0 z-50"
+                 data-style='${this._s({top: top + 'px'})}'
                  id="day-now-line">
                 <div class="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 flex-shrink-0 shadow-sm"></div>
                 <div class="flex-1 h-px bg-red-500 opacity-70"></div>
@@ -426,11 +478,9 @@ export class DayView {
             }
 
             const now = DateTime.now().setZone(this.scheduler.options.timezone);
-            const startHour = this._activeTimelineStartHour ?? this.businessHours.startHour;
-            const endHour   = this._activeTimelineEndHour   ?? (startHour + 9);
+            const startMinutes = this._activeTimelineStartMinutes ?? (this.businessHours.startHour * 60);
+            const endMinutes   = this._activeTimelineEndMinutes   ?? (startMinutes + (9 * 60));
             const nowMinutes   = now.hour * 60 + now.minute;
-            const startMinutes = startHour * 60;
-            const endMinutes   = endHour * 60;
 
             if (nowMinutes < startMinutes || nowMinutes >= endMinutes) {
                 nowLine.style.display = 'none';
@@ -438,14 +488,22 @@ export class DayView {
             }
 
             nowLine.style.display = '';
-            nowLine.style.top = `${this._topPxDay(now, startHour)}px`;
+            nowLine.style.top = `${this._topPxDay(now, startMinutes)}px`;
         }, 60000);
     }
 
     _generate15MinSlots(startTime, endTime) {
         const zone = this.scheduler.options.timezone;
-        let cursor = DateTime.fromFormat(startTime, 'HH:mm', { zone });
-        const end = DateTime.fromFormat(endTime, 'HH:mm', { zone });
+        const startMins = this._timeToMinutes(startTime);
+        const endMins = this._timeToMinutes(endTime);
+        let cursor = DateTime.fromObject(
+            { hour: Math.floor(startMins / 60), minute: startMins % 60 },
+            { zone },
+        );
+        const end = DateTime.fromObject(
+            { hour: Math.floor(endMins / 60), minute: endMins % 60 },
+            { zone },
+        );
         const slots = [];
 
         while (cursor < end) {
@@ -460,9 +518,9 @@ export class DayView {
         return slots;
     }
 
-    _topPxDay(dateTime, businessHourStart = 8) {
-        const hoursSinceStart = dateTime.hour - businessHourStart + dateTime.minute / 60;
-        return Math.max(0, hoursSinceStart * DAY_VIEW_HOUR_HEIGHT_PX);
+    _topPxDay(dateTime, timelineStartMinutes = 8 * 60) {
+        const minutesSinceStart = (dateTime.hour * 60 + dateTime.minute) - timelineStartMinutes;
+        return Math.max(0, (minutesSinceStart / 60) * DAY_VIEW_HOUR_HEIGHT_PX);
     }
 
     _heightPxDay(durationMinutes) {
@@ -471,9 +529,30 @@ export class DayView {
     }
 
     _calcTotalHeight(startTime, endTime) {
-        const [sh] = startTime.split(':').map(Number);
-        const [eh] = endTime.split(':').map(Number);
-        return Math.max(1, eh - sh) * DAY_VIEW_HOUR_HEIGHT_PX;
+        const totalMinutes = Math.max(60, this._timeToMinutes(endTime) - this._timeToMinutes(startTime));
+        return (totalMinutes / 60) * DAY_VIEW_HOUR_HEIGHT_PX;
+    }
+
+    _timeToMinutes(time) {
+        const raw = String(time || '').trim();
+        if (!raw) {
+            return 0;
+        }
+
+        const twelveHour = raw.match(/^(\d{1,2}):(\d{2})(?:\:\d{2})?\s*([aApP][mM])$/);
+        if (twelveHour) {
+            let hour = Number(twelveHour[1]);
+            const minute = Number(twelveHour[2]);
+            const ampm = twelveHour[3].toLowerCase();
+            if (ampm === 'pm' && hour < 12) hour += 12;
+            if (ampm === 'am' && hour === 12) hour = 0;
+            return (hour * 60) + (Number.isFinite(minute) ? minute : 0);
+        }
+
+        const parts = raw.split(':').map(Number);
+        const hour = Number.isFinite(parts[0]) ? parts[0] : 0;
+        const minute = Number.isFinite(parts[1]) ? parts[1] : 0;
+        return (hour * 60) + minute;
     }
 
     _resolveBusinessHours(config, calendarModel) {
@@ -490,9 +569,23 @@ export class DayView {
         // This ensures all providers share a consistent grid regardless of their schedules
         // and prevents appointments from rendering outside the visible grid.
         const bh = this._resolveBusinessHours(this.config, calendarModel);
+        const toMinutes = (time) => {
+            const [h = 0, m = 0] = String(time || '').split(':').map(Number);
+            return (h * 60) + m;
+        };
+
+        let startTime = bh.startTime || '08:00';
+        let endTime = bh.endTime || '17:00';
+
+        // Guard against zero/negative ranges that collapse the day grid.
+        if (toMinutes(endTime) <= toMinutes(startTime)) {
+            startTime = '08:00';
+            endTime = '17:00';
+        }
+
         return {
-            startTime: bh.startTime || '08:00',
-            endTime:   bh.endTime   || '17:00',
+            startTime,
+            endTime,
             source:    'business',
         };
     }
@@ -514,9 +607,10 @@ export class DayView {
     _buildAppointmentsByProvider(visibleProviders, data) {
         // Flat list is the authoritative source — always contains ALL appointments for the
         // day regardless of provider working-hours slot-map coverage gaps.
-        const dayAppointments = data.appointments.filter(
-            (apt) => apt.startDateTime && apt.startDateTime.hasSame(data.currentDate, 'day'),
-        );
+        const dayAppointments = data.appointments
+            .map((apt) => this._normalizeAppointmentForRendering(apt))
+            .filter(Boolean)
+            .filter((apt) => apt.startDateTime.hasSame(data.currentDate, 'day'));
         const byProvider = {};
         visibleProviders.forEach((provider) => {
             byProvider[provider.id] = dayAppointments.filter(
@@ -665,6 +759,9 @@ export class DayView {
             (column?.grid?.slots || []).forEach((slot) => {
                 (slot.appointments || []).forEach((appt) => {
                     const normalized = this._normalizeModelAppointment(appt);
+                    if (!normalized) {
+                        return;
+                    }
                     if (!slotAppts.some((item) => item.id === normalized.id)) {
                         slotAppts.push(normalized);
                     }
@@ -687,10 +784,12 @@ export class DayView {
         const startIso = modelAppointment.start || modelAppointment.start_datetime || modelAppointment.startDateTime;
         const endIso = modelAppointment.end || modelAppointment.end_datetime || modelAppointment.endDateTime;
 
-        const startDateTime = DateTime.fromISO(String(startIso), { zone: 'utc', setZone: true })
-            .setZone(this.scheduler.options.timezone);
-        const endDateTime = DateTime.fromISO(String(endIso), { zone: 'utc', setZone: true })
-            .setZone(this.scheduler.options.timezone);
+        const startDateTime = this._parseModelDateTime(startIso);
+        const endDateTime = this._parseModelDateTime(endIso);
+
+        if (!startDateTime || !endDateTime) {
+            return null;
+        }
 
         return {
             ...modelAppointment,
@@ -704,6 +803,108 @@ export class DayView {
             startDateTime,
             endDateTime,
         };
+    }
+
+    /**
+     * Encode a styles object as a JSON string for use in data-style attribute.
+     * Applied via _applyDynamicStyles() to bypass CSP style-src inline restriction.
+     * @param {Object} styles — camelCase CSS property names, or '--var-name' for custom properties
+     */
+    _s(styles) {
+        return JSON.stringify(styles);
+    }
+
+    /**
+     * Walk all [data-style] elements in root and apply each property via element.style.
+     * Script-side style assignment is exempt from CSP style-src restrictions.
+     * @param {Element} root
+     */
+    _applyDynamicStyles(root) {
+        root.querySelectorAll('[data-style]').forEach((el) => {
+            try {
+                const styles = JSON.parse(el.getAttribute('data-style'));
+                for (const [prop, val] of Object.entries(styles)) {
+                    if (prop.startsWith('--')) {
+                        el.style.setProperty(prop, val);
+                    } else {
+                        el.style[prop] = val;
+                    }
+                }
+            } catch (_) {
+                // ignore malformed data-style
+            }
+            el.removeAttribute('data-style');
+        });
+    }
+
+    _normalizeAppointmentForRendering(rawAppointment = {}) {
+        const id = Number(rawAppointment.id);
+        const providerId = Number(rawAppointment.providerId ?? rawAppointment.provider_id);
+
+        const startRaw = rawAppointment.startDateTime ?? rawAppointment.start ?? rawAppointment.start_at ?? rawAppointment.start_time;
+        const endRaw = rawAppointment.endDateTime ?? rawAppointment.end ?? rawAppointment.end_at ?? rawAppointment.end_time;
+
+        const startDateTime = DateTime.isDateTime(startRaw) ? startRaw : this._parseModelDateTime(startRaw);
+        let endDateTime = DateTime.isDateTime(endRaw) ? endRaw : this._parseModelDateTime(endRaw);
+
+        if (!startDateTime) {
+            return null;
+        }
+
+        // Ensure a usable positive duration for layout math.
+        if (!endDateTime || endDateTime <= startDateTime) {
+            endDateTime = startDateTime.plus({ minutes: 30 });
+        }
+
+        return {
+            ...rawAppointment,
+            id: Number.isFinite(id) ? id : rawAppointment.id,
+            providerId: Number.isFinite(providerId) ? providerId : rawAppointment.providerId,
+            customerName: rawAppointment.customerName || rawAppointment.customer_name || rawAppointment.title || rawAppointment.name || 'Appointment',
+            serviceName: rawAppointment.serviceName || rawAppointment.service_name || '',
+            location: rawAppointment.location || rawAppointment.locationName || rawAppointment.location_name || '',
+            notes: rawAppointment.notes || '',
+            status: rawAppointment.status || 'pending',
+            startDateTime,
+            endDateTime,
+        };
+    }
+
+    _parseModelDateTime(value) {
+        if (!value) {
+            return null;
+        }
+
+        const timezone = this.scheduler.options.timezone;
+        const raw = String(value).trim();
+
+        // Prefer offset/UTC aware parsing when timezone info exists.
+        const hasOffset = /([zZ]|[+-]\d{2}:?\d{2})$/.test(raw);
+        if (hasOffset) {
+            const isoWithZone = DateTime.fromISO(raw, { setZone: true });
+            if (isoWithZone.isValid) {
+                return isoWithZone.setZone(timezone);
+            }
+        }
+
+        // Naive ISO/local datetime (e.g. 2026-05-05T10:00:00)
+        const isoLocal = DateTime.fromISO(raw, { zone: timezone });
+        if (isoLocal.isValid) {
+            return isoLocal;
+        }
+
+        // SQL UTC/local datetime fallback (e.g. 2026-05-05 10:00:00)
+        const sqlUtc = DateTime.fromSQL(raw, { zone: 'utc' });
+        if (sqlUtc.isValid) {
+            return sqlUtc.setZone(timezone);
+        }
+
+        const sqlLocal = DateTime.fromSQL(raw, { zone: timezone });
+        if (sqlLocal.isValid) {
+            return sqlLocal;
+        }
+
+        return null;
     }
 
     _formatHour(hour) {
