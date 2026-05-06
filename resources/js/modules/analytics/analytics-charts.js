@@ -46,6 +46,18 @@ function formatLocalizedCurrency(amount, currencySymbol = null, decimals = 2) {
     });
 }
 
+function decodePayload(encodedPayload, fallback = {}) {
+    if (!encodedPayload) {
+        return fallback;
+    }
+
+    try {
+        return JSON.parse(atob(encodedPayload));
+    } catch {
+        return fallback;
+    }
+}
+
 /**
  * Initialize revenue trend chart
  */
@@ -294,5 +306,324 @@ export function initServiceDistributionChart(canvasId, servicesData) {
             }
         }
     });
+}
+
+export function initNewVsReturningChart(canvasId, customerBreakdown) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    const colors = getChartColors();
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    return new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['New', 'Returning'],
+            datasets: [{
+                data: [customerBreakdown.new || 0, customerBreakdown.returning || 0],
+                backgroundColor: [colors.primary, colors.success],
+                borderWidth: 0,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: colors.text,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode() ? '#1f2937' : '#fff',
+                    titleColor: colors.text,
+                    bodyColor: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                },
+            },
+        },
+    });
+}
+
+export function initPeakHoursChart(canvasId, timeSlotData) {
+    const normalizedData = Object.entries(timeSlotData || {}).map(([timeSlot, count]) => ({
+        time_slot: timeSlot,
+        count,
+    }));
+
+    return initTimeSlotChart(canvasId, normalizedData);
+}
+
+export function initRevenueByProviderChart(canvasId, providerRows, currencySymbol = null) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    const colors = getChartColors();
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    const labels = (providerRows || []).map((row) => row.name || 'Unknown');
+    const values = (providerRows || []).map((row) => parseFloat(row.revenue) || 0);
+
+    return new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.primary,
+                borderRadius: 6,
+                borderWidth: 0,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode() ? '#1f2937' : '#fff',
+                    titleColor: colors.text,
+                    bodyColor: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return formatLocalizedCurrency(context.parsed.x, currencySymbol, 2);
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: {
+                        color: colors.grid,
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: colors.text,
+                        callback: function(value) {
+                            return formatLocalizedCurrency(value, currencySymbol, 0);
+                        },
+                    },
+                },
+                y: {
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: colors.text,
+                    },
+                },
+            },
+        },
+    });
+}
+
+export function initMoMComparisonChart(canvasId, comparisonData, currencySymbol = null) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    const colors = getChartColors();
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    return new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Revenue Window'],
+            datasets: [
+                {
+                    label: 'Current',
+                    data: [parseFloat(comparisonData.current_total) || 0],
+                    backgroundColor: colors.success,
+                    borderRadius: 6,
+                    borderWidth: 0,
+                },
+                {
+                    label: 'Previous',
+                    data: [parseFloat(comparisonData.previous_total) || 0],
+                    backgroundColor: colors.primary,
+                    borderRadius: 6,
+                    borderWidth: 0,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: colors.text,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode() ? '#1f2937' : '#fff',
+                    titleColor: colors.text,
+                    bodyColor: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${formatLocalizedCurrency(context.parsed.y, currencySymbol, 2)}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: colors.text,
+                    },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: colors.grid,
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: colors.text,
+                        callback: function(value) {
+                            return formatLocalizedCurrency(value, currencySymbol, 0);
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+export function initAnalyticsDashboardPage() {
+    const tabsRoot = document.querySelector('[data-analytics-tabs]');
+    if (!tabsRoot || tabsRoot.dataset.initialized === 'true') {
+        return;
+    }
+
+    tabsRoot.dataset.initialized = 'true';
+
+    const revenueData = decodePayload(tabsRoot.dataset.revenuePayload, { daily: [], monthly: [] });
+    const detailedRevenueData = decodePayload(tabsRoot.dataset.detailedRevenuePayload, {});
+    const comparisons = decodePayload(tabsRoot.dataset.comparisonsPayload, {});
+    const customerData = decodePayload(tabsRoot.dataset.customerPayload, {});
+    const appointmentData = decodePayload(tabsRoot.dataset.appointmentPayload, {});
+    const providerBusyHoursData = decodePayload(tabsRoot.dataset.providerBusyHoursPayload, {});
+    const currencySymbol = tabsRoot.dataset.currencySymbol || null;
+    const renderedTabs = new Set();
+    let currentChartType = 'daily';
+
+    const updateRevenueChart = (type) => {
+        initRevenueTrendChart('revenueChart', revenueData, type, currencySymbol);
+        currentChartType = type;
+    };
+
+    const renderRevenueTabCharts = () => {
+        initMoMComparisonChart('momComparisonChart', comparisons, currencySymbol);
+        initRevenueByProviderChart('revenueByProviderChart', detailedRevenueData.by_staff || [], currencySymbol);
+    };
+
+    const renderCustomerTabCharts = () => {
+        initNewVsReturningChart('newVsReturningChart', customerData.new_vs_returning || {});
+        initPeakHoursChart('peakHoursChart', appointmentData.by_time_slot || {});
+    };
+
+    const renderProvidersTabCharts = () => {
+        initPeakHoursChart('providerBusyHoursChart', providerBusyHoursData || {});
+    };
+
+    const activateTab = (tabName) => {
+        tabsRoot.querySelectorAll('[data-analytics-tab-panel]').forEach((panel) => {
+            panel.classList.toggle('hidden', panel.dataset.analyticsTabPanel !== tabName);
+        });
+
+        tabsRoot.querySelectorAll('[data-analytics-tab-trigger]').forEach((button) => {
+            const active = button.dataset.analyticsTabTrigger === tabName;
+            button.classList.toggle('bg-blue-600', active);
+            button.classList.toggle('text-white', active);
+            button.classList.toggle('shadow-sm', active);
+            button.classList.toggle('bg-white', !active);
+            button.classList.toggle('text-gray-600', !active);
+            button.classList.toggle('border', !active);
+            button.classList.toggle('border-gray-200', !active);
+            button.classList.toggle('dark:bg-gray-800', !active);
+            button.classList.toggle('dark:text-gray-300', !active);
+            button.classList.toggle('dark:border-gray-700', !active);
+        });
+
+        if (!renderedTabs.has(tabName)) {
+            if (tabName === 'overview') {
+                updateRevenueChart(currentChartType);
+            }
+
+            if (tabName === 'revenue') {
+                renderRevenueTabCharts();
+            }
+
+            if (tabName === 'customers') {
+                renderCustomerTabCharts();
+            }
+
+            if (tabName === 'providers') {
+                renderProvidersTabCharts();
+            }
+
+            renderedTabs.add(tabName);
+        }
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tabName);
+        window.history.replaceState({}, '', url.toString());
+    };
+
+    const chartTypeEl = document.getElementById('revenueChartType');
+    if (chartTypeEl) {
+        chartTypeEl.addEventListener('change', function() {
+            updateRevenueChart(this.value);
+        });
+    }
+
+    const timeframeEl = document.getElementById('timeframe');
+    if (timeframeEl) {
+        timeframeEl.addEventListener('change', function() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('timeframe', this.value);
+            url.searchParams.set('tab', tabsRoot.dataset.activeTab || 'overview');
+
+            if (window.xsSPA) {
+                window.xsSPA.navigate(url.toString());
+            } else {
+                window.location.href = url.toString();
+            }
+        });
+    }
+
+    tabsRoot.querySelectorAll('[data-analytics-tab-trigger]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.analyticsTabTrigger;
+            tabsRoot.dataset.activeTab = tabName;
+            activateTab(tabName);
+        });
+    });
+
+    activateTab(tabsRoot.dataset.activeTab || 'overview');
 }
 

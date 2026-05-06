@@ -855,7 +855,7 @@ class AppointmentModel extends BaseModel
      * @param string $period 'month', 'week', 'today', or 'last_month'
      * @return float Actual revenue from service prices
      */
-    public function getRealRevenue(string $period = 'month'): float
+    public function getRealRevenue(string $period = 'month', ?int $providerId = null): float
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
@@ -873,11 +873,13 @@ class AppointmentModel extends BaseModel
             $periodCondition = "AND a.start_at >= '" . $this->toUtc($prevLocal->format('Y-m-01') . ' 00:00:00') . "' AND a.start_at <= '" . $this->toUtc($prevLocal->format('Y-m-t') . ' 23:59:59') . "'";
         }
         
+        $providerCondition = $providerId !== null ? ' AND a.provider_id = ' . (int) $providerId : '';
+
         $query = $db->query("
             SELECT COALESCE(SUM(s.price), 0) as total_revenue
             FROM {$tableName} a
             LEFT JOIN xs_services s ON a.service_id = s.id
-            WHERE a.status = 'completed' {$periodCondition}
+            WHERE a.status = 'completed' {$periodCondition}{$providerCondition}
         ");
         
         $result = $query->getRow();
@@ -885,13 +887,39 @@ class AppointmentModel extends BaseModel
     }
 
     /**
+     * Get real revenue for an arbitrary local date range.
+     */
+    public function getRevenueForDateRange(string $startDate, string $endDate, ?int $providerId = null): float
+    {
+        $db = \Config\Database::connect();
+        $tableName = $this->table;
+        $providerCondition = $providerId !== null ? ' AND a.provider_id = ' . (int) $providerId : '';
+        $startAt = $this->toUtc($startDate . ' 00:00:00');
+        $endAt = $this->toUtc($endDate . ' 23:59:59');
+
+        $query = $db->query("
+            SELECT COALESCE(SUM(s.price), 0) as total_revenue
+            FROM {$tableName} a
+            LEFT JOIN xs_services s ON a.service_id = s.id
+            WHERE a.status = 'completed'
+            AND a.start_at >= '{$startAt}'
+            AND a.start_at <= '{$endAt}'
+            {$providerCondition}
+        ");
+
+        $result = $query->getRow();
+        return (float) ($result->total_revenue ?? 0);
+    }
+
+    /**
      * Get daily revenue data for charts
      */
-    public function getDailyRevenue(int $days = 30): array
+    public function getDailyRevenue(int $days = 30, ?int $providerId = null): array
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
         $data = [];
+        $providerCondition = $providerId !== null ? ' AND a.provider_id = ' . (int) $providerId : '';
         
         $local = $this->localNow();
         for ($i = $days - 1; $i >= 0; $i--) {
@@ -907,6 +935,7 @@ class AppointmentModel extends BaseModel
                 WHERE a.status = 'completed'
                 AND a.start_at >= '{$dayStart}'
                 AND a.start_at <= '{$dayEnd}'
+                {$providerCondition}
             ");
             
             $result = $query->getRow();
@@ -922,11 +951,12 @@ class AppointmentModel extends BaseModel
     /**
      * Get monthly revenue data for charts
      */
-    public function getMonthlyRevenue(int $months = 12): array
+    public function getMonthlyRevenue(int $months = 12, ?int $providerId = null): array
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
         $data = [];
+        $providerCondition = $providerId !== null ? ' AND a.provider_id = ' . (int) $providerId : '';
         
         $local = $this->localNow();
         for ($i = $months - 1; $i >= 0; $i--) {
@@ -942,6 +972,7 @@ class AppointmentModel extends BaseModel
                 WHERE a.status = 'completed'
                 AND a.start_at >= '{$monthStart}'
                 AND a.start_at <= '{$monthEnd}'
+                {$providerCondition}
             ");
             
             $result = $query->getRow();
@@ -992,19 +1023,33 @@ class AppointmentModel extends BaseModel
     /**
      * Get appointments by time slot
      */
-    public function getByTimeSlot(): array
+    public function getByTimeSlot(?int $providerId = null, ?int $days = null): array
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
         
         $localTz = \App\Services\TimezoneService::businessTimezone();
         $offset = (new \DateTime('now', new \DateTimeZone($localTz)))->format('P'); // e.g. '+02:00'
+        $where = [];
+
+        if ($providerId !== null) {
+            $where[] = 'provider_id = ' . (int) $providerId;
+        }
+
+        if ($days !== null && $days > 0) {
+            $startLocal = (clone $this->localNow())->modify('-' . max(0, $days - 1) . ' days')->format('Y-m-d');
+            $where[] = "start_at >= '" . $this->toUtc($startLocal . ' 00:00:00') . "'";
+        }
+
+        $whereSql = $where === [] ? '' : 'WHERE ' . implode(' AND ', $where);
+
         $query = $db->query("
             SELECT 
                 DATE_FORMAT(CONVERT_TZ(start_at, '+00:00', '{$offset}'), '%l:00 %p') as time_slot,
                 HOUR(CONVERT_TZ(start_at, '+00:00', '{$offset}')) as hour,
                 COUNT(*) as count
             FROM {$tableName}
+            {$whereSql}
             GROUP BY hour, time_slot
             ORDER BY hour
         ");
@@ -1022,16 +1067,26 @@ class AppointmentModel extends BaseModel
     /**
      * Get average booking value
      */
-    public function getAverageBookingValue(): float
+    public function getAverageBookingValue(?int $days = null, ?int $providerId = null): float
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
+        $conditions = ["a.status = 'completed'", 's.price > 0'];
+
+        if ($providerId !== null) {
+            $conditions[] = 'a.provider_id = ' . (int) $providerId;
+        }
+
+        if ($days !== null && $days > 0) {
+            $startLocal = (clone $this->localNow())->modify('-' . max(0, $days - 1) . ' days')->format('Y-m-d');
+            $conditions[] = "a.start_at >= '" . $this->toUtc($startLocal . ' 00:00:00') . "'";
+        }
         
         $query = $db->query("
             SELECT AVG(s.price) as avg_value
             FROM {$tableName} a
             LEFT JOIN xs_services s ON a.service_id = s.id
-            WHERE a.status = 'completed' AND s.price > 0
+            WHERE " . implode(' AND ', $conditions) . "
         ");
         
         $result = $query->getRow();
@@ -1047,6 +1102,18 @@ class AppointmentModel extends BaseModel
     public function getStatusStats(array $options = []): array
     {
         $builder = $this->builder();
+        $providerId = isset($options['provider_id']) ? (int) $options['provider_id'] : null;
+        $days = isset($options['days']) ? (int) $options['days'] : null;
+
+        if ($providerId !== null) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        if ($days !== null && $days > 0) {
+            $startLocal = (clone $this->localNow())->modify('-' . max(0, $days - 1) . ' days')->format('Y-m-d');
+            $builder->where('start_at >=', $this->toUtc($startLocal . ' 00:00:00'));
+        }
+
         $results = $builder->select('status, COUNT(*) as count')
             ->groupBy('status')
             ->get()

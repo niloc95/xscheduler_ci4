@@ -180,12 +180,11 @@
 
         <?php if (!empty($canDeleteCustomers)): ?>
         <div class="mt-4 flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
-            <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" method="post" class="inline-flex">
+            <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier ?? ($customer['hash'] ?? $customer['id'] ?? ''))) ?>" method="post" class="inline-flex" data-confirm-message="Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.">
                 <?= csrf_field() ?>
                 <button
                     type="submit"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                    onclick="return confirm('Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.');"
                     <?= !empty($appointmentCount) ? 'disabled aria-disabled="true" title="Customer has appointment history and cannot be deleted"' : '' ?>
                 >
                     <span class="material-symbols-outlined">delete</span>

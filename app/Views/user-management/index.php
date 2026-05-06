@@ -174,7 +174,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script>
+<script {csp-script-nonce}>
 (function(){
     const ROLE_DEFS = [
         { key: 'total', label: 'Total Users', icon: 'groups' },

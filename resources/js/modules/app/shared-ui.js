@@ -52,6 +52,85 @@ export function initProviderPicker(root) {
   sync();
 }
 
+export function initHelpFaq(root = document) {
+  const scope = root?.body || root;
+  if (!scope || scope.dataset.xsHelpFaqBound === 'true') {
+    return;
+  }
+
+  scope.dataset.xsHelpFaqBound = 'true';
+
+  scope.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-faq-toggle]');
+    if (!toggle) {
+      return;
+    }
+
+    const item = toggle.closest('[data-faq-item]');
+    const content = item?.querySelector('.faq-content');
+    const icon = toggle.querySelector('.material-symbols-outlined');
+
+    if (!content) {
+      return;
+    }
+
+    const isHidden = content.classList.contains('hidden');
+    content.classList.toggle('hidden', !isHidden);
+
+    if (icon) {
+      icon.classList.toggle('rotate-180', isHidden);
+    }
+  });
+}
+
+export function initConfirmActions(root = document) {
+  const scope = root?.body || root;
+  if (!scope || scope.dataset.xsConfirmActionsBound === 'true') {
+    return;
+  }
+
+  scope.dataset.xsConfirmActionsBound = 'true';
+
+  scope.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+
+    const message = form.dataset.confirmMessage;
+    if (!message) {
+      return;
+    }
+
+    if (!window.confirm(message)) {
+      event.preventDefault();
+    }
+  }, true);
+}
+
+export function initPasswordToggles(root = document) {
+  const scope = root?.body || root;
+  if (!scope || scope.dataset.xsPasswordTogglesBound === 'true') {
+    return;
+  }
+
+  scope.dataset.xsPasswordTogglesBound = 'true';
+
+  scope.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-password-toggle]');
+    if (!toggle) {
+      return;
+    }
+
+    const fieldId = toggle.dataset.passwordToggle;
+    if (!fieldId) {
+      return;
+    }
+
+    togglePassword(fieldId);
+  });
+}
+
 export function initServiceManagementForms() {
   const form = document.getElementById('createServiceForm') || document.getElementById('editServiceForm');
   if (!form) {

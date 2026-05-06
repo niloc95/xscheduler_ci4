@@ -107,7 +107,7 @@ $removeUrl = base_url('staff-providers/remove');
     </div>
 </div>
 
-<script>
+<script {csp-script-nonce}>
 (function(){
     const containers = document.querySelectorAll('[data-staff-providers-manager]');
     if (!containers.length) return;

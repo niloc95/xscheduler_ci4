@@ -84,10 +84,11 @@ class SecurityHeaders implements FilterInterface
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         
-        // Content Security Policy is managed centrally by CI4
-        // via app/Config/ContentSecurityPolicy.php.
-        // Do not set CSP header here to avoid conflicting/duplicate policies.
-        
+        // Content-Security-Policy is now managed exclusively by
+        // app/Config/ContentSecurityPolicy.php via CI4's CSP engine
+        // (App::$CSPEnabled = true).  Do NOT set the header manually here —
+        // doing so would override the nonce-aware engine and re-introduce
+        // unsafe-inline permanently once Phase 2 nonce hardening is complete.
         // Referrer Policy
         $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         

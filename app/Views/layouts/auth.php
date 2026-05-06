@@ -24,13 +24,7 @@
     <title><?= $this->renderSection('title') ?: 'Sign In - WebScheduler' ?></title>
     
     <!-- Prevent FOUC -->
-    <script>
-        (function() {
-            const theme = localStorage.getItem('xs-theme') || 
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
+    <script type="module" src="<?= vite_js('resources/js/theme-bootstrap.js') ?>"></script>
     
     <!-- Stylesheets -->
     <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>

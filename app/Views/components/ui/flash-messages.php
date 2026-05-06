@@ -104,7 +104,7 @@ if ($session->getFlashdata('message')) {
     <?php endif; ?>
 </div>
 
-<script>
+<script {csp-script-nonce}>
 // Auto-dismiss flash messages after 8 seconds
 document.querySelectorAll('[data-flash-message]').forEach(el => {
     setTimeout(() => {
