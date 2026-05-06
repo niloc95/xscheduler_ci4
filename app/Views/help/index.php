@@ -101,9 +101,9 @@
                 <div class="p-6">
                     <div class="space-y-6">
                         <?php foreach ($faqs as $faq): ?>
-                            <div class="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0 last:pb-0">
+                            <div class="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0 last:pb-0" data-faq-item>
                                 <button class="faq-toggle w-full text-left flex items-center justify-between py-2 focus:outline-none"
-                                        onclick="toggleFaq(this)">
+                                        data-faq-toggle>
                                     <h3 class="text-lg font-medium text-gray-900 dark:text-white pr-4">
                                         <?= esc($faq['question']) ?>
                                     </h3>
@@ -217,22 +217,4 @@
     </div>
 </div>
 
-<script nonce="{csp-script-nonce}">
-function toggleFaq(button) {
-    const content = button.nextElementSibling;
-    const icon = button.querySelector('.material-symbols-outlined');
-    
-    if (content.classList.contains('hidden')) {
-        content.classList.remove('hidden');
-        if (icon) {
-            icon.classList.add('rotate-180');
-        }
-    } else {
-        content.classList.add('hidden');
-        if (icon) {
-            icon.classList.remove('rotate-180');
-        }
-    }
-}
-</script>
 <?= $this->endSection() ?>

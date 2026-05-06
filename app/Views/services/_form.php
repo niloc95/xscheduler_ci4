@@ -155,7 +155,7 @@ if ($oldActive !== null) {
 </div>
 
 <?php if ($slugLocked && $canUnlockSlug): ?>
-<script nonce="{csp-script-nonce}">
+<script {csp-script-nonce}>
     (function () {
         const unlock = document.querySelector('[data-slug-unlock]');
         const slugInput = document.querySelector('input[name="slug"]');

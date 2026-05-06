@@ -211,7 +211,7 @@
                                        class="form-input pr-12 <?= $validation && $validation->hasError('password') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                        placeholder="Enter password">
                                 <button type="button" 
-                                        onclick="togglePassword('password')"
+                                        data-password-toggle="password"
                                         class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 z-10">
                                     <span class="material-symbols-outlined" id="password-icon">visibility</span>
                                 </button>
@@ -235,7 +235,7 @@
                                        class="form-input pr-12 <?= $validation && $validation->hasError('password_confirm') ? 'border-red-500 dark:border-red-400' : '' ?>"
                                        placeholder="Confirm password">
                                 <button type="button" 
-                                        onclick="togglePassword('password_confirm')"
+                                        data-password-toggle="password_confirm"
                                         class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 z-10">
                                     <span class="material-symbols-outlined" id="password_confirm-icon">visibility</span>
                                 </button>
@@ -360,7 +360,7 @@
         </div>
     </div>
 
-<script nonce="{csp-script-nonce}">
+<script {csp-script-nonce}>
 // Handle role checkbox changes for dynamic section visibility
 document.addEventListener('DOMContentLoaded', function() {
     const roleCheckboxes = document.querySelectorAll('input[name="roles[]"]');

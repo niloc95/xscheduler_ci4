@@ -86,7 +86,10 @@ if (!function_exists('vite_asset')) {
             $absolutePath = FCPATH . $publicPath;
             $version = is_file($absolutePath) ? (string) filemtime($absolutePath) : (string) filemtime(FCPATH . 'build/.vite/manifest.json');
 
-            return base_url($publicPath) . '?v=' . rawurlencode($version);
+            $assetUrl = base_url($publicPath);
+            $assetPath = parse_url($assetUrl, PHP_URL_PATH) ?: $assetUrl;
+
+            return $assetPath . '?v=' . rawurlencode($version);
         };
         
         // Add the main file

@@ -208,7 +208,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script nonce="{csp-script-nonce}">
+<script {csp-script-nonce}>
 // Dashboard refresh (metrics + schedule) — SPA-compatible, polling + event-driven
 (function() {
     // Prevent duplicate initialization on SPA back-nav

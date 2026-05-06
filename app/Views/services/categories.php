@@ -113,26 +113,26 @@
                   </a>
 
                   <?php if (!empty($c['active'])): ?>
-                    <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/deactivate') ?>" method="post" class="inline-flex">
+                    <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/deactivate') ?>" method="post" class="inline-flex" data-confirm-message="Deactivate this category? Services will remain but marked inactive.">
                       <?= csrf_field() ?>
-                      <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200" onclick="return confirm('Deactivate this category? Services will remain but marked inactive.');">
+                      <button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">
                         <span class="material-symbols-outlined text-sm">pause</span>
                         Deactivate
                       </button>
                     </form>
                   <?php else: ?>
-                    <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/activate') ?>" method="post" class="inline-flex">
+                    <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/activate') ?>" method="post" class="inline-flex" data-confirm-message="Activate this category?">
                       <?= csrf_field() ?>
-                      <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200" onclick="return confirm('Activate this category?');">
+                      <button type="submit" class="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200">
                         <span class="material-symbols-outlined text-sm">play_arrow</span>
                         Activate
                       </button>
                     </form>
                   <?php endif; ?>
 
-                  <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/delete') ?>" method="post" class="inline-flex">
+                  <form action="<?= site_url('services/categories/' . (int)$c['id'] . '/delete') ?>" method="post" class="inline-flex" data-confirm-message="Delete this category? Any linked services will become uncategorized.">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" onclick="return confirm('Delete this category? Any linked services will become uncategorized.');">
+                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                       <span class="material-symbols-outlined text-sm">delete</span>
                       Delete
                     </button>

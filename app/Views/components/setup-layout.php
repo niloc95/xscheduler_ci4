@@ -6,16 +6,7 @@
     <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     
     <!-- Dark mode initialization script (must be before any styling) -->
-    <script nonce="{csp-script-nonce}">
-        // Prevent flash of unstyled content by applying theme immediately
-        (function() {
-            const storedTheme = localStorage.getItem('xs-theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = storedTheme || (prefersDark ? 'dark' : 'light');
-
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
+    <script type="module" src="<?= vite_js('resources/js/theme-bootstrap.js') ?>"></script>
     
     <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>
     <link rel="stylesheet" href="<?= $css ?>">

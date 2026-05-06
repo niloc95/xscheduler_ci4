@@ -200,7 +200,7 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<script nonce="{csp-script-nonce}">
+<script {csp-script-nonce}>
 (function() {
     // Guard against duplicate initialization on SPA re-navigation
     const chartEl = document.getElementById('revenueChart');

@@ -286,6 +286,12 @@ if (!function_exists('setting_url')) {
      */
     function setting_url(string $key, $default = null): ?string
     {
+        $toSameOriginPath = static function (string $path): string {
+            $url = base_url($path);
+
+            return parse_url($url, PHP_URL_PATH) ?: $url;
+        };
+
         $path = setting($key, $default);
         if (!$path || !is_string($path)) {
             if (is_string($default) && $default !== null) {
@@ -293,12 +299,12 @@ if (!function_exists('setting_url')) {
                 if (preg_match('~^https?://~i', $default)) {
                     return $default;
                 }
-                return base_url($default);
+                return $toSameOriginPath($default);
             }
 
             $fallback = setting_asset_fallback_path($key);
             if ($fallback) {
-                return base_url($fallback);
+                return $toSameOriginPath($fallback);
             }
 
             return null;
@@ -306,12 +312,12 @@ if (!function_exists('setting_url')) {
         $path = ltrim((string) $path, '/');
         if (strpos($path, 'uploads/settings/') === 0) {
             $filename = basename($path);
-            return base_url('assets/s/' . $filename);
+            return $toSameOriginPath('assets/s/' . $filename);
         }
         if (strpos($path, 'assets/settings/') === 0 || strpos($path, 'assets/providers/') === 0) {
-            return base_url($path);
+            return $toSameOriginPath($path);
         }
-        return base_url('writable/' . $path);
+        return $toSameOriginPath('writable/' . $path);
     }
 }
 
