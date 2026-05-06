@@ -121,6 +121,18 @@
   .xs-no-scroll {
     overflow: hidden;
   }
+
+  .xs-theme-toggle [data-theme-icon='light'] {
+    display: none;
+  }
+
+  :root[data-theme='dark'] .xs-theme-toggle [data-theme-icon='light'] {
+    display: inline-block;
+  }
+
+  :root[data-theme='dark'] .xs-theme-toggle [data-theme-icon='dark'] {
+    display: none;
+  }
 }
 
 // =============

@@ -131,13 +131,12 @@ ob_start();
                             <span class="material-symbols-outlined">edit</span>
                         </a>
                         <?php if (!empty($canDeleteCustomers)): ?>
-                        <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier)) ?>" method="post" class="inline-flex">
+                        <form action="<?= base_url('customer-management/delete/' . esc($customerIdentifier)) ?>" method="post" class="inline-flex" data-confirm-message="Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.">
                             <?= csrf_field() ?>
                             <button
                                 type="submit"
                                 class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                 title="Delete Customer"
-                                onclick="return confirm('Delete this customer? This cannot be undone. Customers with appointment history cannot be deleted.');"
                             >
                                 <span class="material-symbols-outlined">delete</span>
                             </button>

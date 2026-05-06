@@ -1,4 +1,4 @@
-<script>
+<script {csp-script-nonce}>
 (function() {
     function initServiceCategoryModal() {
         const form = document.getElementById('createServiceForm') || document.getElementById('editServiceForm');

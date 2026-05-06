@@ -38,7 +38,7 @@ import { initProviderSchedule } from './modules/user-management/provider-schedul
 import { initProfilePage } from './modules/profile/profile-page.js';
 import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
-import { initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
+import { initConfirmActions, initHelpFaq, initPasswordToggles, initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
 import { getAvatarInitials, getDisplayName } from './utils/avatar.js';
 
 // Import appointment navigation module
@@ -134,6 +134,11 @@ function initializeComponents() {
 
     // Initialize service create/edit UI when those forms are present
     initServiceManagementForms();
+
+    // Initialize shared view interactions extracted from inline handlers.
+    initHelpFaq(document);
+    initConfirmActions(document);
+    initPasswordToggles(document);
 
     // Add country-code selectors to all canonical phone fields.
     initPhoneCountrySelectors(document);

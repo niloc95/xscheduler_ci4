@@ -238,5 +238,8 @@ class App extends BaseConfig
      * @see http://www.html5rocks.com/en/tutorials/security/content-security-policy/
      * @see http://www.w3.org/TR/CSP/
      */
-    public bool $CSPEnabled = (ENVIRONMENT === 'production');
+    // CSP is always active regardless of environment so that local development
+    // and staging environments surface policy violations before they reach production.
+    // Policy directives live in app/Config/ContentSecurityPolicy.php.
+    public bool $CSPEnabled = true;
 }

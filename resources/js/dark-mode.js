@@ -137,13 +137,8 @@ class DarkModeManager {
             const lightIcon = button.querySelector('[data-theme-icon="light"]');
             const darkIcon = button.querySelector('[data-theme-icon="dark"]');
             if (lightIcon && darkIcon) {
-                if (this.theme === 'dark') {
-                    lightIcon.style.display = 'inline-block';
-                    darkIcon.style.display = 'none';
-                } else {
-                    lightIcon.style.display = 'none';
-                    darkIcon.style.display = 'inline-block';
-                }
+                lightIcon.hidden = this.theme !== 'dark';
+                darkIcon.hidden = this.theme === 'dark';
             }
         });
     }
