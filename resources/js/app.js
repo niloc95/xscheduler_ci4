@@ -8,7 +8,12 @@ import Charts from './charts.js';
 import { 
     initRevenueTrendChart, 
     initTimeSlotChart, 
-    initServiceDistributionChart 
+    initServiceDistributionChart,
+    initNewVsReturningChart,
+    initPeakHoursChart,
+    initRevenueByProviderChart,
+    initMoMComparisonChart,
+    initAnalyticsDashboardPage
 } from './modules/analytics/analytics-charts.js';
 
 import { getBaseUrl } from './utils/url-helpers.js';
@@ -64,6 +69,10 @@ window.initTimeSlotsUI = initTimeSlotsUI;
 window.initRevenueTrendChart = initRevenueTrendChart;
 window.initTimeSlotChart = initTimeSlotChart;
 window.initServiceDistributionChart = initServiceDistributionChart;
+window.initNewVsReturningChart = initNewVsReturningChart;
+window.initPeakHoursChart = initPeakHoursChart;
+window.initRevenueByProviderChart = initRevenueByProviderChart;
+window.initMoMComparisonChart = initMoMComparisonChart;
 
 window.initProviderPicker = initProviderPicker;
 window.xsGetAvatarInitials = window.xsGetAvatarInitials || getAvatarInitials;
@@ -72,7 +81,12 @@ window.xsGetDisplayName = window.xsGetDisplayName || getDisplayName;
 export { 
     initRevenueTrendChart, 
     initTimeSlotChart, 
-    initServiceDistributionChart 
+    initServiceDistributionChart,
+    initNewVsReturningChart,
+    initPeakHoursChart,
+    initRevenueByProviderChart,
+    initMoMComparisonChart,
+    initAnalyticsDashboardPage
 };
 
 // ============================================
@@ -129,6 +143,9 @@ function initializeComponents() {
     
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();
+
+    // Initialize analytics dashboard tab and chart interactions when present.
+    initAnalyticsDashboardPage();
 }
 
 function getAppRelativePathname() {
