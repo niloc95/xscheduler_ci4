@@ -61,7 +61,7 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public $styleSrc = 'self';
+    public $styleSrc = ['self', 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'];
 
     /**
      * Defines the origins from which images can be loaded.
@@ -99,7 +99,7 @@ class ContentSecurityPolicy extends BaseConfig
      *
      * @var list<string>|string
      */
-    public $fontSrc;
+    public $fontSrc = ['self', 'https://fonts.gstatic.com', 'data:'];
 
     /**
      * Lists valid endpoints for submission from `<form>` tags.

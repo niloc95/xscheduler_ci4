@@ -495,14 +495,20 @@ export function initTimeSlotsUI(options) {
   }
 
   serviceSelect.addEventListener('change', () => {
-    timeInput.value = '';
-    
-    // Only clear date if not initial load with URL parameters
-    if (!isInitialServiceChange || !urlDate) {
+    // Preserve URL-provided date across service changes; only clear when no URL date was given
+    if (!urlDate) {
       dateInput.value = '';
     }
+
+    // Restore URL time for auto-selection when still on the URL-targeted date
+    if (urlTime && urlDate && dateInput.value === urlDate) {
+      timeInput.value = urlTime;
+    } else {
+      timeInput.value = '';
+    }
+
     isInitialServiceChange = false;
-    
+
     loadSlots(true);
   });
 

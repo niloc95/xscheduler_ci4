@@ -100,6 +100,50 @@ Before making any code changes, the agent must validate the following:
 [] Am I querying `xs_business_hours` with a `provider_id` filter? (All rows are per-provider; no global-only rows exist. An unfiltered query returns the first-inserted provider's hours — not a system-wide default.)
 [] Am I reading global time bounds (`business.work_start`, `business.work_end`) from `xs_settings` via `SettingModel::getByKeys()`, not from `xs_business_hours`?
 
+## 🎯 Rule #4 — Dashboard Layout and Scroll UX Contract
+
+Dashboard panels must use semantic, responsive scroll containers and avoid hardcoded height utilities in view templates.
+
+Mandatory requirements:
+
+1. No inline hard caps in templates
+- Do not use one-off utility caps such as `max-h-[400px]`, `h-[...px]`, or fixed pixel scroll wrappers directly in view markup for primary dashboard panels.
+- Define semantic classes in SCSS (example: `dashboard-schedule-scroll`, `provider-card-slots`) and keep sizing behavior centralized.
+
+2. Viewport-aware sizing
+- Use `clamp()`/viewport-aware sizing for desktop dashboards so panel bodies scale across common screen sizes (1366x768 through 2560x1440) without clipping critical controls.
+- On tablet/mobile (`<=1023px`), default to natural height flow unless there is a clear performance reason for nested scroll.
+
+3. Nested scroll rules
+- Nested scroll is allowed only for long data lists, not for filter/control groups.
+- Filters and primary actions must remain fully visible without requiring inner scrolling.
+
+4. UX consistency
+- Keep provider and schedule panel behaviors consistent: if one pane is internally scrollable on desktop, the other should use an equivalent semantic strategy.
+- Preserve accessibility and keyboard navigation; avoid scroll traps (`overscroll-behavior: contain` where needed).
+
+## 🧪 Rule #5 — Provider Assignment Integrity Audit (Operational)
+
+Before shipping any dashboard/provider-card changes that touch service, location, or availability filtering, run the canonical assignment audit and review results:
+
+Command:
+
+`php spark audit:provider-assignments`
+
+Minimum checks:
+
+1. Provider -> Services mapping
+- Confirm each provider card source only contains services assigned via `providers_services` mapping.
+
+2. Provider -> Locations mapping
+- Confirm location options are provider-scoped (no cross-provider location leakage).
+
+3. Service -> Providers mapping
+- Confirm sensitive/owner-specific services are assigned only to expected providers.
+
+Release gate:
+- If audit reports unexpected cross-provider assignment or missing critical assignments, treat as blocking until resolved or explicitly approved.
+
 ## 🔥 Why This Is Strong
 
 This document is the canonical engineering contract for this repository.

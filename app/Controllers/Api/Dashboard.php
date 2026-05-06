@@ -56,6 +56,8 @@
 namespace App\Controllers\Api;
 
 use App\Models\AppointmentModel;
+use App\Services\AuthorizationService;
+use App\Services\DashboardService;
 
 /**
  * Dashboard API Controller
@@ -65,10 +67,14 @@ use App\Models\AppointmentModel;
 class Dashboard extends BaseApiController
 {
     protected AppointmentModel $appointmentModel;
+    protected DashboardService $dashboardService;
+    protected AuthorizationService $authorizationService;
 
     public function __construct()
     {
         $this->appointmentModel = new AppointmentModel();
+        $this->dashboardService = new DashboardService();
+        $this->authorizationService = new AuthorizationService();
     }
 
     /**
@@ -145,6 +151,77 @@ class Dashboard extends BaseApiController
         } catch (\Throwable $e) {
             log_message('error', 'Dashboard API Error: ' . $e->getMessage());
             return $this->serverError('Unable to fetch appointment stats', $e->getMessage());
+        }
+    }
+
+    /**
+     * GET /api/dashboard/provider-slots
+     *
+     * Query params:
+     * - provider_id (required)
+     * - date (required, Y-m-d)
+     * - service_id (optional)
+     * - location_id (optional)
+     */
+    public function providerSlots()
+    {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
+        $providerId = (int) ($this->request->getGet('provider_id') ?? 0);
+        $date = trim((string) ($this->request->getGet('date') ?? ''));
+        $serviceIdRaw = $this->request->getGet('service_id');
+        $locationIdRaw = $this->request->getGet('location_id');
+        $serviceId = $serviceIdRaw !== null && $serviceIdRaw !== '' ? (int) $serviceIdRaw : null;
+        $locationId = $locationIdRaw !== null && $locationIdRaw !== '' ? (int) $locationIdRaw : null;
+
+        if ($providerId <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return $this->badRequest('Invalid request parameters', [
+                'required' => ['provider_id', 'date'],
+                'date_format' => 'Y-m-d',
+            ]);
+        }
+
+        $sessionUser = session()->get('user');
+        $sessionUser = is_array($sessionUser) ? $sessionUser : null;
+        $userRole = $this->authorizationService->getUserRole($sessionUser);
+
+        if (!$this->authorizationService->canViewDashboardMetrics($userRole)) {
+            return $this->forbidden('Insufficient permissions');
+        }
+
+        $sessionProviderId = $this->authorizationService->getProviderId($sessionUser);
+        $providerScope = $this->authorizationService->getProviderScope($userRole, $sessionProviderId, $sessionUser);
+
+        if (is_int($providerScope) && $providerScope !== $providerId) {
+            return $this->forbidden('You cannot access this provider');
+        }
+
+        if (is_array($providerScope) && !in_array($providerId, array_map('intval', $providerScope), true)) {
+            return $this->forbidden('You cannot access this provider');
+        }
+
+        try {
+            $slots = $this->dashboardService->getProviderSlotsForDate(
+                $providerId,
+                $date,
+                $serviceId,
+                $locationId,
+                null
+            );
+
+            return $this->ok([
+                'provider_id' => $providerId,
+                'date' => $date,
+                'service_id' => $serviceId,
+                'location_id' => $locationId,
+                'slots' => $slots,
+                'total_slots' => count($slots),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', '[Api\\Dashboard::providerSlots] ' . $e->getMessage());
+            return $this->serverError('Unable to fetch provider slots', $e->getMessage());
         }
     }
 }

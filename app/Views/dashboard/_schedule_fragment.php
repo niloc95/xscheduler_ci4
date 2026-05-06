@@ -13,7 +13,7 @@
 $schedule = $schedule ?? [];
 ?>
 <?php if (!empty($schedule)): ?>
-<div class="max-h-[400px] overflow-y-auto">
+<div class="dashboard-schedule-scroll">
     <?php foreach ($schedule as $providerName => $appointments): ?>
         <!-- Provider Section -->
         <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700 sticky top-0">

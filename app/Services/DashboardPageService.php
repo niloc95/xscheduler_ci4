@@ -102,9 +102,6 @@ class DashboardPageService
             'alerts' => $alerts,
             'upcoming' => $upcoming,
             'availability' => $availability,
-            'booking_status' => $this->authService->canViewBookingStatus($userRole)
-                ? $this->dashboardService->getBookingStatus()
-                : null,
             'provider_scope' => $providerScope,
             'stats' => [
                 'total_users' => $userStats['total'],
@@ -160,7 +157,6 @@ class DashboardPageService
             'alerts' => [],
             'upcoming' => [],
             'availability' => [],
-            'booking_status' => null,
             'stats' => [
                 'total_users' => 0,
                 'active_sessions' => 0,

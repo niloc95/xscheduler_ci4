@@ -54,6 +54,7 @@ use App\Models\AppointmentModel;
 use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\CustomerModel;
+use App\Models\LocationModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\BusinessHourModel;
 use App\Services\Appointment\AppointmentStatus;
@@ -73,6 +74,7 @@ class DashboardService
     protected UserModel $userModel;
     protected ServiceModel $serviceModel;
     protected CustomerModel $customerModel;
+    protected LocationModel $locationModel;
     protected ProviderScheduleModel $providerScheduleModel;
     protected BusinessHourModel $businessHourModel;
     protected LocalizationSettingsService $localizationService;
@@ -84,6 +86,7 @@ class DashboardService
         ?UserModel $userModel = null,
         ?ServiceModel $serviceModel = null,
         ?CustomerModel $customerModel = null,
+        ?LocationModel $locationModel = null,
         ?ProviderScheduleModel $providerScheduleModel = null,
         ?BusinessHourModel $businessHourModel = null,
         ?LocalizationSettingsService $localizationService = null,
@@ -95,6 +98,7 @@ class DashboardService
         $this->userModel = $userModel ?? new UserModel();
         $this->serviceModel = $serviceModel ?? new ServiceModel();
         $this->customerModel = $customerModel ?? new CustomerModel();
+        $this->locationModel = $locationModel ?? new LocationModel();
         $this->providerScheduleModel = $providerScheduleModel ?? new ProviderScheduleModel();
         $this->businessHourModel = $businessHourModel ?? new BusinessHourModel();
         $this->localizationService = $localizationService ?? new LocalizationSettingsService();
@@ -515,6 +519,8 @@ class DashboardService
         $weekdayNum = (int) $now->format('w');
 
         $availability = [];
+        $timezone = $this->localizationService->getTimezone();
+        $today = (new \DateTimeImmutable('today', new \DateTimeZone($timezone)))->format('Y-m-d');
         foreach ($providers as $provider) {
             // Get provider's working hours for today
             $workingHours = $this->getProviderWorkingHours($provider['id'], $dayOfWeek, $weekdayNum);
@@ -551,9 +557,20 @@ class DashboardService
             }
 
             $nextSlot = $this->getNextAvailableSlotDetails($provider['id']);
-            
-            // Get provider's services
-            $providerServices = $this->getProviderServices($provider['id']);
+
+            // Build provider-specific booking options used by dashboard cards.
+            $providerServiceOptions = $this->getProviderServiceOptions($provider['id']);
+            $providerServices = array_column($providerServiceOptions, 'name');
+            $defaultServiceId = $providerServiceOptions[0]['id'] ?? null;
+
+            $locationOptions = $this->getProviderLocationOptions($provider['id']);
+            $slotsForDate = $this->getProviderSlotsForDate(
+                (int) $provider['id'],
+                $today,
+                $defaultServiceId,
+                null,
+                null
+            );
 
             $availability[] = [
                 'id' => $provider['id'],
@@ -562,6 +579,11 @@ class DashboardService
                 'next_slot' => $nextSlot,
                 'color' => $provider['color'] ?? '#3B82F6',
                 'services' => $providerServices,
+                'service_options' => $providerServiceOptions,
+                'default_service_id' => $defaultServiceId,
+                'location_options' => $locationOptions,
+                'slots_date' => $today,
+                'slots_for_date' => $slotsForDate,
             ];
         }
 
@@ -576,47 +598,142 @@ class DashboardService
      */
     protected function getProviderServices(int $providerId): array
     {
+        $serviceOptions = $this->getProviderServiceOptions($providerId);
+        return array_column($serviceOptions, 'name');
+    }
+
+    /**
+     * Get service options for a provider as structured objects.
+     *
+     * @param int $providerId
+     * @return array<int, array{id:int,name:string,duration_min:int|null}>
+     */
+    protected function getProviderServiceOptions(int $providerId): array
+    {
         $db = \Config\Database::connect();
-        $hasProviderServices = method_exists($db, 'tableExists') ? $db->tableExists('xs_provider_services') : true;
+        $providerServicesTable = $db->prefixTable('providers_services');
+        $hasProviderServices = method_exists($db, 'tableExists')
+            ? ($db->tableExists('providers_services') || $db->tableExists($providerServicesTable))
+            : true;
         $servicesHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_services') : true;
-        
-        // Check if provider_services table exists (linking table)
+
         try {
             if ($hasProviderServices) {
-                $builder = $db->table('xs_provider_services ps');
-                $builder->select('s.name')
+                $builder = $db->table($providerServicesTable . ' ps');
+                $builder->select('s.id, s.name, s.duration_min')
                     ->join('xs_services s', 's.id = ps.service_id')
                     ->where('ps.provider_id', $providerId);
 
                 if ($servicesHasIsActive) {
                     $builder->where('s.is_active', true);
                 }
-                
+
+                $builder->orderBy('s.duration_min', 'ASC')->orderBy('s.name', 'ASC');
                 $services = $builder->get()->getResultArray();
-                return array_column($services, 'name');
+
+                return array_map(static function (array $service): array {
+                    return [
+                        'id' => (int) ($service['id'] ?? 0),
+                        'name' => (string) ($service['name'] ?? ''),
+                        'duration_min' => isset($service['duration_min']) ? (int) $service['duration_min'] : null,
+                    ];
+                }, array_values(array_filter($services, static fn(array $service): bool => !empty($service['id']) && !empty($service['name']))));
             }
-            
-            // No provider_services table, fall through to general services fallback
-        } catch (\Exception $e) {
-            // Exception occurred, fall through to fallback
+        } catch (\Throwable $e) {
+            // Dashboard must not leak global services when provider mapping fails.
         }
-        
-        // Fallback: try to get all active services if no provider_services table
-        try {
-            $builder = $db->table('xs_services');
-            $builder->select('name');
 
-            if ($servicesHasIsActive) {
-                $builder->where('is_active', true);
-            }
+        return [];
+    }
 
-            $builder->limit(5);
-            
-            $services = $builder->get()->getResultArray();
-            return array_column($services, 'name');
-        } catch (\Exception $e2) {
+    /**
+     * Get location options for a provider.
+     *
+     * @param int $providerId
+     * @return array<int, array{id:int,name:string}>
+     */
+    protected function getProviderLocationOptions(int $providerId): array
+    {
+        $db = \Config\Database::connect();
+        $hasLocationsTable = method_exists($db, 'tableExists') ? $db->tableExists('xs_locations') : true;
+        if (!$hasLocationsTable) {
             return [];
         }
+
+        try {
+            $locations = $this->locationModel->getProviderLocations($providerId, true);
+
+            return array_map(static function (array $location): array {
+                return [
+                    'id' => (int) ($location['id'] ?? 0),
+                    'name' => (string) ($location['name'] ?? ''),
+                ];
+            }, array_values(array_filter($locations, static fn(array $location): bool => !empty($location['id']) && !empty($location['name']))));
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Get provider slots for a specific date and optional service/location filters.
+     *
+     * @param int $providerId
+     * @param string $date
+     * @param int|null $serviceId
+     * @param int|null $locationId
+     * @param int|null $limit
+     * @return array<int, array{time:string,end_time:string,start_time:string,end_time_iso:string}>
+     */
+    public function getProviderSlotsForDate(
+        int $providerId,
+        string $date,
+        ?int $serviceId = null,
+        ?int $locationId = null,
+        ?int $limit = null
+    ): array {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return [];
+        }
+
+        $allowedServiceIds = array_map('intval', array_column($this->getProviderServiceOptions($providerId), 'id'));
+        if ($serviceId !== null && !in_array((int) $serviceId, $allowedServiceIds, true)) {
+            return [];
+        }
+
+        $serviceId ??= $this->getProviderDefaultServiceId($providerId);
+        if (!$serviceId) {
+            return [];
+        }
+
+        $timezone = $this->localizationService->getTimezone();
+        $bufferMinutes = $this->availabilityService->getBufferTime($providerId);
+        $slots = $this->availabilityService->getAvailableSlots(
+            $providerId,
+            $date,
+            $serviceId,
+            $bufferMinutes,
+            $timezone,
+            null,
+            $locationId
+        );
+
+        if ($limit !== null && $limit >= 0) {
+            $slots = array_slice($slots, 0, $limit);
+        }
+
+        return array_map(static function (array $slot): array {
+            $start = $slot['start'] ?? null;
+            $end = $slot['end'] ?? null;
+            $startFormatted = $slot['startFormatted'] ?? ($start instanceof \DateTimeInterface ? $start->format('H:i') : '');
+            $endFormatted = $slot['endFormatted'] ?? ($end instanceof \DateTimeInterface ? $end->format('H:i') : '');
+
+            return [
+                'time' => (string) $startFormatted,
+                'end_time' => (string) $endFormatted,
+                'start_time' => $start instanceof \DateTimeInterface ? $start->format('c') : '',
+                'end_time_iso' => $end instanceof \DateTimeInterface ? $end->format('c') : '',
+            ];
+        }, $slots);
     }
 
     /**
@@ -632,16 +749,157 @@ class DashboardService
      */
     public function getBookingStatus(): array
     {
-        // TODO: Implement based on actual settings storage
-        // For now, return placeholder data
-        
+        $businessId = NotificationCatalog::BUSINESS_ID_DEFAULT;
+        $heartbeat = (new NotificationReminderHeartbeatService())->getStatus(300);
+        $db = \Config\Database::connect();
+        $rulesTable = $db->prefixTable('business_notification_rules');
+        $integrationsTable = $db->prefixTable('business_integrations');
+        $queueTable = $db->prefixTable('notification_queue');
+        $logsTable = $db->prefixTable('notification_delivery_logs');
+
+        $ruleRows = $db->table($rulesTable)
+            ->select('channel, is_enabled, reminder_offset_minutes, reminder_offsets_json')
+            ->where('business_id', $businessId)
+            ->where('event_type', 'appointment_reminder')
+            ->get()
+            ->getResultArray();
+
+        $integrationRows = $db->table($integrationsTable)
+            ->select('channel, is_active')
+            ->where('business_id', $businessId)
+            ->get()
+            ->getResultArray();
+
+        $enabledRuleChannels = [];
+        $configuredOffsets = [];
+        foreach ($ruleRows as $row) {
+            $channel = (string) ($row['channel'] ?? '');
+            if ($channel === '' || (int) ($row['is_enabled'] ?? 0) !== 1) {
+                continue;
+            }
+
+            $enabledRuleChannels[] = $channel;
+            $offsets = [];
+            $offsetsJson = $row['reminder_offsets_json'] ?? null;
+            if (is_string($offsetsJson) && $offsetsJson !== '') {
+                $decoded = json_decode($offsetsJson, true);
+                if (is_array($decoded)) {
+                    $offsets = array_map(static fn($value): int => (int) $value, $decoded);
+                }
+            }
+            if ($offsets === [] && isset($row['reminder_offset_minutes']) && $row['reminder_offset_minutes'] !== null) {
+                $offsets = [(int) $row['reminder_offset_minutes']];
+            }
+
+            foreach ($offsets as $offset) {
+                if ($offset >= 0) {
+                    $configuredOffsets[] = $offset;
+                }
+            }
+        }
+
+        $activeIntegrations = [];
+        foreach ($integrationRows as $row) {
+            $channel = (string) ($row['channel'] ?? '');
+            if ($channel !== '' && (int) ($row['is_active'] ?? 0) === 1) {
+                $activeIntegrations[] = $channel;
+            }
+        }
+
+        $enabledRuleChannels = array_values(array_unique($enabledRuleChannels));
+        sort($enabledRuleChannels);
+        $activeIntegrations = array_values(array_unique($activeIntegrations));
+        sort($activeIntegrations);
+        $configuredOffsets = array_values(array_unique($configuredOffsets));
+        rsort($configuredOffsets);
+
+        $activeReminderChannels = array_values(array_intersect($enabledRuleChannels, $activeIntegrations));
+        sort($activeReminderChannels);
+
+        $queuedCount = (int) $db->table($queueTable)
+            ->where('business_id', $businessId)
+            ->where('event_type', 'appointment_reminder')
+            ->where('status', 'queued')
+            ->countAllResults();
+
+        $sentToday = (int) $db->table($queueTable)
+            ->where('business_id', $businessId)
+            ->where('event_type', 'appointment_reminder')
+            ->where('status', 'sent')
+            ->where('updated_at >=', gmdate('Y-m-d 00:00:00'))
+            ->countAllResults();
+
+        $lastDelivery = $db->table($logsTable)
+            ->select('created_at, channel')
+            ->where('business_id', $businessId)
+            ->where('event_type', 'appointment_reminder')
+            ->where('status', 'success')
+            ->orderBy('created_at', 'DESC')
+            ->get()
+            ->getFirstRow('array');
+
+        $reminderSummary = 'Automation active';
+        $reminderTone = 'success';
+
+        if ($enabledRuleChannels === []) {
+            $reminderSummary = 'No reminder rules enabled';
+            $reminderTone = 'warning';
+        } elseif ($activeReminderChannels === []) {
+            $reminderSummary = 'Rules enabled but integrations inactive';
+            $reminderTone = 'warning';
+        } elseif (($heartbeat['last_run_ts'] ?? null) === null) {
+            $reminderSummary = 'Waiting for first heartbeat run';
+            $reminderTone = 'warning';
+        } elseif (!empty($heartbeat['is_stale'])) {
+            $reminderSummary = $queuedCount > 0 ? 'Heartbeat stale with queued reminders' : 'Heartbeat stale';
+            $reminderTone = $queuedCount > 0 ? 'danger' : 'warning';
+        }
+
         return [
-            'booking_enabled' => true, // From settings
-            'confirmation_enabled' => false, // From settings
-            'email_enabled' => true, // Check email configuration
-            'whatsapp_enabled' => false, // Check WhatsApp configuration
+            'booking_enabled' => true,
+            'confirmation_enabled' => false,
+            'email_enabled' => in_array('email', $activeReminderChannels, true),
+            'whatsapp_enabled' => in_array('whatsapp', $activeReminderChannels, true),
             'booking_url' => base_url('/booking'),
+            'reminders' => [
+                'summary' => $reminderSummary,
+                'tone' => $reminderTone,
+                'last_run_label' => $this->formatDashboardStatusTimestamp($heartbeat['last_run_ts'] ?? null),
+                'last_delivery_label' => $this->formatDashboardStatusTimestamp($lastDelivery['created_at'] ?? null),
+                'queued_count' => $queuedCount,
+                'sent_today' => $sentToday,
+                'enabled_rule_channels' => $enabledRuleChannels,
+                'active_channels' => $activeReminderChannels,
+                'configured_offsets' => $configuredOffsets,
+                'is_locked' => !empty($heartbeat['is_locked']),
+                'heartbeat_interval_seconds' => (int) ($heartbeat['interval_seconds'] ?? 300),
+            ],
         ];
+    }
+
+    /**
+     * @param int|string|null $value
+     */
+    protected function formatDashboardStatusTimestamp($value): string
+    {
+        if ($value === null || $value === '') {
+            return 'Not recorded yet';
+        }
+
+        $timezone = new \DateTimeZone($this->localizationService->getTimezone());
+
+        try {
+            if (is_numeric($value)) {
+                $dt = (new \DateTimeImmutable('@' . (int) $value))->setTimezone($timezone);
+            } else {
+                $dt = new \DateTimeImmutable((string) $value, new \DateTimeZone('UTC'));
+                $dt = $dt->setTimezone($timezone);
+            }
+        } catch (\Throwable $e) {
+            return 'Unavailable';
+        }
+
+        return $dt->format('M j, Y g:i A T');
     }
 
     /**
@@ -758,12 +1016,15 @@ class DashboardService
     protected function getProviderDefaultServiceId(int $providerId): ?int
     {
         $db = \Config\Database::connect();
-        $hasProviderServices = method_exists($db, 'tableExists') ? $db->tableExists('xs_provider_services') : true;
+        $providerServicesTable = $db->prefixTable('providers_services');
+        $hasProviderServices = method_exists($db, 'tableExists')
+            ? ($db->tableExists('providers_services') || $db->tableExists($providerServicesTable))
+            : true;
         $servicesHasIsActive = method_exists($db, 'fieldExists') ? $db->fieldExists('is_active', 'xs_services') : true;
 
         try {
             if ($hasProviderServices) {
-                $builder = $db->table('xs_provider_services ps');
+                $builder = $db->table($providerServicesTable . ' ps');
                 $builder->select('s.id, s.duration_min')
                     ->join('xs_services s', 's.id = ps.service_id')
                     ->where('ps.provider_id', $providerId);
@@ -782,23 +1043,11 @@ class DashboardService
                 }
             }
         } catch (\Throwable $e) {
-            // Ignore and fallback below
+            // Ignore and return null below
         }
 
-        if ($servicesHasIsActive) {
-            $service = $this->serviceModel
-                ->where('is_active', true)
-                ->orderBy('duration_min', 'ASC')
-                ->orderBy('id', 'ASC')
-                ->first();
-        } else {
-            $service = $this->serviceModel
-                ->orderBy('duration_min', 'ASC')
-                ->orderBy('id', 'ASC')
-                ->first();
-        }
-
-        return $service['id'] ?? null;
+        // Do not fall back to global services: default must be provider-assigned.
+        return null;
     }
 
     /**

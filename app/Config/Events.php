@@ -3,6 +3,7 @@
 namespace Config;
 
 use App\Services\NotificationCatalog;
+use App\Services\NotificationReminderHeartbeatService;
 use App\Services\NotificationQueueService;
 use CodeIgniter\Events\Events;
 use CodeIgniter\Exceptions\FrameworkException;
@@ -52,6 +53,16 @@ Events::on('pre_system', static function (): void {
             service('routes')->get('__hot-reload', static function (): void {
                 (new HotReloader())->run();
             });
+        }
+    }
+
+    // Fallback reminder heartbeat: keeps reminder queue moving on active sites
+    // when OS-level cron is missing or temporarily down.
+    if (!is_cli()) {
+        try {
+            (new NotificationReminderHeartbeatService())->runIfDue();
+        } catch (\Throwable $e) {
+            log_message('error', '[Events::pre_system reminder heartbeat] ' . $e->getMessage());
         }
     }
 });

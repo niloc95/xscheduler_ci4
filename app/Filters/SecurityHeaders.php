@@ -84,17 +84,9 @@ class SecurityHeaders implements FilterInterface
             $response->setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         
-        // Content Security Policy
-        // Allow Google Fonts for Material Symbols (styles + font files)
-        $csp = "default-src 'self'; " .
-         "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
-         "img-src 'self' data: https:; " .
-         "font-src 'self' https://fonts.gstatic.com data:; " .
-         "connect-src 'self'; " .
-         "frame-ancestors 'none';";
-        
-        $response->setHeader('Content-Security-Policy', $csp);
+        // Content Security Policy is managed centrally by CI4
+        // via app/Config/ContentSecurityPolicy.php.
+        // Do not set CSP header here to avoid conflicting/duplicate policies.
         
         // Referrer Policy
         $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
