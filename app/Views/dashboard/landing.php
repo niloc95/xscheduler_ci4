@@ -55,7 +55,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 </div>
 
 <!-- Page Body -->
-<div class="xs-page-body">
+<div class="xs-page-body dashboard-landing">
     <!-- Metrics Row: Compact horizontal strip -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="metrics-container">
         <div class="metric-mini metric-mini-blue">

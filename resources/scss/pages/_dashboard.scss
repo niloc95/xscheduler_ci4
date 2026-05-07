@@ -198,7 +198,7 @@
 // Dashboard Landing Page Styles
 // ===========================
 
-.dashboard-grid {
+.dashboard-landing .dashboard-grid {
   display: grid;
   gap: 1rem;
 
@@ -246,25 +246,25 @@
   --metric-bg-dark: #312e81;
 }
 
-.provider-grid {
+.dashboard-landing .provider-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.75rem;
 }
 
-.provider-card {
+.dashboard-landing .provider-card {
   display: block;
   color: inherit;
   text-decoration: none;
 }
 
-.provider-card-filters {
+.dashboard-landing .provider-card-filters {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
 }
 
-.provider-card-filter {
+.dashboard-landing .provider-card-filter {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -276,7 +276,7 @@
   }
 }
 
-.provider-card-input {
+.dashboard-landing .provider-card-input {
   width: 100%;
   font-size: 0.75rem;
   line-height: 1.2rem;
@@ -293,7 +293,7 @@
   }
 }
 
-.provider-card-slots {
+.dashboard-landing .provider-card-slots {
   display: grid;
   gap: 0.4rem;
   max-height: clamp(14rem, 34vh, 24rem);
@@ -307,7 +307,7 @@
   }
 }
 
-.dashboard-schedule-scroll {
+.dashboard-landing .dashboard-schedule-scroll {
   max-height: clamp(20rem, 56vh, 44rem);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -318,7 +318,7 @@
   }
 }
 
-.provider-slot-link {
+.dashboard-landing .provider-slot-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -346,18 +346,18 @@
   }
 }
 
-.provider-slot-time {
+.dashboard-landing .provider-slot-time {
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-.provider-slot-book {
+.dashboard-landing .provider-slot-book {
   font-size: 0.7rem;
   font-weight: 500;
   opacity: 0.9;
 }
 
-.provider-card--actionable {
+.dashboard-landing .provider-card--actionable {
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 
   &:hover {
@@ -379,7 +379,7 @@
   }
 }
 
-.provider-card-cta {
+.dashboard-landing .provider-card-cta {
   padding: 0.15rem 0.45rem;
   border-radius: 9999px;
   background-color: rgba(37, 99, 235, 0.12);
