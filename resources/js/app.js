@@ -23,6 +23,7 @@ import './utils/dynamic-colors.js';
 
 // Import global search
 import { initGlobalSearch } from './modules/search/global-search.js';
+import { initDashboardProviderCards } from './modules/dashboard/provider-cards.js';
 
 // Import status filters
 import { initStatusFilterControls, initSummaryCardFilters, initViewToggleHandlers, refreshAppointmentStats } from './modules/filters/status-filters.js';
@@ -119,6 +120,9 @@ function initializeComponents() {
 
     // Initialize global header search
     initGlobalSearch();
+
+    // Initialize provider-card slot filters on dashboard landing.
+    initDashboardProviderCards();
     
     // Initialize appointment booking form if present
     initAppointmentForm();

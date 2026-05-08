@@ -246,6 +246,7 @@ $routes->group('my-appointments', ['filter' => 'setup'], function($routes) {
 $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     // Dashboard API endpoint
     $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats');
+    $routes->get('dashboard/provider-slots', 'Api\\Dashboard::providerSlots');
 
     // Authentication API endpoints (requires auth)
     $routes->post('auth/switch-role', 'Api\\Auth::switchRole', ['filter' => 'auth']);

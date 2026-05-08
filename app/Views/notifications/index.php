@@ -34,6 +34,7 @@ $notificationDeliveryLogSummary = $notificationDeliveryLogSummary ?? [
     'skipped' => 0,
     'resendable' => 0,
 ];
+$notificationAutomationStatus = is_array($notificationAutomationStatus ?? null) ? $notificationAutomationStatus : null;
 $notificationDeliveryLogEventOptions = $notificationDeliveryLogEventOptions ?? [];
 $notificationPageHeading = (string) ($notificationPageHeading ?? 'Activity Feed');
 $notificationPageDescription = (string) ($notificationPageDescription ?? '');
@@ -88,6 +89,25 @@ $statusBadgeMap = [
     'skipped' => 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200',
     'info' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 ];
+$automationToneConfig = [
+    'success' => [
+        'badge' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800',
+        'panel' => 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30',
+    ],
+    'warning' => [
+        'badge' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800',
+        'panel' => 'border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30',
+    ],
+    'danger' => [
+        'badge' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800',
+        'panel' => 'border-rose-200 bg-rose-50/60 dark:border-rose-800 dark:bg-rose-950/30',
+    ],
+];
+$automationTone = $notificationAutomationStatus['tone'] ?? 'warning';
+$automationToneClasses = $automationToneConfig[$automationTone] ?? $automationToneConfig['warning'];
+$tabBaseClasses = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200';
+$tabActiveClasses = 'bg-gray-900 text-white dark:bg-white dark:text-gray-900';
+$tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600';
 ?>
 
 <?= $this->section('content') ?>
@@ -134,12 +154,12 @@ $statusBadgeMap = [
 
         <nav class="mt-5 flex flex-wrap gap-2" aria-label="Notification surfaces">
             <a href="<?= esc($activityTabUrl) ?>"
-               class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 <?= $notificationTab === 'activity' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' ?>">
+               class="<?= esc($tabBaseClasses . ' ' . ($notificationTab === 'activity' ? $tabActiveClasses : $tabInactiveClasses)) ?>">
                 Activity Feed
             </a>
             <?php if ($notificationIsAdmin): ?>
                 <a href="<?= esc($deliveryLogsTabUrl) ?>"
-                   class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 <?= $notificationTab === 'delivery-logs' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' ?>">
+                   class="<?= esc($tabBaseClasses . ' ' . ($notificationTab === 'delivery-logs' ? $tabActiveClasses : $tabInactiveClasses)) ?>">
                     Delivery Logs
                     <span class="ml-2 inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold <?= $notificationTab === 'delivery-logs' ? 'text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300' ?>">
                         Admin
@@ -150,6 +170,63 @@ $statusBadgeMap = [
     </section>
 
     <?php if ($notificationTab === 'activity'): ?>
+        <?php if ($notificationIsAdmin && $notificationAutomationStatus !== null): ?>
+            <section class="rounded-2xl border p-5 shadow-sm <?= esc($automationToneClasses['panel']) ?>">
+                <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Reminder Automation</h3>
+                            <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium <?= esc($automationToneClasses['badge']) ?>">
+                                <?= esc($notificationAutomationStatus['summary'] ?? 'Status unavailable') ?>
+                            </span>
+                            <?php if (!empty($notificationAutomationStatus['is_locked'])): ?>
+                                <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                                    Heartbeat running
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            Fallback heartbeat checks reminder enqueue and dispatch on web traffic every <?= esc((string) max(1, ((int) ($notificationAutomationStatus['heartbeat_interval_seconds'] ?? 300) / 60))) ?> minutes.
+                        </p>
+                    </div>
+
+                    <a href="<?= esc($settingsNotificationsUrl) ?>" class="inline-flex items-center text-sm font-medium text-blue-700 hover:underline dark:text-blue-300">
+                        Tune notification settings
+                    </a>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Last run</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"><?= esc($notificationAutomationStatus['last_run_label'] ?? 'Not recorded yet') ?></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Last delivery</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"><?= esc($notificationAutomationStatus['last_delivery_label'] ?? 'Not recorded yet') ?></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Sent today</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"><?= esc((string) ($notificationAutomationStatus['sent_today'] ?? 0)) ?></p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Queued now</p>
+                        <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"><?= esc((string) ($notificationAutomationStatus['queued_count'] ?? 0)) ?></p>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-col gap-2 text-sm text-gray-600 dark:text-gray-300 xl:flex-row xl:items-center xl:gap-6">
+                    <div>
+                        Active channels:
+                        <span class="font-medium text-gray-900 dark:text-white"><?= esc(!empty($notificationAutomationStatus['active_channels']) ? implode(', ', $notificationAutomationStatus['active_channels']) : 'None') ?></span>
+                    </div>
+                    <div>
+                        Configured offsets:
+                        <span class="font-medium text-gray-900 dark:text-white"><?= esc(!empty($notificationAutomationStatus['configured_offsets']) ? implode(', ', array_map(static fn($offset) => $offset . 'm', $notificationAutomationStatus['configured_offsets'])) : 'None') ?></span>
+                    </div>
+                </div>
+            </section>
+        <?php endif; ?>
+
         <section class="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Activity</p>

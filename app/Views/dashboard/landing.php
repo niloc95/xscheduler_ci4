@@ -12,7 +12,6 @@
  * - $alerts: Actionable alerts
  * - $upcoming: Upcoming appointments (next 7 days)
  * - $availability: Provider availability status
- * - $booking_status: Booking system status (admin only)
  * - $provider_scope: Provider ID for filtering (null = admin)
  */
 
@@ -56,7 +55,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 </div>
 
 <!-- Page Body -->
-<div class="xs-page-body">
+<div class="xs-page-body dashboard-landing">
     <!-- Metrics Row: Compact horizontal strip -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="metrics-container">
         <div class="metric-mini metric-mini-blue">
@@ -96,7 +95,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
         </a>
     </div>
     <?php endif; ?>
-    
+
     <!-- Main Grid: Providers + Schedule -->
     <div class="dashboard-grid">
         
@@ -121,6 +120,11 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     $providerColor = $provider['color'] ?? '#3B82F6';
                     $providerId = $provider['id'] ?? null;
                     $services = $provider['services'] ?? [];
+                    $serviceOptions = is_array($provider['service_options'] ?? null) ? $provider['service_options'] : [];
+                    $locationOptions = is_array($provider['location_options'] ?? null) ? $provider['location_options'] : [];
+                    $defaultServiceId = $provider['default_service_id'] ?? ($serviceOptions[0]['id'] ?? null);
+                    $slotsDate = $provider['slots_date'] ?? date('Y-m-d');
+                    $slotsForDate = is_array($provider['slots_for_date'] ?? null) ? $provider['slots_for_date'] : [];
                     
                     $isWorking = ($status === 'working');
                     $statusConfig = [
@@ -129,16 +133,15 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                         'off' => ['icon' => 'cancel', 'color' => 'text-gray-400', 'bg' => 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'],
                     ];
                     $cfg = $statusConfig[$status] ?? $statusConfig['off'];
-                    
-                    // Build quick book URL
-                    $bookUrl = null;
-                    if ($isWorking && $providerId) {
-                        $params = ['provider_id' => $providerId, 'date' => $nextSlotDate ?: date('Y-m-d')];
-                        if ($nextSlotTime) $params['time'] = $nextSlotTime;
-                        $bookUrl = base_url('/appointments/create') . '?' . http_build_query($params);
-                    }
+
+                    $cardClasses = 'provider-card p-3 rounded-lg border ' . $cfg['bg'];
                     ?>
-                    <div class="p-3 rounded-lg border <?= $cfg['bg'] ?> <?= $isWorking ? 'hover:shadow-md transition-shadow' : '' ?>">
+                    <div
+                        class="<?= esc($cardClasses) ?>"
+                        data-provider-card="true"
+                        data-provider-id="<?= esc((string) $providerId) ?>"
+                        data-default-service-id="<?= esc((string) ($defaultServiceId ?? '')) ?>"
+                        data-initial-date="<?= esc($slotsDate) ?>">
                         <!-- Provider Header -->
                         <div class="flex items-center gap-2 mb-2">
                             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 provider-color-dot" data-color="<?= esc($providerColor) ?>"></div>
@@ -151,33 +154,75 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                         <!-- Services (compact) -->
                         <?php if (!empty($services)): ?>
                         <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-2 truncate" title="<?= esc(implode(', ', $services)) ?>">
-                            <?= esc(implode(', ', array_slice($services, 0, 2))) ?><?= count($services) > 2 ? ' +' . (count($services) - 2) : '' ?>
+                            <?= esc(implode(', ', array_slice($services, 0, 2))) ?><?= count($services) > 2 ? ' and ' . (count($services) - 2) . ' more' : '' ?>
                         </div>
                         <?php endif; ?>
+
+                        <div class="provider-card-filters mb-2">
+                            <label class="provider-card-filter">
+                                <span>Date</span>
+                                <input
+                                    type="date"
+                                    class="provider-card-input"
+                                    data-provider-date
+                                    value="<?= esc($slotsDate) ?>">
+                            </label>
+
+                            <label class="provider-card-filter">
+                                <span>Service</span>
+                                <select class="provider-card-input" data-provider-service>
+                                    <option value="">Default service</option>
+                                    <?php foreach ($serviceOptions as $serviceOption): ?>
+                                        <option
+                                            value="<?= esc((string) ($serviceOption['id'] ?? '')) ?>"
+                                            <?= ((string) ($serviceOption['id'] ?? '') === (string) ($defaultServiceId ?? '')) ? 'selected' : '' ?>>
+                                            <?= esc($serviceOption['name'] ?? 'Service') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="provider-card-filter">
+                                <span>Location</span>
+                                <select class="provider-card-input" data-provider-location>
+                                    <option value="">All locations</option>
+                                    <?php foreach ($locationOptions as $locationOption): ?>
+                                        <option value="<?= esc((string) ($locationOption['id'] ?? '')) ?>">
+                                            <?= esc($locationOption['name'] ?? 'Location') ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                        </div>
                         
-                        <!-- Status / Next Slot -->
-                        <div class="flex items-center justify-between">
-                            <?php if ($hasSlot && $nextSlotLabel): ?>
-                                <span class="text-xs text-gray-600 dark:text-gray-400">
-                                    <?php if ($noSlotsToday): ?>
-                                        <span class="block">No slots available today</span>
-                                        <span class="block">Next: <span class="font-medium"><?= esc($nextSlotLabel) ?></span></span>
-                                    <?php else: ?>
-                                        Next: <span class="font-medium"><?= esc($nextSlotLabel) ?></span>
-                                    <?php endif; ?>
-                                </span>
+                        <!-- Slots for selected date -->
+                        <div class="provider-card-slots" data-provider-slots-list>
+                            <?php if (!empty($slotsForDate) && $providerId): ?>
+                                <?php foreach ($slotsForDate as $slot): ?>
+                                    <?php
+                                    $slotTime = (string) ($slot['time'] ?? '');
+                                    if ($slotTime === '') {
+                                        continue;
+                                    }
+                                    $bookParams = [
+                                        'provider_id' => $providerId,
+                                        'date' => $slotsDate,
+                                        'time' => $slotTime,
+                                    ];
+                                    if ($defaultServiceId) {
+                                        $bookParams['service_id'] = $defaultServiceId;
+                                    }
+                                    $slotBookUrl = base_url('/appointments/create') . '?' . http_build_query($bookParams);
+                                    ?>
+                                    <a href="<?= esc($slotBookUrl) ?>" class="provider-slot-link no-underline hover:no-underline focus:no-underline">
+                                        <span class="provider-slot-time"><?= esc($slotTime) ?></span>
+                                        <span class="provider-slot-book">Book</span>
+                                    </a>
+                                <?php endforeach; ?>
                             <?php else: ?>
-                                <span class="text-xs text-gray-400 dark:text-gray-500">
-                                    <?= $status === 'on_break' ? 'On break' : 'Off today' ?>
-                                </span>
-                            <?php endif; ?>
-                            
-                            <?php if ($bookUrl): ?>
-                            <a href="<?= esc($bookUrl) ?>" 
-                               class="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
-                               title="Quick book with <?= esc($provider['name']) ?>">
-                                <span class="material-symbols-outlined text-xs">add</span>Book
-                            </a>
+                                <p class="provider-slot-empty text-xs text-gray-500 dark:text-gray-400">
+                                    No slots for this date.
+                                </p>
                             <?php endif; ?>
                         </div>
                     </div>

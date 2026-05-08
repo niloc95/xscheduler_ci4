@@ -10,15 +10,18 @@ class NotificationCenterService
     private NotificationDeliveryLogModel $deliveryLogModel;
     private NotificationQueueModel $queueModel;
     private LocalizationSettingsService $localizationSettingsService;
+    private NotificationAutomationStatusService $notificationAutomationStatusService;
 
     public function __construct(
         ?NotificationDeliveryLogModel $deliveryLogModel = null,
         ?NotificationQueueModel $queueModel = null,
         ?LocalizationSettingsService $localizationSettingsService = null,
+        ?NotificationAutomationStatusService $notificationAutomationStatusService = null,
     ) {
         $this->deliveryLogModel = $deliveryLogModel ?? new NotificationDeliveryLogModel();
         $this->queueModel = $queueModel ?? new NotificationQueueModel();
         $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService();
+        $this->notificationAutomationStatusService = $notificationAutomationStatusService ?? new NotificationAutomationStatusService();
     }
 
     public function buildIndexData(string|array $filterOrQuery, ?array $currentUser, ?string $currentRole): array
@@ -62,6 +65,9 @@ class NotificationCenterService
             'notificationDeliveryLogFilters' => $deliveryLogFilters,
             'notificationDeliveryLogSummary' => $this->summarizeDeliveryLogs($deliveryLogs),
             'notificationDeliveryLogEventOptions' => NotificationCatalog::EVENTS,
+            'notificationAutomationStatus' => $isAdmin
+                ? $this->notificationAutomationStatusService->getStatus($businessId)
+                : null,
             'notificationPageHeading' => $ui['pageHeading'],
             'notificationPageDescription' => $ui['pageDescription'],
             'notificationUi' => $ui,

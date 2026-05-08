@@ -89,7 +89,6 @@ class SecurityHeaders implements FilterInterface
         // (App::$CSPEnabled = true).  Do NOT set the header manually here —
         // doing so would override the nonce-aware engine and re-introduce
         // unsafe-inline permanently once Phase 2 nonce hardening is complete.
-
         // Referrer Policy
         $response->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         
