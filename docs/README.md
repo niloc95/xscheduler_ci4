@@ -1,6 +1,6 @@
 # WebScheduler Documentation Index
 
-Generated on: 2026-04-28 17:51:03 UTC
+Generated on: 2026-05-06 17:01:44 UTC
 
 ## 📋 Documentation Structure
 
@@ -107,6 +107,7 @@ Generated on: 2026-04-28 17:51:03 UTC
 - [Phase 1 — Discovery](audits/remediation_plan.md)
 - [Scheduler UI Audit (2026-03-02)](audits/scheduler_ui_audit_2026_03_02.md)
 - [Settings Page — Refactor Audit Report](audits/settings-refactor-audit.md)
+- [AWS Lightsail — Bitnami LAMP Stack Reference Guide](aws-lightsail/aws-lightsail-reference.md)
 - [Changelog](changelog.md)
 - [HIPAA-COMPLIANCE-ASSESSMENT](compliance/HIPAA-COMPLIANCE-ASSESSMENT.md)
 - [Environment Configuration Guide for WebSchedulr](configuration/ENV-CONFIGURATION-GUIDE.md)
@@ -314,4 +315,4 @@ Deployment guides and troubleshooting:
 
 - **Current Version**: 1.1.0
 - **Build Status**: ![CI/CD](https://github.com/niloc95/webschedulr_ci4/workflows/WebScheduler%20CI/CD%20Pipeline/badge.svg)
-- **Last Updated**: 2026-04-28
+- **Last Updated**: 2026-05-06
