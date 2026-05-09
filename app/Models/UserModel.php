@@ -468,7 +468,7 @@ class UserModel extends BaseModel
      */
     public function getProviders(): array
     {
-        $builder = $this->where('role', 'provider');
+        $builder = $this->whereHasRole('provider');
 
         if ($this->hasUsersColumn('is_active')) {
             $builder->where('is_active', true);
@@ -488,12 +488,15 @@ class UserModel extends BaseModel
         $providerServicesTable = $this->db->prefixTable('providers_services');
         $servicesTable = $this->db->prefixTable('services');
 
+        $userRolesTable = $this->db->prefixTable('user_roles');
         $builder = $this->db->table($usersTable . ' u')
             ->distinct()
             ->select('u.*')
             ->join($providerServicesTable . ' ps', 'ps.provider_id = u.id', 'inner')
             ->join($servicesTable . ' s', 's.id = ps.service_id', 'inner')
-            ->where('u.role', 'provider')
+            ->whereIn('u.id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($userRolesTable): void {
+                $sub->select('user_id')->from($userRolesTable)->where('role', 'provider');
+            })
             ->where('s.active', 1)
             ->orderBy('u.name', 'ASC');
 

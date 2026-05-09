@@ -1,1 +1,0 @@
-cd /opt/homebrew/opt/phpmyadmin/share/phpmyadmin && php -d error_reporting="E_ALL & ~E_DEPRECATED" -S localhost:8500

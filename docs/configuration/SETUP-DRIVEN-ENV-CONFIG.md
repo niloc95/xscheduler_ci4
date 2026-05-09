@@ -19,7 +19,7 @@ The WebSchedulr setup system now uses a clean, user-driven approach to environme
 ### 3. User Setup Workflow
 1. **User accesses application** → Redirected to setup wizard (if no setup completion flag)
 2. **User fills setup form** → Admin account + database configuration
-3. **System tests database** → Validates MySQL/SQLite connections before proceeding
+3. **System tests database** → Validates MySQL/MariaDB connection before proceeding
 4. **Setup generates .env** → Creates production-ready configuration from `.env.example`
 5. **Application becomes operational** → Ready for use with optimal production settings
 6. **Setup wizard disabled** → Prevents re-running setup unless explicitly enabled
@@ -31,7 +31,7 @@ The WebSchedulr setup system now uses a clean, user-driven approach to environme
 The `Setup` controller now includes:
 
 - **`.env` Generation**: Creates environment file from user inputs using `.env.example` as template
-- **Database Testing**: Validates MySQL/SQLite connections before setup
+- **Database Testing**: Validates MySQL/MariaDB connections before setup
 - **Security Configuration**: Applies production-appropriate security settings automatically
 - **Encryption Key Generation**: Creates secure encryption keys automatically
 - **Setup Completion Tracking**: Prevents multiple setup runs
@@ -101,7 +101,7 @@ $dbConfig = [
 
 ### Generated Files
 - `.env` - Created by setup wizard from user inputs
-- `setup_completed.json` - Flag to prevent duplicate setups
+- `writable/setup_complete.flag` - Flag file to prevent duplicate setups
 
 ## Security Considerations
 
@@ -119,8 +119,7 @@ $dbConfig = [
 ## Testing
 
 The setup system includes comprehensive database testing:
-- **MySQL**: Tests connection, database existence, and permissions
-- **SQLite**: Tests directory writability and file creation
+- **MySQL/MariaDB**: Tests connection, database existence, and permissions
 - **Error Handling**: Provides clear feedback on connection issues
 
 ## Migration from Previous Approach
@@ -130,8 +129,3 @@ If you have an existing `.env` file from the previous environment switch approac
 2. Or you can delete `.env` to trigger the setup wizard
 3. The new approach is backwards compatible
 
----
-
-**Implementation Status**: ✅ Complete  
-**Testing Status**: ✅ Ready for testing  
-**Documentation**: ✅ Up to date

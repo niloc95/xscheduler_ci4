@@ -39,9 +39,9 @@ $schedule = $schedule ?? [];
             $appointmentRef = (string) ($appt['hash'] ?? $appt['id']);
             $appointmentUrl = base_url('/appointments?open=' . rawurlencode($appointmentRef));
             ?>
-            <div class="appt-row">
-                <!-- Time -->
-                <div class="text-xs font-medium text-gray-900 dark:text-white">
+            <a href="<?= esc($appointmentUrl) ?>" class="appt-row no-underline hover:no-underline focus:no-underline" title="View appointment">
+                <!-- Time pill -->
+                <div class="inline-flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded px-1.5 py-0.5 text-xs font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap tabular-nums">
                     <?= esc($appt['start_at']) ?>
                 </div>
 
@@ -62,13 +62,9 @@ $schedule = $schedule ?? [];
                     </span>
                 </div>
 
-                <!-- Action -->
-                <a href="<?= esc($appointmentUrl) ?>"
-                   class="flex items-center justify-center w-7 h-7 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                   title="View appointment">
-                    <span class="material-symbols-outlined text-base">chevron_right</span>
-                </a>
-            </div>
+                <!-- Chevron -->
+                <span class="material-symbols-outlined text-base text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0">chevron_right</span>
+            </a>
         <?php endforeach; ?>
     <?php endforeach; ?>
 </div>

@@ -52,7 +52,7 @@ app/Views/settings/
 │  │  │  Backup List Modal (fixed overlay)       │  │  │
 │  │  │  Block Period Modal (fixed overlay)      │  │  │
 │  │  ├──────────────────────────────────────────┤  │  │
-│  │  │  <script> — All JS (1,593 lines)         │  │  │
+│  │  │  <script> — minimal bootstrap only        │  │  │
 │  │  └──────────────────────────────────────────┘  │  │
 │  └────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────┘
@@ -67,10 +67,10 @@ app/Views/settings/
 ```
 Settings::index()
   ├── SettingModel->getByKeys([...])  →  $settings (70+ keys)
-  ├── NotificationRuleModel->...      →  $notificationRules
-  ├── NotificationIntegrationModel... →  $notificationEmailIntegration
-  ├── NotificationIntegrationModel... →  $notificationSmsIntegration
-  ├── NotificationIntegrationModel... →  $notificationWhatsAppIntegration
+  ├── BusinessNotificationRuleModel->... →  $notificationRules
+  ├── BusinessIntegrationModel...       →  $notificationEmailIntegration
+  ├── BusinessIntegrationModel...       →  $notificationSmsIntegration
+  ├── BusinessIntegrationModel...       →  $notificationWhatsAppIntegration
   ├── various helpers                 →  $notificationIntegrationStatus
   ├── WhatsApp template mapping       →  $notificationWhatsAppTemplates
   ├── loadMessageTemplates()          →  $notificationMessageTemplates
@@ -136,28 +136,14 @@ Each tab partial file must follow these rules:
 
 ## 5. JavaScript Architecture
 
-All JavaScript lives in a single `<script>` block at the end of `settings/index.php`. This is intentional:
+Settings JavaScript lives in two external ESM modules loaded via `app.js`:
 
-- The **SPA system** (`spa.js`) re-executes all inline `<script>` blocks when navigating via `replaceWith()`
-- Splitting JS into separate files per tab would require refactoring the SPA lifecycle
-- Each JS module uses an **IIFE with early-exit guards** (`if (!form) return`) so modules don't error when their DOM elements are missing
-
-### JS Module Inventory (12 IIFEs)
-
-| # | Module | Purpose |
+| File | Lines | Purpose |
 |---|---|---|
-| 1 | Shared helpers | `qs()`, `qsa()`, `show()`, `hide()`, `shake()`, `showMsg()`, `fadeIn()`, `fadeOut()` |
-| 2 | WhatsApp provider toggle | Shows/hides provider-specific sections |
-| 3 | Notification template tabs | Sub-tab switching within notifications tab |
-| 4 | SMS character counter | Live char count for SMS template textareas |
-| 5 | Blocked periods UI | CRUD for block periods list + modal |
-| 6 | Sidebar brand sync | Updates sidebar logo/name when general settings change |
-| 7 | `initSettingsApi()` + safety nets | Core API form submission, `spa:navigated` & `DOMContentLoaded` hooks |
-| 8 | `initGeneralSettingsForm()` | Edit/Cancel/Save lock flow for general tab |
-| 9 | `initTabForm()` | Generic lock/unlock for localization, booking, business, legal, integrations |
-| 10 | `initCustomFieldToggles()` | Enable/disable custom field groups in booking |
-| 11 | Time format handler | 12h/24h preview updates |
-| 12 | Database settings tab | DB info fetch, backup CRUD, modal management |
+| `resources/js/modules/settings/settings-page.js` | 594 | Core API form submission, tab management, `spa:navigated` hooks, blocked periods, backup UI |
+| `resources/js/modules/settings/settings-form-ui.js` | 659 | Form lock/unlock flow, field validation helpers, WhatsApp provider toggle, SMS char counter, time format preview |
+
+`settings/index.php` itself is ~99 lines — it contains only the view structure and tab includes. No inline `<script>` block.
 
 ---
 
@@ -196,11 +182,13 @@ Settings are stored as key-value pairs with dot-notation prefixes:
 
 | File | Purpose |
 |---|---|
-| `app/Controllers/Settings.php` | Main controller (index, save, saveNotifications) |
-| `app/Controllers/Api/V1/SettingsApi.php` | API controller for AJAX form saves |
+| `app/Controllers/Settings.php` | Main controller (index, saveNotifications) |
+| `app/Controllers/Api/V1/Settings.php` | API controller for AJAX form saves (`PUT /api/v1/settings`) |
 | `app/Models/SettingModel.php` | `getByKeys()`, `upsert()` for key-value storage |
-| `app/Services/NotificationPhase1.php` | `buildPreview()` for notification template previews |
-| `app/Models/NotificationRuleModel.php` | Event → channel rule storage |
-| `app/Models/NotificationIntegrationModel.php` | Email/SMS/WhatsApp integration config |
+| `app/Services/NotificationTemplateService.php` | Template rendering and preview |
+| `app/Models/BusinessNotificationRuleModel.php` | Event → channel rule storage |
+| `app/Models/BusinessIntegrationModel.php` | Email/SMS/WhatsApp integration config |
+| `resources/js/modules/settings/settings-page.js` | Core settings JS (594 lines) |
+| `resources/js/modules/settings/settings-form-ui.js` | Form UI helpers (659 lines) |
 | `resources/js/spa.js` | SPA navigation + tab switching |
 | `resources/scss/components/_buttons.scss` | Button component classes used in forms |

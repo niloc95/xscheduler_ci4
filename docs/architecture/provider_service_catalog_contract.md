@@ -23,7 +23,7 @@ The provider-to-service pivot remains the authoritative contract:
 
 - `xs_providers_services` defines which providers can deliver which services
 - `ServiceModel::getActiveByProvider(int $providerId)` is the canonical provider-scoped service lookup
-- `UserModel::getProvidersWithActiveServices()` is the canonical booking-facing provider catalog query
+- `UserModel::getProvidersWithActiveServices()` is the canonical booking-facing provider catalog query — uses `whereHasRole('provider')` (subquery against `xs_user_roles`) so admin+provider multi-role users are included
 
 When provider-service mappings exist, booking and appointment UIs must only expose valid linked combinations.
 

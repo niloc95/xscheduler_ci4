@@ -1,247 +1,103 @@
 # Material Icons Usage Guide
 
-## Overview
-WebSchedulr now includes Google Material Symbols with comprehensive utility classes for easy icon usage throughout the application.
+## Scope
 
-## CDN Integration
-Material Symbols fonts are loaded via CDN in the main layout:
-- **Outlined**: Primary icon style
-- **Rounded**: Alternative rounded style 
+This guide documents icon usage currently implemented in WebScheduler.
+
+## Font Loading
+
+Material Symbols are loaded via Google Fonts in active layouts, including:
+
+- app/Views/layouts/app.php
+- app/Views/layouts/auth.php
+- app/Views/layouts/public.php
+- app/Views/layouts/setup.php
+
+Outlined is the primary style. Rounded is available where loaded.
+
+## Recommended Pattern
+
+Use Material Symbols directly in markup:
 
 ```html
-<!-- Already included in app/Views/components/layout.php -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<span class="material-symbols-outlined">schedule</span>
+<span class="material-symbols-outlined">person</span>
+<span class="material-symbols-outlined">settings</span>
 ```
 
-## Basic Usage
+This is the dominant pattern in current JS-rendered and PHP-rendered UI.
 
-### Method 1: Using Icon Classes (Recommended)
+## Utility Pattern (Supported)
+
+SCSS utility helpers exist in resources/scss/utilities/_icons.scss:
+
+- .material-icon
+- .icon with predefined icon aliases
+- size classes: xs, sm, md, lg, xl
+- weight classes: thin, light, regular, medium, bold
+- style classes: rounded, filled
+
+Example:
+
 ```html
-<!-- Basic icons -->
-<span class="icon schedule"></span>
-<span class="icon person"></span> 
-<span class="icon settings"></span>
-
-<!-- With size variants -->
-<span class="icon schedule xs"></span>   <!-- 16px -->
-<span class="icon schedule sm"></span>   <!-- 20px -->
-<span class="icon schedule md"></span>   <!-- 24px (default) -->
-<span class="icon schedule lg"></span>   <!-- 32px -->
-<span class="icon schedule xl"></span>   <!-- 48px -->
-
-<!-- With weight variants -->
-<span class="icon schedule thin"></span>
-<span class="icon schedule light"></span>
-<span class="icon schedule regular"></span>
-<span class="icon schedule medium"></span>
-<span class="icon schedule bold"></span>
-
-<!-- With color utilities -->
-<span class="icon schedule text-primary"></span>
-<span class="icon schedule text-accent"></span>
-<span class="icon schedule text-success"></span>
-<span class="icon schedule text-warning"></span>
-<span class="icon schedule text-error"></span>
+<span class="material-icon rounded lg">favorite</span>
+<span class="icon schedule sm"></span>
 ```
 
-### Method 2: Direct Material Icon Class
-```html
-<!-- Manual icon names -->
-<span class="material-icon">schedule</span>
-<span class="material-icon">event</span>
-<span class="material-icon">person</span>
+Use this pattern when it improves consistency in a component. Prefer not to mix patterns within the same UI block.
 
-<!-- With modifiers -->
-<span class="material-icon filled lg">star</span>
-<span class="material-icon rounded text-accent">favorite</span>
-```
+## Naming
 
-### Method 3: Raw Text (For custom icons)
-```html
-<span class="material-icon">custom_icon_name</span>
-```
+Use official Material Symbols icon names from Google Fonts.
 
-## Available Pre-defined Icons
+Commonly used names in this codebase include:
 
-### Scheduling & Calendar
-- `.icon.schedule` - Clock/time icon
-- `.icon.event` - Event/calendar event
-- `.icon.calendar-today` - Today's calendar
-- `.icon.calendar-month` - Monthly calendar view
-- `.icon.access-time` - Time access icon
-- `.icon.appointment` - Event note icon
-- `.icon.service` - Room service icon
+- schedule
+- event
+- person
+- group
+- search
+- edit
+- delete
+- settings
+- notifications
+- error
+- warning
+- check_circle
 
-### People & Business
-- `.icon.person` - Single person
-- `.icon.people` - Multiple people
-- `.icon.client` - Client/customer (outlined person)
-- `.icon.provider` - Service provider (badge)
-- `.icon.business` - Business/company
+## Color and Sizing
 
-### Navigation & Actions
-- `.icon.dashboard` - Dashboard home
-- `.icon.home` - Home icon
-- `.icon.menu` - Hamburger menu
-- `.icon.close` - Close/X icon
-- `.icon.arrow-back` - Back arrow
-- `.icon.arrow-forward` - Forward arrow
-- `.icon.expand-more` - Expand down
-- `.icon.expand-less` - Collapse up
+Apply size and color via existing utility classes:
 
-### CRUD Operations
-- `.icon.add` - Add/plus icon
-- `.icon.edit` - Edit/pencil icon
-- `.icon.delete` - Delete/trash icon
-- `.icon.save` - Save/disk icon
+- text-sm, text-base, text-lg, text-xl, text-2xl, etc.
+- semantic/text utilities already used by the view context
 
-### Status & Feedback
-- `.icon.check-circle` - Success/complete
-- `.icon.cancel` - Cancel/error
-- `.icon.pending` - Pending/clock
-- `.icon.warning` - Warning triangle
-- `.icon.error` - Error icon
-- `.icon.info` - Information icon
+Avoid inline styles for icon color/size unless no utility can express the requirement.
 
-### Settings & Tools
-- `.icon.settings` - Settings/gear
-- `.icon.notifications` - Bell/notifications
-- `.icon.search` - Search/magnify
-- `.icon.filter-list` - Filter options
-- `.icon.sort` - Sort/arrange
-- `.icon.analytics` - Analytics/chart
-- `.icon.revenue` - Payments/money
+## Accessibility
 
-### Files & Content
-- `.icon.folder` - Folder icon
-- `.icon.insert-drive-file` - Generic file
-- `.icon.picture-as-pdf` - PDF file
-- `.icon.download` - Download arrow
-- `.icon.upload` - Upload arrow
-- `.icon.print` - Print icon
+When icons are decorative:
 
-### Communication
-- `.icon.mail` - Email/mail
-- `.icon.phone` - Phone/call
-- `.icon.message` - Message/chat
+- keep them adjacent to text labels; no extra aria label is needed
 
-### UI Controls
-- `.icon.visibility` - Show/eye open
-- `.icon.visibility-off` - Hide/eye closed
-- `.icon.light-mode` - Light theme
-- `.icon.dark-mode` - Dark theme
+When icons are standalone interactive affordances:
 
-## Size Reference
-- `xs`: 16px (opsz: 20)
-- `sm`: 20px (opsz: 20) 
-- `md`: 24px (opsz: 24) - Default
-- `lg`: 32px (opsz: 40)
-- `xl`: 48px (opsz: 48)
+- provide accessible labeling on the button/link element via aria-label or visible text
 
-## Weight Reference
-- `thin`: 100
-- `light`: 200
-- `regular`: 400 - Default
-- `medium`: 500
-- `bold`: 700
+## Do and Do Not
 
-## Style Variations
-- Default: Outlined style
-- `.filled`: Filled style (FILL: 1)
-- `.rounded`: Rounded style (uses Material Symbols Rounded font)
+Do:
 
-## Color Integration
-Icons work seamlessly with WebSchedulr's design system colors:
-- `.text-primary` - Primary text color
-- `.text-secondary` - Secondary text color  
-- `.text-muted` - Muted text color
-- `.text-accent` - Brand accent color
-- `.text-success` - Success green
-- `.text-warning` - Warning orange
-- `.text-error` - Error red
-- `.text-info` - Info blue
+- use material-symbols-outlined for primary icon rendering
+- keep icon naming consistent with Google catalog
+- keep icon class usage consistent inside each component
 
-## Examples in Context
+Do not:
 
-### Buttons with Icons
-```html
-<button class="btn btn-primary">
-  <span class="icon add sm"></span>
-  New Appointment
-</button>
+- reference non-existent layout paths for font loading
+- hardcode SVG icon sets ad hoc in places already standardized on Material Symbols
 
-<button class="btn btn-secondary">
-  <span class="icon edit sm"></span>
-  Edit Service
-</button>
-```
+## Reference
 
-### Navigation Menu
-```html
-<nav>
-  <a href="/dashboard" class="nav-link">
-    <span class="icon dashboard"></span>
-    Dashboard
-  </a>
-  <a href="/appointments" class="nav-link">
-    <span class="icon schedule"></span>
-    Appointments  
-  </a>
-  <a href="/clients" class="nav-link">
-    <span class="icon people"></span>
-    Clients
-  </a>
-</nav>
-```
-
-### Status Indicators
-```html
-<div class="status-confirmed">
-  <span class="icon check-circle text-success"></span>
-  Confirmed
-</div>
-
-<div class="status-pending">
-  <span class="icon pending text-warning"></span>
-  Pending
-</div>
-
-<div class="status-cancelled">
-  <span class="icon cancel text-error"></span>
-  Cancelled
-</div>
-```
-
-### Table Headers
-```html
-<th>
-  Service <span class="icon sort xs text-muted"></span>
-</th>
-<th>
-  Date <span class="icon calendar-today xs text-muted"></span>
-</th>
-```
-
-## Custom Icons
-To use icons not included in the predefined list:
-1. Find the icon name from [Google Material Symbols](https://fonts.google.com/icons)
-2. Use the direct approach:
-```html
-<span class="material-icon">icon_name_here</span>
-```
-
-## Performance Notes
-- Icons are loaded via CDN with optimal font-display settings
-- CSS utilities are compiled and optimized by Vite
-- Variable fonts provide efficient loading and rendering
-- All icon classes are purged by Tailwind if unused
-
-## Browser Support
-Material Symbols are supported in:
-- Chrome 88+
-- Firefox 89+
-- Safari 14+
-- Edge 88+
-
-Fallback: Basic text characters will display if fonts fail to load.
+- Google Material Symbols: https://fonts.google.com/icons
+- Icon utility definitions: resources/scss/utilities/_icons.scss

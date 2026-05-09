@@ -211,39 +211,61 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.625rem;
   background: var(--metric-bg, #f3f4f6);
+  gap: 0.1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  }
 
   .dark & {
     background: var(--metric-bg-dark, #1f2937);
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
   }
 }
 
-// Metric color variants using CSS custom properties
+.metric-mini-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-bottom: 0.1rem;
+}
+
+// Metric color variants — light bg / slightly lighter dark bg for readability
 .metric-mini-blue {
   --metric-bg: #dbeafe;
-  --metric-bg-dark: #1e3a5f;
+  --metric-bg-dark: #1e3a8a; // blue-900, up from #1e3a5f
 }
 
 .metric-mini-green {
   --metric-bg: #d1fae5;
-  --metric-bg-dark: #064e3b;
+  --metric-bg-dark: #065f46; // emerald-800, up from #064e3b
 }
 
 .metric-mini-yellow {
   --metric-bg: #fef3c7;
-  --metric-bg-dark: #78350f;
+  --metric-bg-dark: #92400e; // amber-800, up from #78350f
 }
 
 .metric-mini-red {
   --metric-bg: #fee2e2;
-  --metric-bg-dark: #7f1d1d;
+  --metric-bg-dark: #991b1b; // red-800, up from #7f1d1d
 }
 
 .metric-mini-indigo {
   --metric-bg: #e0e7ff;
-  --metric-bg-dark: #312e81;
+  --metric-bg-dark: #3730a3; // indigo-800, up from #312e81
+}
+
+.metric-mini-purple {
+  --metric-bg: #f3e8ff;
+  --metric-bg-dark: #6b21a8; // purple-800
 }
 
 .dashboard-landing .provider-grid {
@@ -258,6 +280,12 @@
   text-decoration: none;
 }
 
+// Color-accented left border — CSS custom property set by provider-cards.js
+.dashboard-landing .provider-card--has-color {
+  border-left-width: 3px;
+  border-left-color: var(--provider-color, #3b82f6);
+}
+
 .dashboard-landing .provider-card-filters {
   display: grid;
   grid-template-columns: 1fr;
@@ -268,7 +296,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  font-size: 0.625rem;
+  font-size: 0.75rem; // was 0.625rem (10px) — increased to 12px for readability
   color: #4b5563;
 
   .dark & {
@@ -398,15 +426,24 @@
   padding: 0.75rem;
   border-bottom: 1px solid #e5e7eb;
   transition: background-color 0.15s ease;
+  color: inherit;
+  text-decoration: none;
 
-  &:hover {
+  &:hover,
+  &:focus,
+  &:focus-visible {
     background-color: #f9fafb; // gray-50
+    text-decoration: none;
+    color: inherit;
+    outline: none;
   }
 
   .dark & {
     border-color: #374151;
 
-    &:hover {
+    &:hover,
+    &:focus,
+    &:focus-visible {
       background-color: #374151; // gray-700
     }
   }

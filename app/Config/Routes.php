@@ -245,8 +245,8 @@ $routes->group('my-appointments', ['filter' => 'setup'], function($routes) {
 // Scheduler API routes
 $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     // Dashboard API endpoint
-    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats');
-    $routes->get('dashboard/provider-slots', 'Api\\Dashboard::providerSlots');
+    $routes->get('dashboard/appointment-stats', 'Api\\Dashboard::appointmentStats', ['filter' => 'auth']);
+    $routes->get('dashboard/provider-slots', 'Api\\Dashboard::providerSlots', ['filter' => 'auth']);
 
     // Authentication API endpoints (requires auth)
     $routes->post('auth/switch-role', 'Api\\Auth::switchRole', ['filter' => 'auth']);
@@ -258,30 +258,31 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     // Note: Legacy GET /api/slots and POST /api/book removed (deprecated since v2.0, sunset 2026-03-01)
     // Use GET /api/availability/slots and POST /api/appointments instead
 
-    // Customer Appointments API (history, stats, autofill)
-    $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1');
-    $routes->get('customers/(:num)/appointments/history', 'Api\\CustomerAppointments::history/$1');
-    $routes->get('customers/(:num)/appointments/stats', 'Api\\CustomerAppointments::stats/$1');
-    $routes->get('customers/(:num)/appointments', 'Api\\CustomerAppointments::index/$1');
-    $routes->get('customers/(:num)/autofill', 'Api\\CustomerAppointments::autofill/$1');
+    // Customer Appointments API (history, stats, autofill) — auth required for numeric-ID routes
+    $routes->get('customers/(:num)/appointments/upcoming', 'Api\\CustomerAppointments::upcoming/$1', ['filter' => 'auth']);
+    $routes->get('customers/(:num)/appointments/history', 'Api\\CustomerAppointments::history/$1', ['filter' => 'auth']);
+    $routes->get('customers/(:num)/appointments/stats', 'Api\\CustomerAppointments::stats/$1', ['filter' => 'auth']);
+    $routes->get('customers/(:num)/appointments', 'Api\\CustomerAppointments::index/$1', ['filter' => 'auth']);
+    $routes->get('customers/(:num)/autofill', 'Api\\CustomerAppointments::autofill/$1', ['filter' => 'auth']);
+    // by-hash routes are intentionally unauthenticated — protected by the 64-char customer hash (customer portal)
     $routes->get('customers/by-hash/(:segment)/appointments', 'Api\\CustomerAppointments::byHash/$1');
     $routes->get('customers/by-hash/(:segment)/autofill', 'Api\\CustomerAppointments::autofillByHash/$1');
-    $routes->get('appointments/search', 'Api\\CustomerAppointments::search');
-    $routes->get('appointments/filters', 'Api\\CustomerAppointments::filterOptions');
+    $routes->get('appointments/search', 'Api\\CustomerAppointments::search', ['filter' => 'auth']);
+    $routes->get('appointments/filters', 'Api\\CustomerAppointments::filterOptions', ['filter' => 'auth']);
 
     // Consolidated Appointments API (unversioned, future-proof)
     // Specific endpoints BEFORE resource to avoid shadowing
-    $routes->post('appointments', 'Api\\Appointments::create');
-    $routes->get('appointments/summary', 'Api\\Appointments::summary');
-    $routes->get('appointments/counts', 'Api\\Appointments::counts');
-    $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability');
-    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1');
-    $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1');
-    $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1');
-    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1');
-    $routes->patch('appointments/(:num)/notes', 'Api\\Appointments::updateNotes/$1');
-    $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1');
-    $routes->get('appointments', 'Api\\Appointments::index');
+    $routes->post('appointments', 'Api\\Appointments::create', ['filter' => 'auth']);
+    $routes->get('appointments/summary', 'Api\\Appointments::summary', ['filter' => 'auth']);
+    $routes->get('appointments/counts', 'Api\\Appointments::counts', ['filter' => 'auth']);
+    $routes->post('appointments/check-availability', 'Api\\Appointments::checkAvailability', ['filter' => 'auth']);
+    $routes->get('appointments/(:num)', 'Api\\Appointments::show/$1', ['filter' => 'auth']);
+    $routes->patch('appointments/(:num)', 'Api\\Appointments::update/$1', ['filter' => 'auth']);
+    $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1', ['filter' => 'auth']);
+    $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1', ['filter' => 'auth']);
+    $routes->patch('appointments/(:num)/notes', 'Api\\Appointments::updateNotes/$1', ['filter' => 'auth']);
+    $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1', ['filter' => 'auth']);
+    $routes->get('appointments', 'Api\\Appointments::index', ['filter' => 'auth']);
     // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)
 
     // Calendar API — pre-computed server-side render models (Phase 3+ rebuild)

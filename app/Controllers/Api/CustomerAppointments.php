@@ -102,6 +102,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function index(int $customerId): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         // Verify customer exists
         $customer = $this->customers->find($customerId);
         if (!$customer) {
@@ -129,6 +133,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function upcoming(int $customerId): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         $customer = $this->customers->find($customerId);
         if (!$customer) {
             return $this->notFound('Customer not found', ['customer_id' => $customerId]);
@@ -151,6 +159,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function history(int $customerId): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         $customer = $this->customers->find($customerId);
         if (!$customer) {
             return $this->notFound('Customer not found', ['customer_id' => $customerId]);
@@ -158,7 +170,7 @@ class CustomerAppointments extends BaseApiController
 
         $page = max(1, (int) $this->request->getGet('page') ?: 1);
         $perPage = min(100, max(1, (int) $this->request->getGet('per_page') ?: 20));
-        
+
         $filters = $this->parseFilters();
         $filters['type'] = 'past';
 
@@ -177,6 +189,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function stats(int $customerId): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         $customer = $this->customers->find($customerId);
         if (!$customer) {
             return $this->notFound('Customer not found', ['customer_id' => $customerId]);
@@ -197,6 +213,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function autofill(int $customerId): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         $customer = $this->customers->find($customerId);
         if (!$customer) {
             return $this->notFound('Customer not found', ['customer_id' => $customerId]);
@@ -261,6 +281,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function search(): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         $page = max(1, (int) $this->request->getGet('page') ?: 1);
         $perPage = min(100, max(1, (int) $this->request->getGet('per_page') ?: 20));
         
@@ -279,6 +303,10 @@ class CustomerAppointments extends BaseApiController
      */
     public function filterOptions(): ResponseInterface
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         return $this->ok([
             'providers' => $this->service->getProvidersForFilter(),
             'services' => $this->service->getServicesForFilter(),

@@ -93,6 +93,10 @@ class Appointments extends BaseApiController
      */
     public function index()
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         try {
             // Query parameters
             $start      = $this->request->getGet('start');
@@ -161,10 +165,14 @@ class Appointments extends BaseApiController
      */
     public function show($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Appointment ID is required');
         }
-        
+
         try {
             $appointment = $this->getAppointmentQueryService()->getDetailById((int) $id);
             
@@ -187,6 +195,10 @@ class Appointments extends BaseApiController
      */
     public function checkAvailability()
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         try {
             $result = $this->getAppointmentAvailabilityService()->checkFromPayload(
                 $this->request->getJSON(true) ?? [],
@@ -244,10 +256,14 @@ class Appointments extends BaseApiController
      */
     public function updateStatus($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Appointment ID is required');
         }
-        
+
         try {
             // Get JSON input
             $json = $this->request->getJSON(true);
@@ -285,10 +301,14 @@ class Appointments extends BaseApiController
      */
     public function updateNotes($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Appointment ID is required');
         }
-        
+
         try {
             // Get JSON input
             $json = $this->request->getJSON(true);
@@ -316,6 +336,10 @@ class Appointments extends BaseApiController
      */
     public function create()
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         try {
             $payload = $this->request->getJSON(true) ?? $this->request->getPost();
             
@@ -358,10 +382,14 @@ class Appointments extends BaseApiController
      */
     public function update($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Invalid appointment ID');
         }
-        
+
         try {
             $payload = $this->request->getJSON(true) ?? $this->request->getRawInput();
             
@@ -394,10 +422,14 @@ class Appointments extends BaseApiController
      */
     public function delete($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Invalid appointment ID');
         }
-        
+
         try {
             $result = $this->getAppointmentMutationService()->cancelAppointment((int) $id);
             if (!$result['success']) {
@@ -453,6 +485,10 @@ class Appointments extends BaseApiController
      */
     public function counts()
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         try {
             $rules = $this->getCountsValidationRules();
             
@@ -490,6 +526,10 @@ class Appointments extends BaseApiController
      */
     public function notify($id = null)
     {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
         if (!$id) {
             return $this->badRequest('Invalid appointment ID');
         }

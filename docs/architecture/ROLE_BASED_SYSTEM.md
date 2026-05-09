@@ -1,206 +1,267 @@
-# Role-Based User Management System - Complete Implementation
+# Role-Based Access Control
 
-## Overview
-Successfully implemented a comprehensive role-based user management system in WebSchedulr with proper permissions, navigation, and access control.
+## Roles
 
-## User Roles Implemented
+Three operational roles exist for authenticated login users. Customers are not login users — they exist in `xs_customers` and are never assigned a session role.
 
-### 1. Administrator (admin)
-- **Full System Access**: Complete control over all features
-- **User Management**: Can create/edit/delete all user types
-- **System Settings**: Access to system configuration
-- **Navigation**: Dashboard, Schedule, Appointments, User Management, Services, Analytics, System Settings, Profile, Help
+| Role | Identity | Access scope |
+|---|---|---|
+| `admin` | System owner / operator | Full access to all data and settings |
+| `provider` | Service provider | Own appointments, schedule, staff, and services only |
+| `staff` | Staff member assigned to a provider | Appointments for their assigned providers only |
 
-### 2. Service Provider (provider)
-- **Business Management**: Can manage their own services, staff, and calendar
-- **Staff Management**: Can create and manage staff members assigned to them
-- **Limited User Management**: Can only manage their own staff (not other providers or admins)
-- **Navigation**: Dashboard, Schedule, Appointments, My Staff, Services, My Analytics, Profile, Help
+---
 
-### 3. Staff Member (staff)
-- **Limited Access**: Can only manage their own schedule and assignments
-- **Provider Assignment**: Assigned to a specific service provider (provider_id)
-- **Restricted Views**: Limited to their own calendar and appointments
-- **Navigation**: Dashboard, My Schedule, My Appointments, Profile, Help
+## Storage Model — Two Layers
 
-### 4. Customer (customer)
-- **Booking Only**: Can book appointments and view their booking history
-- **No Administrative Access**: Cannot manage other users or system settings
-- **Navigation**: Dashboard, My Appointments, Profile, Help
+Role membership is stored in two places that serve different purposes:
 
-## Database Schema Updates
+| Layer | Table / key | Role |
+|---|---|---|
+| **Authoritative membership** | `xs_user_roles` (rows: `user_id`, `role`) | Source of truth for all RBAC decisions |
+| **Compatibility primary** | `xs_users.role` (single string column) | Legacy fallback; kept in sync at write time |
 
-### Users Table Enhancements
-```sql
-- role ENUM('admin','provider','staff','customer') DEFAULT 'customer'
-- provider_id INT (for staff assigned to providers)
-- permissions JSON (for custom permissions)
-- is_active TINYINT(1) DEFAULT 1
-- status ENUM('active','inactive','suspended') DEFAULT 'active'
-```
+A user may have multiple rows in `xs_user_roles` (e.g. admin + provider). The compatibility column holds the highest-privilege role for backward compatibility.
 
-## Key Components Implemented
+**Never make authorization decisions from `xs_users.role` alone.** It may be stale for multi-role users.
 
-### 1. Models
-- **UserModel**: Enhanced with role-based methods and validation
-- **UserPermissionModel**: Handles role-based permissions and hierarchies
+---
 
-### 2. Filters
-- **RoleFilter**: Route protection based on user roles
-- **AuthFilter**: Enhanced authentication with role checks
+## Session Contract at Login
 
-### 3. Controllers
-- **UserManagement**: Complete CRUD operations with role-based permissions
-- **Auth**: Login/logout with role-based redirects
+Set by the auth flow when a user logs in successfully:
 
-### 4. Views
-- **Role-Based Sidebar**: Dynamic navigation based on user role
-- **User Management**: CRUD interface with role-specific capabilities
-- **Layout**: Updated to use role-based navigation
+| Key | Type | Value |
+|---|---|---|
+| `isLoggedIn` | `bool` | `true` |
+| `user_id` | `int` | `xs_users.id` — top-level session key |
+| `user['name']` | `string` | Display name |
+| `user['email']` | `string` | Login email |
+| `user['role']` | `string` | Primary compatibility role from `xs_users.role` |
+| `user['roles']` | `string[]` | Full authoritative role array from `UserModel::getRolesForUser()` |
+| `user['active_role']` | `string` | Highest-privilege role for UI context (admin > provider > staff) |
 
-### 5. Helpers
-- **permissions_helper.php**: Utility functions for role and permission checks
+`user['id']` is **not** written into the session `user` array. Code that needs the current user ID reads the top-level `session('user_id')`. `AuthorizationService::getProviderId()` reads `$user['id'] ?? session()->get('user_id')` — when called with the session user array the first operand is always null and it falls through to `session('user_id')`.
 
-## Permissions System
+Read role membership from `user['roles']` first. Use `user['role']` only as fallback.
 
-### Role-Based Permissions
+**Mid-session session writes must use `array_merge`** to preserve role context:
+
 ```php
-// Admin permissions
-- user_management: Create/edit/delete any user
-- system_settings: Access system configuration
-- create_admin: Create other admin users
-- create_provider: Create service providers
-
-// Provider permissions  
-- create_staff: Create staff members assigned to them
-- manage_services: Manage their own services
-- view_analytics: Access their own analytics
-
-// Staff permissions
-- Limited to their own data and appointments
-
-// Customer permissions
-- Basic booking and profile management only
+session()->set('user', array_merge(session()->get('user') ?? [], [
+    // only fields being updated
+]));
 ```
 
-### Helper Functions
+Only the initial login path may write a full user array from scratch.
+
+---
+
+## Canonical RBAC Pattern
+
+Use this shape everywhere a role check is needed in service or controller code:
+
 ```php
-- has_role($roles): Check if user has specific role(s)
-- has_permission($permissions): Check specific permissions
-- is_admin(), is_provider(), is_staff(), is_customer(): Role checks
-- can_manage_users(): Check user management permissions
-- get_user_hierarchy(): Get users that current user can manage
+$userRoles = $user['roles'] ?? [$user['active_role'] ?? $user['role'] ?? ''];
+$hasAccess = !empty(array_intersect($requiredRoles, $userRoles));
 ```
 
-## Route Protection
+---
 
-### Role-Based Route Filters
+## UserModel — Role Methods
+
+### `getRolesForUser(int $userId): array`
+
+Returns all roles assigned to the user from `xs_user_roles`. Falls back to `[$user['role']]` from `xs_users` if the table is unavailable (migration not yet run).
+
+### `whereHasRole(string $role): static`
+
+Canonical method for querying users by role. Uses a subquery against `xs_user_roles`. Use this instead of `->where('role', ...)` on `xs_users`:
+
 ```php
-// Admin only routes
-$routes->group('', ['filter' => 'role:admin'], function($routes) {
-    $routes->get('/settings', 'Settings::index');
-});
-
-// Admin and Provider routes
-$routes->group('', ['filter' => 'role:admin,provider'], function($routes) {
-    $routes->resource('user-management', ['controller' => 'UserManagement']);
-});
+$providers = (new UserModel())->whereHasRole('provider')->findAll();
 ```
 
-## Navigation System
+### `getUsersByRole(string $role): array`
 
-### Dynamic Sidebar
-- **Role-Based Menu Items**: Different navigation options for each role
-- **Permission Checks**: Menu items only show if user has required permissions
-- **User Context**: Shows current user info with role badge
-- **Staff Count**: Providers see count of their assigned staff
-- **Visual Indicators**: Role-specific colors and icons
+Calls `whereHasRole()` and filters by active status. Schema-safe: checks for `is_active` or `status` column.
 
-### Menu Examples by Role
+---
 
-**Admin Navigation:**
-- Dashboard, Schedule, Appointments, User Management, Services, Analytics, System Settings, Profile, Help
+## AuthorizationService
 
-**Provider Navigation:**
-- Dashboard, Schedule, Appointments, My Staff (with count), Services, My Analytics, Profile, Help
+`app/Services/AuthorizationService.php` — centralized server-side permission enforcement. Injected into controllers and services that need authorization decisions.
 
-**Staff Navigation:**
-- Dashboard, My Schedule, My Appointments, Profile, Help
+### Role constants
 
-**Customer Navigation:**
-- Dashboard, My Appointments, Profile, Help
+```php
+AuthorizationService::ROLE_ADMIN    // 'admin'
+AuthorizationService::ROLE_PROVIDER // 'provider'
+AuthorizationService::ROLE_STAFF    // 'staff'
+```
 
-## Test Users Created
+### `resolveRole(string|array $userRole): string`
 
-For testing the role-based system:
+Accepts either a single role string or an array. When an array is passed, returns the highest-privilege role present:
 
-| Role | Email | Password | Description |
-|------|-------|----------|-------------|
-| Admin | nilo.cara@gmail.com | (original) | Full system access |
-| Provider | provider@test.com | password | Service provider demo |
-| Staff | staff@test.com | password | Staff member (assigned to Provider) |
-| Customer | customer@test.com | password | Customer demo |
+```
+admin > provider > staff
+```
 
-## Security Features
+If none match, returns `'staff'` (least privilege). All public methods call `resolveRole()` internally, so they all accept `string|array`.
 
-### Access Control
-- Route-level protection with role filters
-- Controller-level permission checks
-- View-level conditional rendering
-- Database-level user hierarchy enforcement
+### `getUserRole(?array $user): string`
 
-### Data Isolation
-- Staff can only see their own data
-- Providers can only manage their assigned staff
-- Customers can only see their own appointments
-- Admins have full access to all data
+Reads `$user['active_role']` first, then `$user['role']`. Normalizes legacy `'owner'` value to `'admin'`. Defaults to `'staff'` when user is null.
 
-## Testing Instructions
+### `getProviderId(?array $user): ?int`
 
-1. **Start Server**: `php spark serve --host=0.0.0.0 --port=8080`
-2. **Login as Different Users**: Use the test credentials above
-3. **Navigate Through System**: Notice how menu changes based on role
-4. **Test User Management**: Create/edit users based on your role permissions
-5. **Check Route Protection**: Try accessing unauthorized routes
+Checks `$user['roles']` for `'provider'` membership. Returns the provider ID via `$user['id'] ?? session()->get('user_id')`. Since `user['id']` is not written into the session user array, this always resolves to `session('user_id')` in practice. Returns `null` when the user is not a provider.
 
-## Files Created/Modified
+### `getProviderScope(string|array $userRole, ?int $providerId, ?array $user): int|array|null`
 
-### New Files
-- `app/Models/UserPermissionModel.php`
-- `app/Filters/RoleFilter.php`
-- `app/Controllers/UserManagement.php`
-- `app/Views/user_management/index.php`
-- `app/Views/user_management/create.php`
-- `app/Views/components/role-based-sidebar.php`
-- `app/Helpers/permissions_helper.php`
-- `app/Database/Migrations/*_UpdateUserRoles.php`
+Returns the data scope for filtering. Used by `DashboardService` and other services:
 
-### Modified Files
-- `app/Models/UserModel.php`
-- `app/Filters/AuthFilter.php`
-- `app/Config/Filters.php`
-- `app/Config/Routes.php`
-- `app/Views/dashboard.php`
-- `app/Views/settings.php`
+| Role | Return value | Effect |
+|---|---|---|
+| `admin` | `null` | No filter — sees all data |
+| `provider` | `int` (providerId) | Restricted to own data |
+| `staff` | `int[]` of assigned provider IDs from `xs_provider_staff_assignments` | Restricted to assigned providers; `[]` when unassigned |
 
-## Next Steps
+### Permission methods
 
-1. **Frontend Testing**: Test all role-based functionality in browser
-2. **UI Polish**: Enhance styling and user experience
-3. **Additional Features**: Add more role-specific features as needed
-4. **Documentation**: Create user guides for each role type
-5. **Security Audit**: Review and test all permission boundaries
+| Method | Who passes |
+|---|---|
+| `canViewDashboardMetrics()` | admin, provider, staff |
+| `canManageAppointment()` | admin always; provider for own appointments; staff for any visible appointment |
+| `canViewSettings()` | admin only |
+| `canManageUsers()` | admin only |
+| `canViewBookingStatus()` | admin only |
+| `canViewReports()` | admin, provider |
+| `canViewAlerts()` | admin, provider, staff |
 
-## Summary
+### `enforce(bool $authorized, string $message): void`
 
-The role-based user management system is now fully implemented with:
-✅ Complete user hierarchy (Admin → Provider → Staff → Customer)  
-✅ Role-based permissions and access control  
-✅ Dynamic navigation based on user role  
-✅ Secure route protection  
-✅ CRUD user management interface  
-✅ Database schema supporting all roles  
-✅ Helper functions for easy permission checks  
-✅ Test users for all role types  
+Throws `RuntimeException` when `$authorized` is false. Use for hard enforcement gates:
 
-The system is ready for testing and can be extended with additional role-specific features as needed.
+```php
+$this->authService->enforce(
+    $this->authService->canViewSettings($userRole),
+    'Access denied'
+);
+```
+
+---
+
+## permissions_helper.php
+
+`app/Helpers/permissions_helper.php` — loaded automatically by `BaseController` or manually with `helper('permissions')`.
+
+### Functions
+
+| Function | Returns | Notes |
+|---|---|---|
+| `current_user_role(): ?string` | `string\|null` | Returns `active_role` with fallback to `role`. |
+| `current_user_id(): ?int` | `int\|null` | Reads `session('user_id')`. |
+| `current_business_id(?int $default): int` | `int` | See business ID resolution below. |
+| `has_role(string\|array $roles): bool` | `bool` | Reads `user['roles']` first, falls back to `active_role`/`role`. §4.4 canonical pattern. |
+| `has_permission(string\|array $perms): bool` | `bool` | Delegates to `UserPermissionModel`. Checks role-default permissions first (from `ROLE_PERMISSIONS` constant), then custom entries in `xs_users.permissions` JSON column. |
+| `is_admin(): bool` | `bool` | `has_role('admin')` |
+| `is_provider(): bool` | `bool` | `has_role('provider')` |
+| `is_staff(): bool` | `bool` | `has_role('staff')` |
+| `can_manage_users(): bool` | `bool` | `has_permission('user_management')` |
+| `can_manage_settings(): bool` | `bool` | `has_permission('system_settings')` |
+| `can_create_role(string $role): bool` | `bool` | Checks `create_admin`, `create_provider`, or `create_staff` permission. |
+| `role_badge_class(string $role): string` | `string` | Bootstrap badge class (legacy surfaces). |
+| `get_role_badge_tailwind_class(string $role): string` | `string` | Tailwind class — use this for all current views. |
+| `role_icon(string $role): string` | `string` | FontAwesome icon class for role. |
+
+`is_customer()` does not exist. Customers are not login users.
+
+### `current_business_id()` — Resolution Order
+
+Reads candidates in strict priority order, returns the first positive integer found:
+
+1. `GET business_id` or `GET businessId`
+2. `POST business_id` or `POST businessId`
+3. `session('business_id')` or `session('active_business_id')`
+4. `session('user')['business_id' | 'active_business_id' | 'businessId' | 'activeBusinessId']`
+5. `$default ?? NotificationCatalog::BUSINESS_ID_DEFAULT` (value `1`)
+
+Result is always `max(1, resolved_value)`. Services that scope data to a business should delegate through this function via a protected `resolveBusinessId()` method.
+
+---
+
+## Filters
+
+`app/Config/Filters.php` registers all filter aliases. The following are custom to this app:
+
+| Alias | Class | Purpose |
+|---|---|---|
+| `auth` | `App\Filters\AuthFilter` | Session authentication. Redirects to login or returns 401 JSON for API/AJAX. |
+| `role` | `App\Filters\RoleFilter` | Role check after auth. Accepts comma-separated roles: `role:admin,provider`. Also supports `role:permission:manage_users`. |
+| `setup` | `App\Filters\SetupFilter` | Verifies setup wizard has been completed. |
+| `setup_auth` | `App\Filters\SetupAuthFilter` | Combined setup + auth check. |
+| `api_auth` | `App\Filters\ApiAuthFilter` | Session auth for API endpoints. |
+| `api_cors` | `App\Filters\CorsFilter` | CORS headers for API cross-origin requests. |
+| `timezone` | `App\Filters\TimezoneDetection` | Reads `X-Client-Timezone` and stores as session hint. |
+| `public_rate_limit` | `App\Filters\PublicBookingRateLimiter` | Rate limiting on public booking endpoints. |
+| `request_context` | `App\Filters\LogRequestContext` | Request logging context. |
+
+### Global filter chain (every request)
+
+**Before:**
+1. `request_context` — always
+2. `timezone` — except `setup` and `setup/*` routes
+3. `csrf` — except `api/*` and `setup/*` routes
+
+**After:**
+1. `securityheaders` — sets `X-Frame-Options`, HSTS, `Referrer-Policy`, etc.
+
+`securityheaders` uses the custom `App\Filters\SecurityHeaders` class, not CI4's built-in `SecureHeaders`.
+
+### Route filter syntax
+
+```php
+// Admin only
+['filter' => 'role:admin']
+
+// Admin or provider
+['filter' => 'role:admin,provider']
+
+// Admin, provider, or staff
+['filter' => 'role:admin,provider,staff']
+
+// Permission-based
+['filter' => 'role:permission:manage_users']
+```
+
+RoleFilter reads `session('user')['roles']` first, falling back to `session('user')['role']`. A user passes if **any** of their assigned roles matches any required role.
+
+---
+
+## `xs_users` Table — Auth-Relevant Columns
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | int PK | Used as `provider_id` when role is provider |
+| `role` | varchar | Compatibility primary role; keep in sync |
+| `status` | varchar | `'active'` / `'inactive'` / `'suspended'` — schema-variable |
+| `is_active` | tinyint | Alternative active flag — schema-variable |
+| `notify_on_appointments` | tinyint | Controls whether this user receives appointment notification emails |
+| `permissions` | JSON | Custom per-user permissions read by `UserPermissionModel` |
+| `color` | varchar | Provider calendar color (hex) |
+| `provider_id` | int | Denormalized; staff members may have their primary provider stored here |
+
+Both `status` and `is_active` may be present. `UserModel` handles both via schema-safe detection at runtime.
+
+---
+
+## Related
+
+- `app/Database/Migrations/2026-04-08-000001_CreateUserRolesTable.php` — creates `xs_user_roles`, backfills from `xs_users.role`
+- `app/Models/UserPermissionModel.php` — `has_permission()` / `has_any_permission()`. Reads `xs_users` (same table as `UserModel`). Permissions are the union of role defaults from `ROLE_PERMISSIONS` constant and custom entries from `xs_users.permissions` (JSON column). No separate permissions table exists.
+- `app/Models/ProviderStaffModel.php` — `getProvidersForStaff()` used by `getProviderScope()`
+- `app/Controllers/Auth.php` — writes the session contract at login
+- `Agent_Context_v2.md §4` — Authentication and Authorization Contract (canonical rules)
+- `docs/user-management/ACCESS_CONTROL_MATRIX.md` — per-feature access matrix

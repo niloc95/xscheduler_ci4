@@ -161,6 +161,12 @@ function wireProviderCard(card) {
     serviceSelect.addEventListener('change', loadSlots);
     locationSelect.addEventListener('change', loadSlots);
 
+    // Apply provider color as CSS custom property for the left-border accent
+    const providerColor = card.dataset.providerColor;
+    if (providerColor) {
+        card.style.setProperty('--provider-color', providerColor);
+    }
+
     card.dataset.providerCardWired = 'true';
 }
 

@@ -57,9 +57,8 @@ class Auth extends BaseApiController
             return $this->forbidden('You do not have access to the ' . $newRole . ' role');
         }
 
-        // Update the session with the new active role
-        $user['active_role'] = $newRole;
-        session()->set('user', $user);
+        // Update active_role only — array_merge preserves all other session user keys (§4.5)
+        session()->set('user', array_merge(session()->get('user') ?? [], ['active_role' => $newRole]));
 
         return $this->ok([
             'active_role' => $newRole,

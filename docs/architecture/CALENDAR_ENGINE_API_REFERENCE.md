@@ -6,31 +6,7 @@ Quick reference for all Calendar Engine services.
 
 ## CalendarRangeService
 
-### getRange(view: string, date: DateTime): array
-
-Calculates date range for a calendar view.
-
-**Parameters**:
-- `view` — 'today' | 'day' | 'week' | 'month'
-- `date` — Current date context
-
-**Returns**:
-```php
-[
-    'startDate' => 'Y-m-d',  // First date in range
-    'endDate' => 'Y-m-d',    // Last date in range
-    'days' => [              // Only for day/today views
-        ['date' => 'Y-m-d', 'dayNumber' => 1, ...]
-    ],
-    'weeks' => [             // Only for month view
-        [                    // 6 weeks × 7 days
-            ['date' => 'Y-m-d', 'isCurrentMonth' => true, ...]
-        ]
-    ]
-]
-```
-
----
+Pure date/grid structure generation. No DB queries, no business logic.
 
 ### generateDaySlots(date: string, startTime: string, endTime: string, resolution: int): array
 
@@ -45,64 +21,56 @@ Generate time slots for a single day.
 **Returns**:
 ```php
 [
-    'dayStart' => '08:00',
-    'dayEnd' => '17:00',
-    'slots' => [
-        [
-            'time' => '08:00',
-            'index' => 0,
-            'hour' => 8,
-            'minute' => 0,
-            'isHourMark' => true,
-            '_topPx' => 0,
-            '_heightPx' => 60,
-            'appointments' => []  // Filled by SlotInjectionTrait
-        ],
-        [
-            'time' => '08:30',
-            'index' => 1,
-            'hour' => 8,
-            'minute' => 30,
-            'isHourMark' => false,
-            '_topPx' => 30,
-            '_heightPx' => 60,
-            'appointments' => []
-        ]
-        // ... more slots
-    ]
+    [
+        'time'    => 'HH:MM',    // e.g. '08:00'
+        'minutes' => 0,          // offset from day start in minutes
+        'label'   => '8:00 AM',  // formatted label
+        'isHour'  => true,       // on the hour mark
+        'isHalf'  => false,      // on a half-hour mark
+        'topPx'   => 0,          // 2px per minute offset from grid top
+    ],
+    [
+        'time'    => '08:30',
+        'minutes' => 30,
+        'label'   => '8:30 AM',
+        'isHour'  => false,
+        'isHalf'  => true,
+        'topPx'   => 60,
+    ],
+    // ...
 ]
 ```
+
+`appointments` is **not** part of the CalendarRangeService output. It is injected by `SlotInjectionTrait::injectIntoSlots()` after events are positioned.
 
 ---
 
 ### generateWeekRange(date: string): array
 
-Get 7-day week starting from first day of week.
+Get 7-day week starting from the configured first day of week.
 
 **Parameters**:
 - `date` — Any date in the desired week
 
-**Returns**:
+**Returns**: Array of 7 day objects:
 ```php
 [
-    'startDate' => 'Y-m-d',  // Monday (or configured first day)
-    'endDate' => 'Y-m-d',    // Sunday
-    'days' => [
-        [
-            'date' => 'Y-m-d',
-            'dayNumber' => 1,        // Day within month
-            'weekday' => 1,          // 0=Sun, 6=Sat
-            'weekdayName' => 'Monday',
-            'monthName' => 'March',
-            'fullDate' => 'March 10, 2026',
-            'isToday' => true,
-            'isPast' => false,
-            'isFuture' => false
-        ],
-        // ... 6 more days
-    ]
+    [
+        'date'        => 'Y-m-d',
+        'dayNumber'   => 1,          // Day within month
+        'weekday'     => 1,          // 0=Sun, 6=Sat
+        'weekdayName' => 'Monday',
+        'monthName'   => 'March',
+        'fullDate'    => 'March 10, 2026',
+        'isToday'     => true,
+        'isPast'      => false,
+        'isFuture'    => false,
+    ],
+    // ... 6 more days
 ]
 ```
+
+`startDate`, `endDate`, and `weekLabel` are added by `WeekViewService::build()`, not by this method.
 
 ---
 
@@ -178,9 +146,11 @@ Generate time grid for day using **business hours**.
 **Returns**: See `generateDaySlots` above
 
 **Reads from Settings**:
-- `calendar.day_start` (default: '08:00')
-- `calendar.day_end` (default: '18:00')
-- `booking.time_resolution` (default: 30)
+- `business.work_start` — global business open time (default: '08:00')
+- `business.work_end` — global business close time (default: '17:00')
+- `booking.time_resolution` — slot increment in minutes (default: 30)
+
+`business.work_start` / `business.work_end` are the authoritative global bounds. `booking.day_start` / `booking.day_end` control the calendar grid display window and are a separate concern. See `Agent_Context_v2.md §8.9.4`.
 
 ---
 
@@ -291,34 +261,40 @@ Place appointments into time slots with positioning.
 - `grid` — Grid metadata with `dayStart`, `dayEnd`, `pixelsPerMinute`
 - `resolution` — Slot duration in minutes
 
-**Returns**: Slots with appointments injected:
+**Returns**: Slots (from CalendarRangeService) with `appointments` array injected. Each event in `appointments` receives additional position metadata:
+
 ```php
+// Slot structure (from CalendarRangeService, with appointments added)
 [
-    [
-        'time' => '08:00',
-        'index' => 0,
-        'hour' => 8,
-        'minute' => 0,
-        'isHourMark' => true,
-        '_topPx' => 0,
-        '_heightPx' => 60,
-        'appointments' => [
-            [
-                'id' => 12,
-                'start_at' => '2026-03-10T08:00:00Z',
-                'end_at' => '2026-03-10T09:00:00Z',
-                '_column' => 0,
-                '_columns_total' => 2,
-                '_column_width_pct' => 50,
-                '_column_left_pct' => 0,
-                '_topPx' => 0,        // Absolute position
-                '_heightPx' => 60,    // Absolute height
-                // ... other fields
-            ]
+    'time'    => '08:00',
+    'minutes' => 0,
+    'label'   => '8:00 AM',
+    'isHour'  => true,
+    'isHalf'  => false,
+    'topPx'   => 0,
+    'appointments' => [
+        [
+            'id'       => 12,
+            'start_at' => '2026-03-10T08:00:00Z',
+            'end_at'   => '2026-03-10T09:00:00Z',
+            // From EventLayoutService:
+            '_column'          => 0,
+            '_columns_total'   => 2,
+            '_column_width_pct'=> 50.0,
+            '_column_left_pct' => 0.0,
+            // Added by SlotInjectionTrait:
+            '_topPx'    => 0,      // Y position in pixels
+            '_heightPx' => 120,    // Height in pixels (min 15)
+            '_startMin' => 0,      // Start minute offset from grid top
+            '_endMin'   => 60,     // End minute offset
+            '_colIndex' => 0,      // Mirrors _column
+            '_colCount' => 2,      // Mirrors _columns_total
+            '_widthPct' => 50.0,   // Mirrors _column_width_pct
+            '_leftPct'  => 0.0,    // Mirrors _column_left_pct
+            // ... original event fields
         ]
-    ],
-    // ... more slots
-]
+    ]
+],
 ```
 
 ---
@@ -392,9 +368,9 @@ Build day view model for any date.
 **Parameters**:
 - `date` — 'Y-m-d'
 - `filters` — Optional filters:
-  - `provider_ids` → int[]
-  - `service_ids` → int[]
-  - `location_ids` → int[]
+  - `provider_id` → int
+  - `service_id` → int
+  - `location_id` → int
   - `status` → string
   - `user_role` → 'admin' | 'provider' | 'staff'
   - `scope_to_user_id` → int
@@ -502,19 +478,23 @@ Build month view model.
 
 ## Priority: Time Boundaries
 
-When generating time grids, the system checks in this order:
+When generating provider working hours (`ProviderWorkingHoursTrait::getProviderWorkingHours()`), the system checks in this order:
 
-1. **ProviderScheduleModel** (highest)
-   - SELECT FROM xs_provider_schedules WHERE provider_id=? AND day_of_week=? AND is_active=1
-   
-2. **BusinessHourModel** (middle)
-   - SELECT FROM xs_business_hours WHERE day_of_week=?
-   
-3. **SettingModel** (defaults)
-   - `booking.day_start` → '08:00'
-   - `booking.day_end` → '17:00'
+1. **ProviderScheduleModel** (provider-specific)
+   - `xs_provider_schedules WHERE provider_id = ? AND day_of_week = ? AND is_active = 1`
+   - If found and active, use provider's start/end/break times
 
-First match wins. If provider schedule exists and is_active=true, it's used. Otherwise fall back to business hours.
+2. **BusinessHourModel** (provider-scoped business hours)
+   - `xs_business_hours WHERE provider_id = ? AND weekday = ?`
+   - **Every row in `xs_business_hours` has a `provider_id`** — there are no global rows in this table. An unfiltered query returns an arbitrary provider's row, not a system-wide default. See `Agent_Context_v2.md §8.7.1`.
+
+3. **SettingModel** (global outer bounds)
+   - `business.work_start` → global open time
+   - `business.work_end` → global close time
+
+First match wins per provider. Global business bounds from `xs_settings` are applied by `AvailabilityService::constrainToBusinessHours()` as an outer limit on any provider's window.
+
+**Known active debt:** `ProviderWorkingHoursTrait::getBusinessHours()` falls back to `$settings->getValue('booking.day_start', '08:00')`. `SettingModel` has no `getValue()` method — this path throws `BadMethodCallException` for the placeholder provider (id=0). Fix: replace with `SettingModel::getByKeys(['booking.day_start','booking.day_end'])`. See `Agent_Context_v2.md §8.7.4`.
 
 ---
 
@@ -595,15 +575,4 @@ assert($grid['slots'][0]['_topPx'] === 0);
     - Calendar overlaps → `EventLayoutService`
     - Booking validation → `ConflictService` (direct injection once tests are migrated)
 
----
-
-## Changelog
-
-### v1.0.0
-- ✅ EventLayoutService created
-- ✅ TodayViewService created
-- ✅ TimeGridService enhanced with `generateDayGridWithProviderHours()`
-- ✅ DayViewService refactored to use EventLayoutService
-- ✅ WeekViewService updated for EventLayoutService
-- ✅ MonthViewService unchanged (compatible)
 

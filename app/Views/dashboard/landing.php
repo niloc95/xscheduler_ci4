@@ -56,27 +56,37 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
 <!-- Page Body -->
 <div class="xs-page-body dashboard-landing">
-    <!-- Metrics Row: Compact horizontal strip -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="metrics-container">
+    <!-- Metrics Row -->
+    <div class="grid grid-cols-3 lg:grid-cols-6 gap-3" id="metrics-container">
         <div class="metric-mini metric-mini-blue">
-            <span class="text-2xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
+            <span class="material-symbols-outlined metric-mini-icon text-blue-500 dark:text-blue-400">today</span>
+            <span class="text-xl font-bold text-blue-700 dark:text-blue-300" id="metric-total"><?= $metrics['total'] ?? 0 ?></span>
             <span class="text-xs text-blue-600 dark:text-blue-400">Today</span>
         </div>
+        <div class="metric-mini metric-mini-purple">
+            <span class="material-symbols-outlined metric-mini-icon text-purple-500 dark:text-purple-400">schedule</span>
+            <span class="text-xl font-bold text-purple-700 dark:text-purple-300" id="metric-upcoming"><?= $metrics['upcoming'] ?? 0 ?></span>
+            <span class="text-xs text-purple-600 dark:text-purple-400">Upcoming</span>
+        </div>
         <div class="metric-mini metric-mini-yellow">
-            <span class="text-2xl font-bold text-amber-700 dark:text-amber-300" id="metric-pending"><?= $pendingCount ?></span>
+            <span class="material-symbols-outlined metric-mini-icon text-amber-500 dark:text-amber-400">pending_actions</span>
+            <span class="text-xl font-bold text-amber-700 dark:text-amber-300" id="metric-pending"><?= $pendingCount ?></span>
             <span class="text-xs text-amber-600 dark:text-amber-400">Pending</span>
         </div>
         <div class="metric-mini metric-mini-green">
-            <span class="text-2xl font-bold text-green-700 dark:text-green-300" id="metric-confirmed"><?= $confirmedCount ?></span>
+            <span class="material-symbols-outlined metric-mini-icon text-green-500 dark:text-green-400">event_available</span>
+            <span class="text-xl font-bold text-green-700 dark:text-green-300" id="metric-confirmed"><?= $confirmedCount ?></span>
             <span class="text-xs text-green-600 dark:text-green-400">Confirmed</span>
         </div>
         <div class="metric-mini metric-mini-red">
-            <span class="text-2xl font-bold text-red-700 dark:text-red-300" id="metric-cancelled"><?= $cancelledCount ?></span>
+            <span class="material-symbols-outlined metric-mini-icon text-red-500 dark:text-red-400">event_busy</span>
+            <span class="text-xl font-bold text-red-700 dark:text-red-300" id="metric-cancelled"><?= $cancelledCount ?></span>
             <span class="text-xs text-red-600 dark:text-red-400">Cancelled</span>
         </div>
         <div class="metric-mini metric-mini-indigo">
-            <span class="text-2xl font-bold text-indigo-700 dark:text-indigo-300"><?= $workingProviders ?>/<?= $totalProviders ?></span>
-            <span class="text-xs text-indigo-600 dark:text-indigo-400">Providers Active</span>
+            <span class="material-symbols-outlined metric-mini-icon text-indigo-500 dark:text-indigo-400">people</span>
+            <span class="text-xl font-bold text-indigo-700 dark:text-indigo-300"><?= $workingProviders ?>/<?= $totalProviders ?></span>
+            <span class="text-xs text-indigo-600 dark:text-indigo-400">Active</span>
         </div>
     </div>
     
@@ -137,18 +147,18 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                     $cardClasses = 'provider-card p-3 rounded-lg border ' . $cfg['bg'];
                     ?>
                     <div
-                        class="<?= esc($cardClasses) ?>"
+                        class="<?= esc($cardClasses) ?> provider-card--has-color"
                         data-provider-card="true"
                         data-provider-id="<?= esc((string) $providerId) ?>"
+                        data-provider-color="<?= esc($providerColor) ?>"
                         data-default-service-id="<?= esc((string) ($defaultServiceId ?? '')) ?>"
                         data-initial-date="<?= esc($slotsDate) ?>">
                         <!-- Provider Header -->
-                        <div class="flex items-center gap-2 mb-2">
-                            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 provider-color-dot" data-color="<?= esc($providerColor) ?>"></div>
-                            <span class="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <span class="material-symbols-outlined text-sm flex-shrink-0 <?= $cfg['color'] ?>"><?= $cfg['icon'] ?></span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white truncate flex-1">
                                 <?= esc($provider['name']) ?>
                             </span>
-                            <span class="material-symbols-outlined text-sm <?= $cfg['color'] ?>"><?= $cfg['icon'] ?></span>
                         </div>
                         
                         <!-- Services (compact) -->
@@ -160,7 +170,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 
                         <div class="provider-card-filters mb-2">
                             <label class="provider-card-filter">
-                                <span>Date</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-400">Date</span>
                                 <input
                                     type="date"
                                     class="provider-card-input"
@@ -169,7 +179,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                             </label>
 
                             <label class="provider-card-filter">
-                                <span>Service</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-400">Service</span>
                                 <select class="provider-card-input" data-provider-service>
                                     <option value="">Default service</option>
                                     <?php foreach ($serviceOptions as $serviceOption): ?>
@@ -183,7 +193,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
                             </label>
 
                             <label class="provider-card-filter">
-                                <span>Location</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-400">Location</span>
                                 <select class="provider-card-input" data-provider-location>
                                     <option value="">All locations</option>
                                     <?php foreach ($locationOptions as $locationOption): ?>
@@ -321,6 +331,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
             authFailureCount = 0;
             const m = data.data || data;
             updateValue('metric-total',     m.total);
+            updateValue('metric-upcoming',  m.upcoming);
             updateValue('metric-pending',   m.pending);
             updateValue('metric-confirmed', m.confirmed);
             updateValue('metric-cancelled', m.cancelled);
