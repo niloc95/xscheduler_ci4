@@ -1,8 +1,8 @@
 ---
 title: WebScheduler CI4 - Consolidated Engineering Contract
-version: 2.9
+version: 3.0
 status: Active hardening
-last_updated: 2026-05-05
+last_updated: 2026-05-11
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -338,15 +338,27 @@ If success destination equals current page, include redirect so SPA navigation c
 
 ### 6.1 Canonical Entry Points
 
-- resources/js/app.js
-- resources/js/spa.js
-- resources/js/public-booking.js
-- resources/js/dark-mode.js
-- resources/js/charts.js
-- resources/js/unified-sidebar.js
-- resources/js/material-web.js
-- resources/js/setup.js
-- resources/scss/app-consolidated.scss
+Vite entry points (`vite.config.js` `rollupOptions.input`):
+
+| Key | File |
+| --- | --- |
+| `main` | `resources/js/app.js` |
+| `style` | `resources/scss/app-consolidated.scss` |
+| `spa` | `resources/js/spa.js` |
+| `dark-mode` | `resources/js/dark-mode.js` |
+| `theme-bootstrap` | `resources/js/theme-bootstrap.js` |
+| `app-layout-init` | `resources/js/layout/app-layout-init.js` |
+| `public-booking` | `resources/js/public-booking.js` |
+| `public-booking-bootstrap` | `resources/js/public-booking-bootstrap.js` |
+| `unified-sidebar` | `resources/js/unified-sidebar.js` |
+| `charts` | `resources/js/charts.js` |
+| `setup` | `resources/js/setup.js` |
+
+`resources/js/material-web.js` was removed — the `@material/web` bundle was unused (zero `<md-*>` elements in production views).
+
+Non-entry utility modules (import only, not Vite entry points):
+- `resources/js/currency.js` — currency formatting, loads settings from `/api/v1/settings/localization`
+- `resources/js/utils/avatar.js` — avatar initials helper (see §6.8)
 
 ### 6.2 Lifecycle Contract
 
@@ -371,7 +383,19 @@ spa.js behavior:
 
 ### 6.4 Dark Mode Contract
 
-Use document.documentElement.dataset.theme as canonical theme source.
+**Tailwind configuration:** `darkMode: 'class'` in `tailwind.config.js`. All Tailwind `dark:` utilities require `.dark` on `<html>`.
+
+**FOUC prevention:** `resources/js/theme-bootstrap.js` runs as an inline blocking script (no `type="module"`) on every page load. It sets BOTH `document.documentElement.dataset.theme = theme` AND `document.documentElement.classList.toggle('dark', theme === 'dark')` before the browser paints.
+
+**Runtime management:** `DarkModeManager` in `resources/js/dark-mode.js` handles the full lifecycle:
+- On every `applyTheme()` call: sets BOTH `data-theme` attribute AND `.dark` class
+- Persists to `localStorage` key `xs-theme`
+- Dispatches `xs:theme-changed` custom event for downstream components
+- Re-wires `[data-theme-toggle]` buttons after each `spa:navigated` event
+
+**SCSS:** Dark overrides use `.dark { ... }` selector in `resources/scss/abstracts/_custom-properties.scss`, not `[data-theme="dark"]`.
+
+**Summary:** `data-theme` attribute is always kept in sync (for external consumers and CSS that reads it), but `.dark` class is the canonical trigger for Tailwind utilities and SCSS dark overrides.
 
 ### 6.5 Styling Contract
 
@@ -460,20 +484,113 @@ Do not reimplement initials logic in any view, controller, or JS module. Always 
 
 ### 7.1 Canonical Services
 
-- AvailabilityService
-- AppointmentBookingService
-- AppointmentQueryService
-- AppointmentStatus
-- AuthorizationService
-- TimezoneService
-- UserManagementMutationService
-- UserManagementContextService
-- ProfilePageService
-- CustomerAppointmentService
-- MailerService
-- NotificationQueueDispatcher
+**Core scheduling:**
+- `AvailabilityService` — slot generation and business-hours constraint
+- `AppointmentBookingService` — booking pipeline (validate → persist → notify)
+- `ConflictService` — appointment conflict detection
+- `ScheduleValidationService` — provider schedule validation
+- `BusinessHoursService` — global business hours from `xs_settings`
+
+**Appointment namespace** (`App\Services\Appointment\`):
+- `AppointmentQueryService` — appointment reads and list queries
+- `AppointmentStatus` — status enum and notification event mapping
+- `AppointmentMutationService` — appointment writes (status changes etc.)
+- `AppointmentAvailabilityService` — availability checks per appointment
+- `AppointmentFormSubmissionService` / `AppointmentFormMutationService` — form create/edit pipeline
+- `AppointmentFormContextService` / `AppointmentFormGuardService` / `AppointmentFormResponseService` — form guards and response shaping
+- `AppointmentCustomFieldService` — custom field validation and storage
+- `AppointmentManualNotificationService` — manual notification resend
+- `AppointmentFormatterService` — appointment data formatting for views
+- `AppointmentDateTimeNormalizer` — datetime normalization helpers
+
+**Calendar views** (`App\Services\Calendar\`):
+- `DayViewService` / `WeekViewService` / `MonthViewService` — server-side view model builders
+- `CalendarConfigService` — calendar display configuration
+- `TimeGridService` — time-grid computation shared by day/week views
+- `ProviderWorkingHoursTrait` — working hours shared logic (see §8.7.4 for known debt)
+
+**Users / customers:**
+- `UserManagementMutationService` — user create/edit/delete mutations
+- `UserManagementContextService` — user management page context
+- `UserDeletionService` — safe user removal with cascade checks
+- `CustomerAppointmentService` — provider/staff customer scoping
+- `CustomerService` — customer CRUD
+- `CustomerDeletionService` — safe customer removal
+- `CustomerCustomFieldService` — custom field validation (see Custom Field Required Semantics)
+- `ProfilePageService` — /profile page context and mutations
+- `AuthorizationService` — RBAC helpers
+
+**Public booking:**
+- `PublicBookingService` — public booking pipeline (see §10)
+- `BookingLinkService` — canonical URL builder for booking links and `/r/{reference}` short links
+- `BookingSettingsService` — booking form configuration, custom field validation rules
+- `BookingMetricsService` — booking statistics
+
+**Dashboard:**
+- `DashboardService` — dashboard data aggregation
+- `DashboardPageService` — dashboard page context builder
+- `DashboardApiService` — dashboard API endpoint data
+- `AppointmentDashboardContextService` — appointment dashboard context
+
+**Notifications:**
+- `AppointmentEventService` — appointment event publishing
+- `AppointmentNotificationService` — appointment notification coordination
+- `NotificationQueueService` — queue write and enqueue logic
+- `NotificationQueueDispatcher` — queue processing and dispatch
+- `NotificationPolicyService` — delivery policy rules
+- `NotificationEmailService` — email delivery via `MailerService`
+- `NotificationSmsService` — SMS delivery (Clickatell/Twilio)
+- `NotificationWhatsAppService` — WhatsApp delivery (Meta Cloud API)
+- `NotificationTemplateService` — template loading and placeholder rendering
+- `NotificationDeliveryLogService` — delivery log queries
+- `NotificationOptOutService` — opt-out management
+- `NotificationReminderHeartbeatService` — reminder offset scheduling heartbeat
+- `NotificationAutomationStatusService` — automation on/off status
+- `NotificationBusinessOptionsService` — business-level notification options
+- `NotificationCenterService` — notification center UI data
+- `NotificationCatalog` — constants (event types, defaults)
+
+**Settings** (`App\Services\Settings\`):
+- `SettingsPageService` — settings page context
+- `SettingsApiService` — settings API endpoints
+- `GeneralSettingsService` — general/localization settings mutations
+- `NotificationSettingsService` — notification settings mutations
+- `LocalizationSettingsService` — timezone/locale reads
+
+**Infrastructure:**
+- `MailerService` — sole email transport layer (see §7.3)
+- `TimezoneService` — UTC/local conversion (see §12.6)
+- `GlobalSearchService` — cross-entity search
+- `PhoneNumberService` — phone number formatting/normalization
+- `BookingMetricsService` — booking statistics
 
 ### 7.2 Key System Files
+
+- `app/Config/Routes.php`
+- `app/Config/Filters.php`
+- `app/Controllers/Api/BaseApiController.php`
+- `app/Database/MigrationBase.php`
+- `app/Models/AppointmentModel.php`
+- `app/Models/UserModel.php`
+- `app/Models/SettingModel.php`
+- `app/Models/AppointmentCustomFieldModel.php`
+- `app/Services/MailerService.php`
+- `app/Services/AvailabilityService.php`
+- `app/Services/BusinessHoursService.php`
+- `app/Services/BookingLinkService.php`
+- `app/Services/Calendar/DayViewService.php`
+- `app/Services/Calendar/WeekViewService.php`
+- `app/Services/Calendar/ProviderWorkingHoursTrait.php`
+- `resources/js/spa.js`
+- `resources/js/app.js`
+- `resources/js/theme-bootstrap.js`
+- `resources/js/dark-mode.js`
+- `resources/js/layout/app-layout-init.js`
+- `resources/js/public-booking.js`
+- `resources/js/public-booking-bootstrap.js`
+- `resources/js/modules/scheduler/scheduler-core.js`
+- `resources/js/modules/scheduler/time-grid-utils.js`
+- `vite.config.js`
 
 ### 7.4 Business Context Resolver Contract
 
@@ -856,12 +973,14 @@ Use CustomerAppointmentService for provider/staff customer scoping:
 - GET /booking/{serviceSlug}/{providerSlug}
 - GET /booking/legal
 - GET /my-appointments/{hash}
+- GET /r/{reference} — managed appointment reference short-link; resolves to `/my-appointments/{hash}` or `/booking`; built by `BookingLinkService::manageReferenceUrl()`
 
 ### 10.2 Public APIs
 
 - GET /api/v1/public/services
 - GET /api/v1/public/providers
 - GET /api/v1/public/availability
+- GET /api/v1/providers/slug/{segment}/services — fetch services by provider slug (used by public booking flow)
 - POST booking submit route
 
 ### 10.3 Public Security Rules
@@ -1132,7 +1251,7 @@ Do not alter this customer email layout without creating a new migration to upse
 
 ### 12.2 Total Runtime Tables
 
-Total application tables: 21
+Total application tables: 22
 
 ### 12.3 Table Catalog by Domain
 
@@ -1142,6 +1261,7 @@ Total application tables: 21
 Columns:
 - id
 - name
+- title (nullable, added 2026-04-23)
 - email
 - phone
 - password_hash
@@ -1153,12 +1273,18 @@ Columns:
 - reset_expires
 - status
 - profile_image
+- bio (text, nullable, added 2026-04-23)
+- education (text, nullable, added 2026-04-23)
+- qualifications (text, nullable, added 2026-04-23)
+- slug (unique, nullable, added 2026-04-23)
 - last_login
 - notify_on_appointments
 
 Notes:
 - status is canonical active-state field
 - notify_on_appointments controls provider/staff appointment notices
+- slug is unique per provider; used in public booking URL `/booking/{serviceSlug}/{providerSlug}`
+- title, bio, education, qualifications are public profile fields for provider profile pages
 
 ##### xs_user_roles
 Columns:
@@ -1188,7 +1314,8 @@ Columns:
 Notes:
 - hash is 64-char unique slug for public routes
 - index idx_customers_hash is present
-- custom_fields stores JSON map in text field
+- custom_fields stores JSON map in text field (legacy; per-appointment custom fields now also stored in xs_appointment_custom_fields)
+- email has unique index idx_customers_email_unique (added 2026-04-30)
 
 #### Scheduling Tables
 
@@ -1196,6 +1323,7 @@ Notes:
 Columns:
 - id
 - name
+- slug (unique, nullable, added 2026-04-23)
 - description
 - duration_min
 - buffer_before
@@ -1205,6 +1333,9 @@ Columns:
 - updated_at
 - category_id
 - active
+
+Notes:
+- slug is used in public booking URL `/booking/{serviceSlug}` and `/booking/{serviceSlug}/{providerSlug}`
 
 ##### xs_categories
 Columns:
@@ -1290,6 +1421,8 @@ Columns:
 - provider_id
 - name
 - address
+- city (nullable, added 2026-04-23)
+- area (nullable, added 2026-04-23)
 - contact_number
 - is_primary
 - is_active
@@ -1440,6 +1573,25 @@ Columns:
 - created_at
 - updated_at
 
+#### Appointment Custom Fields Table
+
+##### xs_appointment_custom_fields
+Columns:
+- id
+- appointment_id
+- field_key
+- value (text, nullable)
+- created_at
+- updated_at
+
+Notes:
+- Added 2026-04-30 (`CreateAppointmentCustomFieldsTable` migration)
+- Unique index on (appointment_id, field_key) — idx_appt_custom_field_unique
+- FK: appointment_id -> xs_appointments.id ON DELETE CASCADE
+- Stores per-appointment custom field values; replaces reliance on xs_customers.custom_fields for appointment-scoped data
+- Backfilled from legacy customer custom fields on migration
+- Model: `App\Models\AppointmentCustomFieldModel`
+
 #### Audit Table
 
 ##### xs_audit_logs
@@ -1464,6 +1616,7 @@ Notes:
 - xs_appointments.provider_id -> xs_users.id
 - xs_appointments.service_id -> xs_services.id
 - xs_appointments.location_id -> xs_locations.id
+- xs_appointment_custom_fields.appointment_id -> xs_appointments.id (CASCADE)
 - xs_business_hours.provider_id -> xs_users.id
 - xs_provider_schedules.provider_id -> xs_users.id
 - xs_locations.provider_id -> xs_users.id
@@ -1484,11 +1637,13 @@ Notes:
 - Use schema-safe fallbacks where runtime columns vary.
 - xs_business_hours uses weekday (not day_of_week) in this runtime.
 - xs_customers.hash and xs_customers.custom_fields were restored and backfilled (2026-04-12).
+- xs_customers.email has a unique index (added 2026-04-30); enforce uniqueness on customer create/update.
 - xs_provider_schedules does not include location_id in this runtime.
 - xs_location_days is currently a minimal 3-column table.
 - xs_notification_queue uses modern locking/idempotency columns; do not assume legacy queue columns.
 - xs_business_hours has NO global-only rows. Every row has a `provider_id`. Do not query this table without a `provider_id` filter expecting a global business hour result.
 - Global business hours (system-wide outer bounds) live in `xs_settings` keys `business.work_start` and `business.work_end`, NOT in `xs_business_hours`.
+- xs_appointment_custom_fields is the normalized store for per-appointment custom field values (added 2026-04-30). xs_customers.custom_fields remains as customer-level storage.
 
 ### 12.6 Timezone Integrity Rules (Single Source of Truth)
 
@@ -1651,7 +1806,15 @@ When updating this file:
 ```bash
 php spark serve
 php spark migrate -n App
-php spark notifications:dispatch-queue
+php spark notifications:dispatch-queue          # enqueue due reminders + dispatch queue
+php spark notifications:test-reminder <id> [businessId] [minutesUntilStart]
+php spark notifications:backfill-templates      # backfill missing notification templates
+php spark notifications:purge-delivery-logs     # purge old delivery log rows
+php spark notifications:export-delivery-logs    # export delivery logs
+php spark notifications:repair-business-id      # repair business_id on queue rows
+php spark audit:provider-assignments            # audit provider-service-location mappings
+php spark audit:reminder-pipeline               # audit reminder scheduling pipeline
+php spark audit:purge-logs                      # purge old audit log rows
 npm run dev
 npm run build
 ```
@@ -1666,6 +1829,7 @@ npm run build
 - `ProviderWorkingHoursTrait::getBusinessHours()` calls `$settings->getValue()` which does not exist on `SettingModel`. Fix: replace with `getByKeys(['booking.day_start','booking.day_end'])` (see §8.7.4).
 - Integration test DB has a migration sequence gap near `2025-10-22-174832`; `BusinessHoursServiceIntegrationTest` and some journey tests cannot run against the test DB until the gap is repaired.
 - Calendar selector unit tests are now runner-aligned via `npm run test:unit:calendar` (Vitest).
+- `@material/web` package is still in `node_modules` / `package-lock.json` but is unused. Can be removed with `npm uninstall @material/web` when ready to clean up.
 
 ### 16.2 Forbidden Patterns (Condensed)
 
@@ -1721,7 +1885,13 @@ Status legend: `done`, `in_progress`, `queued`.
 | 25 | Appointment inline notification dispatch regression fix | done | Restored immediate queue dispatch in `AppointmentBookingService::queueNotifications()` via `NotificationQueueDispatcher::dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT)` so create/update flows no longer depend on cron timing for immediate notifications. Added queue idempotency pre-check hardening in `NotificationQueueService::enqueueRaw()` to avoid duplicate enqueue attempts under retries. |
 | 26 | Setup hosting compatibility mode + resilience hardening | done | Added shared-hosting-safe DB probe path (`app/Helpers/SetupCompatibilityHelper.php`) and compatibility UI module (`resources/js/setup-compat.js`) with smart suggestion banner. Setup controller now accepts JSON `testConnection` requests, forwards `compatibility_mode`, logs raw DB probe errors server-side, and returns sanitized payloads. Added camelCase route alias `setup/testConnection`, persisted `compatibility_mode` through setup processing and `.env` generation, and fixed setup-page CSRF header value (`csrf_hash()` instead of `csrf_token()`) plus robust client-side non-JSON/exception response handling so host-level 403/HTML responses no longer surface as `undefined` or misleading network errors. |
 | 27 | Reminder enqueue idempotency — allow re-enqueue after cancellation/failure | done | `NotificationQueueService::enqueueRaw()` previously blocked re-enqueue for any existing row regardless of status. Fixed: rows with status `cancelled` or `failed` are now deleted before a fresh row is inserted, so reminders that previously cancelled (e.g. fingerprint mismatch) or failed are retried on the next cron run. In-flight (`queued`, `processing`) and delivered (`sent`) rows still deduplicate normally. |
-| 28 | Reminder scan window — 48 h lookback for missed cron runs | done | `NotificationQueueService::enqueueDueReminders()` filtered `start_at > now` which silently excluded all appointments with a reminder window that opened while cron was stopped. Fixed: scan now starts at `now - 48 hours` (`start_at >=`), allowing catch-up delivery of overdue reminders. Idempotency keys prevent double-sending. Added per-channel `log_message('info',...)` diagnostics for each skip reason (no offsets / rule disabled / integration inactive) and a `log_message('warning',...)` when the enabled-channel list is empty. | Added shared-hosting-safe DB probe path (`app/Helpers/SetupCompatibilityHelper.php`) and compatibility UI module (`resources/js/setup-compat.js`) with smart suggestion banner. Setup controller now accepts JSON `testConnection` requests, forwards `compatibility_mode`, logs raw DB probe errors server-side, and returns sanitized payloads. Added camelCase route alias `setup/testConnection`, persisted `compatibility_mode` through setup processing and `.env` generation, and fixed setup-page CSRF header value (`csrf_hash()` instead of `csrf_token()`) plus robust client-side non-JSON/exception response handling so host-level 403/HTML responses no longer surface as `undefined` or misleading network errors. |
+| 28 | Reminder scan window — 48 h lookback for missed cron runs | done | `NotificationQueueService::enqueueDueReminders()` filtered `start_at > now` which silently excluded all appointments with a reminder window that opened while cron was stopped. Fixed: scan now starts at `now - 48 hours` (`start_at >=`), allowing catch-up delivery of overdue reminders. Idempotency keys prevent double-sending. Added per-channel `log_message('info',...)` diagnostics for each skip reason (no offsets / rule disabled / integration inactive) and a `log_message('warning',...)` when the enabled-channel list is empty. |
+| 29 | Provider public profile schema | done | Added `title`, `bio`, `education`, `qualifications`, `slug` columns to `xs_users` (migration `2026-04-23-120000`). Slugs backfilled from provider names and unique-indexed (`idx_xs_users_slug_unique`). Added `slug` to `xs_services` (`2026-04-23-120100`, `idx_xs_services_slug_unique`). Added `city`, `area` to `xs_locations` (`2026-04-23-120200`). New API route `GET /api/v1/providers/slug/{segment}/services` added. Schema documented in §12.3. |
+| 30 | Appointment custom fields table | done | Added `xs_appointment_custom_fields` table (migration `2026-04-30-140000`) with `appointment_id` FK (CASCADE), `field_key`, `value`. Unique index on (appointment_id, field_key). Backfilled legacy customer custom fields from appointment table. Model: `AppointmentCustomFieldModel`. Table count updated to 22. Schema documented in §12.3. |
+| 31 | Unique email constraint on xs_customers | done | Added unique index `idx_customers_email_unique` on `xs_customers.email` (migration `2026-04-30-120000`). Enforce uniqueness on customer create/update. Documented in §12.5. |
+| 32 | Booking reference short-link `/r/{reference}` | done | Added route `GET /r/{reference}` → `PublicSite\BookingController::reference` (with `setup` + `public_rate_limit` filters). `BookingLinkService::manageReferenceUrl()` generates these branded short links from appointment hash or public_token. Used in notification emails and customer-facing links. Documented in §10.1. |
+| 33 | Dark mode to `darkMode: 'class'` + SCSS `.dark` | done | `tailwind.config.js` changed from `['selector', '[data-theme="dark"]']` to `'class'`. SCSS `_custom-properties.scss` uses `.dark { }` block (not `[data-theme="dark"]`). `theme-bootstrap.js` (new inline FOUC-prevention script) and `dark-mode.js` both set `.dark` class on `<html>`. Full contract in §6.4. |
+| 34 | Vite entry point cleanup — remove material-web | done | `resources/js/material-web.js` deleted and removed from `vite.config.js` inputs. The `@material/web` bundle (485 kB) was dead — zero `<md-*>` elements in production views. New entries added: `theme-bootstrap`, `app-layout-init`, `public-booking-bootstrap`. Full entry point list in §6.1. |
 
 ## 18) Audit Progress Board
 
@@ -1742,6 +1912,7 @@ Status legend: `done`, `in_progress`, `queued`.
 - `ProviderWorkingHoursTrait::getBusinessHours()` still requires `SettingModel::getByKeys()` migration.
 - Test DB migration-sequence gap near `2025-10-22-174832` still blocks part of integration suite.
 - `testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (SettingsBoundaryServicesTest) fails because the mock expectation `expects($this->once())` on `getByKeys` is violated when `LocalizationSettingsService` makes a second internal call. Fix: change expectation to `expects($this->atLeastOnce())` or mock `LocalizationSettingsService` separately. Pre-existing; not introduced in this session.
+- `@material/web` package still in `package-lock.json` and `node_modules`; not yet uninstalled from `package.json`. Zero production impact (no imports). Can be removed with `npm uninstall @material/web`.
 
 ## 19) Next Hardening Queue
 
@@ -1752,6 +1923,8 @@ Status legend: `done`, `in_progress`, `queued`.
 3. Add CI coverage for `npm run test:unit:calendar` in frontend validation workflow.
 4. Fix pre-existing mock expectation count failure in `SettingsBoundaryServicesTest::testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (see §18.2).
 5. Add an admin-visible business selector / `?business_id=` query-param handoff to the Notifications and Settings pages — `current_business_id()` already reads `?business_id=` from GET params, so no PHP changes are needed; only a UI affordance is required.
+6. Run `npm uninstall @material/web` to remove unused 485 kB package from `package.json` and `package-lock.json`.
+7. Fix `ProviderWorkingHoursTrait::getBusinessHours()` — replace `$settings->getValue()` with `SettingModel::getByKeys(['booking.day_start','booking.day_end'])` (see §8.7.4 and §16.1).
 
 ### 19.2 Verification Rule
 
