@@ -33,9 +33,108 @@
 }
 
 /* Dark mode toolbar */
-[data-theme="dark"] .scheduler-toolbar {
+.dark .scheduler-toolbar {
     background: var(--color-gray-800);
     border-bottom-color: var(--color-gray-700);
+}
+
+/* ========================================
+   Appointments Header Controls
+   ======================================== */
+.appointments-toolbar,
+.appointments-toolbar__primary,
+.appointments-toolbar__secondary {
+    min-width: 0;
+}
+
+.appointments-toolbar__control-rail,
+.appointments-toolbar__status-rail {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.appointments-toolbar__control-rail {
+    > * {
+        flex-shrink: 0;
+    }
+}
+
+.appointments-toolbar__view-switcher {
+    overflow: hidden;
+}
+
+.appointments-toolbar__today-btn,
+.appointments-toolbar__view-btn,
+.appointments-toolbar__filter,
+.appointments-toolbar__date-cluster {
+    min-height: 2.5rem;
+}
+
+.appointments-toolbar__date-cluster {
+    flex-shrink: 0;
+}
+
+.appointments-toolbar__date-display {
+    min-width: clamp(6rem, 30vw, 8rem);
+}
+
+.appointments-toolbar__filter {
+    position: relative;
+
+    &.is-open {
+        border-color: rgba(59, 130, 246, 0.45);
+        background: rgba(239, 246, 255, 0.98);
+        color: rgb(29, 78, 216);
+        box-shadow: 0 10px 26px -22px rgba(37, 99, 235, 0.95);
+    }
+}
+
+.dark .appointments-toolbar__filter.is-open {
+    border-color: rgba(96, 165, 250, 0.45);
+    background: rgba(30, 64, 175, 0.2);
+    color: rgb(191, 219, 254);
+}
+
+@media (min-width: 768px) {
+    .appointments-toolbar {
+        align-items: center;
+    }
+
+    .appointments-toolbar__secondary {
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    .appointments-toolbar__status-rail {
+        flex: 0 1 auto;
+        max-width: min(42vw, 36rem);
+        justify-content: flex-end;
+    }
+
+    .appointments-toolbar__date-display {
+        min-width: 7.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .appointments-toolbar__secondary {
+        padding-top: 0.125rem;
+    }
+
+    .appointments-toolbar__today-btn,
+    .appointments-toolbar__view-btn,
+    .appointments-toolbar__filter,
+    .appointments-toolbar__date-cluster {
+        min-height: 2.375rem;
+    }
+
+    .appointments-toolbar__date-display {
+        min-width: 5.75rem;
+        font-size: 0.8125rem;
+    }
 }
 
 /* ========================================
@@ -60,7 +159,7 @@
     background: var(--color-surface-0);
 }
 
-[data-theme="dark"] .cal-pane {
+.dark .cal-pane {
     background: var(--color-gray-900);
 }
 
@@ -76,7 +175,7 @@
     border-left: 1px solid var(--color-border);
 }
 
-[data-theme="dark"] .right-panel {
+.dark .right-panel {
     background: var(--color-gray-800);
     border-left-color: var(--color-gray-700);
 }
@@ -87,7 +186,7 @@
     border-bottom: 1px solid var(--color-border);
 }
 
-[data-theme="dark"] .rp-header {
+.dark .rp-header {
     border-bottom-color: var(--color-gray-700);
 }
 
@@ -112,7 +211,7 @@
     transition: all 0.15s ease;
 }
 
-[data-theme="dark"] .provider-card {
+.dark .provider-card {
     background: var(--color-gray-700);
     border-color: var(--color-gray-600);
 }
@@ -123,7 +222,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="dark"] .provider-card:hover {
+.dark .provider-card:hover {
     background: var(--color-gray-600);
 }
 
@@ -154,7 +253,7 @@
     overflow: hidden;
 }
 
-[data-theme="dark"] .provider-load-bar-container {
+.dark .provider-load-bar-container {
     background: var(--color-gray-600);
 }
 
@@ -200,7 +299,7 @@
     letter-spacing: 0.025em;
 }
 
-[data-theme="dark"] .slot-hour-label {
+.dark .slot-hour-label {
     color: var(--color-gray-400);
 }
 
@@ -216,7 +315,7 @@
     transition: all 0.15s ease;
 }
 
-[data-theme="dark"] .slot-item {
+.dark .slot-item {
     background: var(--color-gray-700);
     border-color: var(--color-gray-600);
 }
@@ -227,7 +326,7 @@
     transform: translateX(2px);
 }
 
-[data-theme="dark"] .slot-item:hover:not([data-disabled]) {
+.dark .slot-item:hover:not([data-disabled]) {
     background: var(--color-primary-900);
     border-color: var(--color-primary-600);
 }
@@ -251,8 +350,10 @@
 
 /* ========================================
    Responsive: Mobile Stack
+   Matches sidebar overlay breakpoint ($breakpoint-lg = 1024px) so the
+   split layout never competes with an overlaid sidebar for screen space.
    ======================================== */
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-lg - 1px}) {
     .content-split {
         flex-direction: column;
     }
@@ -270,7 +371,7 @@
         border-top: 1px solid var(--color-border);
     }
 
-    [data-theme="dark"] .right-panel {
+    .dark .right-panel {
         border-top-color: var(--color-gray-700);
     }
 }
@@ -297,7 +398,7 @@
     display: grid;
 }
 
-[data-theme="dark"] .time-grid-row {
+.dark .time-grid-row {
     border-bottom-color: var(--color-gray-700);
 }
 
@@ -307,7 +408,7 @@
     border-left: 1px solid var(--color-gray-100);
 }
 
-[data-theme="dark"] .time-grid-col {
+.dark .time-grid-col {
     border-left-color: var(--color-gray-600);
 }
 
@@ -323,7 +424,7 @@
     position: relative;
 }
 
-[data-theme="dark"] .time-grid-hour-row {
+.dark .time-grid-hour-row {
     border-bottom-color: var(--color-gray-700);
 }
 
@@ -352,7 +453,7 @@
     white-space: nowrap;
 }
 
-[data-theme="dark"] .timeline-time-label {
+.dark .timeline-time-label {
     color: var(--color-gray-400);
 }
 
@@ -362,7 +463,7 @@
     overflow: visible;
 }
 
-[data-theme="dark"] .timeline-column {
+.dark .timeline-column {
     border-left-color: var(--color-gray-700);
 }
 
@@ -374,7 +475,7 @@
     background: var(--color-gray-200);
 }
 
-[data-theme="dark"] .timeline-hour-line {
+.dark .timeline-hour-line {
     background: var(--color-gray-700);
 }
 
@@ -422,7 +523,7 @@
     background: var(--color-primary-50);
 }
 
-[data-theme="dark"] .time-grid-col--today {
+.dark .time-grid-col--today {
     background: rgba(59, 130, 246, 0.05);
 }
 
@@ -445,7 +546,7 @@
     border: 1px solid var(--color-gray-200);
 }
 
-[data-theme="dark"] .slot-grid-header {
+.dark .slot-grid-header {
     background: var(--color-gray-700);
     border-color: var(--color-gray-600);
 }
@@ -473,7 +574,7 @@
     letter-spacing: 0.05em;
 }
 
-[data-theme="dark"] .slot-hour-label {
+.dark .slot-hour-label {
     color: var(--color-gray-400);
 }
 
@@ -512,13 +613,13 @@
     transform: translateY(0);
 }
 
-[data-theme="dark"] .slot-button {
+.dark .slot-button {
     color: var(--color-gray-200);
     background: var(--color-gray-800);
     border-color: var(--color-gray-600);
 }
 
-[data-theme="dark"] .slot-button:hover {
+.dark .slot-button:hover {
     background: var(--color-gray-700);
     border-color: var(--color-primary-400);
 }
@@ -535,3 +636,21 @@
     flex-shrink: 0;
 }
 
+
+
+// Status pills in the scheduler header are interactive filter shortcuts.
+// data-filter-status is rendered server-side by status_badge.php.
+#scheduler-stats-bar [data-filter-status] {
+    cursor: pointer;
+    user-select: none;
+}
+
+// Hide scrollbars on the horizontal toolbar rails while keeping swipe/scroll active.
+.appointments-toolbar__control-rail,
+#scheduler-stats-bar {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}

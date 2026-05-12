@@ -79,70 +79,101 @@
     }
     ?>
 
-    <!-- Row 1: View Toggles | Centered Date Nav | Filters + New -->
-    <div class="flex items-center gap-2">
-        <!-- View Toggle Buttons -->
-        <div class="flex items-center p-1 bg-surface-1 dark:bg-gray-800/50 rounded-xl" data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
-            <button type="button" data-calendar-action="today" class="px-3 py-1.5 rounded-lg font-medium text-sm text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-700 transition-colors">Today</button>
-            <div class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-            <button type="button" data-calendar-action="day" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-primary-600 text-white shadow-sm hover:bg-primary-700 transition-colors" data-view="day">Day</button>
-            <button type="button" data-calendar-action="week" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="week">Week</button>
-            <button type="button" data-calendar-action="month" class="view-toggle-btn px-3 py-1.5 rounded-lg font-medium text-sm bg-surface-0 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-surface-2 dark:hover:bg-gray-600 transition-colors" data-view="month">Month</button>
-        </div>
+    <!-- Mobile-first two-rail toolbar.
+         Rail A: Today + view modes + date controls.
+         Rail B: status chips + compact mobile filter access. -->
+    <!-- Two-rail toolbar.
+         Mobile: side-by-side — Rail A left (2 rows) | Rail B right (chips stacked).
+         Desktop md+: single horizontal row. -->
+    <div class="appointments-toolbar flex flex-row items-start gap-3 md:items-center md:gap-3"
+         data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
 
-        <!-- Centered Date Navigation -->
-        <div class="flex-1 flex items-center justify-center gap-2">
-            <button type="button" data-calendar-action="prev"
-                    class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    title="Previous">
-                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'wght' 600;">chevron_left</span>
-            </button>
-            <div id="scheduler-date-display" class="text-base font-bold text-gray-900 dark:text-white min-w-[180px] text-center select-none tracking-tight">
-                <?= date('F Y') ?>
+        <!-- Rail A: 2-row column on mobile, horizontal row on desktop -->
+        <div class="appointments-toolbar__primary flex flex-col gap-1.5 min-w-0 md:flex-row md:items-center md:gap-2">
+
+            <!-- Row 1 (mobile): Today + view switcher -->
+            <div class="flex items-center gap-2">
+                <button type="button" data-calendar-action="today"
+                        class="appointments-toolbar__today-btn inline-flex items-center justify-center px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-white/95 dark:bg-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap shadow-sm hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150">Today</button>
+
+                <div class="appointments-toolbar__view-switcher inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-0.5 shadow-sm"
+                     role="group" aria-label="Calendar view">
+                    <button type="button" data-calendar-action="day"
+                            class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
+                            data-view="day">Day</button>
+                    <button type="button" data-calendar-action="week"
+                            class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
+                            data-view="week">Week</button>
+                    <button type="button" data-calendar-action="month"
+                            class="appointments-toolbar__view-btn view-toggle-btn px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap text-gray-600 dark:text-gray-400 transition-all duration-150"
+                            data-view="month">Month</button>
+                </div>
             </div>
-            <button type="button" data-calendar-action="next"
-                    class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                    title="Next">
-                <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'wght' 600;">chevron_right</span>
-            </button>
+
+            <!-- Row 2 (mobile): date navigation -->
+            <div class="appointments-toolbar__date-cluster inline-flex items-center gap-0.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-1.5 py-1 shadow-sm"
+                 role="group" aria-label="Date navigation">
+                <button type="button" data-calendar-action="prev"
+                        class="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                        title="Previous">
+                    <span class="material-symbols-outlined text-base leading-none" style="font-variation-settings:'wght' 600;">chevron_left</span>
+                </button>
+                <div id="scheduler-date-display"
+                     class="appointments-toolbar__date-display px-1.5 text-sm font-semibold text-gray-900 dark:text-white min-w-[104px] text-center select-none tracking-tight">
+                    <?= date('F Y') ?>
+                </div>
+                <button type="button" data-calendar-action="next"
+                        class="p-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                        title="Next">
+                    <span class="material-symbols-outlined text-base leading-none" style="font-variation-settings:'wght' 600;">chevron_right</span>
+                </button>
+                <input type="date" id="scheduler-date-input" class="sr-only" aria-label="Jump to date" tabindex="-1">
+                <button type="button" data-calendar-action="open-datepicker"
+                        class="p-1.5 rounded-full flex items-center text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                        title="Jump to date">
+                    <span class="material-symbols-outlined text-base leading-none">event</span>
+                </button>
+            </div>
+
         </div>
 
-        <!-- Right: Filters -->
-        <div class="flex items-center gap-2">
-            <button type="button"
-                    id="advanced-filter-toggle"
-                    class="px-3 py-1.5 rounded-lg font-medium text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors inline-flex items-center gap-1.5"
+        <!-- Rail B: chips stacked vertically on mobile, horizontal on desktop -->
+        <div class="appointments-toolbar__secondary flex items-start gap-2 min-w-0 md:items-center">
+
+            <div id="scheduler-stats-bar"
+                 class="appointments-toolbar__status-rail flex flex-col gap-1 md:flex-row md:flex-nowrap md:items-center md:gap-1"
+                 data-initial-pending="<?= $pendingCount ?>"
+                 data-initial-confirmed="<?= $confirmedCount ?>"
+                 data-initial-completed="<?= $completedCount ?>"
+                 data-initial-cancelled="<?= $cancelledCount ?>"
+                 data-initial-noshow="<?= $noshowCount ?>">
+                <?= view('components/status_badge', ['status' => 'pending',   'label' => 'Pending',   'count' => $pendingCount]) ?>
+                <?= view('components/status_badge', ['status' => 'confirmed', 'label' => 'Confirmed', 'count' => $confirmedCount]) ?>
+                <?= view('components/status_badge', ['status' => 'completed', 'label' => 'Done',      'count' => $completedCount]) ?>
+                <?= view('components/status_badge', ['status' => 'cancelled', 'label' => 'Cancelled', 'count' => $cancelledCount]) ?>
+                <?= view('components/status_badge', ['status' => 'noshow',    'label' => 'No-Show',   'count' => $noshowCount]) ?>
+            </div>
+
+            <!-- Filters: desktop only -->
+            <button type="button" id="advanced-filter-toggle" data-advanced-filter-toggle="true"
+                    class="appointments-toolbar__filter hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
                     title="Advanced Filters">
-                <span class="material-symbols-outlined text-base">filter_alt</span>
-                <span class="hidden sm:inline">Filters</span>
-                <span class="material-symbols-outlined text-base transition-transform duration-200" id="filter-toggle-icon">expand_more</span>
+                <span class="material-symbols-outlined text-sm leading-none">tune</span>
+                <span>Filters</span>
+                <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" data-filter-toggle-icon="true">expand_more</span>
             </button>
+
         </div>
+
     </div>
 
-    <!-- Row 2: Stats Badges + Provider Legend -->
-    <div class="flex items-center gap-2 mt-2">
-        <div id="scheduler-stats-bar"
-             class="flex flex-wrap items-center gap-1.5"
-             data-initial-pending="<?= $pendingCount ?>"
-             data-initial-confirmed="<?= $confirmedCount ?>"
-             data-initial-completed="<?= $completedCount ?>"
-             data-initial-cancelled="<?= $cancelledCount ?>"
-             data-initial-noshow="<?= $noshowCount ?>">
-            <?= view('components/status_badge', ['status' => 'pending', 'label' => 'Pending', 'count' => $pendingCount]) ?>
-            <?= view('components/status_badge', ['status' => 'confirmed', 'label' => 'Confirmed', 'count' => $confirmedCount]) ?>
-            <?= view('components/status_badge', ['status' => 'completed', 'label' => 'Done', 'count' => $completedCount]) ?>
-            <?= view('components/status_badge', ['status' => 'cancelled', 'label' => 'Cancelled', 'count' => $cancelledCount]) ?>
-            <?= view('components/status_badge', ['status' => 'noshow', 'label' => 'No-Show', 'count' => $noshowCount, 'class' => 'hidden sm:inline-flex']) ?>
-        </div>
-        <div class="flex-1"></div>
-        <!-- Provider Legend (populated by JavaScript) -->
-        <div id="provider-legend" class="hidden md:flex items-center gap-2 flex-wrap text-xs"></div>
-    </div>
+    <!-- Provider legend: thin sub-row, hidden by default, JS populates & reveals -->
+    <div id="provider-legend" class="hidden md:flex items-center gap-2 flex-wrap text-xs mt-1"></div>
 
     <!-- Advanced Filter Panel (collapsible) -->
+    <!-- Grid: 1 col on mobile (selects full-width), 2 on sm, 3 on md, 6 on lg -->
     <div id="advanced-filter-panel" class="hidden mt-2 p-3 bg-gray-50/80 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             <div>
                 <?= view('components/select', [
                     'id' => 'filter-status',
@@ -179,7 +210,8 @@
                     'value' => (string) ($currentFilters['location_id'] ?? ''),
                 ]) ?>
             </div>
-            <div class="flex items-end gap-2 col-span-2 md:col-span-1 lg:col-span-2">
+            <!-- Apply/Clear: full-width on mobile, spans 2 cols on sm, 1 on md, 2 on lg -->
+            <div class="flex items-end gap-2 sm:col-span-2 md:col-span-1 lg:col-span-2">
                 <?= view('components/button', [
                     'label' => 'Apply',
                     'icon' => 'filter_alt',

@@ -52,6 +52,28 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction
         
+      - name: Code quality gate — unscoped business_hours queries
+        run: |
+          # Any READ query against xs_business_hours without a provider_id filter is a bug:
+          # the table has NO global rows — every row belongs to a provider.
+          # Seeds/Migrations are excluded (they INSERT with provider_id on a later line).
+          # See docs/architecture/CALENDAR_ENGINE_API_REFERENCE.md §Priority tier 2.
+          echo "Checking for unscoped xs_business_hours queries..."
+          HITS=$(grep -rn \
+            "table('business_hours')\|from.*xs_business_hours\|->business_hours\b" \
+            app/ \
+            --include="*.php" \
+            --exclude-dir=Database \
+            | grep -v "provider_id" \
+            | grep -v "^\s*[*\/]" \
+            || true)
+          if [ -n "$HITS" ]; then
+            echo "❌ Unscoped xs_business_hours query detected — add a provider_id filter:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "✅ No unscoped business_hours queries found"
+
       - name: Build frontend assets
         run: npm run build
         

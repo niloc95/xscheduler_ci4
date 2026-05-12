@@ -5,13 +5,14 @@
 
 import { apiRequest } from './core/api.js';
 import { onDomReady } from './core/lifecycle.js';
+import { SEL } from './core/selectors.js';
 
 class UnifiedSidebar {
     constructor() {
-        this.sidebar = document.getElementById('main-sidebar');
-        this.backdrop = document.getElementById('sidebar-overlay') || document.getElementById('mobile-backdrop');
-        this.menuToggle = document.getElementById('menu-toggle');
-        this.closeButton = document.getElementById('sidebar-close-btn');
+        this.sidebar     = document.querySelector(SEL.SIDEBAR);
+        this.backdrop    = document.querySelector(SEL.SIDEBAR_OVERLAY);
+        this.menuToggle  = document.querySelector(SEL.MENU_TOGGLE);
+        this.closeButton = document.querySelector(SEL.SIDEBAR_CLOSE);
         
         this.isOpen = false;
         this.isMobile = false;
@@ -59,7 +60,7 @@ class UnifiedSidebar {
         }
 
         // Role Switcher
-        const roleSwitcher = document.getElementById('roleSwitcher');
+        const roleSwitcher = document.querySelector(SEL.ROLE_SWITCHER);
         if (roleSwitcher) {
             roleSwitcher.addEventListener('change', (e) => {
                 this.handleRoleSwitch(e.target.value);
@@ -147,7 +148,7 @@ class UnifiedSidebar {
     
     updateActiveStates() {
         const currentPath = window.location.pathname;
-        const navLinks = this.sidebar?.querySelectorAll('.nav-link');
+        const navLinks = this.sidebar?.querySelectorAll(SEL.NAV_LINKS);
         
         if (!navLinks) return;
         

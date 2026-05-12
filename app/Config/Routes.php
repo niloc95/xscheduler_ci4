@@ -63,6 +63,7 @@ $routes->group('auth', function($routes) {
     $routes->get('login', 'Auth::login', ['filter' => 'setup']);
     $routes->post('attemptLogin', 'Auth::attemptLogin', ['filter' => 'setup']);
     $routes->get('logout', 'Auth::logout');
+    $routes->get('ping', 'Auth::ping', ['filter' => 'auth']);
     $routes->get('forgot-password', 'Auth::forgotPassword', ['filter' => 'setup']);
     $routes->post('send-reset-link', 'Auth::sendResetLink', ['filter' => 'setup']);
     $routes->get('reset-password/(:segment)', 'Auth::resetPassword/$1', ['filter' => 'setup']);

@@ -69,10 +69,10 @@ trait ProviderWorkingHoursTrait
         ]);
 
         return [
-            'startTime'  => (string) $settings->getValue('business.work_start', '08:00'),
-            'endTime'    => (string) $settings->getValue('business.work_end', '17:00'),
-            'breakStart' => $settings->getValue('business.break_start', null),
-            'breakEnd'   => $settings->getValue('business.break_end', null),
+            'startTime'  => (string) ($values['booking.day_start'] ?? '08:00'),
+            'endTime'    => (string) ($values['booking.day_end'] ?? '17:00'),
+            'breakStart' => $values['booking.break_start'] ?? null,
+            'breakEnd'   => $values['booking.break_end'] ?? null,
             'source'     => 'business_hours',
             'isActive'   => true,
         ];

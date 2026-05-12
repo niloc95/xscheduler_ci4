@@ -239,7 +239,7 @@ class CustomerModel extends BaseModel
 	/**
 	 * Get new customers in a time period
 	 */
-	public function getNewCustomers(string $period = 'month'): int
+	public function getNewCustomers(string $period = 'month', ?int $providerId = null): int
 	{
 		$startDate = match($period) {
 			'today' => date('Y-m-d 00:00:00'),
@@ -248,7 +248,7 @@ class CustomerModel extends BaseModel
 			'last_month' => date('Y-m-01 00:00:00', strtotime('first day of last month')),
 			default => date('Y-m-01 00:00:00')
 		};
-		
+
 		$endDate = match($period) {
 			'today' => date('Y-m-d 23:59:59'),
 			'week' => date('Y-m-d 23:59:59', strtotime('sunday this week')),
@@ -256,6 +256,27 @@ class CustomerModel extends BaseModel
 			'last_month' => date('Y-m-t 23:59:59', strtotime('last day of last month')),
 			default => date('Y-m-t 23:59:59')
 		};
+
+		if ($providerId !== null) {
+			// For providers, "new customer" means a customer whose FIRST appointment
+			// with this provider falls within the requested period — regardless of
+			// when the xs_customers record was created.
+			$apptTable = $this->db->prefixTable('appointments');
+			$pid = (int) $providerId;
+			$result = $this->db->query("
+				SELECT COUNT(*) AS cnt
+				FROM (
+					SELECT a.customer_id, MIN(a.start_at) AS first_appt
+					FROM {$apptTable} a
+					WHERE a.customer_id IS NOT NULL
+					AND a.provider_id = {$pid}
+					GROUP BY a.customer_id
+				) AS first_appts
+				WHERE first_appt >= '{$startDate}'
+				AND first_appt <= '{$endDate}'
+			")->getRow();
+			return (int) ($result->cnt ?? 0);
+		}
 
 		return $this->where('created_at >=', $startDate)
 					->where('created_at <=', $endDate)
@@ -265,10 +286,10 @@ class CustomerModel extends BaseModel
 	/**
 	 * Get customer growth trend (month over month)
 	 */
-	public function getGrowthTrend(): array
+	public function getGrowthTrend(?int $providerId = null): array
 	{
-		$currentMonth = $this->getNewCustomers('month');
-		$lastMonth = $this->getNewCustomers('last_month');
+		$currentMonth = $this->getNewCustomers('month', $providerId);
+		$lastMonth = $this->getNewCustomers('last_month', $providerId);
 		
 		if ($lastMonth === 0) {
 			return [
@@ -291,36 +312,54 @@ class CustomerModel extends BaseModel
 	/**
 	 * Get new vs returning customers (based on appointment count)
 	 */
-	public function getNewVsReturning(): array
+	public function getNewVsReturning(?int $providerId = null): array
 	{
 		$db = \Config\Database::connect();
-		
-		// Count customers with only 1 appointment (new) vs more than 1 (returning)
-		$query = $db->query("
-			SELECT 
-				SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as new_customers,
-				SUM(CASE WHEN appt_count > 1 THEN 1 ELSE 0 END) as returning_customers
-			FROM (
-				SELECT c.id, COUNT(a.id) as appt_count
-				FROM xs_customers c
-				LEFT JOIN xs_appointments a ON c.id = a.customer_id
-				GROUP BY c.id
-			) as customer_counts
-		");
-		
+		$custTable  = $db->prefixTable('customers');
+		$apptTable  = $db->prefixTable('appointments');
+
+		if ($providerId !== null) {
+			$pid = (int) $providerId;
+			// Scope to customers who have at least one appointment with this provider;
+			// "new" = 1 appointment with this provider, "returning" = 2+.
+			$query = $db->query("
+				SELECT
+					SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as new_customers,
+					SUM(CASE WHEN appt_count > 1 THEN 1 ELSE 0 END) as returning_customers
+				FROM (
+					SELECT c.id, COUNT(a.id) as appt_count
+					FROM {$custTable} c
+					INNER JOIN {$apptTable} a ON c.id = a.customer_id AND a.provider_id = {$pid}
+					GROUP BY c.id
+				) as customer_counts
+			");
+		} else {
+			$query = $db->query("
+				SELECT
+					SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as new_customers,
+					SUM(CASE WHEN appt_count > 1 THEN 1 ELSE 0 END) as returning_customers
+				FROM (
+					SELECT c.id, COUNT(a.id) as appt_count
+					FROM {$custTable} c
+					LEFT JOIN {$apptTable} a ON c.id = a.customer_id
+					GROUP BY c.id
+				) as customer_counts
+			");
+		}
+
 		$result = $query->getRow();
 		return [
-			'new' => (int)($result->new_customers ?? 0),
-			'returning' => (int)($result->returning_customers ?? 0)
+			'new'       => (int) ($result->new_customers ?? 0),
+			'returning' => (int) ($result->returning_customers ?? 0),
 		];
 	}
 
 	/**
 	 * Get customer retention rate
 	 */
-	public function getRetentionRate(): float
+	public function getRetentionRate(?int $providerId = null): float
 	{
-		$newVsReturning = $this->getNewVsReturning();
+		$newVsReturning = $this->getNewVsReturning($providerId);
 		$total = $newVsReturning['new'] + $newVsReturning['returning'];
 		
 		if ($total === 0) return 0;
@@ -331,30 +370,49 @@ class CustomerModel extends BaseModel
 	/**
 	 * Get customer loyalty segments
 	 */
-	public function getLoyaltySegments(): array
+	public function getLoyaltySegments(?int $providerId = null): array
 	{
 		$db = \Config\Database::connect();
-		
-		$query = $db->query("
-			SELECT 
-				SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as first_time,
-				SUM(CASE WHEN appt_count BETWEEN 2 AND 4 THEN 1 ELSE 0 END) as occasional,
-				SUM(CASE WHEN appt_count BETWEEN 5 AND 10 THEN 1 ELSE 0 END) as regular,
-				SUM(CASE WHEN appt_count > 10 THEN 1 ELSE 0 END) as vip
-			FROM (
-				SELECT c.id, COUNT(a.id) as appt_count
-				FROM xs_customers c
-				LEFT JOIN xs_appointments a ON c.id = a.customer_id
-				GROUP BY c.id
-			) as customer_counts
-		");
-		
+		$custTable = $db->prefixTable('customers');
+		$apptTable = $db->prefixTable('appointments');
+
+		if ($providerId !== null) {
+			$pid = (int) $providerId;
+			$query = $db->query("
+				SELECT
+					SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as first_time,
+					SUM(CASE WHEN appt_count BETWEEN 2 AND 4 THEN 1 ELSE 0 END) as occasional,
+					SUM(CASE WHEN appt_count BETWEEN 5 AND 10 THEN 1 ELSE 0 END) as regular,
+					SUM(CASE WHEN appt_count > 10 THEN 1 ELSE 0 END) as vip
+				FROM (
+					SELECT c.id, COUNT(a.id) as appt_count
+					FROM {$custTable} c
+					INNER JOIN {$apptTable} a ON c.id = a.customer_id AND a.provider_id = {$pid}
+					GROUP BY c.id
+				) as customer_counts
+			");
+		} else {
+			$query = $db->query("
+				SELECT
+					SUM(CASE WHEN appt_count = 1 THEN 1 ELSE 0 END) as first_time,
+					SUM(CASE WHEN appt_count BETWEEN 2 AND 4 THEN 1 ELSE 0 END) as occasional,
+					SUM(CASE WHEN appt_count BETWEEN 5 AND 10 THEN 1 ELSE 0 END) as regular,
+					SUM(CASE WHEN appt_count > 10 THEN 1 ELSE 0 END) as vip
+				FROM (
+					SELECT c.id, COUNT(a.id) as appt_count
+					FROM {$custTable} c
+					LEFT JOIN {$apptTable} a ON c.id = a.customer_id
+					GROUP BY c.id
+				) as customer_counts
+			");
+		}
+
 		$result = $query->getRow();
 		return [
-			'first_time' => (int)($result->first_time ?? 0),
-			'occasional' => (int)($result->occasional ?? 0),
-			'regular' => (int)($result->regular ?? 0),
-			'vip' => (int)($result->vip ?? 0)
+			'first_time' => (int) ($result->first_time ?? 0),
+			'occasional' => (int) ($result->occasional ?? 0),
+			'regular'    => (int) ($result->regular ?? 0),
+			'vip'        => (int) ($result->vip ?? 0),
 		];
 	}
 }

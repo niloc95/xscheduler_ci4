@@ -38,6 +38,7 @@ $workingProviders = count(array_filter($availability, fn($p) => ($p['status'] ??
 <?= $this->endSection() ?>
 
 <?= $this->section('header_title') ?>Dashboard<?= $this->endSection() ?>
+<?= $this->section('header_primary_action') ?>hidden<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <!-- Quick Actions -->

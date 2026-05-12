@@ -365,7 +365,16 @@ class Services extends BaseController
 
         $serviceId = (int)$this->serviceModel->getInsertID();
         $providerIds = $this->extractPostedProviderIds($input);
+
+        $db = $this->serviceModel->db;
+        $db->transStart();
         $this->serviceModel->setProviders($serviceId, (array)$providerIds);
+        $db->transComplete();
+
+        if (!$db->transStatus()) {
+            log_message('error', "Services::store — setProviders failed for service #{$serviceId}. Service saved but has no provider links.");
+        }
+
         $assignedCount = count($providerIds);
 
         if ($this->request->isAJAX()) {
@@ -448,12 +457,19 @@ class Services extends BaseController
 
         // Handle provider IDs
         $providerIds = $this->extractPostedProviderIds($input);
-        
+
         if (ENVIRONMENT === 'development') {
             log_message('debug', 'Service update - Provider IDs: ' . json_encode($providerIds));
         }
-        
+
+        $db = $this->serviceModel->db;
+        $db->transStart();
         $this->serviceModel->setProviders((int)$serviceId, (array)$providerIds);
+        $db->transComplete();
+
+        if (!$db->transStatus()) {
+            log_message('error', "Services::update — setProviders failed for service #{$serviceId}. Service updated but provider links may be stale.");
+        }
 
         if (ENVIRONMENT === 'development') {
             $savedLinks = $this->serviceModel->db->table($this->providerServicePivotTable)

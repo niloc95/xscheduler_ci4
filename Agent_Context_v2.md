@@ -294,6 +294,30 @@ Primary filters:
 - role:admin,provider
 - role:admin,provider,staff
 
+### 4.7 Auth Hardening Contract (added 2026-05-12)
+
+**Inactivity Warning Modal** (`resources/js/modules/auth/inactivity-monitor.js`)
+- Tracks user activity events (mouse/keyboard/scroll/touch).
+- After 115 minutes of inactivity (SESSION_MS 7200s − WARNING_MS 300s), shows a modal with a 5:00 countdown.
+- "Stay Logged In" → `GET /auth/ping` → hides modal, resets the 115-min clock.
+- "Log Out" → redirects to `/auth/logout`.
+- Countdown reaches 0:00 → redirects to `/auth/login`.
+- Exported as `initInactivityMonitor()`, called from `initializeComponents()` in `app.js`.
+- Safe for SPA: removes listeners on `spa:leaving` to prevent double-binding.
+
+**Session Ping Endpoint**
+- Route: `GET /auth/ping` → `Auth::ping()` (filter: `auth`)
+- Returns `{"ok": true, "expires_in": 7200}` for logged-in sessions; `401` otherwise.
+- Touching the session triggers CI4's `$timeToUpdate` (900s) regeneration, sliding the session cookie expiry.
+
+**Failed-Login Lockout**
+- CI4 Throttler (Token Bucket) — already in vendor, no new dependencies.
+- Guard is the FIRST statement in `Auth::attemptLogin()`.
+- Limit: 5 attempts per 15 minutes (900s) per IP, keyed as `login_{md5(ip)}`.
+- On lockout: AJAX → HTTP 429 + JSON; form submit → redirect with `lockout_error` + `lockout_wait` flash.
+- On successful login: `$throttler->remove($ipKey)` resets the bucket.
+- Login view renders `lockout_error` flash as a lock-icon error block with wait time in minutes.
+
 ## 5) API Contract
 
 ### 5.1 Versioning and Surface

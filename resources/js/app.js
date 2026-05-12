@@ -17,6 +17,7 @@ import {
 } from './modules/analytics/analytics-charts.js';
 
 import { getBaseUrl } from './utils/url-helpers.js';
+import { SEL } from './core/selectors.js';
 
 // Import dynamic color utility (auto-initialises; side-effect import only)
 import './utils/dynamic-colors.js';
@@ -41,6 +42,7 @@ import { bindAppLifecycleEvents } from './modules/app-lifecycle.js';
 import { initPhoneCountrySelectors } from './utils/phone-country-selector.js';
 import { initConfirmActions, initHelpFaq, initPasswordToggles, initProviderPicker, initServiceManagementForms, togglePassword } from './modules/app/shared-ui.js';
 import { getAvatarInitials, getDisplayName } from './utils/avatar.js';
+import { initInactivityMonitor } from './modules/auth/inactivity-monitor.js';
 
 // Import appointment navigation module
 import { prefillAppointmentForm, handleAppointmentClick } from './modules/appointments/appointment-navigation.js';
@@ -149,6 +151,9 @@ function initializeComponents() {
 
     // Initialize the live profile page tab and avatar interactions.
     initProfilePage(document);
+
+    // Start inactivity monitor — shows warning modal 5 min before session expiry.
+    initInactivityMonitor();
     
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();
@@ -191,14 +196,12 @@ bindAppLifecycleEvents({
     initializeComponents,
     refreshAppointmentStats,
     resetSchedulerInitAttempts,
-    hasDashboardStats: () => Boolean(
-        document.getElementById('upcomingCount') || document.getElementById('completedCount')
-    ),
+    hasDashboardStats: () => Boolean(document.querySelector('[data-dashboard-summary]')),
 });
 
 // Listen for settings changes and refresh scheduler
 document.addEventListener('settingsSaved', async () => {
-    const schedulerContainer = document.getElementById('appointments-inline-calendar');
+    const schedulerContainer = document.querySelector(SEL.SCHEDULER_CONTAINER);
     if (!schedulerContainer) {
         teardownScheduler();
         return;
@@ -206,7 +209,13 @@ document.addEventListener('settingsSaved', async () => {
 
     if (!window.scheduler || !window.scheduler.settingsManager) return;
     await window.scheduler.settingsManager.refresh();
-    await window.scheduler.loadAppointments();
+
+    if (typeof window.scheduler.refreshAndRender === 'function') {
+        await window.scheduler.refreshAndRender({ reason: 'settings-saved' });
+        return;
+    }
+
+    await window.scheduler.loadData();
     window.scheduler.render();
 }, { once: false });
 
@@ -219,6 +228,10 @@ function resetSchedulerInitAttempts() {
 }
 
 function teardownScheduler() {
+    if (window.scheduler && typeof window.scheduler.stopBackgroundPolling === 'function') {
+        window.scheduler.stopBackgroundPolling();
+    }
+
     if (window.scheduler && typeof window.scheduler.destroy === 'function') {
         window.scheduler.destroy();
     }
@@ -226,7 +239,7 @@ function teardownScheduler() {
 }
 
 async function initScheduler() {
-    const schedulerContainer = document.getElementById('appointments-inline-calendar');
+    const schedulerContainer = document.querySelector(SEL.SCHEDULER_CONTAINER);
     const relativePath = getAppRelativePathname();
     
     if (!schedulerContainer) {
@@ -280,9 +293,17 @@ async function initScheduler() {
         if (urlParams.has('refresh')) {
             // Remove the refresh parameter from URL without reload
             window.history.replaceState({}, document.title, window.location.pathname);
-            // Force a calendar refresh by reloading appointments and re-rendering
-            await scheduler.loadAppointments();
-            scheduler.render();
+            // Force a calendar refresh through the canonical server-mode path
+            if (typeof scheduler.refreshAndRender === 'function') {
+                await scheduler.refreshAndRender({ reason: 'url-refresh' });
+            } else {
+                await scheduler.loadData();
+                scheduler.render();
+            }
+        }
+
+        if (typeof scheduler.startBackgroundPolling === 'function') {
+            scheduler.startBackgroundPolling();
         }
     } catch (error) {
         console.error('❌ Failed to initialize scheduler:', error);
@@ -300,3 +321,17 @@ async function initScheduler() {
         `;
     }
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        return;
+    }
+
+    if (!getAppRelativePathname().includes('/appointments')) {
+        return;
+    }
+
+    if (window.scheduler && typeof window.scheduler.triggerBackgroundRefresh === 'function') {
+        window.scheduler.triggerBackgroundRefresh();
+    }
+}, { once: false });

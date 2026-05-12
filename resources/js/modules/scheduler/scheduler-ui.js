@@ -7,6 +7,7 @@
  * @module scheduler/scheduler-ui
  */
 
+import { DateTime } from 'luxon';
 import { syncDateNavLabel } from './date-nav-label.js';
 import { applyDynamicColors } from '../../utils/dynamic-colors.js';
 
@@ -81,10 +82,10 @@ export function setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel } = 
                 document.querySelectorAll('[data-calendar-action]').forEach(b => {
                     if (b.dataset.calendarAction === view) {
                         b.classList.add('bg-primary-600', 'text-white', 'shadow-sm');
-                        b.classList.remove('bg-surface-0', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'hover:bg-surface-2', 'dark:hover:bg-gray-600');
+                        b.classList.remove('text-gray-600', 'dark:text-gray-400');
                     } else if (['day', 'week', 'month'].includes(b.dataset.calendarAction)) {
                         b.classList.remove('bg-primary-600', 'text-white', 'shadow-sm');
-                        b.classList.add('bg-surface-0', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300', 'hover:bg-surface-2', 'dark:hover:bg-gray-600');
+                        b.classList.add('text-gray-600', 'dark:text-gray-400');
                     }
                 });
 
@@ -133,6 +134,53 @@ export function setupSchedulerToolbar(scheduler, { setupAdvancedFilterPanel } = 
             }
         });
     }
+
+    // Date picker — native <input type="date"> opened programmatically by the calendar icon button.
+    // The input is sr-only; showPicker() is the only reliable cross-browser way to trigger the
+    // native picker UI for a hidden element.
+    const dateInput = document.getElementById('scheduler-date-input');
+    if (dateInput) {
+        // Wire the calendar icon button to open the picker
+        const datePickerBtn = document.querySelector('[data-calendar-action="open-datepicker"]');
+        if (datePickerBtn) {
+            datePickerBtn.addEventListener('click', () => {
+                try {
+                    dateInput.showPicker();
+                } catch {
+                    // showPicker() not yet supported (Safari < 16); fall back to click
+                    dateInput.click();
+                }
+            });
+        }
+
+        dateInput.addEventListener('change', async () => {
+            const raw = dateInput.value; // 'YYYY-MM-DD'
+            if (!raw) return;
+            try {
+                const tz = scheduler.options?.timezone || 'UTC';
+                const target = DateTime.fromISO(raw, { zone: tz });
+                if (target.isValid) {
+                    await scheduler.navigateToDate(target);
+                    updateDateDisplay(scheduler);
+                }
+            } catch (err) {
+                console.error('[scheduler] date picker navigation failed:', err);
+            }
+        });
+    }
+
+    // Apply initial active/inactive state to view toggle buttons on load
+    // (JS click handlers only update state after a click, leaving load state unstyled)
+    const initialView = scheduler.currentView ?? 'day';
+    document.querySelectorAll('.view-toggle-btn').forEach(b => {
+        if (b.dataset.view === initialView) {
+            b.classList.add('bg-primary-600', 'text-white', 'shadow-sm');
+            b.classList.remove('text-gray-600', 'dark:text-gray-400');
+        } else {
+            b.classList.remove('bg-primary-600', 'text-white', 'shadow-sm');
+            b.classList.add('text-gray-600', 'dark:text-gray-400');
+        }
+    });
 
     // Render provider legend
     renderProviderLegend(scheduler);

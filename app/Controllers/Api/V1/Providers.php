@@ -78,14 +78,21 @@ class Providers extends BaseApiController
         $currentUserId = (int) (session()->get('user_id') ?? 0);
 
         $scopedProviderIds = null;
-        if ($currentRole === 'provider') {
-            $scopedProviderIds = $currentUserId > 0 ? [$currentUserId] : [0];
-        } elseif ($currentRole === 'staff') {
-            $providerStaffModel = new ProviderStaffModel();
-            $assignedProviders = $providerStaffModel->getProvidersForStaff($currentUserId, 'active');
-            $scopedProviderIds = !empty($assignedProviders)
-                ? array_map('intval', array_column($assignedProviders, 'id'))
-                : [0];
+
+        // Calendar legend requests all providers so users can see and toggle the full schedule.
+        // Management endpoints (no flag) keep role-scoping intact.
+        $forCalendar = (bool) ($this->request->getGet('for_calendar') ?? false);
+
+        if (!$forCalendar) {
+            if ($currentRole === 'provider') {
+                $scopedProviderIds = $currentUserId > 0 ? [$currentUserId] : [0];
+            } elseif ($currentRole === 'staff') {
+                $providerStaffModel = new ProviderStaffModel();
+                $assignedProviders = $providerStaffModel->getProvidersForStaff($currentUserId, 'active');
+                $scopedProviderIds = !empty($assignedProviders)
+                    ? array_map('intval', array_column($assignedProviders, 'id'))
+                    : [0];
+            }
         }
 
         $rowsModel = new UserModel();

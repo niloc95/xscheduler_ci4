@@ -102,6 +102,8 @@ export class SettingsManager {
                 firstDayOfWeek: 0,
                 first_day: undefined
             };
+            // Ensure window.appTimezone is always set — scheduler modules read it directly
+            window.appTimezone = browserTimezone;
             return this.settings.localization;
         }
     }

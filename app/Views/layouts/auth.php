@@ -33,8 +33,6 @@
     
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <script type="module" src="<?= vite_js('resources/js/material-web.js') ?>"></script>
-    
     <?= $this->renderSection('head') ?>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen transition-colors duration-200">

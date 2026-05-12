@@ -45,9 +45,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     
-    <!-- Material Web Components -->
-    <script type="module" src="<?= vite_js('resources/js/material-web.js') ?>"></script>
-    
     <meta name="csrf-header" content="X-CSRF-TOKEN">
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
     
@@ -82,18 +79,23 @@
     <?php
         // Capture header_title ONCE (renderSection can only be called once per section)
         $headerTitleSection = trim($this->renderSection('header_title'));
+        $headerSubtitleSection = trim($this->renderSection('header_subtitle'));
+        $headerPrimaryActionSection = strtolower(trim($this->renderSection('header_primary_action')));
         $resolvedHeaderTitle = $headerTitleSection !== '' ? $headerTitleSection : 'Dashboard';
+        $resolvedHeaderSubtitle = $headerSubtitleSection !== '' ? $headerSubtitleSection : '';
+        $showHeaderPrimaryAction = $headerPrimaryActionSection !== 'hidden';
+        $headerPrimaryActionState = $showHeaderPrimaryAction ? 'visible' : 'hidden';
     ?>
     <div class="xs-main-container">
         <!-- Fixed Header Bar (solid opaque, aligned with sidebar) -->
         <header class="xs-header bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                <div class="flex items-center justify-between gap-4">
-                    <!-- Left: Mobile Menu + Title -->
-                    <div class="flex items-center gap-3 min-w-0">
+                <div class="xs-header-top flex items-start justify-between gap-4">
+                    <!-- Left: Mobile Menu + Page Identity -->
+                    <div class="xs-header-identity flex min-w-0 flex-1 items-start gap-3">
                         <button id="menu-toggle" type="button" class="lg:hidden w-11 h-11 -ml-1 inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                             <span class="material-symbols-outlined">menu</span>
                         </button>
-                        <div class="min-w-0">
+                        <div class="min-w-0 flex-1">
                             <?php 
                                 $userName = session()->get('user')['name'] ?? 'User';
                                 $userRole = session()->get('user')['role'] ?? 'user';
@@ -103,35 +105,31 @@
                                     'staff' => 'Staff Member'
                                 ];
                                 $displayRole = $roleLabels[$userRole] ?? ucfirst($userRole);
-                                $greeting = date('H') < 12 ? 'Good morning' : (date('H') < 17 ? 'Good afternoon' : 'Good evening');
                             ?>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 hidden sm:flex items-center gap-1.5 leading-none mb-0.5">
-                                <span><?= date('l, F j, Y') ?></span>
-                                <span class="text-gray-300 dark:text-gray-600">·</span>
-                                <span id="header-live-clock" class="text-blue-600 dark:text-blue-400 font-mono">--:--:--</span>
-                            </p>
                             <h1 id="header-title" class="text-lg lg:text-xl font-bold text-gray-900 dark:text-white truncate leading-tight">
                                 <?= esc($resolvedHeaderTitle) ?>
                             </h1>
-                            <p id="header-subtitle" class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block leading-tight">
-                                <span id="header-greeting" class="font-medium"><?= esc($greeting) ?>, <?= esc($userName) ?></span>
-                                <span id="header-greeting-sep" class="mx-1">·</span>
-                                <span><?= esc($displayRole) ?></span>
+                            <p id="header-subtitle"
+                               class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block leading-tight"
+                               <?= $resolvedHeaderSubtitle !== '' ? '' : 'hidden' ?>>
+                                <?= esc($resolvedHeaderSubtitle) ?>
                             </p>
+                            <div class="xs-header-temporal" aria-label="Current date and time">
+                                <span id="header-live-date" class="xs-header-temporal-date"><?= date('D, j M') ?></span>
+                                <span class="xs-header-temporal-separator" aria-hidden="true"></span>
+                                <span id="header-live-clock" class="xs-header-temporal-time">--:--:--</span>
+                            </div>
                         </div>
-                        </div>
+                    </div>
                         
-                        <!-- Right: Search, Notifications, User Menu -->
-                        <div class="flex items-center gap-2 lg:gap-4 flex-shrink-0">
-                            <!-- Dark Mode Toggle -->
-                            <?= $this->include('components/dark-mode-toggle') ?>
-                            
-                            <!-- Global Search (Desktop) -->
-                            <div class="hidden md:block relative" id="global-search-wrapper">
+                        <!-- Right: Inline Utilities + User Menu -->
+                        <div class="xs-header-utilities flex items-center gap-2 xl:gap-3 flex-shrink-0">
+                            <!-- Global Search (Expanded Desktop) -->
+                            <div class="xs-header-search hidden xl:block relative" id="global-search-wrapper">
                                 <input type="search" 
                                        id="global-search" 
                                        placeholder="Search..." 
-                                       class="w-64 lg:w-80 h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       class="w-60 2xl:w-80 h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                        autocomplete="off">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                                 <div id="global-search-results" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
@@ -141,26 +139,27 @@
                                 </div>
                             </div>
                             
-                            <!-- New Appointment (Global — visible on all pages) -->
-                            <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+                            <!-- New Appointment (Expanded Desktop) -->
+                                     <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
                             <a href="<?= base_url('/appointments/create') ?>"
-                                         class="btn btn-primary inline-flex items-center justify-center gap-1.5 px-3 text-sm rounded-lg whitespace-nowrap"
+                                         id="header-primary-action"
+                                         class="xs-header-primary-action btn btn-primary hidden xl:inline-flex items-center justify-center gap-1.5 px-3 text-sm rounded-lg whitespace-nowrap<?= $showHeaderPrimaryAction ? '' : ' xs-header-primary-action--suppressed' ?>"
                                title="New Appointment">
                                 <span class="material-symbols-outlined text-base">add</span>
-                                <span class="hidden lg:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
+                                <span class="hidden 2xl:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
                             </a>
                             <?php endif; ?>
-
-                            <!-- Notifications -->
-                            <button type="button" class="w-11 h-11 inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
-                                <span class="material-symbols-outlined">notifications</span>
-                            </button>
                             
                             <!-- User Menu -->
                             <?php $user = session()->get('user'); ?>
                             <?php $headerAvatar = avatar_data(is_array($user) ? $user : [], 'U'); ?>
                             <div class="relative" id="user-menu-wrapper">
-                                <button id="user-menu-btn" type="button" class="flex min-h-11 items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <button id="user-menu-btn"
+                                        type="button"
+                                        aria-haspopup="menu"
+                                        aria-controls="user-menu"
+                                        aria-expanded="false"
+                                        class="xs-user-menu-trigger flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                     <?php if (!empty($headerAvatar['image_url'])): ?>
                                         <img src="<?= esc($headerAvatar['image_url']) ?>"
                                              alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
@@ -170,20 +169,59 @@
                                             <?= esc($headerAvatar['initials']) ?>
                                         </div>
                                     <?php endif; ?>
-                                    <div class="hidden lg:block text-left">
+                                    <div class="hidden 2xl:block text-left">
                                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= esc($user['name'] ?? 'User') ?></p>
                                         <p class="text-xs text-gray-500 dark:text-gray-400"><?= esc($displayRole) ?></p>
                                     </div>
-                                    <span class="material-symbols-outlined text-gray-400 hidden lg:block">expand_more</span>
+                                    <span class="material-symbols-outlined text-gray-400 hidden xl:block">expand_more</span>
                                 </button>
                                 
-                                <!-- Dropdown -->
-                                <div id="user-menu" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                                        <p class="text-sm font-medium text-gray-900 dark:text-white"><?= esc($user['name'] ?? 'User') ?></p>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?= esc($user['email'] ?? '') ?></p>
+                                <!-- Adaptive Account Panel -->
+                                <div id="user-menu" class="xs-user-panel hidden absolute right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50" role="menu">
+                                    <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-start gap-3">
+                                            <?php if (!empty($headerAvatar['image_url'])): ?>
+                                                <img src="<?= esc($headerAvatar['image_url']) ?>"
+                                                     alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
+                                                     class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                                            <?php else: ?>
+                                                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                                                    <?= esc($headerAvatar['initials']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white"><?= esc($user['name'] ?? 'User') ?></p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate"><?= esc($user['email'] ?? '') ?></p>
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+                                    <div id="header-primary-action-mobile" class="xl:hidden px-4 py-4 border-b border-gray-200 dark:border-gray-700<?= $showHeaderPrimaryAction ? '' : ' xs-header-primary-action--suppressed' ?>">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick access</p>
+                                        <a href="<?= base_url('/appointments/create') ?>"
+                                           class="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                                            <span class="material-symbols-outlined text-base">add</span>
+                                            <span><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
+                                        </a>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">Appearance</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Toggle light and dark mode</p>
+                                            </div>
+                                            <?= $this->include('components/dark-mode-toggle') ?>
+                                        </div>
+                                    </div>
+
                                     <div class="py-1">
+                                        <button type="button" class="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-left">
+                                            <span class="material-symbols-outlined text-lg">notifications</span>
+                                            Notifications
+                                        </button>
                                         <a href="<?= base_url('profile') ?>" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                             <span class="material-symbols-outlined text-lg">person</span>
                                             Profile
@@ -205,9 +243,8 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Mobile Search -->
-                    <div class="mt-3 md:hidden" id="global-search-wrapper-mobile">
+
+                    <div class="mt-3 xl:hidden" id="global-search-wrapper-mobile">
                         <div class="relative">
                             <input type="search" 
                                    id="global-search-mobile" 
@@ -222,7 +259,7 @@
                             </div>
                         </div>
                     </div>
-
+                    
                     <!-- Page-Specific Header Controls (injected by child views) -->
                     <?php $headerControlsContent = trim($this->renderSection('header_controls') ?? ''); ?>
                     <?php if ($headerControlsContent !== ''): ?>
@@ -252,7 +289,12 @@
                 <?php endif; ?>
                 
                 <!-- Main Content -->
-                <main id="spa-content" aria-live="polite" aria-busy="false" data-page-title="<?= esc($resolvedHeaderTitle) ?>">
+                    <main id="spa-content"
+                        aria-live="polite"
+                        aria-busy="false"
+                        data-page-title="<?= esc($resolvedHeaderTitle) ?>"
+                        data-header-primary-action="<?= esc($headerPrimaryActionState) ?>"
+                        <?= $resolvedHeaderSubtitle !== '' ? 'data-page-subtitle="' . esc($resolvedHeaderSubtitle) . '"' : '' ?>>
                     <?= $this->renderSection('content') ?>
                     
                     <!-- View-specific scripts (inside spa-content for SPA re-execution) -->

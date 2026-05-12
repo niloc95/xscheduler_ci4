@@ -34,6 +34,7 @@ $resolvedSubtitle = $pageSubtitleSection !== '' ? $pageSubtitleSection : ($pageS
 ?>
 
 <?= $this->section('header_title') ?><?= esc($resolvedTitle) ?><?= $this->endSection() ?>
+<?= $this->section('header_subtitle') ?><?= esc($resolvedSubtitle) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <?php

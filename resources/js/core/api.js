@@ -9,6 +9,7 @@ export async function apiRequest(endpoint, options = {}) {
         method = 'GET',
         body = null,
         headers = {},
+        signal,
         authContext = 'authenticated',
         credentials = 'same-origin',
         includeRequestedWith = true,
@@ -37,6 +38,7 @@ export async function apiRequest(endpoint, options = {}) {
         headers: baseHeaders,
         credentials,
         body: requestBody,
+        signal,
     });
 
     if (rotateCsrf) {

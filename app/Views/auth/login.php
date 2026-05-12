@@ -5,6 +5,22 @@
 <?= $this->section('auth_subtitle') ?>Sign in to your account<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+    <?php if ($lockoutError = session()->getFlashdata('lockout_error')): ?>
+        <div class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+            <span class="material-symbols-outlined text-red-500 flex-shrink-0">lock</span>
+            <div>
+                <p class="text-sm font-medium text-red-800 dark:text-red-300"><?= esc($lockoutError) ?></p>
+                <?php $lockoutWait = (int) (session()->getFlashdata('lockout_wait') ?? 0); ?>
+                <?php if ($lockoutWait > 0): ?>
+                    <p class="text-xs text-red-600 dark:text-red-400 mt-0.5"
+                       id="lockout-countdown" data-wait="<?= $lockoutWait ?>">
+                        Unlocks in <?= (int) ceil($lockoutWait / 60) ?> min
+                    </p>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <?php if (session()->getFlashdata('error')): ?>
         <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg transition-colors duration-200">
             <div class="flex items-center">

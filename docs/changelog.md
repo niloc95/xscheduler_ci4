@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(auth): inactivity warning modal with 5-min countdown, session keep-alive ping, and failed-login lockout via CI4 Throttler
+- feat(auth): `GET /auth/ping` session keep-alive endpoint that slides the 2-hour session window
+- feat(analytics): provider-scoped analytics — all stat cards, revenue, popular services, and customer metrics now correctly filtered per provider
+- feat(analytics): real revenue comparisons (vs last quarter, vs last year, 3-month forecast)
+- feat(ui): centralised DOM selector constants in `resources/js/core/selectors.js`
+- feat(ui): appointments scheduler header with date picker, status pills, and mobile-responsive layout
+
+### Fixed
+- fix(analytics): `$currentUser['id']` was null — user ID is at `session()->get('user_id')`, not in the user sub-array
+- fix(analytics): Popular Services showed all active services instead of provider-assigned services; fixed with `INNER JOIN xs_providers_services`
+- fix(analytics): revenue status filter changed from `status = 'completed'` to `NOT IN ('cancelled','no-show','noshow')` across 9 query locations
+- fix(analytics): New Customer card was blank — fixed first-appointment detection via `MIN(start_at)` subquery
+- fix(analytics): `only_full_group_by` SQL error in detailed revenue query — fixed `GROUP BY` to include `l.id`
+- fix(setup): `setup-layout.php` still referenced removed `material-web.js` — caused CRITICAL on fresh install
+- fix(events): `NotificationReminderHeartbeatService` crashed before DB was configured on fresh install — guarded with `is_setup_completed()`
+
+### Changed
 - feat(auth): add full multi-role user management flow
 - feat: legal page and secure reference notifications
 - feat: continue calendar refactor and schema compatibility stabilization

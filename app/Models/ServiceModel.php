@@ -264,46 +264,48 @@ class ServiceModel extends BaseModel
     /**
      * Get service performance metrics
      */
-    public function getPerformanceMetrics(): array
+    public function getPerformanceMetrics(?int $providerId = null): array
     {
-        $db = \Config\Database::connect();
-        
-        // Average duration
+        $db        = \Config\Database::connect();
+        $apptTable = $db->prefixTable('appointments');
+        $provWhere = $providerId !== null ? ' AND provider_id = ' . (int) $providerId : '';
+
+        // Average service duration (from service catalogue, not scoped to provider)
         $avgDuration = $this->where('active', 1)->selectAvg('duration_min')->get()->getRow()->duration_min ?? 0;
-        
-        // Completion rate from appointments
-        $appointmentQuery = $db->query("
-            SELECT 
+
+        // Completion rate scoped to provider when set
+        $appointmentStats = $db->query("
+            SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-            FROM xs_appointments
-        ");
-        $appointmentStats = $appointmentQuery->getRow();
-        $completionRate = $appointmentStats->total > 0 
-            ? round(($appointmentStats->completed / $appointmentStats->total) * 100, 1) 
+            FROM {$apptTable}
+            WHERE 1=1 {$provWhere}
+        ")->getRow();
+        $completionRate = ($appointmentStats->total ?? 0) > 0
+            ? round(($appointmentStats->completed / $appointmentStats->total) * 100, 1)
             : 0;
-        
-        // Repeat booking rate (customers with more than 1 appointment)
-        $repeatQuery = $db->query("
-            SELECT 
+
+        // Repeat booking rate scoped to provider when set
+        $repeatStats = $db->query("
+            SELECT
                 COUNT(DISTINCT customer_id) as total_customers,
                 COUNT(DISTINCT CASE WHEN appt_count > 1 THEN customer_id END) as repeat_customers
             FROM (
                 SELECT customer_id, COUNT(*) as appt_count
-                FROM xs_appointments
+                FROM {$apptTable}
+                WHERE 1=1 {$provWhere}
                 GROUP BY customer_id
             ) as customer_appts
-        ");
-        $repeatStats = $repeatQuery->getRow();
-        $repeatRate = $repeatStats->total_customers > 0
+        ")->getRow();
+        $repeatRate = ($repeatStats->total_customers ?? 0) > 0
             ? round(($repeatStats->repeat_customers / $repeatStats->total_customers) * 100, 1)
             : 0;
-        
+
         return [
-            'avg_duration' => round((float)$avgDuration, 1),
-            'completion_rate' => $completionRate,
-            'customer_satisfaction' => 0, // Would need rating system
-            'repeat_booking_rate' => $repeatRate
+            'avg_duration'            => round((float) $avgDuration, 1),
+            'completion_rate'         => $completionRate,
+            'customer_satisfaction'   => 0, // Requires a ratings system
+            'repeat_booking_rate'     => $repeatRate,
         ];
     }
 }

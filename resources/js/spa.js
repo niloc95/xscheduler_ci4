@@ -7,7 +7,7 @@
 // Example:
 //   function initMyView() {
 //     const btn = document.getElementById('myButton');
-//     if (!btn || btn.dataset.initialized === 'true') return;
+//     if (!btn || btn.dataset.initialized === 'true') return; // REQUIRED guard
 //     btn.dataset.initialized = 'true';
 //     btn.addEventListener('click', () => console.log('clicked'));
 //   }
@@ -15,15 +15,38 @@
 //
 // This ensures your init function runs on:
 // 1. Initial page load
-// 2. Every SPA navigation
+// 2. Every SPA navigation (spa:navigated event)
 //
-// IMPORTANT: Always check for duplicate initialization using dataset flags!
+// IMPORTANT: ALL xsRegisterViewInit callbacks MUST have a DOM-existence guard as
+// their first statement. The registry fires on every navigation — if the element
+// is absent (different view), return immediately to avoid side-effects.
+//
+// LIFECYCLE EVENTS:
+// - spa:leaving   { detail: { url: currentUrl } }  — fires BEFORE content swap
+//                 Use this to remove document-level listeners added by the current view.
+// - spa:navigated { detail: { url, fromCache? } }  — fires AFTER content swap
+//                 Use this (via xsRegisterViewInit) to initialize the new view.
 
 import { getBaseUrl } from './utils/url-helpers.js';
 import { apiRequest } from './core/api.js';
+import { SEL } from './core/selectors.js';
 
-// Global registry for view-specific initializer functions
-// Views can register functions that should run on initial load AND after SPA navigation
+// Global registry for view-specific initializer functions.
+// Registered functions fire on initial page load AND on every spa:navigated event
+// for the entire session. The registry never shrinks — functions stay registered
+// even when the user navigates away from the view that registered them.
+//
+// !! MANDATORY CONVENTION !!
+// Every function passed to xsRegisterViewInit MUST begin with a DOM-existence guard:
+//
+//   xsRegisterViewInit(() => {
+//     const el = document.querySelector('#my-widget');
+//     if (!el) return; // guard — bail immediately if this view is not in the DOM
+//     // ... init code
+//   });
+//
+// Without the guard, a callback registered on the appointments view will also run
+// (and likely error or add stale listeners) when the user is on the dashboard.
 window.xsViewInitializers = window.xsViewInitializers || [];
 window.xsRegisterViewInit = function(initFn) {
   if (typeof initFn === 'function' && !window.xsViewInitializers.includes(initFn)) {
@@ -36,9 +59,48 @@ window.xsRegisterViewInit = function(initFn) {
 };
 
 const SPA = (() => {
-  const content = () => document.getElementById('spa-content');
-  const headerControlsSlot = () => document.getElementById('header-controls-slot');
+  const content = () => document.querySelector(SEL.SPA_CONTENT);
+  const headerControlsSlot = () => document.querySelector(SEL.HEADER_CONTROLS_SLOT);
   const executedScriptSrc = window.__xsSpaExecutedScriptSrc || (window.__xsSpaExecutedScriptSrc = new Set());
+
+  // ─── View cache ────────────────────────────────────────────────────────────
+  // Stores the last VIEW_CACHE_MAX rendered pages so popstate can restore
+  // instantly without a server round-trip (< VIEW_CACHE_TTL_MS old entries only).
+  const VIEW_CACHE_MAX = 5;
+  const VIEW_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  const viewCache = new Map();
+
+  const cacheKey = (url) => {
+    try {
+      const u = new URL(url, window.location.origin);
+      return u.pathname + u.search;
+    } catch {
+      return url;
+    }
+  };
+
+  const cacheSet = (url, entry) => {
+    const key = cacheKey(url);
+    if (viewCache.size >= VIEW_CACHE_MAX && !viewCache.has(key)) {
+      // Evict the oldest entry (Map iteration order = insertion order)
+      viewCache.delete(viewCache.keys().next().value);
+    }
+    viewCache.set(key, { ...entry, cachedAt: Date.now() });
+  };
+
+  const cacheGet = (url) => {
+    const key = cacheKey(url);
+    const entry = viewCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.cachedAt > VIEW_CACHE_TTL_MS) {
+      viewCache.delete(key);
+      return null;
+    }
+    return entry;
+  };
+
+  const cacheInvalidate = (url) => viewCache.delete(cacheKey(url));
+  // ───────────────────────────────────────────────────────────────────────────
 
   const normalizePathname = (url) => {
     try {
@@ -95,7 +157,7 @@ const SPA = (() => {
   };
 
   const syncHeaderControls = (controlsHtml, hasControls) => {
-    const headerEl = document.querySelector('.xs-header');
+    const headerEl = document.querySelector(SEL.HEADER_BAR);
     if (!headerEl) return;
 
     let slot = headerControlsSlot();
@@ -114,6 +176,16 @@ const SPA = (() => {
     if (slot) {
       slot.remove();
     }
+  };
+
+  const syncHeaderPrimaryAction = (state) => {
+    const shouldShow = state !== 'hidden';
+    [
+      document.querySelector(SEL.HEADER_PRIMARY_ACTION),
+      document.querySelector(SEL.HEADER_PRIMARY_ACTION_MOBILE),
+    ].filter(Boolean).forEach((el) => {
+      el.classList.toggle('xs-header-primary-action--suppressed', !shouldShow);
+    });
   };
 
   // Initialize simple tab UI inside current SPA content if present
@@ -189,26 +261,34 @@ const SPA = (() => {
     // Try to extract only the content inside #spa-content if rendered server-side
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
-    const spaContentEl = doc.querySelector('#spa-content');
+    const spaContentEl = doc.querySelector(SEL.SPA_CONTENT);
     
     if (!spaContentEl) {
       throw new Error('Server response missing #spa-content element');
     }
     
-    // Get page title from multiple sources
+    // Get page title/subtitle from multiple sources
     let pageTitle = spaContentEl.getAttribute('data-page-title');
+    let pageSubtitle = spaContentEl.getAttribute('data-page-subtitle');
+    let headerPrimaryAction = spaContentEl.getAttribute('data-header-primary-action');
     
     // Also check for child element with data-page-title (dashboard layout uses this)
     if (!pageTitle) {
       const titleEl = spaContentEl.querySelector('[data-page-title]');
       pageTitle = titleEl?.getAttribute('data-page-title');
     }
-    const headerControlsEl = doc.querySelector('#header-controls-slot');
+    if (!pageSubtitle) {
+      const subtitleEl = spaContentEl.querySelector('[data-page-subtitle]');
+      pageSubtitle = subtitleEl?.getAttribute('data-page-subtitle');
+    }
+    const headerControlsEl = doc.querySelector(SEL.HEADER_CONTROLS_SLOT);
 
-    // Return object with SPA content, page title, and optional header controls
+    // Return object with SPA content, page metadata, and optional header controls
     return {
       html: spaContentEl.innerHTML,
       pageTitle: pageTitle || null,
+      pageSubtitle: pageSubtitle || null,
+      headerPrimaryAction: headerPrimaryAction || 'visible',
       headerControlsHtml: headerControlsEl?.innerHTML ?? null,
       hasHeaderControls: Boolean(headerControlsEl)
     };
@@ -258,12 +338,25 @@ const SPA = (() => {
         return;
       }
       setBusy(true);
-      const { html, pageTitle, headerControlsHtml, hasHeaderControls } = await fetchPage(url);
+
+      // Invalidate cache for force-reload navigations (form saves, deletes, etc.)
+      if (forceReload) cacheInvalidate(url);
+
+      const { html, pageTitle, pageSubtitle, headerPrimaryAction, headerControlsHtml, hasHeaderControls } = await fetchPage(url);
+
+      // Save fetched page to cache before swapping (enables instant back navigation)
+      cacheSet(url, { html, pageTitle, pageSubtitle, headerPrimaryAction, headerControlsHtml, hasHeaderControls });
+
+      // Notify the leaving view BEFORE the DOM is replaced so document-level
+      // listeners added by the current view can be cleaned up.
+      document.dispatchEvent(new CustomEvent('spa:leaving', { detail: { url: window.location.href } }));
+
       el.innerHTML = html;
 
       // Keep fixed header controls in sync with the destination view
       const shouldRenderHeaderControls = hasHeaderControls && shouldRenderHeaderControlsForPath(targetPath, headerControlsHtml);
       syncHeaderControls(headerControlsHtml, shouldRenderHeaderControls);
+      syncHeaderPrimaryAction(headerPrimaryAction);
       
       // Update the data-page-title attribute on spa-content for header sync
       if (pageTitle) {
@@ -271,6 +364,14 @@ const SPA = (() => {
       } else {
         el.removeAttribute('data-page-title');
       }
+
+      if (pageSubtitle) {
+        el.setAttribute('data-page-subtitle', pageSubtitle);
+      } else {
+        el.removeAttribute('data-page-subtitle');
+      }
+
+      el.setAttribute('data-header-primary-action', headerPrimaryAction || 'visible');
       
       // Execute any inline or external scripts in newly injected SPA content.
       // Force injected scripts to use the currently active nonce to satisfy CSP.
@@ -456,8 +557,45 @@ const SPA = (() => {
     navigate(a.getAttribute('href'));
   };
 
+  const restoreFromCache = (cached, url) => {
+    const el = content();
+    if (!el) return;
+    const targetPath = normalizePathname(url);
+
+    document.dispatchEvent(new CustomEvent('spa:leaving', { detail: { url: window.location.href } }));
+
+    el.innerHTML = cached.html;
+
+    const shouldRenderHeaderControls = cached.hasHeaderControls &&
+      shouldRenderHeaderControlsForPath(targetPath, cached.headerControlsHtml);
+    syncHeaderControls(cached.headerControlsHtml, shouldRenderHeaderControls);
+    syncHeaderPrimaryAction(cached.headerPrimaryAction);
+
+    if (cached.pageTitle) {
+      el.setAttribute('data-page-title', cached.pageTitle);
+    } else {
+      el.removeAttribute('data-page-title');
+    }
+
+    if (cached.pageSubtitle) {
+      el.setAttribute('data-page-subtitle', cached.pageSubtitle);
+    } else {
+      el.removeAttribute('data-page-subtitle');
+    }
+
+    el.setAttribute('data-header-primary-action', cached.headerPrimaryAction || 'visible');
+
+    initTabsInSpaContent();
+    document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url, fromCache: true } }));
+    focusMain(true);
+  };
+
   const popstateHandler = (e) => {
-    if (e.state?.spa) {
+    if (!e.state?.spa) return;
+    const cached = cacheGet(window.location.href);
+    if (cached) {
+      restoreFromCache(cached, window.location.href);
+    } else {
       navigate(window.location.href, false);
     }
   };
@@ -536,7 +674,7 @@ document.addEventListener('xs:flash', (e) => {
   if (!message) return;
 
   // Find or create flash messages container
-  let container = document.querySelector('[data-flash-messages]');
+  let container = document.querySelector(SEL.FLASH_CONTAINER);
   if (!container) {
     container = document.createElement('div');
     container.setAttribute('data-flash-messages', '');
@@ -595,7 +733,7 @@ document.addEventListener('xs:flash', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-  const closeBtn = e.target.closest('[data-flash-close="true"]');
+  const closeBtn = e.target.closest(SEL.FLASH_CLOSE);
   if (!closeBtn) return;
   closeBtn.closest('.xs-alert')?.remove();
 });

@@ -39,7 +39,7 @@ $badgeClasses = trim('inline-flex items-center gap-1 px-2 py-0.5 rounded-full bo
 $dotClass = $dotMap[$status] ?? $dotMap['default'];
 ?>
 
-<span class="<?= esc($badgeClasses) ?>">
+<span class="<?= esc($badgeClasses) ?>" data-filter-status="<?= esc($status) ?>">
     <?php if ($showDot): ?>
     <span class="w-1.5 h-1.5 rounded-full <?= esc($dotClass) ?>"></span>
     <?php endif; ?>

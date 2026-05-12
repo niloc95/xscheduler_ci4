@@ -393,3 +393,7 @@ Temporary Items
 !.htaccess
 !index.html
 !index.php
+
+# Playwright E2E
+tests/e2e/screenshots/
+tests/e2e/reports/

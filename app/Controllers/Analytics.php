@@ -99,7 +99,7 @@ class Analytics extends BaseController
         $timeframe = $this->request->getGet('timeframe') ?? '30d';
         $tab = $this->request->getGet('tab') ?? 'overview';
         $providerId = $currentRole === 'provider'
-            ? (int) ($currentUser['id'] ?? 0)
+            ? (int) session()->get('user_id')
             : $this->sanitizeOptionalInt($this->request->getGet('provider_id'));
         $providerServiceFilterId = $this->sanitizeOptionalInt($this->request->getGet('provider_service_id'));
         $providerLocationFilterId = $this->sanitizeOptionalInt($this->request->getGet('provider_location_id'));
@@ -177,37 +177,43 @@ class Analytics extends BaseController
                 : ($currentStats['total'] > 0 ? 100 : 0);
 
             $customerPeriod = $window['customer_period'];
-            $newCustomers = $this->customerModel->getNewCustomers($customerPeriod);
-            $customerTrend = $this->customerModel->getGrowthTrend();
+            $newCustomers  = $this->customerModel->getNewCustomers($customerPeriod, $providerId);
+            $customerTrend = $this->customerModel->getGrowthTrend($providerId);
 
-            $avgBookingValue = $this->appointmentModel->getAverageBookingValue($window['days'], $providerId);
-            $bookingValueChange = 0;
+            // Avg booking value derived from already-fetched revenue ÷ appointment counts
+            $avgBookingValue  = ($currentStats['total'] ?? 0) > 0 ? round($currentRevenue / $currentStats['total'], 2) : 0;
+            $prevAvgValue     = ($previousStats['total'] ?? 0) > 0 ? $previousRevenue / $previousStats['total'] : 0;
+            $bookingValueChange = $prevAvgValue > 0
+                ? round((($avgBookingValue - $prevAvgValue) / $prevAvgValue) * 100, 1)
+                : ($avgBookingValue > 0 ? 100 : 0);
 
-            // Get customer retention
-            $customerRetention = $this->customerModel->getRetentionRate();
+            // Customer retention — provider-scoped
+            $customerRetention = $this->customerModel->getRetentionRate($providerId);
 
-            // Get staff utilization (simplified - based on provider appointment count)
-            $userStats = $this->userModel->getStats();
+            // Staff utilization — current and previous periods
+            $userStats     = $this->userModel->getStats();
             $providerCount = $providerId !== null ? 1 : ($userStats['providers'] ?? 1);
-            $monthlyAppointments = $currentStats['total'] ?? 0;
-            // Assume 8 hours/day, 20 days/month, avg 1 hour per appointment
-            $maxCapacity = max(1, $providerCount) * max(20, (int) ceil($window['days'] / 30 * 160));
-            $staffUtilization = $maxCapacity > 0 ? round(($monthlyAppointments / $maxCapacity) * 100, 1) : 0;
-            $staffUtilization = min($staffUtilization, 100); // Cap at 100%
+            $maxCapacity   = max(1, $providerCount) * max(20, (int) ceil($window['days'] / 30 * 160));
+
+            $staffUtilization = $maxCapacity > 0 ? min(100, round((($currentStats['total'] ?? 0) / $maxCapacity) * 100, 1)) : 0;
+            $prevUtilization  = $maxCapacity > 0 ? min(100, round((($previousStats['total'] ?? 0) / $maxCapacity) * 100, 1)) : 0;
+            $utilizationChange = $prevUtilization > 0
+                ? round((($staffUtilization - $prevUtilization) / $prevUtilization) * 100, 1)
+                : ($staffUtilization > 0 ? 100 : 0);
 
             return [
-                'total_revenue' => $currentRevenue,
-                'revenue_change' => $revenueChange,
-                'total_appointments' => $currentStats['total'] ?? 0,
-                'appointments_change' => $appointmentChange,
-                'new_customers' => $newCustomers,
-                'customers_change' => $customerTrend['percentage'] ?? 0,
-                'avg_booking_value' => $avgBookingValue,
+                'total_revenue'        => $currentRevenue,
+                'revenue_change'       => $revenueChange,
+                'total_appointments'   => $currentStats['total'] ?? 0,
+                'appointments_change'  => $appointmentChange,
+                'new_customers'        => $newCustomers,
+                'customers_change'     => $customerTrend['percentage'] ?? 0,
+                'avg_booking_value'    => $avgBookingValue,
                 'booking_value_change' => $bookingValueChange,
-                'customer_retention' => $customerRetention,
-                'retention_change' => 0, // Would need historical data
-                'staff_utilization' => $staffUtilization,
-                'utilization_change' => 0 // Would need historical data
+                'customer_retention'   => $customerRetention,
+                'retention_change'     => 0, // Requires time-bounded retention snapshots
+                'staff_utilization'    => $staffUtilization,
+                'utilization_change'   => $utilizationChange,
             ];
         } catch (\Exception $e) {
             log_message('error', 'Analytics getOverviewStats error: ' . $e->getMessage());
@@ -283,7 +289,7 @@ class Analytics extends BaseController
     {
         try {
             $popularServices = $this->bookingMetrics->getPopularServices(10, $providerId);
-            $performance = $this->serviceModel->getPerformanceMetrics();
+            $performance = $this->serviceModel->getPerformanceMetrics($providerId);
             
             // Format popular services for view
             $formattedServices = [];
@@ -320,8 +326,8 @@ class Analytics extends BaseController
     private function getCustomerAnalytics($timeframe = '30d', ?int $providerId = null)
     {
         try {
-            $newVsReturning = $this->customerModel->getNewVsReturning();
-            $loyalty = $this->customerModel->getLoyaltySegments();
+            $newVsReturning = $this->customerModel->getNewVsReturning($providerId);
+            $loyalty = $this->customerModel->getLoyaltySegments($providerId);
 
             return [
                 'new_vs_returning' => $newVsReturning,
@@ -367,7 +373,7 @@ class Analytics extends BaseController
                 FROM xs_appointments a
                 JOIN xs_users u ON a.provider_id = u.id
                 LEFT JOIN xs_services s ON a.service_id = s.id
-                WHERE a.status = 'completed'
+                WHERE a.status NOT IN ('cancelled', 'no-show', 'noshow')
                 AND a.start_at >= '{$startAtUtc}'
                 AND a.start_at <= '{$endAtUtc}'
                 {$providerCondition}
@@ -384,7 +390,7 @@ class Analytics extends BaseController
                     u.name AS provider_name,
                     COUNT(a.id) AS total_appointments,
                     SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) AS completed_appointments,
-                    COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) AS revenue
+                    COALESCE(SUM(CASE WHEN a.status NOT IN ('cancelled', 'no-show', 'noshow') THEN s.price ELSE 0 END), 0) AS revenue
                 FROM xs_appointments a
                 JOIN xs_users u ON a.provider_id = u.id
                 LEFT JOIN xs_services s ON a.service_id = s.id
@@ -425,7 +431,7 @@ class Analytics extends BaseController
                 {$providerCondition}
                 {$serviceCondition}
                 {$locationCondition}
-                GROUP BY a.provider_id, location_name
+                GROUP BY a.provider_id, l.id, a.location_name
                 ORDER BY appointment_count DESC
             ")->getResultArray();
 
@@ -621,13 +627,51 @@ class Analytics extends BaseController
                 ? round((($currentMonth - $lastMonth) / $lastMonth) * 100, 1) 
                 : ($currentMonth > 0 ? 100 : 0);
 
+            // Quarter: current 3 months vs previous 3 months
+            $now     = new \DateTime();
+            $qEnd    = $now->format('Y-m-d');
+            $qStart  = (clone $now)->modify('-3 months')->format('Y-m-d');
+            $pqEnd   = (clone $now)->modify('-3 months')->format('Y-m-d');
+            $pqStart = (clone $now)->modify('-6 months')->format('Y-m-d');
+
+            $currentQuarter = $this->appointmentModel->getRevenueForDateRange($qStart, $qEnd, $providerId);
+            $prevQuarter    = $this->appointmentModel->getRevenueForDateRange($pqStart, $pqEnd, $providerId);
+            $vsLastQuarter  = $prevQuarter > 0
+                ? round((($currentQuarter - $prevQuarter) / $prevQuarter) * 100, 1)
+                : ($currentQuarter > 0 ? 100 : 0);
+
+            // Year: current 12 months vs previous 12 months
+            $yEnd    = $now->format('Y-m-d');
+            $yStart  = (clone $now)->modify('-1 year')->format('Y-m-d');
+            $pyEnd   = (clone $now)->modify('-1 year')->format('Y-m-d');
+            $pyStart = (clone $now)->modify('-2 years')->format('Y-m-d');
+
+            $currentYear = $this->appointmentModel->getRevenueForDateRange($yStart, $yEnd, $providerId);
+            $prevYear    = $this->appointmentModel->getRevenueForDateRange($pyStart, $pyEnd, $providerId);
+            $vsLastYear  = $prevYear > 0
+                ? round((($currentYear - $prevYear) / $prevYear) * 100, 1)
+                : ($currentYear > 0 ? 100 : 0);
+
+            // Forecast: trailing 3-month average (replaces naive 5% flat projection)
+            $m1s  = (new \DateTime('first day of last month'))->format('Y-m-d');
+            $m1e  = (new \DateTime('last day of last month'))->format('Y-m-d');
+            $m2s  = (new \DateTime('first day of 2 months ago'))->format('Y-m-d');
+            $m2e  = (new \DateTime('last day of 2 months ago'))->format('Y-m-d');
+            $m3s  = (new \DateTime('first day of 3 months ago'))->format('Y-m-d');
+            $m3e  = (new \DateTime('last day of 3 months ago'))->format('Y-m-d');
+
+            $rev1              = $this->appointmentModel->getRevenueForDateRange($m1s, $m1e, $providerId);
+            $rev2              = $this->appointmentModel->getRevenueForDateRange($m2s, $m2e, $providerId);
+            $rev3              = $this->appointmentModel->getRevenueForDateRange($m3s, $m3e, $providerId);
+            $forecastNextMonth = round(($rev1 + $rev2 + $rev3) / 3, 2);
+
             return [
-                'current_total' => $currentMonth,
-                'previous_total' => $lastMonth,
-                'vs_last_month' => $vsLastMonth,
-                'vs_last_quarter' => 0, // Would need more historical data
-                'vs_last_year' => 0, // Would need more historical data
-                'forecast_next_month' => round($currentMonth * 1.05, 2) // Simple 5% growth forecast
+                'current_total'       => $currentMonth,
+                'previous_total'      => $lastMonth,
+                'vs_last_month'       => $vsLastMonth,
+                'vs_last_quarter'     => $vsLastQuarter,
+                'vs_last_year'        => $vsLastYear,
+                'forecast_next_month' => $forecastNextMonth,
             ];
         } catch (\Exception $e) {
             log_message('error', 'Analytics getRevenueComparisons error: ' . $e->getMessage());

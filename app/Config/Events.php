@@ -58,11 +58,16 @@ Events::on('pre_system', static function (): void {
 
     // Fallback reminder heartbeat: keeps reminder queue moving on active sites
     // when OS-level cron is missing or temporarily down.
+    // Guard: skip entirely if setup hasn't completed — DB credentials don't
+    // exist yet and MySQLi::connect() will crash on an empty hostname string.
     if (!is_cli()) {
-        try {
-            (new NotificationReminderHeartbeatService())->runIfDue();
-        } catch (\Throwable $e) {
-            log_message('error', '[Events::pre_system reminder heartbeat] ' . $e->getMessage());
+        helper('setup');
+        if (is_setup_completed()) {
+            try {
+                (new NotificationReminderHeartbeatService())->runIfDue();
+            } catch (\Throwable $e) {
+                log_message('error', '[Events::pre_system reminder heartbeat] ' . $e->getMessage());
+            }
         }
     }
 });

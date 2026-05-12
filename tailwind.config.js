@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ['selector', '[data-theme="dark"]'], // Canonical dark mode selector
+  darkMode: 'class', // .dark on <html> set by theme-bootstrap.js + dark-mode.js
   content: [
     "./app/Views/**/*.php",
     "./resources/**/*.{js,ts,jsx,tsx,vue}",

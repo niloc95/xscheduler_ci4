@@ -62,6 +62,8 @@ class ConflictService
         ?int $excludeAppointmentId = null,
         ?int $locationId = null
     ): bool {
+        $this->assertUtc($startUtc, 'startUtc');
+        $this->assertUtc($endUtc, 'endUtc');
         return !empty($this->getConflictingAppointments(
             $providerId,
             $startUtc,
@@ -93,6 +95,8 @@ class ConflictService
         ?int $excludeAppointmentId = null,
         ?int $locationId = null
     ): array {
+        $this->assertUtc($startUtc, 'startUtc');
+        $this->assertUtc($endUtc, 'endUtc');
         $builder = $this->appointmentModel->builder();
 
         $builder->where('provider_id', $providerId)
@@ -144,6 +148,8 @@ class ConflictService
         string $startUtc,
         string $endUtc
     ): array {
+        $this->assertUtc($startUtc, 'startUtc');
+        $this->assertUtc($endUtc, 'endUtc');
         return $this->blockedTimeModel
             ->groupStart()
                 ->where('provider_id', $providerId)
@@ -164,5 +170,20 @@ class ConflictService
                 ->groupEnd()
             ->groupEnd()
             ->findAll();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Warn when a datetime argument contains a timezone offset.
+     * All public methods expect plain UTC strings ('Y-m-d H:i:s').
+     * An offset suffix (e.g. '+02:00') means the caller likely passed
+     * a local time, which would make overlap comparisons silently wrong.
+     */
+    private function assertUtc(string $datetime, string $param): void
+    {
+        if (preg_match('/[+-]\d{2}:\d{2}$/', $datetime)) {
+            log_message('warning', "[ConflictService] {$param} contains a timezone offset — expected a bare UTC string. Overlap results may be incorrect. Value: {$datetime}");
+        }
     }
 }

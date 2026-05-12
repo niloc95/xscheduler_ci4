@@ -72,6 +72,8 @@ export class DragDropManager {
             return;
         }
 
+        this.scheduler?.setInteractionActive?.('drag-drop', true);
+
         // Store original position for potential revert
         this.originalPosition = {
             date: this.draggedAppointment.startDateTime.toISODate(),
@@ -190,6 +192,7 @@ export class DragDropManager {
     handleDragEnd(e) {
         // Remove dragging styles
         e.target.classList.remove('opacity-50', 'scale-95');
+        this.scheduler?.setInteractionActive?.('drag-drop', false);
         
         // Clean up any remaining highlights
         document.querySelectorAll('.ring-blue-500').forEach(el => {
@@ -294,6 +297,7 @@ export class DragDropManager {
     }
 
     resetDrag() {
+        this.scheduler?.setInteractionActive?.('drag-drop', false);
         this.draggedAppointment = null;
         this.dragOverSlot = null;
         this.originalPosition = null;

@@ -88,7 +88,7 @@
 }
 
 /* Dark Theme - Material Design 3.0 Custom Properties */
-[data-theme="dark"] {
+.dark {
   /* Canonical Design Tokens */
   --color-bg-primary: #{$dark-bg-secondary};
   --color-bg-secondary: #{$dark-bg-tertiary};

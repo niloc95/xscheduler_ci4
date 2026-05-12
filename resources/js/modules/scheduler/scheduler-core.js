@@ -48,6 +48,16 @@ export class SchedulerCore {
 
         this.lastDateChange = { view: null, date: null };
         this.isDestroyed = false;
+        this.activeDataRequest = null;
+        this.dataRequestSequence = 0;
+        this.backgroundPollTimer = null;
+        this.backgroundPollingEnabled = false;
+        this.backgroundPollInterval = options.backgroundPollInterval ?? 30000;
+        this.backgroundPollRetryDelay = options.backgroundPollRetryDelay ?? 10000;
+        this.backgroundPollAuthRetryDelay = options.backgroundPollAuthRetryDelay ?? 3000;
+        this.backgroundPollMaxAuthRetries = options.backgroundPollMaxAuthRetries ?? 2;
+        this.backgroundPollAuthFailures = 0;
+        this.activeInteractions = new Set();
         
         // Initialize settings manager
         this.settingsManager = new SettingsManager();
@@ -83,6 +93,110 @@ export class SchedulerCore {
         if (this.isDebugEnabled()) {
             console.log(...args);
         }
+    }
+
+    createHttpError(message, status) {
+        const error = new Error(message);
+        error.status = status;
+        return error;
+    }
+
+    beginDataRequest({ passive = false, reason = 'interactive' } = {}) {
+        const previousRequest = this.activeDataRequest;
+        if (previousRequest && !previousRequest.controller.signal.aborted) {
+            previousRequest.controller.abort();
+        }
+
+        const request = {
+            id: ++this.dataRequestSequence,
+            passive,
+            reason,
+            controller: new AbortController(),
+        };
+
+        this.activeDataRequest = request;
+        return request;
+    }
+
+    finalizeDataRequest(requestId) {
+        if (this.activeDataRequest?.id === requestId) {
+            this.activeDataRequest = null;
+        }
+    }
+
+    isCurrentDataRequest(requestId) {
+        if (this.isDestroyed) {
+            return false;
+        }
+
+        if (requestId == null) {
+            return true;
+        }
+
+        return this.activeDataRequest?.id === requestId;
+    }
+
+    hasActiveDataRequest() {
+        return Boolean(this.activeDataRequest);
+    }
+
+    hasActiveInteractiveRequest() {
+        return Boolean(this.activeDataRequest && !this.activeDataRequest.passive);
+    }
+
+    abortActiveDataRequest({ passiveOnly = false } = {}) {
+        const activeRequest = this.activeDataRequest;
+        if (!activeRequest) {
+            return;
+        }
+
+        if (passiveOnly && !activeRequest.passive) {
+            return;
+        }
+
+        if (!activeRequest.controller.signal.aborted) {
+            activeRequest.controller.abort();
+        }
+    }
+
+    setInteractionActive(source, active) {
+        if (!source) {
+            return;
+        }
+
+        if (active) {
+            this.activeInteractions.add(source);
+            return;
+        }
+
+        this.activeInteractions.delete(source);
+    }
+
+    isInteractionActive() {
+        return this.activeInteractions.size > 0;
+    }
+
+    async refreshAndRender({
+        start = null,
+        end = null,
+        passive = false,
+        preserveOnError = passive,
+        throwOnError = false,
+        reason = passive ? 'passive-refresh' : 'interactive-refresh',
+    } = {}) {
+        const result = await this.loadData(start, end, {
+            passive,
+            preserveOnError,
+            throwOnError,
+            reason,
+        });
+
+        if (result === null || this.isDestroyed) {
+            return result;
+        }
+
+        this.render();
+        return result;
     }
 
     async init() {
@@ -192,7 +306,7 @@ export class SchedulerCore {
 
     async loadProviders() {
         try {
-            const { response, payload } = await apiRequest(withBaseUrl('/api/providers?includeColors=true'), {
+            const { response, payload } = await apiRequest(withBaseUrl('/api/providers?includeColors=true&for_calendar=1'), {
                 method: 'GET',
             });
             if (!response.ok) throw new Error('Failed to load providers');
@@ -214,11 +328,43 @@ export class SchedulerCore {
      * All internal navigation (changeView, navigateToDate, navigateNext, etc.) call
      * this method so the mode is respected consistently.
      */
-    async loadData(start = null, end = null) {
-        if (this.options.mode === 'server') {
-            return await this.loadCalendarModel();
+    async loadData(start = null, end = null, options = {}) {
+        const {
+            passive = false,
+            preserveOnError = passive,
+            throwOnError = false,
+            reason = passive ? 'background-refresh' : 'interactive-refresh',
+        } = options;
+
+        const request = this.beginDataRequest({ passive, reason });
+
+        try {
+            if (this.options.mode === 'server') {
+                return await this.loadCalendarModel({
+                    signal: request.controller.signal,
+                    requestId: request.id,
+                    passive,
+                    preserveOnError,
+                    throwOnError,
+                });
+            }
+
+            return await this.loadAppointments(start, end, {
+                signal: request.controller.signal,
+                requestId: request.id,
+                passive,
+                preserveOnError,
+                throwOnError,
+            });
+        } catch (error) {
+            if (error?.name === 'AbortError' && !throwOnError) {
+                return null;
+            }
+
+            throw error;
+        } finally {
+            this.finalizeDataRequest(request.id);
         }
-        return await this.loadAppointments(start, end);
     }
 
     /**
@@ -226,7 +372,13 @@ export class SchedulerCore {
      * Sets this.calendarModel and syncs this.appointments from the model.
      * Falls back to loadAppointments() on error.
      */
-    async loadCalendarModel() {
+    async loadCalendarModel({
+        signal = null,
+        requestId = null,
+        passive = false,
+        preserveOnError = passive,
+        throwOnError = false,
+    } = {}) {
         try {
             const baseUrl = this.options.apiCalendarBaseUrl ?? `${getBaseUrl()}/api/calendar`;
             const url = buildCalendarModelUrl(baseUrl, this.currentView, this.currentDate, this.activeFilters || {});
@@ -235,11 +387,17 @@ export class SchedulerCore {
             const { response, payload } = await apiRequest(url, {
                 method: 'GET',
                 headers: { 'Cache-Control': 'no-store' },
+                signal,
             });
-            if (!response.ok) throw new Error(`Calendar model fetch failed: ${response.status}`);
+            if (!response.ok) {
+                throw this.createHttpError(`Calendar model fetch failed: ${response.status}`, response.status);
+            }
 
             const data = payload || {};
-            if (this.isDestroyed) return null;
+            if (!this.isCurrentDataRequest(requestId)) {
+                return null;
+            }
+
             this.calendarModel = data.data || data;
 
             // Sync flat appointments array so client-side views still work
@@ -249,17 +407,63 @@ export class SchedulerCore {
                 );
             }
 
+            this.invalidateCaches();
+
             this.debugLog('📊 Calendar model loaded:', this.calendarModel);
             return this.calendarModel;
         } catch (error) {
+            if (error?.name === 'AbortError') {
+                throw error;
+            }
+
             console.error('❌ Failed to load calendar model — falling back to /api/appointments:', error);
-            if (this.isDestroyed) return null;
-            this.calendarModel = null;
-            return await this.loadAppointments();
+            if (this.isDestroyed) {
+                return null;
+            }
+
+            try {
+                const fallbackAppointments = await this.loadAppointments(null, null, {
+                    signal,
+                    requestId,
+                    passive,
+                    preserveOnError,
+                    throwOnError,
+                });
+
+                if (this.isCurrentDataRequest(requestId)) {
+                    this.calendarModel = null;
+                }
+
+                return fallbackAppointments;
+            } catch (fallbackError) {
+                if (fallbackError?.name === 'AbortError') {
+                    throw fallbackError;
+                }
+
+                if (!preserveOnError && this.isCurrentDataRequest(requestId)) {
+                    this.calendarModel = null;
+                }
+
+                if (throwOnError) {
+                    throw fallbackError;
+                }
+
+                return preserveOnError ? this.calendarModel : null;
+            }
         }
     }
 
-    async loadAppointments(start = null, end = null) {
+    async loadAppointments(start = null, end = null, options = {}) {
+        const {
+            signal = null,
+            requestId = null,
+            passive = false,
+            preserveOnError = passive,
+            throwOnError = false,
+        } = options;
+
+        const previousAppointments = this.appointments;
+
         try {
             // Calculate date range based on current view if not provided
             if (!start || !end) {
@@ -277,10 +481,15 @@ export class SchedulerCore {
                 headers: {
                     'Cache-Control': 'no-cache',
                 },
+                signal,
             });
-            if (!response.ok) throw new Error('Failed to load appointments');
+            if (!response.ok) {
+                throw this.createHttpError('Failed to load appointments', response.status);
+            }
             const data = payload || {};
-            if (this.isDestroyed) return [];
+            if (!this.isCurrentDataRequest(requestId)) {
+                return null;
+            }
             this.debugLog('📥 Raw API response:', data);
             const rawAppointments = data.data || data || [];
             this.debugLog('📦 Extracted appointments array:', rawAppointments);
@@ -295,10 +504,24 @@ export class SchedulerCore {
             
             return this.appointments;
         } catch (error) {
+            if (error?.name === 'AbortError') {
+                throw error;
+            }
+
             console.error('❌ Failed to load appointments:', error);
-            if (this.isDestroyed) return [];
-            this.appointments = [];
-            return [];
+            if (this.isDestroyed) {
+                return [];
+            }
+
+            if (!preserveOnError && this.isCurrentDataRequest(requestId)) {
+                this.appointments = [];
+            }
+
+            if (throwOnError) {
+                throw error;
+            }
+
+            return preserveOnError ? previousAppointments : [];
         }
     }
 
@@ -619,8 +842,7 @@ export class SchedulerCore {
         // Toggle visibility of daily provider appointments section based on view
         this.toggleDailyAppointmentsSection();
 
-        await this.loadData();
-        this.render();
+        await this.refreshAndRender({ reason: 'change-view' });
     }
 
     async navigateToToday() {
@@ -633,8 +855,7 @@ export class SchedulerCore {
             : DateTime.fromISO(String(targetDate), { zone: this.options.timezone });
 
         this.currentDate = normalized.setZone(this.options.timezone);
-        await this.loadData();
-        this.render();
+        await this.refreshAndRender({ reason: 'navigate-date' });
     }
 
     async navigateNext() {
@@ -821,8 +1042,110 @@ export class SchedulerCore {
         }));
     }
 
+    scheduleBackgroundPoll(delay = this.backgroundPollInterval) {
+        if (!this.backgroundPollingEnabled || this.isDestroyed) {
+            return;
+        }
+
+        if (this.backgroundPollTimer) {
+            clearTimeout(this.backgroundPollTimer);
+        }
+
+        this.backgroundPollTimer = setTimeout(() => {
+            this.backgroundPollTimer = null;
+            void this.runBackgroundPoll();
+        }, delay);
+    }
+
+    async runBackgroundPoll() {
+        if (!this.backgroundPollingEnabled || this.isDestroyed) {
+            return;
+        }
+
+        if (!document.getElementById(this.containerId)) {
+            this.stopBackgroundPolling();
+            return;
+        }
+
+        if (document.hidden || this.isInteractionActive() || this.hasActiveInteractiveRequest()) {
+            this.scheduleBackgroundPoll(this.backgroundPollInterval);
+            return;
+        }
+
+        try {
+            await this.refreshAndRender({
+                passive: true,
+                preserveOnError: true,
+                throwOnError: true,
+                reason: 'background-poll',
+            });
+
+            this.backgroundPollAuthFailures = 0;
+            this.scheduleBackgroundPoll(this.backgroundPollInterval);
+        } catch (error) {
+            if (error?.name === 'AbortError') {
+                if (this.backgroundPollingEnabled && !this.isDestroyed) {
+                    this.scheduleBackgroundPoll(this.backgroundPollInterval);
+                }
+                return;
+            }
+
+            if (error?.status === 401) {
+                this.backgroundPollAuthFailures += 1;
+
+                if (this.backgroundPollAuthFailures < this.backgroundPollMaxAuthRetries) {
+                    console.warn(
+                        `[Scheduler] Background polling unauthorized; retrying shortly (${this.backgroundPollAuthFailures}/${this.backgroundPollMaxAuthRetries - 1})`
+                    );
+                    this.scheduleBackgroundPoll(this.backgroundPollAuthRetryDelay);
+                    return;
+                }
+
+                this.stopBackgroundPolling();
+                window.location.href = withBaseUrl('/auth/login');
+                return;
+            }
+
+            console.error('[Scheduler] Background refresh failed:', error);
+            this.scheduleBackgroundPoll(this.backgroundPollRetryDelay);
+        }
+    }
+
+    startBackgroundPolling() {
+        this.backgroundPollingEnabled = true;
+        this.backgroundPollAuthFailures = 0;
+        this.scheduleBackgroundPoll(this.backgroundPollInterval);
+    }
+
+    stopBackgroundPolling() {
+        this.backgroundPollingEnabled = false;
+
+        if (this.backgroundPollTimer) {
+            clearTimeout(this.backgroundPollTimer);
+            this.backgroundPollTimer = null;
+        }
+
+        this.abortActiveDataRequest({ passiveOnly: true });
+    }
+
+    triggerBackgroundRefresh() {
+        if (!this.backgroundPollingEnabled || this.isDestroyed) {
+            return;
+        }
+
+        if (this.backgroundPollTimer) {
+            clearTimeout(this.backgroundPollTimer);
+            this.backgroundPollTimer = null;
+        }
+
+        void this.runBackgroundPoll();
+    }
+
     destroy() {
         this.isDestroyed = true;
+        this.stopBackgroundPolling();
+        this.abortActiveDataRequest();
+        this.activeInteractions.clear();
 
         // Clear any pending renders
         if (this.renderDebounceTimer) {

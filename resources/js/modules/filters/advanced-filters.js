@@ -15,20 +15,21 @@ import { apiRequest } from '../../core/api.js';
  * @param {boolean} hasActiveFilters - Whether any filters are active
  */
 export function updateFilterIndicator(toggleBtn, hasActiveFilters) {
-    if (!toggleBtn) return;
+    const toggleButtons = Array.isArray(toggleBtn) ? toggleBtn : [toggleBtn];
 
-    // Remove existing indicator
-    const existingIndicator = toggleBtn.querySelector('.filter-active-indicator');
-    if (existingIndicator) {
-        existingIndicator.remove();
-    }
+    toggleButtons.filter(Boolean).forEach((button) => {
+        const existingIndicator = button.querySelector('.filter-active-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
 
-    if (hasActiveFilters) {
-        const indicator = document.createElement('span');
-        indicator.className = 'filter-active-indicator absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800';
-        toggleBtn.classList.add('relative');
-        toggleBtn.appendChild(indicator);
-    }
+        if (hasActiveFilters) {
+            const indicator = document.createElement('span');
+            indicator.className = 'filter-active-indicator absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800';
+            button.classList.add('relative');
+            button.appendChild(indicator);
+        }
+    });
 }
 
 /**
@@ -38,9 +39,8 @@ export function updateFilterIndicator(toggleBtn, hasActiveFilters) {
  * @param {Function} options.renderProviderLegend - Callback to render provider legend
  */
 export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {}) {
-    const toggleBtn = document.getElementById('advanced-filter-toggle');
+    const toggleButtons = Array.from(document.querySelectorAll('[data-advanced-filter-toggle]'));
     const filterPanel = document.getElementById('advanced-filter-panel');
-    const toggleIcon = document.getElementById('filter-toggle-icon');
     const applyBtn = document.getElementById('apply-filters-btn');
     const clearBtn = document.getElementById('clear-filters-btn');
 
@@ -76,7 +76,7 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
         }
 
         const hasActiveFilters = status || providerId || serviceId || locationId;
-        updateFilterIndicator(toggleBtn, hasActiveFilters);
+        updateFilterIndicator(toggleButtons, hasActiveFilters);
 
         if (showFeedback && applyBtn) {
             applyBtn.textContent = 'Applied!';
@@ -86,9 +86,19 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
         }
     };
 
-    if (!toggleBtn || !filterPanel) {
+    if (!toggleButtons.length || !filterPanel) {
         return; // Panel elements not present
     }
+
+    const syncToggleButtons = (isOpen) => {
+        toggleButtons.forEach((toggleBtn) => {
+            toggleBtn.classList.toggle('is-open', isOpen);
+
+            toggleBtn.querySelectorAll('[data-filter-toggle-icon]').forEach((icon) => {
+                icon.classList.toggle('rotate-180', isOpen);
+            });
+        });
+    };
 
     // Dynamic service loading when provider changes
     if (providerSelect && serviceSelect) {
@@ -158,24 +168,18 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
         }
     });
 
-    // Toggle panel visibility
-    toggleBtn.addEventListener('click', () => {
-        const isHidden = filterPanel.classList.toggle('hidden');
-
-        // Rotate icon
-        if (toggleIcon) {
-            toggleIcon.classList.add('transition-transform', 'duration-200');
-            toggleIcon.classList.toggle('rotate-180', !isHidden);
+    // Toggle panel visibility from any trigger
+    toggleButtons.forEach((toggleBtn) => {
+        if (toggleBtn.dataset.advancedFilterToggleBound === 'true') {
+            return;
         }
 
-        // Update toggle button styling to indicate active state
-        if (!isHidden) {
-            toggleBtn.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300');
-            toggleBtn.classList.remove('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
-        } else {
-            toggleBtn.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300');
-            toggleBtn.classList.add('bg-slate-100', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300');
-        }
+        toggleBtn.dataset.advancedFilterToggleBound = 'true';
+
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = filterPanel.classList.toggle('hidden');
+            syncToggleButtons(!isHidden);
+        });
     });
 
     // Apply filters
@@ -219,6 +223,6 @@ export function setupAdvancedFilterPanel(scheduler, { renderProviderLegend } = {
         (locationSelect?.value && locationSelect.value !== '');
 
     if (hasActiveFilters) {
-        updateFilterIndicator(toggleBtn, true);
+        updateFilterIndicator(toggleButtons, true);
     }
 }

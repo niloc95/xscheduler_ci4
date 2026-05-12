@@ -879,7 +879,7 @@ class AppointmentModel extends BaseModel
             SELECT COALESCE(SUM(s.price), 0) as total_revenue
             FROM {$tableName} a
             LEFT JOIN xs_services s ON a.service_id = s.id
-            WHERE a.status = 'completed' {$periodCondition}{$providerCondition}
+            WHERE a.status NOT IN ('cancelled', 'no-show', 'noshow') {$periodCondition}{$providerCondition}
         ");
         
         $result = $query->getRow();
@@ -901,7 +901,7 @@ class AppointmentModel extends BaseModel
             SELECT COALESCE(SUM(s.price), 0) as total_revenue
             FROM {$tableName} a
             LEFT JOIN xs_services s ON a.service_id = s.id
-            WHERE a.status = 'completed'
+            WHERE a.status NOT IN ('cancelled', 'no-show', 'noshow')
             AND a.start_at >= '{$startAt}'
             AND a.start_at <= '{$endAt}'
             {$providerCondition}
@@ -932,7 +932,7 @@ class AppointmentModel extends BaseModel
                 SELECT COALESCE(SUM(s.price), 0) as revenue
                 FROM {$tableName} a
                 LEFT JOIN xs_services s ON a.service_id = s.id
-                WHERE a.status = 'completed'
+                WHERE a.status NOT IN ('cancelled', 'no-show', 'noshow')
                 AND a.start_at >= '{$dayStart}'
                 AND a.start_at <= '{$dayEnd}'
                 {$providerCondition}
@@ -969,7 +969,7 @@ class AppointmentModel extends BaseModel
                 SELECT COALESCE(SUM(s.price), 0) as revenue
                 FROM {$tableName} a
                 LEFT JOIN xs_services s ON a.service_id = s.id
-                WHERE a.status = 'completed'
+                WHERE a.status NOT IN ('cancelled', 'no-show', 'noshow')
                 AND a.start_at >= '{$monthStart}'
                 AND a.start_at <= '{$monthEnd}'
                 {$providerCondition}
@@ -1008,7 +1008,7 @@ class AppointmentModel extends BaseModel
             SELECT 
                 s.name as service,
                 COUNT(a.id) as count,
-                COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) as revenue
+                COALESCE(SUM(CASE WHEN a.status NOT IN ('cancelled', 'no-show', 'noshow') THEN s.price ELSE 0 END), 0) as revenue
             FROM {$tableName} a
             LEFT JOIN xs_services s ON a.service_id = s.id
             WHERE s.name IS NOT NULL
@@ -1071,7 +1071,7 @@ class AppointmentModel extends BaseModel
     {
         $db = \Config\Database::connect();
         $tableName = $this->table;
-        $conditions = ["a.status = 'completed'", 's.price > 0'];
+        $conditions = ["a.status NOT IN ('cancelled', 'no-show', 'noshow')", 's.price > 0'];
 
         if ($providerId !== null) {
             $conditions[] = 'a.provider_id = ' . (int) $providerId;

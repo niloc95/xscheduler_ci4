@@ -50,6 +50,19 @@
  * 3. Check if time is within start/end hours
  * 4. Return validation result with helpful message
  * 
+ * KEY ARCHITECTURE DISTINCTION:
+ * -----------------------------------------------------------------------------
+ * Global business hours (the hours the business operates) come from xs_settings:
+ *   business.work_start / business.work_end
+ *
+ * Per-provider working hours come from xs_business_hours (every row has a
+ * provider_id — there are NO global rows). Never query xs_business_hours without
+ * a provider_id filter or you will silently read an arbitrary provider's schedule.
+ *
+ * See docs/architecture/CALENDAR_ENGINE_API_REFERENCE.md §Priority tier 2
+ * for the full data-source resolution order.
+ *
+ * @see         docs/architecture/CALENDAR_ENGINE_API_REFERENCE.md
  * @see         app/Models/BusinessHourModel.php for data storage
  * @see         app/Services/AvailabilityService.php
  * @package     App\Services

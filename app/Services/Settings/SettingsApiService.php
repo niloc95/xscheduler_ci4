@@ -194,6 +194,11 @@ class SettingsApiService
         return $count;
     }
 
+    /**
+     * These keys live in xs_settings and represent the global business operating hours.
+     * They are distinct from xs_business_hours (per-provider working schedule rows).
+     * See docs/architecture/CALENDAR_ENGINE_API_REFERENCE.md §Priority tier 2.
+     */
     private function isBusinessTimeSetting(string $key): bool
     {
         return in_array($key, [

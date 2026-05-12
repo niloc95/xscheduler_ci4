@@ -108,6 +108,21 @@ class Auth extends BaseController
     {
         helper('logging');
 
+        // ── Rate limit: 5 attempts per 15 minutes per IP ──────────────────────
+        $throttler = \Config\Services::throttler();
+        $ipKey     = 'login_' . md5($this->request->getIPAddress());
+
+        if (!$throttler->check($ipKey, 5, 900)) {
+            $waitSeconds = $throttler->getTokenTime();
+            $minutes     = (int) ceil($waitSeconds / 60);
+            $message     = "Too many failed login attempts. Please try again in {$minutes} minute(s).";
+
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(429)->setJSON(['error' => $message]);
+            }
+            return redirect()->back()->with('lockout_error', $message)->with('lockout_wait', $waitSeconds);
+        }
+
         $auditLogModel = new AuditLogModel();
 
         $rules = [
@@ -227,14 +242,19 @@ class Auth extends BaseController
         $sessionData = [
             'user_id' => $user['id'],
             'user' => [
-                'name' => $user['name'],
-                'email' => $user['email'],
-                'role' => $user['role'],           // legacy: primary role from xs_users
-                'roles' => $userRoles,             // new: all assigned roles
-                'active_role' => $activeRole       // new: currently active role (defaults to highest)
+                'id'            => (int) $user['id'],
+                'name'          => $user['name'],
+                'email'         => $user['email'],
+                'role'          => $user['role'],           // legacy: primary role from xs_users
+                'roles'         => $userRoles,             // new: all assigned roles
+                'active_role'   => $activeRole,            // new: currently active role (defaults to highest)
+                'profile_image' => $user['profile_image'] ?? null,
             ],
             'isLoggedIn' => true
         ];
+
+        // Clear throttle bucket on successful login
+        $throttler->remove($ipKey);
 
         session()->set($sessionData);
         session()->regenerate();  // Prevent session fixation attacks
@@ -462,6 +482,23 @@ class Auth extends BaseController
         session()->destroy();
         session()->setFlashdata('success', 'You have been logged out successfully.');
         return redirect()->to(base_url('auth/login'));
+    }
+
+    /**
+     * Session keep-alive endpoint.
+     * Touching the session triggers CI4's $timeToUpdate regeneration (if 15+ min elapsed),
+     * which refreshes the session cookie expiry and slides the 2-hour window forward.
+     */
+    public function ping(): \CodeIgniter\HTTP\ResponseInterface
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON(['ok' => false]);
+        }
+
+        return $this->response->setJSON([
+            'ok'         => true,
+            'expires_in' => config('Session')->expiration,
+        ]);
     }
 
     /**

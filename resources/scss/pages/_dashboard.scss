@@ -141,59 +141,6 @@
   }
 }
 
-// Material Design specific styling for dashboard
-.dashboard-page {
-  // Material Design Cards with custom brand colors
-  md-outlined-card {
-    --md-outlined-card-outline-color: var(--xs-border);
-    border-radius: $border-radius-xl;
-    transition: all $transition-normal;
-    
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: $material-shadow-lg;
-    }
-    
-    // Brand colored cards
-    &.card-primary {
-      background-color: var(--md-sys-color-primary);
-      color: var(--md-sys-color-on-primary);
-    }
-    
-    &.card-secondary {
-      background-color: var(--md-sys-color-secondary);
-      color: var(--md-sys-color-on-secondary);
-    }
-    
-    &.card-tertiary {
-      background-color: var(--md-sys-color-tertiary);
-      color: var(--md-sys-color-on-tertiary);
-    }
-    
-    &.card-gradient-danger {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: $white;
-    }
-  }
-  
-  // Chart filter buttons
-  [data-chart-period] {
-    transition: all 0.2s ease;
-    
-    &.active {
-      background-color: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
-    }
-  }
-  
-  // Material filled buttons
-  md-filled-button {
-    --md-filled-button-container-color: var(--md-sys-color-primary);
-    --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
-    border-radius: $border-radius-lg;
-  }
-}
-
 // ===========================
 // Dashboard Landing Page Styles
 // ===========================

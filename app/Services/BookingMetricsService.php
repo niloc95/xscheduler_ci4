@@ -95,13 +95,13 @@ class BookingMetricsService
             SELECT
                 s.name              AS service,
                 COUNT(a.id)         AS count,
-                COALESCE(SUM(CASE WHEN a.status = :completed: THEN s.price ELSE 0 END), 0) AS revenue
+                COALESCE(SUM(CASE WHEN a.status NOT IN ('cancelled', 'no-show', 'noshow') THEN s.price ELSE 0 END), 0) AS revenue
             FROM {$apptTable} a
             LEFT JOIN {$servicesTable} s ON a.service_id = s.id
             WHERE s.name IS NOT NULL
         ";
 
-        $bindings = ['completed' => AppointmentStatus::COMPLETED];
+        $bindings = [];
         $sql .= $this->providerScopeSqlClause($providerScope, $bindings, 'a.provider_id');
 
         $sql .= " GROUP BY s.id, s.name ORDER BY count DESC LIMIT {$limit}";
@@ -125,6 +125,17 @@ class BookingMetricsService
     {
         $apptTable     = $this->db->prefixTable('appointments');
         $servicesTable = $this->db->prefixTable('services');
+        $pivotTable    = $this->db->prefixTable('providers_services');
+
+        // When scoped to a provider, INNER JOIN the xs_providers_services pivot so
+        // only services in that provider's catalogue appear. Without this, the LEFT JOIN
+        // on appointments would return all active services (with bookings=0 for others).
+        // Admin (null scope) gets no pivot join — all active services are shown.
+        $pivotJoin = '';
+        if ($providerScope !== null) {
+            $pid       = is_int($providerScope) ? $providerScope : (int) ($providerScope[0] ?? 0);
+            $pivotJoin = "INNER JOIN {$pivotTable} ps ON ps.service_id = s.id AND ps.provider_id = {$pid}";
+        }
 
         $bindings = [];
         $providerClause = $this->providerScopeSqlClause($providerScope, $bindings, 'a.provider_id');
@@ -135,7 +146,7 @@ class BookingMetricsService
                 s.name,
                 s.price,
                 COUNT(a.id)  AS bookings,
-                COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) AS revenue,
+                COALESCE(SUM(CASE WHEN a.status NOT IN ('cancelled', 'no-show', 'noshow') THEN s.price ELSE 0 END), 0) AS revenue,
                 ROUND(
                     ((COUNT(CASE WHEN a.start_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 1 END) -
                       COUNT(CASE WHEN a.start_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 60 DAY)
@@ -145,6 +156,7 @@ class BookingMetricsService
                     ) * 100, 1
                 ) AS growth
             FROM {$servicesTable} s
+            {$pivotJoin}
             LEFT JOIN {$apptTable} a ON s.id = a.service_id {$providerClause}
             WHERE s.active = 1
             GROUP BY s.id, s.name, s.price

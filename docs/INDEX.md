@@ -98,6 +98,7 @@ Also see `Agent_Context_v2.md` (project root) — the canonical engineering cont
 
 ### Features and Domain Modules
 
+- [Analytics Architecture](features/ANALYTICS_ARCHITECTURE.md) — role-scoping contract, stat card data map, provider scoping rules
 - [Customer Appointment History](features/CUSTOMER_APPOINTMENT_HISTORY.md)
 - [Global Header System](features/GLOBAL_HEADER_SYSTEM.md)
 - [Locations Feature](features/LOCATIONS_FEATURE.md)
@@ -106,6 +107,7 @@ Also see `Agent_Context_v2.md` (project root) — the canonical engineering cont
 
 ### Security
 
+- [Auth Hardening](security/AUTH_HARDENING.md) — inactivity modal, session ping, failed-login lockout
 - [Security Policy](security/security_policy.md)
 - [Security Implementation Guide](security/SECURITY_IMPLEMENTATION_GUIDE.md)
 - [Hash-Based URL Implementation](security/HASH_BASED_URL_IMPLEMENTATION.md)

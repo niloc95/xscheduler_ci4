@@ -57,10 +57,14 @@
             </div>
             
             <!-- New Customer Button -->
-            <a href="<?= base_url('customer-management/create') ?>" class="xs-btn xs-btn-primary whitespace-nowrap">
-                <span class="material-symbols-outlined">person_add</span>
-                New Customer
-            </a>
+            <?= view('components/button', [
+                'tag'   => 'a',
+                'href'  => base_url('customer-management/create'),
+                'label' => 'New Customer',
+                'icon'  => 'person_add',
+                'variant' => 'filled',
+                'class' => 'whitespace-nowrap',
+            ]) ?>
         </div>
     </div>
 </div>

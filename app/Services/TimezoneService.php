@@ -119,7 +119,12 @@ class TimezoneService
 
         // 3) App config
         $configTz = (string) (config('App')->appTimezone ?? 'UTC');
-        return self::isValidTimezone($configTz) ? $configTz : 'UTC';
+        if (self::isValidTimezone($configTz)) {
+            return $configTz;
+        }
+
+        log_message('warning', '[TimezoneService] All fallbacks exhausted — using UTC. Check that localization.timezone is set in xs_settings.');
+        return 'UTC';
     }
 
     /**
@@ -170,8 +175,12 @@ class TimezoneService
             $date->setTimezone(new DateTimeZone('UTC'));
             return $date->format('Y-m-d H:i:s');
         } catch (\Exception $e) {
-            log_message('error', 'TimezoneService::toUTC - Conversion error: ' . $e->getMessage());
-            // Fallback: assume input is already UTC
+            log_message('error', sprintf(
+                'TimezoneService::toUTC - Conversion failed (input: %s, tz: %s): %s — returning original value, which may cause UTC storage corruption.',
+                $localTime,
+                $timezone,
+                $e->getMessage()
+            ));
             return $localTime;
         }
     }
@@ -203,7 +212,12 @@ class TimezoneService
             $date->setTimezone($tz);
             return $date->format('Y-m-d H:i:s');
         } catch (\Exception $e) {
-            log_message('error', 'TimezoneService::fromUTC - Conversion error: ' . $e->getMessage());
+            log_message('error', sprintf(
+                'TimezoneService::fromUTC - Conversion failed (input: %s, tz: %s): %s — returning original UTC value.',
+                $utcTime,
+                $timezone,
+                $e->getMessage()
+            ));
             return $utcTime;
         }
     }
