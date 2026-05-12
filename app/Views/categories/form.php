@@ -2,7 +2,7 @@
 // Shared Categories Create/Edit view
 // Expects: $action_url (string), $data (array)
 ?>
-<?= $this->extend('layouts/dashboard') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>
@@ -14,39 +14,29 @@
     $subtitle = $isEdit ? 'Update category details' : 'Add a new category';
 ?>
 
-<?= $this->section('page_title') ?><?= esc($title) ?><?= $this->endSection() ?>
-<?= $this->section('page_subtitle') ?><?= esc($subtitle) ?><?= $this->endSection() ?>
+<?= $this->section('header_title') ?><?= esc($title) ?><?= $this->endSection() ?>
+<?= $this->section('header_subtitle') ?><?= esc($subtitle) ?><?= $this->endSection() ?>
+<?= $this->section('header_primary_action') ?>hidden<?= $this->endSection() ?>
 
-<?= $this->section('dashboard_content_top') ?>
-    <a href="<?= base_url('/services/categories') ?>" class="inline-flex items-center text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-        <span class="material-symbols-outlined mr-1">arrow_back</span>
+<?= $this->section('content') ?>
+
+<!-- Back link -->
+<div class="mb-4">
+    <a href="<?= base_url('/services?tab=categories') ?>" class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+        <span class="material-symbols-outlined text-base">arrow_back</span>
         Back to Categories
     </a>
-    <?php if ($message = session()->getFlashdata('message')): ?>
-        <div class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200">
-            <?= esc($message) ?>
-        </div>
-    <?php endif; ?>
-    <?php if ($error = session()->getFlashdata('error')): ?>
-        <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
-            <?= esc($error) ?>
-        </div>
-    <?php endif; ?>
-    <?php $validationErrors = session()->getFlashdata('errors') ?? []; ?>
-    <?php if (!empty($validationErrors)): ?>
-        <div class="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
-            <ul class="list-disc pl-5 space-y-1">
-                <?php foreach ((array)$validationErrors as $field => $errorText): ?>
-                    <li><?= esc(is_array($errorText) ? implode(', ', $errorText) : $errorText) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-<?= $this->endSection() ?>
+</div>
 
-<?= $this->section('dashboard_content') ?>
-    <div class="max-w-xl">
-        <form action="<?= esc($action_url) ?>" method="post" class="mb-4 p-4 rounded-lg shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+<div class="max-w-xl">
+    <div class="xs-card">
+        <div class="xs-card-header">
+            <div class="xs-card-header-content">
+                <h3 class="xs-card-title"><?= esc($title) ?></h3>
+            </div>
+        </div>
+        <div class="xs-card-body">
+            <form action="<?= esc($action_url) ?>" method="post">
             <?= csrf_field() ?>
             <?php if ($isEdit): ?>
                 <input type="hidden" name="id" value="<?= (int)$data['id'] ?>">
@@ -81,17 +71,20 @@
 
             <div class="mt-6 flex items-center justify-end gap-3">
                 <?= view('components/button', [
-                    'tag' => 'a',
-                    'href' => base_url('/services?tab=categories'),
-                    'label' => 'Cancel',
+                    'tag'     => 'a',
+                    'href'    => base_url('/services?tab=categories'),
+                    'label'   => 'Cancel',
                     'variant' => 'outlined',
                 ]) ?>
                 <?= view('components/button', [
-                    'type' => 'submit',
-                    'label' => $isEdit ? 'Save Changes' : 'Create Category',
+                    'type'    => 'submit',
+                    'label'   => $isEdit ? 'Save Changes' : 'Create Category',
                     'variant' => 'filled',
                 ]) ?>
             </div>
         </form>
+        </div>
     </div>
+</div>
+
 <?= $this->endSection() ?>

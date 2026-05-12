@@ -2,7 +2,7 @@
 title: WebScheduler CI4 - Consolidated Engineering Contract
 version: 3.0
 status: Active hardening
-last_updated: 2026-05-11
+last_updated: 2026-05-12
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -479,6 +479,79 @@ window.xsGetDisplayName(entity, fallback)
 #### 6.8.5 Do Not Duplicate
 
 Do not reimplement initials logic in any view, controller, or JS module. Always call the shared helper. A one-letter initial in a completed surface is a regression against this contract.
+
+### 6.9 View Layout & Design System Contract (Owner Section)
+
+#### 6.9.1 Canonical Layout
+
+All authenticated views **must** extend `layouts/app`. The legacy `layouts/dashboard` layout is deprecated; do not use it for new views or when migrating existing views.
+
+| Layout | Status | Sections |
+| --- | --- | --- |
+| `layouts/app` | **Active standard** | `sidebar`, `header_title`, `header_subtitle`, `header_primary_action`, `header_controls`, `content`, `scripts`, `modals` |
+| `layouts/dashboard` | **Deprecated** | `dashboard_stats`, `dashboard_actions`, `dashboard_filters`, `dashboard_content_top`, `dashboard_content` |
+
+To suppress the header's built-in "New Appointment" CTA for a page that provides its own CTA in `content`, set:
+```php
+<?= $this->section('header_primary_action') ?>hidden<?= $this->endSection() ?>
+```
+
+#### 6.9.2 Design System Component Classes
+
+| Token | Element | Notes |
+| --- | --- | --- |
+| `xs-card` | Card container | Replaces `card card-spacious` |
+| `xs-card-header` | Card header bar | Use with `xs-card-header-content` (left) + `xs-card-actions` (right) |
+| `xs-card-header-content` | Left slot of card header | Contains title + subtitle |
+| `xs-card-title` | Title inside `xs-card-header-content` | |
+| `xs-card-subtitle` | Subtitle inside `xs-card-header-content` | |
+| `xs-card-actions` | Right slot of card header | Icon buttons, secondary controls |
+| `xs-card-body` | Card content area | Add `p-0` when the card contains a full-bleed table |
+| `xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon` | Icon-only action button | Replaces text+icon `btn btn-secondary btn-sm` rows |
+| `xs-btn xs-btn-sm xs-btn-primary` | Primary small button | |
+| `xs-actions-container` | Wrapper for per-row icon action buttons | Always `justify-end` for right-aligned table cells |
+
+#### 6.9.3 Per-Row Action Button Pattern
+
+All table action columns use icon-only buttons inside `xs-actions-container`. This is the canonical pattern — do not add visible text labels to row actions:
+
+```php
+<div class="xs-actions-container justify-end">
+    <a href="<?= site_url('entity/edit/' . $row['id']) ?>"
+       class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon" title="Edit">
+        <span class="material-symbols-outlined">edit</span>
+    </a>
+    <form action="<?= site_url('entity/delete/' . $row['id']) ?>" method="post"
+          class="inline-flex" data-no-spa="true"
+          data-confirm-message="Delete this item?">
+        <?= csrf_field() ?>
+        <button type="submit"
+                class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-red-600 hover:text-red-700 dark:text-red-400"
+                title="Delete">
+            <span class="material-symbols-outlined">delete</span>
+        </button>
+    </form>
+</div>
+```
+
+#### 6.9.4 Flash Messages
+
+Flash messages are rendered automatically by `layouts/app` via `$this->include('components/ui/flash-messages')`. Views must NOT include manual flash message HTML blocks (`session()->getFlashdata('message')` divs). Deleting those blocks from migrated views is required.
+
+#### 6.9.5 Appointments Toolbar — Mobile Two-Rail Layout
+
+`app/Views/appointments/index.php` uses a two-rail horizontal layout inside `header_controls`:
+
+- **Outer wrapper**: `appointments-toolbar flex flex-row items-start gap-3 md:items-center md:gap-3`
+- **Rail A** (`appointments-toolbar__primary`): `flex flex-col gap-1.5 min-w-0 md:flex-row md:items-center md:gap-2`
+  - Sub-row 1 (mobile): Today button + view-mode switcher
+  - Sub-row 2 (mobile): Date navigation cluster (prev / label / next)
+  - Collapses to single flex row on `md+`
+- **Rail B** (`appointments-toolbar__secondary`): `flex items-start gap-2 min-w-0 md:items-center`
+  - `#scheduler-stats-bar`: `flex flex-col gap-1 md:flex-row md:flex-nowrap md:items-center md:gap-1` — chips stack vertically on mobile, row on desktop
+- Mobile filter button is **removed** from Rail B; filter toggle is desktop-only (`hidden md:inline-flex`)
+
+Do not revert to a single `overflow-x-auto` row — that pattern caused date cluster overflow on narrow screens.
 
 ## 7) Backend Service Boundaries
 
@@ -1892,6 +1965,8 @@ Status legend: `done`, `in_progress`, `queued`.
 | 32 | Booking reference short-link `/r/{reference}` | done | Added route `GET /r/{reference}` → `PublicSite\BookingController::reference` (with `setup` + `public_rate_limit` filters). `BookingLinkService::manageReferenceUrl()` generates these branded short links from appointment hash or public_token. Used in notification emails and customer-facing links. Documented in §10.1. |
 | 33 | Dark mode to `darkMode: 'class'` + SCSS `.dark` | done | `tailwind.config.js` changed from `['selector', '[data-theme="dark"]']` to `'class'`. SCSS `_custom-properties.scss` uses `.dark { }` block (not `[data-theme="dark"]`). `theme-bootstrap.js` (new inline FOUC-prevention script) and `dark-mode.js` both set `.dark` class on `<html>`. Full contract in §6.4. |
 | 34 | Vite entry point cleanup — remove material-web | done | `resources/js/material-web.js` deleted and removed from `vite.config.js` inputs. The `@material/web` bundle (485 kB) was dead — zero `<md-*>` elements in production views. New entries added: `theme-bootstrap`, `app-layout-init`, `public-booking-bootstrap`. Full entry point list in §6.1. |
+| 35 | Appointments toolbar — mobile two-rail layout | done | Replaced single `overflow-x-auto` scrolling toolbar row with a two-column side-by-side layout: Rail A (`flex-col` on mobile, two sub-rows: Today+view-switcher and date cluster) + Rail B (stats chips stack `flex-col` on mobile). Outer wrapper uses `items-start` for left-alignment. Mobile filter button removed from Rail B; filter is desktop-only. Full contract in §6.9.5. |
+| 36 | Services section — full layout/design-system migration | done | Migrated all five services-section views from `layouts/dashboard` to `layouts/app` with `xs-card` design system: (1) `services/index.php` — inline stats summary bar, context-aware CTA, `xs-card` with tab switcher (Services/Categories), collapsible filter panel (tune icon), 5-col services table and 4-col categories table, all row actions as `xs-actions-container` icon-only buttons, AJAX quick-add form and `scripts` JS block removed entirely; (2) `services/categories.php` — `layouts/app`, back link in content, `xs-card` table, icon-only actions, raw flash markup removed; (3) `services/create.php` — footer buttons replaced with `view('components/button', ...)`, Tips sidebar changed from `card card-spacious` to `xs-card`; (4) `services/edit.php` — same footer + sidebar fix; (5) `categories/form.php` — migrated to `layouts/app`, form wrapped in `xs-card`. Full design system contract in §6.9. |
 
 ## 18) Audit Progress Board
 
@@ -1906,6 +1981,8 @@ Status legend: `done`, `in_progress`, `queued`.
 - Reminder queue metadata (`reminder_offset_minutes`, `schedule_fingerprint`) added to `xs_notification_queue`; stale-reminder cancellation logic in `NotificationQueueDispatcher` — schema updated in §12.3, queue fields in §11.5 (17.4 item 23).
 - Two new resolver-focused unit tests passing: `testResolveBusinessIdUsesSessionBusinessContext` (NotificationCenterServiceTest) and `testNotificationSettingsServiceResolvesBusinessIdFromSessionContext` (SettingsBoundaryServicesTest).
 - Unified avatar/initials system implemented across all PHP views and JS modules; single PHP helper and single JS module replace all ad-hoc initials logic. Title/suffix stripping and two-letter fallback enforced consistently. Parity tests added for both PHP and JS layers. Full contract in §6.8 (17.4 item 24).
+- Appointments toolbar mobile two-rail layout implemented: side-by-side Rail A + Rail B with Rail A using two sub-rows on mobile (Today+switcher / date cluster). Left-aligned via `items-start`. Rail B stats chips stack vertically on mobile. Mobile filter button removed. Contract in §6.9.5 (17.4 item 35).
+- Services section fully migrated from `layouts/dashboard` to `layouts/app` design system: all five views updated (`services/index.php`, `services/categories.php`, `services/create.php`, `services/edit.php`, `categories/form.php`). AJAX quick-add form and inline JS block removed. All row actions use `xs-actions-container` icon-only pattern. View layout and design system contract documented in §6.9 (17.4 item 36).
 
 ### 18.2 Remaining Debt Outside 14-19
 

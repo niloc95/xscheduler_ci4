@@ -45,32 +45,36 @@
         </div>
 
         <div class="card-footer flex flex-wrap justify-end gap-3">
-          <button id="openCategoryModal"
-              type="button"
-              class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm border border-outline text-on-surface hover:bg-surface-variant">
-            <span class="material-symbols-outlined text-base">add</span>
-            <span>New Category</span>
-          </button>
-          <button id="saveServiceButton"
-              type="submit"
-              class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm bg-primary text-on-primary hover:bg-primary-600 shadow-sm">
-            <span class="material-symbols-outlined text-base">save</span>
-            <span>Save Changes</span>
-          </button>
+          <?= view('components/button', [
+              'type'    => 'button',
+              'id'      => 'openCategoryModal',
+              'label'   => 'New Category',
+              'icon'    => 'add',
+              'variant' => 'outlined',
+          ]) ?>
+          <?= view('components/button', [
+              'type'    => 'submit',
+              'id'      => 'saveServiceButton',
+              'label'   => 'Save Changes',
+              'icon'    => 'save',
+              'variant' => 'filled',
+          ]) ?>
         </div>
             </form>
         </div>
         <div class="lg:col-span-1">
-            <div class="card card-spacious">
-                <div class="card-header">
-          <h3 class="card-title">Tips</h3>
-        </div>
-        <div class="card-body">
-                <ul class="list-disc text-sm text-gray-600 dark:text-gray-300 ml-5 space-y-1">
-                    <li>Change category or add a new one inline.</li>
-                    <li>Manage providers by selecting multiple entries.</li>
-                </ul>
-        </div>
+            <div class="xs-card">
+                <div class="xs-card-header">
+                    <div class="xs-card-header-content">
+                        <h3 class="xs-card-title">Tips</h3>
+                    </div>
+                </div>
+                <div class="xs-card-body">
+                    <ul class="list-disc text-sm text-gray-600 dark:text-gray-300 ml-5 space-y-1">
+                        <li>Change category or add a new one inline.</li>
+                        <li>Manage providers by selecting multiple entries.</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

@@ -1,14 +1,17 @@
-<?= $this->extend('layouts/dashboard') ?>
+<?= $this->extend('layouts/app') ?>
 
 <?= $this->section('sidebar') ?>
     <?= $this->include('components/unified-sidebar', ['current_page' => 'services']) ?>
 <?= $this->endSection() ?>
 
-<?= $this->section('page_title') ?>Services<?= $this->endSection() ?>
-<?= $this->section('page_subtitle') ?>Browse and manage available services<?= $this->endSection() ?>
+<?= $this->section('header_title') ?>Services<?= $this->endSection() ?>
+<?= $this->section('header_subtitle') ?>Browse and manage your service catalog<?= $this->endSection() ?>
+<?= $this->section('header_primary_action') ?>hidden<?= $this->endSection() ?>
 
-<?php $activeTab = $activeTab ?? 'services'; ?>
 <?php
+$activeTab = $activeTab ?? 'services';
+helper('currency');
+
 $serviceStatusOptions = [
     ['value' => '', 'label' => 'All statuses'],
     ['value' => 'active', 'label' => 'Active'],
@@ -22,506 +25,314 @@ foreach ($categories as $category) {
         'label' => (string) ($category['name'] ?? ''),
     ];
 }
+
+$hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !empty($filters['status']);
 ?>
 
-<?= $this->section('dashboard_stats_class') ?>grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6<?= $this->endSection() ?>
+<?= $this->section('content') ?>
 
-<?= $this->section('dashboard_stats') ?>
-    <div class="card card-spacious p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">design_services</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Services</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_services'] ?? 0 ?></p>
-            </div>
-        </div>
+<!-- Top action bar: stats (left) + context-aware CTA (right) -->
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
+        <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-blue-500">design_services</span>
+            <strong class="font-semibold text-gray-900 dark:text-white"><?= (int)($stats['total_services'] ?? 0) ?></strong> services
+        </span>
+        <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+        <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-emerald-500">check_circle</span>
+            <strong class="font-semibold text-gray-900 dark:text-white"><?= (int)($stats['active_services'] ?? 0) ?></strong> active
+        </span>
+        <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+        <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-purple-500">category</span>
+            <strong class="font-semibold text-gray-900 dark:text-white"><?= (int)($stats['categories'] ?? 0) ?></strong> categories
+        </span>
+        <span class="text-gray-300 dark:text-gray-600" aria-hidden="true">·</span>
+        <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-amber-500">payments</span>
+            avg <strong class="font-semibold text-gray-900 dark:text-white"><?= format_currency($stats['avg_price'] ?? 0) ?></strong>
+        </span>
     </div>
-
-    <div class="card card-spacious p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">check_circle</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['active_services'] ?? 0 ?></p>
-            </div>
-        </div>
+    <div class="flex-shrink-0">
+        <?php if ($activeTab === 'categories'): ?>
+            <?= view('components/button', [
+                'tag'     => 'a',
+                'href'    => site_url('services/categories/create'),
+                'label'   => 'New Category',
+                'icon'    => 'add',
+                'variant' => 'filled',
+            ]) ?>
+        <?php else: ?>
+            <?= view('components/button', [
+                'tag'     => 'a',
+                'href'    => site_url('services/create'),
+                'label'   => 'Add Service',
+                'icon'    => 'add',
+                'variant' => 'filled',
+            ]) ?>
+        <?php endif; ?>
     </div>
+</div>
 
-    <div class="card card-spacious p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">category</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Categories</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['categories'] ?? 0 ?></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card card-spacious p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">calendar_month</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Bookings</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?= $stats['total_bookings'] ?? 0 ?></p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card card-spacious p-6">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <span class="material-symbols-outlined text-green-600 dark:text-green-400 text-2xl">attach_money</span>
-                </div>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. Price</p>
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white"><?php helper('currency'); echo format_currency($stats['avg_price'] ?? 0); ?></p>
-            </div>
-        </div>
-    </div>
-<?= $this->endSection() ?>
-
-<?= $this->section('dashboard_actions') ?>
-    <?= view('components/button', [
-        'tag' => 'a',
-        'href' => base_url('/services?tab=categories'),
-        'label' => 'Manage Categories',
-        'icon' => 'category',
-        'variant' => 'outlined',
-    ]) ?>
-    <?= view('components/button', [
-        'tag' => 'a',
-        'href' => base_url('/services/create'),
-        'label' => 'Add Service',
-        'icon' => 'add',
-        'variant' => 'filled',
-    ]) ?>
-<?= $this->endSection() ?>
-
-<?= $this->section('dashboard_content_top') ?>
-    <?php if ($message = session()->getFlashdata('message')): ?>
-        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200">
-            <?= esc($message) ?>
-        </div>
-    <?php endif; ?>
-    <?php if ($error = session()->getFlashdata('error')): ?>
-        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
-            <?= esc($error) ?>
-        </div>
-    <?php endif; ?>
-    <?php $validationErrors = session()->getFlashdata('errors') ?? []; ?>
-    <?php if (!empty($validationErrors)): ?>
-        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200">
-            <ul class="list-disc space-y-1 pl-5">
-                <?php foreach ((array)$validationErrors as $field => $errorText): ?>
-                    <li><?= esc(is_array($errorText) ? implode(', ', $errorText) : $errorText) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-<?= $this->endSection() ?>
-
-<?= $this->section('dashboard_filters') ?>
-    <?php if ($activeTab === 'services'): ?>
-        <form action="<?= current_url() ?>" method="get" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center">
-            <input type="hidden" name="tab" value="services" />
-            <div class="flex-1">
-                <label for="filterQuery" class="sr-only">Search services</label>
-                <div class="relative">
-                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
-                        <span class="material-symbols-outlined text-base">search</span>
-                    </span>
-                    <input id="filterQuery" name="q" value="<?= esc($filters['q'] ?? '') ?>" placeholder="Search services" class="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
-                </div>
-            </div>
-            <div class="flex flex-1 flex-col gap-3 md:flex-row">
-                <div class="flex-1">
-                    <label for="filterCategory" class="sr-only">Filter by category</label>
-                    <?= view('components/select', [
-                        'id' => 'filterCategory',
-                        'name' => 'category',
-                        'options' => $serviceCategoryOptions,
-                        'value' => (string) ($filters['category'] ?? ''),
-                    ]) ?>
-                </div>
-                <div class="flex-1">
-                    <label for="filterStatus" class="sr-only">Filter by status</label>
-                    <?= view('components/select', [
-                        'id' => 'filterStatus',
-                        'name' => 'status',
-                        'options' => $serviceStatusOptions,
-                        'value' => (string) ($filters['status'] ?? ''),
-                    ]) ?>
-                </div>
-            </div>
-            <div class="flex justify-end md:w-auto">
-                <?= view('components/button', [
-                    'type' => 'submit',
-                    'label' => 'Apply',
-                    'variant' => 'filled',
-                ]) ?>
-            </div>
-        </form>
-    <?php endif; ?>
-<?= $this->endSection() ?>
-
-<?= $this->section('dashboard_content') ?>
-    <div class="card card-spacious">
-        <div class="card-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex items-center gap-2">
-                <a href="<?= site_url('services?tab=services') ?>" class="btn <?= $activeTab === 'services' ? 'btn-primary shadow-sm' : 'btn-ghost text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+<div class="xs-card">
+    <!-- Card header: tab switcher + filter toggle (services tab only) -->
+    <div class="xs-card-header">
+        <div class="xs-card-header-content">
+            <div class="flex items-center gap-1">
+                <a href="<?= site_url('services?tab=services') ?>"
+                   class="xs-btn xs-btn-sm <?= $activeTab === 'services' ? 'xs-btn-primary' : 'xs-btn-ghost' ?>">
                     <span class="material-symbols-outlined text-base">design_services</span>
                     Services
                 </a>
-                <a href="<?= site_url('services?tab=categories') ?>" class="btn <?= $activeTab === 'categories' ? 'btn-primary shadow-sm' : 'btn-ghost text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' ?>">
+                <a href="<?= site_url('services?tab=categories') ?>"
+                   class="xs-btn xs-btn-sm <?= $activeTab === 'categories' ? 'xs-btn-primary' : 'xs-btn-ghost' ?>">
                     <span class="material-symbols-outlined text-base">category</span>
                     Categories
                 </a>
             </div>
-            <?php if ($activeTab === 'services'): ?>
-                <p class="text-sm text-gray-500 dark:text-gray-300">Review offerings, check provider assignments, and keep pricing aligned.</p>
-            <?php else: ?>
-                <p class="text-sm text-gray-500 dark:text-gray-300">Group services, manage availability, and keep your catalog tidy.</p>
-            <?php endif; ?>
         </div>
-
-    <div class="card-body space-y-6">
-            <?php if ($activeTab === 'services'): ?>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-900/40">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Service</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Category</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Provider</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Duration</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Price</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bookings</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            <?php if (!empty($services)): ?>
-                                <?php foreach ($services as $service): ?>
-                                    <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
-                                        <td class="px-6 py-4 align-top">
-                                            <div>
-                                                <p class="text-sm font-semibold text-gray-900 dark:text-white"><?= esc($service['name']) ?></p>
-                                                <?php if (!empty($service['description'])): ?>
-                                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                                                        <?= esc($service['description']) ?>
-                                                    </p>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
-                                                <?= esc($service['category']) ?>
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                            <?= esc($service['provider']) ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                                            <?= $service['duration'] ?> min
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
-                                            <?php helper('currency'); echo format_currency($service['price']); ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200"><?= $service['bookings_count'] ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <?= view('components/status_badge', [
-                                                'status' => (string) ($service['status'] ?? 'inactive'),
-                                                'label' => ucfirst((string) ($service['status'] ?? 'inactive')),
-                                            ]) ?>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                                            <div class="flex items-center justify-end gap-2">
-                                                <a href="<?= site_url('services/edit/' . (int) $service['id']) ?>" class="btn btn-secondary btn-sm">
-                                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                                    Edit
-                                                </a>
-                                                <form action="<?= site_url('services/delete/' . (int) $service['id']) ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Delete this service?');">
-                                                    <?= csrf_field() ?>
-                                                    <button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                                                        <span class="material-symbols-outlined text-sm">delete</span>
-                                                        Delete
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="8" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-300">
-                                        No services found. Create a service to get started.
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="space-y-6">
-                    <form id="quickCategoryForm" action="<?= site_url('services/categories') ?>" method="post" data-no-spa="true" class="flex flex-col gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/40 md:flex-row md:items-center md:gap-4">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="active" value="1" />
-                        <div class="flex-1">
-                            <label for="quickCategoryName" class="sr-only">Category name</label>
-                            <input id="quickCategoryName" name="name" placeholder="Quick add category" value="<?= esc(old('name', '')) ?>" class="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" required />
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label for="quickCategoryColor" class="text-sm font-medium text-gray-600 dark:text-gray-300">Color</label>
-                            <input id="quickCategoryColor" name="color" type="color" value="<?= esc(old('color', '#3B82F6')) ?>" class="h-10 w-12 rounded-md border border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800" />
-                        </div>
-                        <div class="flex justify-end md:justify-start">
-                            <button type="submit"
-                                    class="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 px-4 py-2 text-sm bg-primary text-on-primary hover:bg-primary-600 shadow-sm">
-                                <span class="material-symbols-outlined text-base">add</span>
-                                <span>Add Category</span>
-                            </button>
-                        </div>
-                    </form>
-
-                    <div id="quickAddMsg" class="hidden"></div>
-
-                    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-900/40">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Category</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Services</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="categoriesTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <?php if (!empty($categories)): ?>
-                                    <?php foreach ($categories as $category): ?>
-                                        <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-900/40">
-                                            <td class="px-6 py-4">
-                                                <div class="flex items-start gap-3">
-                                                    <span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" data-color="<?= esc($category['color'] ?? '#3B82F6') ?>"></span>
-                                                    <div>
-                                                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100"><?= esc($category['name']) ?></p>
-                                                        <?php if (!empty($category['description'])): ?>
-                                                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2"><?= esc($category['description']) ?></p>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                                <?= (int)($category['services_count'] ?? 0) ?>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <?= view('components/status_badge', [
-                                                    'status' => !empty($category['active']) ? 'active' : 'inactive',
-                                                    'label' => !empty($category['active']) ? 'Active' : 'Inactive',
-                                                ]) ?>
-                                            </td>
-                                            <td class="px-6 py-4">
-                                                <div class="flex flex-wrap items-center justify-end gap-2">
-                                                    <?= view('components/button', [
-                                                        'tag' => 'a',
-                                                        'href' => site_url('services/categories/edit/' . (int)$category['id']),
-                                                        'label' => 'Edit',
-                                                        'icon' => 'edit',
-                                                        'variant' => 'outlined',
-                                                        'size' => 'sm',
-                                                    ]) ?>
-
-                                                    <?php if (!empty($category['active'])): ?>
-                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Deactivate this category? Services will remain but marked inactive.');">
-                                                            <?= csrf_field() ?>
-                                                            <?= view('components/button', [
-                                                                'type' => 'submit',
-                                                                'label' => 'Deactivate',
-                                                                'icon' => 'pause',
-                                                                'variant' => 'text',
-                                                                'size' => 'sm',
-                                                                'class' => 'text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200',
-                                                            ]) ?>
-                                                        </form>
-                                                    <?php else: ?>
-                                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Activate this category?');">
-                                                            <?= csrf_field() ?>
-                                                            <?= view('components/button', [
-                                                                'type' => 'submit',
-                                                                'label' => 'Activate',
-                                                                'icon' => 'play_arrow',
-                                                                'variant' => 'text',
-                                                                'size' => 'sm',
-                                                                'class' => 'text-emerald-600 hover:text-emerald-700 dark:text-emerald-300 dark:hover:text-emerald-200',
-                                                            ]) ?>
-                                                        </form>
-                                                    <?php endif; ?>
-
-                                                    <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm('Delete this category? Any linked services will become uncategorized.');">
-                                                        <?= csrf_field() ?>
-                                                        <?= view('components/button', [
-                                                            'type' => 'submit',
-                                                            'label' => 'Delete',
-                                                            'icon' => 'delete',
-                                                            'variant' => 'text',
-                                                            'size' => 'sm',
-                                                            'class' => 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
-                                                        ]) ?>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-300">
-                                            No categories yet. Use the quick add form or New Category button to create one.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            <?php endif; ?>
+        <?php if ($activeTab === 'services'): ?>
+        <div class="xs-card-actions">
+            <button type="button"
+                    id="services-filter-toggle"
+                    class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon <?= $hasActiveFilters ? 'text-blue-600 dark:text-blue-400' : '' ?>"
+                    title="Filter services"
+                    aria-controls="services-filter-panel"
+                    aria-expanded="<?= $hasActiveFilters ? 'true' : 'false' ?>"
+                    onclick="var p=document.getElementById('services-filter-panel');p.classList.toggle('hidden');this.setAttribute('aria-expanded',String(!p.classList.contains('hidden')));">
+                <span class="material-symbols-outlined text-base">tune</span>
+            </button>
         </div>
+        <?php endif; ?>
     </div>
+
+    <?php if ($activeTab === 'services'): ?>
+    <!-- Collapsible filter panel -->
+    <div id="services-filter-panel"
+         class="<?= $hasActiveFilters ? '' : 'hidden' ?> border-b border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30 px-6 py-4">
+        <form action="<?= current_url() ?>" method="get"
+              class="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
+            <input type="hidden" name="tab" value="services" />
+            <div class="flex-1">
+                <label for="filterQuery" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Search</label>
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+                        <span class="material-symbols-outlined text-base">search</span>
+                    </span>
+                    <input id="filterQuery" name="q" value="<?= esc($filters['q'] ?? '') ?>"
+                           placeholder="Name or description…"
+                           class="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
+                </div>
+            </div>
+            <div class="flex-1">
+                <label for="filterCategory" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
+                <?= view('components/select', [
+                    'id'      => 'filterCategory',
+                    'name'    => 'category',
+                    'options' => $serviceCategoryOptions,
+                    'value'   => (string) ($filters['category'] ?? ''),
+                ]) ?>
+            </div>
+            <div class="flex-1">
+                <label for="filterStatus" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
+                <?= view('components/select', [
+                    'id'      => 'filterStatus',
+                    'name'    => 'status',
+                    'options' => $serviceStatusOptions,
+                    'value'   => (string) ($filters['status'] ?? ''),
+                ]) ?>
+            </div>
+            <div class="flex gap-2">
+                <?= view('components/button', ['type' => 'submit', 'label' => 'Apply', 'variant' => 'filled', 'size' => 'sm']) ?>
+                <?php if ($hasActiveFilters): ?>
+                    <?= view('components/button', ['tag' => 'a', 'href' => site_url('services?tab=services'), 'label' => 'Clear', 'variant' => 'outlined', 'size' => 'sm']) ?>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
+    <?php endif; ?>
+
+    <div class="xs-card-body p-0">
+        <?php if ($activeTab === 'services'): ?>
+        <!-- Services table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <tr>
+                        <th class="px-6 py-3">Service</th>
+                        <th class="px-6 py-3">Details</th>
+                        <th class="px-6 py-3">Bookings</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <?php if (!empty($services)): ?>
+                        <?php foreach ($services as $service): ?>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                                <td class="px-6 py-4 align-top">
+                                    <div class="font-semibold text-gray-900 dark:text-white"><?= esc($service['name']) ?></div>
+                                    <?php if (!empty($service['description'])): ?>
+                                        <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><?= esc($service['description']) ?></div>
+                                    <?php endif; ?>
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                            <?= esc($service['category']) ?>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap align-top">
+                                    <div class="text-gray-700 dark:text-gray-300"><?= (int)$service['duration'] ?> min</div>
+                                    <div class="font-semibold text-gray-900 dark:text-white"><?= format_currency($service['price']) ?></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300 align-top">
+                                    <?= (int)$service['bookings_count'] ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap align-top">
+                                    <?= view('components/status_badge', [
+                                        'status' => (string) ($service['status'] ?? 'inactive'),
+                                        'label'  => ucfirst((string) ($service['status'] ?? 'inactive')),
+                                    ]) ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap align-top">
+                                    <div class="xs-actions-container justify-end">
+                                        <a href="<?= site_url('services/edit/' . (int)$service['id']) ?>"
+                                           class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon"
+                                           title="Edit <?= esc($service['name']) ?>">
+                                            <span class="material-symbols-outlined">edit</span>
+                                        </a>
+                                        <form action="<?= site_url('services/delete/' . (int)$service['id']) ?>" method="post"
+                                              class="inline-flex" data-no-spa="true"
+                                              data-confirm-message="Delete &quot;<?= esc($service['name']) ?>&quot;? This cannot be undone.">
+                                            <?= csrf_field() ?>
+                                            <button type="submit"
+                                                    class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                    title="Delete <?= esc($service['name']) ?>">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+                                    <span class="material-symbols-outlined text-4xl">design_services</span>
+                                    <p class="text-sm"><?= $hasActiveFilters ? 'No services match your filters.' : 'No services yet.' ?></p>
+                                    <?php if (!$hasActiveFilters): ?>
+                                        <a href="<?= site_url('services/create') ?>" class="xs-btn xs-btn-sm xs-btn-primary mt-1">Add your first service</a>
+                                    <?php else: ?>
+                                        <a href="<?= site_url('services?tab=services') ?>" class="xs-btn xs-btn-sm xs-btn-ghost mt-1">Clear filters</a>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php else: ?>
+        <!-- Categories table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                    <tr>
+                        <th class="px-6 py-3">Category</th>
+                        <th class="px-6 py-3">Services</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <?php if (!empty($categories)): ?>
+                        <?php foreach ($categories as $category): ?>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-start gap-3">
+                                        <span class="mt-1 inline-flex h-4 w-4 flex-shrink-0 rounded-full border border-gray-200 category-color-dot"
+                                              data-color="<?= esc($category['color'] ?? '#3B82F6') ?>"></span>
+                                        <div>
+                                            <div class="font-semibold text-gray-900 dark:text-white"><?= esc($category['name']) ?></div>
+                                            <?php if (!empty($category['description'])): ?>
+                                                <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-1"><?= esc($category['description']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                                    <?= (int)($category['services_count'] ?? 0) ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <?= view('components/status_badge', [
+                                        'status' => !empty($category['active']) ? 'active' : 'inactive',
+                                        'label'  => !empty($category['active']) ? 'Active' : 'Inactive',
+                                    ]) ?>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="xs-actions-container justify-end">
+                                        <a href="<?= site_url('services/categories/edit/' . (int)$category['id']) ?>"
+                                           class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon"
+                                           title="Edit <?= esc($category['name']) ?>">
+                                            <span class="material-symbols-outlined">edit</span>
+                                        </a>
+                                        <?php if (!empty($category['active'])): ?>
+                                            <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/deactivate') ?>"
+                                                  method="post" class="inline-flex" data-no-spa="true"
+                                                  data-confirm-message="Deactivate &quot;<?= esc($category['name']) ?>&quot;? Services will remain but won&apos;t be bookable.">
+                                                <?= csrf_field() ?>
+                                                <button type="submit"
+                                                        class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                                                        title="Deactivate <?= esc($category['name']) ?>">
+                                                    <span class="material-symbols-outlined">pause_circle</span>
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/activate') ?>"
+                                                  method="post" class="inline-flex" data-no-spa="true"
+                                                  data-confirm-message="Activate &quot;<?= esc($category['name']) ?>&quot;?">
+                                                <?= csrf_field() ?>
+                                                <button type="submit"
+                                                        class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                                        title="Activate <?= esc($category['name']) ?>">
+                                                    <span class="material-symbols-outlined">play_circle</span>
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <form action="<?= site_url('services/categories/' . (int)$category['id'] . '/delete') ?>"
+                                              method="post" class="inline-flex" data-no-spa="true"
+                                              data-confirm-message="Delete &quot;<?= esc($category['name']) ?>&quot;? Linked services will become uncategorized.">
+                                            <?= csrf_field() ?>
+                                            <button type="submit"
+                                                    class="xs-btn xs-btn-sm xs-btn-ghost xs-btn-icon text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                    title="Delete <?= esc($category['name']) ?>">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center">
+                                <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+                                    <span class="material-symbols-outlined text-4xl">category</span>
+                                    <p class="text-sm">No categories yet.</p>
+                                    <a href="<?= site_url('services/categories/create') ?>" class="xs-btn xs-btn-sm xs-btn-primary mt-1">Create first category</a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
-<?= $this->section('scripts') ?>
-<script {csp-script-nonce}>
-(function () {
-    var form = document.getElementById('quickCategoryForm');
-    if (!form || form.dataset.initialized === 'true') return;
-    form.dataset.initialized = 'true';
-
-    var tbody = document.getElementById('categoriesTableBody');
-    var msg   = document.getElementById('quickAddMsg');
-
-    function esc(s) {
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
-    function showMsg(text, isError) {
-        if (!msg) return;
-        msg.textContent = text;
-        msg.className = isError
-            ? 'mt-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-600/50 dark:bg-red-900/30 dark:text-red-200'
-            : 'mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-600/40 dark:bg-emerald-900/30 dark:text-emerald-200';
-        setTimeout(function () { if (msg) msg.classList.add('hidden'); }, 4000);
-    }
-
-    function getCsrfToken() {
-        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    }
-
-    function getCsrfName() {
-        var inp = form.querySelector('input[type="hidden"][name]');
-        return inp ? inp.name : 'csrf_test_name';
-    }
-
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        var fd = new FormData(form);
-        var nameVal = String(fd.get('name') || '').trim();
-        if (!nameVal) return;
-
-        var btn = form.querySelector('[type="submit"]');
-        if (btn) { btn.disabled = true; }
-
-        try {
-            var res = await fetch(form.action, {
-                method: 'POST',
-                body: fd,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            });
-            var data = await res.json();
-
-            if (data && data.success) {
-                var id          = data.id;
-                var displayName = data.name || nameVal;
-                var color       = String(fd.get('color') || '#3B82F6');
-                var baseUrl     = '<?= rtrim(base_url(), '/') ?>/';
-                var csrfName    = getCsrfName();
-                var csrfValue   = getCsrfToken();
-
-                var row = document.createElement('tr');
-                row.id        = 'cat-row-' + id;
-                row.className = 'transition hover:bg-gray-50 dark:hover:bg-gray-900/40';
-                row.innerHTML =
-                    '<td class="px-6 py-4">' +
-                        '<div class="flex items-start gap-3">' +
-                            '<span class="mt-1 inline-flex h-4 w-4 rounded-full border border-gray-200 category-color-dot" data-color="' + esc(color) + '"></span>' +
-                            '<div><p class="text-sm font-semibold text-gray-900 dark:text-gray-100">' + esc(displayName) + '</p></div>' +
-                        '</div>' +
-                    '</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">0</td>' +
-                    '<td class="px-6 py-4 whitespace-nowrap">' +
-                        '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">Active</span>' +
-                    '</td>' +
-                    '<td class="px-6 py-4">' +
-                        '<div class="flex flex-wrap items-center justify-end gap-2">' +
-                            '<a href="' + esc(baseUrl) + 'services/categories/edit/' + id + '" class="btn btn-secondary btn-sm">' +
-                                '<span class="material-symbols-outlined text-sm">edit</span>Edit' +
-                            '</a>' +
-                            '<form action="' + esc(baseUrl) + 'services/categories/' + id + '/deactivate" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm(\'Deactivate this category? Services will remain but marked inactive.\')">' +
-                                '<input type="hidden" name="' + esc(csrfName) + '" value="' + esc(csrfValue) + '">' +
-                                '<button type="submit" class="btn btn-ghost btn-sm text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200">' +
-                                    '<span class="material-symbols-outlined text-sm">pause</span>Deactivate' +
-                                '</button>' +
-                            '</form>' +
-                            '<form action="' + esc(baseUrl) + 'services/categories/' + id + '/delete" method="post" class="inline-flex" data-no-spa="true" onsubmit="return confirm(\'Delete this category? Any linked services will become uncategorized.\')">' +
-                                '<input type="hidden" name="' + esc(csrfName) + '" value="' + esc(csrfValue) + '">' +
-                                '<button type="submit" class="btn btn-ghost btn-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">' +
-                                    '<span class="material-symbols-outlined text-sm">delete</span>Delete' +
-                                '</button>' +
-                            '</form>' +
-                        '</div>' +
-                    '</td>';
-
-                // Remove "no categories yet" placeholder row if present
-                var placeholder = tbody ? tbody.querySelector('td[colspan="4"]') : null;
-                if (placeholder) { placeholder.closest('tr').remove(); }
-
-                if (tbody) { tbody.insertBefore(row, tbody.firstChild); }
-
-                // Apply data-color attribute to the new row's color dot
-                form.reset();
-                showMsg('Category "' + esc(displayName) + '" created successfully.', false);
-            } else {
-                showMsg((data && (data.error || data.message)) || 'Failed to create category.', true);
-            }
-        } catch (err) {
-            showMsg('Error: ' + err.message, true);
-        } finally {
-            if (btn) { btn.disabled = false; }
-        }
-    });
-}());
-</script>
-<?= $this->endSection() ?>
