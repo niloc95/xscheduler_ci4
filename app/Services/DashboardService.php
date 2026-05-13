@@ -560,6 +560,9 @@ class DashboardService
 
             // Build provider-specific booking options used by dashboard cards.
             $providerServiceOptions = $this->getProviderServiceOptions($provider['id']);
+            if (empty($providerServiceOptions)) {
+                continue; // provider has no active services — exclude from dashboard grid
+            }
             $providerServices = array_column($providerServiceOptions, 'name');
             $defaultServiceId = $providerServiceOptions[0]['id'] ?? null;
 

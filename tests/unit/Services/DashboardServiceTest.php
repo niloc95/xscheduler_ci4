@@ -43,6 +43,7 @@ final class DashboardServiceTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ServiceModel::class),
             $this->createMock(CustomerModel::class),
+            null, // LocationModel
             $this->createMock(ProviderScheduleModel::class),
             $this->createMock(BusinessHourModel::class),
             $localization,
@@ -170,6 +171,7 @@ final class DashboardServiceTest extends CIUnitTestCase
             $userModel,
             $this->createMock(ServiceModel::class),
             $this->createMock(CustomerModel::class),
+            null, // LocationModel
             $this->createMock(ProviderScheduleModel::class),
             $this->createMock(BusinessHourModel::class),
             $localization,
@@ -184,6 +186,74 @@ final class DashboardServiceTest extends CIUnitTestCase
         $this->assertSame(7, $context['provider_id']);
         $this->assertTrue($context['filter_by_provider']);
         $this->assertFalse($context['filter_by_staff']);
+    }
+
+    public function testGetProviderAvailabilityExcludesProvidersWithNoServices(): void
+    {
+        // Use an anonymous subclass that replaces the DB-dependent provider loading
+        // while keeping the real filtering guard (empty($providerServiceOptions) → continue).
+        $service = new class extends DashboardService {
+            /** @var array<int, array<string, mixed>> */
+            public array $testProviders = [];
+
+            /** @var array<int, list<array<string, mixed>>> */
+            public array $serviceOptionsMap = [];
+
+            public function __construct()
+            {
+                // Skip parent constructor — no model or DB instantiation needed.
+            }
+
+            public function getProviderAvailability(int|array|null $providerId = null): array
+            {
+                $availability = [];
+
+                foreach ($this->testProviders as $provider) {
+                    // ── Real guard being tested ─────────────────────────────
+                    $providerServiceOptions = $this->getProviderServiceOptions((int) $provider['id']);
+                    if (empty($providerServiceOptions)) {
+                        continue;
+                    }
+                    // ────────────────────────────────────────────────────────
+
+                    $availability[] = [
+                        'id'               => $provider['id'],
+                        'name'             => $provider['name'],
+                        'status'           => 'off',
+                        'next_slot'        => null,
+                        'color'            => $provider['color'] ?? '#000000',
+                        'services'         => array_column($providerServiceOptions, 'name'),
+                        'service_options'  => $providerServiceOptions,
+                        'default_service_id' => $providerServiceOptions[0]['id'] ?? null,
+                        'location_options' => [],
+                        'slots_date'       => date('Y-m-d'),
+                        'slots_for_date'   => [],
+                    ];
+                }
+
+                return $availability;
+            }
+
+            protected function getProviderServiceOptions(int $providerId): array
+            {
+                return $this->serviceOptionsMap[$providerId] ?? [];
+            }
+        };
+
+        $service->testProviders = [
+            ['id' => 1, 'name' => 'Provider With Services', 'color' => '#003049'],
+            ['id' => 2, 'name' => 'Provider No Services',   'color' => '#cccccc'],
+        ];
+        $service->serviceOptionsMap = [
+            1 => [['id' => 10, 'name' => 'Haircut', 'duration_min' => 30]],
+            2 => [], // no active services — must be excluded
+        ];
+
+        $result = $service->getProviderAvailability();
+
+        $this->assertCount(1, $result, 'Provider with no active services must be excluded from the dashboard grid');
+        $this->assertSame(1, $result[0]['id']);
+        $this->assertSame('Provider With Services', $result[0]['name']);
     }
 }
 
@@ -200,14 +270,15 @@ final class TestDashboardService extends DashboardService
     public function __construct()
     {
         parent::__construct(
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            $this->buildLocalizationStub(),
-            null
+            null, // AppointmentModel
+            null, // UserModel
+            null, // ServiceModel
+            null, // CustomerModel
+            null, // LocationModel
+            null, // ProviderScheduleModel
+            null, // BusinessHourModel
+            $this->buildLocalizationStub(), // LocalizationSettingsService
+            null  // AvailabilityService
         );
     }
 

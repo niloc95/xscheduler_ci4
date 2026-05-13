@@ -91,7 +91,7 @@
         <header class="xs-header bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
                 <div class="xs-header-top flex items-start justify-between gap-4">
                     <!-- Left: Mobile Menu + Page Identity -->
-                    <div class="xs-header-identity flex min-w-0 flex-1 items-start gap-3">
+                    <div class="xs-header-identity flex min-w-0 flex-1 items-center gap-3">
                         <button id="menu-toggle" type="button" class="lg:hidden w-11 h-11 -ml-1 inline-flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                             <span class="material-symbols-outlined">menu</span>
                         </button>
@@ -129,7 +129,7 @@
                                 <input type="search" 
                                        id="global-search" 
                                        placeholder="Search..." 
-                                       class="w-60 2xl:w-80 h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       class="w-60 2xl:w-80 h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                                        autocomplete="off">
                                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                                 <div id="global-search-results" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
@@ -139,14 +139,15 @@
                                 </div>
                             </div>
                             
-                            <!-- New Appointment (Expanded Desktop) -->
-                                     <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
+                            <!-- New Appointment — icon-only on mobile, icon+label at xl+ -->
+                            <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
                             <a href="<?= base_url('/appointments/create') ?>"
-                                         id="header-primary-action"
-                                         class="xs-header-primary-action btn btn-primary hidden xl:inline-flex items-center justify-center gap-1.5 px-3 text-sm rounded-lg whitespace-nowrap<?= $showHeaderPrimaryAction ? '' : ' xs-header-primary-action--suppressed' ?>"
-                               title="New Appointment">
+                               id="header-primary-action"
+                               aria-label="<?= ($userRole ?? 'user') === 'customer' ? 'Book appointment' : 'New appointment' ?>"
+                               title="<?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?>"
+                               class="xs-header-primary-action inline-flex items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 h-9 w-9 p-0 xl:w-auto xl:h-auto xl:px-3 xl:py-2 xl:gap-1.5 text-sm whitespace-nowrap<?= $showHeaderPrimaryAction ? '' : ' xs-header-primary-action--suppressed' ?>">
                                 <span class="material-symbols-outlined text-base">add</span>
-                                <span class="hidden 2xl:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
+                                <span class="hidden xl:inline"><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
                             </a>
                             <?php endif; ?>
                             
@@ -165,7 +166,7 @@
                                              alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
                                              class="w-9 h-9 rounded-full object-cover" />
                                     <?php else: ?>
-                                        <div class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm">
+                                        <div class="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-sm">
                                             <?= esc($headerAvatar['initials']) ?>
                                         </div>
                                     <?php endif; ?>
@@ -185,7 +186,7 @@
                                                      alt="<?= esc($headerAvatar['name'] ?: ($user['name'] ?? 'User')) ?>"
                                                      class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                                             <?php else: ?>
-                                                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                                                <div class="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
                                                     <?= esc($headerAvatar['initials']) ?>
                                                 </div>
                                             <?php endif; ?>
@@ -195,17 +196,6 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <?php if (function_exists('has_role') && has_role(['customer', 'staff', 'provider', 'admin'])): ?>
-                                    <div id="header-primary-action-mobile" class="xl:hidden px-4 py-4 border-b border-gray-200 dark:border-gray-700<?= $showHeaderPrimaryAction ? '' : ' xs-header-primary-action--suppressed' ?>">
-                                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick access</p>
-                                        <a href="<?= base_url('/appointments/create') ?>"
-                                           class="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-                                            <span class="material-symbols-outlined text-base">add</span>
-                                            <span><?= ($userRole ?? 'user') === 'customer' ? 'Book Appointment' : 'New Appointment' ?></span>
-                                        </a>
-                                    </div>
-                                    <?php endif; ?>
 
                                     <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
                                         <div class="flex items-center justify-between gap-3">
@@ -249,7 +239,7 @@
                             <input type="search" 
                                    id="global-search-mobile" 
                                    placeholder="Search..." 
-                                   class="w-full h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
+                                   class="w-full h-11 pl-10 pr-4 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                    autocomplete="off">
                             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                             <div id="global-search-results-mobile" class="hidden absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">

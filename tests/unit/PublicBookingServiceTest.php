@@ -707,6 +707,78 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         ];
     }
 
+    // ── Dual-role provider regression tests (§4.4) ──────────────────────────
+
+    public function testResolveDualRoleProviderViaWhereHasRole(): void
+    {
+        // A user whose xs_users.role = 'admin' but who also holds the provider
+        // role in xs_user_roles must be resolved by resolveProvider().
+        $dualRoleRow = ['id' => 42, 'name' => 'Admin Provider', 'color' => '#003049', 'role' => 'admin', 'is_active' => true];
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createMock(ServiceModel::class),
+            $this->createUserModelMock($dualRoleRow),
+            $this->createMock(LocalizationSettingsService::class),
+            $this->createMock(SettingModel::class),
+        );
+
+        $result = $this->invokePrivateMethod($service, 'resolveProvider', [42]);
+
+        $this->assertSame(42, $result['id']);
+    }
+
+    public function testFindProviderBySlugWithDualRole(): void
+    {
+        $dualRoleRow = ['id' => 43, 'name' => 'Dual Role Doc', 'slug' => 'dual-role-doc', 'color' => '#003049', 'role' => 'admin', 'is_active' => true];
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createMock(ServiceModel::class),
+            $this->createUserModelMock($dualRoleRow),
+            $this->createMock(LocalizationSettingsService::class),
+            $this->createMock(SettingModel::class),
+        );
+
+        $result = $this->invokePrivateMethod($service, 'findProviderBySlug', ['dual-role-doc']);
+
+        $this->assertNotNull($result);
+        $this->assertSame('dual-role-doc', $result['slug']);
+    }
+
+    public function testSitemapUrlsIncludesDualRoleProvider(): void
+    {
+        $dualRoleRow = ['id' => 44, 'name' => 'Sitemap Provider', 'slug' => 'sitemap-provider', 'color' => '#003049', 'role' => 'admin', 'is_active' => true];
+        $serviceRow  = ['id' => 1, 'name' => 'Haircut', 'active' => 1, 'slug' => 'haircut', 'duration_min' => 30, 'price' => 0.0];
+
+        $settings = $this->createMock(SettingModel::class);
+        $settings->method('getByKeys')->willReturn([]);
+
+        $service = $this->makeService(
+            $this->createMock(BookingSettingsService::class),
+            $this->createMock(AvailabilityService::class),
+            $this->createMock(AppointmentModel::class),
+            $this->createMock(CustomerModel::class),
+            $this->createServiceModelMock($serviceRow),
+            $this->createUserModelMock($dualRoleRow),
+            $this->createMock(LocalizationSettingsService::class),
+            $settings,
+        );
+
+        $urls     = $service->getSitemapUrls();
+        $slugUrls = array_filter($urls, static fn(array $u): bool => str_contains($u['loc'], 'sitemap-provider'));
+
+        $this->assertNotEmpty($slugUrls, 'Dual-role provider slug must appear in sitemap');
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
     private function makeService(
         BookingSettingsService $bookingSettings,
         AvailabilityService $availability,
@@ -762,10 +834,11 @@ final class PublicBookingServiceTest extends CIUnitTestCase
         /** @var UserModel&MockObject $mock */
         $mock = $this->getMockBuilder(UserModel::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['findAll', 'first', 'find', 'getProvidersWithActiveServices'])
+            ->onlyMethods(['findAll', 'first', 'find', 'getProvidersWithActiveServices', 'whereHasRole'])
             ->addMethods(['where', 'orderBy'])
             ->getMock();
         $mock->method('where')->willReturnSelf();
+        $mock->method('whereHasRole')->willReturnSelf();
         $mock->method('orderBy')->willReturnSelf();
         $mock->method('findAll')->willReturn([$row]);
         $mock->method('getProvidersWithActiveServices')->willReturn([$row]);

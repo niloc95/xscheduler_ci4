@@ -346,7 +346,7 @@ class PublicBookingService
 
         $addUrl(base_url('booking'), null, 'daily', '1.0');
 
-        $providerBuilder = $this->users->where('role', 'provider');
+        $providerBuilder = $this->users->whereHasRole('provider');
         if ($this->hasUsersColumn('is_active')) {
             $providerBuilder->where('is_active', true);
         } elseif ($this->hasUsersColumn('status')) {
@@ -1011,7 +1011,7 @@ class PublicBookingService
             return null;
         }
 
-        $builder = $this->users->where('slug', $slug)->where('role', 'provider');
+        $builder = $this->users->where('slug', $slug)->whereHasRole('provider');
         if ($this->hasUsersColumn('is_active')) {
             $builder->where('is_active', true);
         } elseif ($this->hasUsersColumn('status')) {
@@ -1213,7 +1213,7 @@ class PublicBookingService
             throw new PublicBookingException('Provider selection is required.', 422, ['provider_id' => 'required']);
         }
 
-        $builder = $this->users->where('id', $providerId)->where('role', 'provider');
+        $builder = $this->users->where('id', $providerId)->whereHasRole('provider');
         if ($this->hasUsersColumn('is_active')) {
             $builder->where('is_active', true);
         } elseif ($this->hasUsersColumn('status')) {
