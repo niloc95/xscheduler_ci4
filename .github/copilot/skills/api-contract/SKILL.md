@@ -1,0 +1,113 @@
+---
+name: webscheduler-api-contract
+description: WebScheduler API contracts — response envelopes, versioning, base controller responsibilities, public endpoint guardrails, and the SPA form JSON response contract. Use whenever you're adding, modifying, or reviewing API endpoints, controllers that return JSON, response shapes, error handling, or the JSON returned to SPA-intercepted form submits. Triggers on phrases like "API", "endpoint", "JSON response", "envelope", "BaseApiController", "/api/v1", "SPA form", "redirect after save", "AJAX", or any work in `app/Controllers/Api/`.
+---
+
+# WebScheduler — API Contract
+
+## Versioning and Surface
+
+- **Versioned endpoints** under `/api/v1/`
+- **Operational endpoints** under `/api/`
+
+## Base API Controller Responsibilities
+
+`app/Controllers/Api/BaseApiController.php` enforces:
+
+- `requireAuth()`
+- `hasRole()`
+- `requireRole()`
+- success / error envelope helpers
+
+All API controllers should extend it and use its envelope helpers — do not hand-roll JSON responses.
+
+## Response Envelopes
+
+### Success
+
+```json
+{ "data": {}, "meta": {} }
+```
+
+- `data` carries the resource payload
+- `meta` carries pagination, view metadata, generated_at timestamps, etc.
+
+### Error
+
+```json
+{ "error": { "message": "", "code": "", "details": {} } }
+```
+
+- `message` — human-readable
+- `code` — machine-readable stable identifier
+- `details` — optional structured info (field errors, etc.)
+
+## Public Endpoint Guardrails
+
+Public endpoints (under `/api/v1/public/`) must keep:
+
+- Hash/token protections
+- Rate limiting
+- Provider/service scoping
+- **No numeric customer IDs in public URLs** — use `xs_customers.hash` or `xs_appointments.public_token` only
+
+See the `public-booking` skill for the full set of public route security rules.
+
+## SPA Form JSON Contract
+
+For SPA-intercepted form posts:
+
+```json
+{
+  "success": true,
+  "message": "Saved",
+  "redirect": "https://app/path",
+  "errors": {}
+}
+```
+
+**Critical rule:** If the success destination equals the current page, **include `redirect` so SPA navigation can force-reload**. Without `redirect`, `spa.js` cannot reliably refresh the current view after a mutation.
+
+This is the most commonly missed contract — verify it on every controller action that returns to the same page after save.
+
+## Server-Side View Model APIs (Calendar)
+
+The calendar surface uses pre-computed server-side render models via `CalendarController`:
+
+| Endpoint | Service | View |
+| --- | --- | --- |
+| `GET /api/calendar/day?date=YYYY-MM-DD` | `DayViewService` | Day view |
+| `GET /api/calendar/week?date=YYYY-MM-DD` | `WeekViewService` | Week view |
+| `GET /api/calendar/month?year=&month=` | `MonthViewService` | Month view |
+
+Common query params: `provider_id`, `service_id`, `location_id`, `status`.
+
+Response envelope: `{ "data": { ...viewModel... }, "meta": { "view", "date", "generated_at" } }`
+
+See `scheduling` skill for the full calendar data flow.
+
+## Calendar Role Scoping (Automatic)
+
+- **Providers:** `CalendarController` scopes to their own appointments only regardless of query params.
+- **Admins/Staff:** see all appointments; can filter by `provider_id` query param.
+- Do not rely on `provider_id` query param as the sole authorization mechanism — role-based scoping is enforced server-side.
+
+## Public APIs Inventory
+
+- `GET /api/v1/public/services`
+- `GET /api/v1/public/providers`
+- `GET /api/v1/public/availability`
+- `GET /api/v1/providers/slug/{segment}/services` — fetch services by provider slug (used by public booking flow)
+- `POST` booking submit route
+
+See the `public-booking` skill for full public route contract.
+
+## Shared Frontend Fetch Contract
+
+`resources/js/core/api.js` `apiRequest()` returns `{ response, payload }`.
+
+- For `application/json` responses, `payload` is **already parsed JSON**. Consumers must not assume string methods such as `.match()` are available unless they first confirm `typeof payload === 'string'`.
+- Text or HTML responses may still return string payloads.
+- Shared frontend helpers such as `extractJSON()` must accept already-parsed objects so search surfaces remain compatible with the shared fetch layer.
+
+See the `frontend` skill for full SPA/fetch lifecycle.

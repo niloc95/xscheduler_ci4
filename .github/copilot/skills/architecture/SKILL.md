@@ -1,0 +1,247 @@
+---
+name: webscheduler-architecture
+description: WebScheduler CI4 architecture, foundation, design order, global contracts, canonical service catalog, key system files, and the business-context resolver. Use whenever you're designing or modifying service/controller/model boundaries, deciding where new logic belongs, looking up the canonical service for a domain, or resolving the active business ID. Triggers on phrases like "where should this live", "which service", "service boundary", "design", "architecture", "is there already a service for", "current_business_id", "business context", or any new feature scaffolding in the WebScheduler / Frontend Dev project.
+---
+
+# WebScheduler — Architecture & Service Catalog
+
+## 1. What You Are Building
+
+WebScheduler CI4 is a professional appointment scheduling system built on CodeIgniter 4.
+
+**Architecture style:** service-oriented CI4 monolith with server-rendered views, REST-style APIs, Vite-managed frontend assets, and custom scheduler/public-booking modules.
+
+## 2. Confirmed Stack
+
+- **Backend:** PHP 8.1+, CodeIgniter 4
+- **Frontend:** Vite 6, Tailwind CSS 3.4, SCSS, plain JavaScript modules, Chart.js 4, Luxon 3
+- **Data:** MySQL/MariaDB runtime only
+- **Auth:** session-based
+- **Authorization:** route filters plus service-level checks
+
+## 3. No Framework Drift
+
+- Do not introduce React/Vue/Alpine without explicit approval.
+- Do not introduce TypeScript without explicit scoped approval.
+
+## 4. Final Design Order (Mandatory)
+
+Always design and implement in this order:
+
+1. Data and storage contract
+2. Service logic
+3. API contract
+4. View/UI rendering
+
+If a UI change starts before service/data contract clarity, stop and fix boundaries first.
+
+## 5. Global Contracts
+
+### 5.1 Services Own Business Logic
+
+Scheduling, booking, availability, timezone conversion, notification dispatch, and query scoping belong in services.
+
+### 5.2 Controllers Stay Thin
+
+Controllers parse requests, call services, and shape responses. Controllers are **not** alternate business layers.
+
+### 5.3 Models Stay Data-Focused
+
+Models encapsulate data access and query composition. Keep model behavior compatible with existing schema-safe patterns.
+
+### 5.4 Views Render, They Do Not Decide
+
+Views must not perform business logic, authorization, or timezone calculations.
+
+### 5.5 API Envelope
+
+See the `api-contract` skill for full envelope rules.
+
+Success: `{ "data": {}, "meta": {} }`
+Error: `{ "error": { "message": "", "code": "", "details": {} } }`
+
+## 6. Canonical Service Catalog
+
+### Core Scheduling
+- `AvailabilityService` — slot generation and business-hours constraint
+- `AppointmentBookingService` — booking pipeline (validate → persist → notify)
+- `ConflictService` — appointment conflict detection
+- `ScheduleValidationService` — provider schedule validation
+- `BusinessHoursService` — global business hours from `xs_settings`
+
+### Appointment Namespace (`App\Services\Appointment\`)
+- `AppointmentQueryService` — appointment reads and list queries
+- `AppointmentStatus` — status enum and notification event mapping
+- `AppointmentMutationService` — appointment writes (status changes etc.)
+- `AppointmentAvailabilityService` — availability checks per appointment
+- `AppointmentFormSubmissionService` / `AppointmentFormMutationService` — form create/edit pipeline
+- `AppointmentFormContextService` / `AppointmentFormGuardService` / `AppointmentFormResponseService` — form guards and response shaping
+- `AppointmentCustomFieldService` — custom field validation and storage
+- `AppointmentManualNotificationService` — manual notification resend
+- `AppointmentFormatterService` — appointment data formatting for views
+- `AppointmentDateTimeNormalizer` — datetime normalization helpers
+
+### Calendar Views (`App\Services\Calendar\`)
+- `DayViewService` / `WeekViewService` / `MonthViewService` — server-side view model builders
+- `CalendarConfigService` — calendar display configuration
+- `TimeGridService` — time-grid computation shared by day/week views
+- `ProviderWorkingHoursTrait` — working hours shared logic (has known debt — see `scheduling` skill)
+
+### Users / Customers
+- `UserManagementMutationService` — user create/edit/delete mutations
+- `UserManagementContextService` — user management page context
+- `UserDeletionService` — safe user removal with cascade checks
+- `CustomerAppointmentService` — provider/staff customer scoping
+- `CustomerService` — customer CRUD
+- `CustomerDeletionService` — safe customer removal
+- `CustomerCustomFieldService` — custom field validation
+- `ProfilePageService` — `/profile` page context and mutations
+- `AuthorizationService` — RBAC helpers
+
+### Public Booking
+- `PublicBookingService` — public booking pipeline
+- `BookingLinkService` — canonical URL builder for booking links and `/r/{reference}` short links
+- `BookingSettingsService` — booking form configuration, custom field validation rules
+- `BookingMetricsService` — booking statistics
+
+### Dashboard
+- `DashboardService` — dashboard data aggregation
+- `DashboardPageService` — dashboard page context builder
+- `DashboardApiService` — dashboard API endpoint data
+- `AppointmentDashboardContextService` — appointment dashboard context
+
+### Notifications
+- `AppointmentEventService` — appointment event publishing
+- `AppointmentNotificationService` — appointment notification coordination
+- `NotificationQueueService` — queue write and enqueue logic
+- `NotificationQueueDispatcher` — queue processing and dispatch
+- `NotificationPolicyService` — delivery policy rules
+- `NotificationEmailService` — email delivery via `MailerService`
+- `NotificationSmsService` — SMS delivery (Clickatell/Twilio)
+- `NotificationWhatsAppService` — WhatsApp delivery (Meta Cloud API)
+- `NotificationTemplateService` — template loading and placeholder rendering
+- `NotificationDeliveryLogService` — delivery log queries
+- `NotificationOptOutService` — opt-out management
+- `NotificationReminderHeartbeatService` — reminder offset scheduling heartbeat
+- `NotificationAutomationStatusService` — automation on/off status
+- `NotificationBusinessOptionsService` — business-level notification options
+- `NotificationCenterService` — notification center UI data
+- `NotificationCatalog` — constants (event types, defaults)
+
+### Settings (`App\Services\Settings\`)
+- `SettingsPageService` — settings page context
+- `SettingsApiService` — settings API endpoints
+- `GeneralSettingsService` — general/localization settings mutations
+- `NotificationSettingsService` — notification settings mutations
+- `LocalizationSettingsService` — timezone/locale reads
+
+### Infrastructure
+- `MailerService` — sole email transport layer (see `notifications` skill)
+- `TimezoneService` — UTC/local conversion (see `database` skill)
+- `GlobalSearchService` — cross-entity search
+- `PhoneNumberService` — phone number formatting/normalization
+- `BookingMetricsService` — booking statistics
+
+## 7. Key System Files
+
+- `app/Config/Routes.php`
+- `app/Config/Filters.php`
+- `app/Controllers/Api/BaseApiController.php`
+- `app/Database/MigrationBase.php`
+- `app/Models/AppointmentModel.php`
+- `app/Models/UserModel.php`
+- `app/Models/SettingModel.php`
+- `app/Models/AppointmentCustomFieldModel.php`
+- `app/Services/MailerService.php`
+- `app/Services/AvailabilityService.php`
+- `app/Services/BusinessHoursService.php`
+- `app/Services/BookingLinkService.php`
+- `app/Services/Calendar/DayViewService.php`
+- `app/Services/Calendar/WeekViewService.php`
+- `app/Services/Calendar/ProviderWorkingHoursTrait.php`
+- `resources/js/spa.js`
+- `resources/js/app.js`
+- `resources/js/theme-bootstrap.js`
+- `resources/js/dark-mode.js`
+- `resources/js/layout/app-layout-init.js`
+- `resources/js/public-booking.js`
+- `resources/js/public-booking-bootstrap.js`
+- `resources/js/modules/scheduler/scheduler-core.js`
+- `resources/js/modules/scheduler/time-grid-utils.js`
+- `vite.config.js`
+
+## 8. Business Context Resolver Contract (Owner Section)
+
+All business-ID resolution rules live here. The notifications skill references back to this section.
+
+### 8.1 `current_business_id()` Helper
+
+`app/Helpers/permissions_helper.php` exposes `current_business_id(?int $default = null): int`. It is the **single canonical way** to resolve the active business context for the current request. Load it with `helper('permissions')` (already loaded by `BaseController`).
+
+### 8.2 Resolution Priority (Strict)
+
+1. **Request params** — `GET`/`POST` `business_id` or `businessId`
+2. **Session keys** — `session()->get('business_id')` or `session()->get('active_business_id')`
+3. **Session user sub-keys** — `session()->get('user')['business_id' | 'active_business_id' | 'businessId' | 'activeBusinessId']`
+4. **Fallback** — `$default ?? NotificationCatalog::BUSINESS_ID_DEFAULT` (value `1`)
+
+The result is always `max(1, resolved_value)`.
+
+### 8.3 Service-Level Usage Pattern
+
+Services that scope data to a business must use a protected delegate so the resolver is overridable in unit tests:
+
+```php
+protected function resolveBusinessId(): int {
+  helper('permissions');
+  return current_business_id();
+}
+```
+
+### 8.4 Current Service Coverage
+
+| Service | Scope switch |
+| --- | --- |
+| `NotificationCenterService` | `getNotifications()`, `getUnreadCount()` |
+| `NotificationSettingsService` | `getIndexData()`, `save()` |
+
+Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in service methods that serve UI requests. Route all UI-facing scoping through `resolveBusinessId()` / `current_business_id()`.
+
+### 8.5 Auth Channel Exception
+
+`Auth::sendResetEmail()` still passes `NotificationCatalog::BUSINESS_ID_DEFAULT` directly to `MailerService`. This is intentional — password reset has no session context. Do not route it through `current_business_id()`.
+
+## 9. Contract Ownership Matrix
+
+Each high-risk contract has one owner. Make full-text changes only in the owner; elsewhere keep short references.
+
+| Contract | Owner | Reference-only |
+| --- | --- | --- |
+| Avatar initials and image rendering | `frontend` skill (§6.8) | architecture, rules |
+| RBAC role resolution | `auth-rbac` skill | api-contract, scheduling/users, rules |
+| Session write merge rule | `auth-rbac` skill | scheduling/users, rules |
+| API envelope and errors | `api-contract` skill | frontend |
+| SPA lifecycle/init | `frontend` skill | api-contract, scheduling |
+| Scheduler mutation reload semantics | `scheduling` skill | frontend, rules |
+| Status → notification event mapping | `scheduling` skill | notifications |
+| Queue-first notification flow | `notifications` skill | scheduling, database |
+| Public hash/token URL safety | `public-booking` skill | database, rules |
+| Database schema and compatibility | `database` skill | all domain skills |
+| Migration base requirement | `database` skill | architecture, rules |
+| Unified email transport | `notifications` skill (§7.3) | architecture |
+| Business hours architecture | `scheduling` skill | database, rules |
+| Availability and slot generation | `scheduling` skill | public-booking, database |
+| Calendar data flow and grid bounds | `scheduling` skill | frontend |
+| Business context resolver | this skill (§8) | notifications |
+
+**Rule:** Do not duplicate full contract text in non-owner sections. Use reference links and concise reminders only.
+
+## 10. Update Protocol for the Master Contract
+
+When behavior changes:
+
+1. Update the owner section first.
+2. Update impacted references in non-owner sections.
+3. Re-run mandatory quality gates (see `rules` skill).
+4. If schema changed, update database skill and migration rules together.
+5. If RBAC/session contracts changed, update auth-rbac skill and rerun role/session grep checks.
