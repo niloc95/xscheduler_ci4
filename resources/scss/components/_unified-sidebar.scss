@@ -113,6 +113,11 @@ aside.unified-sidebar,
         height: 100vh !important;
     }
 
+    .unified-sidebar .sidebar-content {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
     /* Full sidebar overlay when hamburger is clicked */
     .unified-sidebar.open,
     aside.unified-sidebar.open,
@@ -127,6 +132,12 @@ aside.unified-sidebar,
     .unified-sidebar:not(.open) .brand-name,
     .unified-sidebar:not(.open) .role-switcher-dropdown,
     .unified-sidebar:not(.open) .nav-divider {
+        display: none !important;
+    }
+
+    .unified-sidebar:not(.open) .sidebar-rail-hidden,
+    .unified-sidebar:not(.open) .sidebar-footer-branding,
+    .unified-sidebar:not(.open) .sidebar-footer-actions .sidebar-share-label {
         display: none !important;
     }
 
@@ -154,6 +165,40 @@ aside.unified-sidebar,
 
     .unified-sidebar:not(.open) .nav-icon {
         margin-right: 0 !important;
+    }
+
+    .unified-sidebar:not(.open) .sidebar-footer-actions {
+        padding: 0.5rem 0.25rem !important;
+    }
+
+    .unified-sidebar:not(.open) #booking-share-wrapper {
+        width: 100% !important;
+    }
+
+    .unified-sidebar:not(.open) #booking-share-toggle {
+        justify-content: center !important;
+        padding: 0.65rem 0.5rem !important;
+    }
+
+    .unified-sidebar:not(.open) #booking-share-toggle .material-symbols-outlined {
+        margin: 0 !important;
+    }
+
+    .unified-sidebar:not(.open) #booking-share-menu {
+        left: 0.25rem !important;
+        right: auto !important;
+        min-width: 12rem !important;
+        width: 12rem !important;
+    }
+
+    .unified-sidebar:not(.open) .sidebar-footer-branding {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+
+    .unified-sidebar:not(.open) .sidebar-footer-branding a {
+        display: block !important;
+        line-height: 1.2 !important;
     }
 }
 

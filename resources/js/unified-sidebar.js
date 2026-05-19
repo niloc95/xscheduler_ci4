@@ -13,6 +13,12 @@ class UnifiedSidebar {
         this.backdrop    = document.querySelector(SEL.SIDEBAR_OVERLAY);
         this.menuToggle  = document.querySelector(SEL.MENU_TOGGLE);
         this.closeButton = document.querySelector(SEL.SIDEBAR_CLOSE);
+        this.shareWrapper = null;
+        this.shareToggle = null;
+        this.shareMenu = null;
+        this.shareUrl = '';
+        this.handleShareOutsideClickBound = null;
+        this.handleShareEscapeBound = null;
         
         this.isOpen = false;
         this.isMobile = false;
@@ -26,6 +32,7 @@ class UnifiedSidebar {
         this.checkMobile();
         this.bindEvents();
         this.handleResize();
+        this.initShareActions();
         
         // Initialize state
         this.updateState();
@@ -88,6 +95,152 @@ class UnifiedSidebar {
             }
         });
     }
+
+    initShareActions() {
+        if (!this.sidebar) return;
+
+        this.shareWrapper = this.sidebar.querySelector('#booking-share-wrapper');
+        this.shareToggle = this.sidebar.querySelector('#booking-share-toggle');
+        this.shareMenu = this.sidebar.querySelector('#booking-share-menu');
+        this.shareUrl = this.shareWrapper?.dataset?.bookingUrl || `${window.location.origin}/booking`;
+
+        if (!this.shareWrapper || !this.shareToggle || !this.shareMenu) {
+            return;
+        }
+
+        this.shareToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.toggleShareMenu();
+        });
+
+        const actionButtons = this.shareWrapper.querySelectorAll('.booking-share-action');
+        actionButtons.forEach((button) => {
+            button.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const action = button.dataset.action;
+                await this.handleShareAction(action);
+                this.closeShareMenu();
+            });
+        });
+    }
+
+    toggleShareMenu() {
+        if (!this.shareMenu) return;
+        if (this.shareMenu.classList.contains('hidden')) {
+            this.openShareMenu();
+            return;
+        }
+        this.closeShareMenu();
+    }
+
+    openShareMenu() {
+        if (!this.shareMenu || !this.shareToggle) return;
+
+        this.shareMenu.classList.remove('hidden');
+        this.shareToggle.setAttribute('aria-expanded', 'true');
+
+        if (!this.handleShareOutsideClickBound) {
+            this.handleShareOutsideClickBound = (event) => {
+                if (!this.shareWrapper?.contains(event.target)) {
+                    this.closeShareMenu();
+                }
+            };
+        }
+
+        if (!this.handleShareEscapeBound) {
+            this.handleShareEscapeBound = (event) => {
+                if (event.key === 'Escape') {
+                    this.closeShareMenu();
+                }
+            };
+        }
+
+        document.addEventListener('click', this.handleShareOutsideClickBound);
+        document.addEventListener('keydown', this.handleShareEscapeBound);
+    }
+
+    closeShareMenu() {
+        if (!this.shareMenu || !this.shareToggle) return;
+
+        this.shareMenu.classList.add('hidden');
+        this.shareToggle.setAttribute('aria-expanded', 'false');
+
+        if (this.handleShareOutsideClickBound) {
+            document.removeEventListener('click', this.handleShareOutsideClickBound);
+        }
+        if (this.handleShareEscapeBound) {
+            document.removeEventListener('keydown', this.handleShareEscapeBound);
+        }
+    }
+
+    async handleShareAction(action) {
+        const url = this.shareUrl;
+        const message = `Book your appointment here: ${url}`;
+
+        if (action === 'email') {
+            const subject = encodeURIComponent('Book an appointment');
+            const body = encodeURIComponent(message);
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+            return;
+        }
+
+        if (action === 'whatsapp') {
+            const text = encodeURIComponent(message);
+            window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
+            return;
+        }
+
+        if (action === 'copy') {
+            const copied = await this.copyText(url);
+            if (copied) {
+                this.showToast('success', 'Booking link copied to clipboard.');
+                return;
+            }
+
+            this.showToast('error', 'Could not copy link. Please copy it manually.', false);
+        }
+    }
+
+    async copyText(text) {
+        if (navigator.clipboard?.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                // Fallback to legacy copy path.
+            }
+        }
+
+        try {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = text;
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            input.focus();
+            input.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(input);
+            return success;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    showToast(type, message, autoClose = true) {
+        if (window.XSNotify?.toast) {
+            window.XSNotify.toast({ type, message, autoClose });
+            return;
+        }
+
+        if (type === 'error') {
+            window.alert(message);
+            return;
+        }
+
+        console.log(message);
+    }
     
     handleResize() {
         this.checkMobile();
@@ -120,6 +273,7 @@ class UnifiedSidebar {
     close() {
         this.isOpen = false;
         this.updateState();
+        this.closeShareMenu();
         
         // Restore body scroll
         if (this.isMobile) {

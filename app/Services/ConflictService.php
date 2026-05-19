@@ -123,10 +123,6 @@ class ConflictService
             $builder->where('id !=', $excludeAppointmentId);
         }
 
-        if ($locationId !== null) {
-            $builder->where('location_id', $locationId);
-        }
-
         return $builder->get()->getResultArray();
     }
 

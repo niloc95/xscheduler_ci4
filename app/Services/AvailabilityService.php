@@ -318,7 +318,7 @@ class AvailabilityService
             $startUtc,
             $endUtc,
             $excludeAppointmentId,
-            $locationId
+            null
         );
         
         if (!empty($conflicts)) {
@@ -672,10 +672,6 @@ class AvailabilityService
                 $builder->where('id !=', $excludeAppointmentId);
             });
 
-        if ($locationId !== null) {
-            $appointmentsQuery->where('location_id', $locationId);
-        }
-
         $appointments = $appointmentsQuery->findAll();
         
         foreach ($appointments as $apt) {
@@ -867,8 +863,9 @@ class AvailabilityService
         $start = new DateTimeImmutable($startDate, $tz);
         $end = $start->modify('+' . ($days - 1) . ' days');
 
+        $serviceVersion = cache()->get('service_cache_v_' . $serviceId) ?? 0;
         $cacheKey = sprintf(
-            'availability_calendar_%d_%d_%s_%d_%s_%d_%s_%s',
+            'availability_calendar_%d_%d_%s_%d_%s_%d_%s_%s_v%s',
             $providerId,
             $serviceId,
             $start->format('Ymd'),
@@ -876,7 +873,8 @@ class AvailabilityService
             str_replace(['/', '\\'], '_', $timezone),
             $bufferMinutes,
             $excludeAppointmentId ? (string) $excludeAppointmentId : 'none',
-            $locationId ? (string) $locationId : 'all'
+            $locationId ? (string) $locationId : 'all',
+            $serviceVersion
         );
 
         $cacheTtl = 300; // 5 minutes

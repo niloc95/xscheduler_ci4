@@ -304,11 +304,11 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->get('locations/for-date', 'Api\\Locations::forDate');
     $routes->get('locations/available-dates', 'Api\\Locations::availableDates');
     $routes->get('locations/(:num)', 'Api\\Locations::show/$1');
-    $routes->post('locations', 'Api\\Locations::create');
-    $routes->put('locations/(:num)', 'Api\\Locations::update/$1');
-    $routes->patch('locations/(:num)', 'Api\\Locations::update/$1');
-    $routes->delete('locations/(:num)', 'Api\\Locations::delete/$1');
-    $routes->post('locations/(:num)/set-primary', 'Api\\Locations::setPrimary/$1');
+    $routes->post('locations', 'Api\\Locations::create', ['filter' => 'auth']);
+    $routes->put('locations/(:num)', 'Api\\Locations::update/$1', ['filter' => 'auth']);
+    $routes->patch('locations/(:num)', 'Api\\Locations::update/$1', ['filter' => 'auth']);
+    $routes->delete('locations/(:num)', 'Api\\Locations::delete/$1', ['filter' => 'auth']);
+    $routes->post('locations/(:num)/set-primary', 'Api\\Locations::setPrimary/$1', ['filter' => 'auth']);
 
     // Public API endpoints (no auth required)
     $routes->group('v1', function($routes) {

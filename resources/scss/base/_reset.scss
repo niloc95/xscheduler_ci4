@@ -137,6 +137,13 @@ input, textarea, select {
   outline-offset: 2px;
 }
 
+/* Suppress focus ring on programmatically-focused containers (tabindex="-1").
+   These are never keyboard-reachable so an outline is incorrect.
+   Fixes the SPA content-area orange border on iOS Safari (spa.js::focusMain). */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Utility Classes for Typography */
 .text-xs { font-size: $font-size-xs; }
 .text-sm { font-size: $font-size-sm; }

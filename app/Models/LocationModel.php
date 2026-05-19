@@ -116,8 +116,8 @@ class LocationModel extends BaseModel
     ];
 
     protected $validationRules = [
-        'provider_id'    => 'required|integer',
-        'name'           => 'required|min_length[2]|max_length[255]',
+        'provider_id'    => 'if_exist|required|integer',
+        'name'           => 'if_exist|required|min_length[2]|max_length[255]',
         'address'        => 'permit_empty|max_length[500]',
         'city'           => 'permit_empty|max_length[100]',
         'area'           => 'permit_empty|max_length[100]',

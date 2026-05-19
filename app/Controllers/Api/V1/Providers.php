@@ -100,6 +100,17 @@ class Providers extends BaseApiController
             $rowsModel->whereIn('id', $scopedProviderIds);
         }
 
+        // Only return providers that have at least one active service assigned.
+        $db      = \Config\Database::connect();
+        $psTable = $db->prefixTable('providers_services');
+        $sTable  = $db->prefixTable('services');
+        $rowsModel->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($psTable, $sTable): void {
+            $sub->select('ps.provider_id')
+                ->from("{$psTable} ps")
+                ->join("{$sTable} s", 's.id = ps.service_id')
+                ->where('s.active', 1);
+        });
+
         $allScopedRows = $rowsModel
             ->orderBy($sortField, strtoupper($sortDir))
             ->findAll();

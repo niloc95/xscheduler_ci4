@@ -177,9 +177,20 @@ class Appointments extends BaseController
 
         $activeProviders = $activeProvidersBuilder->findAll();
         
-        // Get ALL providers for filter dropdown (§4.4: use xs_user_roles)
+        // Get ALL providers for filter dropdown (§4.4: use xs_user_roles).
+        // Only include providers that have at least one active service assigned.
+        $db      = \Config\Database::connect();
+        $psTable = $db->prefixTable('providers_services');
+        $sTable  = $db->prefixTable('services');
+
         $allProvidersBuilder = $this->userModel
             ->whereHasRole('provider')
+            ->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($psTable, $sTable): void {
+                $sub->select('ps.provider_id')
+                    ->from("{$psTable} ps")
+                    ->join("{$sTable} s", 's.id = ps.service_id')
+                    ->where('s.active', 1);
+            })
             ->orderBy('name', 'ASC');
 
         if ($staffScopedProviderIds !== null) {

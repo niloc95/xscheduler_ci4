@@ -81,14 +81,14 @@ $overLimit    = count($locations) > $maxLocations;
                         <div class="flex items-center gap-2">
                             <?php if (empty($location['is_primary'])): ?>
                                 <button type="button"
-                                        onclick="LocationManager.setPrimary(<?= esc($location['id']) ?>)"
+                                        data-action="set-primary-location"
                                         class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                                         title="Set as primary location">
                                     Set Primary
                                 </button>
                             <?php endif; ?>
                             <button type="button"
-                                    onclick="LocationManager.deleteLocation(<?= esc($location['id']) ?>)"
+                                    data-action="delete-location"
                                     class="text-gray-400 hover:text-red-600 transition-colors"
                                     title="Remove location">
                                 <span class="material-symbols-outlined text-lg">delete</span>
@@ -106,7 +106,7 @@ $overLimit    = count($locations) > $maxLocations;
                                    value="<?= esc($location['name']) ?>"
                                    placeholder="e.g., Melrose Practice"
                                    class="form-input"
-                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'name', this.value)">
+                                   data-field="name">
                         </div>
 
                         <div>
@@ -115,7 +115,7 @@ $overLimit    = count($locations) > $maxLocations;
                                    value="<?= esc($location['contact_number']) ?>"
                                    placeholder="e.g., +27 11 555 1234"
                                    class="form-input"
-                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'contact_number', this.value)">
+                                   data-field="contact_number">
                         </div>
                     </div>
 
@@ -126,7 +126,7 @@ $overLimit    = count($locations) > $maxLocations;
                                    value="<?= esc($location['city'] ?? '') ?>"
                                    placeholder="e.g., Johannesburg"
                                    class="form-input"
-                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'city', this.value)">
+                                   data-field="city">
                         </div>
                         <div>
                             <label class="form-label">Area / Suburb</label>
@@ -134,7 +134,7 @@ $overLimit    = count($locations) > $maxLocations;
                                    value="<?= esc($location['area'] ?? '') ?>"
                                    placeholder="e.g., Rosebank"
                                    class="form-input"
-                                   onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'area', this.value)">
+                                   data-field="area">
                         </div>
                     </div>
 
@@ -143,7 +143,7 @@ $overLimit    = count($locations) > $maxLocations;
                         <textarea rows="2"
                                   placeholder="e.g., 21 Delta Road, Eltonhill, Johannesburg, 2196"
                                   class="form-input"
-                                  onchange="LocationManager.updateLocation(<?= esc($location['id']) ?>, 'address', this.value)"><?= esc($location['address']) ?></textarea>
+                                  data-field="address"><?= esc($location['address']) ?></textarea>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -262,6 +262,7 @@ window.LocationManager = {
 
             if (!this._isSuccessfulResponse(response, result)) {
                 console.error('LocationManager.updateLocation:', this._getErrorMessage(result));
+                this._flashError(locationId);
                 return;
             }
 
@@ -382,10 +383,10 @@ window.LocationManager = {
                     <span class="font-medium text-gray-800 dark:text-gray-200 location-name-display">${this._esc(loc.name)}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="LocationManager.setPrimary(${loc.id})"
+                    <button type="button" data-action="set-primary-location"
                             class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                             title="Set as primary location">Set Primary</button>
-                    <button type="button" onclick="LocationManager.deleteLocation(${loc.id})"
+                    <button type="button" data-action="delete-location"
                             class="text-gray-400 hover:text-red-600 transition-colors"
                             title="Remove location">
                         <span class="material-symbols-outlined text-lg">delete</span>
@@ -397,13 +398,13 @@ window.LocationManager = {
                     <label class="form-label">Location Name <span class="text-red-500">*</span></label>
                     <input type="text" value="${this._esc(loc.name)}"
                            placeholder="e.g., Melrose Practice" class="form-input"
-                           onchange="LocationManager.updateLocation(${loc.id}, 'name', this.value)">
+                           data-field="name">
                 </div>
                 <div>
                     <label class="form-label">Contact Number</label>
                     <input type="tel" value="${this._esc(loc.contact_number || '')}"
                            placeholder="e.g., +27 11 555 1234" class="form-input"
-                           onchange="LocationManager.updateLocation(${loc.id}, 'contact_number', this.value)">
+                           data-field="contact_number">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -411,20 +412,20 @@ window.LocationManager = {
                     <label class="form-label">City</label>
                     <input type="text" value="${this._esc(loc.city || '')}"
                            placeholder="e.g., Johannesburg" class="form-input"
-                           onchange="LocationManager.updateLocation(${loc.id}, 'city', this.value)">
+                           data-field="city">
                 </div>
                 <div>
                     <label class="form-label">Area / Suburb</label>
                     <input type="text" value="${this._esc(loc.area || '')}"
                            placeholder="e.g., Rosebank" class="form-input"
-                           onchange="LocationManager.updateLocation(${loc.id}, 'area', this.value)">
+                           data-field="area">
                 </div>
             </div>
             <div class="mt-4">
                 <label class="form-label">Physical Address</label>
                 <textarea rows="2" placeholder="e.g., 21 Delta Road, Eltonhill, Johannesburg, 2196"
                           class="form-input"
-                          onchange="LocationManager.updateLocation(${loc.id}, 'address', this.value)">${this._esc(loc.address || '')}</textarea>
+                          data-field="address">${this._esc(loc.address || '')}</textarea>
             </div>
         </div>`;
     },
@@ -558,13 +559,43 @@ window.LocationManager = {
     },
 };
 
-// Wire the Add Location button with addEventListener (avoids inline onclick on the button element).
-// The dataset guard prevents double-binding if this script re-executes on SPA navigation.
+// Wire the Add Location button and delegate card interactions (CSP-safe: no inline event handlers).
+// The dataset guards prevent double-binding if this script re-executes on SPA navigation.
 (function () {
     const btn = document.getElementById('addLocationBtn');
     if (btn && !btn.dataset.locBound) {
         btn.addEventListener('click', () => window.LocationManager.addLocation());
         btn.dataset.locBound = 'true';
+    }
+
+    // Event delegation on #locationsContainer handles both server-rendered and
+    // dynamically-added cards without needing inline onclick/onchange attributes.
+    const container = document.getElementById('locationsContainer');
+    if (container && !container.dataset.locDelegated) {
+        // Save a field when the user tabs/clicks away from any data-field input or textarea
+        container.addEventListener('change', function (e) {
+            const field = e.target.dataset.field;
+            if (!field) return;
+            const card = e.target.closest('[data-location-id]');
+            if (!card) return;
+            window.LocationManager.updateLocation(parseInt(card.dataset.locationId, 10), field, e.target.value);
+        });
+
+        // Handle delete and set-primary button clicks
+        container.addEventListener('click', function (e) {
+            const actionBtn = e.target.closest('[data-action]');
+            if (!actionBtn) return;
+            const card = actionBtn.closest('[data-location-id]');
+            if (!card) return;
+            const locationId = parseInt(card.dataset.locationId, 10);
+            if (actionBtn.dataset.action === 'delete-location') {
+                window.LocationManager.deleteLocation(locationId);
+            } else if (actionBtn.dataset.action === 'set-primary-location') {
+                window.LocationManager.setPrimary(locationId);
+            }
+        });
+
+        container.dataset.locDelegated = 'true';
     }
 }());
 </script>

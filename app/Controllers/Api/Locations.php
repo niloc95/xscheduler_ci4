@@ -199,15 +199,22 @@ class Locations extends BaseApiController
             $data = $this->request->getJSON(true) ?? $this->request->getPost();
             $days = $data['days'] ?? null;
             unset($data['days'], $data['id'], $data['provider_id']); // Don't allow changing provider
-            
+
             if ($days !== null) {
-                $this->locationModel->updateWithDays($id, $data, $days);
+                $success = $this->locationModel->updateWithDays($id, $data, $days);
             } elseif (!empty($data)) {
-                $this->locationModel->update($id, $data);
+                $success = $this->locationModel->update($id, $data);
+            } else {
+                $success = true; // days = null, data empty — no-op is valid
             }
-            
+
+            if (!$success) {
+                $errors = $this->locationModel->errors();
+                return $this->validationError(!empty($errors) ? $errors : ['update' => 'Failed to save location']);
+            }
+
             $location = $this->locationModel->getLocationWithDays($id);
-            
+
             return $this->ok($location, ['message' => 'Location updated successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location update error: ' . $e->getMessage());

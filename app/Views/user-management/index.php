@@ -35,15 +35,15 @@
                 <?php endif; ?>
             </div>
         </div>
-        <div class="hidden md:block overflow-x-auto">
+        <div class="block overflow-x-auto">
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400" id="usersTable">
                 <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase border-b border-gray-200 dark:border-gray-600">
                     <tr>
                         <th class="px-6 py-4 font-semibold">User</th>
                         <th class="px-6 py-4 font-semibold">Role</th>
                         <th class="px-6 py-4 font-semibold">Status</th>
-                        <th class="px-6 py-4 font-semibold">Assignments</th>
-                        <th class="px-6 py-4 font-semibold">Created</th>
+                        <th class="px-6 py-4 font-semibold hidden md:table-cell">Assignments</th>
+                        <th class="px-6 py-4 font-semibold hidden md:table-cell">Created</th>
                         <th class="px-6 py-4 font-semibold">Actions</th>
                     </tr>
                 </thead>
@@ -87,7 +87,7 @@
                                 'label' => ($user['is_active'] ?? true) ? 'Active' : 'Inactive',
                             ]) ?>
                         </td>
-                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
+                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400 hidden md:table-cell">
                             <?php if (!empty($user['assignments'])): ?>
                                 <div class="flex flex-wrap gap-1">
                                     <?php 
@@ -103,7 +103,7 @@
                                 <span class="text-gray-400 dark:text-gray-500 italic text-sm">None</span>
                             <?php endif; ?>
                         </td>
-                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
+                        <td class="px-6 py-4 text-gray-500 dark:text-gray-400 hidden md:table-cell">
                             <?= !empty($user['created_at']) ? date('M j, Y', strtotime($user['created_at'])) : '—' ?>
                         </td>
                         <td class="px-6 py-4">
@@ -329,8 +329,8 @@
             + `<td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100"><div class="flex items-center">${avatarHtml}<div><div class="font-medium">${escapeHtml(name)}</div><div class="text-gray-500 dark:text-gray-400 text-sm">${escapeHtml(email)}</div>${user.phone ? `<div class="text-gray-400 dark:text-gray-500 text-xs">${escapeHtml(user.phone)}</div>` : ''}</div></div></td>`
             + `<td class="px-6 py-4">${renderRoleBadges(user)}</td>`
             + `<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}">${isActive ? 'Active' : 'Inactive'}</span></td>`
-            + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${assignmentsHtml}</td>`
-            + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400">${escapeHtml(fmtDate(user.created_at))}</td>`
+            + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400 hidden md:table-cell">${assignmentsHtml}</td>`
+            + `<td class="px-6 py-4 text-gray-500 dark:text-gray-400 hidden md:table-cell">${escapeHtml(fmtDate(user.created_at))}</td>`
             + `<td class="px-6 py-4"><div class="flex items-center space-x-2"><a href="${baseUrl('user-management/edit/' + user.id)}" class="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" title="Edit User"><span class="material-symbols-outlined">edit</span></a>${deleteAction}</div></td>`
             + `</tr>`;
     }

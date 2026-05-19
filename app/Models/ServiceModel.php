@@ -81,6 +81,18 @@ class ServiceModel extends BaseModel
     protected $skipValidation       = false;
     protected $cleanValidationRules = true;
 
+    protected $afterUpdate = ['bustAvailabilityCache'];
+    protected $afterSave   = ['bustAvailabilityCache'];
+
+    protected function bustAvailabilityCache(array $data): array
+    {
+        $id = $data['id'] ?? null;
+        if ($id) {
+            cache()->save('service_cache_v_' . $id, time(), 86400);
+        }
+        return $data;
+    }
+
     /**
      * Get service statistics
      */
