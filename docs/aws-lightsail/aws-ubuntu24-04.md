@@ -385,15 +385,16 @@ sudo tail -f /var/log/apache2/error.log
 Once the server is running, use `deploy.sh` to spin up additional tenants automatically.
 Each tenant gets its own subdomain (e.g. `dental.webscheduler.co.za`), directory, Apache vhost, and SSL certificate.
 
-### One-time setup — copy the script to the server
+### One-time setup — copy the scripts to the server
 
 ```bash
-scp docs/aws-lightsail/deploy.sh ubuntu@YOUR_SERVER_IP:/var/www/deploy.sh
+scp docs/aws-lightsail/deploy.sh        ubuntu@YOUR_SERVER_IP:/var/www/deploy.sh
+scp docs/aws-lightsail/remove-tenant.sh ubuntu@YOUR_SERVER_IP:/var/www/remove-tenant.sh
 ```
 
 On the server:
 ```bash
-sudo chmod +x /var/www/deploy.sh
+sudo chmod +x /var/www/deploy.sh /var/www/remove-tenant.sh
 ```
 
 ### To add a tenant
@@ -418,6 +419,27 @@ The script will:
 
 > **DNS:** Add an A-record for `dental.webscheduler.co.za` pointing at the server IP
 > before running the script, or Certbot will fail.
+
+---
+
+### To remove a tenant
+
+```bash
+sudo bash /var/www/remove-tenant.sh dental
+```
+
+The script will:
+1. Prompt you to type the tenant name to confirm (safeguard against typos)
+2. Disable and delete the Apache vhost config
+3. Reload Apache
+4. Delete the SSL certificate via Certbot
+5. Delete the tenant directory (`/var/www/dental/`)
+
+> **Note:** The script does **not** drop the database. If the tenant had its own database, drop it manually:
+> ```bash
+> sudo mysql -e "DROP DATABASE IF EXISTS <db_name>;"
+> ```
+> Also remove the DNS A-record for the tenant subdomain.
 
 ---
 
