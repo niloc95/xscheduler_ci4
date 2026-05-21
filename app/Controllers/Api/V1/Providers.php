@@ -217,9 +217,10 @@ class Providers extends BaseApiController
                 'duration' => (int) $s['duration_min'],
                 'durationMin' => (int) $s['duration_min'], // alias
                 'price' => $s['price'] ? (float) $s['price'] : null,
-                'categoryId' => $s['category_id'] ? (int) $s['category_id'] : null,
-                'categoryName' => $s['category_name'] ?? null,
-                'active' => (bool) $s['active'],
+                'categoryId'    => $s['category_id'] ? (int) $s['category_id'] : null,
+                'categoryName'  => $s['category_name'] ?? null,
+                'active'        => (bool) $s['active'],
+                'deliveryModes' => json_decode($s['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
             ];
         }, $services);
 

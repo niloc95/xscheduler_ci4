@@ -128,7 +128,13 @@ Columns: `id`, `business_id`, `event_type`, `channel`, `is_enabled`, `reminder_o
 
 #### `xs_business_integrations`
 
-Columns: `id`, `business_id`, `channel`, `provider_name`, `encrypted_config`, `is_active`, `health_status`, `last_tested_at`, `created_at`, `updated_at`
+Columns: `id`, `business_id`, `channel`, `provider_name`, `encrypted_config`, `metadata`, `is_active`, `health_status`, `last_tested_at`, `created_at`, `updated_at`
+
+Notes:
+- `channel` ENUM: `email`, `sms`, `whatsapp`, `webhook`, `google_calendar`, `stripe`, `zoom`, `slack`, `jitsi`, `payfast` (expanded 2026-05-20)
+- `metadata` — nullable TEXT, added 2026-05-20 (webhook last-delivery tracking)
+- Unique index: `uniq_integration_business_channel_provider` on `(business_id, channel, provider_name)` — replaced original `uniq_integration_business_channel` to allow multiple webhook endpoints per business
+- `encrypted_config` — AES-encrypted JSON. For Google Calendar includes `client_id`, `client_secret`, `access_token`, `refresh_token`, `token_expiry`. Credentials are admin-configured via UI, never read from .env.
 
 #### `xs_message_templates`
 

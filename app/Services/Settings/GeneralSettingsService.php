@@ -283,6 +283,8 @@ class GeneralSettingsService
             'legal.privacy_url' => 'privacy_url',
             'integrations.webhook_url' => 'webhook_url',
             'integrations.analytics' => 'analytics',
+            'integrations.analytics_id' => 'analytics_id',
+            'integrations.analytics_site_id' => 'analytics_site_id',
             'integrations.api_integrations' => 'api_integrations',
             'integrations.ldap_enabled' => 'ldap_enabled',
             'integrations.ldap_host' => 'ldap_host',

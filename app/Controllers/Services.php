@@ -245,6 +245,8 @@ class Services extends BaseController
             'action_url' => site_url('services/store'),
             'data' => [],
             'linkedProviders' => [],
+            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/create', $data);
@@ -291,6 +293,8 @@ class Services extends BaseController
             // Shared form contract
             'action_url' => site_url('services/update/' . (int)$serviceId),
             'data' => $service,
+            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/edit', $data);
@@ -525,13 +529,24 @@ class Services extends BaseController
     private function buildServicePayload(array $input, bool $isCreate): array
     {
         return [
-            'name' => trim((string) ($input['name'] ?? '')),
-            'description' => $input['description'] ?? null,
-            'duration_min' => (int) ($input['duration_min'] ?? 0),
-            'price' => ($input['price'] ?? '') !== '' ? (float) $input['price'] : null,
-            'category_id' => !empty($input['category_id']) ? (int) $input['category_id'] : null,
-            'active' => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
+            'name'           => trim((string) ($input['name'] ?? '')),
+            'description'    => $input['description'] ?? null,
+            'duration_min'   => (int) ($input['duration_min'] ?? 0),
+            'price'          => ($input['price'] ?? '') !== '' ? (float) $input['price'] : null,
+            'category_id'    => !empty($input['category_id']) ? (int) $input['category_id'] : null,
+            'active'         => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
+            'delivery_modes' => $this->encodeDeliveryModes($input['delivery_modes'] ?? []),
         ];
+    }
+
+    private function encodeDeliveryModes(mixed $raw): string
+    {
+        $raw      = is_array($raw) ? $raw : [];
+        $filtered = array_values(array_filter($raw, static fn($v) => in_array($v, \App\Services\VideoSessionService::VALID_MODES, true)));
+        if (empty($filtered)) {
+            $filtered = ['onsite'];
+        }
+        return json_encode($filtered);
     }
 
     private function resolveServiceSlug($requestedSlug, string $name, ?int $excludeServiceId): string

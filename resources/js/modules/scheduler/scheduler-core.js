@@ -597,6 +597,8 @@ export class SchedulerCore {
         const locationName = rawAppointment.locationName ?? rawAppointment.location_name ?? null;
         const providerColor = rawAppointment.providerColor ?? rawAppointment.provider_color ?? DEFAULT_PROVIDER_COLOR;
         const title = rawAppointment.title ?? rawAppointment.customer_name ?? rawAppointment.name ?? null;
+        const deliveryMode = rawAppointment.deliveryMode ?? rawAppointment.delivery_mode ?? 'onsite';
+        const videoLink    = rawAppointment.videoLink    ?? rawAppointment.video_link    ?? '';
 
         return {
             ...rawAppointment,
@@ -629,6 +631,10 @@ export class SchedulerCore {
             location_name: rawAppointment.location_name ?? locationName,
             providerColor,
             provider_color: rawAppointment.provider_color ?? providerColor,
+            deliveryMode,
+            delivery_mode: rawAppointment.delivery_mode ?? deliveryMode,
+            videoLink,
+            video_link:    rawAppointment.video_link    ?? videoLink,
             startDateTime: this.parseAppointmentDateTime(start),
             endDateTime: this.parseAppointmentDateTime(end)
         };

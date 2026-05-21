@@ -2,7 +2,7 @@
 title: WebScheduler CI4 - Consolidated Engineering Contract
 version: 3.0
 status: Active hardening
-last_updated: 2026-05-12
+last_updated: 2026-05-20
 source_documents:
   - Agent_Context.md
   - Agent_Context_Restructured.md
@@ -652,7 +652,16 @@ Do not revert to a single `overflow-x-auto` row — that pattern caused date clu
 - `SettingsApiService` — settings API endpoints
 - `GeneralSettingsService` — general/localization settings mutations
 - `NotificationSettingsService` — notification settings mutations
+- `IntegrationSettingsService` — integrations hub mutations; routes by intent+channel to individual integration services
 - `LocalizationSettingsService` — timezone/locale reads
+
+**Integrations** (`App\Services\`) — each owns one channel in `xs_business_integrations`, uses `HandlesNotificationIntegrations` trait:
+- `WebhookIntegrationService` — HMAC-signed webhook endpoints; dispatches `appointment.*` events (channel: `webhook`)
+- `GoogleCalendarIntegrationService` — OAuth 2.0 two-way sync; credentials stored encrypted in DB, not .env (channel: `google_calendar`)
+- `StripeIntegrationService` — deposit/no-show fee collection; secret key never returned in public data (channel: `stripe`)
+- `ZoomIntegrationService` — Server-to-Server OAuth; cached tokens; `createMeeting()` returns join URL (channel: `zoom`)
+- `JitsiIntegrationService` — public or self-hosted; `generateMeetingLink()` uses appointment hash for room name (channel: `jitsi`)
+- `PayFastIntegrationService` — South African gateway; sandbox/live toggle; `buildPaymentUrl()` generates signed redirect (channel: `payfast`)
 
 **Infrastructure:**
 - `MailerService` — sole email transport layer (see §7.3)
@@ -1991,6 +2000,12 @@ Status legend: `done`, `in_progress`, `queued`.
 | 34 | Vite entry point cleanup — remove material-web | done | `resources/js/material-web.js` deleted and removed from `vite.config.js` inputs. The `@material/web` bundle (485 kB) was dead — zero `<md-*>` elements in production views. New entries added: `theme-bootstrap`, `app-layout-init`, `public-booking-bootstrap`. Full entry point list in §6.1. |
 | 35 | Appointments toolbar — mobile two-rail layout | done | Replaced single `overflow-x-auto` scrolling toolbar row with a two-column side-by-side layout: Rail A (`flex-col` on mobile, two sub-rows: Today+view-switcher and date cluster) + Rail B (stats chips stack `flex-col` on mobile). Outer wrapper uses `items-start` for left-alignment. Mobile filter button removed from Rail B; filter is desktop-only. Full contract in §6.9.5. |
 | 36 | Services section — full layout/design-system migration | done | Migrated all five services-section views from `layouts/dashboard` to `layouts/app` with `xs-card` design system: (1) `services/index.php` — inline stats summary bar, context-aware CTA, `xs-card` with tab switcher (Services/Categories), collapsible filter panel (tune icon), 5-col services table and 4-col categories table, all row actions as `xs-actions-container` icon-only buttons, AJAX quick-add form and `scripts` JS block removed entirely; (2) `services/categories.php` — `layouts/app`, back link in content, `xs-card` table, icon-only actions, raw flash markup removed; (3) `services/create.php` — footer buttons replaced with `view('components/button', ...)`, Tips sidebar changed from `card card-spacious` to `xs-card`; (4) `services/edit.php` — same footer + sidebar fix; (5) `categories/form.php` — migrated to `layouts/app`, form wrapped in `xs-card`. Full design system contract in §6.9. |
+| 37 | `.github` directory audit and cleanup | done | Deleted `SETUP_COMPLETE.md` and `RELEASES_SETUP_COMPLETE.md` (historical artifacts). Fixed `ci-cd.yml` asset-validation checks — all four checks were broken (hashed filenames, dead `materialWeb.js` entry); replaced with glob checks (`main-*.js`, `style-*.css`, `spa-*.js`, `setup-*.js`). Fixed `docs.yml` — `mastercontext.md` check replaced with 10-skill presence validation. Expanded `PULL_REQUEST_TEMPLATE.md` with skills checklist, 6-item pre-merge checklist, and breaking-changes section. `CLAUDE.md` created at repo root pointing Claude Code to `.github/copilot/skills/`. Skills consolidated to `.github/copilot/skills/` as single canonical location for both Copilot and Claude Code. |
+| 38 | Rules validation pass — auth + notification fixes | done | `UserModel::canManageUser()` and `canViewUser()` — 5 single `['role'] === 'x'` comparisons replaced with `getRolesForUser()` + `in_array()`. `NotificationTemplateService::buildBusinessHoursText()` — removed dead unscoped `xs_business_hours` query (was assuming non-existent global rows with `provider_id = 0/null`); replaced with direct delegation to `buildBusinessHoursFromDefaultSettings()` which reads from `xs_settings`. |
+| 39 | Settings > Integrations Hub — Phase 1 + Jitsi + PayFast | done | Full integrations hub: 2 migrations (ENUM expansion to 10 channels, unique index widened from `(business_id,channel)` to `(business_id,channel,provider_name)`, `metadata` column). 6 service classes (all use `HandlesNotificationIntegrations` trait). `IntegrationSettingsService` hub routes by intent+channel. `OAuthCallback` controller for Google OAuth flow. `Api\V1\Integrations` controller (index/save/test/disconnect). `integrations.php` view rewritten — 6 cards in `xs-card` grid + 6 modals, all inside `#panel-integrations` section. `integration-hub.js` module with per-channel `wire*()` functions and clipboard copy for Google redirect URI. Composer: `google/apiclient:^2.0`, `stripe/stripe-php:^12.0`. |
+| 41 | Analytics dropdown → card | done | Removed `<form id="integrations-settings-form">` from `integrations.php`; analytics is now a card (orange icon) — first in the hub grid. `#analytics-modal` has provider select + conditional fields (GA4: Measurement ID; Matomo: URL + Site ID). Removed `'integrations'` from `SETTINGS_TABS` in `settings-form-ui.js`. `wireAnalytics()` in `integration-hub.js` posts directly to `POST /api/v1/settings`. |
+| 42 | Analytics tracking ID + GA4/Matomo script injection | done | `analytics_head_html()` added to `app/Helpers/app_helper.php` — reads `integrations.analytics`, `integrations.analytics_id`, `integrations.analytics_site_id` from `xs_settings` and returns ready-to-inject GA4 (`gtag.js`) or Matomo script. Injected into `layouts/public.php` (all public booking pages, SEO slug pages `/booking/p/{slug}`, `/booking/s/{slug}`) and `layouts/app.php`. App layout adds a `spa:navigated` listener firing `gtag('event','page_view',...)` / `_paq.push(['trackPageView'])` on every SPA navigation. New settings keys: `integrations.analytics_id`, `integrations.analytics_site_id` — added to `SettingsPageService::settingsKeys()` and `GeneralSettingsService` mapping. |
+| 40 | Google Calendar OAuth credentials — DB-stored, no .env required | done | `GoogleCalendarIntegrationService::buildClient()` reads `client_id`/`client_secret` from `encrypted_config` in `xs_business_integrations` (env var fallback preserved). `isConfigured(int $businessId)` checks DB first. `saveAppCredentials()` merges credentials without overwriting OAuth tokens. `handleCallback()` merges tokens into existing config to preserve credentials. UI: 3-state card (no credentials → credentials saved → connected), configure modal with read-only redirect URI + copy button. `OAuthCallback::googleAuthorize()` error points to UI, not .env. |
 
 ## 18) Audit Progress Board
 
@@ -2007,6 +2022,12 @@ Status legend: `done`, `in_progress`, `queued`.
 - Unified avatar/initials system implemented across all PHP views and JS modules; single PHP helper and single JS module replace all ad-hoc initials logic. Title/suffix stripping and two-letter fallback enforced consistently. Parity tests added for both PHP and JS layers. Full contract in §6.8 (17.4 item 24).
 - Appointments toolbar mobile two-rail layout implemented: side-by-side Rail A + Rail B with Rail A using two sub-rows on mobile (Today+switcher / date cluster). Left-aligned via `items-start`. Rail B stats chips stack vertically on mobile. Mobile filter button removed. Contract in §6.9.5 (17.4 item 35).
 - Services section fully migrated from `layouts/dashboard` to `layouts/app` design system: all five views updated (`services/index.php`, `services/categories.php`, `services/create.php`, `services/edit.php`, `categories/form.php`). AJAX quick-add form and inline JS block removed. All row actions use `xs-actions-container` icon-only pattern. View layout and design system contract documented in §6.9 (17.4 item 36).
+- `.github` directory audited: dead docs deleted, CI asset checks fixed (glob patterns, removed `materialWeb.js`), docs.yml updated to validate 10 skill files, PR template expanded with skills + pre-merge checklists. Skills consolidated to single canonical location. CLAUDE.md created. (17.4 item 37).
+- Rules validation pass: `UserModel` single-role auth checks fixed, `NotificationTemplateService` unscoped business_hours query removed. (17.4 item 38).
+- Settings > Integrations Hub implemented: 6 integration cards (Webhooks, Google Calendar, Stripe, Zoom, Jitsi, PayFast), full service layer, API endpoints, view with 3-state card UI. (17.4 item 39).
+- Google Calendar OAuth credentials moved from .env to DB — admin-configurable via Settings UI, no server access required. 3-state card with redirect URI copy button. (17.4 item 40).
+- Analytics dropdown converted to card — `#analytics-modal` with GA4 Measurement ID and Matomo URL/Site ID fields. Old analytics form removed. (17.4 item 41).
+- Analytics tracking fully wired: `analytics_head_html()` injects GA4/Matomo scripts into both layouts; SEO slug pages now tracked; SPA `spa:navigated` listener fires page_view events on every navigation. (17.4 item 42).
 
 ### 18.2 Remaining Debt Outside 14-19
 

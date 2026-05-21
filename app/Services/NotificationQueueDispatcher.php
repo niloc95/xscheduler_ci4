@@ -458,9 +458,15 @@ class NotificationQueueDispatcher
             'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
             'booked_via' => $bookedVia,
             'booked_timestamp' => $bookedTimestamp,
-            'location_name' => (string) ($appt['location_name'] ?? ''),
+            'location_name'    => (string) ($appt['location_name'] ?? ''),
             'location_address' => (string) ($appt['location_address'] ?? ''),
             'location_contact' => (string) ($appt['location_contact'] ?? ''),
+            'delivery_mode'    => match ($appt['delivery_mode'] ?? '') {
+                'online_zoom'  => 'Zoom',
+                'online_jitsi' => 'Jitsi Meet',
+                default        => 'In Person',
+            },
+            'video_link'       => (string) ($appt['video_link'] ?? ''),
         ];
 
         // Hook for testing: subclasses may inspect or capture template data.
@@ -533,6 +539,12 @@ class NotificationQueueDispatcher
             'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
             'booked_via'         => $bookedVia,
             'booked_timestamp'   => $bookedTimestamp,
+            'delivery_mode'      => match ($appt['delivery_mode'] ?? '') {
+                'online_zoom'  => 'Zoom',
+                'online_jitsi' => 'Jitsi Meet',
+                default        => 'In Person',
+            },
+            'video_link'         => (string) ($appt['video_link'] ?? ''),
         ];
 
         // Render template with placeholders
@@ -606,6 +618,12 @@ class NotificationQueueDispatcher
             'internal_contact_link' => !empty($appt['customer_email']) ? ('mailto:' . (string) $appt['customer_email']) : '',
             'booked_via'         => $bookedVia,
             'booked_timestamp'   => $bookedTimestamp,
+            'delivery_mode'      => match ($appt['delivery_mode'] ?? '') {
+                'online_zoom'  => 'Zoom',
+                'online_jitsi' => 'Jitsi Meet',
+                default        => 'In Person',
+            },
+            'video_link'         => (string) ($appt['video_link'] ?? ''),
         ];
 
         // Render template with placeholders

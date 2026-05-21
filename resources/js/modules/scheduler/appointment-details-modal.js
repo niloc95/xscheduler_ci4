@@ -150,6 +150,19 @@ export class AppointmentDetailsModal {
                                 </div>
                             </div>
                             
+                            <!-- Video Link Section (online appointments) -->
+                            <div id="detail-video-link-wrapper" class="hidden">
+                                <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">video_call</span>
+                                    <span id="detail-delivery-mode-label">Online Session</span>
+                                </h4>
+                                <div class="flex items-start gap-2">
+                                    <span class="material-symbols-outlined text-sm text-gray-400 mt-0.5">link</span>
+                                    <a id="detail-video-link" href="#" target="_blank" rel="noopener noreferrer"
+                                       class="text-sm text-blue-600 dark:text-blue-400 underline break-all"></a>
+                                </div>
+                            </div>
+                            
                             <!-- Notes Section -->
                             <div id="detail-notes-wrapper">
                                 <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
@@ -464,6 +477,20 @@ export class AppointmentDetailsModal {
                 }
             } else {
                 locationWrapper.classList.add('hidden');
+            }
+
+            // Video link (online appointments)
+            const videoLinkWrapper = this.modal.querySelector('#detail-video-link-wrapper');
+            const videoLinkEl      = this.modal.querySelector('#detail-video-link');
+            const deliveryLabel    = this.modal.querySelector('#detail-delivery-mode-label');
+            if (appointment.deliveryMode && appointment.deliveryMode !== 'onsite' && appointment.videoLink) {
+                const providerLabel = appointment.deliveryMode === 'online_zoom' ? 'Zoom Meeting' : 'Jitsi Meet Session';
+                if (deliveryLabel) deliveryLabel.textContent = providerLabel;
+                videoLinkEl.href        = appointment.videoLink;
+                videoLinkEl.textContent = appointment.videoLink;
+                videoLinkWrapper.classList.remove('hidden');
+            } else {
+                videoLinkWrapper.classList.add('hidden');
             }
             
             // Notes - set textarea value and track changes

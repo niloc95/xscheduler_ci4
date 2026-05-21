@@ -133,7 +133,21 @@ Error: `{ "error": { "message": "", "code": "", "details": {} } }`
 - `SettingsApiService` — settings API endpoints
 - `GeneralSettingsService` — general/localization settings mutations
 - `NotificationSettingsService` — notification settings mutations
+- `IntegrationSettingsService` — integrations hub mutations (routes by intent + channel to individual integration services)
 - `LocalizationSettingsService` — timezone/locale reads
+
+### Integrations (`App\Services\`)
+Six services follow the `HandlesNotificationIntegrations` trait pattern — each owns one channel in `xs_business_integrations`:
+- `WebhookIntegrationService` — HMAC-signed webhook endpoints; fires `appointment.*` events (channel: `webhook`)
+- `GoogleCalendarIntegrationService` — OAuth 2.0 two-way calendar sync; credentials stored encrypted in DB, not .env (channel: `google_calendar`)
+- `StripeIntegrationService` — deposit / no-show fee collection; secret key never returned in public data (channel: `stripe`)
+- `ZoomIntegrationService` — Server-to-Server OAuth; cached access tokens; `createMeeting()` returns join URL (channel: `zoom`)
+- `JitsiIntegrationService` — public or self-hosted Jitsi Meet; optional JaaS credentials; `generateMeetingLink()` uses appointment hash for room name (channel: `jitsi`)
+- `PayFastIntegrationService` — South African gateway; sandbox/live toggle; `buildPaymentUrl()` generates signed redirect (channel: `payfast`)
+
+**New controllers:**
+- `App\Controllers\OAuthCallback` — `GET /oauth/google/authorize` and `GET /oauth/google/callback`
+- `App\Controllers\Api\V1\Integrations` — `GET/POST /api/v1/integrations/{index|save|test|disconnect}`
 
 ### Infrastructure
 - `MailerService` — sole email transport layer (see `notifications` skill)
@@ -233,6 +247,8 @@ Each high-risk contract has one owner. Make full-text changes only in the owner;
 | Availability and slot generation | `scheduling` skill | public-booking, database |
 | Calendar data flow and grid bounds | `scheduling` skill | frontend |
 | Business context resolver | this skill (§8) | notifications |
+| Integrations hub (all 6 channels) | `IntegrationSettingsService` + individual service classes | api-contract, frontend, database |
+| Google Calendar OAuth credentials | `GoogleCalendarIntegrationService` (DB-stored, not .env) | integrations |
 
 **Rule:** Do not duplicate full contract text in non-owner sections. Use reference links and concise reminders only.
 

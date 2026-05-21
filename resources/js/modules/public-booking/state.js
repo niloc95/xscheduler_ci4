@@ -77,6 +77,7 @@ export function createBookingDraft(ctx, defaultDate) {
     slotsError: '',
     selectedSlot: null,
     resolvedLocation: null,
+    deliveryMode: null,
     calendar: createCalendarState(),
     form: createInitialFormState(ctx),
     errors: {},

@@ -457,3 +457,67 @@ if (!function_exists('role_icon')) {
         return $icons[$role] ?? 'fas fa-user';
     }
 }
+
+if (!function_exists('analytics_head_html')) {
+    /**
+     * Returns the analytics script block for injection into <head>.
+     *
+     * Reads integrations.analytics (provider) and integrations.analytics_id
+     * from xs_settings. Returns an empty string if not configured.
+     *
+     * GA4 : integrations.analytics_id = 'G-XXXXXXXXXX'
+     * Matomo: integrations.analytics_id = 'https://your-matomo.com'
+     *         integrations.analytics_site_id = numeric site ID
+     */
+    function analytics_head_html(): string
+    {
+        try {
+            $settings = (new \App\Models\SettingModel())->getByKeys([
+                'integrations.analytics',
+                'integrations.analytics_id',
+                'integrations.analytics_site_id',
+            ]);
+
+            $provider = (string) ($settings['integrations.analytics']         ?? 'none');
+            $id       = trim((string) ($settings['integrations.analytics_id'] ?? ''));
+            $siteId   = (int) ($settings['integrations.analytics_site_id']    ?? 1);
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        if ($provider === 'none' || $id === '') {
+            return '';
+        }
+
+        if ($provider === 'google') {
+            $eid = esc($id, 'html');
+            return <<<HTML
+<script async src="https://www.googletagmanager.com/gtag/js?id={$eid}"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('js',new Date());
+gtag('config','{$eid}',{send_page_view:true});
+window.__xsAnalyticsProvider='google';window.__xsAnalyticsId='{$eid}';
+</script>
+HTML;
+        }
+
+        if ($provider === 'matomo') {
+            $url    = rtrim($id, '/');
+            $eurl   = esc($url, 'html');
+            $esid   = (int) $siteId;
+            return <<<HTML
+<script>
+var _paq=window._paq=window._paq||[];
+_paq.push(['trackPageView']);_paq.push(['enableLinkTracking']);
+(function(){var u="{$eurl}/";_paq.push(['setTrackerUrl',u+'matomo.php']);_paq.push(['setSiteId','{$esid}']);
+var d=document,g=d.createElement('script'),s=d.getElementsByTagName('script')[0];
+g.async=true;g.src=u+'matomo.js';s.parentNode.insertBefore(g,s);})();
+window.__xsAnalyticsProvider='matomo';
+</script>
+HTML;
+        }
+
+        return '';
+    }
+}

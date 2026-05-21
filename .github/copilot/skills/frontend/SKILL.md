@@ -260,7 +260,62 @@ DateTime.fromISO(val, { zone: 'utc' }).setZone(window.appTimezone)
 
 `window.appTimezone` is set by `SettingsManager` from `/api/v1/settings/localization`. **Never parse appointment datetimes as local time.**
 
-## 13. Pre-Merge Frontend Grep Check
+## 13. Settings Integrations Hub (Owner Section)
+
+`app/Views/settings/tabs/integrations.php` is the Integrations tab. Its full contents are wrapped in `<section id="panel-integrations" class="tab-panel hidden">` — the tab-switcher in `spa.js` toggles `hidden` on this element. **Do not render cards or modals outside this section** or they will be permanently visible across all settings tabs.
+
+### Integration Card Grid
+
+Seven integration cards rendered as a 2-column `grid grid-cols-1 md:grid-cols-2 gap-4` inside `#integration-cards-grid`. **Analytics is the first card** — it replaced the old analytics `<form>` wrapper that previously sat above the grid.
+
+| Card | Icon color | Modal | OAuth flow |
+| --- | --- | --- | --- |
+| Analytics | orange | `#analytics-modal` | — |
+| Webhooks | indigo | `#webhook-modal` | — |
+| Google Calendar | red | `#google-calendar-modal` | `/oauth/google/authorize` |
+| Stripe | purple | `#stripe-modal` | — |
+| Zoom | blue | `#zoom-modal` | — |
+| Jitsi Meet | teal | `#jitsi-modal` | — |
+| PayFast | green | `#payfast-modal` | — |
+
+**There is no analytics form in `integrations.php`**. The old `<form id="integrations-settings-form">` was removed. `'integrations'` was also removed from `SETTINGS_TABS` in `settings-form-ui.js`. The analytics card's save handler in `integration-hub.js::wireAnalytics()` posts directly to `POST /api/v1/settings` with `integrations.analytics`, `integrations.analytics_id`, and `integrations.analytics_site_id`.
+
+### Card States
+
+Each card renders one of three states based on PHP variables from `IntegrationSettingsService::getIndexData()`:
+1. **No credentials** — Configure button only
+2. **Credentials saved, no OAuth tokens** — Configure + Connect button (Google Calendar only)
+3. **Connected** — Configure + Test + Disconnect buttons
+
+### JS Module
+
+`resources/js/modules/settings/integration-hub.js` exports `initIntegrationHub()` (called from `app.js`).
+
+- `wireModals()` — backdrop click, Escape key, open/close data attributes
+- `wireAnalytics()` — posts `integrations.analytics` / `integrations.analytics_id` / `integrations.analytics_site_id` to `POST /api/v1/settings`; shows/hides GA4 vs Matomo fields on provider select change
+- One `wire*()` function per integration (reads fields, calls `callApi()`, shows toast, reloads on success)
+- `callApi(intent, channel, body)` — wraps `apiRequest()` from `core/api.js` to the `/api/v1/integrations/{save|test|disconnect}` endpoints
+- `wireActionButtons()` — global handler for `[data-integration-action]` Test/Disconnect buttons
+
+**Google Calendar copy button:** `#gc-copy-redirect-uri` copies the read-only redirect URI to the clipboard via `navigator.clipboard`. The redirect URI is auto-generated via `GoogleCalendarIntegrationService::getRedirectUri()` (`base_url('oauth/google/callback')`).
+
+### Analytics Script Injection
+
+`analytics_head_html()` in `app/Helpers/app_helper.php` reads `integrations.analytics`, `integrations.analytics_id`, and `integrations.analytics_site_id` from `xs_settings` and returns the appropriate script block:
+
+- **GA4:** injects `gtag.js` with `send_page_view: true`; sets `window.__xsAnalyticsId` for SPA listener
+- **Matomo:** injects Matomo tracking script with URL + site ID
+
+**Both layouts call `analytics_head_html()` in `<head>`:**
+- `layouts/public.php` — covers all public booking pages including SEO slug pages (`/booking/p/{slug}`, `/booking/s/{slug}`)
+- `layouts/app.php` — covers all authenticated views; also includes a `spa:navigated` listener that fires `gtag('event','page_view',...)` / `_paq.push(['trackPageView'])` on every SPA navigation
+
+**Settings keys** (all in `xs_settings`, no migration needed):
+- `integrations.analytics` — provider: `none` / `google` / `matomo`
+- `integrations.analytics_id` — GA4: `G-XXXXXXXXXX`; Matomo: the Matomo instance URL
+- `integrations.analytics_site_id` — Matomo site ID (integer; empty for GA4)
+
+## 14. Pre-Merge Frontend Grep Check
 
 ```bash
 # Detect inline style regressions in views

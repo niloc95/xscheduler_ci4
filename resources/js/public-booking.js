@@ -204,6 +204,12 @@ function bootstrapPublicBooking() {
     form.addEventListener('change', (event) => handleFormInput(event, target));
     form.addEventListener('submit', (event) => handleSubmit(event, target));
 
+    form.querySelectorAll('[name="public_delivery_mode"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        updateDraft(target, prev => ({ ...prev, deliveryMode: e.target.value }));
+      });
+    });
+
     form.querySelectorAll('[data-slot-option]').forEach(button => {
       button.addEventListener('click', () => {
         const slotStart = button.getAttribute('data-slot-option');
@@ -355,10 +361,24 @@ function bootstrapPublicBooking() {
     }
   }
 
+  function getAvailableModes(serviceId, services, ctx) {
+    const svc = (services || []).find(s => String(s.id) === String(serviceId));
+    const modes = Array.isArray(svc?.deliveryModes) ? svc.deliveryModes : ['onsite'];
+    const filtered = modes.filter(m =>
+      m === 'onsite' ||
+      (m === 'online_zoom'  && ctx.zoomConnected) ||
+      (m === 'online_jitsi' && ctx.jitsiConnected)
+    );
+    return filtered.length > 0 ? filtered : ['onsite'];
+  }
+
   function handleServiceChange(value, target = 'booking') {
+    const currentServices = getDraft(target).services;
+    const availableModes  = getAvailableModes(value, currentServices, context);
     updateDraft(target, prev => ({
       ...prev,
       serviceId: value,
+      deliveryMode: availableModes[0] ?? 'onsite',
       selectedSlot: null,
       slots: [],
       slotsError: '',
@@ -428,6 +448,7 @@ function bootstrapPublicBooking() {
         duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
         price: svc.price,
         formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
+        deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
       }));
 
       updateDraft(target, prev => ({
@@ -972,9 +993,10 @@ function bootstrapPublicBooking() {
   function buildPayload(draft, extras = {}) {
     const payload = {
       provider_slug: String(draft.providerId || ''),
-      service_id: Number(draft.serviceId),
-      slot_start: draft.selectedSlot?.start ?? null,
-      notes: draft.form.notes ?? '',
+      service_id:    Number(draft.serviceId),
+      slot_start:    draft.selectedSlot?.start ?? null,
+      notes:         draft.form.notes ?? '',
+      delivery_mode: draft.deliveryMode ?? 'onsite',
     };
 
     // Include location_id — prefer resolved location, fall back to selector
@@ -1350,6 +1372,7 @@ function bootstrapPublicBooking() {
           ${serviceCard || serviceEmptyState}
         </div>
       </section>
+      ${renderDeliveryModeSelector(currentState, ctx)}
       <section class="space-y-3">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
         ${renderDatePickerField(currentState)}
@@ -1401,6 +1424,38 @@ function bootstrapPublicBooking() {
     `;
   }
 
+  const DELIVERY_MODE_META = {
+    onsite:       { label: 'In Person', icon: 'location_on',  selCls: 'border-blue-300 bg-blue-50 text-blue-700',     defCls: 'border-slate-200 bg-white text-slate-700' },
+    online_zoom:  { label: 'Zoom',      icon: 'video_call',   selCls: 'border-purple-300 bg-purple-50 text-purple-700', defCls: 'border-slate-200 bg-white text-slate-700' },
+    online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    selCls: 'border-teal-300 bg-teal-50 text-teal-700',      defCls: 'border-slate-200 bg-white text-slate-700' },
+  };
+
+  function renderDeliveryModeSelector(currentState, ctx) {
+    if (!currentState.serviceId) return '';
+    const available = getAvailableModes(currentState.serviceId, currentState.services, ctx);
+    if (available.length < 2) return '';
+
+    const selected = currentState.deliveryMode ?? available[0];
+    const options  = available.map(m => {
+      const meta       = DELIVERY_MODE_META[m] ?? { label: m, icon: 'help', selCls: 'border-slate-300 bg-slate-100 text-slate-700', defCls: 'border-slate-200 bg-white text-slate-700' };
+      const isSelected = m === selected;
+      return `
+        <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition-all
+                      ${isSelected ? meta.selCls : meta.defCls}">
+          <input type="radio" name="public_delivery_mode" value="${escapeHtml(m)}"
+                 ${isSelected ? 'checked' : ''} class="sr-only">
+          <span class="material-symbols-outlined text-base">${meta.icon}</span>
+          <span class="text-sm font-medium">${escapeHtml(meta.label)}</span>
+        </label>`;
+    }).join('');
+
+    return `
+      <section class="space-y-2">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Session type</h3>
+        <div class="flex flex-wrap gap-2">${options}</div>
+      </section>`;
+  }
+
   function renderServiceCard(service) {
     if (!service) {
       return '';
@@ -1425,10 +1480,29 @@ function bootstrapPublicBooking() {
       ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Price:</span> ${escapeHtml(formattedPrice)}</p>`
       : '';
 
+    const modeMeta = {
+      onsite:       { label: 'In Person', icon: 'location_on',  cls: 'bg-blue-50 text-blue-700' },
+      online_zoom:  { label: 'Zoom',      icon: 'video_call',   cls: 'bg-purple-50 text-purple-700' },
+      online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    cls: 'bg-teal-50 text-teal-700' },
+    };
+    const modes = Array.isArray(service.deliveryModes) ? service.deliveryModes : ['onsite'];
+    const deliveryHtml = modes.length > 0
+      ? `<div class="mt-2 flex flex-wrap gap-1.5">
+          ${modes.map(m => {
+            const meta = modeMeta[m] ?? { label: m, icon: 'help', cls: 'bg-slate-100 text-slate-600' };
+            return `<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.cls}">
+              <span class="material-symbols-outlined" style="font-size:11px">${meta.icon}</span>
+              ${escapeHtml(meta.label)}
+            </span>`;
+          }).join('')}
+        </div>`
+      : '';
+
     return `
       <div class="min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-200">
         <p class="text-sm font-semibold text-slate-900">${escapeHtml(name || 'Service')}</p>
         ${descriptionHtml}
+        ${deliveryHtml}
         ${durationHtml}
         ${priceHtml}
       </div>
@@ -1745,6 +1819,20 @@ function bootstrapPublicBooking() {
           <div class="rounded-2xl border border-slate-200 px-4 py-3 md:col-span-2">
             <dt class="text-sm font-medium text-slate-500">Location</dt>
             <dd class="text-base font-semibold text-slate-900">${escapeHtml(locationLabel)}${locationAddr ? ` &middot; <span class="font-normal text-slate-600">${escapeHtml(locationAddr)}</span>` : ''}</dd>
+          </div>
+          ` : ''}
+          ${appointment.video_link ? `
+          <div class="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 md:col-span-2">
+            <dt class="text-sm font-medium text-purple-700">
+              <span class="material-symbols-outlined text-sm align-middle">video_call</span>
+              Video meeting link
+            </dt>
+            <dd class="mt-1">
+              <a href="${escapeHtml(appointment.video_link)}" target="_blank" rel="noopener noreferrer"
+                 class="break-all text-sm font-semibold text-purple-700 underline hover:text-purple-900">
+                ${escapeHtml(appointment.video_link)}
+              </a>
+            </dd>
           </div>
           ` : ''}
         </dl>

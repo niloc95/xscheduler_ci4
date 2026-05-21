@@ -122,6 +122,10 @@ class NotificationTemplateService
         '{waze_link}' => 'Waze navigation URL for resolved appointment location',
         // Business hours
         '{business_hours}' => 'Business opening hours (formatted, one line per day)',
+        // Video / delivery mode
+        '{delivery_mode}' => 'Session type (In Person / Zoom / Jitsi Meet)',
+        '{video_link}'    => 'Video meeting join link (empty for in-person appointments)',
+        '{session_info}'  => 'Full session block: Maps/Waze location block for in-person, or video meeting URL block for online appointments (auto-formatted multi-line)',
     ];
 
     /**
@@ -131,37 +135,37 @@ class NotificationTemplateService
         'appointment_pending' => [
             'email' => [
                 'subject' => 'Your Appointment Request is Received — {service_name}',
-                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏳ Booking received! {service_name} on {appointment_date} at {appointment_time}. Pending confirmation. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏳ *Appointment Request Received*\n\nHi {customer_first_name}!\n\nWe've received your booking request and will confirm your appointment shortly.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\nWe will notify you once confirmed.\n\n_{business_name}_\n{terms_link} | {privacy_link}"
+                'body' => "⏳ *Appointment Request Received*\n\nHi {customer_first_name}!\n\nWe've received your booking request and will confirm your appointment shortly.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\nWe will notify you once confirmed.\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "✅ Confirmed: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_first_name}!\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_\n{terms_link} | {privacy_link}"
+                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_first_name}!\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_reminder' => [
             'email' => [
                 'subject' => 'Reminder: Your Appointment — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
-                'body' => "⏰ Reminder: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. {location_name}. Manage: {reschedule_link}"
+                'body' => "⏰ Reminder: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. {delivery_mode}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_first_name}!\n\nDon't forget — you have an upcoming appointment!\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
+                'body' => "⏰ *Appointment Reminder*\n\nHi {customer_first_name}!\n\nDon't forget — you have an upcoming appointment!\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
             ]
         ],
         'appointment_cancelled' => [
@@ -179,13 +183,13 @@ class NotificationTemplateService
         'appointment_rescheduled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Rescheduled — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n📍 Location:  {location_name}\n              {location_address}\n   Maps: {google_maps_link} | Waze: {waze_link}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "📅 Rescheduled: {service_name} is now {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_first_name}!\n\nYour appointment has been moved to a new date and time.\n\n*New Date & Time*\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n*📍 Location:* {location_name}, {location_address}\n\n*Booking Ref:* #{booking_reference}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
+                'body' => "📅 *Appointment Rescheduled*\n\nHi {customer_first_name}!\n\nYour appointment has been moved to a new date and time.\n\n*New Date & Time*\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_"
             ]
         ],
     ];
@@ -231,7 +235,7 @@ class NotificationTemplateService
                     . "Service Details\n"
                     . "Service: {service_name}\n"
                     . "Provider: {provider_name}\n"
-                    . "Location: {location_name} {location_address}\n\n"
+                    . "{session_info}\n\n"
                     . "Internal Actions Required\n"
                     . "- Confirm provider availability\n"
                     . "- Prepare patient file\n"
@@ -262,7 +266,7 @@ class NotificationTemplateService
                     . "Service Details\n"
                     . "Service: {service_name}\n"
                     . "Provider: {provider_name}\n"
-                    . "Location: {location_name} {location_address}\n\n"
+                    . "{session_info}\n\n"
                     . "Internal Actions Required\n"
                     . "- Confirm provider availability\n"
                     . "- Prepare patient file\n"
@@ -293,7 +297,7 @@ class NotificationTemplateService
                     . "Service Details\n"
                     . "Service: {service_name}\n"
                     . "Provider: {provider_name}\n"
-                    . "Location: {location_name} {location_address}\n\n"
+                    . "{session_info}\n\n"
                     . "Quick Links\n"
                     . "View full booking details: {internal_view_link}\n"
                     . "Edit appointment: {internal_edit_link}\n"
@@ -320,7 +324,7 @@ class NotificationTemplateService
                     . "Service Details\n"
                     . "Service: {service_name}\n"
                     . "Provider: {provider_name}\n"
-                    . "Location: {location_name} {location_address}\n\n"
+                    . "{session_info}\n\n"
                     . "Quick Links\n"
                     . "View full booking details: {internal_view_link}\n"
                     . "Edit appointment: {internal_edit_link}\n"
@@ -347,7 +351,7 @@ class NotificationTemplateService
                     . "Service Details\n"
                     . "Service: {service_name}\n"
                     . "Provider: {provider_name}\n"
-                    . "Location: {location_name} {location_address}\n\n"
+                    . "{session_info}\n\n"
                     . "Quick Links\n"
                     . "View full booking details: {internal_view_link}\n"
                     . "Edit appointment: {internal_edit_link}\n"
@@ -733,59 +737,72 @@ class NotificationTemplateService
             '{waze_link}' => $wazeLink,
             // Business hours
             '{business_hours}' => $this->buildBusinessHoursText(),
+            // Video / delivery mode
+            '{delivery_mode}' => $data['delivery_mode'] ?? 'In Person',
+            '{video_link}'    => $data['video_link']    ?? '',
+            '{session_info}'  => $this->buildSessionInfo(
+                $data['delivery_mode']    ?? '',
+                $data['video_link']       ?? '',
+                $resolvedLocationName,
+                $resolvedLocationAddress,
+                $googleMapsLink,
+                $wazeLink,
+            ),
         ];
     }
 
     /**
-     * Build a formatted business hours text block from xs_business_hours global rows.
-     * Returns fallback text if no rows exist or on any DB error.
+     * Build the session info block for notifications.
+     *
+     * For online appointments: shows the delivery mode and video join URL.
+     * For in-person appointments: reproduces the full location block including Maps/Waze links.
+     * Accepts both raw DB values ('online_zoom', 'online_jitsi') and the human-readable labels
+     * ('Zoom', 'Jitsi Meet') written by the dispatcher into $templateData.
+     */
+    private function buildSessionInfo(
+        string $mode,
+        string $videoLink,
+        string $locationName,
+        string $locationAddress,
+        string $googleMapsLink,
+        string $wazeLink
+    ): string {
+        $isZoom  = in_array($mode, ['online_zoom', 'Zoom'], true);
+        $isJitsi = in_array($mode, ['online_jitsi', 'Jitsi Meet'], true);
+
+        if ($isZoom || $isJitsi) {
+            $provider = $isZoom ? 'Zoom' : 'Jitsi Meet';
+            $linkLine = $videoLink !== ''
+                ? "   Join URL:  {$videoLink}"
+                : "   (Meeting link will be sent separately)";
+            return "🎥 Online Session ({$provider})\n{$linkLine}";
+        }
+
+        // In-person: produce the full rich block only when we have address data
+        if ($locationName === '' && $locationAddress === '') {
+            return '';
+        }
+
+        $lines   = [];
+        $lines[] = "📍 Location:  {$locationName}";
+        if ($locationAddress !== '') {
+            $lines[] = "              {$locationAddress}";
+        }
+        if ($googleMapsLink !== '' || $wazeLink !== '') {
+            $lines[] = "   Maps: {$googleMapsLink} | Waze: {$wazeLink}";
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Build a formatted business hours text block for notification templates.
+     * Reads global bounds (business.work_start / business.work_end) from xs_settings.
+     * xs_business_hours rows are all per-provider — no global rows exist.
      */
     private function buildBusinessHoursText(): string
     {
-        try {
-            $db   = \Config\Database::connect();
-            $rows = $db->table('xs_business_hours')
-                ->select('weekday, start_time, end_time')
-                ->groupStart()
-                ->where('provider_id', 0)
-                ->orWhere('provider_id', null)
-                ->groupEnd()
-                ->orderBy('weekday', 'ASC')
-                ->get()
-                ->getResultArray();
-
-            if (empty($rows)) {
-                $defaultHours = $this->buildBusinessHoursFromDefaultSettings();
-                if ($defaultHours !== '') {
-                    return $defaultHours;
-                }
-
-                return 'Please contact us for business hours.';
-            }
-
-            $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            $lines    = [];
-
-            foreach ($rows as $row) {
-                $label = $dayNames[(int) ($row['weekday'] ?? 8)] ?? 'Day';
-                if (empty($row['start_time']) || empty($row['end_time'])) {
-                    $lines[] = sprintf('  %-4s Closed', $label);
-                } else {
-                    $start   = substr($row['start_time'], 0, 5);
-                    $end     = substr($row['end_time'],   0, 5);
-                    $lines[] = sprintf('  %-4s %s – %s', $label, $start, $end);
-                }
-            }
-
-            return implode("\n", $lines);
-        } catch (\Throwable $e) {
-            $defaultHours = $this->buildBusinessHoursFromDefaultSettings();
-            if ($defaultHours !== '') {
-                return $defaultHours;
-            }
-
-            return 'Please contact us for business hours.';
-        }
+        $hours = $this->buildBusinessHoursFromDefaultSettings();
+        return $hours !== '' ? $hours : 'Please contact us for business hours.';
     }
 
     /**

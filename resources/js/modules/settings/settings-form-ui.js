@@ -50,7 +50,7 @@ function normalizePhoneWithCountryCode(rawValue, countryCodeRaw) {
     return `+${(countryDigits + strippedLocal).slice(0, 15)}`;
 }
 
-const SETTINGS_TABS = ['localization', 'booking', 'business', 'legal', 'integrations'];
+const SETTINGS_TABS = ['localization', 'booking', 'business', 'legal'];
 
 function ensureGlobalHelpers() {
     window.xsDebugLog = window.xsDebugLog || function (...args) {

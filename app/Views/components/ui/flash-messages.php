@@ -83,7 +83,7 @@ if ($session->getFlashdata('message')) {
                     <?= esc($msg) ?>
                 <?php endif; ?>
             </div>
-            <button type="button" class="flex-shrink-0 p-1 -m-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors" onclick="this.parentElement.remove()" aria-label="Dismiss">
+            <button type="button" class="flex-shrink-0 p-1 -m-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors" data-dismiss-flash aria-label="Dismiss">
                 <span class="material-symbols-outlined text-lg">close</span>
             </button>
         </div>
@@ -97,7 +97,7 @@ if ($session->getFlashdata('message')) {
         <div class="flex-1 text-sm font-medium">
             <?= esc($msg) ?>
         </div>
-        <button type="button" class="flex-shrink-0 p-1 -m-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors" onclick="this.parentElement.remove()" aria-label="Dismiss">
+        <button type="button" class="flex-shrink-0 p-1 -m-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors" data-dismiss-flash aria-label="Dismiss">
             <span class="material-symbols-outlined text-lg">close</span>
         </button>
     </div>
@@ -111,6 +111,10 @@ document.querySelectorAll('[data-flash-message]').forEach(el => {
         el.classList.add('xs-fade-out');
         setTimeout(() => el.remove(), 300);
     }, 8000);
+});
+// Manual dismiss via data-dismiss-flash button
+document.querySelectorAll('[data-dismiss-flash]').forEach(btn => {
+    btn.addEventListener('click', () => btn.parentElement?.remove());
 });
 // Scroll to top so success/error flash messages are visible on form pages
 if (document.querySelector('[data-flash-message]')) {

@@ -81,41 +81,35 @@ jobs:
             echo "No documentation files found in docs/ directory" >> docs-report.md
           fi
           
-      - name: Validate mastercontext.md structure
+      - name: Validate engineering skills
         run: |
           echo "" >> docs-report.md
-          echo "## Master Context Validation" >> docs-report.md
+          echo "## Engineering Skills Validation" >> docs-report.md
           echo "" >> docs-report.md
-          
-          MASTERCONTEXT="docs/architecture/mastercontext.md"
-          if [ -f "$MASTERCONTEXT" ]; then
-            # Check for required sections
-            REQUIRED_SECTIONS=("Project Overview" "Core Architecture" "Build System" "Deployment Strategy" "Recent Development Updates")
-            MISSING_SECTIONS=""
-            
-            for section in "${REQUIRED_SECTIONS[@]}"; do
-              if ! grep -q "## $section" "$MASTERCONTEXT"; then
-                MISSING_SECTIONS="$MISSING_SECTIONS\n- $section"
-              fi
-            done
-            
-            if [ -n "$MISSING_SECTIONS" ]; then
-              echo "⚠️ Missing required sections in mastercontext.md:" >> docs-report.md
-              echo -e "$MISSING_SECTIONS" >> docs-report.md
-            else
-              echo "✅ All required sections found in mastercontext.md" >> docs-report.md
+
+          SKILLS_DIR=".github/copilot/skills"
+          REQUIRED_SKILLS=("rules" "architecture" "auth-rbac" "api-contract" "frontend" "scheduling" "notifications" "database" "public-booking" "operations")
+          MISSING_SKILLS=""
+
+          for skill in "${REQUIRED_SKILLS[@]}"; do
+            if [ ! -f "$SKILLS_DIR/$skill/SKILL.md" ]; then
+              MISSING_SKILLS="$MISSING_SKILLS\n- $skill"
             fi
-            
-            # Check document length
-            LINE_COUNT=$(wc -l < "$MASTERCONTEXT")
-            echo "" >> docs-report.md
-            echo "📊 Master context document: $LINE_COUNT lines" >> docs-report.md
-            
-            if [ $LINE_COUNT -gt 1000 ]; then
-              echo "ℹ️ Document is comprehensive (>1000 lines)" >> docs-report.md
-            fi
+          done
+
+          if [ -n "$MISSING_SKILLS" ]; then
+            echo "❌ Missing skill files:" >> docs-report.md
+            echo -e "$MISSING_SKILLS" >> docs-report.md
+            exit 1
           else
-            echo "❌ mastercontext.md not found at expected location" >> docs-report.md
+            echo "✅ All 10 engineering skills present" >> docs-report.md
+          fi
+
+          # Check README exists
+          if [ -f "$SKILLS_DIR/README.md" ]; then
+            echo "✅ Skills README present" >> docs-report.md
+          else
+            echo "⚠️ Skills README missing at $SKILLS_DIR/README.md" >> docs-report.md
           fi
           
       - name: Check for documentation TODOs

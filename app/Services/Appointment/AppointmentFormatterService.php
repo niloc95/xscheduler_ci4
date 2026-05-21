@@ -97,6 +97,9 @@ class AppointmentFormatterService
             'location_name'    => $row['location_name']    ?? null,
             'location_address' => $row['location_address'] ?? null,
             'location_contact' => $row['location_contact'] ?? null,
+            // Delivery mode
+            'delivery_mode'    => (string) ($row['delivery_mode'] ?? 'onsite'),
+            'video_link'       => (string) ($row['video_link']    ?? ''),
         ];
     }
 
@@ -141,6 +144,8 @@ class AppointmentFormatterService
             'location_name' => $row['location_name'] ?? '',
             'location_address' => $row['location_address'] ?? '',
             'location_contact' => $row['location_contact'] ?? '',
+            'delivery_mode' => (string) ($row['delivery_mode'] ?? 'onsite'),
+            'video_link'    => (string) ($row['video_link']    ?? ''),
             'is_paid' => (bool) ($row['is_paid'] ?? false),
             'created_at' => $row['created_at'] ?? null,
             'updated_at' => $row['updated_at'] ?? null,

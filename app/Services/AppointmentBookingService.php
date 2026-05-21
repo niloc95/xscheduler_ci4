@@ -316,15 +316,18 @@ class AppointmentBookingService
             $customerId = $customerResult['customerId'];
 
             $appointmentData = [
-                'customer_id' => $customerId,
-                'provider_id' => $data['provider_id'],
-                'service_id' => $data['service_id'],
-                'start_at' => $timeData['startUtc'],
-                'end_at' => $timeData['endUtc'],
+                'customer_id'   => $customerId,
+                'provider_id'   => $data['provider_id'],
+                'service_id'    => $data['service_id'],
+                'start_at'      => $timeData['startUtc'],
+                'end_at'        => $timeData['endUtc'],
                 'stored_timezone' => $timeData['timezone'],
-                'status' => $status,
-                'notes' => $data['notes'] ?? '',
-                'location_id' => $resolvedLocationId,
+                'status'        => $status,
+                'notes'         => $data['notes'] ?? '',
+                'location_id'   => $resolvedLocationId,
+                'delivery_mode' => in_array($data['delivery_mode'] ?? '', \App\Services\VideoSessionService::VALID_MODES, true)
+                    ? $data['delivery_mode']
+                    : null,
             ];
 
             if (!empty($data['public_token'])) {
@@ -388,6 +391,25 @@ class AppointmentBookingService
                     'location_id' => $resolvedLocationId,
                 ]
             );
+
+            // Generate video link after transaction commits — never inside the transaction
+            // so a failed video API call does not roll back a persisted appointment.
+            $deliveryMode = $appointmentData['delivery_mode'] ?? null;
+            if ($deliveryMode && \App\Services\VideoSessionService::isOnlineMode($deliveryMode)) {
+                $videoResult = (new \App\Services\VideoSessionService())->generateLink(
+                    NotificationCatalog::BUSINESS_ID_DEFAULT,
+                    $deliveryMode,
+                    array_merge($appointmentData, ['id' => $appointmentId])
+                );
+                if ($videoResult['ok'] && !empty($videoResult['join_url'])) {
+                    $this->appointmentModel->update((int) $appointmentId, ['video_link' => $videoResult['join_url']]);
+                } else {
+                    log_message('warning', '[AppointmentBookingService] Video link generation failed for mode {mode}: {err}', [
+                        'mode' => $deliveryMode,
+                        'err'  => $videoResult['error'] ?? 'unknown',
+                    ]);
+                }
+            }
 
             // Step 8: Queue notifications (email, SMS, WhatsApp)
             $event = AppointmentStatus::notificationEvent($status, '');
@@ -590,6 +612,11 @@ class AppointmentBookingService
                 }
 
                 $data['status'] = $normalizedStatus;
+            }
+
+            // Clear video link when switching to an onsite appointment
+            if (($data['delivery_mode'] ?? '') === 'onsite') {
+                $data['video_link'] = null;
             }
 
             // Update appointment

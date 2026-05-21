@@ -162,6 +162,8 @@ class PublicBookingService
             'businessName' => function_exists('setting') ? (setting('general.company_name', 'WebSchedulr') ?: 'WebSchedulr') : 'WebSchedulr',
             'defaultPhoneCountryCode' => $this->phoneNumberService->getDefaultCountryCode(),
             'seo' => $this->buildSeoContext(),
+            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
     }
 
@@ -621,6 +623,9 @@ class PublicBookingService
             'appointment_date' => $slot['date'],
             'appointment_time' => $slot['start']->format('H:i'),
             'notes' => $this->sanitizeString($payload['notes'] ?? null, 1000),
+            'delivery_mode' => in_array($payload['delivery_mode'] ?? '', \App\Services\VideoSessionService::VALID_MODES, true)
+                ? $payload['delivery_mode']
+                : 'onsite',
             'public_token' => $token,
             'public_token_expires_at' => null,
             'notification_types' => ['email', 'whatsapp'],
@@ -907,12 +912,13 @@ class PublicBookingService
         return array_map(function (array $row): array {
             $price = $row['price'] ?? 0;
             return [
-                'id' => (int) $row['id'],
-                'name' => $row['name'] ?? 'Service',
-                'slug' => $row['slug'] ?? null,
-                'duration' => (int) ($row['duration_min'] ?? 30),
-                'price' => (float) $price,
+                'id'            => (int) $row['id'],
+                'name'          => $row['name'] ?? 'Service',
+                'slug'          => $row['slug'] ?? null,
+                'duration'      => (int) ($row['duration_min'] ?? 30),
+                'price'         => (float) $price,
                 'formattedPrice' => $this->localization->formatCurrency($price),
+                'deliveryModes' => json_decode($row['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
             ];
         }, $rows);
     }
@@ -1678,7 +1684,9 @@ class PublicBookingService
             // Reschedule eligibility — computed server-side so the SPA can gate the form
             'can_reschedule' => $this->canReschedule($appointment['start_at']),
             // Cancellation eligibility — computed server-side so the SPA can gate cancel action
-            'can_cancel' => $this->canCancel($appointment),
+            'can_cancel'     => $this->canCancel($appointment),
+            'delivery_mode'  => (string) ($appointment['delivery_mode'] ?? 'onsite'),
+            'video_link'     => (string) ($appointment['video_link'] ?? ''),
         ];
     }
 

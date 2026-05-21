@@ -61,7 +61,7 @@ class ServiceModel extends BaseModel
     protected $table            = 'xs_services';
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
-    'name', 'slug', 'description', 'duration_min', 'price', 'category_id', 'active'
+        'name', 'slug', 'description', 'duration_min', 'price', 'category_id', 'active', 'delivery_modes',
     ];
 
     // Dates
@@ -87,6 +87,11 @@ class ServiceModel extends BaseModel
     protected function bustAvailabilityCache(array $data): array
     {
         $id = $data['id'] ?? null;
+        // CI4's afterUpdate/afterSave event data wraps the ID in an array
+        // when the framework normalises IDs for WHERE clauses internally.
+        if (is_array($id)) {
+            $id = reset($id) ?: null;
+        }
         if ($id) {
             cache()->save('service_cache_v_' . $id, time(), 86400);
         }

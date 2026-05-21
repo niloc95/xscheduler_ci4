@@ -152,6 +152,41 @@ if ($oldActive !== null) {
         <input id="activeCheckbox" type="checkbox" name="active" value="1" <?= $serviceIsActive ? 'checked' : '' ?> class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
         <label for="activeCheckbox" class="text-sm text-gray-700 dark:text-gray-300">Active</label>
     </div>
+
+    <?php
+    $serviceDeliveryModes = old('delivery_modes', json_decode($data['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite']);
+    $zoomOk  = (bool) ($zoomConnected  ?? false);
+    $jitsiOk = (bool) ($jitsiConnected ?? false);
+    $modeOptions = [
+        'onsite'       => ['label' => 'In Person',  'icon' => 'location_on',  'disabled' => false],
+        'online_zoom'  => ['label' => 'Zoom',        'icon' => 'video_call',   'disabled' => !$zoomOk],
+        'online_jitsi' => ['label' => 'Jitsi Meet',  'icon' => 'videocam',     'disabled' => !$jitsiOk],
+    ];
+    ?>
+    <fieldset class="md:col-span-2">
+        <legend class="form-label mb-2">Delivery Modes</legend>
+        <div class="flex flex-wrap gap-3">
+            <?php foreach ($modeOptions as $value => $opt): ?>
+            <?php $checked = in_array($value, $serviceDeliveryModes, true); ?>
+            <label class="flex items-center gap-2 <?= $opt['disabled'] ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer' ?>">
+                <input type="checkbox"
+                       name="delivery_modes[]"
+                       value="<?= esc($value) ?>"
+                       class="form-checkbox"
+                       <?= $checked ? 'checked' : '' ?>
+                       <?= $opt['disabled'] ? 'disabled' : '' ?>>
+                <span class="flex items-center gap-1 text-sm <?= $opt['disabled'] ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300' ?>">
+                    <span class="material-symbols-outlined text-base"><?= esc($opt['icon']) ?></span>
+                    <?= esc($opt['label']) ?>
+                    <?php if ($opt['disabled']): ?>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">(not connected)</span>
+                    <?php endif; ?>
+                </span>
+            </label>
+            <?php endforeach; ?>
+        </div>
+        <p class="form-help mt-2">Online options require Zoom or Jitsi configured in Settings → Integrations.</p>
+    </fieldset>
 </div>
 
 <?php if ($slugLocked && $canUnlockSlug): ?>

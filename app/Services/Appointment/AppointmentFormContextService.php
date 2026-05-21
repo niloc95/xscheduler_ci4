@@ -73,13 +73,15 @@ class AppointmentFormContextService
         $dropdowns = $this->getDropdownData($userRole, $userId);
 
         return [
-            'current_page' => 'appointments',
-            'services' => $dropdowns['services'],
-            'providers' => $dropdowns['providers'],
-            'user_role' => $userRole,
-            'fieldConfig' => $this->bookingSettingsService->getFieldConfiguration(),
-            'customFields' => $this->bookingSettingsService->getCustomFieldConfiguration(),
-            'localization' => $this->localizationSettingsService->getContext(),
+            'current_page'   => 'appointments',
+            'services'       => $dropdowns['services'],
+            'providers'      => $dropdowns['providers'],
+            'user_role'      => $userRole,
+            'fieldConfig'    => $this->bookingSettingsService->getFieldConfiguration(),
+            'customFields'   => $this->bookingSettingsService->getCustomFieldConfiguration(),
+            'localization'   => $this->localizationSettingsService->getContext(),
+            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
     }
 

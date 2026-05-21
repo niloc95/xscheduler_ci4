@@ -63,6 +63,7 @@ namespace App\Controllers;
 
 use App\Models\SettingModel;
 use App\Services\Settings\GeneralSettingsService;
+use App\Services\Settings\IntegrationSettingsService;
 use App\Services\Settings\NotificationSettingsService;
 use App\Services\Settings\SettingsPageService;
 
@@ -70,16 +71,19 @@ class Settings extends BaseController
 {
     private ?GeneralSettingsService $generalSettingsService = null;
     private ?NotificationSettingsService $notificationSettingsService = null;
+    private ?IntegrationSettingsService $integrationSettingsService = null;
     private ?SettingsPageService $settingsPageService = null;
 
     public function __construct(
         ?GeneralSettingsService $generalSettingsService = null,
         ?NotificationSettingsService $notificationSettingsService = null,
         ?SettingsPageService $settingsPageService = null,
+        ?IntegrationSettingsService $integrationSettingsService = null,
     ) {
         $this->generalSettingsService = $generalSettingsService;
         $this->notificationSettingsService = $notificationSettingsService;
         $this->settingsPageService = $settingsPageService;
+        $this->integrationSettingsService = $integrationSettingsService;
     }
 
     public function index()
@@ -87,6 +91,21 @@ class Settings extends BaseController
         $this->localUploadLog('index_hit', []);
 
         return view('settings/index', $this->getSettingsPageService()->buildIndexData(session()->get('user')));
+    }
+
+    public function saveIntegrations()
+    {
+        if (strtoupper($this->request->getMethod()) !== 'POST') {
+            return redirect()->to(base_url('settings'));
+        }
+
+        $result = $this->getIntegrationSettingsService()->save(
+            $this->request->getPost() ?? [],
+            session()->get('user_id')
+        );
+
+        return redirect()->to(base_url('settings') . '#integrations')
+            ->with($result['type'], $result['message']);
     }
 
     public function saveNotifications()
@@ -150,6 +169,15 @@ class Settings extends BaseController
         }
 
         return $this->notificationSettingsService;
+    }
+
+    private function getIntegrationSettingsService(): IntegrationSettingsService
+    {
+        if ($this->integrationSettingsService === null) {
+            $this->integrationSettingsService = new IntegrationSettingsService();
+        }
+
+        return $this->integrationSettingsService;
     }
 
     private function getGeneralSettingsService(): GeneralSettingsService

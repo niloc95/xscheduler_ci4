@@ -65,6 +65,7 @@ class BusinessIntegrationModel extends BaseModel
         'channel',
         'provider_name',
         'encrypted_config',
+        'metadata',
         'is_active',
         'health_status',
         'last_tested_at',
@@ -72,6 +73,6 @@ class BusinessIntegrationModel extends BaseModel
 
     protected $validationRules = [
         'business_id' => 'required|is_natural_no_zero',
-        'channel'     => 'required|in_list[email,sms,whatsapp]',
+        'channel'     => 'required|in_list[email,sms,whatsapp,webhook,google_calendar,stripe,zoom,slack,jitsi,payfast]',
     ];
 }

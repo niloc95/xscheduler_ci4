@@ -581,12 +581,15 @@ class UserModel extends BaseModel
         if (!$manager || !$target) {
             return false;
         }
+        $managerRoles = $this->getRolesForUser($managerId);
+        $targetRoles  = $this->getRolesForUser($targetUserId);
+
         // Admins can manage everyone
-        if ($manager['role'] === 'admin') {
+        if (in_array('admin', $managerRoles, true)) {
             return true;
         }
         // Providers can manage their own staff
-        if ($manager['role'] === 'provider' && $target['role'] === 'staff') {
+        if (in_array('provider', $managerRoles, true) && in_array('staff', $targetRoles, true)) {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($targetUserId, $manager['id']);
         }
@@ -730,12 +733,15 @@ class UserModel extends BaseModel
         if (!$viewer || !$target) {
             return false;
         }
+        $viewerRoles = $this->getRolesForUser($viewerId);
+        $targetRoles = $this->getRolesForUser($targetUserId);
+
         // Admins can view everyone
-        if ($viewer['role'] === 'admin') {
+        if (in_array('admin', $viewerRoles, true)) {
             return true;
         }
         // Providers can view their staff
-        if ($viewer['role'] === 'provider' && $target['role'] === 'staff') {
+        if (in_array('provider', $viewerRoles, true) && in_array('staff', $targetRoles, true)) {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($targetUserId, $viewer['id']);
         }
@@ -744,7 +750,7 @@ class UserModel extends BaseModel
             return true;
         }
         // Staff can view their provider
-        if ($viewer['role'] === 'staff' && $target['role'] === 'provider') {
+        if (in_array('staff', $viewerRoles, true) && in_array('provider', $targetRoles, true)) {
             $assignments = new ProviderStaffModel();
             return $assignments->isStaffAssignedToProvider($viewerId, $targetUserId);
         }

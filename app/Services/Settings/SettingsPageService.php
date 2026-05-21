@@ -10,15 +10,18 @@ class SettingsPageService
     private SettingModel $settingModel;
     private NotificationSettingsService $notificationSettingsService;
     private LocalizationSettingsService $localizationSettingsService;
+    private IntegrationSettingsService $integrationSettingsService;
 
     public function __construct(
         ?SettingModel $settingModel = null,
         ?NotificationSettingsService $notificationSettingsService = null,
         ?LocalizationSettingsService $localizationSettingsService = null,
+        ?IntegrationSettingsService $integrationSettingsService = null,
     ) {
         $this->settingModel = $settingModel ?? new SettingModel();
         $this->notificationSettingsService = $notificationSettingsService ?? new NotificationSettingsService();
         $this->localizationSettingsService = $localizationSettingsService ?? new LocalizationSettingsService($this->settingModel);
+        $this->integrationSettingsService = $integrationSettingsService ?? new IntegrationSettingsService();
     }
 
     public function buildIndexData(?array $sessionUser = null): array
@@ -32,6 +35,7 @@ class SettingsPageService
             'settings' => $this->settingModel->getByKeys($this->settingsKeys()),
             'localizationContext' => $this->localizationSettingsService->getContext(),
             ...$this->notificationSettingsService->getIndexData(),
+            ...$this->integrationSettingsService->getIndexData(),
         ];
     }
 
@@ -106,6 +110,8 @@ class SettingsPageService
             'legal.privacy_url',
             'integrations.webhook_url',
             'integrations.analytics',
+            'integrations.analytics_id',
+            'integrations.analytics_site_id',
             'integrations.api_integrations',
             'integrations.ldap_enabled',
             'integrations.ldap_host',

@@ -92,6 +92,25 @@ See `scheduling` skill for the full calendar data flow.
 - **Admins/Staff:** see all appointments; can filter by `provider_id` query param.
 - Do not rely on `provider_id` query param as the sole authorization mechanism — role-based scoping is enforced server-side.
 
+## Integrations Hub API
+
+All under `/api/v1/integrations/`, filter: `api_auth`. Controller: `App\Controllers\Api\V1\Integrations`.
+
+| Method | Path | Action |
+| --- | --- | --- |
+| `GET` | `/api/v1/integrations` | Returns public integration status for all channels |
+| `POST` | `/api/v1/integrations/save` | Save credentials for one channel (body: `{ channel, ...fields }`) |
+| `POST` | `/api/v1/integrations/test` | Test connection for one channel (body: `{ channel }`) |
+| `POST` | `/api/v1/integrations/disconnect` | Remove integration row for one channel (body: `{ channel }`) |
+
+Valid channels: `webhook`, `google_calendar`, `stripe`, `zoom`, `jitsi`, `payfast`.
+
+All responses use the standard `{ data, meta }` envelope. Errors use `{ error: { message } }`. The controller delegates entirely to `IntegrationSettingsService` — no business logic in the controller.
+
+**Google Calendar OAuth routes** (admin only, not API-versioned):
+- `GET /oauth/google/authorize` — redirect to Google OAuth consent
+- `GET /oauth/google/callback` — exchange code, store tokens, redirect to `/settings#integrations`
+
 ## Public APIs Inventory
 
 - `GET /api/v1/public/services`

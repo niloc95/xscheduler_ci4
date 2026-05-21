@@ -297,3 +297,12 @@ php spark notifications:export-delivery-logs        # export delivery logs
 php spark notifications:repair-business-id          # repair business_id on queue rows
 php spark audit:reminder-pipeline                   # audit reminder scheduling pipeline
 ```
+
+See `operations` skill for the full command catalog.
+
+## 13. Cross-Skill References
+
+- Status → event mapping → `scheduling` skill (owner)
+- Schema fields for queue/logs/templates → `database` skill
+- Business-ID resolver → `architecture` skill (owner)
+- Auth-only password reset path → `auth-rbac` skill

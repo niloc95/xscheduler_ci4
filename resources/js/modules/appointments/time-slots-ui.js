@@ -305,6 +305,7 @@ export function initTimeSlotsUI(options) {
           : svc.name;
         opt.dataset.duration = svc.durationMin || svc.duration_min;
         opt.dataset.price = svc.price;
+        opt.dataset.deliveryModes = JSON.stringify(svc.deliveryModes || ['onsite']);
         if (desiredServiceId && String(desiredServiceId) === String(svc.id)) {
           opt.selected = true;
           preselectFound = true;
@@ -494,6 +495,86 @@ export function initTimeSlotsUI(options) {
     });
   }
 
+  // ── Delivery mode selector ────────────────────────────────────────────────
+  const deliveryWrapper = document.getElementById('delivery-mode-wrapper');
+  const deliveryHidden  = document.getElementById('delivery_mode');
+  const deliveryOpts    = document.getElementById('delivery-mode-options');
+  const videoNote       = document.getElementById('video-link-note');
+
+  const MODE_LABELS = { onsite: 'In Person', online_zoom: 'Zoom', online_jitsi: 'Jitsi Meet' };
+  const MODE_ICONS  = { onsite: 'location_on', online_zoom: 'video_call', online_jitsi: 'videocam' };
+
+  // Register the change listener once — never inside updateDeliveryModeSelector()
+  // to avoid stacking handlers on repeated service changes.
+  if (deliveryOpts) {
+    deliveryOpts.addEventListener('change', e => {
+      const v = e.target.value;
+      if (deliveryHidden) deliveryHidden.value = v;
+      videoNote?.classList.toggle('hidden', v === 'onsite');
+    });
+  }
+
+  function updateDeliveryModeSelector() {
+    if (!deliveryWrapper || !deliveryHidden || !deliveryOpts) return;
+
+    const opt    = serviceSelect.selectedOptions[0];
+    const modes  = JSON.parse(opt?.dataset.deliveryModes || '["onsite"]');
+    const zoomOk  = deliveryWrapper.dataset.zoomConnected  === '1';
+    const jitsiOk = deliveryWrapper.dataset.jitsiConnected === '1';
+
+    const hasOnline = modes.some(m => m !== 'onsite');
+    if (!hasOnline) {
+      deliveryWrapper.classList.add('hidden');
+      deliveryHidden.value = 'onsite';
+      videoNote?.classList.add('hidden');
+      return;
+    }
+
+    // Rebuild radio buttons
+    deliveryOpts.innerHTML = '';
+    modes.forEach(mode => {
+      const connected = mode === 'onsite' || (mode === 'online_zoom' ? zoomOk : mode === 'online_jitsi' ? jitsiOk : false);
+      const label = document.createElement('label');
+      label.className = `flex items-center gap-1.5 ${connected ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`;
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'delivery_mode_ui';
+      radio.value = mode;
+      radio.disabled = !connected;
+      radio.className = 'form-checkbox';
+
+      const icon = document.createElement('span');
+      icon.className = 'material-symbols-outlined text-base';
+      icon.textContent = MODE_ICONS[mode] ?? 'help';
+
+      const text = document.createElement('span');
+      text.className = `text-sm ${connected ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`;
+      text.textContent = (MODE_LABELS[mode] ?? mode) + (!connected ? ' (not connected)' : '');
+
+      label.append(radio, icon, text);
+      deliveryOpts.appendChild(label);
+    });
+
+    // Select first non-disabled mode — but in edit mode prefer the current hidden value
+    const firstAvailable = modes.find(m =>
+      m === 'onsite' || (m === 'online_zoom' ? zoomOk : m === 'online_jitsi' ? jitsiOk : false)
+    ) ?? 'onsite';
+
+    const preferredMode = available => available.includes(deliveryHidden.value) ? deliveryHidden.value : firstAvailable;
+    const resolvedMode  = preferredMode(modes.filter(m =>
+      m === 'onsite' || (m === 'online_zoom' ? zoomOk : m === 'online_jitsi' ? jitsiOk : false)
+    ));
+
+    const selectedRadio = deliveryOpts.querySelector(`input[value="${resolvedMode}"]`);
+    if (selectedRadio) selectedRadio.checked = true;
+    deliveryHidden.value = resolvedMode;
+    videoNote?.classList.toggle('hidden', resolvedMode === 'onsite');
+
+    deliveryWrapper.classList.remove('hidden');
+  }
+  // ── End delivery mode ─────────────────────────────────────────────────────
+
   serviceSelect.addEventListener('change', () => {
     // Preserve URL-provided date across service changes; only clear when no URL date was given
     if (!urlDate) {
@@ -509,6 +590,7 @@ export function initTimeSlotsUI(options) {
 
     isInitialServiceChange = false;
 
+    updateDeliveryModeSelector();
     loadSlots(true);
   });
 

@@ -52,6 +52,7 @@ class AppointmentFormSubmissionService
             'status' => AppointmentStatus::normalize($status) ?? $status,
             'notes' => (string) ($input['notes'] ?? ''),
             'location_id' => $this->toOptionalInt($input['location_id'] ?? null),
+            'delivery_mode' => (string) ($input['delivery_mode'] ?? 'onsite'),
         ];
     }
 

@@ -44,6 +44,8 @@ $hasAccess = !empty(array_intersect($requiredRoles, $userRoles));
 
 **Never make authorization decisions from `xs_users.role` alone.**
 
+**Fixed (2026-05-20):** `UserModel::canManageUser()` and `canViewUser()` previously used `$user['role'] === 'x'` comparisons — now use `UserModel::getRolesForUser(int $userId)` with `in_array(..., true)`. Any new authorization logic in `UserModel` must follow the same pattern.
+
 ## Session Write Contract (v140+ Mandatory)
 
 Any mid-session update to session user payload **must** preserve existing role context.

@@ -341,6 +341,11 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
         $routes->match(['put', 'post'], 'settings', 'Api\\V1\\Settings::update');
         $routes->post('settings/logo', 'Api\\V1\\Settings::uploadLogo');
         $routes->post('settings/icon', 'Api\\V1\\Settings::uploadIcon');
+        // Integrations hub API
+        $routes->get('integrations', 'Api\\V1\\Integrations::index');
+        $routes->post('integrations/save', 'Api\\V1\\Integrations::save');
+        $routes->post('integrations/test', 'Api\\V1\\Integrations::test');
+        $routes->post('integrations/disconnect', 'Api\\V1\\Integrations::disconnect');
     });
 });
 
@@ -359,6 +364,10 @@ $routes->group('', ['filter' => 'setup'], function($routes) {
     $routes->get('settings', 'Settings::index', ['filter' => 'role:admin']);
     $routes->post('settings', 'Settings::save', ['filter' => 'role:admin']);
     $routes->post('settings/notifications', 'Settings::saveNotifications', ['filter' => 'role:admin']);
+    $routes->post('settings/integrations', 'Settings::saveIntegrations', ['filter' => 'role:admin']);
+    // Google Calendar OAuth flow
+    $routes->get('oauth/google/authorize', 'OAuthCallback::googleAuthorize', ['filter' => 'role:admin']);
+    $routes->get('oauth/google/callback', 'OAuthCallback::googleCallback', ['filter' => 'role:admin']);
 });
 
 // Public assets (serve files from public/assets)

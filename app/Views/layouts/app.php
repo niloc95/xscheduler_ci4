@@ -49,6 +49,19 @@
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
     
     <?= $this->renderSection('head') ?>
+    <?= analytics_head_html() ?>
+    <script>
+    document.addEventListener('spa:navigated',function(){
+        if(typeof window.gtag==='function'&&window.__xsAnalyticsId){
+            window.gtag('event','page_view',{page_location:location.href,page_path:location.pathname+location.search,page_title:document.title});
+        }
+        if(window._paq){
+            window._paq.push(['setCustomUrl',location.href]);
+            window._paq.push(['setDocumentTitle',document.title]);
+            window._paq.push(['trackPageView']);
+        }
+    });
+    </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen antialiased transition-colors duration-200"
     data-base-url="<?= esc(rtrim(base_url(), '/')) ?>"

@@ -80,10 +80,10 @@ jobs:
       - name: Validate build output
         run: |
           echo "Checking build assets..."
-          test -f public/build/assets/style.css || { echo "❌ style.css not found"; exit 1; }
-          test -f public/build/assets/main.js || { echo "❌ main.js not found"; exit 1; }
-          test -f public/build/assets/materialWeb.js || { echo "❌ materialWeb.js not found"; exit 1; }
-          test -f public/build/assets/setup.js || { echo "❌ setup.js not found"; exit 1; }
+          ls public/build/assets/main-*.js > /dev/null 2>&1 || { echo "❌ main.js not found"; exit 1; }
+          ls public/build/assets/style-*.css > /dev/null 2>&1 || { echo "❌ style.css not found"; exit 1; }
+          ls public/build/assets/spa-*.js > /dev/null 2>&1 || { echo "❌ spa.js not found"; exit 1; }
+          ls public/build/assets/setup-*.js > /dev/null 2>&1 || { echo "❌ setup.js not found"; exit 1; }
           echo "✅ All build assets found"
           
       - name: Check asset sizes

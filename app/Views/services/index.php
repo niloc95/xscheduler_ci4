@@ -100,7 +100,7 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                     title="Filter services"
                     aria-controls="services-filter-panel"
                     aria-expanded="<?= $hasActiveFilters ? 'true' : 'false' ?>"
-                    onclick="var p=document.getElementById('services-filter-panel');p.classList.toggle('hidden');this.setAttribute('aria-expanded',String(!p.classList.contains('hidden')));">
+                    data-filter-toggle="services-filter-panel">
                 <span class="material-symbols-outlined text-base">tune</span>
             </button>
         </div>
@@ -334,5 +334,16 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
     </div>
 </div>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script {csp-script-nonce}>
+document.querySelector('[data-filter-toggle="services-filter-panel"]')?.addEventListener('click', function () {
+    var panel = document.getElementById('services-filter-panel');
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    this.setAttribute('aria-expanded', String(!panel.classList.contains('hidden')));
+});
+</script>
 <?= $this->endSection() ?>
 

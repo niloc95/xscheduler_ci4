@@ -83,6 +83,8 @@ class AppointmentModel extends BaseModel
         'status',
         'reminder_sent',
         'notes',
+        'delivery_mode',
+        'video_link',
         'hash',
         'public_token',
         'public_token_expires_at',

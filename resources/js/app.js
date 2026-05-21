@@ -35,6 +35,7 @@ import { setupAdvancedFilterPanel } from './modules/filters/advanced-filters.js'
 // Import scheduler UI module
 import { setupSchedulerToolbar } from './modules/scheduler/scheduler-ui.js';
 import { initSettingsPageEnhancements } from './modules/settings/settings-page.js';
+import { initIntegrationHub } from './modules/settings/integration-hub.js';
 import { initCustomerManagementSearch } from './modules/customer-management/customer-search.js';
 import { initProviderSchedule } from './modules/user-management/provider-schedule.js';
 import { initProfilePage } from './modules/profile/profile-page.js';
@@ -131,6 +132,7 @@ function initializeComponents() {
 
     // Initialize extracted settings page workflows when present.
     initSettingsPageEnhancements();
+    initIntegrationHub();
 
     // Initialize customer management live search when that view is present.
     initCustomerManagementSearch();

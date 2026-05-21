@@ -482,6 +482,34 @@ $pageSubtitle = $isEditMode
                     <?php endif; ?>
                 </div>
 
+                <!-- Delivery Mode Selection (loaded dynamically after service selection) -->
+                <div id="delivery-mode-wrapper" class="hidden"
+                     data-zoom-connected="<?= ($zoomConnected ?? false) ? '1' : '0' ?>"
+                     data-jitsi-connected="<?= ($jitsiConnected ?? false) ? '1' : '0' ?>">
+                    <label class="form-label">Session Type</label>
+                    <div id="delivery-mode-options" class="flex flex-wrap gap-3 mt-1"></div>
+                    <p id="video-link-note" class="form-help hidden mt-1">
+                        <span class="material-symbols-outlined text-xs align-middle">videocam</span>
+                        A video meeting link will be auto-generated after booking.
+                    </p>
+                </div>
+                <input type="hidden" id="delivery_mode" name="delivery_mode"
+                       value="<?= esc($isEditMode ? ($appointment['delivery_mode'] ?? 'onsite') : 'onsite') ?>">
+
+                <?php if ($isEditMode && !empty($appointment['video_link']) && ($appointment['delivery_mode'] ?? 'onsite') !== 'onsite'): ?>
+                <div class="form-field mt-2">
+                    <label class="form-label">Current Meeting Link</label>
+                    <div class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 px-3 py-2">
+                        <span class="material-symbols-outlined text-base text-blue-500">video_call</span>
+                        <a href="<?= esc($appointment['video_link']) ?>" target="_blank" rel="noopener noreferrer"
+                           class="text-sm text-blue-600 dark:text-blue-400 underline break-all">
+                            <?= esc($appointment['video_link']) ?>
+                        </a>
+                    </div>
+                    <p class="form-help">Changing to In Person will clear this link.</p>
+                </div>
+                <?php endif; ?>
+
                 <!-- Location Selection (loaded dynamically based on provider) -->
                 <div id="location-selection-wrapper" class="hidden">
                     <label for="location_id" class="form-label">Location</label>
