@@ -232,7 +232,7 @@ Settings-based templates are upserted by migrations and can be overridden at run
 1. `xs_message_templates` row where `recipient_class = 'internal'`, `is_active = 1`
 2. `NotificationTemplateService::DEFAULT_INTERNAL_TEMPLATES` (code-level fallback)
 
-### 11.4 Supported Placeholder Set (34 total)
+### 11.4 Supported Placeholder Set (37 total)
 
 **Customer info:** `{customer_name}`, `{customer_first_name}`, `{customer_email}`, `{customer_phone}`
 
@@ -247,6 +247,8 @@ Settings-based templates are upserted by migrations and can be overridden at run
 **Location:** `{location_name}`, `{location_address}`, `{location_contact}`
 
 **Navigation / calendar:** `{booking_reference}`, `{calendar_link}`, `{google_maps_link}`, `{waze_link}`
+
+**Session / delivery mode:** `{delivery_mode}`, `{video_link}`, `{session_info}` (see §11.10)
 
 ### 11.5 Business Contact Resolution
 
@@ -285,6 +287,43 @@ The closing footer now ends with:
 ### 11.9 Required Placeholders
 
 `{reschedule_link}` is **required** in `email`, `sms`, and `whatsapp` bodies for `appointment_pending` and `appointment_confirmed`. `render()` auto-appends a fallback block if the placeholder is missing from a stored template.
+
+### 11.10 Delivery Mode & Session Info Placeholders (Owner Section)
+
+Three placeholders added in May 2026 for online vs in-person appointment support:
+
+| Placeholder | Value |
+|---|---|
+| `{delivery_mode}` | Human-readable label: `'In Person'` / `'Zoom'` / `'Jitsi Meet'` (translated by dispatcher from raw `delivery_mode` DB value) |
+| `{video_link}` | Raw join URL string; empty for in-person appointments |
+| `{session_info}` | Full multi-line block rendered by `buildSessionInfo()` — see below |
+
+**`{session_info}` output — Online (Zoom or Jitsi):**
+```
+🎥 Online Session (Zoom)
+   Join URL:  https://zoom.us/j/...
+```
+If video link not yet generated: `(Meeting link will be sent separately)`
+
+**`{session_info}` output — In-person:**
+```
+📍 Location:  Sandton Mews
+              21 Delta Road, Extension 2
+   Maps: https://maps.google.com/... | Waze: https://waze.com/...
+```
+Returns empty string if no location data is available.
+
+**`buildSessionInfo()` mode detection:** accepts both raw DB values (`online_zoom`, `online_jitsi`) and the dispatcher-translated labels (`Zoom`, `Jitsi Meet`).
+
+**Template coverage:**
+- All 4 customer email templates (pending, confirmed, reminder, rescheduled) use `{session_info}` in the appointment details block — stored in `xs_settings` (updated by migration `2026-05-20-220000`)
+- All 5 internal email templates use `{session_info}` in the Service Details section
+- Reminder SMS uses `{delivery_mode}` (compact, single word — appropriate for SMS length limits)
+- `{location_name}`, `{location_address}`, `{google_maps_link}`, `{waze_link}` remain individually available but **should not be used in new templates** — use `{session_info}` instead to get the conditional online/in-person rendering
+
+**Migration history:**
+- `2026-05-20-210000` — replaced location blocks in `xs_message_templates` (partially, wrong format matched)
+- `2026-05-20-220000` — replaced V4 location blocks in `xs_settings` customer templates (CRLF format); corrected the `xs_message_templates` gap
 
 ## 12. Useful Spark Commands
 

@@ -52,21 +52,53 @@ Core lifecycle for authenticated surfaces:
 
 If a controller action redirects back to the current page, the JSON response **must** include a `redirect` key so SPA navigation can force-reload (see `api-contract` skill).
 
-## 4. Dark Mode Contract
+## 4. Dark Mode Contract (Owner Section)
 
 **Tailwind configuration:** `darkMode: 'class'` in `tailwind.config.js`. All Tailwind `dark:` utilities require `.dark` on `<html>`.
 
-**FOUC prevention:** `resources/js/theme-bootstrap.js` runs as an **inline blocking script** (no `type="module"`) on every page load. It sets BOTH `document.documentElement.dataset.theme = theme` AND `document.documentElement.classList.toggle('dark', theme === 'dark')` before the browser paints.
+**FOUC prevention — inline blocking script:** The script is **literally inlined** in `<head>` — NOT a `<script src>` or `type="module"`. All three layouts (`app.php`, `public.php`, `auth.php`) and the standalone `booking.php` carry the same one-liner. It runs synchronously during HTML parsing, before any CSS file loads:
+
+```html
+<script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
+```
+
+What it does (in order):
+1. Reads `xs-theme` from `localStorage`; falls back to `prefers-color-scheme`
+2. Sets `data-theme` attribute + toggles `.dark` class on `<html>`
+3. Sets `style.colorScheme = t` — system UI (scrollbars, native inputs) renders in the right scheme
+4. For dark mode: sets `style.backgroundColor = '#111827'` on `<html>` — covers viewport before CSS loads
+5. Adds `.xs-no-transition` class — suppresses all `transition-colors` when the CSS file first applies
+
+**`xs-no-transition` CSS rule** lives in `resources/scss/base/_reset.scss`:
+```scss
+.xs-no-transition, .xs-no-transition * { transition: none !important; }
+```
+This prevents the 200ms animated fade that would otherwise occur when `dark:bg-gray-900` first applies to `<body>`.
+
+**FOUC cleanup:** The guards must be removed after the first paint to restore normal transitions for user-triggered theme switches.
+- **Layouts that load `app-layout-init.js`:** cleanup runs in the double `requestAnimationFrame` inside `onDomReady()`.
+- **Standalone pages (e.g. `booking.php`):** cleanup is a bare inline script at end of `<body>`:
+  ```html
+  <script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
+  ```
+
+**Dark background values by page:**
+- Authenticated app (`layouts/app.php`, `auth.php`, `public.php`): `#111827` (Tailwind `gray-900` = `dark:bg-gray-900` on `<body>`)
+- Public booking SPA (`booking.php`): `#0f172a` (Tailwind `slate-900` = `dark:bg-slate-900` on `<body>`)
+
+**`<html>` tag:** must NOT carry `transition-colors duration-200` — it has no `background-color` rule. `transition-colors` lives on `<body>` only, for user-triggered theme switches.
+
+**`theme-bootstrap` Vite entry:** still exists in `vite.config.js` and builds `resources/js/theme-bootstrap.js`, but **no layout loads it via `<script src>`**. The content is inlined directly. Do not re-introduce the module src load — it would defer execution and break FOUC prevention.
 
 **Runtime management:** `DarkModeManager` in `resources/js/dark-mode.js` handles the full lifecycle:
-- On every `applyTheme()` call: sets BOTH `data-theme` attribute AND `.dark` class
+- On every `applyTheme()` call: sets `data-theme` attribute, `.dark` class, AND `style.colorScheme`
 - Persists to `localStorage` key `xs-theme`
 - Dispatches `xs:theme-changed` custom event for downstream components
 - Re-wires `[data-theme-toggle]` buttons after each `spa:navigated` event
 
 **SCSS:** Dark overrides use `.dark { ... }` selector in `resources/scss/abstracts/_custom-properties.scss`, **not** `[data-theme="dark"]`.
 
-**Summary:** `data-theme` attribute is always kept in sync (for external consumers and CSS that reads it), but `.dark` class is the canonical trigger for Tailwind utilities and SCSS dark overrides.
+**Summary:** `data-theme` attribute is always kept in sync (for external consumers), but `.dark` class is the canonical trigger for Tailwind utilities and SCSS dark overrides. See `ui-ux` skill for dark mode styling rules (color tokens, xs-no-transition usage).
 
 ## 5. Styling Contract
 
@@ -137,7 +169,10 @@ window.xsGetDisplayName(entity, fallback)
 
 **Do not reimplement initials logic in any view, controller, or JS module.** Always call the shared helper. A one-letter initial in a completed surface is a regression against this contract.
 
-## 7. View Layout & Design System Contract (Owner Section)
+## 7. View Layout & Design System Contract
+
+> **Design system component tokens (`xs-card`, `xs-btn`, `xs-actions-container`) are owned by the `ui-ux` skill.** This section covers layout-level contracts only.
+
 
 ### 7.1 Canonical Layout
 

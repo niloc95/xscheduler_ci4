@@ -58,7 +58,10 @@ class DarkModeManager {
 
         // §6.4: canonical theme source is document.documentElement.dataset.theme
         document.documentElement.dataset.theme = theme;
-        
+
+        // Keep color-scheme in sync so browser system UI (scrollbars, inputs) matches our theme
+        document.documentElement.style.colorScheme = theme;
+
         // Add/remove .dark class for Tailwind's dark mode utilities
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');

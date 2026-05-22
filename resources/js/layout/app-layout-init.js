@@ -170,7 +170,10 @@ function initLayoutBehavior() {
         }
     }
 
-    syncHeaderHeight();
+    // Defer offsetHeight read until after the browser has applied stylesheets and painted.
+    // Reading offsetHeight at DOMContentLoaded can trigger a premature reflow warning when
+    // CSS is still being applied. spa:navigated already uses rAF for the same reason.
+    requestAnimationFrame(() => syncHeaderHeight());
     syncHeaderIdentity();
     syncHeaderState();
 
@@ -219,4 +222,16 @@ onDomReady(() => {
     syncWindowConfigFromBody();
     initHeaderClock();
     initLayoutBehavior();
+
+    // Remove the load-time FOUC guards set by the inline blocking script in <head>:
+    //   - xs-no-transition: re-enables transition-colors on <body> for user theme switches
+    //   - backgroundColor / colorScheme inline styles: <body>'s dark:bg-gray-900 now owns the bg
+    // Double rAF: first frame commits style recalculations, second confirms the browser has painted.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.documentElement.classList.remove('xs-no-transition');
+            document.documentElement.style.backgroundColor = '';
+            document.documentElement.style.colorScheme = '';
+        });
+    });
 });

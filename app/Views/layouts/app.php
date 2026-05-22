@@ -19,7 +19,7 @@
  */
 ?>
 <!DOCTYPE html>
-<html lang="en" class="transition-colors duration-200">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,8 +27,11 @@
     <title><?= $this->renderSection('title') ?: 'WebScheduler' ?></title>
     <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
     
-    <!-- Theme bootstrap -->
-    <script type="module" src="<?= vite_js('resources/js/theme-bootstrap.js') ?>"></script>
+    <!-- Theme bootstrap: inline blocking script — runs synchronously before first paint.
+         Sets .dark class, colorScheme, and (for dark) a background-color on <html> so the
+         viewport is never white before the external CSS file loads. xs-no-transition suppresses
+         the transition-colors animation on <body> when CSS first applies. -->
+    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
     
     <!-- Stylesheets (resolved from Vite manifest) -->
     <?php

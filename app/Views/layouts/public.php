@@ -16,15 +16,18 @@
  */
 ?>
 <!DOCTYPE html>
-<html lang="en" class="transition-colors duration-200">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Book your appointment online">
     <title><?= $this->renderSection('title') ?: 'Book an Appointment' ?></title>
     
-    <!-- Prevent FOUC -->
-    <script type="module" src="<?= vite_js('resources/js/theme-bootstrap.js') ?>"></script>
+    <!-- Prevent FOUC: inline blocking script — runs synchronously before first paint.
+         Sets .dark class, colorScheme, and (for dark) background-color on <html> to cover
+         the viewport before the CSS file loads. xs-no-transition prevents transition animation
+         when dark:bg-gray-900 first applies to <body>. -->
+    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
     
     <!-- Stylesheets -->
     <?php foreach (vite_css('resources/scss/app-consolidated.scss') as $css): ?>

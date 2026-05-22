@@ -254,8 +254,8 @@ function bootstrapPublicBooking() {
     }));
   }
 
-  function renderDashedCard(text) {
-    return `<div class="flex min-h-[80px] items-center rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200">${escapeHtml(text)}</div>`;
+  function renderDashedCard(text, icon = 'info') {
+    return `<div class="flex min-h-[80px] items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200"><span class="material-symbols-outlined text-base shrink-0">${icon}</span>${escapeHtml(text)}</div>`;
   }
 
   function getFutureLimitDays() {
@@ -1339,11 +1339,11 @@ function bootstrapPublicBooking() {
     const providerProfileCard = renderProviderProfileCard(selectedProvider);
     const serviceCard = renderServiceCard(selectedService);
     const providerEmptyState = currentState.providerId
-      ? renderDashedCard('Provider profile details are not available.')
-      : renderDashedCard('Choose a provider to preview details.');
+      ? renderDashedCard('Provider profile details are not available.', 'info')
+      : renderDashedCard('Choose a provider to preview details.', 'person');
     const serviceEmptyState = currentState.serviceId
-      ? renderDashedCard('Service details are not available.')
-      : renderDashedCard('Choose a service to preview details.');
+      ? renderDashedCard('Service details are not available.', 'info')
+      : renderDashedCard('Choose a service to preview details.', 'category');
 
     return `
       <div class="space-y-4">
@@ -1491,7 +1491,7 @@ function bootstrapPublicBooking() {
           ${modes.map(m => {
             const meta = modeMeta[m] ?? { label: m, icon: 'help', cls: 'bg-slate-100 text-slate-600' };
             return `<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.cls}">
-              <span class="material-symbols-outlined" style="font-size:11px">${meta.icon}</span>
+              <span class="material-symbols-outlined text-xs">${meta.icon}</span>
               ${escapeHtml(meta.label)}
             </span>`;
           }).join('')}

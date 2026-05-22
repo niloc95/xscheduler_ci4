@@ -171,3 +171,11 @@ input, textarea, select {
 .text-warning { color: var(--xs-warning); }
 .text-error { color: var(--xs-error); }
 .text-info { color: var(--xs-info); }
+
+// Suppress all transitions during initial page load to prevent dark-mode flash.
+// Applied by the inline blocking script before first paint; removed by app-layout-init.js
+// after a double requestAnimationFrame confirms CSS has painted.
+.xs-no-transition,
+.xs-no-transition * {
+    transition: none !important;
+}

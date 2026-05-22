@@ -108,6 +108,53 @@ Currently carries:
 
 ---
 
+---
+
+## 9. Standalone Page & Asset Contract (Owner Section)
+
+`app/Views/public/booking.php` is a **fully standalone HTML page** — it does NOT extend `layouts/public.php`. It generates its own complete `<!DOCTYPE html>` document structure.
+
+### Required `<head>` elements (in order)
+
+1. **FOUC prevention inline blocking script** — same pattern as all layouts, but uses `#0f172a` (slate-900) as the dark background to match `dark:bg-slate-900` on `<body>`:
+   ```html
+   <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#0f172a';document.documentElement.classList.add('xs-no-transition')}();</script>
+   ```
+2. **Compiled CSS** — two sources merged:
+   - `vite_css('resources/scss/app-consolidated.scss')`
+   - `vite_asset('resources/js/public-booking.js')['css']` (JS-extracted CSS)
+3. **Material Symbols Outlined font link** — **required**: without it all `<span class="material-symbols-outlined">` render as text literals (`location_on In Person`, `videocam Jitsi Meet`, etc.)
+   ```html
+   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+   ```
+
+### Body and root element
+
+- `<body class="bg-slate-50 dark:bg-slate-900">` — uses **slate** palette (not gray) — distinct from the authenticated app
+- `<div id="public-booking-root">` — mounting point for the SPA, carries CSRF data attributes
+- Honeypot field inside root (hidden from real users, triggers server-side rejection for bots)
+
+### JS entry points (load order)
+
+1. `<script id="public-booking-context" type="application/json">` — server context payload (services, providers, settings, CSRF)
+2. `public-booking-bootstrap.js` (type=module) — sets `window.__BASE_URL__` and `window.appBaseUrl` from `body.dataset.baseUrl` before the main SPA loads
+3. `public-booking.js` (type=module, defer) — full booking SPA
+
+### FOUC cleanup
+
+`app-layout-init.js` does NOT run on this page. Cleanup is a bare inline double-rAF at end of `<body>`:
+```html
+<script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
+```
+
+### Rules
+
+- **Any new icon added to booking SPA components:** verify the Google Fonts link is in `booking.php` head — easy to miss since the page bypasses standard layout
+- **Dark mode color:** `#0f172a` / `dark:bg-slate-900` — do not change to gray-900 without updating both the inline script and body class
+- **Do not add `app-layout-init.js` or the SPA `spa.js` to this page** — it is not an authenticated SPA surface
+
+---
+
 ## Cross-References
 
 - Booking pipeline (server-side, shared with admin path) → `scheduling` skill §8.2
@@ -116,3 +163,4 @@ Currently carries:
 - `xs_customers.email` unique index + `xs_customers.hash` for public routes → `database` skill
 - Public endpoint guardrails (no numeric IDs, rate limiting) → `api-contract` skill
 - Public booking JS timezone via `context.timezone` (not session) → `database` skill (Timezone Integrity Rules)
+- Icon system and delivery mode UI (DELIVERY_MODE_META) → `ui-ux` skill
