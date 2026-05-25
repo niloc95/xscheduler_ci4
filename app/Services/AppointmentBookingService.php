@@ -897,12 +897,15 @@ class AppointmentBookingService
     }
 
     /**
-     * Queue notifications for appointment events and dispatch them immediately.
+     * Enqueue notifications for appointment events.
      *
-     * All channels are enqueued via the canonical queue system. After enqueuing,
-     * the dispatcher runs synchronously so email is delivered without waiting for
-     * the cron job, while still benefiting from idempotency keys, delivery logs,
-     * and opt-out checks.
+     * This method ONLY enqueues rows in xs_notification_queue. It does NOT dispatch.
+     * Delivery is handled by `php spark notifications:dispatch-queue` (cron / queue worker).
+     *
+     * Keeping enqueue and dispatch separate means:
+     * - HTTP response is not blocked on SMTP/channel availability.
+     * - Transient transport failures are retried by the cron without user impact.
+     * - Idempotency keys, delivery logs, and opt-out checks are all respected normally.
      *
      * @param int $appointmentId Appointment ID
      * @param array $types Notification types (email, sms, whatsapp)
@@ -922,12 +925,6 @@ class AppointmentBookingService
 
             // Enqueue internal (provider + staff) email notifications.
             $this->enqueueInternalNotifications($appointmentId, $event);
-
-            // Run the dispatcher immediately so email (and any other channels) are sent
-            // without requiring the cron job to trigger first.
-            $dispatcher = new NotificationQueueDispatcher();
-            $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
-            log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
             // Don't fail the booking if notification queuing fails

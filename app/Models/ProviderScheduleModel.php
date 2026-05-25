@@ -51,10 +51,10 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 use App\Services\LocalizationSettingsService;
 
-class ProviderScheduleModel extends Model
+class ProviderScheduleModel extends BaseModel
 {
     public const DAY_NAMES = [
         0 => 'sunday',

@@ -1,14 +1,16 @@
 /**
  * Dynamic Color Utility
- * 
+ *
  * Applies background colors from data-color attributes to elements.
  * This replaces inline styles while maintaining runtime color flexibility.
- * 
+ *
  * Usage in PHP views:
  *   <div class="provider-color-dot" data-color="<?= $color ?>"></div>
- * 
+ *
  * This script automatically applies the color on page load and after SPA navigation.
  */
+
+import { onDomReady } from '../core/lifecycle.js';
 
 let observerInitialized = false;
 
@@ -97,16 +99,11 @@ function observeDynamicColorNodes() {
     observerInitialized = true;
 }
 
-// Apply colors on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        applyDynamicColors();
-        observeDynamicColorNodes();
-    });
-} else {
+// Apply colors on DOM ready — onDomReady uses { once: true } and handles already-ready state
+onDomReady(() => {
     applyDynamicColors();
     observeDynamicColorNodes();
-}
+});
 
 // Note: No spa:navigated listener needed — MutationObserver already handles DOM changes
 // Including both would cause colors to be applied twice on each navigation

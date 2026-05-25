@@ -45,10 +45,10 @@
         </div>
 
         <!-- Backup List Modal -->
-        <div id="backup-list-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div id="backup-list-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="backup-list-modal-title">
             <div class="card card-elevated max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
                 <div class="card-header flex items-center justify-between">
-                    <h3 class="card-title">Database Backups</h3>
+                    <h3 class="card-title" id="backup-list-modal-title">Database Backups</h3>
                     <button type="button" id="close-backup-modal" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
                         <span class="material-symbols-outlined">close</span>
                     </button>
@@ -65,7 +65,7 @@
         </div>
 
         <!-- Block Period Modal (Outside all forms) -->
-        <div id="block-period-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div id="block-period-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="block-period-modal-title">
             <div class="card card-elevated max-w-md w-full mx-4">
                 <div class="card-header">
                     <h3 class="card-title" id="block-period-modal-title">Add Block Period</h3>

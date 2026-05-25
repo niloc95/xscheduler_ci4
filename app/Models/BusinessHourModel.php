@@ -54,9 +54,9 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 
-class BusinessHourModel extends Model
+class BusinessHourModel extends BaseModel
 {
     protected $table            = 'xs_business_hours';
     protected $primaryKey       = 'id';

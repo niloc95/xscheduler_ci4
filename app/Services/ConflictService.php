@@ -12,8 +12,8 @@
  *
  * KEY METHODS:
  * -----------------------------------------------------------------------------
- * - getConflictingAppointments()  Find appointments that overlap a time range
  * - hasConflict()                 Quick boolean check for conflicts
+ * - getConflictingAppointments()  Find appointments that overlap a time range
  * - getBlockedTimesForPeriod()    Find blocked times that overlap a time range
  *
  * IMPORTANT: All datetime parameters for appointment queries must be in UTC
@@ -43,8 +43,6 @@ class ConflictService
         $this->appointmentModel = $appointmentModel ?? new AppointmentModel();
         $this->blockedTimeModel = $blockedTimeModel ?? new BlockedTimeModel();
     }
-
-    // ─────────────────────────────────────────────────────────────────
 
     /**
      * Quick boolean: does the provider have a conflicting appointment?

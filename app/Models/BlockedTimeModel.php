@@ -51,9 +51,9 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 
-class BlockedTimeModel extends Model
+class BlockedTimeModel extends BaseModel
 {
     protected $table            = 'xs_blocked_times';
     protected $primaryKey       = 'id';

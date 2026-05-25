@@ -8,7 +8,9 @@ use App\Services\NotificationCatalog;
 use App\Services\NotificationEmailService;
 use App\Services\NotificationSmsService;
 use App\Services\NotificationWhatsAppService;
+use App\Services\LocalizationSettingsService;
 use App\Services\Settings\GeneralSettingsService;
+use App\Services\Settings\IntegrationSettingsService;
 use App\Services\Settings\NotificationSettingsService;
 use App\Services\Settings\SettingsPageService;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -40,7 +42,15 @@ final class SettingsBoundaryServicesTest extends CIUnitTestCase
                 'notificationEvents' => ['appointment_created' => 'Appointment Created'],
             ]);
 
-        $service = new SettingsPageService($settingModel, $notificationService);
+        // Inject mocked sub-services so they don't call getByKeys on the mock SettingModel,
+        // which would violate the expects($this->once()) assertion on the settings call.
+        $localizationService = $this->createMock(LocalizationSettingsService::class);
+        $localizationService->method('getContext')->willReturn([]);
+
+        $integrationService = $this->createMock(IntegrationSettingsService::class);
+        $integrationService->method('getIndexData')->willReturn([]);
+
+        $service = new SettingsPageService($settingModel, $notificationService, $localizationService, $integrationService);
 
         $result = $service->buildIndexData();
 

@@ -21,6 +21,7 @@ $cookieBody = trim((string) ($cookieNotice ?? ''));
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= esc($title ?? 'Legal') ?></title>
+    <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
     <?php foreach ($compiledStyles as $href): ?>
         <link rel="stylesheet" href="<?= esc($href) ?>">
     <?php endforeach; ?>

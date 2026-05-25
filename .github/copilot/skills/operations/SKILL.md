@@ -39,10 +39,24 @@ npm run build
 - Scheduler loading-path discipline must remain strict.
 - Frontend large-module decomposition is active and tracked in Execution Log items 14–19 (below).
 - Schema-compatibility in mixed local DB states must remain guarded.
-- `ProviderWorkingHoursTrait::getBusinessHours()` calls `$settings->getValue()` which does NOT exist on `SettingModel`. **Fix:** replace with `getByKeys(['booking.day_start','booking.day_end'])` (see `scheduling` skill §8.7.4).
+- ~~`ProviderWorkingHoursTrait::getBusinessHours()` calls `$settings->getValue()`~~ — **RESOLVED:** already uses `getByKeys()` correctly.
 - Composer packages added: `google/apiclient:^2.0` (Google Calendar), `stripe/stripe-php:^12.0` (Stripe). Keep these updated alongside any API version changes.
 - Integration test DB has a migration sequence gap near `2025-10-22-174832`. `BusinessHoursServiceIntegrationTest` and some journey tests cannot run against the test DB until the gap is repaired.
-- `@material/web` package is still in `node_modules` / `package-lock.json` but is unused. Can be removed with `npm uninstall @material/web` when ready to clean up.
+- `@material/web` and related `@material/*` packages (9 total) still in `package.json` — unused. Remove with `npm uninstall @material/button @material/card @material/drawer @material/icon-button @material/list @material/textfield @material/top-app-bar @material/web @material-tailwind/html`.
+
+### SaaS Multi-Tenancy Gap Register
+
+The following core tables lack `business_id` — system is intentionally single-tenant; these must be addressed before any multi-tenant deployment:
+
+| Table | Gap |
+|---|---|
+| `xs_appointments` | No `business_id` — all appointments implicitly belong to business 1 |
+| `xs_customers` | No `business_id` — customer records are not tenant-scoped |
+| `xs_services` | No `business_id` — services shared across all tenants |
+| `xs_locations` | No `business_id` — locations not tenant-scoped |
+| `xs_users` | No `business_id` — providers/staff not explicitly tenant-scoped |
+
+**Estimated effort:** Medium — adding `business_id` to all 5 tables + scoping every service query method + migration. Do not attempt incrementally; this requires a coordinated multi-table migration and query audit.
 
 ---
 
@@ -64,10 +78,12 @@ npm run build
 
 ### Remaining Debt Outside Items 14–19
 
-- `ProviderWorkingHoursTrait::getBusinessHours()` still requires `SettingModel::getByKeys()` migration.
+- ~~`ProviderWorkingHoursTrait` getValue bug~~ — **RESOLVED:** already uses `getByKeys()` correctly.
 - Test DB migration-sequence gap near `2025-10-22-174832` still blocks part of integration suite.
 - `testSettingsPageServiceBuildsDefaultAdminContextWhenSessionUserMissing` (`SettingsBoundaryServicesTest`) fails because the mock expectation `expects($this->once())` on `getByKeys` is violated when `LocalizationSettingsService` makes a second internal call. **Fix:** change to `expects($this->atLeastOnce())` or mock `LocalizationSettingsService` separately. Pre-existing.
-- `@material/web` still in `package-lock.json` and `node_modules`; not yet uninstalled from `package.json`. Zero production impact (no imports). Remove with `npm uninstall @material/web`.
+- `@material/web` and 8 other `@material/*` packages still in `package.json`; confirmed unused. Run `npm uninstall @material/button @material/card @material/drawer @material/icon-button @material/list @material/textfield @material/top-app-bar @material/web @material-tailwind/html`
+- `public-booking.js` is 2154 lines — needs splitting into modules under `resources/js/modules/public-booking/` (booking-flow, manage-flow, render, api). Phase 6 of engineering review.
+- CSRF/fetch logic duplicated in 7 modules outside `core/api.js` — centralization needed (Phase 6).
 
 ---
 
@@ -136,6 +152,7 @@ Status legend: `done`, `in_progress`, `queued`.
 | 39 | Settings > Integrations Hub — Phase 1 + Jitsi + PayFast | done | Full integrations hub: 2 migrations (ENUM expansion, unique index from `(business_id,channel)` to `(business_id,channel,provider_name)`, `metadata` column). 6 service classes (`WebhookIntegrationService`, `GoogleCalendarIntegrationService`, `StripeIntegrationService`, `ZoomIntegrationService`, `JitsiIntegrationService`, `PayFastIntegrationService`) — all use `HandlesNotificationIntegrations` trait pattern. `IntegrationSettingsService` hub routes by intent+channel. `OAuthCallback` controller for Google OAuth flow. `Api\V1\Integrations` controller (index/save/test/disconnect). `integrations.php` view rewritten — 6 cards in `xs-card` grid, 6 modals, all inside `#panel-integrations` section. `integration-hub.js` module with per-channel `wire*()` functions. Composer: `google/apiclient:^2.0`, `stripe/stripe-php:^12.0`. |
 | 41 | Analytics dropdown → card | done | Removed `<form id="integrations-settings-form">` from `integrations.php` entirely. Analytics is now a card in the hub grid (orange `analytics` icon, status badge showing provider name). Configure button opens `#analytics-modal`. Removed `'integrations'` from `SETTINGS_TABS` in `settings-form-ui.js` (no more stale `console.warn`). Added `wireAnalytics()` to `integration-hub.js` — posts `integrations.analytics` to `POST /api/v1/settings`. |
 | 42 | Analytics tracking ID + script injection | done | Added `analytics_head_html()` to `app/Helpers/app_helper.php` — reads `integrations.analytics`, `integrations.analytics_id`, `integrations.analytics_site_id` from `xs_settings` and returns ready-to-inject GA4 or Matomo `<script>` block. Injected into `layouts/public.php` (covers all public booking pages including `/booking/p/{slug}`, `/booking/s/{slug}`) and `layouts/app.php`. App layout also adds a `spa:navigated` listener that fires `gtag('event','page_view',...)` / `_paq.push(['trackPageView'])` on every SPA navigation. Analytics modal updated: provider select now shows/hides GA4 fields (Measurement ID `G-XXXXXXXXXX`) or Matomo fields (URL + Site ID). New settings keys: `integrations.analytics_id`, `integrations.analytics_site_id`. Added to `SettingsPageService::settingsKeys()` and `GeneralSettingsService` mapping. |
+| 43 | Engineering review Phase 1-3 — security, backend, DB | done | Phase 1: all 7 security greps pass; ProviderWorkingHoursTrait already correct. Phase 2: removed inline `NotificationQueueDispatcher::dispatch()` from `AppointmentBookingService::queueNotifications()` — method now enqueue-only per `notifications` skill §3.1 (note: item 25 had deliberately restored this; it is now reverted to comply with the queue-first contract; deployments must run `php spark notifications:dispatch-queue` via cron for email delivery). Phase 3: added composite covering index `idx_appts_provider_start_end (provider_id, start_at, end_at)` on `xs_appointments` (migration `2026-05-22-100000`); fixed 4 models extending CI4's `Model` instead of `BaseModel` (`UserPermissionModel`, `BusinessHourModel`, `ProviderScheduleModel`, `BlockedTimeModel`); documented SaaS gap register (5 tables lack `business_id`). |
 | 40 | Google Calendar OAuth credentials — DB-stored, no .env required | done | `GoogleCalendarIntegrationService::buildClient()` now reads `client_id`/`client_secret` from `encrypted_config` in `xs_business_integrations` (env var fallback preserved for existing deployments). `isConfigured(int $businessId)` checks DB first. New `saveAppCredentials()` merges credentials into existing config without overwriting OAuth tokens. `handleCallback()` merges tokens into existing config to preserve credentials. UI: 3-state card (no credentials → credentials saved → connected), configure modal with read-only redirect URI + copy button. `OAuthCallback::googleAuthorize()` error message updated to point to UI, not .env. |
 
 ---

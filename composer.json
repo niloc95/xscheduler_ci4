@@ -34,6 +34,13 @@
         "sort-packages": true
     },
     "scripts": {
+        "post-install-cmd": ["Google\\Task\\Composer::cleanup"],
+        "post-update-cmd": ["Google\\Task\\Composer::cleanup"],
         "test": "phpunit"
+    },
+    "extra": {
+        "google/apiclient-services": [
+            "Calendar"
+        ]
     }
 }

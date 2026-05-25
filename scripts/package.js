@@ -210,6 +210,16 @@ essentialFiles.forEach(({ src, dest }) => {
                     const excludePatterns = ['Views/test'];
                     copyDirectoryWithFilter(source, destination, excludePatterns);
                     console.log(`✅ Copied ${src} → ${dest} (excluded Views/test)`);
+                } else if (src === 'vendor') {
+                    const excludePatterns = [
+                        // Dev-only packages — never needed on the production server.
+                        // Note: google/apiclient-services/src is NOT excluded here because
+                        // composer's Google\Task\Composer::cleanup hook (post-install-cmd) already
+                        // prunes it to Calendar-only. Excluding src/ would remove Calendar too.
+                        'phpunit', 'fakerphp', 'sebastian', 'phar-io', 'theseer', 'myclabs', 'nikic',
+                    ];
+                    copyDirectoryWithFilter(source, destination, excludePatterns);
+                    console.log(`✅ Copied ${src} → ${dest} (excluded dev-only packages)`);
                 } else {
                     fs.cpSync(source, destination, { recursive: true });
                     console.log(`✅ Copied ${src} → ${dest}`);
@@ -240,6 +250,37 @@ if (fs.existsSync(systemSource)) {
     }
 } else {
     console.warn(`⚠️  System directory not found: ${systemSource}`);
+}
+
+// Patch Composer autoload files in the deploy to remove synchronous requires for
+// excluded dev packages. Composer writes explicit require() entries (keyed by hash)
+// into autoload_files.php and autoload_static.php for packages that register files
+// in their composer.json. If those packages' directories are absent in the deploy,
+// PHP throws a fatal error on the very first request (500).
+//
+// We remove only the two known dev-package hashes — this is precise and leaves
+// all classmap/PSR-4 entries intact (classmap lookups are lazy; they don't cause
+// errors unless those classes are actually called, which they never are in production).
+//
+// myclabs/deep-copy registers deep_copy.php  → hash 6124b4c8570aa390c21fafd04a26c69f
+// phpunit/phpunit registers Assert/Functions.php → hash ec07570ca5a812141189b1fa81503674
+const devAutoloadHashes = [
+    '6124b4c8570aa390c21fafd04a26c69f',
+    'ec07570ca5a812141189b1fa81503674',
+];
+const autoloadFilesToPatch = [
+    path.join(packageDir, 'vendor/composer/autoload_files.php'),
+    path.join(packageDir, 'vendor/composer/autoload_static.php'),
+];
+for (const filePath of autoloadFilesToPatch) {
+    if (fs.existsSync(filePath)) {
+        const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+        const filtered = lines.filter(line => !devAutoloadHashes.some(hash => line.includes(hash)));
+        if (filtered.length < lines.length) {
+            fs.writeFileSync(filePath, filtered.join('\n'));
+            console.log(`✅ Removed ${lines.length - filtered.length} dev-only autoload entries from ${path.basename(filePath)}`);
+        }
+    }
 }
 
 // Ensure no real .env file is included (only .env.example should be present)

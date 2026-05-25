@@ -62,10 +62,10 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\BaseModel;
 use App\Models\ProviderStaffModel;
 
-class UserPermissionModel extends Model
+class UserPermissionModel extends BaseModel
 {
     protected $table            = 'xs_users';
     protected $primaryKey       = 'id';

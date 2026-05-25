@@ -393,21 +393,32 @@ class UserModel extends BaseModel
      */
     public function getUserGrowthData($months = 6)
     {
-        $data = [];
-        $labels = [];
-        for ($i = $months - 1; $i >= 0; $i--) {
-            $date = date('Y-m-01', strtotime("-{$i} months"));
-            $nextDate = date('Y-m-01', strtotime("-" . ($i - 1) . " months"));
-            $count = $this->where('created_at >=', $date)
-                          ->where('created_at <', $nextDate)
-                          ->countAllResults(false);
-            $labels[] = date('M', strtotime($date));
-            $data[] = $count;
+        // Single GROUP BY query replaces the previous loop of $months COUNT queries.
+        $cutoff = date('Y-m-01', strtotime("-{$months} months"));
+        $rows = $this->db->table($this->table)
+            ->select("DATE_FORMAT(created_at, '%Y-%m') AS month_key, DATE_FORMAT(created_at, '%b') AS month_label, COUNT(*) AS cnt")
+            ->where('created_at >=', $cutoff)
+            ->groupBy("DATE_FORMAT(created_at, '%Y-%m')")
+            ->orderBy("month_key", 'ASC')
+            ->get()
+            ->getResultArray();
+
+        // Index results by month_key so gaps (months with 0 users) can be filled in.
+        $byKey = [];
+        foreach ($rows as $row) {
+            $byKey[$row['month_key']] = (int) $row['cnt'];
         }
-        return [
-            'labels' => $labels,
-            'data' => $data
-        ];
+
+        $labels = [];
+        $data   = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $ts  = strtotime("-{$i} months");
+            $key = date('Y-m', $ts);
+            $labels[] = date('M', $ts);
+            $data[]   = $byKey[$key] ?? 0;
+        }
+
+        return ['labels' => $labels, 'data' => $data];
     }
 
     /**
