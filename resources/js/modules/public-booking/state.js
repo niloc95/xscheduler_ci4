@@ -84,6 +84,7 @@ export function createBookingDraft(ctx, defaultDate) {
     globalError: '',
     submitting: false,
     success: null,
+    tipsMobileOpen: false,
   };
 }
 
@@ -103,6 +104,7 @@ export function createManageDraft(ctx, defaultDate) {
     contact: { email: '', phone: '', phone_country_code: '' },
     cancelSubmitting: false,
     cancelError: '',
+    tipsMobileOpen: false,
     formState: {
       providerId: '',
       serviceId: '',
@@ -119,6 +121,7 @@ export function createManageDraft(ctx, defaultDate) {
       errors: {},
       globalError: '',
       submitting: false,
+      tipsMobileOpen: false,
     },
   };
 }

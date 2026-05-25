@@ -122,7 +122,7 @@ function bootstrapPublicBooking() {
 
     root.innerHTML = `
       <div class="px-4 py-10 sm:px-6 lg:px-0">
-        <div class="mx-auto w-full max-w-4xl space-y-6">
+        <div class="mx-auto w-full max-w-5xl space-y-6">
           ${hero}
           ${tabs}
           ${body}
@@ -232,6 +232,10 @@ function bootstrapPublicBooking() {
         handleSlotSelection(slotStart, target);
       });
     });
+
+    form.querySelector('[data-action="tips-mobile-toggle"]')?.addEventListener('click', () => {
+      updateDraft(target, prev => ({ ...prev, tipsMobileOpen: !prev.tipsMobileOpen }));
+    });
   }
 
   function bindLookupEvents() {
@@ -241,6 +245,9 @@ function bootstrapPublicBooking() {
     }
     form.addEventListener('input', handleLookupInput);
     form.addEventListener('submit', handleLookupSubmit);
+    form.querySelector('[data-action="tips-mobile-toggle"]')?.addEventListener('click', () => {
+      updateManage(prev => ({ ...prev, tipsMobileOpen: !prev.tipsMobileOpen }));
+    });
   }
 
   function refreshCsrf(response, data) {

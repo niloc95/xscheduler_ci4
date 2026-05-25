@@ -925,6 +925,11 @@ class AppointmentBookingService
 
             // Enqueue internal (provider + staff) email notifications.
             $this->enqueueInternalNotifications($appointmentId, $event);
+
+            // Dispatch immediately so confirmations arrive without waiting for the cron worker.
+            $dispatcher = new NotificationQueueDispatcher();
+            $stats = $dispatcher->dispatch(NotificationCatalog::BUSINESS_ID_DEFAULT);
+            log_message('info', '[AppointmentBookingService] Immediate dispatch stats: ' . json_encode($stats));
         } catch (Exception $e) {
             log_message('error', '[AppointmentBookingService] Notification queue failed: ' . $e->getMessage());
             // Don't fail the booking if notification queuing fails

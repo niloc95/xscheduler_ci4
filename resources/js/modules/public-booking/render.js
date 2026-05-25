@@ -294,33 +294,38 @@ export function renderLookupStage(manageState, ctx) {
 
   return `
     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <form id="booking-lookup-form" class="space-y-5" novalidate>
-        <div>
-          <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
-          <p class="mt-1 text-sm text-slate-600">${introCopy}</p>
+      <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start">
+        <form id="booking-lookup-form" class="space-y-5" novalidate>
+          <div>
+            <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
+            <p class="mt-1 text-sm text-slate-600">${introCopy}</p>
+          </div>
+          ${info}
+          ${secureReferenceInfo}
+          ${referenceField}
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="block text-sm font-medium text-slate-700">
+              Email address
+              <input type="email" name="email" value="${escapeHtml(manageState.lookupForm.email ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="you@example.com">
+              ${renderFieldError('email', manageState.lookupErrors)}
+            </label>
+            <label class="block text-sm font-medium text-slate-700">
+              Phone number
+              <input type="tel" name="phone" value="${escapeHtml(manageState.lookupForm.phone ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="(555) 555-1234">
+              ${renderFieldError('phone', manageState.lookupErrors)}
+            </label>
+          </div>
+          <div class="${UI_CLASSES.cardDashed}">
+            Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
+            ${contactError}
+          </div>
+          ${renderMobileTipsAccordion(manageState, ctx)}
+          <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
+        </form>
+        <div class="hidden lg:flex lg:flex-col lg:gap-4 sticky top-4">
+          ${renderSchedulingTips(ctx)}
         </div>
-        ${info}
-        ${secureReferenceInfo}
-        ${referenceField}
-        <div class="grid gap-4 md:grid-cols-2">
-          <label class="block text-sm font-medium text-slate-700">
-            Email address
-            <input type="email" name="email" value="${escapeHtml(manageState.lookupForm.email ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="you@example.com">
-            ${renderFieldError('email', manageState.lookupErrors)}
-          </label>
-          <label class="block text-sm font-medium text-slate-700">
-            Phone number
-            <input type="tel" name="phone" value="${escapeHtml(manageState.lookupForm.phone ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="(555) 555-1234">
-            ${renderFieldError('phone', manageState.lookupErrors)}
-          </label>
-        </div>
-        <div class="${UI_CLASSES.cardDashed}">
-          Provide the contact method used on the booking so we can verify ownership. Email or phone is sufficient.
-          ${contactError}
-        </div>
-        ${renderSchedulingTips(ctx)}
-        <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${manageState.lookupLoading ? 'disabled' : ''}>${manageState.lookupLoading ? 'Finding your booking...' : 'Find my booking'}</button>
-      </form>
+      </div>
     </section>
   `;
 }
@@ -414,13 +419,19 @@ export function renderForm(currentState, ctx, options = {}) {
     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <form id="${formId}" class="space-y-6" novalidate>
         ${generalError}
-        ${renderSelections(currentState, ctx)}
-        ${renderLocationCard(currentState)}
-        ${renderSlotSection(currentState, ctx)}
-        ${renderCustomerSection(currentState, ctx)}
-        ${renderCustomFields(currentState, ctx, existingCustomFields)}
-        ${renderNotesField(currentState, ctx)}
-        ${renderActions(currentState, options.actionOptions)}
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start">
+          <div class="space-y-6">
+            ${renderSelections(currentState, ctx)}
+            ${renderSlotSection(currentState, ctx)}
+            ${renderCustomerSection(currentState, ctx)}
+            ${renderCustomFields(currentState, ctx, existingCustomFields)}
+            ${renderNotesField(currentState, ctx)}
+            ${renderActions(currentState, options.actionOptions)}
+          </div>
+          <div class="hidden lg:flex lg:flex-col lg:gap-4 sticky top-4">
+            ${renderSidebar(currentState, ctx)}
+          </div>
+        </div>
       </form>
     </section>
   `;
@@ -515,7 +526,7 @@ export function renderSelections(currentState, ctx) {
     <section class="space-y-3">
       <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
       ${renderDatePickerField(currentState, ctx)}
-      ${renderSchedulingTips(ctx)}
+      ${renderMobileTipsAccordion(currentState, ctx)}
     </section>
   `;
 }
@@ -695,6 +706,76 @@ export function renderLocationCard(currentState) {
         ${addressHtml}
         ${contactHtml}
       </div>
+    </div>
+  `;
+}
+
+function renderSidebar(currentState, ctx) {
+  return `
+    ${renderLiveSummary(currentState, ctx)}
+    ${renderLocationCard(currentState)}
+    ${renderSchedulingTips(ctx)}
+  `;
+}
+
+function renderLiveSummary(currentState, ctx) {
+  const availableServices = currentState.providerId
+    ? (currentState.services ?? [])
+    : (ctx.services ?? []);
+  const service = availableServices.find(s => String(s.id) === String(currentState.serviceId));
+  const provider = (ctx.providers ?? []).find(p => String(p.slug ?? '') === String(currentState.providerId));
+
+  const serviceName = service?.name ?? '';
+  const providerName = provider?.name ?? provider?.displayName ?? '';
+  const date = currentState.appointmentDate ?? '';
+  const slot = currentState.selectedSlot ?? null;
+  const deliveryMode = currentState.deliveryMode ?? null;
+  const modeMeta = deliveryMode ? DELIVERY_MODE_META[deliveryMode] : null;
+
+  if (!serviceName && !providerName) {
+    return `<div class="${UI_CLASSES.cardDashed}"><span class="material-symbols-outlined text-base shrink-0">calendar_today</span><span>Select a service to get started</span></div>`;
+  }
+
+  const dateLabel = date ? formatDateSelectLabel(date) : '';
+  const slotLabel = slot ? formatSlotLabel(slot, ctx) : '';
+
+  const row = (icon, colorCls, labelText, valueText) => `
+    <div class="flex items-start gap-2">
+      <span class="material-symbols-outlined text-base shrink-0 mt-0.5 ${colorCls}">${icon}</span>
+      <div class="min-w-0">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${escapeHtml(labelText)}</p>
+        <p class="text-sm font-medium text-slate-900 truncate">${escapeHtml(valueText)}</p>
+      </div>
+    </div>
+  `;
+
+  const rows = [
+    serviceName && row('check_circle', 'text-emerald-500', 'Service', serviceName),
+    providerName && row('check_circle', 'text-emerald-500', 'Provider', providerName),
+    dateLabel && row('check_circle', slotLabel ? 'text-emerald-500' : 'text-slate-300', 'Date', dateLabel),
+    slotLabel && row('check_circle', 'text-emerald-500', 'Time', slotLabel),
+    modeMeta && row('check_circle', 'text-emerald-500', 'Session type', modeMeta.label),
+  ].filter(Boolean).join('');
+
+  return `
+    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 space-y-3">
+      <p class="text-sm font-semibold text-slate-700">Your booking</p>
+      ${rows}
+    </div>
+  `;
+}
+
+function renderMobileTipsAccordion(state, ctx) {
+  const isOpen = Boolean(state.tipsMobileOpen);
+  const chevron = isOpen ? 'expand_less' : 'expand_more';
+  return `
+    <div class="lg:hidden">
+      <button type="button" data-action="tips-mobile-toggle" class="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300">
+        <span class="material-symbols-outlined text-base shrink-0 text-slate-500">info</span>
+        <span>Scheduling tips</span>
+        <span class="material-symbols-outlined ml-auto text-base text-slate-400">${chevron}</span>
+      </button>
+      ${isOpen ? `<div class="mt-2">${renderSchedulingTips(ctx)}</div>` : ''}
     </div>
   `;
 }
