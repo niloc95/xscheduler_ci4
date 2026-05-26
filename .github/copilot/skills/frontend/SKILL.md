@@ -59,8 +59,10 @@ If a controller action redirects back to the current page, the JSON response **m
 **FOUC prevention — inline blocking script:** The script is **literally inlined** in `<head>` — NOT a `<script src>` or `type="module"`. All three layouts (`app.php`, `public.php`, `auth.php`) and the standalone `booking.php` carry the same one-liner. It runs synchronously during HTML parsing, before any CSS file loads:
 
 ```html
-<script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
+<script {csp-script-nonce}>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
 ```
+
+> **CSP nonce required:** Every inline `<script>` in CI4 layouts must carry `{csp-script-nonce}`. CI4 replaces this placeholder with `nonce="…"` when `app.CSPEnabled = true`. Omitting it causes a CSP violation and the script is silently blocked in production.
 
 What it does (in order):
 1. Reads `xs-theme` from `localStorage`; falls back to `prefers-color-scheme`
@@ -79,7 +81,7 @@ This prevents the 200ms animated fade that would otherwise occur when `dark:bg-g
 - **Layouts that load `app-layout-init.js`:** cleanup runs in the double `requestAnimationFrame` inside `onDomReady()`.
 - **Standalone pages (e.g. `booking.php`):** cleanup is a bare inline script at end of `<body>`:
   ```html
-  <script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
+  <script {csp-script-nonce}>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
   ```
 
 **Dark background values by page:**

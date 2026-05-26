@@ -206,25 +206,6 @@ if (!function_exists('avatar_profile_image_url')) {
     {
         $storedImage = $entity[$imageField] ?? null;
 
-        if (!$storedImage && $imageField === 'profile_image') {
-            $userId = (int) ($entity['id'] ?? 0);
-
-            if ($userId > 0) {
-                static $userImageCache = [];
-
-                if (!array_key_exists($userId, $userImageCache)) {
-                    try {
-                        $userRecord = (new UserModel())->find($userId);
-                        $userImageCache[$userId] = $userRecord['profile_image'] ?? null;
-                    } catch (\Throwable $e) {
-                        $userImageCache[$userId] = null;
-                    }
-                }
-
-                $storedImage = $userImageCache[$userId];
-            }
-        }
-
         if (!$storedImage || !is_string($storedImage)) {
             return null;
         }

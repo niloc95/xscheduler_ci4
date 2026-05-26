@@ -86,7 +86,11 @@ class NotificationReminderHeartbeatService
             log_message('error', '[NotificationReminderHeartbeatService] ' . $e->getMessage());
             return ['ran' => false, 'reason' => 'exception'];
         } finally {
-            $cache->delete(self::CACHE_LOCK_KEY);
+            try {
+                $cache->delete(self::CACHE_LOCK_KEY);
+            } catch (\Throwable $ignored) {
+                // Lock file may have already expired; no action needed.
+            }
         }
     }
 }

@@ -2,8 +2,8 @@
 /**
  * Provider schedule form component.
  *
- * Uses native <input type="time"> for consistent cross-browser time picking.
- * Values are always HH:MM (24h) — the browser renders per the user's locale.
+ * Uses <input type="text"> for time picking, formatted per localization.time_format.
+ * Values are displayed in the configured format (24h or 12h) and normalized to HH:MM (24h) server-side.
  *
  * Expected data:
  * - $scheduleDays: array of day keys (monday ... sunday)
@@ -15,6 +15,14 @@
 $localizationContext = $localizationContext ?? ['time_format' => '24h', 'timezone' => 'UTC'];
 $timezone = $localizationContext['timezone'] ?? 'UTC';
 $firstDay = $scheduleDays[0] ?? 'monday';
+
+$localizationService = new \App\Services\LocalizationSettingsService();
+$displayTime = static fn (?string $v): string => $localizationService->formatTimeForDisplay($v);
+$isTwelveHour = ($localizationContext['time_format'] ?? '24h') === '12h';
+$timeFormatExample = $isTwelveHour ? '09:00 AM' : '09:00';
+$timeInputPattern  = $isTwelveHour
+    ? '^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$'
+    : '^([01][0-9]|2[0-3]):[0-5][0-9]$';
 
 // Build location → days lookup for tick-box rendering.
 // Each entry: ['id' => int, 'name' => string, 'days' => [0,1,...6]]
@@ -111,43 +119,63 @@ $hasLocations = !empty($providerLocations);
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 schedule-time-grid">
                         <div>
                             <label for="<?= esc($dayId) ?>-start" class="form-label">Start</label>
-                            <input type="time" id="<?= esc($dayId) ?>-start"
+                            <input type="text" id="<?= esc($dayId) ?>-start"
                                    name="schedule[<?= esc($day) ?>][start_time]"
-                                   value="<?= esc($dayData['start_time']) ?>"
+                                   value="<?= esc($displayTime($dayData['start_time'])) ?>"
                                    data-field="start"
                                    data-time-input
+                                   data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>"
+                                   pattern="<?= esc($timeInputPattern) ?>"
+                                   placeholder="<?= esc($timeFormatExample) ?>"
+                                   inputmode="numeric"
+                                   autocomplete="off"
                                    class="form-input mt-1"
                                 <?= $isActive ? 'required' : '' ?>
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
                             <label for="<?= esc($dayId) ?>-end" class="form-label">End</label>
-                            <input type="time" id="<?= esc($dayId) ?>-end"
+                            <input type="text" id="<?= esc($dayId) ?>-end"
                                    name="schedule[<?= esc($day) ?>][end_time]"
-                                   value="<?= esc($dayData['end_time']) ?>"
+                                   value="<?= esc($displayTime($dayData['end_time'])) ?>"
                                    data-field="end"
                                    data-time-input
+                                   data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>"
+                                   pattern="<?= esc($timeInputPattern) ?>"
+                                   placeholder="<?= esc($timeFormatExample) ?>"
+                                   inputmode="numeric"
+                                   autocomplete="off"
                                    class="form-input mt-1"
                                 <?= $isActive ? 'required' : '' ?>
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
                             <label for="<?= esc($dayId) ?>-break-start" class="form-label">Break Start</label>
-                            <input type="time" id="<?= esc($dayId) ?>-break-start"
+                            <input type="text" id="<?= esc($dayId) ?>-break-start"
                                    name="schedule[<?= esc($day) ?>][break_start]"
-                                   value="<?= esc($dayData['break_start']) ?>"
+                                   value="<?= esc($displayTime($dayData['break_start'])) ?>"
                                    data-field="break_start"
                                    data-time-input
+                                   data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>"
+                                   pattern="<?= esc($timeInputPattern) ?>"
+                                   placeholder="<?= esc($timeFormatExample) ?>"
+                                   inputmode="numeric"
+                                   autocomplete="off"
                                    class="form-input mt-1"
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>
                         <div>
                             <label for="<?= esc($dayId) ?>-break-end" class="form-label">Break End</label>
-                            <input type="time" id="<?= esc($dayId) ?>-break-end"
+                            <input type="text" id="<?= esc($dayId) ?>-break-end"
                                    name="schedule[<?= esc($day) ?>][break_end]"
-                                   value="<?= esc($dayData['break_end']) ?>"
+                                   value="<?= esc($displayTime($dayData['break_end'])) ?>"
                                    data-field="break_end"
                                    data-time-input
+                                   data-time-format="<?= esc($isTwelveHour ? '12h' : '24h') ?>"
+                                   pattern="<?= esc($timeInputPattern) ?>"
+                                   placeholder="<?= esc($timeFormatExample) ?>"
+                                   inputmode="numeric"
+                                   autocomplete="off"
                                    class="form-input mt-1"
                                    <?= $isActive ? '' : 'disabled' ?>>
                         </div>

@@ -45,9 +45,19 @@ export function initProviderSchedule() {
 
   const parseToMinutes = (value) => {
     if (!value) return null;
-    const match = value.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-    if (!match) return null;
-    return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    const trimmed = value.trim();
+    const m24 = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+    if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+    const m12 = trimmed.match(/^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i);
+    if (m12) {
+      let hour = parseInt(m12[1], 10);
+      const min = parseInt(m12[2], 10);
+      const period = m12[3].toUpperCase();
+      if (period === 'PM' && hour !== 12) hour += 12;
+      if (period === 'AM' && hour === 12) hour = 0;
+      return hour * 60 + min;
+    }
+    return null;
   };
 
   const isValidTimeRange = (start, end) => {

@@ -201,7 +201,7 @@ class UserManagement extends BaseController
                     'errors' => $this->validator->getErrors()
                 ]);
             }
-            return redirect()->back()->withInput()->with('validation', $this->validator);
+            return redirect()->to(base_url('user-management/create'))->withInput()->with('validation', $this->validator);
         }
 
         $result = $this->userManagementMutationService->createUser((int) $currentUserId, $currentUser, [
@@ -229,7 +229,7 @@ class UserManagement extends BaseController
                 ]);
             }
 
-            $redirect = !empty($result['redirect']) ? redirect()->to($result['redirect']) : redirect()->back()->withInput();
+            $redirect = !empty($result['redirect']) ? redirect()->to($result['redirect']) : redirect()->to(base_url('user-management/create'))->withInput();
             if (!empty($result['scheduleErrors'])) {
                 $redirect = $redirect->with('schedule_errors', $result['scheduleErrors']);
             }
@@ -323,7 +323,7 @@ class UserManagement extends BaseController
         );
 
         if (!$this->validate($rules)) {
-            log_message('error', '[UserManagement::update] Validation failed for user_id={userId}: {errors}', [
+            log_message('warning', '[UserManagement::update] Validation failed for user_id={userId}: {errors}', [
                 'userId' => $userId,
                 'errors' => json_encode($this->validator->getErrors()),
             ]);

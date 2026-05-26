@@ -31,7 +31,7 @@
          Sets .dark class, colorScheme, and (for dark) a background-color on <html> so the
          viewport is never white before the external CSS file loads. xs-no-transition suppresses
          the transition-colors animation on <body> when CSS first applies. -->
-    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
+    <script {csp-script-nonce}>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#111827';document.documentElement.classList.add('xs-no-transition')}();</script>
     
     <!-- Stylesheets (resolved from Vite manifest) -->
     <?php
@@ -53,7 +53,7 @@
     
     <?= $this->renderSection('head') ?>
     <?= analytics_head_html() ?>
-    <script>
+    <script {csp-script-nonce}>
     document.addEventListener('spa:navigated',function(){
         if(typeof window.gtag==='function'&&window.__xsAnalyticsId){
             window.gtag('event','page_view',{page_location:location.href,page_path:location.pathname+location.search,page_title:document.title});
