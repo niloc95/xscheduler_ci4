@@ -7,7 +7,7 @@ function showToast(type, title, message) {
         window.XSNotify.toast({ type, title, message, autoClose: type !== 'error', duration: type !== 'error' ? 4000 : undefined });
         return;
     }
-    window.alert(message);
+    console.error(message);
 }
 
 function openModal(id) {
@@ -316,7 +316,13 @@ function wireActionButtons() {
             const label = channel.replace('_', ' ');
 
             if (intent === 'disconnect') {
-                if (!window.confirm(`Disconnect ${label}? This cannot be undone.`)) return;
+                const ok = await window.XSConfirm.show({
+                    title: 'Disconnect Integration',
+                    message: `Disconnect ${label}? This cannot be undone.`,
+                    confirmText: 'Disconnect',
+                    danger: true,
+                });
+                if (!ok) return;
             }
 
             setButtonLoading(btn, true);

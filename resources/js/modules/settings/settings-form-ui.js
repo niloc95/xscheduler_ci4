@@ -88,7 +88,7 @@ function showToast(type, title, message, autoClose = type !== 'error') {
         return;
     }
 
-    window.alert(message);
+    console.error(message);
 }
 
 function getApiMessage(payload, fallbackMessage) {
@@ -271,8 +271,14 @@ function wireTemplateTabs() {
     const resetBtn = document.getElementById('reset-templates-btn');
     if (resetBtn && resetBtn.dataset.resetWired !== 'true') {
         resetBtn.dataset.resetWired = 'true';
-        resetBtn.addEventListener('click', () => {
-            if (window.confirm('Are you sure you want to reset all templates to their default values? This cannot be undone.')) {
+        resetBtn.addEventListener('click', async () => {
+            const ok = await window.XSConfirm.show({
+                title: 'Reset Templates',
+                message: 'Are you sure you want to reset all templates to their default values? This cannot be undone.',
+                confirmText: 'Reset',
+                danger: true,
+            });
+            if (ok) {
                 window.location.reload();
             }
         });

@@ -624,7 +624,12 @@ export class AppointmentDetailsModal {
     async handleCancel(appointment) {
         const startDateTime = appointment.startDateTime || DateTime.fromISO(appointment.start);
         const timeFormat = this.scheduler.settingsManager?.getTimeFormat() === '24h' ? 'HH:mm' : 'h:mm a';
-        const confirmed = confirm(`Are you sure you want to cancel this appointment?\n\nCustomer: ${appointment.customerName || 'Unknown'}\nDate: ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}`);
+        const confirmed = await window.XSConfirm.show({
+            title: 'Cancel Appointment',
+            message: `Cancel the appointment for ${appointment.customerName || 'Unknown'} on ${startDateTime.toFormat('MMMM d, yyyy')} at ${startDateTime.toFormat(timeFormat)}? This cannot be undone.`,
+            confirmText: 'Cancel Appointment',
+            danger: true,
+        });
         
         if (!confirmed) return;
 

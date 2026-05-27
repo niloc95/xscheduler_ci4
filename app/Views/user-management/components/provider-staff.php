@@ -340,9 +340,8 @@ $removeUrl = base_url('provider-staff/remove');
         const button = event.target.closest('[data-remove-btn]');
         if (!button) return;
 
-        if (typeof window.confirm === 'function' && !window.confirm('Remove this assignment?')) {
-            return;
-        }
+        const confirmRemove = await window.XSConfirm?.show({ title: 'Remove Assignment', message: 'Remove this assignment?', confirmText: 'Remove', danger: true });
+        if (!confirmRemove) return;
 
         const staffId = Number(button.dataset.staffId || '0');
         if (!staffId) return;

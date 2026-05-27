@@ -36,7 +36,7 @@ const notify = (type, title, message, autoClose = type !== 'error') => {
     }
 
     if (type === 'error') {
-        window.alert(message);
+        console.error(message);
     }
 };
 
@@ -257,7 +257,13 @@ function initBlockedPeriodsUI(root) {
         }
 
         const index = Number.parseInt(deleteButton.getAttribute('data-delete'), 10);
-        if (!window.confirm('Are you sure you want to delete this blocked period?')) {
+        const okDelete = await window.XSConfirm.show({
+            title: 'Delete Block Period',
+            message: 'Are you sure you want to delete this blocked period?',
+            confirmText: 'Delete',
+            danger: true,
+        });
+        if (!okDelete) {
             return;
         }
 
@@ -544,7 +550,17 @@ function initDatabaseSettingsTab(root) {
         }
 
         const filename = deleteButton.dataset.filename;
-        if (!filename || !window.confirm(`Delete backup "${filename}"?`)) {
+        if (!filename) {
+            return;
+        }
+
+        const okBackup = await window.XSConfirm.show({
+            title: 'Delete Backup',
+            message: `Delete backup "${filename}"?`,
+            confirmText: 'Delete',
+            danger: true,
+        });
+        if (!okBackup) {
             return;
         }
 
@@ -557,7 +573,7 @@ function initDatabaseSettingsTab(root) {
             await loadBackupStatus();
         } catch (error) {
             console.error('Delete failed:', error);
-            window.alert(error.message || 'Failed to delete backup');
+            window.XSNotify?.toast?.({ type: 'error', title: 'Backup Error', message: error.message || 'Failed to delete backup' });
         }
     });
 

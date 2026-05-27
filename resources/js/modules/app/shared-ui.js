@@ -91,7 +91,7 @@ export function initConfirmActions(root = document) {
 
   scope.dataset.xsConfirmActionsBound = 'true';
 
-  scope.addEventListener('submit', (event) => {
+  scope.addEventListener('submit', async (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -102,8 +102,11 @@ export function initConfirmActions(root = document) {
       return;
     }
 
-    if (!window.confirm(message)) {
-      event.preventDefault();
+    event.preventDefault();
+    const confirmed = await window.XSConfirm.show({ message, danger: true });
+    if (confirmed) {
+      delete form.dataset.confirmMessage;
+      form.requestSubmit();
     }
   }, true);
 }

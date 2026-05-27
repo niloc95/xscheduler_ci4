@@ -303,7 +303,12 @@ function bootstrapPublicBooking() {
       return;
     }
 
-    const confirmed = window.confirm('Cancel this appointment? This action cannot be undone.');
+    const confirmed = await window.XSConfirm.show({
+      title: 'Cancel Appointment',
+      message: 'Cancel this appointment? This action cannot be undone.',
+      confirmText: 'Cancel Appointment',
+      danger: true,
+    });
     if (!confirmed) {
       return;
     }

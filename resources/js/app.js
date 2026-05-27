@@ -57,6 +57,8 @@ import '../css/scheduler.css';
 // Import currency formatter (was orphaned — now included in bundle)
 import './currency.js';
 
+import { XSConfirm } from './utils/confirm.js';
+
 // Define global escapeHtml utility — single source of truth
 window.xsEscapeHtml = function(str) {
     if (!str) return '';
@@ -81,6 +83,7 @@ window.initMoMComparisonChart = initMoMComparisonChart;
 window.initProviderPicker = initProviderPicker;
 window.xsGetAvatarInitials = window.xsGetAvatarInitials || getAvatarInitials;
 window.xsGetDisplayName = window.xsGetDisplayName || getDisplayName;
+window.XSConfirm = XSConfirm;
 
 export { 
     initRevenueTrendChart, 

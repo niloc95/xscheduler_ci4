@@ -1,7 +1,7 @@
 function createNotifier() {
   return {
     warning(title, message) {
-      window.XSNotify?.toast?.({ type: 'warning', title, message }) ?? window.alert?.(message);
+      window.XSNotify?.toast?.({ type: 'warning', title, message }) ?? console.warn(message);
     },
     success(title, message) {
       window.XSNotify?.toast?.({ type: 'success', title, message }) ?? console.log(message);
@@ -200,7 +200,7 @@ export function initProviderSchedule() {
     });
   };
 
-  const handleCopyClick = () => {
+  const handleCopyClick = async () => {
     const sourceRow = getSourceRow();
     if (!sourceRow) return;
 
@@ -252,7 +252,11 @@ export function initProviderSchedule() {
 
     if (inactive.length) {
       const sourceLabel = sourceRow.dataset.dayLabel || 'Source day';
-      const shouldActivate = window.confirm(`Some days are inactive. Activate them and apply ${sourceLabel}'s schedule?`);
+      const shouldActivate = await window.XSConfirm.show({
+        title: 'Inactive Days',
+        message: `Some days are inactive. Activate them and apply ${sourceLabel}'s schedule?`,
+        confirmText: 'Activate & Apply',
+      });
       if (shouldActivate) {
         inactive.forEach(({ row, checkbox }) => applyValues(row, checkbox, values, true));
       }

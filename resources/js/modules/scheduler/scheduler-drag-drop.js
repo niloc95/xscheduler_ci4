@@ -268,12 +268,11 @@ export class DragDropManager {
         const oldTime = `${appointment.startDateTime.toFormat('EEE, MMM d')} at ${appointment.startDateTime.toFormat('h:mm a')}`;
         const newTime = `${newStart.toFormat('EEE, MMM d')} at ${newStart.toFormat('h:mm a')}`;
 
-        return confirm(
-            `Reschedule appointment for ${customerName}?\n\n` +
-            `From: ${oldTime}\n` +
-            `To: ${newTime}\n\n` +
-            `This will update the appointment and notify the customer.`
-        );
+        return window.XSConfirm.show({
+            title: 'Reschedule Appointment',
+            message: `Reschedule for ${customerName}? From: ${oldTime} → To: ${newTime}. This will update the appointment and notify the customer.`,
+            confirmText: 'Reschedule',
+        });
     }
 
     async rescheduleAppointment(appointmentId, newStart, newEnd) {

@@ -235,7 +235,7 @@ class UnifiedSidebar {
         }
 
         if (type === 'error') {
-            window.alert(message);
+            console.error(message);
             return;
         }
 
@@ -333,7 +333,7 @@ class UnifiedSidebar {
             if (!response.ok) {
                 const error = payload || {};
                 console.error('Role switch failed:', error);
-                alert('Failed to switch role. Please try again.');
+                window.XSNotify?.toast?.({ type: 'error', title: 'Role Switch Failed', message: 'Failed to switch role. Please try again.' });
                 return;
             }
 
@@ -351,7 +351,7 @@ class UnifiedSidebar {
             }, 500);
         } catch (error) {
             console.error('Error switching role:', error);
-            alert('An error occurred while switching roles. Please try again.');
+            window.XSNotify?.toast?.({ type: 'error', title: 'Role Switch Failed', message: 'An error occurred while switching roles. Please try again.' });
         }
     }
 

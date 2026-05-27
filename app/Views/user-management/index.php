@@ -113,14 +113,14 @@
                                 </a>
                                 <?php if (($user['id'] ?? null) !== session()->get('user_id')): ?>
                                     <?php if ($user['is_active'] ?? true): ?>
-                                        <form method="post" action="<?= base_url('user-management/deactivate/' . ($user['id'] ?? 0)) ?>" onsubmit="return confirm('Deactivate this user?');" class="inline">
+                                        <form method="post" action="<?= base_url('user-management/deactivate/' . ($user['id'] ?? 0)) ?>" data-confirm-message="Deactivate this user?" class="inline">
                                             <?= csrf_field() ?>
                                             <button type="submit" class="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" title="Deactivate User">
                                                 <span class="material-symbols-outlined">person_cancel</span>
                                             </button>
                                         </form>
                                     <?php else: ?>
-                                        <form method="post" action="<?= base_url('user-management/activate/' . ($user['id'] ?? 0)) ?>" onsubmit="return confirm('Activate this user?');" class="inline">
+                                        <form method="post" action="<?= base_url('user-management/activate/' . ($user['id'] ?? 0)) ?>" data-confirm-message="Activate this user?" class="inline">
                                             <?= csrf_field() ?>
                                             <button type="submit" class="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300" title="Activate User">
                                                 <span class="material-symbols-outlined">person_add</span>

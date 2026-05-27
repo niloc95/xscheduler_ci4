@@ -337,13 +337,12 @@ $removeUrl = base_url('staff-providers/remove');
             updateAssignButtonState();
         }
 
-        container.addEventListener('click', function(event) {
+        container.addEventListener('click', async function(event) {
             const button = event.target.closest('[data-remove-btn]');
             if (!button) return;
 
-            if (typeof window.confirm === 'function' && !window.confirm('Remove this assignment?')) {
-                return;
-            }
+            const confirmRemove = await window.XSConfirm?.show({ title: 'Remove Assignment', message: 'Remove this assignment?', confirmText: 'Remove', danger: true });
+            if (!confirmRemove) return;
 
             const providerId = Number(button.dataset.providerId || '0');
             if (!providerId) return;

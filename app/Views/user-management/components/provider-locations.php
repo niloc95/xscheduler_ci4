@@ -180,7 +180,7 @@ window.LocationManager = {
     /** POST a new location then inject its card into the DOM (no reload). */
     async addLocation() {
         if (!this.providerId) {
-            alert('Please save this user first before adding locations.');
+            window.XSNotify?.toast?.({ type: 'warning', title: 'Save Required', message: 'Please save this user first before adding locations.' });
             return;
         }
 
@@ -188,7 +188,7 @@ window.LocationManager = {
         const maxLocations = parseInt(document.getElementById('providerLocationsSection')?.dataset.maxLocations || '2', 10);
         const currentCount = document.querySelectorAll('#locationsContainer [data-location-id]').length;
         if (currentCount >= maxLocations) {
-            alert(`Maximum of ${maxLocations} locations per provider allowed.`);
+            window.XSNotify?.toast?.({ type: 'warning', title: 'Limit Reached', message: `Maximum of ${maxLocations} locations per provider allowed.` });
             return;
         }
 
@@ -238,11 +238,11 @@ window.LocationManager = {
                 // Sync tick boxes in Schedule day-blocks
                 this._syncScheduleTickBoxes('add', location);
             } else {
-                alert('Failed to add location: ' + this._getErrorMessage(result));
+                window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to add location: ' + this._getErrorMessage(result) });
             }
         } catch (err) {
             console.error('LocationManager.addLocation:', err);
-            alert('Failed to add location. Please try again.');
+            window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to add location. Please try again.' });
         }
     },
 
@@ -301,17 +301,18 @@ window.LocationManager = {
             if (this._isSuccessfulResponse(response, result)) {
                 this._refresh();
             } else {
-                alert('Failed to set primary: ' + this._getErrorMessage(result));
+                window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to set primary: ' + this._getErrorMessage(result) });
             }
         } catch (err) {
             console.error('LocationManager.setPrimary:', err);
-            alert('Failed to set primary. Please try again.');
+            window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to set primary. Please try again.' });
         }
     },
 
     /** Soft-delete a location (sets is_active = 0) and remove its card from the DOM. */
     async deleteLocation(locationId) {
-        if (!confirm('Are you sure you want to remove this location?')) return;
+        const ok = await window.XSConfirm?.show({ title: 'Remove Location', message: 'Are you sure you want to remove this location?', confirmText: 'Remove', danger: true });
+        if (!ok) return;
 
         try {
             const response = await fetch(`<?= base_url('api/locations') ?>/${locationId}`, {
@@ -336,11 +337,11 @@ window.LocationManager = {
 
                 this._enforceMaxLimit();
             } else {
-                alert('Failed to delete location: ' + this._getErrorMessage(result));
+                window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to delete location: ' + this._getErrorMessage(result) });
             }
         } catch (err) {
             console.error('LocationManager.deleteLocation:', err);
-            alert('Failed to delete location. Please try again.');
+            window.XSNotify?.toast?.({ type: 'error', title: 'Location Error', message: 'Failed to delete location. Please try again.' });
         }
     },
 
