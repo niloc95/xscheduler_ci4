@@ -156,7 +156,11 @@ class Updater extends BaseApiController
         $body   = $this->request->getJSON(true) ?? [];
         $enable = (bool) ($body['enable'] ?? false);
 
-        $this->updaterService->setMaintenance($enable);
+        try {
+            $this->updaterService->setMaintenance($enable);
+        } catch (\Throwable $e) {
+            return $this->error(500, $e->getMessage(), 'maintenance_write_error');
+        }
 
         return $this->ok([
             'success'     => true,

@@ -108,7 +108,12 @@ class UpdaterService
             'version' => $version,
             'phase'   => $phase,
         ];
-        file_put_contents($flagPath, json_encode($data, JSON_PRETTY_PRINT));
+        $written = file_put_contents($flagPath, json_encode($data, JSON_PRETTY_PRINT));
+        if ($written === false) {
+            throw new \RuntimeException(
+                'Cannot write maintenance flag to ' . $flagPath . '. Check that ' . WRITEPATH . ' is writable.'
+            );
+        }
     }
 
     public function isMaintenanceActive(): bool

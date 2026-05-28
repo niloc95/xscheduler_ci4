@@ -32,7 +32,12 @@ async function jsonAction(url, body, confirmOpts) {
     try {
         const { response, payload } = await apiRequest(url, { method: 'POST', body });
         if (!response.ok || !payload?.data?.success) {
-            const msg = payload?.data?.error || payload?.data?.errors?.join(', ') || 'Action failed.';
+            // BaseApiController::error() returns {error:{message,code}} at top level;
+            // BaseApiController::ok() returns {data:{...}} — handle both shapes.
+            const msg = payload?.data?.error
+                || payload?.error?.message
+                || payload?.data?.errors?.join(', ')
+                || `Action failed (HTTP ${response.status}).`;
             toast('error', msg);
             return;
         }
