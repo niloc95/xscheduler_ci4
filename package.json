@@ -1,6 +1,7 @@
 {
   "name": "webschedulr_ci4",
-  "version": "1.0.4",
+  "version": "2.0.0",
+  "minVersion": "1.0.0",
   "type": "module",
   "description": "Modern appointment scheduling system built with CodeIgniter 4",
   "main": "index.js",
