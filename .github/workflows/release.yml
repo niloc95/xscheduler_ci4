@@ -107,7 +107,11 @@ jobs:
       - name: Rename deployment package
         run: |
           mv webschedulr-deploy.zip webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
-          
+
+      - name: Generate checksum sidecar
+        run: |
+          sha256sum webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip > webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip.sha256
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -116,6 +120,7 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: |
             webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
+            webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip.sha256
             docs/deployment/MYSQL-TEST-CONNECTION-FIX.md
             docs/deployment/PRODUCTION-URL-AUTO-DETECTION.md
           draft: false

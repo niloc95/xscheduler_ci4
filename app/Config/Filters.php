@@ -107,6 +107,7 @@ class Filters extends BaseFilters
         'timezone'      => \App\Filters\TimezoneDetection::class,
         'public_rate_limit' => \App\Filters\PublicBookingRateLimiter::class,
         'request_context' => \App\Filters\LogRequestContext::class,
+        'maintenance'   => \App\Filters\MaintenanceFilter::class,
     ];
 
     /**
@@ -140,6 +141,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'maintenance',
             'request_context',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',

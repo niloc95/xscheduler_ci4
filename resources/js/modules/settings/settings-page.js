@@ -1,4 +1,5 @@
 import { initSettingsFormEnhancements } from './settings-form-ui.js';
+import { initSystemUpdateTab } from './system-update.js';
 import { apiRequest } from '../../core/api.js';
 
 const escapeHtml = (value) => {
@@ -608,4 +609,5 @@ export function initSettingsPageEnhancements() {
     initSettingsFormEnhancements(root);
     initBlockedPeriodsUI(root);
     initDatabaseSettingsTab(root);
+    initSystemUpdateTab(root);
 }
