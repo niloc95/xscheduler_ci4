@@ -102,7 +102,7 @@ class UpdaterBackupService
             foreach ($allRows as $idx => $dataRow) {
                 $vals = array_map(function ($val) use ($db) {
                     if ($val === null) return 'NULL';
-                    return "'" . $db->escapeStr((string) $val) . "'";
+                    return "'" . $db->escapeString((string) $val) . "'";
                 }, $dataRow);
                 $line = '(' . implode(', ', $vals) . ')';
                 $line .= ($idx < $total - 1) ? ',' : ';';
