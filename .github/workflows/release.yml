@@ -95,7 +95,7 @@ jobs:
           echo "" >> changelog.md
           echo "## Support" >> changelog.md
           echo "- 📧 Email: nilo.cara@frontend.co.za" >> changelog.md
-          echo "- 📖 Documentation: [GitHub Repository](https://github.com/niloc95/webschedulr_ci4)" >> changelog.md
+          echo "- 📖 Documentation: [GitHub Repository](https://github.com/niloc95/xscheduler_ci4)" >> changelog.md
           
           # Set output for release body
           {
@@ -107,6 +107,15 @@ jobs:
       - name: Rename deployment package
         run: |
           mv webschedulr-deploy.zip webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip
+
+      - name: Verify version.json in release ZIP
+        run: |
+          ZIP="webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip"
+          if ! unzip -l "$ZIP" | awk '{print $4}' | grep -qx 'version\.json'; then
+            echo "❌ version.json not found at root of $ZIP — aborting release"
+            exit 1
+          fi
+          echo "✅ version.json confirmed in $ZIP"
 
       - name: Generate checksum sidecar
         run: |

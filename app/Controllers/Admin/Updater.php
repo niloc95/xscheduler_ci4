@@ -34,8 +34,22 @@ class Updater extends BaseApiController
     {
         $file = $this->request->getFile('update_zip');
 
-        if (!$file || !$file->isValid() || $file->hasMoved()) {
-            session()->setFlashdata('updater_error', 'No valid ZIP file uploaded.');
+        if (!$file || $file->hasMoved()) {
+            session()->setFlashdata('updater_error', 'No file was received by the server.');
+            return redirect()->to('/settings#system-update');
+        }
+
+        if (!$file->isValid()) {
+            $phpError = $file->getError();
+            if ($phpError === UPLOAD_ERR_INI_SIZE || $phpError === UPLOAD_ERR_FORM_SIZE) {
+                $limit = ini_get('upload_max_filesize');
+                session()->setFlashdata('updater_error',
+                    "Upload failed — the file exceeds PHP's upload_max_filesize limit ({$limit}). " .
+                    'Increase upload_max_filesize and post_max_size in php.ini, or use the cPanel file manager.'
+                );
+            } else {
+                session()->setFlashdata('updater_error', 'Upload failed — the file was not received correctly (PHP error ' . $phpError . ').');
+            }
             return redirect()->to('/settings#system-update');
         }
 

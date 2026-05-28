@@ -102,7 +102,7 @@ $updateSuccess    = session()->getFlashdata('updater_success');
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Installed Version</p>
                     <p class="text-sm font-mono font-semibold text-gray-900 dark:text-gray-100">v<?= esc($installedVersion) ?></p>
                 </div>
-                <a href="https://github.com/niloc95/webschedulr_ci4/releases" target="_blank" rel="noopener noreferrer"
+                <a href="https://github.com/niloc95/xscheduler_ci4/releases/tags" target="_blank" rel="noopener noreferrer"
                    class="btn btn-sm btn-ghost">
                     <span class="material-symbols-outlined text-base">open_in_new</span>
                     GitHub Releases
@@ -170,7 +170,7 @@ $updateSuccess    = session()->getFlashdata('updater_success');
                                       border border-gray-300 dark:border-gray-600 rounded-lg p-2
                                       bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Packages larger than 50 MB may time out on shared hosting. Upload via cPanel file manager and execute manually if needed.
+                            Your server's <code>upload_max_filesize</code> must be at least as large as the ZIP. Packages larger than 50 MB may time out on shared hosting — use the cPanel file manager and execute manually if needed.
                         </p>
                     </div>
                     <button type="submit" class="btn btn-secondary shrink-0">
