@@ -155,7 +155,8 @@ jobs:
 
       - name: Enforce UTC timezone in MySQL
         run: |
-          mysql -h127.0.0.1 -utest_user -ptest_password -Dwebschedulr_test -e "SET GLOBAL time_zone = '+00:00'; SET time_zone = '+00:00';"
+          mysql -h127.0.0.1 -uroot -ptest_password -e "SET GLOBAL time_zone = '+00:00';"
+          mysql -h127.0.0.1 -utest_user -ptest_password -Dwebschedulr_test -e "SET time_zone = '+00:00';"
 
       - name: Fresh migrate test schema
         run: |
@@ -241,7 +242,11 @@ jobs:
       - name: Start CodeIgniter development server
         run: |
           php spark serve --port=8080 &
-          sleep 5
+          echo "Waiting for server to become ready..."
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8080/ > /dev/null 2>&1 && echo "Server ready after ${i}s" && break
+            sleep 1
+          done
           
       - name: Test setup page accessibility
         run: |
