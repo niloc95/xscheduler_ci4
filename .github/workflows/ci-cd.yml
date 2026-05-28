@@ -131,8 +131,10 @@ jobs:
           coverage: xdebug
           
       - name: Install PHP dependencies (with dev)
-        run: composer install --no-interaction
-        
+        run: |
+          composer install --no-interaction
+          composer dump-autoload --classmap-authoritative
+
       - name: Create test database config
         run: |
           cp .env.example .env
@@ -225,8 +227,10 @@ jobs:
           tools: composer:v2
           
       - name: Install PHP dependencies
-        run: composer install --no-interaction
-        
+        run: |
+          composer install --no-interaction
+          composer dump-autoload --classmap-authoritative
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
