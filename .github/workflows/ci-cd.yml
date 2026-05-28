@@ -65,7 +65,7 @@ jobs:
             --include="*.php" \
             --exclude-dir=Database \
             | grep -v "provider_id" \
-            | grep -vP "^\s*[*\/]" \
+            | grep -vE "^[[:space:]]*[*/]" \
             || true)
           if [ -n "$HITS" ]; then
             echo "❌ Unscoped xs_business_hours query detected — add a provider_id filter:"
