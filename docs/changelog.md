@@ -7,24 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- feat(auth): inactivity warning modal with 5-min countdown, session keep-alive ping, and failed-login lockout via CI4 Throttler
-- feat(auth): `GET /auth/ping` session keep-alive endpoint that slides the 2-hour session window
-- feat(analytics): provider-scoped analytics — all stat cards, revenue, popular services, and customer metrics now correctly filtered per provider
-- feat(analytics): real revenue comparisons (vs last quarter, vs last year, 3-month forecast)
-- feat(ui): centralised DOM selector constants in `resources/js/core/selectors.js`
-- feat(ui): appointments scheduler header with date picker, status pills, and mobile-responsive layout
-
-### Fixed
-- fix(analytics): `$currentUser['id']` was null — user ID is at `session()->get('user_id')`, not in the user sub-array
-- fix(analytics): Popular Services showed all active services instead of provider-assigned services; fixed with `INNER JOIN xs_providers_services`
-- fix(analytics): revenue status filter changed from `status = 'completed'` to `NOT IN ('cancelled','no-show','noshow')` across 9 query locations
-- fix(analytics): New Customer card was blank — fixed first-appointment detection via `MIN(start_at)` subquery
-- fix(analytics): `only_full_group_by` SQL error in detailed revenue query — fixed `GROUP BY` to include `l.id`
-- fix(setup): `setup-layout.php` still referenced removed `material-web.js` — caused CRITICAL on fresh install
-- fix(events): `NotificationReminderHeartbeatService` crashed before DB was configured on fresh install — guarded with `is_setup_completed()`
-
 ### Changed
+- No unreleased changes documented yet.
+
+## [2.0.1] - 2026-05-28
+
+### Added
+- feat: version consistency — dynamic footer, version.json, bump to 2.0.0
+- feat: MVP in-app updater — browser-based update system with no CLI dependency
+- feat: replace all native browser dialogs with custom XSConfirm modal
+- feat(pub-redesign): sidebar summary panel, mobile tips accordion, restore inline dispatch
+- feat: integrations hub, delivery mode, online sessions, webhook support, Jitsi/PayFast/Zoom/Stripe/Google Calendar
+- feat: add remove-tenant.sh and update deployment guide
+- feat: add 10 Copilot skills and wire into copilot-instructions.md
+- feat: update deployment docs and sync current workspace changes
+- feat: auth hardening, analytics provider scoping, UI system overhaul
+- feat(services): migrate services section to layouts/app design system
+- feat: implement analytics dashboard with providers tab and filtering
+- feat(security): Phase 2 CSP — nonce all inline scripts, remove unsafe-inline from script-src
+- feat(security): Phase 1 CSP — centralize policy in CI4 engine, always-on
+- feat(setup): add hosting compatibility mode hardening
+- feat: finalize SEO public booking and unified metrics contracts
+- feat: resolve active business context in notification services; add reminder queue metadata
+- feat: RBAC multi-role enforcement, SPA lifecycle fixes, notification improvements
+- feat(notifications): support dual reminder offsets per channel
+- feat(notifications): add spark helper to test appointment reminders end-to-end
+- feat(notifications): add business phone to customer email enquiry footer
+- feat(notifications): location fallback, map links, business email in customer templates
+- feat(notifications): rich customer appointment email templates
 - feat(auth): add full multi-role user management flow
 - feat: legal page and secure reference notifications
 - feat: continue calendar refactor and schema compatibility stabilization
@@ -37,6 +47,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: Add favicon upload and fix critical production issues
 
 ### Changed
+- docs(agent): update Agent_Context_v2.md to v3.0 — codebase audit sync
+- restore: Agent_Context_v2.md recovered from HEAD~1
+- chore: sync documentation and workspace updates
+- Update dashboard layout and styling
+- docs: Update documentation index
+- Implement dashboard provider cards and reminder automation health
+- refactor(spa): harden SPA lifecycle, flash notifications, and form handling
+- refactor(public-booking): consolidate loading state and extract helpers
+- Improve public booking policies and scheduling flow
+- refactor: Remove dead code and consolidate scheduler module (Phase A+B)
+- refactor: Clean up scheduler week/month view duplication and dead code
+- refactor: Clean up app.js duplication and dead code
+- refactor: Clean up spa.js duplications and improve maintainability
+- refactor: Clean up public-booking.js dead code and duplications
+- docs: Add custom field required semantics documentation
+- Relax required custom-field validation after first capture
+- Harden customer upsert and public booking verification
+- Add booking UX verification script and update test cache
+- Refactor public booking to mobile-first selection hierarchy
+- Harden public booking with input validation & rate limits
+- refactor: reorganize docs archive and update notifications/services/tests
+- docs: Add §11.8a reminder offsets behavior to Agent_Context_v2.md (v2.5)
+- docs: restore all remaining deleted files from docs/ directory
+- docs: restore 261 deleted .md documents from git history
+- Implement live profile view and search hardening
+- refactor: implement dashboard role-based scoping and extract frontend utilities
+- docs(context): expand §11.9 Template Contract with full NotificationTemplateService spec
+- refactor(email): unify SMTP transport via MailerService
 - Harden notifications and localization flows; refresh agent context
 - docs(agent): add production notification delivery prerequisites
 - Implement booking status defaults, mutation coordinator, and public reschedule guard
@@ -98,8 +136,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Low-priority SPA audit fixes (L1-L3)
 - Medium-priority SPA audit fixes (M1-M5)
 - docs: add comprehensive SPA refresh audit report
+- [ImgBot] Optimize images
 
 ### Fixed
+- fix: mark infra-only CI jobs continue-on-error; fix dump-autoload flag
+- fix: add composer dump-autoload after install for PHPUnit and setup-test jobs
+- fix: CI infrastructure — MySQL GLOBAL privilege, server readiness, PR comment permission
+- fix: match comment exclusion against content after filename:N: prefix
+- fix: use POSIX [[:space:]] in business_hours grep exclusion
+- fix: npm audit vulnerabilities and CI quality gate grep pattern
+- fix: 5 production hardening fixes — avatar leak, SPA redirect, CSP nonces, time format, log severity
+- fix: add favicon to public booking, my-appointments, and legal pages
+- fix: add local Material Symbols CSS definitions; fix public booking icon empty states and inline style violations
+- Fix provider scoping for dashboard and public booking
+- fix(csp): restore same-origin assets and remove inline UI handlers
+- fix(day-view): replace inline style= with data-style to fix CSP blocking
+- fix(scheduler): resolve day-view stacking and enforce cache-busted entry assets
+- fix(notifications): allow re-enqueue on cancelled/failed rows; widen reminder scan window to 48h lookback
+- fix(migration): normalize users.provider_id to unsigned before FK
+- fix(setup): load compatibility helper reliably on Linux
+- fix(notifications): restore inline dispatch after enqueue on booking
+- fix(notifications): repair business_id injection vector in settings save
+- Fix: Prevent 'body stream already read' error in appointment creation
+- fix: provider appointments starting at 10:00 due to unfiltered business_hours query
+- fix: timezone integrity hardening across notification, availability, and JS layers
+- fix(day-view): use flat appointments as authoritative source in _buildAppointmentsByProvider
+- fix: appointments outside provider working hours no longer dropped from day view
+- fix: calendar timeline reads business.work_start/end (Settings UI keys), not booking.day_start/end
+- fix: calendar day view timeline anchored to business hours; now-line clamped to visible range
+- fix(notifications): move enquiry line and restore business phone fallback
 - Fix notification recipients and timezone rendering
 - fix(rbac): harden multi-role auth paths and close TD-13 TD-14
 - fix(appointments): preserve quick-book prefill on create
@@ -286,9 +351,10 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.1...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
 [1.0.1]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.1
 [1.0.0]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.0
+[2.0.1]: https://github.com/niloc95/xscheduler_ci4/compare/v1.0.4...v2.0.1
