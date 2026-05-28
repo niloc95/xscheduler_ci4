@@ -8,6 +8,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
+// Semantic version from package.json (canonical source for version.json)
+const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+
 // Version management
 const versionFilePath = path.join(projectRoot, '.deploy-version');
 let deployVersion = 1;
@@ -708,6 +711,21 @@ console.log('✅ Created quick deployment guide for ZIP users');
 
 console.log('✅ Created comprehensive deployment documentation');
 
+// Generate version.json for the in-app updater
+const versionJson = JSON.stringify({
+    version: pkg.version,
+    build: new Date().toISOString().replace(/\D/g, '').slice(0, 14),
+    min_version: pkg.minVersion || '1.0.0',
+    requires_migration: true,
+    released_at: new Date().toISOString(),
+}, null, 2);
+fs.writeFileSync(path.join(packageDir, 'version.json'), versionJson);
+console.log(`✅ Generated version.json (v${pkg.version}) for in-app updater`);
+
+// Keep project-root version.json in sync so development installs reflect the current version
+fs.writeFileSync(path.join(projectRoot, 'version.json'), versionJson);
+console.log(`✅ Updated project-root version.json (v${pkg.version})`);
+
 // Validate the deployment package
 console.log('\n🔍 Validating deployment package...');
 
@@ -720,7 +738,8 @@ const requiredFiles = [
     'system/Boot.php',
     'writable',
     '.env',
-    'public/.htaccess'
+    'public/.htaccess',
+    'version.json',
 ];
 
 let validationPassed = true;

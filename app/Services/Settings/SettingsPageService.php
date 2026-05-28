@@ -117,6 +117,7 @@ class SettingsPageService
             'integrations.ldap_host',
             'integrations.ldap_dn',
             'notifications.default_language',
+            'system.installed_version',
         ];
     }
 }

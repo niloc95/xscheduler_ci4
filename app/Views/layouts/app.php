@@ -311,7 +311,18 @@
                 <footer class="mt-8 py-4 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <p>&copy; <?= date('Y') ?> WebScheduler. All rights reserved.</p>
-                        <p>Version 2.0.0</p>
+                        <?php
+                            static $_appVersion = null;
+                            if ($_appVersion === null) {
+                                $_vf = ROOTPATH . 'version.json';
+                                $_appVersion = '2.0.0';
+                                if (file_exists($_vf)) {
+                                    $_vd = json_decode(file_get_contents($_vf), true);
+                                    if (!empty($_vd['version'])) $_appVersion = $_vd['version'];
+                                }
+                            }
+                        ?>
+                        <p>Version <?= esc($_appVersion) ?></p>
                     </div>
                 </footer>
             </div>

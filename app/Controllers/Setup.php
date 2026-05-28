@@ -356,6 +356,22 @@ class Setup extends BaseController
                 ];
             }
 
+            // Step 5: Seed installed version from deployed version.json (non-fatal)
+            $versionFile = ROOTPATH . 'version.json';
+            $installedVersion = '1.0.0';
+            if (file_exists($versionFile)) {
+                $versionData = json_decode(file_get_contents($versionFile), true);
+                if (!empty($versionData['version'])) {
+                    $installedVersion = $versionData['version'];
+                }
+            }
+            try {
+                (new \App\Models\SettingModel())->upsert('system.installed_version', $installedVersion);
+                log_message('info', 'Setup: seeded system.installed_version=' . $installedVersion);
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: could not seed system.installed_version: ' . $e->getMessage());
+            }
+
             return [
                 'success' => true,
                 'message' => 'Setup finalized successfully'

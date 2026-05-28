@@ -368,6 +368,14 @@ $routes->group('', ['filter' => 'setup'], function($routes) {
     // Google Calendar OAuth flow
     $routes->get('oauth/google/authorize', 'OAuthCallback::googleAuthorize', ['filter' => 'role:admin']);
     $routes->get('oauth/google/callback', 'OAuthCallback::googleCallback', ['filter' => 'role:admin']);
+    // In-app updater
+    $routes->group('admin/updater', function ($routes) {
+        $routes->get('/', 'Admin\Updater::index', ['filter' => 'role:admin']);
+        $routes->post('upload', 'Admin\Updater::upload', ['filter' => 'role:admin']);
+        $routes->post('execute', 'Admin\Updater::execute', ['filter' => 'role:admin']);
+        $routes->post('rollback', 'Admin\Updater::rollback', ['filter' => 'role:admin']);
+        $routes->post('maintenance', 'Admin\Updater::toggleMaintenance', ['filter' => 'role:admin']);
+    });
 });
 
 // Public assets (serve files from public/assets)

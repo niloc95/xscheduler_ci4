@@ -20,6 +20,7 @@
                 <button class="tab-btn" data-tab="integrations">Integrations</button>
                 <button class="tab-btn" data-tab="notifications">Notifications</button>
                 <button class="tab-btn" data-tab="database">Database</button>
+                <button class="tab-btn" data-tab="system-update">System Update</button>
             </nav>
         </div>
 
@@ -41,6 +42,8 @@
     <?= $this->include('settings/tabs/notifications') ?>
 
     <?= $this->include('settings/tabs/database') ?>
+
+    <?= $this->include('settings/tabs/system-update') ?>
 
         </div>
 
