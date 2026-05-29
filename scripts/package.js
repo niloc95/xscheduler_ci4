@@ -846,15 +846,13 @@ async function createZipFile() {
         const files = fs.readdirSync(packageDir);
         console.log(`📂 Adding ${files.length} items to ZIP: ${files.join(', ')}`);
 
-        // Add entire directory contents to ZIP
-        archive.directory(packageDir, false);
-
-        // Re-add version.json explicitly as a named buffer so it is always stored
-        // at the exact root path 'version.json' (no './' prefix) regardless of OS.
-        // On Linux the archiver directory() call produces './version.json' entries
-        // which ZipArchive::getFromName('version.json') cannot find; this entry
-        // shadows that with the canonical path.
-        archive.append(Buffer.from(versionJson), { name: 'version.json' });
+        // Add directory contents via glob — produces canonical paths (no './' prefix)
+        // on both macOS and Linux, unlike archive.directory(dir, false) which adds
+        // './'-prefixed entries on Linux that ZipArchive::getFromName() cannot find.
+        archive.glob('**', {
+            cwd: packageDir,
+            dot: true,
+        });
 
         // Add a deployment info file with version
         const deploymentInfo = `WebScheduler Deployment Package
