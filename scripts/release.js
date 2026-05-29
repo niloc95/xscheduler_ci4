@@ -622,6 +622,12 @@ async function release() {
         run('npm run build');
     }
 
+    // Bump version in package.json first so the deployment package
+    // and version.json are stamped with the NEW version number.
+    log.step('Updating package.json version...');
+    pkg.version = newVersion;
+    writePackageJson(pkg);
+
     // Create deployment package (optional, GitHub Actions will also do this)
     if (!skipPackage) {
         log.step('Creating deployment package...');
@@ -629,11 +635,6 @@ async function release() {
         log.success('Local deployment package created: webschedulr-deploy.zip');
         log.info('Note: GitHub Actions will create the official release package');
     }
-
-    // Update version in package.json
-    log.step('Updating package.json version...');
-    pkg.version = newVersion;
-    writePackageJson(pkg);
 
     // Update docs/changelog.md
     log.step('Updating docs/changelog.md...');
