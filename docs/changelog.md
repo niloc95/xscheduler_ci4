@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.0.12] - 2026-05-29
+
+### Fixed
+- fix: add contents:write permission to release workflow
+
 ## [2.0.11] - 2026-05-29
 
 ### Fixed
@@ -411,7 +416,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.11...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.12...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -428,3 +433,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.0.9]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.8...v2.0.9
 [2.0.10]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.9...v2.0.10
 [2.0.11]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.10...v2.0.11
+[2.0.12]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.11...v2.0.12
