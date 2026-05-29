@@ -642,7 +642,7 @@ async function release() {
 
     // Git commit
     log.step('Creating git commit...');
-    run('git add package.json docs/changelog.md');
+    run('git add package.json docs/changelog.md version.json');
     run(`git commit -m "chore: release v${newVersion}"`, { allowFail: true });
 
     // Create tag
