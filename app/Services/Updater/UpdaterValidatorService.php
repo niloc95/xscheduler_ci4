@@ -18,8 +18,13 @@ class UpdaterValidatorService
             return ['valid' => false, 'errors' => ['Cannot open ZIP file (code ' . $openResult . ')']];
         }
 
-        // 2. version.json must exist at root — legacy packages without it are rejected
+        // 2. version.json must exist at root — try both 'version.json' and './version.json'
+        // because some zip tools (archiver on Linux) store entries with a leading './' prefix
+        // that ZipArchive::getFromName() treats as a distinct path.
         $versionRaw = $zip->getFromName('version.json');
+        if ($versionRaw === false) {
+            $versionRaw = $zip->getFromName('./version.json');
+        }
         $zip->close();
 
         if ($versionRaw === false) {

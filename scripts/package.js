@@ -849,6 +849,13 @@ async function createZipFile() {
         // Add entire directory contents to ZIP
         archive.directory(packageDir, false);
 
+        // Re-add version.json explicitly as a named buffer so it is always stored
+        // at the exact root path 'version.json' (no './' prefix) regardless of OS.
+        // On Linux the archiver directory() call produces './version.json' entries
+        // which ZipArchive::getFromName('version.json') cannot find; this entry
+        // shadows that with the canonical path.
+        archive.append(Buffer.from(versionJson), { name: 'version.json' });
+
         // Add a deployment info file with version
         const deploymentInfo = `WebScheduler Deployment Package
 Version: v${deployVersion}

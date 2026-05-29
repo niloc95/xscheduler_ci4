@@ -111,11 +111,21 @@ jobs:
       - name: Verify version.json in release ZIP
         run: |
           ZIP="webschedulr-${{ steps.tag.outputs.tag }}-deploy.zip"
-          if ! unzip -l "$ZIP" | awk '{print $4}' | grep -qx 'version\.json'; then
-            echo "❌ version.json not found at root of $ZIP — aborting release"
-            exit 1
-          fi
-          echo "✅ version.json confirmed in $ZIP"
+          python3 - "$ZIP" <<'PYEOF'
+          import zipfile, sys, json
+          path = sys.argv[1]
+          z = zipfile.ZipFile(path)
+          names = z.namelist()
+          candidates = [n for n in names if n.rstrip('/') in ('version.json', './version.json')]
+          if not candidates:
+              sample = [n for n in names if not n.startswith('vendor/')][:15]
+              print(f"❌ version.json not found in {path}")
+              print("   Sample entries:", sample)
+              sys.exit(1)
+          entry = candidates[0]
+          content = json.loads(z.read(entry))
+          print(f"✅ version.json found at '{entry}': version={content.get('version')}")
+          PYEOF
 
       - name: Generate checksum sidecar
         run: |
