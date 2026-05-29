@@ -19,26 +19,34 @@ class UpdaterValidatorService
         }
 
         // 2. version.json must exist at root.
-        // Try canonical path, then './' prefix (archiver on Linux), then FL_NODIR
-        // which ignores the directory component entirely — handles any prefix variation.
+        // Accept canonical path and './' prefix (archiver on Linux).
+        // Do NOT accept nested paths — source code archives have version.json
+        // inside a subdirectory (e.g. xscheduler_ci4-2.0.10/version.json) and
+        // extracting them to the server would corrupt the installation.
         $versionRaw = $zip->getFromName('version.json');
         if ($versionRaw === false) {
             $versionRaw = $zip->getFromName('./version.json');
         }
-        if ($versionRaw === false) {
-            $idx = $zip->locateName('version.json', ZipArchive::FL_NODIR);
-            if ($idx !== false) {
-                $versionRaw = $zip->getFromIndex($idx);
-            }
-        }
-        $zip->close();
 
         if ($versionRaw === false) {
+            // Use FL_NODIR to detect source code archive (version.json nested in subdir).
+            $nestedIdx = $zip->locateName('version.json', ZipArchive::FL_NODIR);
+            $zip->close();
+            if ($nestedIdx !== false) {
+                return [
+                    'valid'  => false,
+                    'errors' => [
+                        'This looks like the GitHub source code archive (e.g. xscheduler_ci4-2.0.10.zip), not the deployment package. ' .
+                        'Please download "webschedulr-vX.X.X-deploy.zip" from the GitHub Releases page.',
+                    ],
+                ];
+            }
             return [
                 'valid'  => false,
                 'errors' => ['This package does not contain version.json. Only packages built with v1.0.5 or later support in-app updates. Please upload manually.'],
             ];
         }
+        $zip->close();
 
         // 3. version.json is valid JSON with required keys
         $meta = json_decode($versionRaw, true);
