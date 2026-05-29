@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.0.6] - 2026-05-29
+
+### Changed
+- chore: sync version metadata
+
+### Fixed
+- fix: version.json not found in Linux CI release ZIPs
+
 ## [2.0.5] - 2026-05-29
 
 ### Fixed
@@ -375,7 +383,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.5...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.6...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -386,3 +394,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.0.3]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.2...v2.0.3
 [2.0.4]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.3...v2.0.4
 [2.0.5]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.4...v2.0.5
+[2.0.6]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.5...v2.0.6
