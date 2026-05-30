@@ -1,8 +1,13 @@
 import { buildCsrfHeader, rotateCsrfFromResponse } from './csrf.js';
+import { getBaseUrl } from '../utils/url-helpers.js';
 
 /**
  * Shared API transport helper.
  * Returns both raw response and parsed payload so callers can handle envelopes.
+ *
+ * Endpoints starting with '/' are resolved against the app base URL so
+ * subdirectory installs (e.g. /demo/public/) work without each call site
+ * having to call withBaseUrl() manually. Full URLs (http/https) pass through.
  */
 export async function apiRequest(endpoint, options = {}) {
     const {
@@ -33,7 +38,11 @@ export async function apiRequest(endpoint, options = {}) {
         }
     }
 
-    const response = await fetch(endpoint, {
+    // Resolve root-relative paths against the app base URL.
+    // Full URLs and relative paths (no leading /) pass through unchanged.
+    const resolvedEndpoint = endpoint.startsWith('/') ? getBaseUrl() + endpoint : endpoint;
+
+    const response = await fetch(resolvedEndpoint, {
         method,
         headers: baseHeaders,
         credentials,
