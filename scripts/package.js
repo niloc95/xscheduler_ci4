@@ -491,10 +491,14 @@ console.log('✅ Environment configuration ready for setup wizard');
 const htaccessContent = `# CodeIgniter 4 Production .htaccess
 RewriteEngine On
 
-# Handle CodeIgniter requests
+# Subdirectory installs: uncomment and set the path if the app is not at the domain root.
+# e.g. served from https://example.com/demo/public/ → RewriteBase /demo/public/
+# RewriteBase /
+
+# Route all requests through CI4's front controller via REQUEST_URI (not PATH_INFO).
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php/$1 [L]
+RewriteRule ^ index.php [L]
 
 # Disable server signature
 ServerSignature Off
