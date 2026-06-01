@@ -162,8 +162,11 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                     <tr>
                         <th class="px-6 py-3">Service</th>
                         <th class="px-6 py-3">Details</th>
+                        <th class="px-4 py-3">Video</th>
+                        <th class="px-4 py-3">Payments</th>
                         <th class="px-6 py-3">Bookings</th>
                         <th class="px-6 py-3">Status</th>
+                        <th class="px-4 py-3">Created</th>
                         <th class="px-6 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -186,6 +189,44 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                                     <div class="text-gray-700 dark:text-gray-300"><?= (int)$service['duration'] ?> min</div>
                                     <div class="font-semibold text-gray-900 dark:text-white"><?= format_currency($service['price']) ?></div>
                                 </td>
+                                <?php
+                                    $modes    = $service['delivery_modes'] ?? ['onsite'];
+                                    $hasVideo = !empty(array_intersect(['online_zoom','online_jitsi'], $modes));
+                                    $payEnabled = !empty($service['payment_enabled']);
+                                    $gateways   = [];
+                                    if (!empty($service['payfast_enabled'])) $gateways[] = 'PayFast';
+                                    if (!empty($service['stripe_enabled']))  $gateways[] = 'Stripe';
+                                    $depositPct = $service['deposit_percentage'] ?? null;
+                                ?>
+                                <td class="px-4 py-4 whitespace-nowrap align-top text-center">
+                                    <?php if ($hasVideo): ?>
+                                        <span class="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-300">
+                                            <span class="material-symbols-outlined text-sm">videocam</span>
+                                            <?= in_array('online_zoom', $modes) ? 'Zoom' : 'Jitsi' ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td class="px-4 py-4 whitespace-nowrap align-top text-center">
+                                    <?php if ($payEnabled && !empty($gateways)): ?>
+                                        <span class="inline-flex flex-col items-center gap-0.5">
+                                            <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+                                                <span class="material-symbols-outlined text-sm">payments</span>
+                                                <?= esc(implode(' + ', $gateways)) ?>
+                                            </span>
+                                            <?php if ($depositPct !== null): ?>
+                                                <span class="text-xs text-gray-400"><?= esc((string)(float)$depositPct) ?>% deposit</span>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php elseif ($payEnabled): ?>
+                                        <span class="text-xs text-amber-600 dark:text-amber-400">No gateway</span>
+                                    <?php else: ?>
+                                        <span class="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                                    <?php endif; ?>
+                                </td>
+
                                 <td class="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300 align-top">
                                     <?= (int)$service['bookings_count'] ?>
                                 </td>
@@ -194,6 +235,9 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                                         'status' => (string) ($service['status'] ?? 'inactive'),
                                         'label'  => ucfirst((string) ($service['status'] ?? 'inactive')),
                                     ]) ?>
+                                </td>
+                                <td class="px-4 py-4 whitespace-nowrap align-top text-xs text-gray-500 dark:text-gray-400">
+                                    <?= !empty($service['created_at']) ? date('d M Y', strtotime($service['created_at'])) : '—' ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap align-top">
                                     <div class="xs-actions-container justify-end">
@@ -218,7 +262,7 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="8" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
                                     <span class="material-symbols-outlined text-4xl">design_services</span>
                                     <p class="text-sm"><?= $hasActiveFilters ? 'No services match your filters.' : 'No services yet.' ?></p>

@@ -159,7 +159,13 @@ class Services extends BaseController
                 'price' => isset($s['price']) ? (float)$s['price'] : 0,
                 'provider' => ($s['provider_names'] ?? '') ?: '—',
                 'status' => ((int)($s['active'] ?? 1)) === 1 ? 'active' : 'inactive',
-                'bookings_count' => (int)($bookingCountsByService[(int)$s['id']] ?? 0),
+                'bookings_count'   => (int)($bookingCountsByService[(int)$s['id']] ?? 0),
+                'delivery_modes'   => json_decode($s['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'payment_enabled'  => (bool)($s['payment_enabled']  ?? false),
+                'payfast_enabled'  => (bool)($s['payfast_enabled']  ?? false),
+                'stripe_enabled'   => (bool)($s['stripe_enabled']   ?? false),
+                'deposit_percentage' => $s['deposit_percentage'] ?? null,
+                'created_at'       => $s['created_at'] ?? null,
             ];
         }, $services);
 
