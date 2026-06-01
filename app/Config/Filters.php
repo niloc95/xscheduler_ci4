@@ -141,7 +141,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
-            'maintenance',
+            'maintenance' => ['except' => ['login', 'auth/*']],
             'request_context',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',

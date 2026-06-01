@@ -32,6 +32,9 @@
         .meta { font-size: 0.8rem; color: #9ca3af; margin-top: 1.5rem; background: #f3f4f6; border-radius: 0.5rem; padding: 0.75rem 1rem; text-align: left; }
         .meta dt { font-weight: 600; color: #6b7280; }
         .meta dd { margin: 0 0 0.5rem 0; font-family: monospace; }
+        .admin-link { margin-top: 1.75rem; }
+        .admin-link a { font-size: 0.75rem; color: #9ca3af; text-decoration: none; }
+        .admin-link a:hover { color: #6b7280; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -57,6 +60,10 @@
             <?php endif; ?>
         </dl>
         <?php endif; ?>
+
+        <div class="admin-link">
+            <a href="<?= base_url('auth/login') ?>">Admin login</a>
+        </div>
     </div>
 </body>
 </html>
