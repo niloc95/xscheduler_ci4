@@ -221,13 +221,24 @@ class PublicBookingService
         }
 
         if ($services === []) {
+            $price      = (float) ($service['price'] ?? 0);
+            $depositPct = isset($service['deposit_percentage']) && $service['deposit_percentage'] !== null
+                ? (float) $service['deposit_percentage'] : null;
+            $depositAmt = ($service['payment_enabled'] ?? false) && $depositPct
+                ? round($price * ($depositPct / 100), 2) : null;
             $services[] = [
-                'id' => $serviceId,
-                'name' => $service['name'] ?? 'Service',
-                'slug' => $service['slug'] ?? null,
-                'duration' => (int) ($service['duration_min'] ?? 30),
-                'price' => (float) ($service['price'] ?? 0),
-                'formattedPrice' => $this->localization->formatCurrency($service['price'] ?? 0),
+                'id'                 => $serviceId,
+                'name'               => $service['name'] ?? 'Service',
+                'slug'               => $service['slug'] ?? null,
+                'duration'           => (int) ($service['duration_min'] ?? 30),
+                'price'              => $price,
+                'formattedPrice'     => $this->localization->formatCurrency($price),
+                'payment_enabled'    => (bool) ($service['payment_enabled']  ?? false),
+                'payfast_enabled'    => (bool) ($service['payfast_enabled']  ?? false),
+                'stripe_enabled'     => (bool) ($service['stripe_enabled']   ?? false),
+                'deposit_percentage' => $depositPct,
+                'deposit_amount'     => $depositAmt,
+                'formattedDeposit'   => $depositAmt !== null ? $this->localization->formatCurrency($depositAmt) : null,
             ];
         }
 
@@ -910,15 +921,25 @@ class PublicBookingService
     {
         $rows = $providerId ? $this->services->getActiveByProvider($providerId) : $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
         return array_map(function (array $row): array {
-            $price = $row['price'] ?? 0;
+            $price         = $row['price'] ?? 0;
+            $depositPct    = $row['deposit_percentage'] !== null ? (float) $row['deposit_percentage'] : null;
+            $depositAmount = ($row['payment_enabled'] ?? 0) && $depositPct
+                ? round((float) $price * ($depositPct / 100), 2)
+                : null;
             return [
-                'id'            => (int) $row['id'],
-                'name'          => $row['name'] ?? 'Service',
-                'slug'          => $row['slug'] ?? null,
-                'duration'      => (int) ($row['duration_min'] ?? 30),
-                'price'         => (float) $price,
-                'formattedPrice' => $this->localization->formatCurrency($price),
-                'deliveryModes' => json_decode($row['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'id'                 => (int) $row['id'],
+                'name'               => $row['name'] ?? 'Service',
+                'slug'               => $row['slug'] ?? null,
+                'duration'           => (int) ($row['duration_min'] ?? 30),
+                'price'              => (float) $price,
+                'formattedPrice'     => $this->localization->formatCurrency($price),
+                'deliveryModes'      => json_decode($row['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'payment_enabled'    => (bool) ($row['payment_enabled']  ?? false),
+                'payfast_enabled'    => (bool) ($row['payfast_enabled']  ?? false),
+                'stripe_enabled'     => (bool) ($row['stripe_enabled']   ?? false),
+                'deposit_percentage' => $depositPct,
+                'deposit_amount'     => $depositAmount,
+                'formattedDeposit'   => $depositAmount !== null ? $this->localization->formatCurrency($depositAmount) : null,
             ];
         }, $rows);
     }
