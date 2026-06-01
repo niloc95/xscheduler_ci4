@@ -88,6 +88,9 @@ class AppointmentModel extends BaseModel
         'hash',
         'public_token',
         'public_token_expires_at',
+        'payment_status',
+        'payment_amount',
+        'payment_reference',
     ];
 
     protected $beforeInsert = ['normalizeSchemaFields', 'generateHash'];
