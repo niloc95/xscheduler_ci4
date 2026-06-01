@@ -39,6 +39,8 @@ Core lifecycle for authenticated surfaces:
 4. View code uses `xsRegisterViewInit(fn)`
 5. Initializers **must be idempotent** via dataset guards
 
+Body-level overlays or modals created by JS (outside `#spa-content`) must explicitly clean themselves up on `spa:leaving`. Hiding them is not sufficient when the DOM node survives SPA swaps; teardown must remove stale nodes, listeners, and pending timers so the next initializer run can recreate fresh state.
+
 **Do not add bare `DOMContentLoaded`-only logic for app surfaces that can SPA-navigate.**
 
 ## 3. SPA Navigation Contract

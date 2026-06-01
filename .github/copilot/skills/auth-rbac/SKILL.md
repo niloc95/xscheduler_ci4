@@ -81,11 +81,13 @@ File: `resources/js/modules/auth/inactivity-monitor.js`
 
 - Tracks user activity events (mouse / keyboard / scroll / touch).
 - After **115 minutes** of inactivity (`SESSION_MS 7200s − WARNING_MS 300s`), shows a modal with a 5:00 countdown.
-- **"Stay Logged In"** → `GET /auth/ping` → hides modal, resets the 115-min clock.
+- **"Stay Logged In"** pauses the countdown, calls `GET /auth/ping`, and only redirects to `/auth/login` after retryable failures are exhausted.
+- Retry semantics mirror other background auth surfaces: tolerate one transient `401` / network failure, wait 3 seconds, then retry once before treating the session as expired.
+- Because the modal is appended to `document.body` instead of `#spa-content`, SPA cleanup must remove the modal and clear any pending retry/countdown timers on `spa:leaving`; the next `initInactivityMonitor()` call recreates it.
 - **"Log Out"** → redirects to `/auth/logout`.
 - Countdown reaches 0:00 → redirects to `/auth/login`.
 - Exported as `initInactivityMonitor()`, called from `initializeComponents()` in `app.js`.
-- SPA-safe: removes listeners on `spa:leaving` to prevent double-binding.
+- SPA-safe: removes listeners and body-level modal state on `spa:leaving` to prevent double-binding and stale closures.
 
 ### Session Ping Endpoint
 
