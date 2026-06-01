@@ -445,15 +445,28 @@ function bootstrapPublicBooking() {
         throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load services.');
       }
 
-      const services = (payload?.data ?? payload ?? []).map(svc => ({
-        id: svc.id,
-        name: svc.name,
-        description: svc.description,
-        duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
-        price: svc.price,
-        formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
-        deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
-      }));
+      const services = (payload?.data ?? payload ?? []).map(svc => {
+        const depositPct    = svc.deposit_percentage ?? svc.depositPercentage ?? null;
+        const price         = svc.price;
+        const depositAmount = (svc.payment_enabled || svc.paymentEnabled) && depositPct
+          ? Math.round(parseFloat(price) * (parseFloat(depositPct) / 100) * 100) / 100
+          : null;
+        return {
+          id: svc.id,
+          name: svc.name,
+          description: svc.description,
+          duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
+          price,
+          formattedPrice: price != null && price !== '' ? formatLocalizedCurrency(price) : '',
+          deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
+          paymentEnabled:    !!(svc.payment_enabled || svc.paymentEnabled),
+          payfastAvailable:  !!(svc.payfast_enabled  || svc.payfastEnabled),
+          stripeAvailable:   !!(svc.stripe_enabled   || svc.stripeEnabled),
+          depositPercentage: depositPct ? parseFloat(depositPct) : null,
+          depositAmount,
+          formattedDeposit:  depositAmount != null ? formatLocalizedCurrency(depositAmount) : null,
+        };
+      });
 
       updateDraft(target, prev => ({
         ...prev,
@@ -796,6 +809,19 @@ function bootstrapPublicBooking() {
       }
 
       if (target === 'booking') {
+        // If the service requires a deposit payment, redirect to the gateway.
+        // The payment object in the response contains the URL (PayFast) or
+        // checkout_url (Stripe) to send the customer to.
+        const paymentData = data?.data?.payment;
+        if (paymentData?.gateway === 'payfast' && paymentData?.payfast?.ok && paymentData?.payfast?.url) {
+          window.location.href = paymentData.payfast.url;
+          return;
+        }
+        if (paymentData?.gateway === 'stripe' && paymentData?.stripe?.ok && paymentData?.stripe?.checkout_url) {
+          window.location.href = paymentData.stripe.checkout_url;
+          return;
+        }
+
         updateBooking(prev => ({
           ...prev,
           submitting: false,
@@ -989,11 +1015,12 @@ function bootstrapPublicBooking() {
 
   function buildPayload(draft, extras = {}) {
     const payload = {
-      provider_slug: String(draft.providerId || ''),
-      service_id:    Number(draft.serviceId),
-      slot_start:    draft.selectedSlot?.start ?? null,
-      notes:         draft.form.notes ?? '',
-      delivery_mode: draft.deliveryMode ?? 'onsite',
+      provider_slug:    String(draft.providerId || ''),
+      service_id:       Number(draft.serviceId),
+      slot_start:       draft.selectedSlot?.start ?? null,
+      notes:            draft.form.notes ?? '',
+      delivery_mode:    draft.deliveryMode ?? 'onsite',
+      payment_gateway:  draft.selectedPaymentGateway ?? null,
     };
 
     const locationId = draft.resolvedLocation?.id ?? draft.selectedLocationId;

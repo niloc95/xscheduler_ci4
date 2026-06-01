@@ -1,8 +1,17 @@
 <?php
 // Shared Service form fields partial
 // Expects: $service (optional, defaults to empty array), $categories, $providers, $linkedProviders (optional)
-$service = $service ?? [];
+// Optional: $payfastActive (bool), $stripeActive (bool) — injected by controller
+$service        = $service ?? [];
 $linkedProviders = $linkedProviders ?? [];
+
+// Payment config — resolve from service row + old() for form re-display
+$paymentEnabled   = (bool) old('payment_enabled',   $service['payment_enabled']   ?? false);
+$payfastEnabled   = (bool) old('payfast_enabled',   $service['payfast_enabled']   ?? false);
+$stripeEnabled    = (bool) old('stripe_enabled',    $service['stripe_enabled']    ?? false);
+$depositPct       = old('deposit_percentage', $service['deposit_percentage'] ?? '');
+$payfastActive    = isset($payfastActive) ? (bool) $payfastActive : false;
+$stripeActive     = isset($stripeActive)  ? (bool) $stripeActive  : false;
 
 $oldProviderIds = old('provider_ids');
 if ($oldProviderIds === null) {
@@ -188,6 +197,82 @@ if ($oldActive !== null) {
         <p class="form-help mt-2">Online options require Zoom or Jitsi configured in Settings → Integrations.</p>
     </fieldset>
 </div>
+
+<!-- ── Online Payment Configuration ─────────────────────────────────────── -->
+<div class="mt-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+        <span class="material-symbols-outlined text-base text-green-600">payments</span>
+        Online Deposit Payment
+    </h3>
+
+    <label class="flex items-center gap-3 cursor-pointer mb-4">
+        <input type="hidden" name="payment_enabled" value="0" />
+        <input type="checkbox" name="payment_enabled" value="1" id="paymentEnabledToggle"
+               <?= $paymentEnabled ? 'checked' : '' ?>
+               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+        <span class="text-sm text-gray-700 dark:text-gray-300">Enable online deposit payment for this service</span>
+    </label>
+
+    <div id="paymentFields" class="<?= $paymentEnabled ? '' : 'hidden' ?> space-y-4">
+        <!-- Deposit percentage -->
+        <div>
+            <label class="form-label" for="depositPercentage">Deposit Percentage (%)</label>
+            <input type="number" id="depositPercentage" name="deposit_percentage"
+                   value="<?= esc((string) $depositPct) ?>"
+                   min="1" max="100" step="0.01" placeholder="e.g. 10"
+                   class="form-input max-w-xs" />
+            <p class="form-help">
+                Percentage of the service price charged as a deposit at booking.
+                Use 100 for full payment upfront. Leave empty to disable deposit.
+            </p>
+        </div>
+
+        <!-- Gateway toggles -->
+        <fieldset class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+            <legend class="text-xs font-medium text-gray-600 dark:text-gray-400 px-1">Accept via</legend>
+            <div class="mt-2 space-y-2">
+                <label class="flex items-center gap-3 cursor-pointer <?= !$payfastActive ? 'opacity-50' : '' ?>">
+                    <input type="hidden" name="payfast_enabled" value="0" />
+                    <input type="checkbox" name="payfast_enabled" value="1"
+                           <?= $payfastEnabled ? 'checked' : '' ?>
+                           <?= !$payfastActive ? 'disabled' : '' ?>
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                        PayFast
+                        <?php if (!$payfastActive): ?>
+                            <span class="text-xs text-gray-400 ml-1">(not connected — Settings → Integrations)</span>
+                        <?php endif; ?>
+                    </span>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer <?= !$stripeActive ? 'opacity-50' : '' ?>">
+                    <input type="hidden" name="stripe_enabled" value="0" />
+                    <input type="checkbox" name="stripe_enabled" value="1"
+                           <?= $stripeEnabled ? 'checked' : '' ?>
+                           <?= !$stripeActive ? 'disabled' : '' ?>
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                        Stripe
+                        <?php if (!$stripeActive): ?>
+                            <span class="text-xs text-gray-400 ml-1">(not connected — Settings → Integrations)</span>
+                        <?php endif; ?>
+                    </span>
+                </label>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<script {csp-script-nonce}>
+(function () {
+    const toggle = document.getElementById('paymentEnabledToggle');
+    const fields = document.getElementById('paymentFields');
+    if (!toggle || !fields) return;
+    toggle.addEventListener('change', function () {
+        fields.classList.toggle('hidden', !this.checked);
+    });
+})();
+</script>
 
 <?php if ($slugLocked && $canUnlockSlug): ?>
 <script {csp-script-nonce}>

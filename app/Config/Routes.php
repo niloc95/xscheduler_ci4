@@ -235,6 +235,19 @@ $routes->group('booking', ['filter' => 'setup'], function($routes) {
     $routes->patch('(:segment)', 'PublicSite\BookingController::update/$1', ['filter' => ['public_rate_limit:booking-mutate,10,60', 'csrf']]);
 });
 
+// Payment webhooks — no auth, no CSRF (cryptographically signed by gateway)
+// Rate-limited loosely; validation is signature-based inside the controller.
+$routes->group('public/payments', ['filter' => 'setup'], function ($routes) {
+    $routes->post('payfast/notify', 'PublicSite\PaymentWebhookController::payfastItn',  ['filter' => 'public_rate_limit:payment-itn,60,60']);
+    $routes->post('stripe/webhook', 'PublicSite\PaymentWebhookController::stripeWebhook', ['filter' => 'public_rate_limit:payment-webhook,60,60']);
+});
+
+// Payment return / cancel pages (browser redirect from gateway)
+$routes->group('booking/payment', ['filter' => ['setup', 'public_rate_limit']], function ($routes) {
+    $routes->get('return', 'PublicSite\BookingController::paymentReturn');
+    $routes->get('cancel', 'PublicSite\BookingController::paymentCancel');
+});
+
 // Public customer portal - My Appointments (no auth, uses customer hash)
 $routes->group('my-appointments', ['filter' => 'setup'], function($routes) {
     $routes->get('(:segment)', 'PublicSite\CustomerPortalController::index/$1', ['filter' => 'public_rate_limit']);

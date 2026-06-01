@@ -245,8 +245,10 @@ class Services extends BaseController
             'action_url' => site_url('services/store'),
             'data' => [],
             'linkedProviders' => [],
-            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
-            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'zoomConnected'   => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected'  => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'payfastActive'   => (new \App\Services\PayFastIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'stripeActive'    => (new \App\Services\StripeIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/create', $data);
@@ -293,8 +295,10 @@ class Services extends BaseController
             // Shared form contract
             'action_url' => site_url('services/update/' . (int)$serviceId),
             'data' => $service,
-            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
-            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'zoomConnected'   => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected'  => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'payfastActive'   => (new \App\Services\PayFastIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'stripeActive'    => (new \App\Services\StripeIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/edit', $data);

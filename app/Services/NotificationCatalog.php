@@ -9,11 +9,12 @@ final class NotificationCatalog
     public const CHANNELS = ['email', 'sms', 'whatsapp'];
 
     public const EVENTS = [
-        'appointment_pending' => 'Appointment Pending',
-        'appointment_confirmed' => 'Appointment Confirmed',
-        'appointment_reminder' => 'Appointment Reminder',
-        'appointment_cancelled' => 'Appointment Cancelled',
+        'appointment_pending'    => 'Appointment Pending',
+        'appointment_confirmed'  => 'Appointment Confirmed',
+        'appointment_reminder'   => 'Appointment Reminder',
+        'appointment_cancelled'  => 'Appointment Cancelled',
         'appointment_rescheduled' => 'Appointment Rescheduled',
+        'payment_confirmed'      => 'Payment Confirmed',
     ];
 
     public static function normalizeChannels(array $channels): array

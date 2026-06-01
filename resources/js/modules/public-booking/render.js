@@ -624,6 +624,15 @@ export function renderServiceCard(service) {
     ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Price:</span> ${escapeHtml(formattedPrice)}</p>`
     : '';
 
+  const depositBadgeHtml = service.paymentEnabled && service.formattedDeposit
+    ? `<p class="mt-1 text-xs">
+         <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 bg-green-50 text-green-700 font-medium">
+           <span class="material-symbols-outlined text-xs">payments</span>
+           Deposit: ${escapeHtml(service.formattedDeposit)} (${escapeHtml(String(service.depositPercentage))}%)
+         </span>
+       </p>`
+    : '';
+
   const modes = Array.isArray(service.deliveryModes) ? service.deliveryModes : [];
   const modeMeta = {
     onsite:       { label: 'In Person', icon: 'location_on',  cls: 'bg-blue-50 text-blue-700' },
@@ -643,6 +652,7 @@ export function renderServiceCard(service) {
       ${descriptionHtml}
       ${durationHtml}
       ${priceHtml}
+      ${depositBadgeHtml}
       ${modeBadges}
     </div>
   `;

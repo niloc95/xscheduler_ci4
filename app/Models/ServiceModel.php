@@ -62,6 +62,7 @@ class ServiceModel extends BaseModel
     protected $primaryKey       = 'id';
     protected $allowedFields    = [
         'name', 'slug', 'description', 'duration_min', 'price', 'category_id', 'active', 'delivery_modes',
+        'payment_enabled', 'payfast_enabled', 'stripe_enabled', 'deposit_percentage',
     ];
 
     // Dates
