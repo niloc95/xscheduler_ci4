@@ -426,6 +426,7 @@ export function renderForm(currentState, ctx, options = {}) {
             ${renderCustomerSection(currentState, ctx)}
             ${renderCustomFields(currentState, ctx, existingCustomFields)}
             ${renderNotesField(currentState, ctx)}
+            ${renderPaymentGatewayPicker(currentState)}
             ${renderActions(currentState, options.actionOptions)}
           </div>
           <div class="hidden lg:flex lg:flex-col lg:gap-4 sticky top-4">
@@ -974,6 +975,85 @@ export function renderNotesField(currentState, ctx) {
         <textarea name="notes" rows="4" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${escapeHtml(currentState.form.notes ?? '')}</textarea>
       </label>
       ${renderFieldError('notes', currentState.errors)}
+    </div>
+  `;
+}
+
+/**
+ * Renders the deposit payment summary + gateway picker when the selected
+ * service requires a deposit. Returns '' if no payment is needed.
+ *
+ * The customer selects a gateway via radio-styled buttons (data-select-gateway).
+ * The booking JS listens for clicks and updates draft.selectedPaymentGateway.
+ */
+export function renderPaymentGatewayPicker(currentState) {
+  const services = currentState.services ?? [];
+  const service  = services.find(s => String(s.id) === String(currentState.serviceId));
+
+  if (!service?.paymentEnabled || !service?.formattedDeposit) {
+    return '';
+  }
+
+  const payfastOk = service.payfastAvailable ?? false;
+  const stripeOk  = service.stripeAvailable  ?? false;
+
+  if (!payfastOk && !stripeOk) {
+    return '';
+  }
+
+  const selected = currentState.selectedPaymentGateway ?? '';
+
+  const gatewayBtn = (id, label, icon, available) => {
+    if (!available) return '';
+    const isActive = selected === id;
+    const base  = 'flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-medium cursor-pointer transition-all';
+    const cls   = isActive
+      ? `${base} border-blue-500 bg-blue-50 text-blue-700`
+      : `${base} border-slate-200 bg-white text-slate-700 hover:border-blue-300`;
+    return `
+      <button type="button" data-select-gateway="${escapeHtml(id)}" class="${cls}" aria-pressed="${isActive}">
+        <span class="material-symbols-outlined text-lg">${icon}</span>
+        ${escapeHtml(label)}
+        ${isActive ? '<span class="ml-auto material-symbols-outlined text-base text-blue-500">check_circle</span>' : ''}
+      </button>`;
+  };
+
+  const gatewayError = !selected
+    ? `<p class="text-xs text-amber-600 mt-1 flex items-center gap-1">
+         <span class="material-symbols-outlined text-sm">warning</span>
+         Select a payment method to continue.
+       </p>`
+    : '';
+
+  return `
+    <div class="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-green-600">payments</span>
+        <h3 class="text-sm font-semibold text-green-800">Deposit required to confirm</h3>
+      </div>
+      <dl class="grid grid-cols-3 gap-2 text-center text-xs">
+        <div class="rounded-lg bg-white border border-green-200 px-2 py-2">
+          <dt class="text-slate-500">Full price</dt>
+          <dd class="font-semibold text-slate-800 mt-0.5">${escapeHtml(service.formattedPrice ?? '—')}</dd>
+        </div>
+        <div class="rounded-lg bg-white border border-green-200 px-2 py-2">
+          <dt class="text-slate-500">Deposit</dt>
+          <dd class="font-semibold text-slate-800 mt-0.5">${escapeHtml(String(service.depositPercentage ?? 0))}%</dd>
+        </div>
+        <div class="rounded-lg bg-green-100 border border-green-300 px-2 py-2">
+          <dt class="text-green-700 font-medium">Pay now</dt>
+          <dd class="font-bold text-green-800 mt-0.5">${escapeHtml(service.formattedDeposit)}</dd>
+        </div>
+      </dl>
+      <div class="space-y-2">
+        <p class="text-xs font-medium text-slate-600">Pay deposit via</p>
+        ${gatewayBtn('payfast', 'PayFast', 'account_balance', payfastOk)}
+        ${gatewayBtn('stripe', 'Stripe', 'credit_card', stripeOk)}
+        ${gatewayError}
+      </div>
+      <p class="text-xs text-slate-500">
+        The remaining balance of ${escapeHtml(service.formattedPrice ?? '')} is payable on the day of your appointment.
+      </p>
     </div>
   `;
 }

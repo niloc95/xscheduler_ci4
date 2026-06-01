@@ -236,6 +236,14 @@ function bootstrapPublicBooking() {
     form.querySelector('[data-action="tips-mobile-toggle"]')?.addEventListener('click', () => {
       updateDraft(target, prev => ({ ...prev, tipsMobileOpen: !prev.tipsMobileOpen }));
     });
+
+    // Gateway picker — radio-style buttons rendered by renderPaymentGatewayPicker
+    form.querySelectorAll('[data-select-gateway]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const gateway = btn.getAttribute('data-select-gateway');
+        updateDraft(target, prev => ({ ...prev, selectedPaymentGateway: gateway }));
+      });
+    });
   }
 
   function bindLookupEvents() {
@@ -387,6 +395,7 @@ function bootstrapPublicBooking() {
       ...prev,
       serviceId: value,
       deliveryMode: availableModes[0] ?? 'onsite',
+      selectedPaymentGateway: null, // reset on service change
       selectedSlot: null,
       slots: [],
       slotsError: '',
@@ -764,6 +773,20 @@ function bootstrapPublicBooking() {
         errors: { ...prev.errors, slot_start: 'Choose an available time before continuing.' },
       }));
       return;
+    }
+
+    // If the service requires a deposit, a gateway must be chosen before submitting.
+    if (target === 'booking') {
+      const selectedService = (draft.services ?? []).find(s => String(s.id) === String(draft.serviceId));
+      const needsGateway = selectedService?.paymentEnabled && selectedService?.formattedDeposit
+        && (selectedService?.payfastAvailable || selectedService?.stripeAvailable);
+      if (needsGateway && !draft.selectedPaymentGateway) {
+        updateDraft(target, prev => ({
+          ...prev,
+          globalError: 'Please select a payment method for the deposit before confirming.',
+        }));
+        return;
+      }
     }
 
     updateDraft(target, prev => ({ ...prev, submitting: true, globalError: '', errors: { ...prev.errors } }));
