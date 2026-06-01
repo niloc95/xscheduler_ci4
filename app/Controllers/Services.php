@@ -538,8 +538,12 @@ class Services extends BaseController
             'duration_min'   => (int) ($input['duration_min'] ?? 0),
             'price'          => ($input['price'] ?? '') !== '' ? (float) $input['price'] : null,
             'category_id'    => !empty($input['category_id']) ? (int) $input['category_id'] : null,
-            'active'         => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
-            'delivery_modes' => $this->encodeDeliveryModes($input['delivery_modes'] ?? []),
+            'active'             => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
+            'delivery_modes'     => $this->encodeDeliveryModes($input['delivery_modes'] ?? []),
+            'payment_enabled'    => isset($input['payment_enabled'])    ? (int) (bool) $input['payment_enabled']    : 0,
+            'payfast_enabled'    => isset($input['payfast_enabled'])    ? (int) (bool) $input['payfast_enabled']    : 0,
+            'stripe_enabled'     => isset($input['stripe_enabled'])     ? (int) (bool) $input['stripe_enabled']     : 0,
+            'deposit_percentage' => ($input['deposit_percentage'] ?? '') !== '' ? (float) $input['deposit_percentage'] : null,
         ];
     }
 
