@@ -162,9 +162,9 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                     <tr>
                         <th class="px-6 py-3">Service</th>
                         <th class="px-6 py-3">Details</th>
-                        <th class="px-4 py-3">Video</th>
-                        <th class="px-4 py-3">Payments</th>
-                        <th class="px-6 py-3">Bookings</th>
+                        <th class="px-4 py-3 text-center">Video</th>
+                        <th class="px-4 py-3 text-center">Payments</th>
+                        <th class="px-6 py-3 text-center">Bookings</th>
                         <th class="px-6 py-3">Status</th>
                         <th class="px-4 py-3">Created</th>
                         <th class="px-6 py-3 text-right">Actions</th>
@@ -227,7 +227,7 @@ $hasActiveFilters = !empty($filters['q']) || !empty($filters['category']) || !em
                                     <?php endif; ?>
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300 align-top">
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-gray-700 dark:text-gray-300 align-top">
                                     <?= (int)$service['bookings_count'] ?>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap align-top">
