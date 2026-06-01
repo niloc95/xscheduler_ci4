@@ -210,7 +210,16 @@ class Providers extends BaseApiController
         // Format response
         $localization = new \App\Services\LocalizationSettingsService();
 
-        $items = array_map(function ($s) use ($localization) {
+        // Check whether each payment gateway is actually configured with credentials.
+        // This is the same check the backend does before initiating payment, so the
+        // public booking JS only shows gateway options that will actually work.
+        $businessId = 1;
+        $pfInfo     = (new \App\Services\PayFastIntegrationService())->getPublicIntegration($businessId);
+        $stInfo     = (new \App\Services\StripeIntegrationService())->getPublicIntegration($businessId);
+        $pfActive   = (bool) ($pfInfo['is_active'] ?? false) && (bool) ($pfInfo['has_credentials'] ?? false);
+        $stActive   = (bool) ($stInfo['is_active'] ?? false) && (bool) ($stInfo['has_secret_key']  ?? false);
+
+        $items = array_map(function ($s) use ($localization, $pfActive, $stActive) {
             $price      = $s['price'] ? (float) $s['price'] : null;
             $depositPct = isset($s['deposit_percentage']) && $s['deposit_percentage'] !== null
                 ? (float) $s['deposit_percentage'] : null;
@@ -231,6 +240,10 @@ class Providers extends BaseApiController
                 'payment_enabled'    => (bool) ($s['payment_enabled']  ?? false),
                 'payfast_enabled'    => (bool) ($s['payfast_enabled']  ?? false),
                 'stripe_enabled'     => (bool) ($s['stripe_enabled']   ?? false),
+                // True only when the service has the gateway ticked AND credentials exist.
+                // The JS gateway picker uses these to decide which buttons to show.
+                'payfastAvailable'   => (bool) ($s['payfast_enabled'] ?? false) && $pfActive,
+                'stripeAvailable'    => (bool) ($s['stripe_enabled']  ?? false) && $stActive,
                 'deposit_percentage' => $depositPct,
                 'deposit_amount'     => $depositAmt,
                 'formattedDeposit'   => $depositAmt !== null ? $localization->formatCurrency($depositAmt) : null,

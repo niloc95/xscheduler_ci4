@@ -920,7 +920,15 @@ class PublicBookingService
     private function listServices(?int $providerId = null): array
     {
         $rows = $providerId ? $this->services->getActiveByProvider($providerId) : $this->services->where('active', 1)->orderBy('name', 'ASC')->findAll();
-        return array_map(function (array $row): array {
+
+        // Resolve gateway availability once (credential check) for all services.
+        $businessId = 1;
+        $pfInfo   = (new \App\Services\PayFastIntegrationService())->getPublicIntegration($businessId);
+        $stInfo   = (new \App\Services\StripeIntegrationService())->getPublicIntegration($businessId);
+        $pfActive = (bool) ($pfInfo['is_active'] ?? false) && (bool) ($pfInfo['has_credentials'] ?? false);
+        $stActive = (bool) ($stInfo['is_active'] ?? false) && (bool) ($stInfo['has_secret_key']  ?? false);
+
+        return array_map(function (array $row) use ($pfActive, $stActive): array {
             $price         = $row['price'] ?? 0;
             $depositPct    = $row['deposit_percentage'] !== null ? (float) $row['deposit_percentage'] : null;
             $depositAmount = ($row['payment_enabled'] ?? 0) && $depositPct
@@ -937,6 +945,8 @@ class PublicBookingService
                 'payment_enabled'    => (bool) ($row['payment_enabled']  ?? false),
                 'payfast_enabled'    => (bool) ($row['payfast_enabled']  ?? false),
                 'stripe_enabled'     => (bool) ($row['stripe_enabled']   ?? false),
+                'payfastAvailable'   => (bool) ($row['payfast_enabled']  ?? false) && $pfActive,
+                'stripeAvailable'    => (bool) ($row['stripe_enabled']   ?? false) && $stActive,
                 'deposit_percentage' => $depositPct,
                 'deposit_amount'     => $depositAmount,
                 'formattedDeposit'   => $depositAmount !== null ? $this->localization->formatCurrency($depositAmount) : null,

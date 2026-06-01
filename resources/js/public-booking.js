@@ -469,8 +469,11 @@ function bootstrapPublicBooking() {
           formattedPrice: price != null && price !== '' ? formatLocalizedCurrency(price) : '',
           deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
           paymentEnabled:    !!(svc.payment_enabled || svc.paymentEnabled),
-          payfastAvailable:  !!(svc.payfast_enabled  || svc.payfastEnabled),
-          stripeAvailable:   !!(svc.stripe_enabled   || svc.stripeEnabled),
+          // payfastAvailable / stripeAvailable come from the API after checking
+          // both the service-level toggle AND that the gateway has live credentials.
+          // Fall back to the raw flags only when the richer field is absent.
+          payfastAvailable:  !!(svc.payfastAvailable ?? svc.payfast_enabled ?? false),
+          stripeAvailable:   !!(svc.stripeAvailable  ?? svc.stripe_enabled  ?? false),
           depositPercentage: depositPct ? parseFloat(depositPct) : null,
           depositAmount,
           formattedDeposit:  depositAmount != null ? formatLocalizedCurrency(depositAmount) : null,
