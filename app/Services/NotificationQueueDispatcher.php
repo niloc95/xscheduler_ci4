@@ -466,7 +466,11 @@ class NotificationQueueDispatcher
                 'online_jitsi' => 'Jitsi Meet',
                 default        => 'In Person',
             },
-            'video_link'       => (string) ($appt['video_link'] ?? ''),
+            'video_link'          => (string) ($appt['video_link'] ?? ''),
+            'service_price'       => isset($appt['service_price']) ? (float) $appt['service_price'] : null,
+            'payment_status'      => (string) ($appt['payment_status']    ?? 'none'),
+            'payment_amount'      => isset($appt['payment_amount']) && $appt['payment_amount'] !== null ? (float) $appt['payment_amount'] : null,
+            'payment_reference'   => (string) ($appt['payment_reference'] ?? ''),
         ];
 
         // Hook for testing: subclasses may inspect or capture template data.

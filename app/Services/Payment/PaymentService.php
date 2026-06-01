@@ -263,11 +263,29 @@ class PaymentService
             'payment_reference' => $gatewayReference,
         ]);
 
-        // Transition pending → confirmed and dispatch notification
+        // Transition pending → confirmed and dispatch notifications (customer + provider)
         $appointment = $this->appointmentModel->find($appointmentId);
         if ($appointment && ($appointment['status'] ?? '') === 'pending') {
             $this->appointmentModel->update($appointmentId, ['status' => 'confirmed']);
+
+            // Customer notification via the standard event pipeline
             $this->eventService->dispatch('appointment_confirmed', $appointmentId, ['email', 'whatsapp'], $businessId);
+
+            // Provider/internal notification — mirrors what AppointmentBookingService does
+            // on normal booking creation, but is not triggered by the event listener
+            $providerUserId = (int) ($appointment['provider_id'] ?? 0);
+            if ($providerUserId > 0) {
+                $queue = new \App\Services\NotificationQueueService();
+                foreach (['email'] as $channel) {
+                    $queue->enqueueInternalEvent(
+                        $businessId,
+                        $channel,
+                        'appointment_confirmed',
+                        $appointmentId,
+                        $providerUserId
+                    );
+                }
+            }
         }
 
         return ['ok' => true, 'skipped' => false];
