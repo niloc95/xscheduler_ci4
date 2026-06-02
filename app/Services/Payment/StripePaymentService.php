@@ -179,20 +179,6 @@ class StripePaymentService
 
     private function getDecryptedConfig(int $businessId): ?array
     {
-        try {
-            $reflection = new \ReflectionClass($this->integration);
-            $getRow     = $reflection->getMethod('getRow');
-            $getRow->setAccessible(true);
-            $row = $getRow->invoke($this->integration, $businessId);
-            if (!$row) {
-                return null;
-            }
-            $decrypt = $reflection->getMethod('decryptConfig');
-            $decrypt->setAccessible(true);
-            return $decrypt->invoke($this->integration, $row['encrypted_config'] ?? null);
-        } catch (\Throwable $e) {
-            log_message('error', '[StripePaymentService] Cannot decrypt config: ' . $e->getMessage());
-            return null;
-        }
+        return $this->integration->getDecryptedConfig($businessId);
     }
 }

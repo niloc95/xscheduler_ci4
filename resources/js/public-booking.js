@@ -847,6 +847,12 @@ function bootstrapPublicBooking() {
           window.location.href = paymentData.stripe.checkout_url;
           return;
         }
+        // Gateway was selected but unavailable — booking succeeded but no redirect.
+        // Show a visible error so the customer knows payment is still required.
+        if (paymentData?.payment_error) {
+          updateBooking(prev => ({ ...prev, submitting: false, globalError: paymentData.payment_error }));
+          return;
+        }
 
         updateBooking(prev => ({
           ...prev,

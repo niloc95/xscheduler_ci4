@@ -153,12 +153,11 @@ class PaymentWebhookController extends BaseController
      */
     private function resolveFromReference(string $reference): array
     {
-        $parts = explode('_', $reference);
-        // Expected parts: [prefix, appointmentId, timestamp]
-        if (count($parts) < 3) {
+        // Strict format: pf_{appointmentId}_{unixTimestamp}
+        if (!preg_match('/^pf_(\d+)_(\d+)$/', $reference, $m)) {
             return [0, 1];
         }
-        $appointmentId = (int) $parts[1];
+        $appointmentId = (int) $m[1];
         return [$appointmentId > 0 ? $appointmentId : 0, 1];
     }
 }

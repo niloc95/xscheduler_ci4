@@ -112,21 +112,7 @@ class PayFastPaymentService
 
     private function getDecryptedConfig(int $businessId): ?array
     {
-        try {
-            $reflection = new \ReflectionClass($this->integration);
-            $method = $reflection->getMethod('getRow');
-            $method->setAccessible(true);
-            $row = $method->invoke($this->integration, $businessId);
-            if (!$row) {
-                return null;
-            }
-            $decryptMethod = $reflection->getMethod('decryptConfig');
-            $decryptMethod->setAccessible(true);
-            return $decryptMethod->invoke($this->integration, $row['encrypted_config'] ?? null);
-        } catch (\Throwable $e) {
-            log_message('error', '[PayFastPaymentService] Cannot decrypt config: ' . $e->getMessage());
-            return null;
-        }
+        return $this->integration->getDecryptedConfig($businessId);
     }
 
     private function verifySignature(array $post, string $passphrase): bool

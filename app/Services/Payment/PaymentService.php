@@ -46,6 +46,20 @@ class PaymentService
     // -------------------------------------------------------------------------
 
     /**
+     * Return whether each gateway has live credentials configured for a business.
+     * Single source of truth — call this instead of duplicating the isActive() check.
+     *
+     * @return array{payfast: bool, stripe: bool}
+     */
+    public function getGatewayAvailability(int $businessId): array
+    {
+        return [
+            'payfast' => $this->payfast->isActive($businessId),
+            'stripe'  => $this->stripe->isActive($businessId),
+        ];
+    }
+
+    /**
      * Calculate the deposit amount for a service.
      * Returns 0.0 if the service has no deposit or payment is disabled.
      */
@@ -54,12 +68,11 @@ class PaymentService
         if (!(bool) ($service['payment_enabled'] ?? false)) {
             return 0.0;
         }
-        $price      = (float) ($service['price'] ?? 0);
-        $percentage = (float) ($service['deposit_percentage'] ?? 0);
-        if ($price <= 0 || $percentage <= 0) {
-            return 0.0;
-        }
-        return round($price * ($percentage / 100), 2);
+        helper('currency');
+        return calculate_deposit_amount(
+            (float) ($service['price'] ?? 0),
+            (float) ($service['deposit_percentage'] ?? 0)
+        );
     }
 
     /**
@@ -268,8 +281,11 @@ class PaymentService
         if ($appointment && ($appointment['status'] ?? '') === 'pending') {
             $this->appointmentModel->update($appointmentId, ['status' => 'confirmed']);
 
-            // Customer notification via the standard event pipeline
+            // Customer: standard booking confirmation (appointment_confirmed)
             $this->eventService->dispatch('appointment_confirmed', $appointmentId, ['email', 'whatsapp'], $businessId);
+
+            // Customer: dedicated payment receipt (payment_confirmed)
+            $this->eventService->dispatch('payment_confirmed', $appointmentId, ['email', 'whatsapp'], $businessId);
 
             // Provider/internal notification — mirrors what AppointmentBookingService does
             // on normal booking creation, but is not triggered by the event listener

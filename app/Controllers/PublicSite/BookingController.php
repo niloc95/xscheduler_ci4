@@ -611,6 +611,12 @@ class BookingController extends BaseController
             $response['gateway'] = 'stripe';
         }
 
+        // A gateway was selected but wasn't available (credentials missing or disabled).
+        // Surface a user-visible error instead of silently completing without payment.
+        if ($gateway !== '' && !isset($response['gateway'])) {
+            $response['payment_error'] = 'The selected payment method is not currently available. Please contact us to arrange payment.';
+        }
+
         return $response;
     }
 
