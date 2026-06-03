@@ -73,6 +73,7 @@ class PayFastIntegrationService
         $decryptError = $decrypted['error'] ?? null;
 
         $merchantId = (string) ($config['merchant_id'] ?? '');
+        $passphrase = (string) ($config['passphrase'] ?? '');
 
         return [
             'is_active'        => (bool) ($row['is_active'] ?? false),
@@ -80,7 +81,9 @@ class PayFastIntegrationService
             'last_tested_at'   => (string) ($row['last_tested_at'] ?? ''),
             'decrypt_error'    => $decryptError,
             'has_credentials'  => $merchantId !== '',
+            'merchant_id'      => $merchantId,                                          // exposed — merchant_id is public (appears in payment forms)
             'merchant_id_hint' => $merchantId !== '' ? substr($merchantId, 0, 4) . '...' : '',
+            'has_passphrase'   => $passphrase !== '',
             'sandbox'          => (bool) ($config['sandbox'] ?? true),
         ];
     }
@@ -92,6 +95,23 @@ class PayFastIntegrationService
         $passphrase  = trim((string) ($input['passphrase'] ?? ''));
         $sandbox     = filter_var($input['sandbox'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
+        // Preserve existing merchant_key and passphrase when left blank (same pattern as Stripe).
+        // Must happen before validation so "leave blank to keep existing" actually works.
+        $existing       = null;
+        $existingConfig = [];
+        if ($merchantKey === '' || $passphrase === '') {
+            $existing = $this->getRow($businessId);
+            if ($existing) {
+                $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
+            }
+        }
+        if ($merchantKey === '') {
+            $merchantKey = (string) ($existingConfig['merchant_key'] ?? '');
+        }
+        if ($passphrase === '') {
+            $passphrase = (string) ($existingConfig['passphrase'] ?? '');
+        }
+
         if ($merchantId === '') {
             return ['ok' => false, 'error' => 'Merchant ID is required.'];
         }
@@ -100,22 +120,6 @@ class PayFastIntegrationService
         }
         if ($merchantKey === '') {
             return ['ok' => false, 'error' => 'Merchant Key is required.'];
-        }
-
-        // Preserve existing merchant key and passphrase if omitted
-        if ($merchantKey === '') {
-            $existing = $this->getRow($businessId);
-            if ($existing) {
-                $existingConfig = $this->decryptConfig($existing['encrypted_config'] ?? null);
-                $merchantKey    = (string) ($existingConfig['merchant_key'] ?? '');
-            }
-        }
-        if ($passphrase === '') {
-            $existing = $existing ?? $this->getRow($businessId);
-            if ($existing) {
-                $existingConfig = $existingConfig ?? $this->decryptConfig($existing['encrypted_config'] ?? null);
-                $passphrase     = (string) ($existingConfig['passphrase'] ?? '');
-            }
         }
 
         try {
@@ -164,10 +168,14 @@ class PayFastIntegrationService
             return ['ok' => false, 'error' => 'Merchant credentials are missing.'];
         }
 
-        $timestamp = date('Y-m-d\TH:i:s');
-        $version   = 'v1';
-        // Signature covers raw header values only — no URL encoding, no query params.
+        $passphrase = (string) ($config['passphrase'] ?? '');
+        $timestamp  = date('Y-m-d\TH:i:s');
+        $version    = 'v1';
+        // Signature: raw header values only. Append passphrase when the account has one set.
         $pfData    = "merchant-id={$merchantId}&version={$version}&timestamp={$timestamp}";
+        if ($passphrase !== '') {
+            $pfData .= '&passphrase=' . $passphrase;
+        }
         $signature = md5($pfData);
 
         try {
