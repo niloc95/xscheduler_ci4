@@ -171,11 +171,18 @@ class PayFastIntegrationService
         $passphrase = (string) ($config['passphrase'] ?? '');
         $timestamp  = date('Y-m-d\TH:i:s');
         $version    = 'v1';
-        // Signature: raw header values only. Append passphrase when the account has one set.
-        $pfData    = "merchant-id={$merchantId}&version={$version}&timestamp={$timestamp}";
+        // PayFast requires header fields sorted ALPHABETICALLY by key before MD5.
+        // Correct order: merchant-id < passphrase < timestamp < version
+        $headerFields = [
+            'merchant-id' => $merchantId,
+            'timestamp'   => $timestamp,
+            'version'     => $version,
+        ];
         if ($passphrase !== '') {
-            $pfData .= '&passphrase=' . $passphrase;
+            $headerFields['passphrase'] = $passphrase;
         }
+        ksort($headerFields);
+        $pfData    = http_build_query($headerFields);
         $signature = md5($pfData);
 
         try {
