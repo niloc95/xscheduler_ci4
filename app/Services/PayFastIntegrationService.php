@@ -166,10 +166,8 @@ class PayFastIntegrationService
 
         $timestamp = date('Y-m-d\TH:i:s');
         $version   = 'v1';
-        $pfData    = "merchant-id={$merchantId}&version={$version}&timestamp=" . urlencode($timestamp);
-        if ($sandbox) {
-            $pfData .= '&testing=true';
-        }
+        // Signature covers raw header values only — no URL encoding, no query params.
+        $pfData    = "merchant-id={$merchantId}&version={$version}&timestamp={$timestamp}";
         $signature = md5($pfData);
 
         try {
