@@ -679,16 +679,27 @@ $analyticsActive   = $analyticsProvider !== 'none';
             <p class="text-xs text-gray-500 dark:text-gray-400">Find your credentials in the <a href="https://www.payfast.co.za/account/integration" target="_blank" rel="noopener" class="text-blue-600 hover:underline dark:text-blue-400">PayFast Merchant Account</a> under Integration Settings.</p>
             <div class="form-field">
                 <label class="form-label" for="payfast-merchant-id">Merchant ID <span class="text-red-500">*</span></label>
-                <input id="payfast-merchant-id" type="text" class="form-input font-mono" placeholder="<?= !empty($payfastIntegration['merchant_id_hint']) ? esc($payfastIntegration['merchant_id_hint']) : '10000100' ?>">
+                <input id="payfast-merchant-id" type="text" class="form-input font-mono"
+                       value="<?= esc($payfastIntegration['merchant_id'] ?? '') ?>"
+                       placeholder="10000100">
             </div>
             <div class="form-field">
                 <label class="form-label" for="payfast-merchant-key">Merchant Key <span class="text-red-500">*</span></label>
-                <input id="payfast-merchant-key" type="password" class="form-input font-mono" placeholder="Leave blank to keep existing" autocomplete="new-password">
+                <input id="payfast-merchant-key" type="password" class="form-input font-mono"
+                       placeholder="<?= !empty($payfastIntegration['has_credentials']) ? 'Leave blank to keep existing key' : 'Enter merchant key' ?>"
+                       autocomplete="new-password">
             </div>
             <div class="form-field">
-                <label class="form-label" for="payfast-passphrase">Passphrase <span class="text-xs text-gray-400">(optional)</span></label>
-                <input id="payfast-passphrase" type="password" class="form-input font-mono" placeholder="Leave blank to keep existing" autocomplete="new-password">
-                <p class="form-help">Set in your PayFast account under Security. Strengthens payment signature verification.</p>
+                <label class="form-label" for="payfast-passphrase">
+                    Passphrase <span class="text-xs text-gray-400">(optional)</span>
+                    <?php if (!empty($payfastIntegration['has_passphrase'])): ?>
+                        <span class="ml-1 text-xs text-green-600 dark:text-green-400">✓ saved</span>
+                    <?php endif; ?>
+                </label>
+                <input id="payfast-passphrase" type="password" class="form-input font-mono"
+                       placeholder="<?= !empty($payfastIntegration['has_passphrase']) ? 'Leave blank to keep existing passphrase' : 'Leave blank if not set' ?>"
+                       autocomplete="new-password">
+                <p class="form-help">Set in your PayFast account under Security. Required in API signature when configured — must match exactly.</p>
             </div>
             <div class="form-field">
                 <label class="flex items-center gap-2 cursor-pointer">

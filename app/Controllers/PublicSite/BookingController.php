@@ -4,6 +4,8 @@ namespace App\Controllers\PublicSite;
 
 use App\Controllers\BaseController;
 use App\Exceptions\PublicBookingException;
+use App\Models\ServiceModel;
+use App\Services\Payment\PaymentService;
 use App\Services\PublicBookingService;
 use CodeIgniter\HTTP\ResponseInterface;
 
@@ -247,11 +249,21 @@ class BookingController extends BaseController
                 'slot_start' => (string) ($payload['start'] ?? ''),
             ]);
             $result = $this->booking->createBooking($payload);
+            $appointmentId = (int) ($result['appointment']['id'] ?? 0);
+            $serviceId     = (int) ($result['appointment']['service_id'] ?? 0);
+
             log_structured('info', 'public_booking.created', [
-                'appointment_id' => isset($result['appointment']['id']) ? (int) $result['appointment']['id'] : null,
+                'appointment_id' => $appointmentId,
                 'provider_id' => isset($result['appointment']['provider_id']) ? (int) $result['appointment']['provider_id'] : null,
-                'service_id' => isset($result['appointment']['service_id']) ? (int) $result['appointment']['service_id'] : null,
+                'service_id' => $serviceId,
             ]);
+
+            // Append payment metadata if the service requires a deposit
+            $payment = $this->resolvePaymentResponse($appointmentId, $serviceId, $payload);
+            if ($payment !== null) {
+                $result['payment'] = $payment;
+            }
+
             return $this->respondJson(['data' => $result], ResponseInterface::HTTP_CREATED);
         } catch (PublicBookingException $e) {
             log_structured('warning', 'public_booking.create_failed', [
@@ -500,6 +512,114 @@ class BookingController extends BaseController
      * A refreshed CSRF pair is appended to every response so the frontend
      * can update its token after each state-changing request.
      */
+    // -------------------------------------------------------------------------
+    // Payment return / cancel pages
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET /booking/payment/return?gateway={payfast|stripe}&ref={reference}
+     *
+     * The gateway redirects the customer here after a successful payment.
+     * The actual appointment confirmation is done by the webhook — this page
+     * just shows a "thank you, check your email" message.
+     */
+    public function paymentReturn()
+    {
+        $gateway = $this->request->getGet('gateway') ?? '';
+        return view('public-site/payment-return', [
+            'gateway' => esc($gateway),
+        ]);
+    }
+
+    /**
+     * GET /booking/payment/cancel?gateway={payfast|stripe}
+     *
+     * The gateway redirects here when the customer cancels or abandons payment.
+     */
+    public function paymentCancel()
+    {
+        $gateway = $this->request->getGet('gateway') ?? '';
+        return view('public-site/payment-cancel', [
+            'gateway' => esc($gateway),
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private payment helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Build the payment metadata block for the booking API response.
+     * Returns null if the service has no deposit configured.
+     *
+     * @param int   $appointmentId
+     * @param int   $serviceId
+     * @param array $payload  Original booking payload (may contain gateway preference).
+     */
+    private function resolvePaymentResponse(int $appointmentId, int $serviceId, array $payload): ?array
+    {
+        if ($appointmentId === 0 || $serviceId === 0) {
+            return null;
+        }
+
+        $service = (new ServiceModel())->find($serviceId);
+        if (!$service || !(bool) ($service['payment_enabled'] ?? false)) {
+            return null;
+        }
+
+        $paymentSvc = new PaymentService();
+        $businessId = 1; // single-tenant; extend via current_business_id() for multi-tenant
+
+        $meta = $paymentSvc->servicePaymentMeta($service, $businessId);
+        if (!($meta['payment_required'] ?? false)) {
+            return null;
+        }
+
+        $baseUrl   = base_url();
+        $returnUrl = $baseUrl . 'booking/payment/return';
+        $cancelUrl = $baseUrl . 'booking/payment/cancel';
+
+        $gateway  = strtolower((string) ($payload['payment_gateway'] ?? ''));
+        $response = ['meta' => $meta];
+
+        if ($gateway === 'payfast' && ($meta['payfast_available'] ?? false)) {
+            $customer = [
+                'first_name' => (string) ($payload['first_name'] ?? ''),
+                'last_name'  => (string) ($payload['last_name']  ?? ''),
+                'email'      => (string) ($payload['email']      ?? ''),
+            ];
+            $result = $paymentSvc->initiatePayFast(
+                $businessId,
+                $appointmentId,
+                $service,
+                $customer,
+                $returnUrl . '?gateway=payfast',
+                $cancelUrl . '?gateway=payfast',
+                $baseUrl . 'public/payments/payfast/notify'
+            );
+            $response['payfast'] = $result;
+            $response['gateway'] = 'payfast';
+        } elseif ($gateway === 'stripe' && ($meta['stripe_available'] ?? false)) {
+            $result = $paymentSvc->initiateStripe(
+                $businessId,
+                $appointmentId,
+                $service,
+                $returnUrl . '?gateway=stripe&session_id={CHECKOUT_SESSION_ID}',
+                $cancelUrl . '?gateway=stripe'
+            );
+            $response['stripe'] = $result;
+            $response['gateway'] = 'stripe';
+        }
+
+        // A gateway was selected but wasn't available (credentials missing or disabled).
+        // Surface a user-visible error instead of silently completing without payment.
+        if ($gateway !== '' && !isset($response['gateway'])) {
+            $response['payment_error'] = 'The selected payment method is not currently available. Please contact us to arrange payment.';
+        }
+
+        return $response;
+    }
+
     private function respondJson(array $payload, int $status = 200)
     {
         // Normalise flat error shapes to the canonical API envelope.

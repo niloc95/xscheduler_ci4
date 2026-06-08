@@ -245,6 +245,16 @@ if (!function_exists('avatar_data')) {
     }
 }
 
+if (!function_exists('avatar_resolve_urls')) {
+    function avatar_resolve_urls(array $entities, string $imageField = 'profile_image'): array
+    {
+        foreach ($entities as &$entity) {
+            $entity['profile_image_url'] = avatar_profile_image_url($entity, $imageField) ?? '';
+        }
+        return $entities;
+    }
+}
+
 if (!function_exists('settings_by_prefix')) {
     /**
      * Get settings by prefix (e.g., 'general.') returning associative array.

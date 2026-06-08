@@ -236,6 +236,14 @@ function bootstrapPublicBooking() {
     form.querySelector('[data-action="tips-mobile-toggle"]')?.addEventListener('click', () => {
       updateDraft(target, prev => ({ ...prev, tipsMobileOpen: !prev.tipsMobileOpen }));
     });
+
+    // Gateway picker — radio-style buttons rendered by renderPaymentGatewayPicker
+    form.querySelectorAll('[data-select-gateway]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const gateway = btn.getAttribute('data-select-gateway');
+        updateDraft(target, prev => ({ ...prev, selectedPaymentGateway: gateway }));
+      });
+    });
   }
 
   function bindLookupEvents() {
@@ -387,6 +395,7 @@ function bootstrapPublicBooking() {
       ...prev,
       serviceId: value,
       deliveryMode: availableModes[0] ?? 'onsite',
+      selectedPaymentGateway: null, // reset on service change
       selectedSlot: null,
       slots: [],
       slotsError: '',
@@ -445,15 +454,31 @@ function bootstrapPublicBooking() {
         throw new Error(payload?.error?.message ?? payload?.error ?? 'Unable to load services.');
       }
 
-      const services = (payload?.data ?? payload ?? []).map(svc => ({
-        id: svc.id,
-        name: svc.name,
-        description: svc.description,
-        duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
-        price: svc.price,
-        formattedPrice: svc.price != null && svc.price !== '' ? formatLocalizedCurrency(svc.price) : '',
-        deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
-      }));
+      const services = (payload?.data ?? payload ?? []).map(svc => {
+        const depositPct    = svc.deposit_percentage ?? svc.depositPercentage ?? null;
+        const price         = svc.price;
+        const depositAmount = (svc.payment_enabled || svc.paymentEnabled) && depositPct
+          ? Math.round(parseFloat(price) * (parseFloat(depositPct) / 100) * 100) / 100
+          : null;
+        return {
+          id: svc.id,
+          name: svc.name,
+          description: svc.description,
+          duration: svc.durationMin ?? svc.duration_min ?? svc.duration,
+          price,
+          formattedPrice: price != null && price !== '' ? formatLocalizedCurrency(price) : '',
+          deliveryModes: Array.isArray(svc.deliveryModes) ? svc.deliveryModes : ['onsite'],
+          paymentEnabled:    !!(svc.payment_enabled || svc.paymentEnabled),
+          // payfastAvailable / stripeAvailable come from the API after checking
+          // both the service-level toggle AND that the gateway has live credentials.
+          // Fall back to the raw flags only when the richer field is absent.
+          payfastAvailable:  !!(svc.payfastAvailable ?? svc.payfast_enabled ?? false),
+          stripeAvailable:   !!(svc.stripeAvailable  ?? svc.stripe_enabled  ?? false),
+          depositPercentage: depositPct ? parseFloat(depositPct) : null,
+          depositAmount,
+          formattedDeposit:  depositAmount != null ? formatLocalizedCurrency(depositAmount) : null,
+        };
+      });
 
       updateDraft(target, prev => ({
         ...prev,
@@ -753,6 +778,20 @@ function bootstrapPublicBooking() {
       return;
     }
 
+    // If the service requires a deposit, a gateway must be chosen before submitting.
+    if (target === 'booking') {
+      const selectedService = (draft.services ?? []).find(s => String(s.id) === String(draft.serviceId));
+      const needsGateway = selectedService?.paymentEnabled && selectedService?.formattedDeposit
+        && (selectedService?.payfastAvailable || selectedService?.stripeAvailable);
+      if (needsGateway && !draft.selectedPaymentGateway) {
+        updateDraft(target, prev => ({
+          ...prev,
+          globalError: 'Please select a payment method for the deposit before confirming.',
+        }));
+        return;
+      }
+    }
+
     updateDraft(target, prev => ({ ...prev, submitting: true, globalError: '', errors: { ...prev.errors } }));
 
     try {
@@ -796,6 +835,25 @@ function bootstrapPublicBooking() {
       }
 
       if (target === 'booking') {
+        // If the service requires a deposit payment, redirect to the gateway.
+        // The payment object in the response contains the URL (PayFast) or
+        // checkout_url (Stripe) to send the customer to.
+        const paymentData = data?.data?.payment;
+        if (paymentData?.gateway === 'payfast' && paymentData?.payfast?.ok && paymentData?.payfast?.url) {
+          window.location.href = paymentData.payfast.url;
+          return;
+        }
+        if (paymentData?.gateway === 'stripe' && paymentData?.stripe?.ok && paymentData?.stripe?.checkout_url) {
+          window.location.href = paymentData.stripe.checkout_url;
+          return;
+        }
+        // Gateway was selected but unavailable — booking succeeded but no redirect.
+        // Show a visible error so the customer knows payment is still required.
+        if (paymentData?.payment_error) {
+          updateBooking(prev => ({ ...prev, submitting: false, globalError: paymentData.payment_error }));
+          return;
+        }
+
         updateBooking(prev => ({
           ...prev,
           submitting: false,
@@ -989,11 +1047,12 @@ function bootstrapPublicBooking() {
 
   function buildPayload(draft, extras = {}) {
     const payload = {
-      provider_slug: String(draft.providerId || ''),
-      service_id:    Number(draft.serviceId),
-      slot_start:    draft.selectedSlot?.start ?? null,
-      notes:         draft.form.notes ?? '',
-      delivery_mode: draft.deliveryMode ?? 'onsite',
+      provider_slug:    String(draft.providerId || ''),
+      service_id:       Number(draft.serviceId),
+      slot_start:       draft.selectedSlot?.start ?? null,
+      notes:            draft.form.notes ?? '',
+      delivery_mode:    draft.deliveryMode ?? 'onsite',
+      payment_gateway:  draft.selectedPaymentGateway ?? null,
     };
 
     const locationId = draft.resolvedLocation?.id ?? draft.selectedLocationId;

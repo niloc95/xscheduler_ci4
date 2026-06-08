@@ -65,9 +65,11 @@ class ProviderStaff extends BaseController
 
     public function __construct()
     {
+        helper('app');
         $this->providerStaffModel = new ProviderStaffModel();
         $this->userModel = new UserModel();
     }
+
 
     public function list(int $providerId)
     {
@@ -88,7 +90,7 @@ class ProviderStaff extends BaseController
             return $this->failForbidden('You do not have permission to view this provider.');
         }
 
-        $staff = $this->providerStaffModel->getStaffByProvider($providerId);
+        $staff = avatar_resolve_urls($this->providerStaffModel->getStaffByProvider($providerId));
         $token = csrf_hash();
         $this->response->setHeader('X-CSRF-TOKEN', $token);
 
@@ -155,7 +157,7 @@ class ProviderStaff extends BaseController
             return $this->failServerError('Failed to assign staff: ' . $e->getMessage());
         }
 
-        $staffList = $this->providerStaffModel->getStaffByProvider($providerId);
+        $staffList = avatar_resolve_urls($this->providerStaffModel->getStaffByProvider($providerId));
         $token = csrf_hash();
         $this->response->setHeader('X-CSRF-TOKEN', $token);
 
@@ -208,7 +210,7 @@ class ProviderStaff extends BaseController
             return $this->failServerError('Failed to remove assignment.');
         }
 
-        $staffList = $this->providerStaffModel->getStaffByProvider($providerId);
+        $staffList = avatar_resolve_urls($this->providerStaffModel->getStaffByProvider($providerId));
         $token = csrf_hash();
         $this->response->setHeader('X-CSRF-TOKEN', $token);
 

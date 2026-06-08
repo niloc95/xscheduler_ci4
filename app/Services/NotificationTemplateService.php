@@ -126,6 +126,7 @@ class NotificationTemplateService
         '{delivery_mode}' => 'Session type (In Person / Zoom / Jitsi Meet)',
         '{video_link}'    => 'Video meeting join link (empty for in-person appointments)',
         '{session_info}'  => 'Full session block: Maps/Waze location block for in-person, or video meeting URL block for online appointments (auto-formatted multi-line)',
+        '{payment_info}'  => 'Deposit payment block (deposit paid, outstanding balance, payment ref). Empty string when no deposit was taken.',
     ];
 
     /**
@@ -147,13 +148,13 @@ class NotificationTemplateService
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n{payment_info}\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "✅ Confirmed: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_first_name}!\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_\n{terms_link} | {privacy_link}"
+                'body' => "✅ *Appointment Confirmed*\n\nHi {customer_first_name}!\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n{payment_info}\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_reminder' => [
@@ -740,6 +741,7 @@ class NotificationTemplateService
             // Video / delivery mode
             '{delivery_mode}' => $data['delivery_mode'] ?? 'In Person',
             '{video_link}'    => $data['video_link']    ?? '',
+            '{payment_info}'  => $this->buildPaymentInfoBlock($data),
             '{session_info}'  => $this->buildSessionInfo(
                 $data['delivery_mode']    ?? '',
                 $data['video_link']       ?? '',
@@ -749,6 +751,36 @@ class NotificationTemplateService
                 $wazeLink,
             ),
         ];
+    }
+
+    /**
+     * Build the payment info block inserted into `appointment_confirmed` templates.
+     * Returns a formatted multi-line section when payment_status='paid', else ''.
+     */
+    private function buildPaymentInfoBlock(array $data): string
+    {
+        if (($data['payment_status'] ?? '') !== 'paid' || empty($data['payment_amount'])) {
+            return '';
+        }
+
+        $loc     = new LocalizationSettingsService();
+        $paid    = (float) $data['payment_amount'];
+        $price   = (float) ($data['service_price'] ?? 0);
+        $balance = $price > 0 ? max(0.0, $price - $paid) : 0.0;
+        $ref     = (string) ($data['payment_reference'] ?? '');
+
+        $lines   = [];
+        $lines[] = "── PAYMENT ──────────────────────────────";
+        $lines[] = "💳 Deposit paid:    " . $loc->formatCurrency($paid);
+        if ($balance > 0) {
+            $lines[] = "💰 Outstanding:     " . $loc->formatCurrency($balance) . " (payable on the day)";
+        }
+        if ($ref !== '') {
+            $lines[] = "🔑 Payment ref:     " . $ref;
+        }
+        $lines[] = "─────────────────────────────────────────";
+
+        return implode("\n", $lines) . "\n";
     }
 
     /**

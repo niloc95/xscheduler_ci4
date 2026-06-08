@@ -58,16 +58,19 @@ namespace App\Controllers\Api\V1;
 use App\Controllers\Api\BaseApiController;
 use App\Models\ServiceModel;
 use App\Models\CategoryModel;
+use App\Services\ServiceMutationService;
 
 class Services extends BaseApiController
 {
     protected ServiceModel $model;
     protected CategoryModel $categories;
+    protected ServiceMutationService $serviceMutation;
 
     public function __construct()
     {
         $this->model = new ServiceModel();
         $this->categories = new CategoryModel();
+        $this->serviceMutation = new ServiceMutationService();
     }
     // GET /api/v1/services
     public function index()
@@ -142,11 +145,12 @@ class Services extends BaseApiController
             'active' => isset($body['active']) ? (int)!!$body['active'] : 1,
         ];
 
-        if (!$this->model->insert($data)) {
+        try {
+            $id = $this->serviceMutation->createService($data, []);
+        } catch (\Throwable $e) {
             return $this->error(422, 'Validation failed', null, $this->model->errors());
         }
 
-        $id = (int)$this->model->getInsertID();
         return $this->created(['id' => $id]);
     }
 
@@ -166,18 +170,20 @@ class Services extends BaseApiController
             'active' => isset($body['active']) ? (int)!!$body['active'] : 1,
         ];
 
-        if (!$this->model->update((int)$id, $data)) {
+        try {
+            $this->serviceMutation->updateService((int) $id, $data, []);
+        } catch (\Throwable $e) {
             return $this->error(422, 'Validation failed', null, $this->model->errors());
         }
 
-        return $this->ok(['id' => (int)$id]);
+        return $this->ok(['id' => (int) $id]);
     }
 
     // DELETE /api/v1/services/{id}
     public function delete($id = null)
     {
         if (!$id) return $this->error(400, 'Missing id');
-        $this->model->delete((int)$id);
+        $this->serviceMutation->deleteService((int) $id);
         return $this->ok(['deleted' => true]);
     }
 }

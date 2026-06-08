@@ -68,7 +68,25 @@ For SPA-intercepted form posts:
 
 **Critical rule:** If the success destination equals the current page, **include `redirect` so SPA navigation can force-reload**. Without `redirect`, `spa.js` cannot reliably refresh the current view after a mutation.
 
-This is the most commonly missed contract — verify it on every controller action that returns to the same page after save.
+This is the most commonly missed contract — verify it on every controller action that returns to the same page after save. Note: `formSuccess()` (see below) enforces the `redirect` key automatically for any controller using `FormResponseTrait`.
+
+## Form Surface — FormResponseTrait
+
+Form controllers (non-API, SPA-intercepted form POSTs) use `App\Traits\FormResponseTrait` instead of hand-rolling `setJSON()` calls:
+
+```php
+use App\Traits\FormResponseTrait;
+
+// Success → HTTP 200, { success: true, message, redirect, ...extra }
+$this->formSuccess(string $redirect, string $message, array $extra = [])
+
+// Error → HTTP $status (default 422), { success: false, message, errors }
+$this->formError(string $message, array $errors = [], int $status = 422)
+```
+
+Applied to: `Services`, `ServiceCategories`, `CustomerManagement`.
+
+This is the form-surface equivalent of `BaseApiController` envelope helpers. Do **not** call `$this->response->setStatusCode(...)->setJSON(...)` in any controller that already uses this trait.
 
 ## Server-Side View Model APIs (Calendar)
 

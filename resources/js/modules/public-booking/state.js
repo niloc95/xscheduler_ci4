@@ -78,6 +78,7 @@ export function createBookingDraft(ctx, defaultDate) {
     selectedSlot: null,
     resolvedLocation: null,
     deliveryMode: null,
+    selectedPaymentGateway: null,
     calendar: createCalendarState(),
     form: createInitialFormState(ctx),
     errors: {},

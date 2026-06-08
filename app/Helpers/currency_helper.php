@@ -164,4 +164,20 @@ if (! function_exists('parse_currency')) {
         $cleaned = preg_replace('/[^\d.-]/', '', $currencyString);
         return (float)$cleaned;
     }
+
+    /**
+     * Calculate a deposit amount from a service price and percentage.
+     * Single source of truth used by PaymentService, PublicBookingService, and the Providers API.
+     *
+     * @param float|null $price  Full service price.
+     * @param float|null $pct   Deposit percentage (e.g. 10.0 for 10%).
+     * @return float Deposit amount rounded to 2 decimal places, or 0.0 if inputs are invalid.
+     */
+    function calculate_deposit_amount(?float $price, ?float $pct): float
+    {
+        if ($price === null || $pct === null || $price <= 0 || $pct <= 0) {
+            return 0.0;
+        }
+        return round($price * ($pct / 100), 2);
+    }
 }

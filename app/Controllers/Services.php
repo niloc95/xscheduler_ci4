@@ -61,26 +61,32 @@ use App\Models\UserModel;
 use App\Models\ServiceModel;
 use App\Models\CategoryModel;
 use App\Services\BookingMetricsService;
+use App\Services\ServiceMutationService;
+use App\Traits\FormResponseTrait;
 
 class Services extends BaseController
 {
+    use FormResponseTrait;
     protected UserModel $userModel;
     protected ServiceModel $serviceModel;
     protected CategoryModel $categoryModel;
     protected BookingMetricsService $bookingMetrics;
+    protected ServiceMutationService $serviceMutation;
     private string $providerServicePivotTable;
 
     public function __construct(
         ?UserModel $userModel = null,
         ?ServiceModel $serviceModel = null,
         ?CategoryModel $categoryModel = null,
-        ?BookingMetricsService $bookingMetrics = null
+        ?BookingMetricsService $bookingMetrics = null,
+        ?ServiceMutationService $serviceMutation = null,
     )
     {
         $this->userModel = $userModel ?? new UserModel();
         $this->serviceModel = $serviceModel ?? new ServiceModel();
         $this->categoryModel = $categoryModel ?? new CategoryModel();
         $this->bookingMetrics = $bookingMetrics ?? new BookingMetricsService();
+        $this->serviceMutation = $serviceMutation ?? new ServiceMutationService();
         $this->providerServicePivotTable = $this->serviceModel->db !== null
             ? $this->serviceModel->db->prefixTable('providers_services')
             : 'providers_services';
@@ -159,7 +165,13 @@ class Services extends BaseController
                 'price' => isset($s['price']) ? (float)$s['price'] : 0,
                 'provider' => ($s['provider_names'] ?? '') ?: '—',
                 'status' => ((int)($s['active'] ?? 1)) === 1 ? 'active' : 'inactive',
-                'bookings_count' => (int)($bookingCountsByService[(int)$s['id']] ?? 0),
+                'bookings_count'   => (int)($bookingCountsByService[(int)$s['id']] ?? 0),
+                'delivery_modes'   => json_decode($s['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'payment_enabled'  => (bool)($s['payment_enabled']  ?? false),
+                'payfast_enabled'  => (bool)($s['payfast_enabled']  ?? false),
+                'stripe_enabled'   => (bool)($s['stripe_enabled']   ?? false),
+                'deposit_percentage' => $s['deposit_percentage'] ?? null,
+                'created_at'       => $s['created_at'] ?? null,
             ];
         }, $services);
 
@@ -245,8 +257,10 @@ class Services extends BaseController
             'action_url' => site_url('services/store'),
             'data' => [],
             'linkedProviders' => [],
-            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
-            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'zoomConnected'   => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected'  => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'payfastActive'   => (new \App\Services\PayFastIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'stripeActive'    => (new \App\Services\StripeIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/create', $data);
@@ -293,8 +307,10 @@ class Services extends BaseController
             // Shared form contract
             'action_url' => site_url('services/update/' . (int)$serviceId),
             'data' => $service,
-            'zoomConnected'  => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
-            'jitsiConnected' => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'zoomConnected'   => (new \App\Services\ZoomIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'jitsiConnected'  => (new \App\Services\JitsiIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'payfastActive'   => (new \App\Services\PayFastIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
+            'stripeActive'    => (new \App\Services\StripeIntegrationService())->getPublicIntegration(\App\Services\NotificationCatalog::BUSINESS_ID_DEFAULT)['is_active'] ?? false,
         ];
 
         return view('services/edit', $data);
@@ -350,53 +366,27 @@ class Services extends BaseController
             $serviceData['category_id'] = $catId;
         }
 
-        if (!$this->serviceModel->insert($serviceData)) {
-            $errors = $this->serviceModel->errors();
-
-            if (ENVIRONMENT === 'development') {
-                log_message('debug', 'Service store - Validation errors: ' . json_encode($errors));
-            }
-
-            if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $errors
-                ]);
-            }
-            return redirect()->back()->with('error', 'Validation failed')->with('errors', $errors)->withInput();
-        }
-
-        $serviceId = (int)$this->serviceModel->getInsertID();
         $providerIds = $this->extractPostedProviderIds($input);
 
-        $db = $this->serviceModel->db;
-        $db->transStart();
-        $this->serviceModel->setProviders($serviceId, (array)$providerIds);
-        $db->transComplete();
-
-        if (!$db->transStatus()) {
-            log_message('error', "Services::store — setProviders failed for service #{$serviceId}. Service saved but has no provider links.");
+        try {
+            $serviceId = $this->serviceMutation->createService($serviceData, $providerIds);
+        } catch (\Throwable $e) {
+            log_message('error', 'Services::store — ' . $e->getMessage());
+            if ($this->request->isAJAX()) {
+                return $this->formError('Validation failed', $this->serviceModel->errors() ?: []);
+            }
+            return redirect()->back()->with('error', 'Validation failed')->withInput();
         }
 
         $assignedCount = count($providerIds);
+        $successMsg = $assignedCount > 0
+            ? "Your service has been saved with {$assignedCount} provider(s)."
+            : 'Your service has been saved.';
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => $assignedCount > 0
-                    ? "Your service has been saved with {$assignedCount} provider(s)."
-                    : 'Your service has been saved.',
-                'redirect' => base_url('services'),
-                'id' => $serviceId
-            ]);
+            return $this->formSuccess(base_url('services'), $successMsg, ['id' => $serviceId]);
         }
-        return redirect()->to(base_url('services'))->with(
-            'message',
-            $assignedCount > 0
-                ? "Your service has been saved with {$assignedCount} provider(s)."
-                : 'Your service has been saved.'
-        );
+        return redirect()->to(base_url('services'))->with('message', $successMsg);
     }
 
     /**
@@ -442,66 +432,27 @@ class Services extends BaseController
             log_message('debug', 'Service update - Prepared data: ' . json_encode($serviceData));
         }
 
-        $updateResult = $this->serviceModel->update((int)$serviceId, $serviceData);
-        
-        if (!$updateResult) {
-            $errors = $this->serviceModel->errors();
-            if (ENVIRONMENT === 'development') {
-                log_message('debug', 'Service update - Validation errors: ' . json_encode($errors));
-            }
+        $providerIds = $this->extractPostedProviderIds($input);
+
+        try {
+            $this->serviceMutation->updateService((int) $serviceId, $serviceData, $providerIds);
+        } catch (\Throwable $e) {
+            log_message('error', 'Services::update — ' . $e->getMessage());
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $errors
-                ]);
+                return $this->formError('Validation failed', $this->serviceModel->errors() ?: []);
             }
             return redirect()->back()->with('error', 'Validation failed')->withInput();
         }
 
-        // Handle provider IDs
-        $providerIds = $this->extractPostedProviderIds($input);
-
-        if (ENVIRONMENT === 'development') {
-            log_message('debug', 'Service update - Provider IDs: ' . json_encode($providerIds));
-        }
-
-        $db = $this->serviceModel->db;
-        $db->transStart();
-        $this->serviceModel->setProviders((int)$serviceId, (array)$providerIds);
-        $db->transComplete();
-
-        if (!$db->transStatus()) {
-            log_message('error', "Services::update — setProviders failed for service #{$serviceId}. Service updated but provider links may be stale.");
-        }
-
-        if (ENVIRONMENT === 'development') {
-            $savedLinks = $this->serviceModel->db->table($this->providerServicePivotTable)
-                ->select('provider_id')
-                ->where('service_id', (int)$serviceId)
-                ->orderBy('provider_id', 'ASC')
-                ->get()
-                ->getResultArray();
-            log_message('debug', 'Service update - Saved provider links: ' . json_encode(array_column($savedLinks, 'provider_id')));
-        }
-
         $assignedCount = count($providerIds);
+        $successMsg = $assignedCount > 0
+            ? "Your changes have been saved with {$assignedCount} provider(s)."
+            : 'Your changes have been saved.';
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => $assignedCount > 0
-                    ? "Your changes have been saved with {$assignedCount} provider(s)."
-                    : 'Your changes have been saved.',
-                'redirect' => base_url('services')
-            ]);
+            return $this->formSuccess(base_url('services'), $successMsg);
         }
-        return redirect()->to(base_url('services'))->with(
-            'message',
-            $assignedCount > 0
-                ? "Your changes have been saved with {$assignedCount} provider(s)."
-                : 'Your changes have been saved.'
-        );
+        return redirect()->to(base_url('services'))->with('message', $successMsg);
     }
 
     /**
@@ -516,9 +467,7 @@ class Services extends BaseController
             return $this->response->setStatusCode(403)->setJSON(['error' => 'Forbidden']);
         }
 
-        // Remove provider links first
-        $this->serviceModel->db->table($this->providerServicePivotTable)->delete(['service_id' => (int)$serviceId]);
-        $this->serviceModel->delete((int)$serviceId);
+        $this->serviceMutation->deleteService((int) $serviceId);
 
         if ($this->request->isAJAX()) {
             return $this->response->setJSON(['success' => true, 'message' => 'Service deleted', 'redirect' => base_url('services')]);
@@ -534,8 +483,12 @@ class Services extends BaseController
             'duration_min'   => (int) ($input['duration_min'] ?? 0),
             'price'          => ($input['price'] ?? '') !== '' ? (float) $input['price'] : null,
             'category_id'    => !empty($input['category_id']) ? (int) $input['category_id'] : null,
-            'active'         => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
-            'delivery_modes' => $this->encodeDeliveryModes($input['delivery_modes'] ?? []),
+            'active'             => isset($input['active']) ? (int) !!$input['active'] : ($isCreate ? 1 : 0),
+            'delivery_modes'     => $this->encodeDeliveryModes($input['delivery_modes'] ?? []),
+            'payment_enabled'    => isset($input['payment_enabled'])    ? (int) (bool) $input['payment_enabled']    : 0,
+            'payfast_enabled'    => isset($input['payfast_enabled'])    ? (int) (bool) $input['payfast_enabled']    : 0,
+            'stripe_enabled'     => isset($input['stripe_enabled'])     ? (int) (bool) $input['stripe_enabled']     : 0,
+            'deposit_percentage' => ($input['deposit_percentage'] ?? '') !== '' ? (float) $input['deposit_percentage'] : null,
         ];
     }
 

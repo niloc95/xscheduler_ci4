@@ -145,7 +145,7 @@ class Filters extends BaseFilters
             'request_context',
             'timezone' => ['except' => ['setup', 'setup/*']],
             // 'honeypot',
-            'csrf' => ['except' => ['api/*', 'setup/*']],
+            'csrf' => ['except' => ['api/*', 'setup/*', 'public/payments/*']],
             // 'invalidchars',
         ],
         'after' => [

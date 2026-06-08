@@ -146,7 +146,10 @@ class AppointmentFormatterService
             'location_contact' => $row['location_contact'] ?? '',
             'delivery_mode' => (string) ($row['delivery_mode'] ?? 'onsite'),
             'video_link'    => (string) ($row['video_link']    ?? ''),
-            'is_paid' => (bool) ($row['is_paid'] ?? false),
+            'is_paid'           => (bool) ($row['is_paid'] ?? false),
+            'payment_status'    => $row['payment_status']    ?? 'none',
+            'payment_amount'    => isset($row['payment_amount']) && $row['payment_amount'] !== null ? (float) $row['payment_amount'] : null,
+            'payment_reference' => $row['payment_reference'] ?? null,
             'created_at' => $row['created_at'] ?? null,
             'updated_at' => $row['updated_at'] ?? null,
         ];

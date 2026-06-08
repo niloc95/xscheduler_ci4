@@ -208,19 +208,36 @@ class Providers extends BaseApiController
         $services = $serviceModel->getActiveByProvider($providerId);
 
         // Format response
-        $items = array_map(function ($s) {
+        helper('currency');
+        $localization = new \App\Services\LocalizationSettingsService();
+        $gateways     = (new \App\Services\Payment\PaymentService())->getGatewayAvailability(1);
+
+        $items = array_map(function ($s) use ($localization, $gateways) {
+            $price      = $s['price'] ? (float) $s['price'] : null;
+            $depositPct = isset($s['deposit_percentage']) && $s['deposit_percentage'] !== null
+                ? (float) $s['deposit_percentage'] : null;
+            $depositAmt = ($s['payment_enabled'] ?? false) && $depositPct && $price
+                ? calculate_deposit_amount($price, $depositPct) : null;
             return [
-                'id' => (int) $s['id'],
-                'name' => $s['name'],
-                'slug' => $s['slug'] ?? null,
-                'description' => $s['description'] ?? null,
-                'duration' => (int) $s['duration_min'],
-                'durationMin' => (int) $s['duration_min'], // alias
-                'price' => $s['price'] ? (float) $s['price'] : null,
-                'categoryId'    => $s['category_id'] ? (int) $s['category_id'] : null,
-                'categoryName'  => $s['category_name'] ?? null,
-                'active'        => (bool) $s['active'],
-                'deliveryModes' => json_decode($s['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'id'                 => (int) $s['id'],
+                'name'               => $s['name'],
+                'slug'               => $s['slug'] ?? null,
+                'description'        => $s['description'] ?? null,
+                'duration'           => (int) $s['duration_min'],
+                'durationMin'        => (int) $s['duration_min'],
+                'price'              => $price,
+                'categoryId'         => $s['category_id'] ? (int) $s['category_id'] : null,
+                'categoryName'       => $s['category_name'] ?? null,
+                'active'             => (bool) $s['active'],
+                'deliveryModes'      => json_decode($s['delivery_modes'] ?? '["onsite"]', true) ?: ['onsite'],
+                'payment_enabled'    => (bool) ($s['payment_enabled']  ?? false),
+                'payfast_enabled'    => (bool) ($s['payfast_enabled']  ?? false),
+                'stripe_enabled'     => (bool) ($s['stripe_enabled']   ?? false),
+                'payfastAvailable'   => (bool) ($s['payfast_enabled'] ?? false) && $gateways['payfast'],
+                'stripeAvailable'    => (bool) ($s['stripe_enabled']  ?? false) && $gateways['stripe'],
+                'deposit_percentage' => $depositPct,
+                'deposit_amount'     => $depositAmt,
+                'formattedDeposit'   => $depositAmt !== null ? $localization->formatCurrency($depositAmt) : null,
             ];
         }, $services);
 

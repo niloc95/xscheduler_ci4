@@ -58,22 +58,41 @@
 
 namespace App\Controllers\Api;
 
+use App\Models\AuditLogModel;
 use App\Models\LocationModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
  * Location API Controller
- * 
+ *
  * Handles CRUD operations for provider locations.
  * Used by both admin interface and public booking flow.
  */
 class Locations extends BaseApiController
 {
     protected LocationModel $locationModel;
+    protected AuditLogModel $auditLogs;
 
     public function __construct()
     {
         $this->locationModel = new LocationModel();
+        $this->auditLogs = new AuditLogModel();
+    }
+
+    private function auditLocation(string $action, int $locationId, array $fields = []): void
+    {
+        $userId = session()->get('user_id');
+        if (!is_numeric($userId) || (int) $userId <= 0) {
+            return;
+        }
+
+        try {
+            $this->auditLogs->log($action, (int) $userId, 'location', $locationId, null, [
+                'changed_fields' => $fields,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('warning', "Locations — audit log failed for {$action} location #{$locationId}: " . $e->getMessage());
+        }
     }
 
     /**
@@ -174,7 +193,9 @@ class Locations extends BaseApiController
             }
             
             $location = $this->locationModel->getLocationWithDays($locationId);
-            
+
+            $this->auditLocation('location_created', $locationId, array_keys($data));
+
             return $this->created($location, ['message' => 'Location created successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location create error: ' . $e->getMessage());
@@ -215,6 +236,8 @@ class Locations extends BaseApiController
 
             $location = $this->locationModel->getLocationWithDays($id);
 
+            $this->auditLocation('location_updated', $id, array_keys($data));
+
             return $this->ok($location, ['message' => 'Location updated successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location update error: ' . $e->getMessage());
@@ -238,7 +261,9 @@ class Locations extends BaseApiController
             
             // Soft delete by setting is_active = 0
             $this->locationModel->update($id, ['is_active' => 0]);
-            
+
+            $this->auditLocation('location_deleted', $id);
+
             return $this->ok(['location_id' => $id], ['message' => 'Location deleted successfully']);
         } catch (\Throwable $e) {
             log_message('error', 'Location delete error: ' . $e->getMessage());

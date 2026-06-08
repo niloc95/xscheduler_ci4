@@ -92,11 +92,14 @@ Error: `{ "error": { "message": "", "code": "", "details": {} } }`
 - `UserManagementContextService` — user management page context
 - `UserDeletionService` — safe user removal with cascade checks
 - `CustomerAppointmentService` — provider/staff customer scoping
-- `CustomerService` — customer CRUD
+- `CustomerService` — customer CRUD; `insertCustomer()` — admin create (audited via `AuditLogModel`); `updateCustomerById()` — admin update (audited); `upsertCustomer()` — find-or-create for the public booking flow only
 - `CustomerDeletionService` — safe customer removal
 - `CustomerCustomFieldService` — custom field validation
-- `ProfilePageService` — `/profile` page context and mutations
+- `ProfilePageService` — `/profile` page view-data builder only (cards, activity feed, stats). Does **not** own mutations; profile saves and audit logging via `logProfileActivity()` live in `Profile.php` controller
 - `AuthorizationService` — RBAC helpers
+
+### Services / Categories
+- `ServiceMutationService` — service and category create/update/delete; provider assignment with `transStart/transComplete` transaction wrapping; audit logging via `AuditLogModel`. Used by `Services`, `ServiceCategories`, and `Api/V1/Services` controllers
 
 ### Public Booking
 - `PublicBookingService` — public booking pipeline
@@ -155,6 +158,8 @@ Six services follow the `HandlesNotificationIntegrations` trait pattern — each
 - `GlobalSearchService` — cross-entity search
 - `PhoneNumberService` — phone number formatting/normalization
 - `BookingMetricsService` — booking statistics
+- `FormResponseTrait` (`App\Traits\FormResponseTrait`) — standardised JSON envelope for form-surface controllers; `formSuccess(redirect, message)` → HTTP 200; `formError(message, errors, status)` → HTTP 422 by default. Applied to: `Services`, `ServiceCategories`, `CustomerManagement`
+- `MutationResult` (`App\Services\MutationResult`) — readonly DTO for mutation service return values; named constructors `::ok(message, redirect, entityId)` and `::fail(message, errors, statusCode)`; `toArray()` for array interop. All **new** mutation services must return this type
 
 ## 7. Key System Files
 

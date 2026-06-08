@@ -111,6 +111,23 @@ $pageSubtitle = $isEditMode
         <span class="text-gray-500 dark:text-gray-400">&middot;</span>
         <span class="text-gray-700 dark:text-gray-200"><?= esc($apptDispTime) ?></span>
         <?php endif ?>
+        <?php
+            $pStatus = $appointment['payment_status'] ?? 'none';
+            $pAmount = $appointment['payment_amount'] ?? null;
+        ?>
+        <?php if ($pStatus === 'paid' && $pAmount): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            <span class="material-symbols-outlined text-xs">payments</span>
+            Deposit paid <?= esc(function_exists('format_currency') ? format_currency((float)$pAmount) : 'R'.number_format((float)$pAmount,2)) ?>
+        </span>
+        <?php elseif ($pStatus === 'pending'): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <span class="material-symbols-outlined text-xs">schedule</span>
+            Payment pending
+        </span>
+        <?php endif ?>
     </div>
     <?php endif ?>
 

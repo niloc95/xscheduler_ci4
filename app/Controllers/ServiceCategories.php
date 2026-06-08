@@ -35,16 +35,21 @@ namespace App\Controllers;
 
 use App\Models\CategoryModel;
 use App\Models\ServiceModel;
+use App\Services\ServiceMutationService;
+use App\Traits\FormResponseTrait;
 
 class ServiceCategories extends BaseController
 {
+    use FormResponseTrait;
     protected CategoryModel $categoryModel;
     protected ServiceModel $serviceModel;
+    protected ServiceMutationService $serviceMutation;
 
     public function __construct()
     {
-        $this->categoryModel = new CategoryModel();
-        $this->serviceModel  = new ServiceModel();
+        $this->categoryModel   = new CategoryModel();
+        $this->serviceModel    = new ServiceModel();
+        $this->serviceMutation = new ServiceMutationService();
         helper('permissions');
     }
 
@@ -115,24 +120,18 @@ class ServiceCategories extends BaseController
             'active'      => $active === null ? 1 : (int) !!$active,
         ];
 
-        if (!$this->categoryModel->insert($data, true)) {
-            $errors = $this->categoryModel->errors();
+        try {
+            $id = $this->serviceMutation->createCategory($data);
+        } catch (\Throwable $e) {
+            log_message('error', 'ServiceCategories::store — ' . $e->getMessage());
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Validation failed', 'errors' => $errors]);
+                return $this->formError('Validation failed', $this->categoryModel->errors() ?: []);
             }
-            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
+            return redirect()->back()->withInput()->with('error', 'Validation failed');
         }
 
-        $id = (int) $this->categoryModel->getInsertID();
-
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON([
-                'success'  => true,
-                'message'  => 'Category created',
-                'redirect' => base_url('services?tab=categories'),
-                'id'       => $id,
-                'name'     => $name,
-            ]);
+            return $this->formSuccess(base_url('services?tab=categories'), 'Category created', ['id' => $id, 'name' => $name]);
         }
 
         return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category created');
@@ -184,16 +183,18 @@ class ServiceCategories extends BaseController
             return redirect()->back()->withInput()->with('error', $msg);
         }
 
-        if (!$this->categoryModel->update((int) $id, $payload)) {
-            $errors = $this->categoryModel->errors();
+        try {
+            $this->serviceMutation->updateCategory((int) $id, $payload);
+        } catch (\Throwable $e) {
+            log_message('error', 'ServiceCategories::update — ' . $e->getMessage());
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Validation failed', 'errors' => $errors]);
+                return $this->formError('Validation failed', $this->categoryModel->errors() ?: []);
             }
-            return redirect()->back()->withInput()->with('error', 'Validation failed')->with('errors', $errors);
+            return redirect()->back()->withInput()->with('error', 'Validation failed');
         }
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'message' => 'Category updated', 'redirect' => base_url('services?tab=categories')]);
+            return $this->formSuccess(base_url('services?tab=categories'), 'Category updated');
         }
 
         return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category updated');
@@ -244,19 +245,18 @@ class ServiceCategories extends BaseController
             return $redirect;
         }
 
-        // Detach any services that use this category before deleting
-        $this->serviceModel->where('category_id', (int) $id)->set('category_id', null)->update();
-
-        if (!$this->categoryModel->delete((int) $id)) {
-            $errors = $this->categoryModel->errors();
+        try {
+            $this->serviceMutation->deleteCategory((int) $id);
+        } catch (\Throwable $e) {
+            log_message('error', 'ServiceCategories::delete — ' . $e->getMessage());
             if ($this->request->isAJAX()) {
-                return $this->response->setStatusCode(422)->setJSON(['success' => false, 'message' => 'Unable to delete category', 'errors' => $errors]);
+                return $this->formError('Unable to delete category');
             }
-            return redirect()->back()->with('error', 'Unable to delete category')->with('errors', $errors ?? []);
+            return redirect()->back()->with('error', 'Unable to delete category');
         }
 
         if ($this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => true, 'message' => 'Category deleted', 'redirect' => base_url('services?tab=categories')]);
+            return $this->formSuccess(base_url('services?tab=categories'), 'Category deleted');
         }
 
         return redirect()->to(base_url('services?tab=categories'))->with('message', 'Category deleted');

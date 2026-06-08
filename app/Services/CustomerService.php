@@ -166,6 +166,12 @@ class CustomerService
             $insert['first_name'] = '';
         }
 
+        // CustomerModel has useTimestamps=false. MySQL non-strict mode would store
+        // 0000-00-00 00:00:00 if these are omitted. Always provide them on insert.
+        $now = date('Y-m-d H:i:s');
+        $insert['created_at'] ??= $now;
+        $insert['updated_at'] ??= $now;
+
         return $insert;
     }
 
@@ -234,6 +240,46 @@ class CustomerService
                 'exception_message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Insert a new customer record and log the creation.
+     *
+     * Use this for explicit admin creates where the payload has already been
+     * validated and built by the caller.
+     *
+     * @throws RuntimeException when the insert fails
+     */
+    public function insertCustomer(array $data): int
+    {
+        $insertId = $this->customers->insert($data, true);
+
+        if (!$insertId) {
+            throw new RuntimeException('Unable to create customer record.');
+        }
+
+        $this->logCustomerMutation('customer_created', (int) $insertId, array_keys($data));
+
+        return (int) $insertId;
+    }
+
+    /**
+     * Update an existing customer by primary key and log the change.
+     *
+     * Use this for explicit admin updates where the payload has already been
+     * validated and built by the caller.
+     *
+     * @throws RuntimeException when the update fails
+     */
+    public function updateCustomerById(int $id, array $data): void
+    {
+        $ok = $this->customers->update($id, $data);
+
+        if ($ok === false) {
+            throw new RuntimeException('Unable to update customer record.');
+        }
+
+        $this->logCustomerMutation('customer_updated', $id, array_keys($data));
     }
 
     private function resolveActorUserId(): ?int

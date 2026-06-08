@@ -181,6 +181,20 @@ class StripeIntegrationService
         }
     }
 
+    /**
+     * Retrieve and decrypt the stored Stripe credentials for a business.
+     * Returns null when no row exists or decryption fails.
+     * Used by StripePaymentService to avoid Reflection-based private access.
+     */
+    public function getDecryptedConfig(int $businessId): ?array
+    {
+        $row = $this->getRow($businessId);
+        if (!$row) {
+            return null;
+        }
+        return $this->decryptConfig($row['encrypted_config'] ?? null) ?: null;
+    }
+
     public function disconnect(int $businessId): array
     {
         $row = $this->getRow($businessId);
