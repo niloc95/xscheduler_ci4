@@ -255,6 +255,10 @@ class PayFastIntegrationService
         $passphrase  = (string) ($config['passphrase'] ?? '');
         $sandbox     = (bool) ($config['sandbox'] ?? true);
 
+        if ($merchantId === '' || $merchantKey === '') {
+            return ['ok' => false, 'error' => 'PayFast merchant credentials are missing or could not be decrypted.'];
+        }
+
         $baseUrl  = $sandbox ? 'https://sandbox.payfast.co.za/eng/process' : 'https://www.payfast.co.za/eng/process';
 
         $fields = array_filter([

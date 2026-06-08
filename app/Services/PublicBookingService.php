@@ -672,7 +672,10 @@ class PublicBookingService
             }
         }
 
-        return $this->formatPublicAppointment($appointment, $token);
+        return array_merge(
+            ['appointment_id' => $appointmentId],
+            $this->formatPublicAppointment($appointment, $token)
+        );
     }
 
     public function lookupAppointment(string $token, ?string $email = null, ?string $phone = null, ?string $phoneCountryCode = null): array
