@@ -10,6 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.0.17] - 2026-06-08
+
+### Added
+- feat: add Video, Payments, and Created columns to services list
+- feat: Phase 2 — gateway picker UI in public booking flow
+- feat: PayFast + Stripe deposit payment integration (Phase 1 — backend + admin)
+
+### Changed
+- refactor: introduce ServiceMutationService, MutationResult, FormResponseTrait + backfill customer timestamps (v2.0.16)
+- refactor: payment code audit — centralize, harden, remove anti-patterns
+- style: centre Video, Payments and Bookings columns in services list
+
+### Fixed
+- fix: PayFast API signature — sort header fields alphabetically (ksort)
+- fix: PayFast modal persistence + 401 passphrase signature + credential preserve
+- fix: PayFast API signature — remove urlencode and testing param from MD5 string
+- fix: gateway picker only shows gateways with live credentials configured
+- fix: payment notification gaps — provider notification + payment context in templates
+- fix: payment status display across appointment views + unblock gateway redirect
+- fix: expose payment fields in providers/{slug}/services API response
+- fix: expose payment fields in PublicBookingService::listServices()
+- fix: include payment fields in buildServicePayload()
+- fix: harden inactivity keepalive flow
+
 ## [2.0.16] - 2026-06-01
 
 ### Changed
@@ -439,7 +463,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.16...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.17...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -461,3 +485,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.0.14]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.13...v2.0.14
 [2.0.15]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.14...v2.0.15
 [2.0.16]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.15...v2.0.16
+[2.0.17]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.16...v2.0.17
