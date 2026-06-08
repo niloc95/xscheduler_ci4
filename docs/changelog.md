@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.0.19] - 2026-06-08
+
+### Added
+- feat: admin "Mark as Received" button for manual deposit collection
+
 ## [2.0.18] - 2026-06-08
 
 ### Fixed
@@ -469,7 +474,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.18...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.19...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -493,3 +498,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.0.16]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.15...v2.0.16
 [2.0.17]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.16...v2.0.17
 [2.0.18]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.17...v2.0.18
+[2.0.19]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.18...v2.0.19
