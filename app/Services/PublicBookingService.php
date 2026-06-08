@@ -653,6 +653,16 @@ class PublicBookingService
             'booking_channel' => 'public',
         ];
 
+        // Payment-gate: force 'pending' regardless of admin default when deposit is due.
+        // Appointment only transitions pending→confirmed when PayFast/Stripe ITN is received.
+        if ((bool) ($service['payment_enabled'] ?? false)) {
+            $pmeta = (new \App\Services\Payment\PaymentService())->servicePaymentMeta($service, 1);
+            if (($pmeta['payment_required'] ?? false)
+                && (($pmeta['payfast_available'] ?? false) || ($pmeta['stripe_available'] ?? false))) {
+                $bookingPayload['status'] = \App\Services\Appointment\AppointmentStatus::PENDING;
+            }
+        }
+
         $result = $this->bookingService->createAppointment($bookingPayload, $this->localization->getTimezone());
         if (!$result['success']) {
             throw new PublicBookingException(

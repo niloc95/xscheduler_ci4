@@ -125,8 +125,13 @@ $pageSubtitle = $isEditMode
         <span class="text-gray-500 dark:text-gray-400">&middot;</span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
             <span class="material-symbols-outlined text-xs">schedule</span>
-            Payment pending
+            Payment pending<?= $pAmount ? ' &mdash; ' . (function_exists('format_currency') ? format_currency((float)$pAmount) : 'R'.number_format((float)$pAmount, 2)) . ' due' : '' ?>
         </span>
+        <?php endif ?>
+        <?php $pRef = $appointment['payment_reference'] ?? null; ?>
+        <?php if ($pRef && in_array($pStatus, ['paid', 'pending'], true)): ?>
+        <span class="text-gray-500 dark:text-gray-400">&middot;</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Ref: <?= esc($pRef) ?></span>
         <?php endif ?>
     </div>
     <?php endif ?>
