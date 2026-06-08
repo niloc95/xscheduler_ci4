@@ -51,6 +51,8 @@ Owner-section map (high-level):
 | Public booking standalone page asset contract | `public-booking` |
 | Setup wizard structure & asset wiring | `setup` |
 | Pre-merge ripgrep checks | `rules` |
+| Form surface response helpers (`FormResponseTrait`) | `api-contract` |
+| Mutation result DTO (`MutationResult`) | `architecture` |
 
 ## Recommended Triggering Pattern
 

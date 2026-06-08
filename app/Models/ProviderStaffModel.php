@@ -69,10 +69,10 @@ class ProviderStaffModel extends BaseModel
      */
     public function getStaffByProvider(int $providerId, ?string $status = 'active'): array
     {
-        $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, psa.assigned_at, psa.status, psa.assigned_by';
+        $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, staff.profile_image, psa.assigned_at, psa.status, psa.assigned_by';
 
         if ($this->db->fieldExists('is_active', 'xs_users')) {
-            $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, staff.is_active, psa.assigned_at, psa.status, psa.assigned_by';
+            $staffSelect = 'staff.id, staff.name, staff.email, staff.phone, staff.role, staff.profile_image, staff.is_active, psa.assigned_at, psa.status, psa.assigned_by';
         }
 
         $builder = $this->db->table($this->table . ' AS psa')
@@ -104,7 +104,7 @@ class ProviderStaffModel extends BaseModel
     public function getProvidersForStaff(int $staffId, ?string $status = 'active'): array
     {
         $builder = $this->db->table($this->table . ' AS psa')
-            ->select('provider.id, provider.name, provider.email, provider.role, psa.assigned_at, psa.status, psa.assigned_by')
+            ->select('provider.id, provider.name, provider.email, provider.role, provider.profile_image, psa.assigned_at, psa.status, psa.assigned_by')
             ->join('xs_users AS provider', 'provider.id = psa.provider_id', 'inner')
             ->where('psa.staff_id', $staffId)
             ->where('provider.role', 'provider');

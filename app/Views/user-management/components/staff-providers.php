@@ -72,9 +72,16 @@ $removeUrl = base_url('staff-providers/remove');
                 <div class="flex items-start justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800" data-provider-row data-provider-id="<?= (int) ($provider['id'] ?? 0) ?>">
                     <div>
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                <?= esc(avatar_initials((string) ($provider['name'] ?? ''), 'P')) ?>
+                            <?php $providerAvatar = avatar_data($provider, 'P'); ?>
+                            <?php if (!empty($providerAvatar['image_url'])): ?>
+                                <img src="<?= esc($providerAvatar['image_url']) ?>"
+                                     alt="<?= esc($providerAvatar['name']) ?>"
+                                     class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                            <?php else: ?>
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                <?= esc($providerAvatar['initials']) ?>
                             </div>
+                            <?php endif; ?>
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                                     <span><?= esc($provider['name'] ?? 'Unknown Provider') ?></span>
@@ -233,11 +240,14 @@ $removeUrl = base_url('staff-providers/remove');
                 const email = provider.email ? '<div class="text-sm text-gray-500 dark:text-gray-400">' + provider.email + '</div>' : '';
                 const assignedAtLabel = formatAssignedAt(provider.assigned_at);
                 const assignedAt = assignedAtLabel ? '<div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Assigned ' + assignedAtLabel + '</div>' : '';
+                const avatarHtml = provider.profile_image_url
+                    ? '<img src="' + provider.profile_image_url + '" alt="' + (provider.name || '') + '" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />'
+                    : '<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">' + initial + '</div>';
 
                 return '<div class="flex items-start justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800" data-provider-row data-provider-id="' + provider.id + '">' +
                     '<div>' +
                         '<div class="flex items-center space-x-3">' +
-                            '<div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">' + initial + '</div>' +
+                            avatarHtml +
                             '<div>' +
                                 '<div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">' +
                                     '<span>' + (provider.name || 'Unknown Provider') + '</span>' +

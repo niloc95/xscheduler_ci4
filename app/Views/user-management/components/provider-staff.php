@@ -69,9 +69,16 @@ $removeUrl = base_url('provider-staff/remove');
                 <div class="flex items-start justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800" data-staff-row data-staff-id="<?= (int) ($staff['id'] ?? 0) ?>">
                     <div>
                         <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold">
-                                <?= esc(avatar_initials((string) ($staff['name'] ?? ''), 'S')) ?>
+                            <?php $staffAvatar = avatar_data($staff, 'S'); ?>
+                            <?php if (!empty($staffAvatar['image_url'])): ?>
+                                <img src="<?= esc($staffAvatar['image_url']) ?>"
+                                     alt="<?= esc($staffAvatar['name']) ?>"
+                                     class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                            <?php else: ?>
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                <?= esc($staffAvatar['initials']) ?>
                             </div>
+                            <?php endif; ?>
                             <div>
                                 <div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                                     <span><?= esc($staff['name'] ?? 'Unknown Staff') ?></span>
@@ -225,11 +232,14 @@ $removeUrl = base_url('provider-staff/remove');
             const phone = staff.phone ? `<div class="text-sm text-gray-400 dark:text-gray-500">${staff.phone}</div>` : '';
             const assignedAtLabel = formatAssignedAt(staff.assigned_at);
             const assignedAt = assignedAtLabel ? `<div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Assigned ${assignedAtLabel}</div>` : '';
+            const avatarHtml = staff.profile_image_url
+                ? `<img src="${staff.profile_image_url}" alt="${staff.name || ''}" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />`
+                : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold flex-shrink-0">${initial || ''}</div>`;
 
             return html`<div class="flex items-start justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800" data-staff-row data-staff-id="${staff.id}">
                 <div>
                     <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold">${initial || ''}</div>
+                        ${avatarHtml}
                         <div>
                             <div class="font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                                 <span>${staff.name || 'Unknown Staff'}</span>

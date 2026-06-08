@@ -65,14 +65,18 @@ use App\Services\BookingSettingsService;
 use App\Services\CustomerDeletionService;
 use App\Services\CustomerAppointmentService;
 use App\Services\CustomerCustomFieldService;
+use App\Services\CustomerService;
 use App\Services\PhoneNumberService;
+use App\Traits\FormResponseTrait;
 
 class CustomerManagement extends BaseController
 {
+    use FormResponseTrait;
     protected CustomerModel $customers;
     protected BookingSettingsService $bookingSettings;
     protected CustomerAppointmentService $appointmentService;
     protected CustomerDeletionService $customerDeletionService;
+    protected CustomerService $customerService;
     protected PhoneNumberService $phoneNumberService;
     protected CustomerCustomFieldService $customerCustomFieldService;
 
@@ -81,6 +85,7 @@ class CustomerManagement extends BaseController
         ?BookingSettingsService $bookingSettings = null,
         ?CustomerAppointmentService $appointmentService = null,
         ?CustomerDeletionService $customerDeletionService = null,
+        ?CustomerService $customerService = null,
         ?PhoneNumberService $phoneNumberService = null,
         ?CustomerCustomFieldService $customerCustomFieldService = null,
     )
@@ -89,6 +94,7 @@ class CustomerManagement extends BaseController
         $this->bookingSettings = $bookingSettings ?? new BookingSettingsService();
         $this->appointmentService = $appointmentService ?? new CustomerAppointmentService();
         $this->customerDeletionService = $customerDeletionService ?? new CustomerDeletionService($this->customers);
+        $this->customerService = $customerService ?? new CustomerService();
         $this->phoneNumberService = $phoneNumberService ?? new PhoneNumberService();
         $this->customerCustomFieldService = $customerCustomFieldService ?? new CustomerCustomFieldService($this->customers);
     }
@@ -204,13 +210,8 @@ class CustomerManagement extends BaseController
         $rules = $this->bookingSettings->getValidationRules();
 
         if (!$this->validate($rules)) {
-            // Return JSON for SPA or HTML for traditional form
             if ($this->request->isAJAX()) {
-                return response()->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $this->validator->getErrors()
-                ]);
+                return $this->formError('Validation failed', $this->validator->getErrors());
             }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
@@ -218,7 +219,7 @@ class CustomerManagement extends BaseController
         $payload = [];
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customFields = $this->bookingSettings->getCustomFieldConfiguration();
-        
+
         // Only include fields that are displayed in settings
         foreach ($fieldConfig as $fieldName => $config) {
             if ($config['display']) {
@@ -271,39 +272,21 @@ class CustomerManagement extends BaseController
         $payload['created_at'] = $now;
         $payload['updated_at'] = $now;
 
-        // Skip model validation since we already validated with the service
-        // This prevents conflicts with model-level rules
-        $id = $this->customers->insert($payload, false);
-        if ($id) {
-            log_message('info', '[CustomerManagement] Successfully created customer ID: ' . $id);
-            
-            // Return JSON for SPA or HTML for traditional form
+        try {
+            $this->customerService->insertCustomer($payload);
+
             if ($this->request->isAJAX()) {
-                return response()->setJSON([
-                    'success' => true,
-                    'message' => 'Customer created successfully.',
-                    'redirect' => base_url('customer-management')
-                ]);
+                return $this->formSuccess(base_url('customer-management'), 'Customer created successfully.');
             }
             return redirect()->to(base_url('customer-management'))->with('success', 'Customer created successfully.');
+        } catch (\Throwable $e) {
+            log_message('error', '[CustomerManagement::store] ' . $e->getMessage());
+
+            if ($this->request->isAJAX()) {
+                return $this->formError('Failed to create customer.', [], 500);
+            }
+            return redirect()->back()->withInput()->with('error', 'Failed to create customer.');
         }
-        
-        // Log model validation errors if any
-        $modelErrors = $this->customers->errors();
-        if (!empty($modelErrors)) {
-            log_message('error', '[CustomerManagement] Model validation errors: ' . json_encode($modelErrors));
-        }
-        
-        log_message('error', '[CustomerManagement] Failed to create customer');
-        
-        // Return JSON for SPA or HTML for traditional form
-        if ($this->request->isAJAX()) {
-            return response()->setJSON([
-                'success' => false,
-                'message' => 'Failed to create customer.'
-            ]);
-        }
-        return redirect()->back()->withInput()->with('error', 'Failed to create customer.');
     }
 
     /**
@@ -359,11 +342,10 @@ class CustomerManagement extends BaseController
         }
         $customer = $this->customers->findByIdentifier($identifier);
         if (!$customer) {
-            $errorMsg = 'Customer not found.';
             if ($this->request->isAJAX()) {
-                return response()->setJSON(['success' => false, 'message' => $errorMsg]);
+                return $this->formError('Customer not found.', [], 404);
             }
-            return redirect()->to(base_url('customer-management'))->with('error', $errorMsg);
+            return redirect()->to(base_url('customer-management'))->with('error', 'Customer not found.');
         }
 
         $id = $customer['id'];
@@ -373,11 +355,7 @@ class CustomerManagement extends BaseController
 
         if (!$this->validate($rules)) {
             if ($this->request->isAJAX()) {
-                return response()->setJSON([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $this->validator->getErrors()
-                ]);
+                return $this->formError('Validation failed', $this->validator->getErrors());
             }
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
@@ -385,7 +363,7 @@ class CustomerManagement extends BaseController
         $payload = [];
         $fieldConfig = $this->bookingSettings->getFieldConfiguration();
         $customFields = $this->bookingSettings->getCustomFieldConfiguration();
-        
+
         // Only include fields that are displayed in settings
         foreach ($fieldConfig as $fieldName => $config) {
             if ($config['display']) {
@@ -440,38 +418,21 @@ class CustomerManagement extends BaseController
 
         $payload['updated_at'] = date('Y-m-d H:i:s');
 
-        // Skip model validation since we already validated with the service
-        // This prevents conflicts with model-level rules (e.g., email required, {id} placeholder issues)
-        if ($this->customers->update($id, $payload, false)) {
-            log_message('info', '[CustomerManagement] Successfully updated customer ID: ' . $id);
-            
+        try {
+            $this->customerService->updateCustomerById((int) $id, $payload);
+
             if ($this->request->isAJAX()) {
-                return response()->setJSON([
-                    'success' => true,
-                    'message' => 'Customer updated successfully.',
-                    'redirect' => base_url('customer-management')
-                ]);
+                return $this->formSuccess(base_url('customer-management'), 'Customer updated successfully.');
             }
-            
-            log_message('info', '[CustomerManagement] Redirecting to /customer-management');
             return redirect()->to(base_url('customer-management'))->with('success', 'Customer updated successfully.');
+        } catch (\Throwable $e) {
+            log_message('error', '[CustomerManagement::update] customer_id=' . $id . ' ' . $e->getMessage());
+
+            if ($this->request->isAJAX()) {
+                return $this->formError('Failed to update customer.', [], 500);
+            }
+            return redirect()->back()->withInput()->with('error', 'Failed to update customer.');
         }
-        
-        // Log model validation errors if any
-        $modelErrors = $this->customers->errors();
-        if (!empty($modelErrors)) {
-            log_message('error', '[CustomerManagement] Model validation errors for customer ID ' . $id . ': ' . json_encode($modelErrors));
-        }
-        
-        log_message('error', '[CustomerManagement] Failed to update customer ID: ' . $id);
-        
-        if ($this->request->isAJAX()) {
-            return response()->setJSON([
-                'success' => false,
-                'message' => 'Failed to update customer.'
-            ]);
-        }
-        return redirect()->back()->withInput()->with('error', 'Failed to update customer.');
     }
 
     /**
