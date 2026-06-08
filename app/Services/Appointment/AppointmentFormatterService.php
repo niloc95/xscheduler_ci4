@@ -100,6 +100,10 @@ class AppointmentFormatterService
             // Delivery mode
             'delivery_mode'    => (string) ($row['delivery_mode'] ?? 'onsite'),
             'video_link'       => (string) ($row['video_link']    ?? ''),
+            // Payment / deposit
+            'payment_status'    => $row['payment_status']    ?? 'none',
+            'payment_amount'    => isset($row['payment_amount']) ? (float) $row['payment_amount'] : null,
+            'payment_reference' => $row['payment_reference'] ?? null,
         ];
     }
 

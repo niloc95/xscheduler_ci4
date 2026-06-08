@@ -209,6 +209,7 @@
                         <th class="px-4 py-3 font-semibold">Service</th>
                         <th class="px-4 py-3 font-semibold">Provider</th>
                         <th class="px-4 py-3 font-semibold">Status</th>
+                        <th class="px-4 py-3 font-semibold">Deposit</th>
                         <th class="px-4 py-3 font-semibold">Notes</th>
                         <th class="px-4 py-3 font-semibold">Actions</th>
                     </tr>
@@ -257,6 +258,25 @@
                                 <?= ucfirst(str_replace('-', ' ', esc($appt['status'] ?? ''))) ?>
                             </span>
                         </td>
+                        <td class="px-4 py-3">
+                            <?php
+                                $apptPStatus = $appt['payment_status'] ?? 'none';
+                                $apptPAmount = $appt['payment_amount'] ?? null;
+                                if ($apptPStatus === 'paid' && $apptPAmount):
+                            ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                    <span class="material-symbols-outlined text-xs">check_circle</span>
+                                    Paid <?= esc(function_exists('format_currency') ? format_currency((float)$apptPAmount) : 'R'.number_format((float)$apptPAmount, 2)) ?>
+                                </span>
+                            <?php elseif ($apptPStatus === 'pending'): ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                    <span class="material-symbols-outlined text-xs">schedule</span>
+                                    Pending<?= $apptPAmount ? ' ' . (function_exists('format_currency') ? format_currency((float)$apptPAmount) : 'R'.number_format((float)$apptPAmount, 2)) : '' ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-xs text-gray-400">—</span>
+                            <?php endif ?>
+                        </td>
                         <td class="px-4 py-3 max-w-xs truncate text-gray-500 dark:text-gray-400">
                             <?= esc($appt['notes'] ?? '—') ?>
                         </td>
@@ -270,7 +290,7 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                             <span class="material-symbols-outlined text-4xl mb-2 block">event_busy</span>
                             No appointments found.
                         </td>

@@ -163,6 +163,18 @@ export class AppointmentDetailsModal {
                                 </div>
                             </div>
                             
+                            <!-- Payment / Deposit Section -->
+                            <div id="detail-payment-wrapper" class="hidden rounded-lg p-3 border">
+                                <div class="flex items-start gap-3">
+                                    <span class="material-symbols-outlined text-xl" id="detail-payment-icon">payments</span>
+                                    <div class="flex-1">
+                                        <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Deposit</h4>
+                                        <p id="detail-payment-status-badge" class="text-sm font-semibold"></p>
+                                        <p id="detail-payment-ref" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden"></p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Notes Section -->
                             <div id="detail-notes-wrapper">
                                 <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
@@ -493,6 +505,39 @@ export class AppointmentDetailsModal {
                 videoLinkWrapper.classList.add('hidden');
             }
             
+            // Payment / deposit
+            const paymentWrapper = this.modal.querySelector('#detail-payment-wrapper');
+            const paymentBadge   = this.modal.querySelector('#detail-payment-status-badge');
+            const paymentIcon    = this.modal.querySelector('#detail-payment-icon');
+            const paymentRef     = this.modal.querySelector('#detail-payment-ref');
+            const pStatus = appointment.payment_status || 'none';
+            const pAmount = appointment.payment_amount;
+            if (pStatus === 'paid' && pAmount) {
+                paymentWrapper.classList.remove('hidden');
+                paymentWrapper.className = 'rounded-lg p-3 border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+                paymentIcon.className    = 'material-symbols-outlined text-xl text-green-600 dark:text-green-400';
+                paymentBadge.className   = 'text-sm font-semibold text-green-800 dark:text-green-200';
+                const fmt = this.scheduler.settingsManager?.formatCurrency(pAmount) ?? pAmount;
+                paymentBadge.textContent = `Deposit paid: ${fmt}`;
+            } else if (pStatus === 'pending') {
+                paymentWrapper.classList.remove('hidden');
+                paymentWrapper.className = 'rounded-lg p-3 border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
+                paymentIcon.className    = 'material-symbols-outlined text-xl text-amber-600 dark:text-amber-400';
+                paymentBadge.className   = 'text-sm font-semibold text-amber-800 dark:text-amber-200';
+                const amtStr = pAmount
+                    ? `: ${this.scheduler.settingsManager?.formatCurrency(pAmount) ?? pAmount}`
+                    : '';
+                paymentBadge.textContent = `Payment pending${amtStr}`;
+            } else {
+                paymentWrapper.classList.add('hidden');
+            }
+            if (appointment.payment_reference) {
+                paymentRef.textContent = `Ref: ${appointment.payment_reference}`;
+                paymentRef.classList.remove('hidden');
+            } else {
+                paymentRef.classList.add('hidden');
+            }
+
             // Notes - set textarea value and track changes
             const notesTextarea = this.modal.querySelector('#detail-notes');
             const saveNotesBtn = this.modal.querySelector('#btn-save-notes');

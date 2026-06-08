@@ -136,13 +136,13 @@ class NotificationTemplateService
         'appointment_pending' => [
             'email' => [
                 'subject' => 'Your Appointment Request is Received — {service_name}',
-                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n{payment_info}Name:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
             ],
             'sms' => [
                 'body' => "⏳ Booking received! {service_name} on {appointment_date} at {appointment_time}. Pending confirmation. Ref #{booking_reference}. Manage: {reschedule_link}"
             ],
             'whatsapp' => [
-                'body' => "⏳ *Appointment Request Received*\n\nHi {customer_first_name}!\n\nWe've received your booking request and will confirm your appointment shortly.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\nWe will notify you once confirmed.\n\n_{business_name}_\n{terms_link} | {privacy_link}"
+                'body' => "⏳ *Appointment Request Received*\n\nHi {customer_first_name}!\n\nWe've received your booking request and will confirm your appointment shortly.\n\n*📅 Date:* {appointment_date}\n*🕐 Time:* {appointment_time}\n*💼 Service:* {service_name}\n*👤 Provider:* {provider_name}\n*⏱ Duration:* {service_duration} minutes\n{session_info}\n\n*Booking Ref:* #{booking_reference}\n{payment_info}\n{cancellation_policy}\n\nView / Reschedule / Cancel: {reschedule_link}\nAdd to Calendar: {calendar_link}\n\nWe will notify you once confirmed.\n\n_{business_name}_\n{terms_link} | {privacy_link}"
             ]
         ],
         'appointment_confirmed' => [
@@ -754,33 +754,44 @@ class NotificationTemplateService
     }
 
     /**
-     * Build the payment info block inserted into `appointment_confirmed` templates.
-     * Returns a formatted multi-line section when payment_status='paid', else ''.
+     * Build the payment info block for notification templates.
+     * Returns a formatted multi-line section for paid or pending-payment appointments.
+     * Returns '' when no deposit applies (payment_status = 'none' / no amount set).
      */
     private function buildPaymentInfoBlock(array $data): string
     {
-        if (($data['payment_status'] ?? '') !== 'paid' || empty($data['payment_amount'])) {
-            return '';
+        $status = (string) ($data['payment_status'] ?? '');
+        $amount = empty($data['payment_amount']) ? 0.0 : (float) $data['payment_amount'];
+        $ref    = (string) ($data['payment_reference'] ?? '');
+
+        if ($status === 'paid' && $amount > 0) {
+            $loc     = new LocalizationSettingsService();
+            $price   = (float) ($data['service_price'] ?? 0);
+            $balance = $price > 0 ? max(0.0, $price - $amount) : 0.0;
+            $lines   = [];
+            $lines[] = "── PAYMENT ──────────────────────────────";
+            $lines[] = "💳 Deposit paid:    " . $loc->formatCurrency($amount);
+            if ($balance > 0) {
+                $lines[] = "💰 Outstanding:     " . $loc->formatCurrency($balance) . " (payable on the day)";
+            }
+            if ($ref !== '') {
+                $lines[] = "🔑 Payment ref:     " . $ref;
+            }
+            $lines[] = "─────────────────────────────────────────";
+            return implode("\n", $lines) . "\n";
         }
 
-        $loc     = new LocalizationSettingsService();
-        $paid    = (float) $data['payment_amount'];
-        $price   = (float) ($data['service_price'] ?? 0);
-        $balance = $price > 0 ? max(0.0, $price - $paid) : 0.0;
-        $ref     = (string) ($data['payment_reference'] ?? '');
-
-        $lines   = [];
-        $lines[] = "── PAYMENT ──────────────────────────────";
-        $lines[] = "💳 Deposit paid:    " . $loc->formatCurrency($paid);
-        if ($balance > 0) {
-            $lines[] = "💰 Outstanding:     " . $loc->formatCurrency($balance) . " (payable on the day)";
+        if ($status === 'pending' && $amount > 0) {
+            $loc     = new LocalizationSettingsService();
+            $lines   = [];
+            $lines[] = "── DEPOSIT REQUIRED ─────────────────────";
+            $lines[] = "💳 Deposit due:     " . $loc->formatCurrency($amount);
+            $lines[] = "   Your appointment will be confirmed once payment is received.";
+            $lines[] = "─────────────────────────────────────────";
+            return implode("\n", $lines) . "\n";
         }
-        if ($ref !== '') {
-            $lines[] = "🔑 Payment ref:     " . $ref;
-        }
-        $lines[] = "─────────────────────────────────────────";
 
-        return implode("\n", $lines) . "\n";
+        return '';
     }
 
     /**
