@@ -249,12 +249,12 @@ class BookingController extends BaseController
                 'slot_start' => (string) ($payload['start'] ?? ''),
             ]);
             $result = $this->booking->createBooking($payload);
-            $appointmentId = (int) ($result['appointment']['id'] ?? 0);
-            $serviceId     = (int) ($result['appointment']['service_id'] ?? 0);
+            $appointmentId = (int) ($result['appointment_id'] ?? 0);
+            $serviceId     = (int) ($result['service_id'] ?? 0);
 
             log_structured('info', 'public_booking.created', [
                 'appointment_id' => $appointmentId,
-                'provider_id' => isset($result['appointment']['provider_id']) ? (int) $result['appointment']['provider_id'] : null,
+                'provider_id' => isset($result['provider_id']) ? (int) $result['provider_id'] : null,
                 'service_id' => $serviceId,
             ]);
 
@@ -597,8 +597,12 @@ class BookingController extends BaseController
                 $cancelUrl . '?gateway=payfast',
                 $baseUrl . 'public/payments/payfast/notify'
             );
-            $response['payfast'] = $result;
-            $response['gateway'] = 'payfast';
+            if (!($result['ok'] ?? false)) {
+                $response['payment_error'] = $result['error'] ?? 'Payment could not be initiated. Please contact us to arrange payment.';
+            } else {
+                $response['payfast'] = $result;
+                $response['gateway'] = 'payfast';
+            }
         } elseif ($gateway === 'stripe' && ($meta['stripe_available'] ?? false)) {
             $result = $paymentSvc->initiateStripe(
                 $businessId,
@@ -607,8 +611,12 @@ class BookingController extends BaseController
                 $returnUrl . '?gateway=stripe&session_id={CHECKOUT_SESSION_ID}',
                 $cancelUrl . '?gateway=stripe'
             );
-            $response['stripe'] = $result;
-            $response['gateway'] = 'stripe';
+            if (!($result['ok'] ?? false)) {
+                $response['payment_error'] = $result['error'] ?? 'Payment could not be initiated. Please contact us to arrange payment.';
+            } else {
+                $response['stripe'] = $result;
+                $response['gateway'] = 'stripe';
+            }
         }
 
         // A gateway was selected but wasn't available (credentials missing or disabled).
