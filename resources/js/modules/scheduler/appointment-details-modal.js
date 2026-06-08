@@ -171,6 +171,10 @@ export class AppointmentDetailsModal {
                                         <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Deposit</h4>
                                         <p id="detail-payment-status-badge" class="text-sm font-semibold"></p>
                                         <p id="detail-payment-ref" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden"></p>
+                                        <button type="button" id="btn-mark-paid"
+                                            class="hidden mt-2 px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors">
+                                            Mark as Received
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -352,6 +356,13 @@ export class AppointmentDetailsModal {
                 await this.handleNotesChange(this.currentAppointment, notesTextarea.value);
             }
         });
+
+        // Mark as Received button
+        this.modal.querySelector('#btn-mark-paid').addEventListener('click', () => {
+            if (this.currentAppointment) {
+                this.handleMarkPaid(this.currentAppointment);
+            }
+        });
     }
     
     /**
@@ -510,6 +521,7 @@ export class AppointmentDetailsModal {
             const paymentBadge   = this.modal.querySelector('#detail-payment-status-badge');
             const paymentIcon    = this.modal.querySelector('#detail-payment-icon');
             const paymentRef     = this.modal.querySelector('#detail-payment-ref');
+            const markPaidBtn    = this.modal.querySelector('#btn-mark-paid');
             const pStatus = appointment.payment_status || 'none';
             const pAmount = appointment.payment_amount;
             if (pStatus === 'paid' && pAmount) {
@@ -519,6 +531,7 @@ export class AppointmentDetailsModal {
                 paymentBadge.className   = 'text-sm font-semibold text-green-800 dark:text-green-200';
                 const fmt = this.scheduler.settingsManager?.formatCurrency(pAmount) ?? pAmount;
                 paymentBadge.textContent = `Deposit paid: ${fmt}`;
+                markPaidBtn.classList.add('hidden');
             } else if (pStatus === 'pending') {
                 paymentWrapper.classList.remove('hidden');
                 paymentWrapper.className = 'rounded-lg p-3 border bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
@@ -528,8 +541,10 @@ export class AppointmentDetailsModal {
                     ? `: ${this.scheduler.settingsManager?.formatCurrency(pAmount) ?? pAmount}`
                     : '';
                 paymentBadge.textContent = `Payment pending${amtStr}`;
+                markPaidBtn.classList.remove('hidden');
             } else {
                 paymentWrapper.classList.add('hidden');
+                markPaidBtn.classList.add('hidden');
             }
             if (appointment.payment_reference) {
                 paymentRef.textContent = `Ref: ${appointment.payment_reference}`;
@@ -648,6 +663,31 @@ export class AppointmentDetailsModal {
         });
     }
     
+    /**
+     * Admin manually marks deposit as received (cash/EFT).
+     */
+    async handleMarkPaid(appointment) {
+        const btn = this.modal.querySelector('#btn-mark-paid');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        try {
+            const result = await apiRequest(
+                withBaseUrl(`/api/appointments/${appointment.id}/payment-status`),
+                'PATCH',
+                { payment_status: 'paid' }
+            );
+            if (result?.data) {
+                appointment.payment_status = 'paid';
+                if (result.data.status) appointment.status = result.data.status;
+                this.populateDetails(appointment);
+                appointmentMutationCoordinator.notifyMutation({ type: 'status-change', id: appointment.id });
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'Mark as Received';
+        }
+    }
+
     /**
      * Handle edit action
      */

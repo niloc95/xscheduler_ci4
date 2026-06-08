@@ -318,6 +318,28 @@ class PaymentService
         }
     }
 
+    /**
+     * Admin manually marks a deposit as received (cash/EFT — no gateway involved).
+     * Auto-confirms if the appointment is still pending.
+     */
+    public function adminMarkPaid(int $appointmentId, int $businessId): array
+    {
+        $appointment = $this->appointmentModel->find($appointmentId);
+        if (!$appointment) {
+            return ['ok' => false, 'error' => 'Appointment not found.'];
+        }
+
+        $this->appointmentModel->update($appointmentId, ['payment_status' => 'paid']);
+
+        $newStatus = $appointment['status'];
+        if ($appointment['status'] === 'pending') {
+            $this->appointmentModel->update($appointmentId, ['status' => 'confirmed']);
+            $newStatus = 'confirmed';
+        }
+
+        return ['ok' => true, 'payment_status' => 'paid', 'status' => $newStatus];
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

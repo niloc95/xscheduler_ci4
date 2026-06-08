@@ -295,6 +295,7 @@ $routes->group('api', ['filter' => ['setup', 'api_cors']], function($routes) {
     $routes->delete('appointments/(:num)', 'Api\\Appointments::delete/$1', ['filter' => 'auth']);
     $routes->patch('appointments/(:num)/status', 'Api\\Appointments::updateStatus/$1', ['filter' => 'auth']);
     $routes->patch('appointments/(:num)/notes', 'Api\\Appointments::updateNotes/$1', ['filter' => 'auth']);
+    $routes->patch('appointments/(:num)/payment-status', 'Api\\Appointments::updatePaymentStatus/$1', ['filter' => 'auth']);
     $routes->post('appointments/(:num)/notify', 'Api\\Appointments::notify/$1', ['filter' => 'auth']);
     $routes->get('appointments', 'Api\\Appointments::index', ['filter' => 'auth']);
     // Note: dashboard/appointment-stats route is defined earlier in this file (line ~191)

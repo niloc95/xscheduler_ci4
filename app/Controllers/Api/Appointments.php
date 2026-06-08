@@ -330,6 +330,51 @@ class Appointments extends BaseApiController
     }
 
     /**
+     * Admin manually marks deposit as received (cash/EFT).
+     * PATCH /api/appointments/:id/payment-status
+     * Body: { payment_status: 'paid' }
+     */
+    public function updatePaymentStatus($id = null)
+    {
+        if ($authError = $this->requireAuth()) {
+            return $authError;
+        }
+
+        if (!$id) {
+            return $this->badRequest('Appointment ID is required');
+        }
+
+        try {
+            $json      = $this->request->getJSON(true) ?? [];
+            $newStatus = strtolower(trim((string) ($json['payment_status'] ?? '')));
+            $allowed   = ['paid', 'none', 'failed', 'refunded'];
+
+            if (!in_array($newStatus, $allowed, true)) {
+                return $this->badRequest('Invalid payment status.');
+            }
+
+            $appointment = (new AppointmentModel())->find((int) $id);
+            if (!$appointment) {
+                return $this->notFound('Appointment not found.');
+            }
+
+            if ($newStatus === 'paid') {
+                $result = (new \App\Services\Payment\PaymentService())->adminMarkPaid((int) $id, 1);
+                if (!($result['ok'] ?? false)) {
+                    return $this->error(500, $result['error'] ?? 'Could not update payment status.', 'PAYMENT_ERROR');
+                }
+                return $this->ok(['payment_status' => 'paid', 'status' => $result['status']]);
+            }
+
+            (new AppointmentModel())->update((int) $id, ['payment_status' => $newStatus]);
+            return $this->ok(['payment_status' => $newStatus]);
+
+        } catch (\Throwable $e) {
+            return $this->handleCaughtException($e, 'Failed to update payment status');
+        }
+    }
+
+    /**
      * Create new appointment via API
      * POST /api/appointments
      * Body: { name, email, phone?, providerId, serviceId, date, start, notes? }
