@@ -671,16 +671,18 @@ export class AppointmentDetailsModal {
         btn.disabled = true;
         btn.textContent = 'Saving...';
         try {
-            const result = await apiRequest(
+            const { response, payload } = await apiRequest(
                 withBaseUrl(`/api/appointments/${appointment.id}/payment-status`),
-                'PATCH',
-                { payment_status: 'paid' }
+                { method: 'PATCH', body: { payment_status: 'paid' } }
             );
-            if (result?.data) {
+            if (response.ok && payload?.data) {
                 appointment.payment_status = 'paid';
-                if (result.data.status) appointment.status = result.data.status;
+                if (payload.data.status) appointment.status = payload.data.status;
                 this.populateDetails(appointment);
                 appointmentMutationCoordinator.notifyMutation({ type: 'status-change', id: appointment.id });
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Mark as Received';
             }
         } catch (e) {
             btn.disabled = false;
