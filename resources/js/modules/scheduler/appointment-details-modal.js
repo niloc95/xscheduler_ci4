@@ -667,27 +667,23 @@ export class AppointmentDetailsModal {
      * Admin manually marks deposit as received (cash/EFT).
      */
     async handleMarkPaid(appointment) {
-        const btn = this.modal.querySelector('#btn-mark-paid');
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-        try {
-            const { response, payload } = await apiRequest(
-                withBaseUrl(`/api/appointments/${appointment.id}/payment-status`),
-                { method: 'PATCH', body: { payment_status: 'paid' } }
-            );
-            if (response.ok && payload?.data) {
+        await appointmentMutationCoordinator.execute({
+            action: 'status-change',
+            endpoint: withBaseUrl(`/api/appointments/${appointment.id}/payment-status`),
+            method: 'PATCH',
+            body: { payment_status: 'paid' },
+            uiContext: 'scheduler',
+            authContext: 'authenticated',
+            loadingTargets: ['#btn-mark-paid'],
+            toast: { type: 'success', message: 'Marked as received' },
+            onSuccess: (data) => {
                 appointment.payment_status = 'paid';
-                if (payload.data.status) appointment.status = payload.data.status;
+                if (data?.status) appointment.status = data.status;
+                this.currentAppointment.payment_status = appointment.payment_status;
+                if (data?.status) this.currentAppointment.status = appointment.status;
                 this.populateDetails(appointment);
-                appointmentMutationCoordinator.notifyMutation({ type: 'status-change', id: appointment.id });
-            } else {
-                btn.disabled = false;
-                btn.textContent = 'Mark as Received';
-            }
-        } catch (e) {
-            btn.disabled = false;
-            btn.textContent = 'Mark as Received';
-        }
+            },
+        });
     }
 
     /**
