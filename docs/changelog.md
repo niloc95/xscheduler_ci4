@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.1.1] - 2026-06-13
+
+### Fixed
+- fix: route Mark as Received through appointmentMutationCoordinator
+
 ## [2.1.0] - 2026-06-13
 
 ### Added
@@ -490,7 +495,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.1.1...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -517,3 +522,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.0.19]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.18...v2.0.19
 [2.0.20]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.19...v2.0.20
 [2.1.0]: https://github.com/niloc95/xscheduler_ci4/compare/v2.0.20...v2.1.0
+[2.1.1]: https://github.com/niloc95/xscheduler_ci4/compare/v2.1.0...v2.1.1
