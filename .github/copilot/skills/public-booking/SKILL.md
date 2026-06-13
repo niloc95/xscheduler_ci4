@@ -153,6 +153,14 @@ Currently carries:
 - **Dark mode color:** `#0f172a` / `dark:bg-slate-900` — do not change to gray-900 without updating both the inline script and body class
 - **Do not add `app-layout-init.js` or the SPA `spa.js` to this page** — it is not an authenticated SPA surface
 
+### Other Standalone Public Pages (2026-06-12)
+
+`app/Views/public/legal.php` and `app/Views/public/my-appointments.php` follow the same standalone pattern as `booking.php` — both now carry the `#0f172a`/slate-900 FOUC blocking script and the end-of-body double-rAF cleanup script (item 1 and "FOUC cleanup" above). **Any new standalone `app/Views/public/*.php` page must include both scripts**, or `.dark` is never applied and the shared `xs-theme` toggle (from admin or the booking SPA) silently does nothing on that page.
+
+`app/Views/public-site/payment-return.php` and `app/Views/public-site/payment-cancel.php` are minimal pages with **inline `<style>` blocks, no Tailwind**. They read `xs-theme` via the same inline script (toggling `.dark` on `<html>`) and define `html.dark` overrides directly in the `<style>` block for `body`, `.card`, `p`, `.back` matching the slate-900/slate-800 palette. Any new inline-styled standalone page must follow this same `html.dark` override pattern rather than relying on Tailwind `dark:` utilities.
+
+`resources/js/modules/public-booking/state.js` (`UI_CLASSES` tokens) and `resources/js/modules/public-booking/render.js` (component output) now carry `dark:` variants for every token — buttons, inputs, cards (info/error/warning/dashed), delivery mode badges, slot/date pills, etc. **Any new UI token or rendered component in the booking SPA must include a `dark:` variant** or it will render with light-mode-only colors against the `dark:bg-slate-900` body once `.dark` is toggled.
+
 ---
 
 ## Cross-References

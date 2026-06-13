@@ -2,22 +2,41 @@ import { withBaseUrl } from '../../utils/url-helpers.js';
 
 // Aligned with app/Config/Session.php $expiration = 7200
 const SESSION_MS  = 7200 * 1000;
-const WARNING_MS  = 5   * 60  * 1000; // show modal 5 min before expiry
-const COUNTDOWN_S = 5   * 60;         // 300 s countdown
+const WARNING_MS  = 5 * 60 * 1000; // show modal 5 min before expiry
 const PING_MAX_FAILURES = 2;
 const PING_RETRY_DELAY_MS = 3000;
 
-let activityTimer    = null;
-let countdownTimer   = null;
-let pingRetryTimer   = null;
-let warningVisible   = false;
-let secondsRemaining = COUNTDOWN_S;
-let extendInFlight   = false;
-let monitorEpoch     = 0;
+// Wall-clock evaluation cadence. setTimeout/setInterval are throttled or
+// suspended in background tabs and across machine sleep, so the monitor never
+// trusts tick counts — every check re-derives elapsed time from Date.now().
+const CHECK_INTERVAL_MS = 30 * 1000;
 
-function clearActivityTimer() {
-    clearTimeout(activityTimer);
-    activityTimer = null;
+// While the user is active, slide the server session forward periodically.
+// The server expires the session 2h after the last HTTP request — client-only
+// activity (mousemove/scroll) sends no requests, so without a keepalive the
+// server clock and the client clock drift apart.
+const KEEPALIVE_MS = 15 * 60 * 1000;
+
+// Shared across tabs so activity in one tab prevents a stale warning in another.
+const ACTIVITY_STORAGE_KEY  = 'xs-last-activity-at';
+const KEEPALIVE_STORAGE_KEY = 'xs-last-keepalive-at';
+const STORAGE_WRITE_THROTTLE_MS = 5000;
+
+let checkTimer        = null;
+let countdownTimer    = null;
+let pingRetryTimer    = null;
+let warningVisible    = false;
+let warningDeadlineAt = 0;
+let extendInFlight    = false;
+let keepaliveInFlight = false;
+let monitorEpoch      = 0;
+let lastActivityAt    = 0;
+let lastKeepaliveAt   = 0;
+let lastStorageWriteAt = 0;
+
+function clearCheckTimer() {
+    clearInterval(checkTimer);
+    checkTimer = null;
 }
 
 function clearCountdownTimer() {
@@ -32,6 +51,47 @@ function clearPingRetryTimer() {
 
 function redirectToLogin() {
     window.location.href = withBaseUrl('/auth/login');
+}
+
+// ── Shared timestamps (cross-tab) ──────────────────────────────────────────
+
+function readSharedTimestamp(key) {
+    try {
+        const value = Number(window.localStorage.getItem(key));
+        return Number.isFinite(value) ? value : 0;
+    } catch (error) {
+        return 0;
+    }
+}
+
+function writeSharedTimestamp(key, value) {
+    try {
+        window.localStorage.setItem(key, String(value));
+    } catch (error) {
+        // Storage unavailable (privacy mode) — single-tab tracking still works.
+    }
+}
+
+function effectiveLastActivity() {
+    return Math.max(lastActivityAt, readSharedTimestamp(ACTIVITY_STORAGE_KEY));
+}
+
+function effectiveLastKeepalive() {
+    return Math.max(lastKeepaliveAt, readSharedTimestamp(KEEPALIVE_STORAGE_KEY));
+}
+
+function markActivityNow({ forceStorageWrite = false } = {}) {
+    const now = Date.now();
+    lastActivityAt = now;
+    if (forceStorageWrite || now - lastStorageWriteAt >= STORAGE_WRITE_THROTTLE_MS) {
+        lastStorageWriteAt = now;
+        writeSharedTimestamp(ACTIVITY_STORAGE_KEY, now);
+    }
+}
+
+function markKeepaliveNow() {
+    lastKeepaliveAt = Date.now();
+    writeSharedTimestamp(KEEPALIVE_STORAGE_KEY, lastKeepaliveAt);
 }
 
 // ── DOM helpers ────────────────────────────────────────────────────────────
@@ -116,34 +176,47 @@ function formatSeconds(s) {
     return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
-function showWarning() {
+/**
+ * Render the remaining time from the wall-clock deadline. Returns false once
+ * the deadline has passed (after redirecting), so callers can stop ticking.
+ */
+function updateCountdownDisplay() {
+    const remaining = Math.max(0, Math.ceil((warningDeadlineAt - Date.now()) / 1000));
+    const el = document.getElementById('xs-session-countdown');
+    if (el) el.textContent = formatSeconds(remaining);
+
+    if (remaining <= 0) {
+        clearCountdownTimer();
+        redirectToLogin();
+        return false;
+    }
+    return true;
+}
+
+function showWarning(deadlineAt) {
     if (warningVisible) return;
-    warningVisible   = true;
-    secondsRemaining = COUNTDOWN_S;
-    extendInFlight   = false;
+    warningVisible    = true;
+    warningDeadlineAt = deadlineAt;
+    extendInFlight    = false;
     clearPingRetryTimer();
 
     const modal = getOrCreateModal();
     modal.classList.remove('hidden');
-    document.getElementById('xs-session-countdown').textContent = formatSeconds(secondsRemaining);
     setStayButtonPendingState(false);
 
-    countdownTimer = setInterval(() => {
-        secondsRemaining -= 1;
-        const el = document.getElementById('xs-session-countdown');
-        if (el) el.textContent = formatSeconds(secondsRemaining);
+    if (!updateCountdownDisplay()) {
+        return;
+    }
 
-        if (secondsRemaining <= 0) {
-            clearCountdownTimer();
-            redirectToLogin();
-        }
-    }, 1000);
+    // The interval only refreshes the display; expiry is judged against the
+    // deadline timestamp, so throttled ticks cannot stretch the countdown.
+    countdownTimer = setInterval(updateCountdownDisplay, 1000);
 }
 
 function hideWarning({ removeModal = false } = {}) {
-    warningVisible = false;
-    secondsRemaining = COUNTDOWN_S;
-    extendInFlight = false;
+    warningVisible    = false;
+    warningDeadlineAt = 0;
+    extendInFlight    = false;
     clearCountdownTimer();
     clearPingRetryTimer();
     setStayButtonPendingState(false);
@@ -259,7 +332,8 @@ async function extendSession() {
 
     if (didExtendSession) {
         hideWarning();
-        resetTimer();
+        markActivityNow({ forceStorageWrite: true });
+        markKeepaliveNow();
         return;
     }
 
@@ -268,30 +342,111 @@ async function extendSession() {
     redirectToLogin();
 }
 
-// ── Activity tracking ──────────────────────────────────────────────────────
+// ── Keepalive ──────────────────────────────────────────────────────────────
 
-function resetTimer() {
-    clearActivityTimer();
-    activityTimer = setTimeout(showWarning, SESSION_MS - WARNING_MS); // 115 min
+function maybeKeepalive(now, lastActive) {
+    if (keepaliveInFlight) return;
+    if (now - effectiveLastKeepalive() < KEEPALIVE_MS) return;
+    // Idle user: let the session approach expiry naturally (that's the point
+    // of an inactivity logout). Only active users slide the server window.
+    if (now - lastActive >= KEEPALIVE_MS) return;
+
+    keepaliveInFlight = true;
+    const requestEpoch = monitorEpoch;
+    pingSession(requestEpoch).then((didPing) => {
+        if (requestEpoch !== monitorEpoch || didPing === null) {
+            return;
+        }
+        keepaliveInFlight = false;
+        if (didPing) {
+            markKeepaliveNow();
+        } else {
+            // Session is already dead server-side despite local activity.
+            redirectToLogin();
+        }
+    });
 }
 
+// ── Wall-clock idle evaluation ─────────────────────────────────────────────
+
+function checkIdleState() {
+    if (extendInFlight) return;
+
+    const now        = Date.now();
+    const lastActive = effectiveLastActivity();
+    const elapsed    = now - lastActive;
+
+    if (warningVisible) {
+        // Another tab may have extended the session (its "Stay Logged In"
+        // writes fresh shared timestamps) — retract the stale warning.
+        if (elapsed < SESSION_MS - WARNING_MS) {
+            hideWarning();
+            return;
+        }
+        updateCountdownDisplay();
+        return;
+    }
+
+    if (elapsed >= SESSION_MS) {
+        // Woke from sleep / long-throttled tab: the session window has fully
+        // passed. A fake 5-minute countdown would be a lie — go to login.
+        redirectToLogin();
+        return;
+    }
+
+    if (elapsed >= SESSION_MS - WARNING_MS) {
+        showWarning(lastActive + SESSION_MS);
+        return;
+    }
+
+    maybeKeepalive(now, lastActive);
+}
+
+// ── Activity tracking ──────────────────────────────────────────────────────
+
 const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+
+function handleActivity() {
+    // While the warning is up, only an explicit "Stay Logged In" (server ping)
+    // may extend the session — mouse movement toward the button must not.
+    if (warningVisible || extendInFlight) return;
+    markActivityNow();
+}
+
+function handleWake() {
+    // visibilitychange / focus / pageshow: timers may not have fired for
+    // hours — re-derive the true state from timestamps immediately.
+    if (document.visibilityState === 'hidden') return;
+    checkIdleState();
+}
 
 export function initInactivityMonitor() {
     // Only run on authenticated pages
     if (!document.getElementById('spa-content')) return;
 
     monitorEpoch += 1;
-    clearActivityTimer();
+    keepaliveInFlight = false;
+    clearCheckTimer();
     hideWarning({ removeModal: true });
+
+    // Page load / SPA navigation was itself a server request, so the server
+    // session window just slid — treat now as both activity and keepalive.
+    markActivityNow({ forceStorageWrite: true });
+    markKeepaliveNow();
 
     // Avoid double-binding if called again by SPA navigation
     ACTIVITY_EVENTS.forEach(evt => {
-        document.removeEventListener(evt, resetTimer);
-        document.addEventListener(evt, resetTimer, { passive: true });
+        document.removeEventListener(evt, handleActivity);
+        document.addEventListener(evt, handleActivity, { passive: true });
     });
+    document.removeEventListener('visibilitychange', handleWake);
+    document.addEventListener('visibilitychange', handleWake);
+    window.removeEventListener('focus', handleWake);
+    window.addEventListener('focus', handleWake);
+    window.removeEventListener('pageshow', handleWake);
+    window.addEventListener('pageshow', handleWake);
 
-    resetTimer();
+    checkTimer = setInterval(checkIdleState, CHECK_INTERVAL_MS);
 
     // Clean up on SPA navigation — re-init happens on spa:navigated
     const lifecycleEpoch = monitorEpoch;
@@ -301,8 +456,11 @@ export function initInactivityMonitor() {
         }
 
         monitorEpoch += 1;
-        clearActivityTimer();
+        clearCheckTimer();
         hideWarning({ removeModal: true });
-        ACTIVITY_EVENTS.forEach(evt => document.removeEventListener(evt, resetTimer));
+        ACTIVITY_EVENTS.forEach(evt => document.removeEventListener(evt, handleActivity));
+        document.removeEventListener('visibilitychange', handleWake);
+        window.removeEventListener('focus', handleWake);
+        window.removeEventListener('pageshow', handleWake);
     }, { once: true });
 }

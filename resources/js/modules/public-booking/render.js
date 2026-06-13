@@ -16,9 +16,9 @@ import { getAvailableModes, formatDateSelectLabel } from './utils.js';
 // ─── Delivery mode metadata ──────────────────────────────────────────────────
 
 export const DELIVERY_MODE_META = {
-  onsite:       { label: 'In Person', icon: 'location_on',  selCls: 'border-blue-300 bg-blue-50 text-blue-700',     defCls: 'border-slate-200 bg-white text-slate-700' },
-  online_zoom:  { label: 'Zoom',      icon: 'video_call',   selCls: 'border-purple-300 bg-purple-50 text-purple-700', defCls: 'border-slate-200 bg-white text-slate-700' },
-  online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    selCls: 'border-teal-300 bg-teal-50 text-teal-700',      defCls: 'border-slate-200 bg-white text-slate-700' },
+  onsite:       { label: 'In Person', icon: 'location_on',  selCls: 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300',     defCls: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
+  online_zoom:  { label: 'Zoom',      icon: 'video_call',   selCls: 'border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300', defCls: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
+  online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    selCls: 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300',      defCls: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
 };
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ export function extractErrorDetails(data) {
  * @returns {string}
  */
 export function renderDashedCard(text, icon = 'info') {
-  return `<div class="flex min-h-[80px] items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 transition-all duration-200"><span class="material-symbols-outlined text-base shrink-0">${icon}</span>${escapeHtml(text)}</div>`;
+  return `<div class="flex min-h-[80px] items-center gap-2 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400 transition-all duration-200"><span class="material-symbols-outlined text-base shrink-0">${icon}</span>${escapeHtml(text)}</div>`;
 }
 
 /**
@@ -153,7 +153,7 @@ export function renderFieldError(name, errors) {
   if (!errors || !errors[name]) {
     return '';
   }
-  return `<p class="mt-1 text-sm text-red-600">${escapeHtml(errors[name])}</p>`;
+  return `<p class="mt-1 text-sm text-red-600 dark:text-red-400">${escapeHtml(errors[name])}</p>`;
 }
 
 // ─── Top-level layout ─────────────────────────────────────────────────────────
@@ -168,9 +168,9 @@ export function renderHero(ctx) {
   return `
     <header class="text-center">
       ${logoHtml}
-      <p class="text-sm font-semibold uppercase tracking-wide text-slate-500">${escapeHtml(businessName)}</p>
-      <h1 class="mt-2 text-3xl font-semibold text-slate-900">Reserve an appointment</h1>
-      <p class="mt-3 text-base text-slate-600">Pick a provider, choose a service, and lock in a time that works for you. All times are shown in <span class="font-semibold">${escapeHtml(timezone)}</span>.</p>
+      <p class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">${escapeHtml(businessName)}</p>
+      <h1 class="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">Reserve an appointment</h1>
+      <p class="mt-3 text-base text-slate-600 dark:text-slate-300">Pick a provider, choose a service, and lock in a time that works for you. All times are shown in <span class="font-semibold">${escapeHtml(timezone)}</span>.</p>
     </header>
   `;
 }
@@ -182,14 +182,14 @@ export function renderTabs(activeView) {
   ];
 
   return `
-    <div class="rounded-3xl border border-slate-200 bg-white p-1 shadow-sm">
+    <div class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-sm">
       <nav class="grid gap-1 sm:flex" role="tablist">
         ${tabs.map(tab => {
           const isActive = tab.key === activeView;
           const stateClass = isActive
-            ? 'bg-slate-900 text-white shadow'
-            : 'text-slate-500 hover:text-slate-900';
-          const detailClass = isActive ? 'text-slate-200' : 'text-slate-400';
+            ? 'bg-slate-900 dark:bg-slate-950 text-white shadow'
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+          const detailClass = isActive ? 'text-slate-200' : 'text-slate-400 dark:text-slate-500';
           return `
             <button type="button" data-view-toggle="${tab.key}" class="${UI_CLASSES.tabButton} ${stateClass}" role="tab" aria-selected="${isActive}">
               <span class="block">${escapeHtml(tab.label)}</span>
@@ -240,18 +240,18 @@ export function renderSelectStage(manageState, ctx) {
 
   const cards = results.map((appt, index) => {
     const statusBadge = appt.status === 'confirmed'
-      ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Confirmed</span>`
+      ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300">Confirmed</span>`
       : appt.status === 'pending'
-        ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Pending</span>`
-        : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">${escapeHtml(appt.status ?? '')}</span>`;
+        ? `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">Pending</span>`
+        : `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${escapeHtml(appt.status ?? '')}</span>`;
 
     return `
-      <button type="button" data-select-appointment="${index}" class="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-400 hover:shadow-md transition-all" ${isLoading ? 'disabled' : ''}>
+      <button type="button" data-select-appointment="${index}" class="w-full text-left rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm hover:border-blue-400 hover:shadow-md transition-all" ${isLoading ? 'disabled' : ''}>
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-900 truncate">${escapeHtml(appt.service?.name ?? 'Appointment')}</p>
-            <p class="text-sm text-slate-500 mt-0.5">${escapeHtml(appt.provider?.name ?? '')}</p>
-            <p class="text-sm text-slate-700 font-medium mt-1">${escapeHtml(appt.display_range ?? '')}</p>
+            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">${escapeHtml(appt.service?.name ?? 'Appointment')}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(appt.provider?.name ?? '')}</p>
+            <p class="text-sm text-slate-700 dark:text-slate-300 font-medium mt-1">${escapeHtml(appt.display_range ?? '')}</p>
           </div>
           <div class="flex-shrink-0 mt-0.5">${statusBadge}</div>
         </div>
@@ -260,15 +260,15 @@ export function renderSelectStage(manageState, ctx) {
   }).join('');
 
   return `
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <div class="space-y-5">
         <div>
-          <h2 class="text-xl font-semibold text-slate-900">Your bookings</h2>
-          <p class="mt-1 text-sm text-slate-600">Select the appointment you would like to manage.</p>
+          <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Your bookings</h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Select the appointment you would like to manage.</p>
         </div>
         ${errorHtml}
         <div class="space-y-3">${cards}</div>
-        <button type="button" data-manage-start-over class="text-sm text-slate-500 underline hover:text-slate-700">Search again</button>
+        <button type="button" data-manage-start-over class="text-sm text-slate-500 dark:text-slate-400 underline hover:text-slate-700 dark:hover:text-slate-200">Search again</button>
       </div>
     </section>
   `;
@@ -279,7 +279,7 @@ export function renderLookupStage(manageState, ctx) {
     ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(manageState.lookupError)}</div>`
     : '';
   const contactError = manageState.lookupErrors?.contact
-    ? `<p class="text-sm text-red-600">${escapeHtml(manageState.lookupErrors.contact)}</p>`
+    ? `<p class="text-sm text-red-600 dark:text-red-400">${escapeHtml(manageState.lookupErrors.contact)}</p>`
     : '';
   const hasPrefilledReference = Boolean(manageState.hasPrefilledReference);
   const introCopy = hasPrefilledReference
@@ -293,23 +293,23 @@ export function renderLookupStage(manageState, ctx) {
     : '';
 
   return `
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start">
         <form id="booking-lookup-form" class="space-y-5" novalidate>
           <div>
-            <h2 class="text-xl font-semibold text-slate-900">Already booked?</h2>
-            <p class="mt-1 text-sm text-slate-600">${introCopy}</p>
+            <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Already booked?</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">${introCopy}</p>
           </div>
           ${info}
           ${secureReferenceInfo}
           ${referenceField}
           <div class="grid gap-4 md:grid-cols-2">
-            <label class="block text-sm font-medium text-slate-700">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Email address
               <input type="email" name="email" value="${escapeHtml(manageState.lookupForm.email ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="you@example.com">
               ${renderFieldError('email', manageState.lookupErrors)}
             </label>
-            <label class="block text-sm font-medium text-slate-700">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Phone number
               <input type="tel" name="phone" value="${escapeHtml(manageState.lookupForm.phone ?? '')}" class="${UI_CLASSES.inputBase}" placeholder="(555) 555-1234">
               ${renderFieldError('phone', manageState.lookupErrors)}
@@ -368,19 +368,19 @@ export function renderManageSummary(manageState, ctx) {
   const cancelLabel = manageState.cancelSubmitting ? 'Cancelling...' : 'Cancel appointment';
   const canCancel = appointment.can_cancel !== false;
   const cancelButton = canCancel
-    ? `<button type="button" data-manage-cancel class="inline-flex items-center justify-center rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-400 hover:text-red-800" ${cancelDisabled}>${escapeHtml(cancelLabel)}</button>`
+    ? `<button type="button" data-manage-cancel class="inline-flex items-center justify-center rounded-2xl border border-red-200 dark:border-red-900 px-4 py-2 text-sm font-semibold text-red-700 dark:text-red-400 transition hover:border-red-400 dark:hover:border-red-700 hover:text-red-800 dark:hover:text-red-300" ${cancelDisabled}>${escapeHtml(cancelLabel)}</button>`
     : '';
   const cancelError = manageState.cancelError
     ? `<div class="${UI_CLASSES.cardError}" role="alert">${escapeHtml(manageState.cancelError)}</div>`
     : '';
 
   return `
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking reference</p>
-          <p class="mt-0.5 text-base text-slate-900">Verified secure reference</p>
-          <p class="mt-2 text-sm text-slate-600">${contactLine}</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Booking reference</p>
+          <p class="mt-0.5 text-base text-slate-900 dark:text-slate-100">Verified secure reference</p>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">${contactLine}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           ${cancelButton}
@@ -390,16 +390,16 @@ export function renderManageSummary(manageState, ctx) {
       ${cancelError}
       <dl class="mt-6 grid gap-4 text-left md:grid-cols-3">
         <div class="${UI_CLASSES.cardBase}">
-          <dt class="text-sm font-medium text-slate-500">Current time</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(slotSummary)}</dd>
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Current time</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(slotSummary)}</dd>
         </div>
         <div class="${UI_CLASSES.cardBase}">
-          <dt class="text-sm font-medium text-slate-500">Provider</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(providerLabel)}</dd>
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Provider</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(providerLabel)}</dd>
         </div>
         <div class="${UI_CLASSES.cardBase}">
-          <dt class="text-sm font-medium text-slate-500">Service</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(serviceLabel)}</dd>
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Service</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(serviceLabel)}</dd>
         </div>
       </dl>
     </section>
@@ -416,7 +416,7 @@ export function renderForm(currentState, ctx, options = {}) {
   const existingCustomFields = options.existingCustomFields ?? null;
 
   return `
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
       <form id="${formId}" class="space-y-6" novalidate>
         ${generalError}
         <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start">
@@ -476,7 +476,7 @@ export function renderSelections(currentState, ctx) {
 
   const locationSelector = showLocationSelector ? `
     <div>
-      <label class="block text-sm font-medium text-slate-700">
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
         Location
         <select name="location_id" data-location-select class="${UI_CLASSES.selectBase}">
           <option value="">All locations</option>
@@ -498,7 +498,7 @@ export function renderSelections(currentState, ctx) {
 
   return `
     <div class="space-y-4">
-      <label class="block text-sm font-medium text-slate-700">
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
         Provider
         <select name="provider_id" data-provider-select class="${UI_CLASSES.selectBase}" ${ctx.providers?.length ? '' : 'disabled'}>
           <option value="" ${currentState.providerId ? '' : 'selected'}>Choose a provider</option>
@@ -506,7 +506,7 @@ export function renderSelections(currentState, ctx) {
         </select>
         ${renderFieldError('provider_id', currentState.errors)}
       </label>
-      <label class="block text-sm font-medium text-slate-700">
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
         Service
         <select name="service_id" data-service-select class="${UI_CLASSES.selectBase}" ${currentState.servicesLoading || !currentState.providerId ? 'disabled' : ''}>
           <option value="" ${currentState.serviceId ? '' : 'selected'}>${currentState.servicesLoading ? 'Loading services...' : (currentState.providerId ? 'Choose a service' : 'Select a provider first')}</option>
@@ -517,7 +517,7 @@ export function renderSelections(currentState, ctx) {
     </div>
     ${locationSelector}
     <section class="space-y-3">
-      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Selected provider &amp; service</h3>
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Selected provider &amp; service</h3>
       <div class="grid gap-3 md:grid-cols-2">
         ${providerProfileCard || providerEmptyState}
         ${serviceCard || serviceEmptyState}
@@ -525,7 +525,7 @@ export function renderSelections(currentState, ctx) {
     </section>
     ${renderDeliveryModeSelector(currentState, ctx)}
     <section class="space-y-3">
-      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Select date</h3>
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Select date</h3>
       ${renderDatePickerField(currentState, ctx)}
       ${renderMobileTipsAccordion(currentState, ctx)}
     </section>
@@ -544,27 +544,27 @@ export function renderProviderProfileCard(provider) {
   const imageUrl = (provider.profile_image_url || '').trim();
 
   const titleHtml = title
-    ? `<p class="text-sm font-medium text-slate-700">${escapeHtml(title)}</p>`
+    ? `<p class="text-sm font-medium text-slate-700 dark:text-slate-300">${escapeHtml(title)}</p>`
     : '';
   const bioHtml = bio
-    ? `<p class="mt-2 text-sm text-slate-600">${escapeHtml(bio)}</p>`
+    ? `<p class="mt-2 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(bio)}</p>`
     : '';
   const educationHtml = education
-    ? `<p class="mt-2 text-xs text-slate-500"><span class="font-semibold text-slate-600">Education:</span> ${escapeHtml(education)}</p>`
+    ? `<p class="mt-2 text-xs text-slate-500 dark:text-slate-400"><span class="font-semibold text-slate-600 dark:text-slate-300">Education:</span> ${escapeHtml(education)}</p>`
     : '';
   const qualificationsHtml = qualifications
-    ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Qualifications:</span> ${escapeHtml(qualifications)}</p>`
+    ? `<p class="mt-1 text-xs text-slate-500 dark:text-slate-400"><span class="font-semibold text-slate-600 dark:text-slate-300">Qualifications:</span> ${escapeHtml(qualifications)}</p>`
     : '';
   const imageHtml = imageUrl
-    ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-12 w-12 rounded-full object-cover border border-slate-200 transition-all duration-200">`
-    : `<div class="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition-all duration-200">${escapeHtml((provider.name || 'P').trim().charAt(0).toUpperCase() || 'P')}</div>`;
+    ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(provider.name || 'Provider')}" class="h-12 w-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 transition-all duration-200">`
+    : `<div class="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-600 dark:text-slate-300 transition-all duration-200">${escapeHtml((provider.name || 'P').trim().charAt(0).toUpperCase() || 'P')}</div>`;
 
   return `
-    <div class="min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-200">
+    <div class="min-h-[80px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 transition-all duration-200">
       <div class="flex items-start gap-3">
         ${imageHtml}
         <div class="min-w-0">
-          <p class="text-sm font-semibold text-slate-900">${escapeHtml(provider.name || 'Provider')}</p>
+          <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(provider.name || 'Provider')}</p>
           ${titleHtml}
           ${bioHtml}
           ${educationHtml}
@@ -582,7 +582,7 @@ export function renderDeliveryModeSelector(currentState, ctx) {
 
   const selected = currentState.deliveryMode ?? available[0];
   const options  = available.map(m => {
-    const meta       = DELIVERY_MODE_META[m] ?? { label: m, icon: 'help', selCls: 'border-slate-300 bg-slate-100 text-slate-700', defCls: 'border-slate-200 bg-white text-slate-700' };
+    const meta       = DELIVERY_MODE_META[m] ?? { label: m, icon: 'help', selCls: 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300', defCls: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300' };
     const isSelected = m === selected;
     return `
       <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition-all
@@ -596,7 +596,7 @@ export function renderDeliveryModeSelector(currentState, ctx) {
 
   return `
     <section class="space-y-2">
-      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600">Session type</h3>
+      <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Session type</h3>
       <div class="flex flex-wrap gap-2">${options}</div>
     </section>`;
 }
@@ -616,18 +616,18 @@ export function renderServiceCard(service) {
   }
 
   const descriptionHtml = description
-    ? `<p class="mt-1 text-sm text-slate-600">${escapeHtml(description)}</p>`
+    ? `<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(description)}</p>`
     : '';
   const durationHtml = duration
-    ? `<p class="mt-2 text-xs text-slate-500"><span class="font-semibold text-slate-600">Duration:</span> ${escapeHtml(String(duration))} min</p>`
+    ? `<p class="mt-2 text-xs text-slate-500 dark:text-slate-400"><span class="font-semibold text-slate-600 dark:text-slate-300">Duration:</span> ${escapeHtml(String(duration))} min</p>`
     : '';
   const priceHtml = formattedPrice
-    ? `<p class="mt-1 text-xs text-slate-500"><span class="font-semibold text-slate-600">Price:</span> ${escapeHtml(formattedPrice)}</p>`
+    ? `<p class="mt-1 text-xs text-slate-500 dark:text-slate-400"><span class="font-semibold text-slate-600 dark:text-slate-300">Price:</span> ${escapeHtml(formattedPrice)}</p>`
     : '';
 
   const depositBadgeHtml = service.paymentEnabled && service.formattedDeposit
     ? `<p class="mt-1 text-xs">
-         <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 bg-green-50 text-green-700 font-medium">
+         <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 font-medium">
            <span class="material-symbols-outlined text-xs">payments</span>
            Deposit: ${escapeHtml(service.formattedDeposit)} (${escapeHtml(String(service.depositPercentage))}%)
          </span>
@@ -636,20 +636,20 @@ export function renderServiceCard(service) {
 
   const modes = Array.isArray(service.deliveryModes) ? service.deliveryModes : [];
   const modeMeta = {
-    onsite:       { label: 'In Person', icon: 'location_on',  cls: 'bg-blue-50 text-blue-700' },
-    online_zoom:  { label: 'Zoom',      icon: 'video_call',   cls: 'bg-purple-50 text-purple-700' },
-    online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    cls: 'bg-teal-50 text-teal-700' },
+    onsite:       { label: 'In Person', icon: 'location_on',  cls: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+    online_zoom:  { label: 'Zoom',      icon: 'video_call',   cls: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300' },
+    online_jitsi: { label: 'Jitsi Meet', icon: 'videocam',    cls: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300' },
   };
   const modeBadges = modes.length > 0
     ? `<div class="mt-2 flex flex-wrap gap-1">${modes.map(m => {
-        const meta = modeMeta[m] ?? { label: m, icon: 'help', cls: 'bg-slate-100 text-slate-600' };
+        const meta = modeMeta[m] ?? { label: m, icon: 'help', cls: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' };
         return `<span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs ${meta.cls}"><span class="material-symbols-outlined text-xs">${meta.icon}</span>${escapeHtml(meta.label)}</span>`;
       }).join('')}</div>`
     : '';
 
   return `
-    <div class="min-h-[80px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition-all duration-200">
-      <p class="text-sm font-semibold text-slate-900">${escapeHtml(name)}</p>
+    <div class="min-h-[80px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 transition-all duration-200">
+      <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(name)}</p>
       ${descriptionHtml}
       ${durationHtml}
       ${priceHtml}
@@ -662,15 +662,15 @@ export function renderServiceCard(service) {
 export function renderSlotSection(currentState, ctx) {
   const isLoading = Boolean(currentState.calendar?.loading);
   const loading = isLoading
-    ? '<p class="text-sm text-slate-500">Checking availability...</p>'
+    ? '<p class="text-sm text-slate-500 dark:text-slate-400">Checking availability...</p>'
     : '';
 
   const slotButtons = currentState.slots.map(slot => {
     const isSelected = slot.start === currentState.selectedSlot?.start;
     const baseClasses = UI_CLASSES.slotButton;
     const stateClasses = isSelected
-      ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
-      : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
+      ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 shadow-sm'
+      : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-700 dark:hover:text-blue-300';
     return `<button type="button" data-slot-option="${slot.start}" class="${baseClasses} ${stateClasses}">${escapeHtml(slot.label ?? formatSlotLabel(slot, ctx))}</button>`;
   }).join('');
 
@@ -679,14 +679,14 @@ export function renderSlotSection(currentState, ctx) {
     : '';
 
   const emptyMessage = !isLoading && !currentState.slots.length
-    ? `<p class="text-sm text-slate-500">${currentState.providerId && currentState.serviceId ? escapeHtml(currentState.slotsError || 'No open times for this day. Try another date.') : 'Select a provider and service to view appointments.'}</p>`
+    ? `<p class="text-sm text-slate-500 dark:text-slate-400">${currentState.providerId && currentState.serviceId ? escapeHtml(currentState.slotsError || 'No open times for this day. Try another date.') : 'Select a provider and service to view appointments.'}</p>`
     : '';
 
   return `
     <div>
       <div class="flex items-center justify-between">
-        <h2 class="text-base font-semibold text-slate-900">Pick an available time</h2>
-        ${currentState.selectedSlot ? `<span class="text-sm text-slate-600">Selected: ${escapeHtml(formatSlotSummary(currentState.selectedSlot, ctx))}</span>` : ''}
+        <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Pick an available time</h2>
+        ${currentState.selectedSlot ? `<span class="text-sm text-slate-600 dark:text-slate-300">Selected: ${escapeHtml(formatSlotSummary(currentState.selectedSlot, ctx))}</span>` : ''}
       </div>
       <div class="mt-3 space-y-3">
         ${loading}
@@ -704,16 +704,16 @@ export function renderLocationCard(currentState) {
     return '';
   }
   const addressHtml = loc.address
-    ? `<p class="text-sm text-slate-600">${escapeHtml(loc.address)}</p>`
+    ? `<p class="text-sm text-slate-600 dark:text-slate-300">${escapeHtml(loc.address)}</p>`
     : '';
   const contactHtml = loc.contact_number
-    ? `<p class="text-sm text-slate-500">${escapeHtml(loc.contact_number)}</p>`
+    ? `<p class="text-sm text-slate-500 dark:text-slate-400">${escapeHtml(loc.contact_number)}</p>`
     : '';
   return `
     <div class="${UI_CLASSES.cardInfo} flex items-start gap-3">
-      <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+      <svg class="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
       <div class="min-w-0">
-        <p class="font-semibold text-slate-900">${escapeHtml(loc.name)}</p>
+        <p class="font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(loc.name)}</p>
         ${addressHtml}
         ${contactHtml}
       </div>
@@ -754,23 +754,23 @@ function renderLiveSummary(currentState, ctx) {
     <div class="flex items-start gap-2">
       <span class="material-symbols-outlined text-base shrink-0 mt-0.5 ${colorCls}">${icon}</span>
       <div class="min-w-0">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${escapeHtml(labelText)}</p>
-        <p class="text-sm font-medium text-slate-900 truncate">${escapeHtml(valueText)}</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">${escapeHtml(labelText)}</p>
+        <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">${escapeHtml(valueText)}</p>
       </div>
     </div>
   `;
 
   const rows = [
-    serviceName && row('check_circle', 'text-emerald-500', 'Service', serviceName),
-    providerName && row('check_circle', 'text-emerald-500', 'Provider', providerName),
-    dateLabel && row('check_circle', slotLabel ? 'text-emerald-500' : 'text-slate-300', 'Date', dateLabel),
-    slotLabel && row('check_circle', 'text-emerald-500', 'Time', slotLabel),
-    modeMeta && row('check_circle', 'text-emerald-500', 'Session type', modeMeta.label),
+    serviceName && row('check_circle', 'text-emerald-500 dark:text-emerald-400', 'Service', serviceName),
+    providerName && row('check_circle', 'text-emerald-500 dark:text-emerald-400', 'Provider', providerName),
+    dateLabel && row('check_circle', slotLabel ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600', 'Date', dateLabel),
+    slotLabel && row('check_circle', 'text-emerald-500 dark:text-emerald-400', 'Time', slotLabel),
+    modeMeta && row('check_circle', 'text-emerald-500 dark:text-emerald-400', 'Session type', modeMeta.label),
   ].filter(Boolean).join('');
 
   return `
-    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 space-y-3">
-      <p class="text-sm font-semibold text-slate-700">Your booking</p>
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 space-y-3">
+      <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Your booking</p>
       ${rows}
     </div>
   `;
@@ -781,10 +781,10 @@ function renderMobileTipsAccordion(state, ctx) {
   const chevron = isOpen ? 'expand_less' : 'expand_more';
   return `
     <div class="lg:hidden">
-      <button type="button" data-action="tips-mobile-toggle" class="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300">
-        <span class="material-symbols-outlined text-base shrink-0 text-slate-500">info</span>
+      <button type="button" data-action="tips-mobile-toggle" class="flex w-full items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:border-slate-300 dark:hover:border-slate-600">
+        <span class="material-symbols-outlined text-base shrink-0 text-slate-500 dark:text-slate-400">info</span>
         <span>Scheduling tips</span>
-        <span class="material-symbols-outlined ml-auto text-base text-slate-400">${chevron}</span>
+        <span class="material-symbols-outlined ml-auto text-base text-slate-400 dark:text-slate-500">${chevron}</span>
       </button>
       ${isOpen ? `<div class="mt-2">${renderSchedulingTips(ctx)}</div>` : ''}
     </div>
@@ -822,20 +822,20 @@ export function renderSchedulingTips(ctx) {
   const privacyUrl = String(legal.privacyUrl ?? '').trim();
 
   const legalLinks = [
-    `<a href="${escapeHtml(legalPageUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Full legal policies</a>`,
-    termsUrl ? `<a href="${escapeHtml(termsUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Terms</a>` : '',
-    privacyUrl ? `<a href="${escapeHtml(privacyUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 underline hover:text-blue-800">Privacy</a>` : '',
+    `<a href="${escapeHtml(legalPageUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 dark:text-blue-300 underline hover:text-blue-800 dark:hover:text-blue-200">Full legal policies</a>`,
+    termsUrl ? `<a href="${escapeHtml(termsUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 dark:text-blue-300 underline hover:text-blue-800 dark:hover:text-blue-200">Terms</a>` : '',
+    privacyUrl ? `<a href="${escapeHtml(privacyUrl)}" target="_blank" rel="noopener" class="font-medium text-blue-700 dark:text-blue-300 underline hover:text-blue-800 dark:hover:text-blue-200">Privacy</a>` : '',
   ].filter(Boolean).join(' &middot; ');
 
   return `
-    <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      <span class="font-semibold text-slate-700">Scheduling tips</span>
+    <div class="flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+      <span class="font-semibold text-slate-700 dark:text-slate-300">Scheduling tips</span>
       <span>Only days with openings are shown. Need another time? Try a different provider or service.</span>
       <span class="mt-2">${rescheduleRule}</span>
       <span>${cancelRule}</span>
       <span>Bookings can be made up to ${escapeHtml(String(futureLimitDays > 0 ? futureLimitDays : 60))} days ahead.</span>
-      ${cancellationSummary ? `<span class="mt-2 text-slate-500"><span class="font-medium text-slate-600">Cancellation policy:</span> ${escapeHtml(cancellationSummary)}</span>` : ''}
-      ${reschedulingSummary ? `<span class="text-slate-500"><span class="font-medium text-slate-600">Rescheduling policy:</span> ${escapeHtml(reschedulingSummary)}</span>` : ''}
+      ${cancellationSummary ? `<span class="mt-2 text-slate-500 dark:text-slate-400"><span class="font-medium text-slate-600 dark:text-slate-300">Cancellation policy:</span> ${escapeHtml(cancellationSummary)}</span>` : ''}
+      ${reschedulingSummary ? `<span class="text-slate-500 dark:text-slate-400"><span class="font-medium text-slate-600 dark:text-slate-300">Rescheduling policy:</span> ${escapeHtml(reschedulingSummary)}</span>` : ''}
       <span class="mt-2 text-xs">${legalLinks}</span>
     </div>
   `;
@@ -850,16 +850,16 @@ export function renderDatePickerField(state, ctx) {
 
   if (!dates.length && calendar.loading) {
     return `
-      <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm">
-        <p class="font-medium text-slate-600">Preparing availability…</p>
-        <p class="text-slate-500">We are checking the next ${escapeHtml(String(futureLimitDays))} days for openings.</p>
+      <div class="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-3 text-sm">
+        <p class="font-medium text-slate-600 dark:text-slate-300">Preparing availability…</p>
+        <p class="text-slate-500 dark:text-slate-400">We are checking the next ${escapeHtml(String(futureLimitDays))} days for openings.</p>
       </div>
     `;
   }
 
   if (!dates.length && calendar.error) {
     return `
-      <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+      <div class="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400" role="alert">
         <p class="font-semibold">Availability unavailable</p>
         <p>${escapeHtml(calendar.error)}</p>
       </div>
@@ -869,14 +869,14 @@ export function renderDatePickerField(state, ctx) {
   if (!dates.length) {
     if (!hasSelections) {
       return `
-        <div class="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-600">
-          <p class="font-semibold text-slate-700">Select provider & service</p>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+          <p class="font-semibold text-slate-700 dark:text-slate-300">Select provider & service</p>
           <p>Pick your provider and service to see available days.</p>
         </div>
       `;
     }
     return `
-      <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+      <div class="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
         <p class="font-semibold">No open days</p>
         <p>We could not find any openings in the next ${escapeHtml(String(futureLimitDays))} days. Try another provider or service.</p>
       </div>
@@ -891,8 +891,8 @@ export function renderDatePickerField(state, ctx) {
   const pills = dates.slice(0, 6).map(date => {
     const isSelected = date === state.appointmentDate;
     const stateClass = isSelected
-      ? 'border-blue-600 bg-blue-50 text-blue-900'
-      : 'border-slate-200 text-slate-700 hover:border-blue-400 hover:text-blue-700';
+      ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200'
+      : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-700 dark:hover:text-blue-300';
     return `<button type="button" data-date-pill="${escapeHtml(date)}" class="${UI_CLASSES.datePill} ${stateClass}">${escapeHtml(formatDateSelectLabel(date))}</button>`;
   }).join('');
 
@@ -900,17 +900,17 @@ export function renderDatePickerField(state, ctx) {
 
   return `
     <div>
-      <label class="block text-sm font-medium text-slate-700 mb-2">Choose a day</label>
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Choose a day</label>
       <div class="flex flex-wrap gap-2 mb-3" role="listbox">
-        ${pills || '<span class="text-sm text-slate-500">No available days found.</span>'}
-        ${moreCount > 0 ? `<span class="rounded-2xl border border-dashed border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500">+${moreCount} more days</span>` : ''}
+        ${pills || '<span class="text-sm text-slate-500 dark:text-slate-400">No available days found.</span>'}
+        ${moreCount > 0 ? `<span class="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">+${moreCount} more days</span>` : ''}
       </div>
-      <label class="block text-sm font-medium text-slate-600">Browse all available days
-        <select data-date-select class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${disabled ? 'disabled' : ''}>
+      <label class="block text-sm font-medium text-slate-600 dark:text-slate-300">Browse all available days
+        <select data-date-select class="mt-1 w-full rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-base text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" ${disabled ? 'disabled' : ''}>
           ${options}
         </select>
       </label>
-      ${calendar.error ? `<p class="mt-2 text-sm text-red-600">${escapeHtml(calendar.error)}</p>` : ''}
+      ${calendar.error ? `<p class="mt-2 text-sm text-red-600 dark:text-red-400">${escapeHtml(calendar.error)}</p>` : ''}
     </div>
   `;
 }
@@ -928,8 +928,8 @@ export function renderCustomerSection(currentState, ctx) {
 
   return `
     <div>
-      <h2 class="text-base font-semibold text-slate-900">Your details</h2>
-      <p class="text-sm text-slate-500">We will use this information to confirm your appointment and send reminders.</p>
+      <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Your details</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400">We will use this information to confirm your appointment and send reminders.</p>
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         ${inputs}
       </div>
@@ -953,7 +953,7 @@ export function renderCustomFields(currentState, ctx, existingCustomFields) {
 
   return `
     <div>
-      <h2 class="text-base font-semibold text-slate-900">Additional information</h2>
+      <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Additional information</h2>
       <div class="mt-4 grid gap-4">
         ${inputs}
       </div>
@@ -970,9 +970,9 @@ export function renderNotesField(currentState, ctx) {
   const required = fieldConfig.notes?.required;
   return `
     <div>
-      <label class="block text-sm font-medium text-slate-700">
-        Notes for your provider ${required ? '<span class="text-red-500">*</span>' : ''}
-        <textarea name="notes" rows="4" class="mt-1 w-full rounded-2xl border-slate-200 bg-white px-4 py-2.5 text-base text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${escapeHtml(currentState.form.notes ?? '')}</textarea>
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+        Notes for your provider ${required ? '<span class="text-red-500 dark:text-red-400">*</span>' : ''}
+        <textarea name="notes" rows="4" class="mt-1 w-full rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-base text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">${escapeHtml(currentState.form.notes ?? '')}</textarea>
       </label>
       ${renderFieldError('notes', currentState.errors)}
     </div>
@@ -1008,50 +1008,50 @@ export function renderPaymentGatewayPicker(currentState) {
     const isActive = selected === id;
     const base  = 'flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-medium cursor-pointer transition-all';
     const cls   = isActive
-      ? `${base} border-blue-500 bg-blue-50 text-blue-700`
-      : `${base} border-slate-200 bg-white text-slate-700 hover:border-blue-300`;
+      ? `${base} border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300`
+      : `${base} border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-600`;
     return `
       <button type="button" data-select-gateway="${escapeHtml(id)}" class="${cls}" aria-pressed="${isActive}">
         <span class="material-symbols-outlined text-lg">${icon}</span>
         ${escapeHtml(label)}
-        ${isActive ? '<span class="ml-auto material-symbols-outlined text-base text-blue-500">check_circle</span>' : ''}
+        ${isActive ? '<span class="ml-auto material-symbols-outlined text-base text-blue-500 dark:text-blue-400">check_circle</span>' : ''}
       </button>`;
   };
 
   const gatewayError = !selected
-    ? `<p class="text-xs text-amber-600 mt-1 flex items-center gap-1">
+    ? `<p class="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
          <span class="material-symbols-outlined text-sm">warning</span>
          Select a payment method to continue.
        </p>`
     : '';
 
   return `
-    <div class="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 space-y-3">
+    <div class="rounded-2xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-4 py-4 space-y-3">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-green-600">payments</span>
-        <h3 class="text-sm font-semibold text-green-800">Deposit required to confirm</h3>
+        <span class="material-symbols-outlined text-green-600 dark:text-green-400">payments</span>
+        <h3 class="text-sm font-semibold text-green-800 dark:text-green-300">Deposit required to confirm</h3>
       </div>
       <dl class="grid grid-cols-3 gap-2 text-center text-xs">
-        <div class="rounded-lg bg-white border border-green-200 px-2 py-2">
-          <dt class="text-slate-500">Full price</dt>
-          <dd class="font-semibold text-slate-800 mt-0.5">${escapeHtml(service.formattedPrice ?? '—')}</dd>
+        <div class="rounded-lg bg-white dark:bg-slate-800 border border-green-200 dark:border-green-900 px-2 py-2">
+          <dt class="text-slate-500 dark:text-slate-400">Full price</dt>
+          <dd class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">${escapeHtml(service.formattedPrice ?? '—')}</dd>
         </div>
-        <div class="rounded-lg bg-white border border-green-200 px-2 py-2">
-          <dt class="text-slate-500">Deposit</dt>
-          <dd class="font-semibold text-slate-800 mt-0.5">${escapeHtml(String(service.depositPercentage ?? 0))}%</dd>
+        <div class="rounded-lg bg-white dark:bg-slate-800 border border-green-200 dark:border-green-900 px-2 py-2">
+          <dt class="text-slate-500 dark:text-slate-400">Deposit</dt>
+          <dd class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">${escapeHtml(String(service.depositPercentage ?? 0))}%</dd>
         </div>
-        <div class="rounded-lg bg-green-100 border border-green-300 px-2 py-2">
-          <dt class="text-green-700 font-medium">Pay now</dt>
-          <dd class="font-bold text-green-800 mt-0.5">${escapeHtml(service.formattedDeposit)}</dd>
+        <div class="rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-800 px-2 py-2">
+          <dt class="text-green-700 dark:text-green-300 font-medium">Pay now</dt>
+          <dd class="font-bold text-green-800 dark:text-green-300 mt-0.5">${escapeHtml(service.formattedDeposit)}</dd>
         </div>
       </dl>
       <div class="space-y-2">
-        <p class="text-xs font-medium text-slate-600">Pay deposit via</p>
+        <p class="text-xs font-medium text-slate-600 dark:text-slate-300">Pay deposit via</p>
         ${gatewayBtn('payfast', 'PayFast', 'account_balance', payfastOk)}
         ${gatewayBtn('stripe', 'Stripe', 'credit_card', stripeOk)}
         ${gatewayError}
       </div>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-500 dark:text-slate-400">
         The remaining balance of ${escapeHtml(service.formattedPrice ?? '')} is payable on the day of your appointment.
       </p>
     </div>
@@ -1067,7 +1067,7 @@ export function renderActions(currentState, options = {}) {
   return `
     <div class="flex flex-col gap-3">
       <button type="submit" class="${UI_CLASSES.buttonPrimary}" ${disabled}>${escapeHtml(text)}</button>
-      <p class="text-center text-xs text-slate-400">${escapeHtml(helperText)}</p>
+      <p class="text-center text-xs text-slate-400 dark:text-slate-500">${escapeHtml(helperText)}</p>
     </div>
   `;
 }
@@ -1091,44 +1091,44 @@ export function renderSuccess(appointment, ctx, options = {}) {
   const secondaryAttr = secondaryButton?.attr ?? '';
 
   return `
-    <section class="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+    <section class="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 text-center shadow-sm">
+      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
         <span class="text-2xl">&#10003;</span>
       </div>
-      <h2 class="mt-4 text-2xl font-semibold text-slate-900">${escapeHtml(title)}</h2>
-      <p class="mt-2 text-sm text-slate-600">${escapeHtml(subtitle)}</p>
+      <h2 class="mt-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(title)}</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">${escapeHtml(subtitle)}</p>
       <dl class="mt-6 grid gap-4 text-left md:grid-cols-2">
-        <div class="rounded-2xl border border-slate-200 px-4 py-3">
-          <dt class="text-sm font-medium text-slate-500">Date & time</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(slotSummary)}</dd>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Date & time</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(slotSummary)}</dd>
         </div>
-        <div class="rounded-2xl border border-slate-200 px-4 py-3">
-          <dt class="text-sm font-medium text-slate-500">Provider</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(providerLabel)}</dd>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Provider</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(providerLabel)}</dd>
         </div>
-        <div class="rounded-2xl border border-slate-200 px-4 py-3">
-          <dt class="text-sm font-medium text-slate-500">Service</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(serviceLabel)}</dd>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Service</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(serviceLabel)}</dd>
         </div>
-        <div class="rounded-2xl border border-slate-200 px-4 py-3">
-          <dt class="text-sm font-medium text-slate-500">Manage booking</dt>
-          <dd class="text-base font-semibold text-slate-900">Use the secure link in your confirmation message.</dd>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Manage booking</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">Use the secure link in your confirmation message.</dd>
         </div>
         ${locationLabel ? `
-        <div class="rounded-2xl border border-slate-200 px-4 py-3 md:col-span-2">
-          <dt class="text-sm font-medium text-slate-500">Location</dt>
-          <dd class="text-base font-semibold text-slate-900">${escapeHtml(locationLabel)}${locationAddr ? ` &middot; <span class="font-normal text-slate-600">${escapeHtml(locationAddr)}</span>` : ''}</dd>
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 md:col-span-2">
+          <dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Location</dt>
+          <dd class="text-base font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(locationLabel)}${locationAddr ? ` &middot; <span class="font-normal text-slate-600 dark:text-slate-300">${escapeHtml(locationAddr)}</span>` : ''}</dd>
         </div>
         ` : ''}
         ${appointment.video_link ? `
-        <div class="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3 md:col-span-2">
-          <dt class="text-sm font-medium text-purple-700">
+        <div class="rounded-2xl border border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 px-4 py-3 md:col-span-2">
+          <dt class="text-sm font-medium text-purple-700 dark:text-purple-300">
             <span class="material-symbols-outlined text-sm align-middle">video_call</span>
             Video meeting link
           </dt>
           <dd class="mt-1">
             <a href="${escapeHtml(appointment.video_link)}" target="_blank" rel="noopener noreferrer"
-               class="break-all text-sm font-semibold text-purple-700 underline hover:text-purple-900">
+               class="break-all text-sm font-semibold text-purple-700 dark:text-purple-300 underline hover:text-purple-900 dark:hover:text-purple-200">
               ${escapeHtml(appointment.video_link)}
             </a>
           </dd>
@@ -1136,9 +1136,9 @@ export function renderSuccess(appointment, ctx, options = {}) {
         ` : ''}
       </dl>
       <div class="mt-6 flex flex-col gap-3">
-        ${primaryButton ? `<button type="button" ${primaryAttr} class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-base font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600">${escapeHtml(primaryButton.label)}</button>` : ''}
-        ${secondaryButton ? `<button type="button" ${secondaryAttr} class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-6 py-3 text-base font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600">${escapeHtml(secondaryButton.label)}</button>` : ''}
-        <p class="text-xs text-slate-500">${escapeHtml(footerText)}</p>
+        ${primaryButton ? `<button type="button" ${primaryAttr} class="inline-flex items-center justify-center rounded-2xl border border-slate-300 dark:border-slate-600 px-6 py-3 text-base font-semibold text-slate-700 dark:text-slate-300 transition hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400">${escapeHtml(primaryButton.label)}</button>` : ''}
+        ${secondaryButton ? `<button type="button" ${secondaryAttr} class="inline-flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-700 px-6 py-3 text-base font-semibold text-slate-700 dark:text-slate-300 transition hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400">${escapeHtml(secondaryButton.label)}</button>` : ''}
+        <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(footerText)}</p>
       </div>
     </section>
   `;
@@ -1148,8 +1148,8 @@ export function renderField(name, config, currentState) {
   const label = config.label ?? FIELD_LABELS[name] ?? name;
   const required = config.required;
   return `
-    <label class="block text-sm font-medium text-slate-700">
-      ${escapeHtml(label)} ${required ? '<span class="text-red-500">*</span>' : ''}
+    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      ${escapeHtml(label)} ${required ? '<span class="text-red-500 dark:text-red-400">*</span>' : ''}
       <input name="${name}" value="${escapeHtml(currentState.form[name] ?? '')}" type="${name === 'email' ? 'email' : (name === 'phone' ? 'tel' : 'text')}" class="${UI_CLASSES.inputBase}" ${required ? 'aria-required="true"' : ''}>
       ${renderFieldError(name, currentState.errors)}
     </label>
@@ -1168,13 +1168,13 @@ export function renderCustomField(key, config, currentState, existingCustomField
   const isRequiredForSubmission = !!config.required && !existingMasked;
 
   const existingHint = existingMasked
-    ? `<p class="mt-1 text-xs text-slate-500">Current: <span class="font-medium text-slate-700">${escapeHtml(existingMasked)}</span></p>`
+    ? `<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Current: <span class="font-medium text-slate-700 dark:text-slate-300">${escapeHtml(existingMasked)}</span></p>`
     : '';
 
   if (config.type === 'textarea') {
     return `
-      <label class="block text-sm font-medium text-slate-700">
-        ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
+      <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+        ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500 dark:text-red-400">*</span>' : ''}
         <textarea name="${key}" rows="3" class="${UI_CLASSES.inputBase}">${escapeHtml(currentState.form[key] ?? '')}</textarea>
         ${existingHint}
         ${renderFieldError(key, currentState.errors)}
@@ -1185,7 +1185,7 @@ export function renderCustomField(key, config, currentState, existingCustomField
   if (config.type === 'checkbox') {
     const checked = (currentState.form[key] ?? '') === '1' ? 'checked' : '';
     return `
-      <label class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+      <label class="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">
         <span>${escapeHtml(label)}</span>
         <input type="checkbox" name="${key}" class="h-4 w-4" ${checked}>
       </label>
@@ -1196,8 +1196,8 @@ export function renderCustomField(key, config, currentState, existingCustomField
 
   const placeholder = isSensitive && existingMasked ? existingMasked : '';
   return `
-    <label class="block text-sm font-medium text-slate-700">
-      ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500">*</span>' : ''}
+    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      ${escapeHtml(label)} ${isRequiredForSubmission ? '<span class="text-red-500 dark:text-red-400">*</span>' : ''}
       <input name="${key}" value="${escapeHtml(currentState.form[key] ?? '')}" type="text" placeholder="${escapeHtml(placeholder)}" class="${UI_CLASSES.inputBase}">
       ${existingHint}
       ${renderFieldError(key, currentState.errors)}

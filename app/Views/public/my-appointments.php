@@ -31,35 +31,37 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Appointments - <?= esc($customerName) ?></title>
     <link rel="icon" type="image/svg+xml" href="<?= setting_url('general.company_icon', 'assets/settings/default-icon.svg') ?>">
+    <!-- Prevent FOUC: inline blocking script — sets .dark class and background before CSS loads -->
+    <script>!function(){var t=localStorage.getItem('xs-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;if(t==='dark')document.documentElement.style.backgroundColor='#0f172a';document.documentElement.classList.add('xs-no-transition')}();</script>
     <?php foreach ($compiledStyles as $href): ?>
         <link rel="stylesheet" href="<?= esc($href) ?>">
     <?php endforeach; ?>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 dark:bg-slate-900 min-h-screen">
     <div class="max-w-4xl mx-auto px-4 py-8">
         <!-- Header -->
         <div class="mb-8">
-            <h1 class="text-2xl font-bold text-gray-900">My Appointments</h1>
-            <p class="text-gray-600">Welcome back, <?= esc($customer['first_name'] ?? 'Customer') ?>!</p>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">My Appointments</h1>
+            <p class="text-gray-600 dark:text-gray-300">Welcome back, <?= esc($customer['first_name'] ?? 'Customer') ?>!</p>
         </div>
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="text-2xl font-bold text-blue-600"><?= esc($stats['upcoming'] ?? 0) ?></div>
-                <div class="text-sm text-gray-500">Upcoming</div>
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700">
+                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400"><?= esc($stats['upcoming'] ?? 0) ?></div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">Upcoming</div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="text-2xl font-bold text-green-600"><?= esc($stats['completed'] ?? 0) ?></div>
-                <div class="text-sm text-gray-500">Completed</div>
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700">
+                <div class="text-2xl font-bold text-green-600 dark:text-green-400"><?= esc($stats['completed'] ?? 0) ?></div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">Completed</div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <div class="text-2xl font-bold text-gray-600"><?= esc($stats['total'] ?? 0) ?></div>
-                <div class="text-sm text-gray-500">Total</div>
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700">
+                <div class="text-2xl font-bold text-gray-600 dark:text-gray-300"><?= esc($stats['total'] ?? 0) ?></div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">Total</div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-                <a href="<?= base_url('booking') ?>" class="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+            <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700">
+                <a href="<?= base_url('booking') ?>" class="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
                     <span class="material-symbols-outlined">add</span>
                     Book New
                 </a>
@@ -96,56 +98,56 @@ try {
         <?php endif; ?>
 
         <!-- Tabs -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-            <div class="border-b border-gray-200">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div class="border-b border-gray-200 dark:border-gray-700">
                 <nav class="flex">
                     <a href="?tab=upcoming" 
-                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'upcoming' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' ?>">
+                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'upcoming' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' ?>">
                         Upcoming
                     </a>
                     <a href="?tab=past" 
-                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'past' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' ?>">
+                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'past' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' ?>">
                         Past Appointments
                     </a>
                     <a href="?tab=all" 
-                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' ?>">
+                       class="px-6 py-4 text-sm font-medium border-b-2 <?= $currentTab === 'all' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' ?>">
                         All
                     </a>
                 </nav>
             </div>
 
             <!-- Appointments List -->
-            <div class="divide-y divide-gray-100">
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 <?php if (!empty($appointments['data'])): ?>
                     <?php foreach ($appointments['data'] as $appt): ?>
                         <?php
                         $startTime = utc_to_local($appt['start_at'] ?? '');
                         $isPast = $startTime < time();
                         $statusClasses = [
-                            'pending' => 'bg-yellow-100 text-yellow-800',
-                            'confirmed' => 'bg-blue-100 text-blue-800',
-                            'completed' => 'bg-green-100 text-green-800',
-                            'cancelled' => 'bg-red-100 text-red-800',
-                            'no-show' => 'bg-orange-100 text-orange-800',
+                            'pending' => 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300',
+                            'confirmed' => 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300',
+                            'completed' => 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300',
+                            'cancelled' => 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300',
+                            'no-show' => 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300',
                         ];
-                        $statusClass = $statusClasses[$appt['status'] ?? ''] ?? 'bg-gray-100 text-gray-800';
+                        $statusClass = $statusClasses[$appt['status'] ?? ''] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
                         ?>
-                        <div class="p-4 hover:bg-gray-50 transition-colors <?= $isPast ? 'opacity-75' : '' ?>">
+                        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors <?= $isPast ? 'opacity-75' : '' ?>">
                             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                                 <div class="flex items-start gap-4">
-                                    <div class="text-center min-w-[50px] <?= $isPast ? 'text-gray-400' : 'text-blue-600' ?>">
+                                    <div class="text-center min-w-[50px] <?= $isPast ? 'text-gray-400 dark:text-gray-500' : 'text-blue-600 dark:text-blue-400' ?>">
                                         <div class="text-sm font-medium"><?= date('M', $startTime) ?></div>
                                         <div class="text-2xl font-bold"><?= date('j', $startTime) ?></div>
                                     </div>
                                     <div>
-                                        <div class="font-medium text-gray-900"><?= esc($appt['service_name'] ?? 'Appointment') ?></div>
-                                        <div class="text-sm text-gray-500 mt-1">
+                                        <div class="font-medium text-gray-900 dark:text-gray-100"><?= esc($appt['service_name'] ?? 'Appointment') ?></div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                             <?= date('l \a\t g:i A', $startTime) ?>
                                             <?php if (!empty($appt['service_duration'])): ?>
                                                 • <?= esc($appt['service_duration']) ?> min
                                             <?php endif; ?>
                                         </div>
-                                        <div class="text-sm text-gray-500">
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
                                             with <?= esc($appt['provider_name'] ?? 'Provider') ?>
                                         </div>
                                     </div>
@@ -159,12 +161,12 @@ try {
                                         $pAmount = $appt['payment_amount'] ?? null;
                                     ?>
                                     <?php if ($pStatus === 'paid' && $pAmount): ?>
-                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">
                                             <span class="material-symbols-outlined text-xs">check_circle</span>
                                             Deposit paid <?= esc(helper_exists('currency') ? format_currency((float)$pAmount) : 'R'.number_format((float)$pAmount,2)) ?>
                                         </span>
                                     <?php elseif ($pStatus === 'pending'): ?>
-                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
                                             <span class="material-symbols-outlined text-xs">schedule</span>
                                             Payment pending
                                         </span>
@@ -172,17 +174,17 @@ try {
                                 </div>
                             </div>
                             <?php if (!empty($appt['notes'])): ?>
-                                <div class="mt-3 ml-[66px] text-sm text-gray-500 bg-gray-50 rounded p-2">
+                                <div class="mt-3 ml-[66px] text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded p-2">
                                     <span class="font-medium">Notes:</span> <?= esc($appt['notes']) ?>
                                 </div>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="p-8 text-center text-gray-500">
+                    <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                         <span class="material-symbols-outlined text-4xl mb-2 block">event_busy</span>
                         <?php if ($currentTab === 'upcoming'): ?>
-                            No upcoming appointments. <a href="<?= base_url('booking') ?>" class="text-blue-600 hover:underline">Book one now</a>!
+                            No upcoming appointments. <a href="<?= base_url('booking') ?>" class="text-blue-600 dark:text-blue-400 hover:underline">Book one now</a>!
                         <?php else: ?>
                             No appointments found.
                         <?php endif; ?>
@@ -192,14 +194,14 @@ try {
 
             <!-- Pagination -->
             <?php if (($appointments['pagination']['total_pages'] ?? 1) > 1): ?>
-                <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                    <div class="text-sm text-gray-500">
+                <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
                         Page <?= esc($currentPage) ?> of <?= esc($appointments['pagination']['total_pages']) ?>
                     </div>
                     <div class="flex gap-2">
                         <?php if ($currentPage > 1): ?>
                             <a href="?tab=<?= esc($currentTab) ?>&page=<?= $currentPage - 1 ?>" 
-                               class="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50">
+                               class="px-3 py-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700/40">
                                 Previous
                             </a>
                         <?php endif; ?>
@@ -224,9 +226,11 @@ try {
         </div>
 
         <!-- Footer -->
-        <div class="mt-12 text-center text-sm text-gray-400">
+        <div class="mt-12 text-center text-sm text-gray-400 dark:text-gray-500">
             <p>Questions? Contact us for assistance.</p>
         </div>
     </div>
+    <!-- Remove load-time FOUC guards after first paint (restores transitions for interactions) -->
+    <script>requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.remove('xs-no-transition');document.documentElement.style.backgroundColor='';document.documentElement.style.colorScheme=''})});</script>
 </body>
 </html>

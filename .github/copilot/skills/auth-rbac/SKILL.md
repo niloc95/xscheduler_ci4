@@ -79,15 +79,21 @@ Primary filters:
 
 File: `resources/js/modules/auth/inactivity-monitor.js`
 
-- Tracks user activity events (mouse / keyboard / scroll / touch).
-- After **115 minutes** of inactivity (`SESSION_MS 7200s − WARNING_MS 300s`), shows a modal with a 5:00 countdown.
+- **Wall-clock based (2026-06-12 rewrite).** The monitor never trusts timer ticks — browsers throttle/suspend `setTimeout`/`setInterval` in background tabs and across machine sleep, which previously let the modal show a fake 5:00 countdown long after the server session had expired. All state is derived from `Date.now()` timestamps: `lastActivityAt` (updated on mouse / keyboard / scroll / touch events) and a warning **deadline** (`lastActivityAt + SESSION_MS`).
+- Idle state is re-evaluated every 30 s (`CHECK_INTERVAL_MS`) **and immediately on `visibilitychange` / `focus` / `pageshow`** so waking a laptop or returning to a backgrounded tab recomputes the truth at once:
+  - elapsed ≥ 120 min → session window fully passed → redirect to `/auth/login` (no fake countdown).
+  - elapsed ≥ 115 min (`SESSION_MS − WARNING_MS`) → show the modal; the countdown displays `deadline − now`, so throttled ticks can't stretch it.
+  - otherwise → maybe fire a keepalive (below).
+- **Keepalive (drift fix):** the server expires the session 2 h after the last *HTTP request*, but client activity (mousemove/scroll) sends no requests. While the user has been active within the last 15 min, the monitor calls `GET /auth/ping` every 15 min (`KEEPALIVE_MS`) to slide the server window so the client model stays truthful. Idle users get no keepalive — that's the point of inactivity logout.
+- **Cross-tab sync:** `lastActivityAt` and the keepalive timestamp are shared via `localStorage` keys `xs-last-activity-at` / `xs-last-keepalive-at` (writes throttled to 5 s). Activity or "Stay Logged In" in one tab retracts a stale warning in another at the next check.
+- While the modal is visible, activity events are **ignored** — only an explicit "Stay Logged In" (server ping) may extend the session; mouse movement toward the button must not.
 - **"Stay Logged In"** pauses the countdown, calls `GET /auth/ping`, and only redirects to `/auth/login` after retryable failures are exhausted.
 - Retry semantics mirror other background auth surfaces: tolerate one transient `401` / network failure, wait 3 seconds, then retry once before treating the session as expired.
 - Because the modal is appended to `document.body` instead of `#spa-content`, SPA cleanup must remove the modal and clear any pending retry/countdown timers on `spa:leaving`; the next `initInactivityMonitor()` call recreates it.
 - **"Log Out"** → redirects to `/auth/logout`.
-- Countdown reaches 0:00 → redirects to `/auth/login`.
-- Exported as `initInactivityMonitor()`, called from `initializeComponents()` in `app.js`.
-- SPA-safe: removes listeners and body-level modal state on `spa:leaving` to prevent double-binding and stale closures.
+- Countdown deadline passes → redirects to `/auth/login`.
+- Exported as `initInactivityMonitor()`, called from `initializeComponents()` in `app.js`. Init counts as both activity and keepalive (the page load / SPA navigation was itself a server request).
+- SPA-safe: removes listeners (activity + wake) and body-level modal state on `spa:leaving` to prevent double-binding and stale closures.
 
 ### Session Ping Endpoint
 
