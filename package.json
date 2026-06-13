@@ -25,8 +25,6 @@
     "package": "npm run build && node scripts/package.js",
     "package:archive": "npm run build && node scripts/package.js --archive-logs",
     "package:local": "node scripts/package.js",
-    "deploy": "npm run package",
-    "release": "node scripts/release.js patch",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
@@ -34,10 +32,7 @@
     "release:rc": "node scripts/release.js --rc",
     "release:dry": "node scripts/release.js --dry-run",
     "changelog:preview": "node scripts/release.js --sync-changelog --dry-run",
-    "changelog:sync": "node scripts/release.js --sync-changelog",
-    "build:dev": "node scripts/build-config.js build development",
-    "build:staging": "node scripts/build-config.js build staging",
-    "build:prod": "node scripts/build-config.js build production"
+    "changelog:sync": "node scripts/release.js --sync-changelog"
   },
   "keywords": [],
   "author": "",

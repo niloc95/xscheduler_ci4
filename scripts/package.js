@@ -668,53 +668,6 @@ For support, check the application logs in writable/logs/ if you encounter issue
 fs.writeFileSync(path.join(packageDir, 'DEPLOY-README.md'), readmeContent);
 console.log('✅ Created comprehensive deployment documentation');
 
-// Create a quick deployment guide specifically for ZIP deployment
-const quickDeployContent = `# 🚀 Quick ZIP Deployment Guide
-
-## Step 1: Upload & Extract
-1. Upload \`webschedulr-deploy.zip\` to your hosting provider
-2. Extract the ZIP file in your hosting account
-3. Point your domain to the \`public/\` folder (IMPORTANT!)
-
-## Step 2: Set Permissions
-Run this command or use your hosting panel:
-\`\`\`bash
-chmod -R 755 writable/
-\`\`\`
-
-## Step 3: Access Your Application
-- Visit your domain
-- You'll be redirected to the setup wizard
-- Create your admin account
-- Enter your MySQL/MariaDB database details during setup
-- Start using WebScheduler!
-
-## Troubleshooting
-- If you get 500 errors, check writable/ folder permissions
-- If pages don't load, ensure domain points to public/ folder
-- For debugging, temporarily upload debug.php to public/ folder
-
-## File Structure After Extraction:
-\`\`\`
-your-hosting-root/
-├── app/                 # Application code
-├── public/              # ← Point your domain HERE
-│   ├── index.php       
-│   └── build/          # Compiled assets
-├── system/             # Framework
-├── vendor/             # Dependencies  
-├── writable/           # Must be writable!
-└── .env               # Configuration
-\`\`\`
-
-Ready in 3 steps! 🎉
-`;
-
-fs.writeFileSync(path.join(packageDir, 'QUICK-DEPLOY.md'), quickDeployContent);
-console.log('✅ Created quick deployment guide for ZIP users');
-
-console.log('✅ Created comprehensive deployment documentation');
-
 // Generate version.json for the in-app updater
 const versionJson = JSON.stringify({
     version: pkg.version,

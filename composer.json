@@ -3,7 +3,7 @@
     "description": "WebScheduler - Online Appointment Scheduler (CodeIgniter 4)",
     "license": "proprietary",
     "type": "project",
-    "homepage": "https://webschedulr.co.za",
+    "homepage": "https://webscheduler.co.za",
     "require": {
         "php": "^8.1",
         "codeigniter4/framework": "^4.0",

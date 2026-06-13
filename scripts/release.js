@@ -12,13 +12,17 @@
  * 6. GitHub Actions then creates the release automatically
  * 
  * Usage:
- *   npm run release              # Bump patch version (1.0.0 -> 1.0.1)
- *   npm run release:minor        # Bump minor version (1.0.0 -> 1.1.0)
- *   npm run release:major        # Bump major version (1.0.0 -> 2.0.0)
- *   npm run release -- --version=1.2.3  # Specific version
- *   npm run release -- --beta    # Create beta release (1.0.0-beta.1)
- *   npm run release -- --rc      # Create release candidate (1.0.0-rc.1)
- *   npm run release -- --skip-package  # Skip local deployment package creation
+ *   npm run release:patch              # Bump patch version (1.0.0 -> 1.0.1)
+ *   npm run release:minor              # Bump minor version (1.0.0 -> 1.1.0)
+ *   npm run release:major              # Bump major version (1.0.0 -> 2.0.0)
+ *   npm run release:patch -- --version=1.2.3  # Specific version
+ *   npm run release:beta               # Create beta release (1.0.0-beta.1)
+ *   npm run release:rc                 # Create release candidate (1.0.0-rc.1)
+ *   npm run release:patch -- --with-build    # Also run local Vite build before tagging
+ *   npm run release:patch -- --with-package  # Also create local deployment ZIP before tagging
+ *
+ * By default the local Vite build and deployment package steps are skipped — GitHub
+ * Actions (release.yml) builds the authoritative artifact when the tag is pushed.
  */
 
 import fs from 'fs';
@@ -49,8 +53,8 @@ if (hasFlag('alpha')) bumpType = 'alpha';
 
 const specificVersion = getArg('version');
 const dryRun = hasFlag('dry-run');
-const skipBuild = hasFlag('skip-build');
-const skipPackage = hasFlag('skip-package');
+const skipBuild = !hasFlag('with-build');
+const skipPackage = !hasFlag('with-package');
 const force = hasFlag('force');
 const syncChangelogOnly = hasFlag('sync-changelog');
 
