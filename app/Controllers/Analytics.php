@@ -270,14 +270,20 @@ class Analytics extends BaseController
                     'days' => $window['days'],
                 ]),
                 'by_service' => $this->bookingMetrics->getByService(10, $providerId),
-                'by_time_slot' => $this->appointmentModel->getByTimeSlot($providerId, $window['days'])
+                'by_time_slot' => $this->appointmentModel->getByTimeSlot($providerId, $window['days']),
+                'by_delivery_mode' => $this->appointmentModel->getDeliveryModeStats([
+                    'format' => 'simple',
+                    'provider_id' => $providerId,
+                    'days' => $window['days'],
+                ]),
             ];
         } catch (\Exception $e) {
             log_message('error', 'Analytics getAppointmentAnalytics error: ' . $e->getMessage());
             return [
                 'by_status' => [],
                 'by_service' => [],
-                'by_time_slot' => []
+                'by_time_slot' => [],
+                'by_delivery_mode' => ['onsite' => 0, 'online_zoom' => 0, 'online_jitsi' => 0],
             ];
         }
     }
@@ -383,6 +389,54 @@ class Analytics extends BaseController
                 ORDER BY revenue DESC
                 LIMIT 10
             ");
+
+            $paymentGatewayRows = $db->query("
+                SELECT
+                    t.gateway,
+                    COUNT(*) AS transaction_count,
+                    COALESCE(SUM(t.amount), 0) AS total_amount
+                FROM xs_payment_transactions t
+                JOIN xs_appointments a ON a.id = t.appointment_id
+                WHERE t.status = 'complete'
+                AND t.created_at >= '{$startAtUtc}'
+                AND t.created_at <= '{$endAtUtc}'
+                {$providerCondition}
+                {$serviceCondition}
+                {$locationCondition}
+                GROUP BY t.gateway
+            ")->getResultArray();
+
+            $paymentStatusRows = $db->query("
+                SELECT
+                    COALESCE(NULLIF(a.payment_status, ''), 'none') AS payment_status,
+                    COUNT(*) AS count
+                FROM xs_appointments a
+                WHERE a.start_at >= '{$startAtUtc}'
+                AND a.start_at <= '{$endAtUtc}'
+                {$providerCondition}
+                {$serviceCondition}
+                {$locationCondition}
+                GROUP BY payment_status
+            ")->getResultArray();
+
+            $paymentGateways = ['payfast' => ['count' => 0, 'total' => 0.0], 'stripe' => ['count' => 0, 'total' => 0.0]];
+            foreach ($paymentGatewayRows as $row) {
+                if (isset($paymentGateways[$row['gateway']])) {
+                    $paymentGateways[$row['gateway']] = [
+                        'count' => (int) $row['transaction_count'],
+                        'total' => (float) $row['total_amount'],
+                    ];
+                }
+            }
+
+            $paymentStatusCounts = ['none' => 0, 'pending' => 0, 'paid' => 0, 'failed' => 0, 'refunded' => 0];
+            foreach ($paymentStatusRows as $row) {
+                $status = $row['payment_status'];
+                if (isset($paymentStatusCounts[$status])) {
+                    $paymentStatusCounts[$status] = (int) $row['count'];
+                }
+            }
+            $paymentStatusTotal = array_sum($paymentStatusCounts);
 
             $providerSummaryRows = $db->query("
                 SELECT
@@ -548,8 +602,12 @@ class Analytics extends BaseController
             
             return array_merge($revenueData, [
                 'by_payment_method' => [
-                    // Would need payment method field in appointments
-                    'total' => $this->appointmentModel->getRevenueForDateRange($window['current_start'], $window['current_end'], $providerId)
+                    'gateways' => $paymentGateways,
+                    'status_counts' => $paymentStatusCounts,
+                    'status_total' => $paymentStatusTotal,
+                    'status_percentages' => array_map(function ($count) use ($paymentStatusTotal) {
+                        return $paymentStatusTotal > 0 ? round(($count / $paymentStatusTotal) * 100, 1) : 0;
+                    }, $paymentStatusCounts),
                 ],
                 'by_staff' => $staffRevenueQuery->getResultArray(),
                 'provider_breakdown' => $providerBreakdown,
@@ -560,7 +618,12 @@ class Analytics extends BaseController
             return [
                 'daily' => [],
                 'monthly' => [],
-                'by_payment_method' => ['total' => 0],
+                'by_payment_method' => [
+                    'gateways' => ['payfast' => ['count' => 0, 'total' => 0.0], 'stripe' => ['count' => 0, 'total' => 0.0]],
+                    'status_counts' => ['none' => 0, 'pending' => 0, 'paid' => 0, 'failed' => 0, 'refunded' => 0],
+                    'status_total' => 0,
+                    'status_percentages' => ['none' => 0, 'pending' => 0, 'paid' => 0, 'failed' => 0, 'refunded' => 0],
+                ],
                 'by_staff' => [],
                 'provider_breakdown' => [],
                 'busy_hours_distribution' => [],

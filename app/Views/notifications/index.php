@@ -106,13 +106,13 @@ $automationToneConfig = [
 $automationTone = $notificationAutomationStatus['tone'] ?? 'warning';
 $automationToneClasses = $automationToneConfig[$automationTone] ?? $automationToneConfig['warning'];
 $tabBaseClasses = 'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200';
-$tabActiveClasses = 'bg-gray-900 text-white dark:bg-white dark:text-gray-900';
+$tabActiveClasses = 'bg-primary-500 text-white dark:bg-primary-400 dark:text-gray-900';
 $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600';
 ?>
 
 <?= $this->section('content') ?>
 <div class="space-y-6" data-notifications-page>
-    <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <section class="xs-card p-6">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div class="space-y-3">
                 <div>
@@ -145,7 +145,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                 <?php endif; ?>
 
                 <a href="<?= esc($settingsNotificationsUrl) ?>"
-                   class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                   class="inline-flex items-center rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary-600">
                     <span class="material-symbols-outlined mr-2 text-base">settings</span>
                     Settings
                 </a>
@@ -190,7 +190,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                         </p>
                     </div>
 
-                    <a href="<?= esc($settingsNotificationsUrl) ?>" class="inline-flex items-center text-sm font-medium text-blue-700 hover:underline dark:text-blue-300">
+                    <a href="<?= esc($settingsNotificationsUrl) ?>" class="inline-flex items-center text-sm font-medium text-primary-600 hover:underline dark:text-primary-300">
                         Tune notification settings
                     </a>
                 </div>
@@ -228,36 +228,36 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
         <?php endif; ?>
 
         <section class="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Activity</p>
-                <p class="mt-3 text-3xl font-semibold text-gray-900 dark:text-white"><?= esc((string) ($notificationFeedSummary['total'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Total Activity</p>
+                <p class="xs-stat-value"><?= esc((string) ($notificationFeedSummary['total'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Unread</p>
-                <p class="mt-3 text-3xl font-semibold text-amber-600 dark:text-amber-400"><?= esc((string) ($notificationFeedSummary['unread'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Unread</p>
+                <p class="xs-stat-value text-amber-600 dark:text-amber-400"><?= esc((string) ($notificationFeedSummary['unread'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Read</p>
-                <p class="mt-3 text-3xl font-semibold text-green-600 dark:text-green-400"><?= esc((string) ($notificationFeedSummary['read'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Read</p>
+                <p class="xs-stat-value text-green-600 dark:text-green-400"><?= esc((string) ($notificationFeedSummary['read'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Today</p>
-                <p class="mt-3 text-3xl font-semibold text-indigo-600 dark:text-indigo-400"><?= esc((string) ($notificationFeedSummary['today'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Today</p>
+                <p class="xs-stat-value text-indigo-600 dark:text-indigo-400"><?= esc((string) ($notificationFeedSummary['today'] ?? 0)) ?></p>
             </div>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <section class="xs-card p-3">
             <nav class="flex flex-wrap gap-2" aria-label="Activity filters">
                 <?php foreach ($activityFilters as $option): ?>
                     <a href="<?= esc((string) ($option['url'] ?? '#')) ?>"
-                       class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 <?= !empty($option['isActive']) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' ?>">
+                       class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 <?= !empty($option['isActive']) ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' ?>">
                         <?= esc((string) ($option['label'] ?? 'Filter')) ?>
                     </a>
                 <?php endforeach; ?>
             </nav>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <section class="xs-card">
             <?php if (!empty($notifications)): ?>
                 <div class="divide-y divide-gray-200 dark:divide-gray-700">
                     <?php foreach ($notifications as $notification): ?>
@@ -299,7 +299,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
 
                                         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                             <?php if (!($notification['read'] ?? true)): ?>
-                                                <span class="h-2 w-2 rounded-full bg-blue-600"></span>
+                                                <span class="h-2 w-2 rounded-full bg-primary-500"></span>
                                             <?php endif; ?>
                                             <span><?= esc((string) ($notification['time'] ?? '')) ?></span>
                                         </div>
@@ -311,7 +311,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="redirect_to" value="<?= esc($currentPageUrl) ?>">
                                                 <input type="hidden" name="business_id" value="<?= esc((string) $notificationCurrentBusinessId) ?>">
-                                                <button type="submit" class="text-sm font-medium text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                                                <button type="submit" class="text-sm font-medium text-primary-500 transition-colors duration-200 hover:text-primary-600 dark:text-primary-300 dark:hover:text-primary-200">
                                                     Mark as read
                                                 </button>
                                             </form>
@@ -322,7 +322,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="redirect_to" value="<?= esc($currentPageUrl) ?>">
                                                 <input type="hidden" name="business_id" value="<?= esc((string) $notificationCurrentBusinessId) ?>">
-                                                <button type="submit" class="text-sm font-medium text-red-600 transition-colors duration-200 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                                <button type="submit" class="text-sm font-medium text-error-500 transition-colors duration-200 hover:text-error-600 dark:text-error-400 dark:hover:text-error-300">
                                                     Cancel queued send
                                                 </button>
                                             </form>
@@ -338,7 +338,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                     <span class="material-symbols-outlined mb-4 block text-5xl text-gray-400 dark:text-gray-500">notifications_off</span>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white">No notifications yet</h3>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Notifications will appear here when appointments are confirmed, reminded, cancelled, or rescheduled.</p>
-                    <a href="<?= esc($settingsNotificationsUrl) ?>" class="mt-4 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                    <a href="<?= esc($settingsNotificationsUrl) ?>" class="mt-4 inline-flex items-center text-sm font-medium text-primary-500 hover:text-primary-600 dark:text-primary-300">
                         <span class="material-symbols-outlined mr-1 text-base">settings</span>
                         Configure notification settings
                     </a>
@@ -347,25 +347,25 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
         </section>
     <?php elseif ($notificationIsAdmin): ?>
         <section class="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Recent Rows</p>
-                <p class="mt-3 text-3xl font-semibold text-gray-900 dark:text-white"><?= esc((string) ($notificationDeliveryLogSummary['total'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Recent Rows</p>
+                <p class="xs-stat-value"><?= esc((string) ($notificationDeliveryLogSummary['total'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Failed</p>
-                <p class="mt-3 text-3xl font-semibold text-red-600 dark:text-red-400"><?= esc((string) ($notificationDeliveryLogSummary['failed'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Failed</p>
+                <p class="xs-stat-value text-error-500 dark:text-error-400"><?= esc((string) ($notificationDeliveryLogSummary['failed'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Successful</p>
-                <p class="mt-3 text-3xl font-semibold text-green-600 dark:text-green-400"><?= esc((string) ($notificationDeliveryLogSummary['success'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Successful</p>
+                <p class="xs-stat-value text-green-600 dark:text-green-400"><?= esc((string) ($notificationDeliveryLogSummary['success'] ?? 0)) ?></p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Resendable</p>
-                <p class="mt-3 text-3xl font-semibold text-blue-600 dark:text-blue-400"><?= esc((string) ($notificationDeliveryLogSummary['resendable'] ?? 0)) ?></p>
+            <div class="xs-card-stat">
+                <p class="xs-stat-label">Resendable</p>
+                <p class="xs-stat-value text-primary-500 dark:text-primary-300"><?= esc((string) ($notificationDeliveryLogSummary['resendable'] ?? 0)) ?></p>
             </div>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <section class="xs-card p-5">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">Filter Delivery Logs</h3>
@@ -409,14 +409,14 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                 </label>
 
                 <div class="flex items-end">
-                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700">
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary-600">
                         Apply filters
                     </button>
                 </div>
             </form>
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <section class="xs-card">
             <?php if ($notificationDeliveryLogs === []): ?>
                 <div class="p-12 text-center">
                     <span class="material-symbols-outlined mb-4 block text-5xl text-gray-400 dark:text-gray-500">receipt_long</span>
@@ -493,7 +493,7 @@ $tabInactiveClasses = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-
                                                 <input type="hidden" name="appointment_id" value="<?= esc((string) ($row['appointment_id'] ?? '')) ?>">
                                                 <input type="hidden" name="channel" value="<?= esc((string) ($row['channel'] ?? '')) ?>">
                                                 <input type="hidden" name="event_type" value="<?= esc((string) ($row['event_type'] ?? '')) ?>">
-                                                <button type="submit" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-blue-700">
+                                                <button type="submit" class="inline-flex items-center rounded-lg bg-primary-500 px-3 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-primary-600">
                                                     <span class="material-symbols-outlined mr-1 text-sm">refresh</span>
                                                     Resend <?= esc((string) ($row['channel_label'] ?? '')) ?>
                                                 </button>

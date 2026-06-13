@@ -114,7 +114,35 @@ These tokens are defined in the compiled SCSS. Use them for all new views and co
 | `xs-card-title` | Title inside header content | |
 | `xs-card-subtitle` | Subtitle inside header content | |
 | `xs-card-actions` | Right slot of card header | Icon buttons, secondary controls |
-| `xs-card-body` | Card content area | Add `p-0` for full-bleed tables |
+| `xs-card-body` | Card content area | Add `p-0` for full-bleed tables; `xs-card-body-compact` for tighter (~`p-4`) padding |
+| `xs-card-stat` + `xs-stat-label` + `xs-stat-value` | KPI/metric tile | Extends `xs-card` with built-in `p-6`-equivalent padding; do not also add `p-6` |
+
+`xs-card`'s radius comes from `--xs-radius-lg` (1rem) — visually equivalent to Tailwind `rounded-2xl`,
+**not** `rounded-lg` (0.5rem). When converting a raw-Tailwind card (`rounded-2xl border border-gray-200
+bg-white ... shadow-sm dark:border-gray-700 dark:bg-gray-800`) to `xs-card`, you can usually keep any
+existing padding utility (`p-6`, `p-3`, `p-5`) on the same element — `xs-card` itself sets only
+background/border/radius/shadow, no padding.
+
+### 3.1.1 Brand Color Tokens for CTAs (Owner Section)
+
+Primary actions, links, active tab/filter states, and "unread" indicators must use the brand
+**`primary-*`** scale (`#003049`, Tailwind `primary-500` / hover `primary-600` / light-on-dark
+`primary-300`/`primary-400`) — **not** `blue-600`/`blue-700`/`bg-gray-900`.
+
+Danger/destructive actions (cancel, delete, failed-status emphasis) must use the brand
+**`error-*`** scale (`#D62828`, Tailwind `error-500` / hover `error-600` / dark `error-400`/`error-300`).
+Note: `tailwind.config.js` defines this scale as `error-*`, not `danger-*` — "danger" is the
+conceptual name only.
+
+This rule applies to **CTAs and interactive elements** (buttons, links, active states, unread
+markers). It does **not** apply to informational/categorical color-coding (channel badges, status
+badges, per-notification-type icon colors, chart accent colors) — those may keep their existing
+semantic palette (blue/green/amber/purple/etc. per category) since they encode meaning, not brand.
+
+`app/Views/notifications/index.php` is the reference implementation of both `xs-card`/`xs-card-stat`
+and the `primary-*`/`error-*` CTA convention (migrated 2026-06-10). Many older views (e.g.
+`profile/index.php`) still use the pre-migration `rounded-2xl` + `bg-blue-600` pattern — that is
+known debt, not the target to copy from.
 
 ### 3.2 Button Tokens
 
@@ -197,6 +225,15 @@ Compact version with `text-xs` icon inside a rounded badge:
 - `location_on` = in-person; `video_call` = Zoom; `videocam` = Jitsi Meet
 - For notification templates, use `{session_info}` placeholder — see `notifications` skill §11.10
 - For admin appointment form, delivery mode selector is JS-rendered and matches these color conventions
+
+### 5.5 Analytics "Appointments by Delivery Mode" Chart
+
+`resources/js/modules/analytics/analytics-charts.js`'s `initDeliveryModeChart()` renders a doughnut
+chart on the Analytics Overview tab using the same conceptual onsite/Zoom/Jitsi split as
+`DELIVERY_MODE_META`, with colors `#3b82f6` (blue, in-person) / `#8b5cf6` (purple, Zoom) / `#14b8a6`
+(teal, Jitsi). The companion legend list in `app/Views/analytics/index.php` uses the canonical
+`location_on` / `video_call` / `videocam` icons. If `DELIVERY_MODE_META`'s colors change, update
+this chart's palette to match. Data comes from `AppointmentModel::getDeliveryModeStats()`.
 
 ---
 

@@ -245,3 +245,6 @@ Any result must be reviewed and justified or fixed.
 - Public booking surfaces the same pipeline → `public-booking` skill
 - Schema details for all `xs_*` tables → `database` skill
 - Timezone conversion rules → `database` skill (§ Timezone Integrity)
+- `xs_appointments.delivery_mode` (onsite/online_zoom/online_jitsi) is aggregated for the Analytics
+  Overview tab via `AppointmentModel::getDeliveryModeStats()` (mirrors `getStatusStats()`), called
+  from `Analytics::getAppointmentAnalytics()`. Chart/icon conventions → `ui-ux` skill §5.5.

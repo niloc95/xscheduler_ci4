@@ -144,6 +144,8 @@
         data-customer-payload="<?= esc(base64_encode(json_encode($customers ?? []))) ?>"
         data-appointment-payload="<?= esc(base64_encode(json_encode($appointments ?? []))) ?>"
         data-provider-busy-hours-payload="<?= esc(base64_encode(json_encode($revenue_data['busy_hours_distribution'] ?? []))) ?>"
+        data-delivery-mode-payload="<?= esc(base64_encode(json_encode($appointments['by_delivery_mode'] ?? []))) ?>"
+        data-payment-method-payload="<?= esc(base64_encode(json_encode($revenue_data['by_payment_method'] ?? []))) ?>"
     >
         <div class="flex flex-wrap gap-3">
             <button type="button" class="<?= $tabBaseClasses ?> <?= $activeTab === 'overview' ? $tabActiveClasses : $tabInactiveClasses ?>" data-analytics-tab-trigger="overview">Overview</button>
@@ -204,6 +206,48 @@
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Appointments by Delivery Mode</h3>
+                    <div class="h-64">
+                        <canvas id="deliveryModeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Video Appointments</h3>
+                    <div class="space-y-4">
+                        <?php
+                        $deliveryModeMeta = [
+                            'onsite' => ['label' => 'In Person', 'icon' => 'location_on', 'progress' => 'analytics-progress--confirmed'],
+                            'online_zoom' => ['label' => 'Zoom', 'icon' => 'video_call', 'progress' => 'analytics-progress--purple'],
+                            'online_jitsi' => ['label' => 'Jitsi Meet', 'icon' => 'videocam', 'progress' => 'analytics-progress--teal'],
+                        ];
+                        $deliveryModeCounts = $appointments['by_delivery_mode'] ?? [];
+                        $totalDeliveryModes = array_sum($deliveryModeCounts);
+                        ?>
+                        <?php foreach ($deliveryModeMeta as $mode => $meta): ?>
+                            <?php $count = $deliveryModeCounts[$mode] ?? 0; ?>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="material-symbols-outlined text-base mr-2 text-gray-500 dark:text-gray-400"><?= $meta['icon'] ?></span>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= $meta['label'] ?></span>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="text-sm font-semibold text-gray-900 dark:text-white mr-3"><?= $count ?></span>
+                                    <progress
+                                        class="w-20 h-2 rounded-full overflow-hidden appearance-none analytics-progress <?= $meta['progress'] ?>"
+                                        value="<?= (int) $count ?>"
+                                        max="<?= max(1, (int) $totalDeliveryModes) ?>"
+                                        aria-label="<?= esc($meta['label']) ?> appointments"
+                                    ></progress>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Popular Services</h3>
@@ -255,6 +299,51 @@
                     <div class="h-72">
                         <canvas id="revenueByProviderChart"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Gateway Breakdown</h3>
+                    <div class="h-64">
+                        <canvas id="paymentGatewayChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Status</h3>
+                    <?php
+                    $paymentStatusMeta = [
+                        'paid' => ['label' => 'Paid', 'progress' => 'analytics-progress--completed'],
+                        'pending' => ['label' => 'Pending', 'progress' => 'analytics-progress--pending'],
+                        'failed' => ['label' => 'Failed', 'progress' => 'analytics-progress--cancelled'],
+                        'refunded' => ['label' => 'Refunded', 'progress' => 'analytics-progress--purple'],
+                        'none' => ['label' => 'None', 'progress' => 'analytics-progress--default'],
+                    ];
+                    $paymentStatusCounts = $revenue_data['by_payment_method']['status_counts'] ?? [];
+                    $paymentStatusTotal = $revenue_data['by_payment_method']['status_total'] ?? 0;
+                    ?>
+                    <?php if ($paymentStatusTotal > 0): ?>
+                        <div class="space-y-4">
+                            <?php foreach ($paymentStatusMeta as $status => $meta): ?>
+                                <?php $count = $paymentStatusCounts[$status] ?? 0; ?>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300"><?= $meta['label'] ?></span>
+                                    <div class="flex items-center">
+                                        <span class="text-sm font-semibold text-gray-900 dark:text-white mr-3"><?= $count ?></span>
+                                        <progress
+                                            class="w-20 h-2 rounded-full overflow-hidden appearance-none analytics-progress <?= $meta['progress'] ?>"
+                                            value="<?= (int) $count ?>"
+                                            max="<?= max(1, (int) $paymentStatusTotal) ?>"
+                                            aria-label="<?= esc($meta['label']) ?> payments"
+                                        ></progress>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No payment-enabled appointments in this window.</p>
+                    <?php endif; ?>
                 </div>
             </div>
 

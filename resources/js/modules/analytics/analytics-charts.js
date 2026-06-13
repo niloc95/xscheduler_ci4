@@ -352,6 +352,130 @@ export function initNewVsReturningChart(canvasId, customerBreakdown) {
     });
 }
 
+export function initDeliveryModeChart(canvasId, deliveryModeData) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    const colors = getChartColors();
+    const data = deliveryModeData || {};
+    const labels = ['In Person', 'Zoom', 'Jitsi Meet'];
+    const values = [
+        parseInt(data.onsite) || 0,
+        parseInt(data.online_zoom) || 0,
+        parseInt(data.online_jitsi) || 0,
+    ];
+    const backgroundColors = ['#3b82f6', '#8b5cf6', '#14b8a6'];
+
+    return new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: backgroundColors,
+                borderWidth: 0,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: colors.text,
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode() ? '#1f2937' : '#fff',
+                    titleColor: colors.text,
+                    bodyColor: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+export function initPaymentGatewayChart(canvasId, paymentMethodData, currencySymbol = null) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    const colors = getChartColors();
+    const gateways = (paymentMethodData && paymentMethodData.gateways) || {};
+    const labels = ['Payfast', 'Stripe'];
+    const values = [
+        parseFloat((gateways.payfast || {}).total) || 0,
+        parseFloat((gateways.stripe || {}).total) || 0,
+    ];
+    const backgroundColors = [colors.success, colors.primary];
+
+    return new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: backgroundColors,
+                borderWidth: 0,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: colors.text,
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDarkMode() ? '#1f2937' : '#fff',
+                    titleColor: colors.text,
+                    bodyColor: colors.text,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            return `${label}: ${formatLocalizedCurrency(context.parsed, currencySymbol, 2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 export function initPeakHoursChart(canvasId, timeSlotData) {
     const normalizedData = Object.entries(timeSlotData || {}).map(([timeSlot, count]) => ({
         time_slot: timeSlot,
@@ -527,6 +651,8 @@ export function initAnalyticsDashboardPage() {
     const customerData = decodePayload(tabsRoot.dataset.customerPayload, {});
     const appointmentData = decodePayload(tabsRoot.dataset.appointmentPayload, {});
     const providerBusyHoursData = decodePayload(tabsRoot.dataset.providerBusyHoursPayload, {});
+    const deliveryModeData = decodePayload(tabsRoot.dataset.deliveryModePayload, {});
+    const paymentMethodData = decodePayload(tabsRoot.dataset.paymentMethodPayload, {});
     const currencySymbol = tabsRoot.dataset.currencySymbol || null;
     const renderedTabs = new Set();
     let currentChartType = 'daily';
@@ -536,9 +662,15 @@ export function initAnalyticsDashboardPage() {
         currentChartType = type;
     };
 
+    const renderOverviewTabCharts = () => {
+        updateRevenueChart(currentChartType);
+        initDeliveryModeChart('deliveryModeChart', deliveryModeData);
+    };
+
     const renderRevenueTabCharts = () => {
         initMoMComparisonChart('momComparisonChart', comparisons, currencySymbol);
         initRevenueByProviderChart('revenueByProviderChart', detailedRevenueData.by_staff || [], currencySymbol);
+        initPaymentGatewayChart('paymentGatewayChart', paymentMethodData, currencySymbol);
     };
 
     const renderCustomerTabCharts = () => {
@@ -571,7 +703,7 @@ export function initAnalyticsDashboardPage() {
 
         if (!renderedTabs.has(tabName)) {
             if (tabName === 'overview') {
-                updateRevenueChart(currentChartType);
+                renderOverviewTabCharts();
             }
 
             if (tabName === 'revenue') {

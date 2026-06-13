@@ -143,12 +143,12 @@ $notificationBusinessContext = is_array($notificationBusinessContext ?? null) ? 
                             </div>
 
                             <div class="form-field">
-                                <label class="form-label">Enable Email Sending (Phase 2 readiness)</label>
+                                <label class="form-label">Enable Email Sending</label>
                                 <label class="inline-flex items-center gap-2 mt-2">
                                     <input type="checkbox" name="email_is_active" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= !empty($emailIntegration['is_active']) ? 'checked' : '' ?> />
                                     <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
                                 </label>
-                                <p class="form-help">Rule toggles are separate; actual sending will be enabled after Phase 2 dispatch wiring.</p>
+                                <p class="form-help">Rule toggles are separate; emails are sent only when both this integration and the relevant notification rule are enabled.</p>
                             </div>
 
                             <div class="form-field">
@@ -405,11 +405,11 @@ $notificationBusinessContext = is_array($notificationBusinessContext ?? null) ? 
                                     <option value="clickatell" <?= $smsProvider === 'clickatell' ? 'selected' : '' ?>>Clickatell (primary)</option>
                                     <option value="twilio" <?= $smsProvider === 'twilio' ? 'selected' : '' ?>>Twilio (optional)</option>
                                 </select>
-                                <p class="form-help">Select your SMS provider (Phase 3).</p>
+                                <p class="form-help">Select your SMS provider.</p>
                             </div>
 
                             <div class="form-field">
-                                <label class="form-label">Enable SMS Sending (Phase 3 readiness)</label>
+                                <label class="form-label">Enable SMS Sending</label>
                                 <label class="inline-flex items-center gap-2 mt-2">
                                     <input type="checkbox" name="sms_is_active" value="1" class="form-checkbox h-4 w-4 text-blue-600" <?= !empty($smsIntegration['is_active']) ? 'checked' : '' ?> />
                                     <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>

@@ -168,7 +168,7 @@ $bookingShareUrl = rtrim(base_url(), '/') . '/booking';
         <div class="nav-divider sidebar-rail-hidden"></div>
     <?php endif; ?>
     <div class="px-4 pb-4 text-xs text-gray-500 dark:text-gray-500 text-center sidebar-footer-branding">
-            <a href="https://webschedulr.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
+            <a href="https://webscheduler.co.za" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200">
                 Engineered by WebScheduler
             </a>
         </div>

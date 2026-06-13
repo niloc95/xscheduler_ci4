@@ -22,6 +22,18 @@ description: WebScheduler notifications contract — canonical services, queue-f
 
 SMTP transport for notifications is owned by `MailerService` — see §7 below.
 
+**Integration `is_active` toggle is live, not a placeholder.** The "Active" checkbox under
+Settings → Notifications for each channel (`email_is_active`, `sms_is_active`,
+`whatsapp_is_active`) writes `xs_business_integrations.is_active`, which is checked by
+`NotificationQueueDispatcher::isIntegrationActive()`, `NotificationQueueService::enqueueDueReminders()`,
+`AppointmentNotificationService::sendEventEmail()`, and `NotificationSmsService`/`NotificationWhatsAppService`
+send paths. A channel only sends when **both** this integration toggle and the per-event rule
+(`xs_business_notification_rules.is_enabled`) are on. The view previously labeled these checkboxes
+"Phase 2/Phase 3 readiness" with copy implying dispatch wasn't wired yet — that text was stale
+(left over from the pre-dispatch v96 settings rewrite) and was corrected in
+`app/Views/settings/tabs/notifications.php` on 2026-06-10. Do not reintroduce "future phase" framing
+for these toggles.
+
 Business-ID scoping for UI-facing notification methods is owned by `current_business_id()` in `permissions_helper`. See `architecture` skill (§8) for full resolution priority and service usage pattern. **Do not use `NotificationCatalog::BUSINESS_ID_DEFAULT` directly in UI-facing service methods.**
 
 ## 3. Dispatch Architecture Notes

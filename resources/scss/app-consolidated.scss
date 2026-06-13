@@ -337,6 +337,16 @@
   @apply bg-gray-500;
 }
 
+.analytics-progress--purple::-webkit-progress-value,
+.analytics-progress--purple::-moz-progress-bar {
+  @apply bg-purple-500;
+}
+
+.analytics-progress--teal::-webkit-progress-value,
+.analytics-progress--teal::-moz-progress-bar {
+  @apply bg-teal-500;
+}
+
 // =============
 // 8. PRINT STYLES
 // =============

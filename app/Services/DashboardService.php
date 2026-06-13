@@ -352,34 +352,6 @@ class DashboardService
             ];
         }
 
-        // Check for providers without working hours (Admin only)
-        // TODO: Re-enable when working_hours column is added to xs_users table
-        /*
-        if ($providerId === null) {
-            $providersWithoutHours = $this->userModel
-                ->where('role', 'provider')
-                ->where('is_active', true)
-                ->where('working_hours IS NULL')
-                ->countAllResults();
-
-            if ($providersWithoutHours > 0) {
-                $alerts[] = [
-                    'type' => 'missing_hours',
-                    'severity' => 'error',
-                    'message' => "{$providersWithoutHours} provider(s) have no working hours set",
-                    'action_label' => 'Configure Hours',
-                    'action_url' => base_url('/user-management?filter=no-hours'),
-                ];
-            }
-        }
-        */
-
-        // TODO: Add more alert types as needed:
-        // - Booking page disabled
-        // - Upcoming holidays/blocked periods
-        // - Overbooking conflicts
-        // - Low appointment capacity
-
         return $alerts;
     }
 
@@ -492,7 +464,7 @@ class DashboardService
         $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
 
         $builder = $this->userModel->builder();
-        // §4.4: use xs_user_roles (authoritative) for provider lookup via subquery
+        // Queries xs_user_roles (the multi-role table), not xs_users.role — correct per auth-rbac contract.
         $userRolesTable = $db->prefixTable('user_roles');
         $builder->select('id, name, color')
             ->whereIn('id', static function (\CodeIgniter\Database\BaseBuilder $sub) use ($userRolesTable): void {

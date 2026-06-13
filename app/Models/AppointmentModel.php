@@ -750,99 +750,6 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * CONSOLIDATED: Get appointment status distribution
-     * 
-     * This is the single source of truth for status distribution data.
-     * Returns counts, labels, and colors for all statuses.
-     * 
-     * @param string $format Output format: 'full' (default), 'chart', 'simple'
-     *   - 'full': Returns ['statuses' => [...], 'labels' => [...], 'data' => [...], 'colors' => [...]]
-     *   - 'chart': Returns ['labels' => [...], 'data' => [...], 'colors' => [...]] (for pie charts)
-     *   - 'simple': Returns ['status' => count, ...] (simple key-value pairs)
-     * @return array Status distribution in requested format
-     */
-    public function getStatusCounts(string $format = 'full'): array
-    {
-        $db = \Config\Database::connect();
-        $tableName = $this->table;
-        
-        $query = $db->query("
-            SELECT 
-                CASE 
-                    WHEN status = '' OR status IS NULL THEN 'unknown'
-                    ELSE status
-                END as status,
-                COUNT(*) as count
-            FROM {$tableName}
-            GROUP BY status
-            ORDER BY count DESC
-        ");
-        
-        $results = $query->getResultArray();
-        
-        // Standard status colors
-        // Build unified data structure
-        $statuses = [];
-        $labels = [];
-        $data = [];
-        $colors = [];
-        
-        foreach ($results as $row) {
-            $status = AppointmentStatus::normalize($row['status']) ?? $row['status'];
-            $count = (int)$row['count'];
-            $color = AppointmentStatus::color($status);
-            
-            $statuses[$status] = [
-                'count' => $count,
-                'color' => $color,
-                'label' => AppointmentStatus::label($status)
-            ];
-            $labels[] = AppointmentStatus::label($status);
-            $data[] = $count;
-            $colors[] = $color;
-        }
-        
-        // Handle empty results
-        if (empty($labels)) {
-            $labels = ['No Data'];
-            $data = [0];
-            $colors = ['#9aa0a6'];
-        }
-        
-        // Return in requested format
-        switch ($format) {
-            case 'simple':
-                $simple = [];
-                foreach ($statuses as $status => $info) {
-                    $simple[$status] = $info['count'];
-                }
-                return $simple;
-                
-            case 'chart':
-                return ['labels' => $labels, 'data' => $data, 'colors' => $colors];
-                
-            case 'full':
-            default:
-                return [
-                    'statuses' => $statuses,
-                    'labels' => $labels,
-                    'data' => $data,
-                    'colors' => $colors
-                ];
-        }
-    }
-
-    /**
-     * Status distribution for pie chart.
-     */
-    public function getStatusDistribution(): array
-    {
-        $result = $this->getStatusCounts('chart');
-        // Return without colors for backward compatibility
-        return ['labels' => $result['labels'], 'data' => $result['data']];
-    }
-
-    /**
      * Calculate revenue from completed appointments.
      *
      * @param string $period 'month', 'week', or 'today'
@@ -991,14 +898,6 @@ class AppointmentModel extends BaseModel
     }
 
     /**
-     * Get appointments grouped by status.
-     */
-    public function getByStatus(): array
-    {
-        return $this->getStatusCounts('simple');
-    }
-
-    /**
      * Get appointments by service with revenue
      *
      * @deprecated Use BookingMetricsService::getByService() as the canonical source.
@@ -1143,6 +1042,55 @@ class AppointmentModel extends BaseModel
             'percentages' => array_map(function($count) use ($total) {
                 return $total > 0 ? round(($count / $total) * 100, 1) : 0;
             }, $statusCounts)
+        ];
+    }
+
+    /**
+     * Get appointment counts by delivery mode (onsite/online_zoom/online_jitsi) for analytics
+     *
+     * @param array $options Options: 'format' => 'simple' returns just mode=>count
+     * @return array Delivery mode counts
+     */
+    public function getDeliveryModeStats(array $options = []): array
+    {
+        $builder = $this->builder();
+        $providerId = isset($options['provider_id']) ? (int) $options['provider_id'] : null;
+        $days = isset($options['days']) ? (int) $options['days'] : null;
+
+        if ($providerId !== null) {
+            $builder->where('provider_id', $providerId);
+        }
+
+        if ($days !== null && $days > 0) {
+            $startLocal = (clone $this->localNow())->modify('-' . max(0, $days - 1) . ' days')->format('Y-m-d');
+            $builder->where('start_at >=', $this->toUtc($startLocal . ' 00:00:00'));
+        }
+
+        $results = $builder->select("COALESCE(NULLIF(delivery_mode, ''), 'onsite') as delivery_mode, COUNT(*) as count")
+            ->groupBy('delivery_mode')
+            ->get()
+            ->getResultArray();
+
+        $modeCounts = ['onsite' => 0, 'online_zoom' => 0, 'online_jitsi' => 0];
+        foreach ($results as $row) {
+            $mode = $row['delivery_mode'];
+            if (!isset($modeCounts[$mode])) {
+                $modeCounts[$mode] = 0;
+            }
+            $modeCounts[$mode] = (int) $row['count'];
+        }
+
+        if (isset($options['format']) && $options['format'] === 'simple') {
+            return $modeCounts;
+        }
+
+        $total = array_sum($modeCounts);
+        return [
+            'counts' => $modeCounts,
+            'total' => $total,
+            'percentages' => array_map(function ($count) use ($total) {
+                return $total > 0 ? round(($count / $total) * 100, 1) : 0;
+            }, $modeCounts),
         ];
     }
 
@@ -1323,17 +1271,6 @@ class AppointmentModel extends BaseModel
         }
         
         return ['labels' => $labels, 'data' => $data];
-    }
-
-    /**
-     * Get appointment status distribution with colors.
-     */
-    public function getStatusDistributionWithColors(): array
-    {
-        return $this->getStatusStats([
-            'format' => 'chart',
-            'includeColors' => true
-        ]);
     }
 
     /**

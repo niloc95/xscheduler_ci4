@@ -61,11 +61,13 @@ Columns: `id`, `name`, `description`, `color`, `created_at`, `updated_at`, `acti
 
 #### `xs_appointments`
 
-Columns: `id`, `provider_id`, `service_id`, `start_at`, `end_at`, `stored_timezone`, `status`, `notes`, `hash`, `public_token`, `public_token_expires_at`, `created_at`, `updated_at`, `reminder_sent`, `customer_id`, `location_id`, `location_name`, `location_address`, `location_contact`
+Columns: `id`, `provider_id`, `service_id`, `start_at`, `end_at`, `stored_timezone`, `status`, `notes`, `hash`, `public_token`, `public_token_expires_at`, `created_at`, `updated_at`, `reminder_sent`, `customer_id`, `location_id`, `location_name`, `location_address`, `location_contact`, `delivery_mode`, `video_link`, `payment_status`, `payment_amount`, `payment_reference`
 
 Notes:
 - Customer linkage is `customer_id → xs_customers.id`
 - **Do not use deprecated appointment `user_id` linkage in new logic** — caught by grep check
+- `delivery_mode` (`onsite`/`online_zoom`/`online_jitsi`, nullable→treated as `onsite`) — see `scheduling` skill §13
+- `payment_status` ENUM (`none`/`pending`/`paid`/`failed`/`refunded`), `payment_amount` DECIMAL(10,2), `payment_reference` — written by `PaymentService`
 
 #### `xs_blocked_times`
 
@@ -185,6 +187,18 @@ Columns: `id`, `user_id`, `action`, `target_type`, `target_id`, `old_value`, `ne
 Notes:
 - Verify table name as `xs_audit_logs` in mixed environments
 
+### 2.8 Payment Table
+
+#### `xs_payment_transactions`
+
+Columns: `id`, `business_id`, `appointment_id`, `gateway` (ENUM `payfast`/`stripe`), `gateway_reference`, `amount`, `currency` (default `ZAR`), `status` (ENUM `pending`/`complete`/`failed`/`cancelled`/`refunded`, default `pending`), `raw_payload`, `created_at`, `updated_at`
+
+Notes:
+- Model: `App\Models\PaymentTransactionModel` (`findByReference()`, `forAppointment()`, `markComplete()`, `markFailed()`)
+- No `provider_id` column — provider scoping for analytics/reporting joins through `xs_appointments.provider_id` via `appointment_id`
+- Aggregated by `Analytics::getDetailedRevenueData()` (Revenue tab "Payment Gateway Breakdown": `status = 'complete'` rows grouped by `gateway`, summed `amount`)
+- `xs_appointments.payment_status` (see §2.2) is the appointment-level summary aggregated separately in the same method
+
 ## 3. Canonical Relationships
 
 - `xs_appointments.customer_id → xs_customers.id`
@@ -192,6 +206,7 @@ Notes:
 - `xs_appointments.service_id → xs_services.id`
 - `xs_appointments.location_id → xs_locations.id`
 - `xs_appointment_custom_fields.appointment_id → xs_appointments.id` (CASCADE)
+- `xs_payment_transactions.appointment_id → xs_appointments.id`
 - `xs_business_hours.provider_id → xs_users.id`
 - `xs_provider_schedules.provider_id → xs_users.id`
 - `xs_locations.provider_id → xs_users.id`
