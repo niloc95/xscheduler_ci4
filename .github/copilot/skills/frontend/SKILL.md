@@ -354,7 +354,30 @@ Each card renders one of three states based on PHP variables from `IntegrationSe
 - `integrations.analytics_id` — GA4: `G-XXXXXXXXXX`; Matomo: the Matomo instance URL
 - `integrations.analytics_site_id` — Matomo site ID (integer; empty for GA4)
 
-## 14. Pre-Merge Frontend Grep Check
+## 14. Settings Live-Sync Contract (Owner Section)
+
+Settings save through a JSON API `POST` (`apiRequest`) with **no page navigation**. SPA navigation only swaps `#spa-content` (§3), so anything rendered in the **persistent layout shell** (sidebar, `<head>`) or cached in a **JS singleton** does NOT update on save — nor even on SPA navigation. It updates only via a live DOM sync or a full reload. We do **not** full-reload after a normal settings save; we live-sync.
+
+**Every settings form must, on a successful save:**
+
+1. Dispatch `document.dispatchEvent(new CustomEvent('settingsSaved', { detail: <changed-keys[]> }))`. This includes the **General form** — historically only the tab forms (`initTabForm`) dispatched it, so general-settings consumers were silently stale. `initGeneralSettingsForm` now dispatches it too (including `general.company_logo` / `general.company_icon` when those upload).
+2. Live-sync any persistent chrome / cached singleton the saved keys affect (table below) — never depend on the user reloading.
+
+**Surfaces that are NOT SPA-refreshable (must be live-synced):**
+
+| Setting | Consumer outside `#spa-content` | Live-sync action | Owner |
+| --- | --- | --- | --- |
+| `general.company_logo` | Sidebar logo `#main-sidebar .brand-logo` (placeholder div when unset) | swap `<img>.src`; replace placeholder with a fresh `<img>` on first upload (`syncSidebarLogo`) | `settings-form-ui.js` |
+| `general.company_icon` | Favicon `<link rel="icon">` in `<head>` | set `link.href`, drop stale `type` (`syncFavicon`) | `settings-form-ui.js` |
+| `general.company_name` | Sidebar `#sidebarBrandName` | updated on input by `wireSidebarBrandSync()` | `settings-form-ui.js` |
+| `localization.currency*` | `window.currencyFormatter` singleton (one-shot `loaded` guard) | `currencyFormatter.refresh()` on `settingsSaved` | `app.js` handler |
+| `localization.timezone`, business hours | scheduler `settingsManager` + `window.appTimezone` | `settingsManager.refresh()` + `refreshAndRender()` on `settingsSaved` | `app.js` handler |
+
+The `app.js` `settingsSaved` handler owns **cross-view singleton refresh** (currency on any page; scheduler when present). **Branding chrome** (logo/favicon) is synced directly in `settings-form-ui.js` from the upload-response `url` — upload filenames are unique per upload (`logo_<ts>_<rand>.ext`), so `<img>.src` swaps are cache-safe.
+
+**Rule:** a new setting consumed anywhere outside the settings panel must be added to this table with its live-sync path. A setting that only shows correctly after a manual refresh is a regression against this contract.
+
+## 15. Pre-Merge Frontend Grep Check
 
 ```bash
 # Detect inline style regressions in views

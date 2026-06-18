@@ -51,6 +51,16 @@ class CurrencyFormatter {
     }
 
     /**
+     * Re-fetch currency settings after a settings save. The `loaded` guard in
+     * init() makes it a one-shot, so reset it first. Newly formatted amounts use
+     * the updated symbol; already-painted values update on their next render.
+     */
+    async refresh() {
+        this.loaded = false;
+        await this.init();
+    }
+
+    /**
      * Get currency code
      */
     getCurrency() {

@@ -185,6 +185,60 @@ function previewImage(imgEl, file) {
     reader.readAsDataURL(file);
 }
 
+/**
+ * Live-sync the sidebar logo after an upload. The sidebar is rendered in the
+ * persistent layout shell (outside #spa-content), so neither the AJAX save nor
+ * SPA navigation re-renders it — only a direct DOM update (or full reload) does.
+ * Handles the first-upload case where a placeholder is shown instead of an <img>.
+ */
+function syncSidebarLogo(url) {
+    if (!url) {
+        return;
+    }
+
+    const brandSection = document.querySelector('#main-sidebar .brand-section');
+    if (!brandSection) {
+        return;
+    }
+
+    let img = brandSection.querySelector('img.brand-logo');
+    if (!img) {
+        img = document.createElement('img');
+        img.className = 'brand-logo';
+        img.alt = 'Company logo';
+
+        const placeholder = brandSection.querySelector('.brand-logo-placeholder');
+        if (placeholder) {
+            placeholder.replaceWith(img);
+        } else {
+            brandSection.prepend(img);
+        }
+    }
+
+    img.src = url;
+}
+
+/**
+ * Live-sync the favicon after an icon upload (the <link rel="icon"> lives in
+ * <head>, outside any SPA-swappable region).
+ */
+function syncFavicon(url) {
+    if (!url) {
+        return;
+    }
+
+    let link = document.querySelector('link[rel~="icon"]');
+    if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+    }
+
+    // Drop a stale type hint (e.g. image/svg+xml) so a new PNG/ICO loads cleanly.
+    link.removeAttribute('type');
+    link.href = url;
+}
+
 function wireWhatsAppProviderToggle() {
     const providerSelect = document.getElementById('whatsapp_provider');
     if (!providerSelect || providerSelect.dataset.toggleWired === 'true') {
@@ -435,9 +489,11 @@ function initGeneralSettingsForm(root) {
             }
 
             const uploadFiles = [
-                { input: logoInput, endpoint: logoEndpoint, fieldName: 'company_logo', image: logoImg, label: 'Logo' },
-                { input: iconInput, endpoint: iconEndpoint, fieldName: 'company_icon', image: iconImg, label: 'Icon' },
+                { input: logoInput, endpoint: logoEndpoint, fieldName: 'company_logo', image: logoImg, label: 'Logo', syncChrome: syncSidebarLogo },
+                { input: iconInput, endpoint: iconEndpoint, fieldName: 'company_icon', image: iconImg, label: 'Icon', syncChrome: syncFavicon },
             ];
+
+            const changedKeys = Object.keys(payload);
 
             for (const upload of uploadFiles) {
                 if (!upload.input?.files?.length) {
@@ -466,10 +522,16 @@ function initGeneralSettingsForm(root) {
                 }
 
                 const uploadData = getApiData(uploadResult);
-                if (uploadData?.url && upload.image) {
-                    upload.image.src = uploadData.url;
-                    upload.image.dataset.src = uploadData.url;
-                    upload.image.classList.remove('hidden');
+                if (uploadData?.url) {
+                    if (upload.image) {
+                        upload.image.src = uploadData.url;
+                        upload.image.dataset.src = uploadData.url;
+                        upload.image.classList.remove('hidden');
+                    }
+                    // Live-sync the persistent chrome (sidebar logo / favicon) so
+                    // the change is visible immediately without a manual reload.
+                    upload.syncChrome?.(uploadData.url);
+                    changedKeys.push(`general.${upload.fieldName}`);
                 }
 
                 upload.input.value = '';
@@ -477,6 +539,9 @@ function initGeneralSettingsForm(root) {
 
             hasChanges = false;
             setSavingState(false);
+            // Notify singleton/chrome consumers (currency, scheduler, …) — the
+            // General form previously stayed silent, so nothing downstream knew.
+            document.dispatchEvent(new CustomEvent('settingsSaved', { detail: changedKeys }));
             showToast('success', 'Settings Updated', 'Your general settings were saved successfully.');
         } catch (error) {
             console.error('General settings save failed:', error);

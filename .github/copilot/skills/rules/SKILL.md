@@ -51,6 +51,7 @@ Before making any code changes, validate the following:
 - [ ] Am I respecting route filters and role boundaries?
 - [ ] Am I keeping SPA initialization conventions?
 - [ ] If the controller action redirects back to the current page, does the JSON response include a `redirect` key so `spa.js` can use `forceReload`?
+- [ ] If adding/changing a setting consumed outside the settings panel (sidebar, `<head>`, a JS singleton), did I wire its live-sync and dispatch `settingsSaved` per `frontend` §14 (Settings Live-Sync Contract)? A setting that only shows after a manual reload is a regression.
 - [ ] Am I using `xsRegisterViewInit` instead of a bare `DOMContentLoaded` handler?
 - [ ] If writing a migration, does it extend `MigrationBase`?
 - [ ] Did I avoid dead-code surfaces and stale symbols?

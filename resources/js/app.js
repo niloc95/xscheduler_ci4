@@ -204,8 +204,18 @@ bindAppLifecycleEvents({
     hasDashboardStats: () => Boolean(document.querySelector('[data-dashboard-summary]')),
 });
 
-// Listen for settings changes and refresh scheduler
+// Listen for settings changes and refresh cached singletons + scheduler
 document.addEventListener('settingsSaved', async () => {
+    // Currency is a load-once singleton consumed across many views; refresh it
+    // regardless of the current page so subsequent renders use the new symbol.
+    if (window.currencyFormatter && typeof window.currencyFormatter.refresh === 'function') {
+        try {
+            await window.currencyFormatter.refresh();
+        } catch (error) {
+            console.warn('Currency refresh after settings save failed:', error);
+        }
+    }
+
     const schedulerContainer = document.querySelector(SEL.SCHEDULER_CONTAINER);
     if (!schedulerContainer) {
         teardownScheduler();
