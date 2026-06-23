@@ -136,7 +136,36 @@ class NotificationTemplateService
         'appointment_pending' => [
             'email' => [
                 'subject' => 'Your Appointment Request is Received — {service_name}',
-                'body' => "Hi {customer_first_name},\n\nWe've received your booking request! We will confirm your appointment shortly.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n{payment_info}Name:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nWe will notify you as soon as your appointment is confirmed.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => <<<'HTML'
+<p class="greeting">Hi {customer_first_name},</p>
+<p>We have received your booking request. We will confirm your appointment shortly.</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">Appointment details</p>
+<p class="detail-row"><span class="detail-label">📅 Date:</span> <span class="detail-value">{appointment_date}</span></p>
+<p class="detail-row"><span class="detail-label">🕐 Time:</span> <span class="detail-value">{appointment_time}</span></p>
+<p class="detail-row"><span class="detail-label">💼 Service:</span> <span class="detail-value">{service_name}</span></p>
+<p class="detail-row"><span class="detail-label">👤 Provider:</span> <span class="detail-value">{provider_name}</span></p>
+<p class="detail-row"><span class="detail-label">⏱ Duration:</span> <span class="detail-value">{service_duration} minutes</span></p>
+</td></tr></table>
+{session_info}
+{payment_info}
+<p class="detail-row"><span class="detail-label">☎ Enquiries:</span> <a href="mailto:{business_email}">{business_email}</a> · {business_phone}</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">🕰 Business hours</p>
+<p class="detail-value">{business_hours}</p>
+</td></tr></table>
+<p class="muted">Booking reference: <span class="ref">#{booking_reference}</span><br>Booked for {customer_name} · {customer_phone} · {customer_email}</p>
+<p>We will notify you as soon as your appointment is confirmed.</p>
+<p class="muted">{cancellation_policy}<br>{rescheduling_policy}</p>
+<hr class="divider">
+<div class="cta">
+<a class="btn" href="{reschedule_link}">Manage your appointment</a>
+<a class="btn btn-secondary" href="{calendar_link}">Add to calendar</a>
+</div>
+<p class="muted">If a button does not work, copy this link:<br><span class="copy-link">{reschedule_link}</span></p>
+<hr class="divider">
+<p class="muted"><strong>{business_name}</strong><br><a href="{terms_link}">Terms</a> · <a href="{privacy_link}">Privacy</a></p>
+HTML
             ],
             'sms' => [
                 'body' => "⏳ Booking received! {service_name} on {appointment_date} at {appointment_time}. Pending confirmation. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -148,7 +177,36 @@ class NotificationTemplateService
         'appointment_confirmed' => [
             'email' => [
                 'subject' => 'Your Appointment is Confirmed — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nThank you for booking with {business_name}! Your appointment is confirmed ✓\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n{payment_info}\nPlease arrive 5–10 minutes early. Bring any relevant documentation.\n\n{cancellation_policy}\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => <<<'HTML'
+<p class="greeting">Hi {customer_first_name},</p>
+<p>Thank you for booking with <strong>{business_name}</strong>. Your appointment is confirmed ✓</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">Appointment details</p>
+<p class="detail-row"><span class="detail-label">📅 Date:</span> <span class="detail-value">{appointment_date}</span></p>
+<p class="detail-row"><span class="detail-label">🕐 Time:</span> <span class="detail-value">{appointment_time}</span></p>
+<p class="detail-row"><span class="detail-label">💼 Service:</span> <span class="detail-value">{service_name}</span></p>
+<p class="detail-row"><span class="detail-label">👤 Provider:</span> <span class="detail-value">{provider_name}</span></p>
+<p class="detail-row"><span class="detail-label">⏱ Duration:</span> <span class="detail-value">{service_duration} minutes</span></p>
+</td></tr></table>
+{session_info}
+{payment_info}
+<p class="detail-row"><span class="detail-label">☎ Enquiries:</span> <a href="mailto:{business_email}">{business_email}</a> · {business_phone}</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">🕰 Business hours</p>
+<p class="detail-value">{business_hours}</p>
+</td></tr></table>
+<p class="muted">Booking reference: <span class="ref">#{booking_reference}</span><br>Booked for {customer_name} · {customer_phone} · {customer_email}</p>
+<p>Please arrive 5–10 minutes early and bring any relevant documentation.</p>
+<p class="muted">{cancellation_policy}<br>{rescheduling_policy}</p>
+<hr class="divider">
+<div class="cta">
+<a class="btn" href="{reschedule_link}">Manage your appointment</a>
+<a class="btn btn-secondary" href="{calendar_link}">Add to calendar</a>
+</div>
+<p class="muted">If a button does not work, copy this link:<br><span class="copy-link">{reschedule_link}</span></p>
+<hr class="divider">
+<p class="muted"><strong>{business_name}</strong><br><a href="{terms_link}">Terms</a> · <a href="{privacy_link}">Privacy</a></p>
+HTML
             ],
             'sms' => [
                 'body' => "✅ Confirmed: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -160,7 +218,35 @@ class NotificationTemplateService
         'appointment_reminder' => [
             'email' => [
                 'subject' => 'Reminder: Your Appointment — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nDon't forget — you have an upcoming appointment!\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\nPlease arrive 5–10 minutes early. Contact us if your plans change.\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => <<<'HTML'
+<p class="greeting">Hi {customer_first_name},</p>
+<p>This is a friendly reminder of your upcoming appointment.</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">Appointment details</p>
+<p class="detail-row"><span class="detail-label">📅 Date:</span> <span class="detail-value">{appointment_date}</span></p>
+<p class="detail-row"><span class="detail-label">🕐 Time:</span> <span class="detail-value">{appointment_time}</span></p>
+<p class="detail-row"><span class="detail-label">💼 Service:</span> <span class="detail-value">{service_name}</span></p>
+<p class="detail-row"><span class="detail-label">👤 Provider:</span> <span class="detail-value">{provider_name}</span></p>
+<p class="detail-row"><span class="detail-label">⏱ Duration:</span> <span class="detail-value">{service_duration} minutes</span></p>
+</td></tr></table>
+{session_info}
+<p class="detail-row"><span class="detail-label">☎ Enquiries:</span> <a href="mailto:{business_email}">{business_email}</a> · {business_phone}</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">🕰 Business hours</p>
+<p class="detail-value">{business_hours}</p>
+</td></tr></table>
+<p class="muted">Booking reference: <span class="ref">#{booking_reference}</span></p>
+<p>Please arrive 5–10 minutes early. Contact us if your plans change.</p>
+<p class="muted">{rescheduling_policy}</p>
+<hr class="divider">
+<div class="cta">
+<a class="btn" href="{reschedule_link}">Manage your appointment</a>
+<a class="btn btn-secondary" href="{calendar_link}">Add to calendar</a>
+</div>
+<p class="muted">If a button does not work, copy this link:<br><span class="copy-link">{reschedule_link}</span></p>
+<hr class="divider">
+<p class="muted"><strong>{business_name}</strong><br><a href="{terms_link}">Terms</a> · <a href="{privacy_link}">Privacy</a></p>
+HTML
             ],
             'sms' => [
                 'body' => "⏰ Reminder: {service_name} with {provider_name} on {appointment_date} at {appointment_time}. {delivery_mode}. Manage: {reschedule_link}"
@@ -172,7 +258,27 @@ class NotificationTemplateService
         'appointment_cancelled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Cancelled — {service_name} on {appointment_date}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been cancelled.\n\n── APPOINTMENT DETAILS ──────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\n\nWe hope to see you again soon!\nOpen booking page: {booking_url}\nIf the link is not clickable, copy and paste this URL:\n{booking_url}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => <<<'HTML'
+<p class="greeting">Hi {customer_first_name},</p>
+<p>Your appointment has been cancelled.</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">Cancelled appointment</p>
+<p class="detail-row"><span class="detail-label">📅 Date:</span> <span class="detail-value">{appointment_date}</span></p>
+<p class="detail-row"><span class="detail-label">🕐 Time:</span> <span class="detail-value">{appointment_time}</span></p>
+<p class="detail-row"><span class="detail-label">💼 Service:</span> <span class="detail-value">{service_name}</span></p>
+<p class="detail-row"><span class="detail-label">👤 Provider:</span> <span class="detail-value">{provider_name}</span></p>
+</td></tr></table>
+<p class="detail-row"><span class="detail-label">☎ Enquiries:</span> <a href="mailto:{business_email}">{business_email}</a> · {business_phone}</p>
+<p class="muted">Booking reference: <span class="ref">#{booking_reference}</span></p>
+<p>We hope to see you again soon.</p>
+<hr class="divider">
+<div class="cta">
+<a class="btn" href="{booking_url}">Book a new appointment</a>
+</div>
+<p class="muted">If a button does not work, copy this link:<br><span class="copy-link">{booking_url}</span></p>
+<hr class="divider">
+<p class="muted"><strong>{business_name}</strong><br><a href="{terms_link}">Terms</a> · <a href="{privacy_link}">Privacy</a></p>
+HTML
             ],
             'sms' => [
                 'body' => "❌ Cancelled: {service_name} on {appointment_date}. Rebook: {booking_url}"
@@ -184,7 +290,34 @@ class NotificationTemplateService
         'appointment_rescheduled' => [
             'email' => [
                 'subject' => 'Your Appointment Has Been Rescheduled — {appointment_date} at {appointment_time}',
-                'body' => "Hi {customer_first_name},\n\nYour appointment has been moved to a new date and time.\n\n── NEW DATE & TIME ───────────────────────\n📅 Date:      {appointment_date}\n🕐 Time:      {appointment_time}\n💼 Service:   {service_name}\n👤 Provider:  {provider_name}\n⏱  Duration: {service_duration} minutes\n{session_info}\n☎ Enquiries: {business_email} | Tel: {business_phone}\n\n🕰 Business Hours:\n{business_hours}\n─────────────────────────────────────────\n\nBOOKING REFERENCE: #{booking_reference}\nName:    {customer_name}\nContact: {customer_phone} | {customer_email}\n\n{rescheduling_policy}\n\n── MANAGE YOUR APPOINTMENT ──────────────\nOpen secure link: {reschedule_link}\nIf the link is not clickable, copy and paste this URL:\n{reschedule_link}\nAdd to Google Calendar: {calendar_link}\n\n{business_name}\n{terms_link} | {privacy_link}"
+                'body' => <<<'HTML'
+<p class="greeting">Hi {customer_first_name},</p>
+<p>Your appointment has been moved to a new date and time.</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">New date &amp; time</p>
+<p class="detail-row"><span class="detail-label">📅 Date:</span> <span class="detail-value">{appointment_date}</span></p>
+<p class="detail-row"><span class="detail-label">🕐 Time:</span> <span class="detail-value">{appointment_time}</span></p>
+<p class="detail-row"><span class="detail-label">💼 Service:</span> <span class="detail-value">{service_name}</span></p>
+<p class="detail-row"><span class="detail-label">👤 Provider:</span> <span class="detail-value">{provider_name}</span></p>
+<p class="detail-row"><span class="detail-label">⏱ Duration:</span> <span class="detail-value">{service_duration} minutes</span></p>
+</td></tr></table>
+{session_info}
+<p class="detail-row"><span class="detail-label">☎ Enquiries:</span> <a href="mailto:{business_email}">{business_email}</a> · {business_phone}</p>
+<table class="details-card" role="presentation"><tr><td>
+<p class="card-title">🕰 Business hours</p>
+<p class="detail-value">{business_hours}</p>
+</td></tr></table>
+<p class="muted">Booking reference: <span class="ref">#{booking_reference}</span><br>Booked for {customer_name} · {customer_phone} · {customer_email}</p>
+<p class="muted">{rescheduling_policy}</p>
+<hr class="divider">
+<div class="cta">
+<a class="btn" href="{reschedule_link}">Manage your appointment</a>
+<a class="btn btn-secondary" href="{calendar_link}">Add to calendar</a>
+</div>
+<p class="muted">If a button does not work, copy this link:<br><span class="copy-link">{reschedule_link}</span></p>
+<hr class="divider">
+<p class="muted"><strong>{business_name}</strong><br><a href="{terms_link}">Terms</a> · <a href="{privacy_link}">Privacy</a></p>
+HTML
             ],
             'sms' => [
                 'body' => "📅 Rescheduled: {service_name} is now {appointment_date} at {appointment_time}. Ref #{booking_reference}. Manage: {reschedule_link}"
@@ -507,20 +640,27 @@ class NotificationTemplateService
         $template = $this->getTemplate($eventType, $channel, $recipientClass);
         $this->logIfRequiredPlaceholdersMissing($eventType, $channel, (string) ($template['body'] ?? ''));
 
-        // Prepare placeholders
-        $placeholders = $this->buildPlaceholders($data);
+        // The email channel renders HTML when the template body is an HTML fragment
+        // (redesigned customer templates). Plain-text templates — internal, legacy, or
+        // admin-customised — stay plain text and are converted by EmailBodyRenderer's
+        // safety net at send time. SMS/WhatsApp are always plain text.
+        $isHtml = ($channel === 'email') && EmailBodyRenderer::isHtmlBody((string) ($template['body'] ?? ''));
 
-        // Render subject
+        // Prepare placeholders (rich blocks render HTML only when the body is HTML)
+        $placeholders = $this->buildPlaceholders($data, $isHtml);
+
+        // Render subject — always plain text, so use raw (unescaped) placeholder values.
         $subject = $template['subject'] ?? '';
         if ($subject !== '') {
             $subject = strtr($subject, $placeholders);
         }
 
-        // Render body
+        // Render body — HTML bodies use escaped scalar values to stay markup-safe.
         $body = $template['body'] ?? '';
         if ($body !== '') {
             $body = $this->ensureBodyContainsRequiredPlaceholders($eventType, $channel, $body, $data);
-            $body = strtr($body, $placeholders);
+            $bodyPlaceholders = $isHtml ? $this->escapeScalarPlaceholders($placeholders) : $placeholders;
+            $body = strtr($body, $bodyPlaceholders);
         }
 
         return [
@@ -599,9 +739,14 @@ class NotificationTemplateService
      * Build placeholder substitution array from data
      *
      * @param array $data Appointment/customer/service data
+     * @param bool  $html When true, the rich-block placeholders ({session_info},
+     *                    {payment_info}, {business_hours}) render HTML fragments instead
+     *                    of plain text. Driven by whether the template body is HTML —
+     *                    see render(). Scalar values are returned raw here; body-only
+     *                    HTML escaping is applied in render().
      * @return array Placeholder => value mapping
      */
-    private function buildPlaceholders(array $data): array
+    private function buildPlaceholders(array $data, bool $html = false): array
     {
         // Extract appointment date/time
         $appointmentDate = '';
@@ -699,7 +844,7 @@ class NotificationTemplateService
             }
         }
 
-        return [
+        $placeholders = [
             '{customer_name}' => $data['customer_name'] ?? $data['name'] ?? '',
             '{customer_first_name}' => $this->extractFirstName($data['customer_name'] ?? $data['name'] ?? ''),
             '{customer_email}' => $data['customer_email'] ?? $data['email'] ?? '',
@@ -737,11 +882,11 @@ class NotificationTemplateService
             '{google_maps_link}' => $googleMapsLink,
             '{waze_link}' => $wazeLink,
             // Business hours
-            '{business_hours}' => $this->buildBusinessHoursText(),
+            '{business_hours}' => $this->buildBusinessHoursText($html),
             // Video / delivery mode
             '{delivery_mode}' => $data['delivery_mode'] ?? 'In Person',
             '{video_link}'    => $data['video_link']    ?? '',
-            '{payment_info}'  => $this->buildPaymentInfoBlock($data),
+            '{payment_info}'  => $this->buildPaymentInfoBlock($data, $html),
             '{session_info}'  => $this->buildSessionInfo(
                 $data['delivery_mode']    ?? '',
                 $data['video_link']       ?? '',
@@ -749,8 +894,39 @@ class NotificationTemplateService
                 $resolvedLocationAddress,
                 $googleMapsLink,
                 $wazeLink,
+                $html,
             ),
         ];
+
+        return $placeholders;
+    }
+
+    /**
+     * Placeholders whose values are trusted HTML fragments in email (HTML) mode and
+     * must NOT be HTML-escaped when substituted into an HTML body.
+     *
+     * @var array<int, string>
+     */
+    private const RAW_HTML_PLACEHOLDERS = ['{session_info}', '{payment_info}', '{business_hours}'];
+
+    /**
+     * Return a copy of the placeholder map with scalar (non-block) values HTML-escaped,
+     * for substitution into an HTML email body. Prevents customer/business data from
+     * breaking the markup or injecting tags. The rich-block placeholders are passed
+     * through untouched because they already emit trusted HTML.
+     *
+     * @param array<string, mixed> $placeholders
+     * @return array<string, mixed>
+     */
+    private function escapeScalarPlaceholders(array $placeholders): array
+    {
+        foreach ($placeholders as $key => $value) {
+            if (!in_array($key, self::RAW_HTML_PLACEHOLDERS, true)) {
+                $placeholders[$key] = esc((string) $value);
+            }
+        }
+
+        return $placeholders;
     }
 
     /**
@@ -758,7 +934,7 @@ class NotificationTemplateService
      * Returns a formatted multi-line section for paid or pending-payment appointments.
      * Returns '' when no deposit applies (payment_status = 'none' / no amount set).
      */
-    private function buildPaymentInfoBlock(array $data): string
+    private function buildPaymentInfoBlock(array $data, bool $html = false): string
     {
         $status = (string) ($data['payment_status'] ?? '');
         $amount = empty($data['payment_amount']) ? 0.0 : (float) $data['payment_amount'];
@@ -768,6 +944,22 @@ class NotificationTemplateService
             $loc     = new LocalizationSettingsService();
             $price   = (float) ($data['service_price'] ?? 0);
             $balance = $price > 0 ? max(0.0, $price - $amount) : 0.0;
+
+            if ($html) {
+                $rows = '<p class="detail-row"><span class="detail-label">💳 Deposit paid:</span> '
+                    . '<span class="detail-value">' . esc($loc->formatCurrency($amount)) . '</span></p>';
+                if ($balance > 0) {
+                    $rows .= '<p class="detail-row"><span class="detail-label">💰 Outstanding:</span> '
+                        . '<span class="detail-value">' . esc($loc->formatCurrency($balance)) . '</span> '
+                        . '<span class="muted">(payable on the day)</span></p>';
+                }
+                if ($ref !== '') {
+                    $rows .= '<p class="detail-row"><span class="detail-label">🔑 Payment ref:</span> '
+                        . '<span class="detail-value">' . esc($ref) . '</span></p>';
+                }
+                return $this->paymentCardHtml('Payment', $rows);
+            }
+
             $lines   = [];
             $lines[] = "── PAYMENT ──────────────────────────────";
             $lines[] = "💳 Deposit paid:    " . $loc->formatCurrency($amount);
@@ -783,6 +975,14 @@ class NotificationTemplateService
 
         if ($status === 'pending' && $amount > 0) {
             $loc     = new LocalizationSettingsService();
+
+            if ($html) {
+                $rows = '<p class="detail-row"><span class="detail-label">💳 Deposit due:</span> '
+                    . '<span class="detail-value">' . esc($loc->formatCurrency($amount)) . '</span></p>'
+                    . '<p class="muted">Your appointment will be confirmed once payment is received.</p>';
+                return $this->paymentCardHtml('Deposit required', $rows);
+            }
+
             $lines   = [];
             $lines[] = "── DEPOSIT REQUIRED ─────────────────────";
             $lines[] = "💳 Deposit due:     " . $loc->formatCurrency($amount);
@@ -792,6 +992,17 @@ class NotificationTemplateService
         }
 
         return '';
+    }
+
+    /**
+     * Wrap payment rows in an HTML details card (email channel only).
+     */
+    private function paymentCardHtml(string $title, string $rowsHtml): string
+    {
+        return '<table class="details-card" role="presentation"><tr><td>'
+            . '<p class="card-title">' . esc($title) . '</p>'
+            . $rowsHtml
+            . '</td></tr></table>';
     }
 
     /**
@@ -808,13 +1019,17 @@ class NotificationTemplateService
         string $locationName,
         string $locationAddress,
         string $googleMapsLink,
-        string $wazeLink
+        string $wazeLink,
+        bool $html = false
     ): string {
         $isZoom  = in_array($mode, ['online_zoom', 'Zoom'], true);
         $isJitsi = in_array($mode, ['online_jitsi', 'Jitsi Meet'], true);
 
         if ($isZoom || $isJitsi) {
             $provider = $isZoom ? 'Zoom' : 'Jitsi Meet';
+            if ($html) {
+                return $this->sessionInfoOnlineHtml($provider, $videoLink);
+            }
             $linkLine = $videoLink !== ''
                 ? "   Join URL:  {$videoLink}"
                 : "   (Meeting link will be sent separately)";
@@ -824,6 +1039,10 @@ class NotificationTemplateService
         // In-person: produce the full rich block only when we have address data
         if ($locationName === '' && $locationAddress === '') {
             return '';
+        }
+
+        if ($html) {
+            return $this->sessionInfoInPersonHtml($locationName, $locationAddress, $googleMapsLink, $wazeLink);
         }
 
         $lines   = [];
@@ -838,14 +1057,65 @@ class NotificationTemplateService
     }
 
     /**
+     * HTML session block for an online appointment (email channel only).
+     */
+    private function sessionInfoOnlineHtml(string $provider, string $videoLink): string
+    {
+        $cta = $videoLink !== ''
+            ? '<div class="cta"><a class="btn" href="' . esc($videoLink) . '">🎥 Join session</a></div>'
+            : '<p class="muted">The meeting link will be sent to you separately.</p>';
+
+        return '<table class="details-card" role="presentation"><tr><td>'
+            . '<p class="card-title">🎥 Online Session (' . esc($provider) . ')</p>'
+            . $cta
+            . '</td></tr></table>';
+    }
+
+    /**
+     * HTML session block for an in-person appointment, with Maps/Waze buttons
+     * (email channel only).
+     */
+    private function sessionInfoInPersonHtml(
+        string $locationName,
+        string $locationAddress,
+        string $googleMapsLink,
+        string $wazeLink
+    ): string {
+        $value = '';
+        if ($locationName !== '') {
+            $value .= '<strong>' . esc($locationName) . '</strong>';
+        }
+        if ($locationAddress !== '') {
+            $value .= ($value !== '' ? '<br>' : '') . esc($locationAddress);
+        }
+
+        $buttons = '';
+        if ($googleMapsLink !== '') {
+            $buttons .= '<a class="btn" href="' . esc($googleMapsLink) . '">📍 Open in Google Maps</a>';
+        }
+        if ($wazeLink !== '') {
+            $buttons .= '<a class="btn btn-secondary" href="' . esc($wazeLink) . '">🚗 Open in Waze</a>';
+        }
+
+        return '<table class="details-card" role="presentation"><tr><td>'
+            . '<p class="card-title">📍 Location</p>'
+            . '<p class="detail-value">' . $value . '</p>'
+            . ($buttons !== '' ? '<div class="cta">' . $buttons . '</div>' : '')
+            . '</td></tr></table>';
+    }
+
+    /**
      * Build a formatted business hours text block for notification templates.
      * Reads global bounds (business.work_start / business.work_end) from xs_settings.
      * xs_business_hours rows are all per-provider — no global rows exist.
      */
-    private function buildBusinessHoursText(): string
+    private function buildBusinessHoursText(bool $html = false): string
     {
         $hours = $this->buildBusinessHoursFromDefaultSettings();
-        return $hours !== '' ? $hours : 'Please contact us for business hours.';
+        $text  = $hours !== '' ? $hours : 'Please contact us for business hours.';
+
+        // Email channel: preserve the per-day line breaks as HTML so they don't collapse.
+        return $html ? nl2br(esc($text), false) : $text;
     }
 
     /**

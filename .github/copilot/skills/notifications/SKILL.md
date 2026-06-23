@@ -137,6 +137,24 @@ All email transport rules live here. Other sections contain reference-only remin
 
 Password reset emails use `NotificationCatalog::BUSINESS_ID_DEFAULT` (value `1`) as `$businessId`. `Auth::sendResetEmail()` renders the view, then calls `MailerService::send()`. Auth has no knowledge of SMTP configuration. See `auth-rbac` skill.
 
+### 7.8 HTML Rendering Chokepoint (notification emails)
+
+Notification emails send as **HTML**. `NotificationEmailService::sendEmail()` is the single
+chokepoint — both `NotificationQueueDispatcher::sendEmail()` and
+`AppointmentNotificationService::sendEventEmail()` funnel through it. It wraps the rendered
+body in the responsive shell (`app/Views/emails/notification.php`) via `EmailBodyRenderer` and
+calls `MailerService::send(..., 'html', ..., $altText)` with a flattened plain-text alternative
+for multipart deliverability.
+
+`EmailBodyRenderer` handles two body shapes:
+- **HTML fragment** (redesigned customer templates) → used as-is in the shell content area.
+- **Plain text** (internal templates, legacy/admin-customised templates) → safety net: escape
+  `<`/`>`, autolink bare URLs into friendly anchors (Maps/Waze/Calendar/Manage labels), `nl2br`.
+  This guarantees a plain-text body can never render as collapsed text now that email is HTML.
+
+Do not add a second email-transport wrap path; keep the HTML wrap in
+`NotificationEmailService::sendEmail()`. SMS and WhatsApp never use the shell or `EmailBodyRenderer`.
+
 ## 8. Internal Recipient Contract
 
 Internal notifications:
@@ -272,7 +290,7 @@ Settings-based templates are upserted by migrations and can be overridden at run
 ### 11.6 Location and Map Link Resolution
 
 - `{location_address}` — primary value is `xs_appointments.location_address`. If empty, falls back to `general.business_address` setting.
-- `{google_maps_link}` and `{waze_link}` — generated from the resolved `{location_name} + {location_address}` string. Empty when no address is resolvable.
+- `{google_maps_link}` and `{waze_link}` — generated from the resolved `{location_name} + {location_address}` string. Empty when no address is resolvable. In HTML email these are emitted by `{session_info}` as **Open in Google Maps** / **Open in Waze** buttons, not raw URLs (see §11.10).
 - `{calendar_link}` — Google Calendar add-event URL built from `start_datetime`, service duration, resolved location, and `{booking_reference}`.
 
 ### 11.7 Booking Reference Format
@@ -308,16 +326,30 @@ Three placeholders added in May 2026 for online vs in-person appointment support
 |---|---|
 | `{delivery_mode}` | Human-readable label: `'In Person'` / `'Zoom'` / `'Jitsi Meet'` (translated by dispatcher from raw `delivery_mode` DB value) |
 | `{video_link}` | Raw join URL string; empty for in-person appointments |
-| `{session_info}` | Full multi-line block rendered by `buildSessionInfo()` — see below |
+| `{session_info}` | Block rendered by `buildSessionInfo()` — HTML for email, plain text for SMS/WhatsApp — see below |
 
-**`{session_info}` output — Online (Zoom or Jitsi):**
+**Channel-aware rendering (June 2026).** `{session_info}`, `{payment_info}`, and
+`{business_hours}` render **HTML** (cards + clickable buttons) for the email channel and
+**plain text** for SMS/WhatsApp. The mode is decided by `render()`:
+`$isHtml = ($channel === 'email') && EmailBodyRenderer::isHtmlBody($template['body'])`.
+So HTML blocks are produced only when the email template body is itself an HTML fragment —
+this prevents mixed plain-text/HTML bodies that would collapse on send. Scalar placeholder
+values are HTML-escaped for the email body only (`escapeScalarPlaceholders()`); subjects and
+SMS/WhatsApp stay raw. The three block placeholders above are trusted HTML and are never
+re-escaped.
+
+**`{session_info}` output — email (HTML):** an in-person appointment renders a `.details-card`
+with **Open in Google Maps** / **Open in Waze** buttons; an online appointment renders a card
+with a **Join session** button (or "the meeting link will be sent separately").
+
+**`{session_info}` output — SMS/WhatsApp (plain text), online:**
 ```
 🎥 Online Session (Zoom)
    Join URL:  https://zoom.us/j/...
 ```
 If video link not yet generated: `(Meeting link will be sent separately)`
 
-**`{session_info}` output — In-person:**
+**`{session_info}` output — SMS/WhatsApp (plain text), in-person:**
 ```
 📍 Location:  Sandton Mews
               21 Delta Road, Extension 2
@@ -328,14 +360,15 @@ Returns empty string if no location data is available.
 **`buildSessionInfo()` mode detection:** accepts both raw DB values (`online_zoom`, `online_jitsi`) and the dispatcher-translated labels (`Zoom`, `Jitsi Meet`).
 
 **Template coverage:**
-- All 4 customer email templates (pending, confirmed, reminder, rescheduled) use `{session_info}` in the appointment details block — stored in `xs_settings` (updated by migration `2026-05-20-220000`)
-- All 5 internal email templates use `{session_info}` in the Service Details section
+- All 4 customer email templates (pending, confirmed, reminder, rescheduled) use `{session_info}` in the appointment details block — stored in `xs_settings`, redesigned as responsive HTML by migration `2026-06-22-120000` (V6)
+- All 5 internal email templates use `{session_info}` in the Service Details section; internal templates remain plain text and are converted to HTML by the `EmailBodyRenderer` safety net at send time (see §7.8)
 - Reminder SMS uses `{delivery_mode}` (compact, single word — appropriate for SMS length limits)
 - `{location_name}`, `{location_address}`, `{google_maps_link}`, `{waze_link}` remain individually available but **should not be used in new templates** — use `{session_info}` instead to get the conditional online/in-person rendering
 
 **Migration history:**
 - `2026-05-20-210000` — replaced location blocks in `xs_message_templates` (partially, wrong format matched)
 - `2026-05-20-220000` — replaced V4 location blocks in `xs_settings` customer templates (CRLF format); corrected the `xs_message_templates` gap
+- `2026-06-22-120000` (V6) — redesigned the 5 customer **email** templates as responsive HTML fragments (friendly Maps/Waze/Manage/Calendar buttons instead of raw URLs). Pulls bodies from `NotificationTemplateService::getDefaultTemplates()` so stored rows never drift from code defaults. SMS/WhatsApp rows untouched.
 
 ## 12. Useful Spark Commands
 

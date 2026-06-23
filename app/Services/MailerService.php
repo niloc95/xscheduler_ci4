@@ -110,6 +110,7 @@ class MailerService
      * @param  string $mailType         'html' or 'text'
      * @param  string $fromEmailOverride When non-empty, overrides the resolved from address
      * @param  string $fromNameOverride  When non-empty, overrides the resolved from name
+     * @param  string $altMessage        Optional plain-text alternative for HTML multipart emails
      * @return array{ok: bool, error: ?string, transport: string, messageId: ?string}
      */
     public function send(
@@ -119,7 +120,8 @@ class MailerService
         string $body,
         string $mailType         = 'html',
         string $fromEmailOverride = '',
-        string $fromNameOverride  = ''
+        string $fromNameOverride  = '',
+        string $altMessage        = ''
     ): array {
         $toEmail = trim($toEmail);
         if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
@@ -148,6 +150,9 @@ class MailerService
             $emailInstance->setTo($toEmail);
             $emailInstance->setSubject($subject);
             $emailInstance->setMessage($body);
+            if ($mailType === 'html' && $altMessage !== '') {
+                $emailInstance->setAltMessage($altMessage);
+            }
 
             $ok = (bool) $emailInstance->send(false);
 

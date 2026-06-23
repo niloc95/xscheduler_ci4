@@ -357,6 +357,68 @@ final class NotificationTemplateServiceTest extends CIUnitTestCase
         }
     }
 
+    public function testRenderEmailRendersSessionInfoAsClickableMapButtons(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        // Seed a known HTML template via upsert() (which invalidates SettingModel's
+        // request cache) so this test is deterministic regardless of stored-template or
+        // migration state. Uses the rescheduled key — no other test reads it.
+        $key = 'notification_template.appointment_rescheduled.email';
+        $db  = \Config\Database::connect('tests');
+        $db->table('settings')->where('setting_key', $key)->delete();
+
+        try {
+            (new \App\Models\SettingModel())->upsert($key, [
+                'subject' => 'Rescheduled',
+                'body'    => '<p class="greeting">Hi {customer_first_name}</p>{session_info}<a href="{reschedule_link}">Manage</a>',
+            ], 'json');
+
+            $result = (new NotificationTemplateService())->render('appointment_rescheduled', 'email', [
+                'customer_name'    => 'Jane Doe',
+                'reschedule_link'  => 'https://example.com/manage/abc',
+                'location_name'    => 'Sandton Mews',
+                'location_address' => '21 Delta Road',
+                'delivery_mode'    => 'In Person',
+            ]);
+
+            $body = $result['body'];
+
+            // Maps/Waze rendered as friendly buttons, not raw URLs.
+            $this->assertStringContainsString('Open in Google Maps', $body);
+            $this->assertStringContainsString('Open in Waze', $body);
+            $this->assertStringContainsString('<a class="btn"', $body);
+            // The legacy plain-text "Maps: https://… | Waze: https://…" line is gone.
+            $this->assertStringNotContainsString('Maps: https', $body);
+        } finally {
+            $db->table('settings')->where('setting_key', $key)->delete();
+        }
+    }
+
+    public function testRenderWhatsAppKeepsSessionInfoPlainText(): void
+    {
+        $this->configureTestingDatabaseEnvironment();
+
+        $service = new NotificationTemplateService();
+
+        $result = $service->render('appointment_confirmed', 'whatsapp', [
+            'customer_name'    => 'Jane Doe',
+            'reschedule_link'  => 'https://example.com/manage/abc',
+            'location_name'    => 'Sandton Mews',
+            'location_address' => '21 Delta Road',
+            'delivery_mode'    => 'In Person',
+        ]);
+
+        $body = $result['body'];
+
+        // Non-email channels never receive the email-only HTML buttons/anchors —
+        // the body stays plain text regardless of which stored template is used.
+        $this->assertStringContainsString('Location', $body);
+        $this->assertStringNotContainsString('<a ', $body);
+        $this->assertStringNotContainsString('Open in Google Maps', $body);
+        $this->assertStringNotContainsString('<table', $body);
+    }
+
     private function seedSetting($db, string $key, string $value, string $type): void
     {
         $db->table('settings')->insert([

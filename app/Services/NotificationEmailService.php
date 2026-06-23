@@ -91,14 +91,22 @@ class NotificationEmailService
     /**
      * Send an email via MailerService (the canonical transport layer).
      *
-     * Notification emails are plain text; the rendered message body is assembled
-     * by the caller (NotificationQueueDispatcher) through NotificationTemplateService.
+     * The rendered body produced by NotificationTemplateService — an HTML fragment for
+     * the redesigned customer templates, or plain text for internal/custom templates —
+     * is wrapped in the responsive HTML shell by EmailBodyRenderer and sent as HTML, with
+     * a flattened plain-text alternative for multipart deliverability. This is the single
+     * chokepoint for every notification email (both NotificationQueueDispatcher::sendEmail()
+     * and AppointmentNotificationService::sendEventEmail() funnel through here).
      *
      * Returns ['ok' => bool, 'error' => ?string, 'transport' => string, 'messageId' => ?string]
      */
     public function sendEmail(int $businessId, string $toEmail, string $subject, string $message): array
     {
-        return (new MailerService())->send($businessId, $toEmail, $subject, $message, 'text');
+        $renderer = new EmailBodyRenderer();
+        $html     = $renderer->render($message, $subject);
+        $altText  = $renderer->toPlainText($message);
+
+        return (new MailerService())->send($businessId, $toEmail, $subject, $html, 'html', '', '', $altText);
     }
 
     /**
