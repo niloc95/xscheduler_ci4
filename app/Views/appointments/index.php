@@ -79,16 +79,19 @@
     }
     ?>
 
-    <!-- Mobile-first two-rail toolbar.
-         Rail A: Today + view modes + date controls.
-         Rail B: status chips + compact mobile filter access. -->
-    <!-- Two-rail toolbar.
-         Mobile: side-by-side — Rail A left (2 rows) | Rail B right (chips stacked).
-         Desktop md+: single horizontal row. -->
-    <div class="appointments-toolbar flex flex-row items-start gap-3 md:items-center md:gap-3"
+    <!-- Two-tier toolbar.
+         Mobile: everything stacks — nav controls, then status pills as a full-width wrapping row.
+         Desktop md+:
+           Tier 1 = Today + view switcher + date navigation (left)  ·  Filters (right)
+           Tier 2 = status filter chips (left)  ·  provider legend (right)
+         Both tiers share the same left edge for a clean, aligned toolbar. -->
+    <div class="appointments-toolbar flex flex-col gap-3"
          data-status-filter-container data-active-status="<?= esc($activeStatusFilter ?? '') ?>">
 
-        <!-- Rail A: 2-row column on mobile, horizontal row on desktop -->
+        <!-- Tier 1: navigation + view controls (left) · Filters (right) -->
+        <div class="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between md:gap-3">
+
+        <!-- Nav cluster: 2-row column on mobile, horizontal row on desktop -->
         <div class="appointments-toolbar__primary flex flex-col gap-1.5 min-w-0 md:flex-row md:items-center md:gap-2">
 
             <!-- Row 1 (mobile): Today + view switcher -->
@@ -136,12 +139,25 @@
             </div>
 
         </div>
+        <!-- /Nav cluster -->
 
-        <!-- Rail B: chips stacked vertically on mobile, horizontal on desktop -->
-        <div class="appointments-toolbar__secondary flex items-start gap-2 min-w-0 md:items-center">
+            <!-- Filters: desktop only, pinned to the right edge of Tier 1 -->
+            <button type="button" id="advanced-filter-toggle" data-advanced-filter-toggle="true"
+                    class="appointments-toolbar__filter hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
+                    title="Advanced Filters">
+                <span class="material-symbols-outlined text-sm leading-none">tune</span>
+                <span>Filters</span>
+                <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" data-filter-toggle-icon="true">expand_more</span>
+            </button>
+
+        </div>
+        <!-- /Tier 1 -->
+
+        <!-- Tier 2: status filter chips (left) · provider legend (right) -->
+        <div class="appointments-toolbar__secondary flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-3">
 
             <div id="scheduler-stats-bar"
-                 class="appointments-toolbar__status-rail flex flex-col gap-1 md:flex-row md:flex-nowrap md:items-center md:gap-1"
+                 class="appointments-toolbar__status-rail flex flex-row flex-wrap items-center gap-1.5 md:gap-1"
                  data-initial-pending="<?= $pendingCount ?>"
                  data-initial-confirmed="<?= $confirmedCount ?>"
                  data-initial-completed="<?= $completedCount ?>"
@@ -154,21 +170,14 @@
                 <?= view('components/status_badge', ['status' => 'noshow',    'label' => 'No-Show',   'count' => $noshowCount]) ?>
             </div>
 
-            <!-- Filters: desktop only -->
-            <button type="button" id="advanced-filter-toggle" data-advanced-filter-toggle="true"
-                    class="appointments-toolbar__filter hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium flex-shrink-0 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-primary-400 dark:hover:border-primary-500 hover:text-primary-700 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-150"
-                    title="Advanced Filters">
-                <span class="material-symbols-outlined text-sm leading-none">tune</span>
-                <span>Filters</span>
-                <span class="material-symbols-outlined text-sm leading-none transition-transform duration-200" data-filter-toggle-icon="true">expand_more</span>
-            </button>
+            <!-- Provider legend: hidden on mobile, right-aligned on desktop; JS populates & reveals -->
+            <div id="provider-legend" class="hidden md:flex md:flex-shrink-0 items-center justify-end gap-2 flex-wrap text-xs"></div>
 
         </div>
+        <!-- /Tier 2 -->
 
     </div>
-
-    <!-- Provider legend: thin sub-row, hidden by default, JS populates & reveals -->
-    <div id="provider-legend" class="hidden md:flex items-center gap-2 flex-wrap text-xs mt-1"></div>
+    <!-- /appointments-toolbar -->
 
     <!-- Advanced Filter Panel (collapsible) -->
     <!-- Grid: 1 col on mobile (selects full-width), 2 on sm, 3 on md, 6 on lg -->

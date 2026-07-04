@@ -30,6 +30,16 @@
   // ─────────────────────────────────────────────
   --xs-sidebar-width: 16rem;          // 256px
   --xs-header-height: 6rem;           // 96px (matches actual header height)
+
+  // ─────────────────────────────────────────────
+  // TABLET ICON RAIL (768–1023px)
+  // A floating, rounded icon-only rail that mirrors the desktop frame.
+  // ─────────────────────────────────────────────
+  --xs-rail-width: 3.5rem;            // 56px (MD3 navigation rail: 48–64px)
+  --xs-rail-inset: 1rem;              // 16px float from viewport edges
+  --xs-rail-gap: 1rem;                // 16px breathing room between rail and content
+  // Offset applied to header + main content so they clear the floating rail + gap.
+  --xs-rail-offset: calc(var(--xs-rail-inset) + var(--xs-rail-width) + var(--xs-rail-gap));
   
   // ─────────────────────────────────────────────
   // SPACING SCALE (8px base)
@@ -140,11 +150,11 @@
   }
 }
 
-// Tablet (768–1023px): Offset for icon rail (3.5rem)
+// Tablet (768–1023px): Clear the floating icon rail + its gap
 @media (min-width: 768px) and (max-width: 1023px) {
   .xs-main-container,
   .main-content-container {
-    margin-left: 3.5rem;
+    margin-left: var(--xs-rail-offset);
   }
 }
 
@@ -181,12 +191,14 @@
   }
 }
 
-// Tablet (768–1023px): Header starts after icon rail
+// Tablet (768–1023px): Header clears the floating icon rail + its gap.
+// top/right keep the mobile content inset (1rem) so the header top aligns
+// with the rail top (both 1rem) for a consistent floating frame.
 @media (min-width: 768px) and (max-width: 1023px) {
   .xs-header,
   #stickyHeader,
   [data-sticky-header] {
-    left: 3.5rem;
+    left: var(--xs-rail-offset);
   }
 }
 
@@ -255,6 +267,11 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
+  // Let the date give way first when the pill is width-constrained so the
+  // live time never spills outside the rounded box (see max-width on .xs-header-temporal).
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .xs-header-temporal-time {
@@ -264,6 +281,7 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex-shrink: 0; // time stays fully visible; the date truncates instead
 }
 
 .xs-header-temporal-separator {
@@ -403,7 +421,7 @@
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .xs-scroll-blur {
-    left: 3.5rem;
+    left: var(--xs-rail-offset);
   }
 }
 

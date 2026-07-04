@@ -99,31 +99,15 @@
 }
 
 @media (min-width: 768px) {
-    .appointments-toolbar {
-        align-items: center;
-    }
-
-    .appointments-toolbar__secondary {
-        flex: 1;
-        justify-content: flex-end;
-    }
-
-    .appointments-toolbar__status-rail {
-        flex: 0 1 auto;
-        max-width: min(42vw, 36rem);
-        justify-content: flex-end;
-    }
-
+    // Two-tier toolbar: Tier 1 (nav + view · Filters) and Tier 2 (status chips · legend)
+    // both distribute their groups with `md:justify-between` from the markup, so the
+    // old flex:1 / justify-flex-end / max-width overrides are no longer needed here.
     .appointments-toolbar__date-display {
         min-width: 7.5rem;
     }
 }
 
 @media (max-width: 767px) {
-    .appointments-toolbar__secondary {
-        padding-top: 0.125rem;
-    }
-
     .appointments-toolbar__today-btn,
     .appointments-toolbar__view-btn,
     .appointments-toolbar__filter,

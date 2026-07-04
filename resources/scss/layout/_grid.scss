@@ -123,30 +123,17 @@
 }
 
 // Flexbox Utilities
+//
+// NOTE: direction / wrap / justify / align are intentionally NOT redefined here.
+// They used to be declared as compound selectors (`.flex.flex-col`, `.flex.items-center`, …)
+// which carry specificity (0,2,0) and silently shadowed every Tailwind responsive variant
+// (`md:flex-row`, `md:flex-nowrap`, `md:items-center` = 0,1,0) at ALL breakpoints — breaking
+// responsive flex layouts app-wide. Tailwind already emits identical base utilities
+// (`.flex-col`, `.items-center`, …), so rely on those and let `md:`/`lg:` variants win.
 .flex {
   display: flex;
-  
-  &.flex-col { flex-direction: column; }
-  &.flex-row { flex-direction: row; }
-  &.flex-wrap { flex-wrap: wrap; }
-  &.flex-nowrap { flex-wrap: nowrap; }
-  
-  // Justify Content
-  &.justify-start { justify-content: flex-start; }
-  &.justify-end { justify-content: flex-end; }
-  &.justify-center { justify-content: center; }
-  &.justify-between { justify-content: space-between; }
-  &.justify-around { justify-content: space-around; }
-  &.justify-evenly { justify-content: space-evenly; }
-  
-  // Align Items
-  &.items-start { align-items: flex-start; }
-  &.items-end { align-items: flex-end; }
-  &.items-center { align-items: center; }
-  &.items-baseline { align-items: baseline; }
-  &.items-stretch { align-items: stretch; }
-  
-  // Gap
+
+  // Custom spacing-token gaps (not part of Tailwind's default scale) — safe to keep.
   &.gap-xs { gap: $spacing-xs; }
   &.gap-sm { gap: $spacing-sm; }
   &.gap-md { gap: $spacing-md; }
