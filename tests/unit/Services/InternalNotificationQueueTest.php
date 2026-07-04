@@ -110,7 +110,7 @@ final class InternalNotificationQueueTest extends CIUnitTestCase
 
         $mapping = [
             'database.tests.hostname' => $values['database.tests.hostname'] ?? $values['database.default.hostname'] ?? null,
-            'database.tests.database' => $values['database.tests.database'] ?? $values['database.default.database'] ?? null,
+            'database.tests.database' => $values['database.tests.database'] ?? null, // never fall back to the app/dev DB
             'database.tests.username' => $values['database.tests.username'] ?? $values['database.default.username'] ?? null,
             'database.tests.password' => $values['database.tests.password'] ?? $values['database.default.password'] ?? null,
             'database.tests.DBDriver' => $values['database.tests.DBDriver'] ?? $values['database.default.DBDriver'] ?? null,

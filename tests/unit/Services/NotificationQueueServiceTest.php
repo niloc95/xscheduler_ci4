@@ -287,9 +287,15 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
         $this->assertSame(2, (int) ($stats['enqueued'] ?? 0));
         $this->assertCount(2, $rows);
 
+        // Idempotency keys carry a trailing ':sch:{schedule_fingerprint}' segment; strip it so
+        // the assertion targets the stable offset identity rather than the live fingerprint.
         $keys = array_column($rows, 'idempotency_key');
-        $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:4320', $keys);
-        $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:60', $keys);
+        $baseKeys = array_map(
+            static fn(string $k): string => preg_replace('/:sch:[0-9a-f]+$/', '', $k),
+            $keys
+        );
+        $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:4320', $baseKeys);
+        $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:60', $baseKeys);
     }
 
     /**
@@ -563,7 +569,7 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
 
         $mapping = [
             'database.tests.hostname' => $values['database.tests.hostname'] ?? $values['database.default.hostname'] ?? null,
-            'database.tests.database' => $values['database.tests.database'] ?? $values['database.default.database'] ?? null,
+            'database.tests.database' => $values['database.tests.database'] ?? null, // never fall back to the app/dev DB
             'database.tests.username' => $values['database.tests.username'] ?? $values['database.default.username'] ?? null,
             'database.tests.password' => $values['database.tests.password'] ?? $values['database.default.password'] ?? null,
             'database.tests.DBDriver' => $values['database.tests.DBDriver'] ?? $values['database.default.DBDriver'] ?? null,

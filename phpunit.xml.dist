@@ -50,15 +50,20 @@
         <const name="CONFIGPATH" value="./app/Config/"/>
         <!-- Directory containing the front controller (index.php) -->
         <const name="PUBLICPATH" value="./public/"/>
+        <env name="CI_ENVIRONMENT" value="testing"/>
         <env name="logger.threshold" value="3"/>
-        <!-- Database configuration -->
-        <!-- Configure a dedicated MySQL/MariaDB database for testing
-            <env name="database.tests.hostname" value="localhost"/>
-            <env name="database.tests.database" value="tests"/>
-            <env name="database.tests.username" value="tests_user"/>
-            <env name="database.tests.password" value=""/>
-            <env name="database.tests.DBDriver" value="MySQLi"/>
-            <env name="database.tests.DBPrefix" value="tests_"/>
-        -->
+        <!-- Database configuration.
+             Pin BOTH the default and tests groups to the disposable test schema so a
+             plain `phpunit` run can never touch the dev/app database, even on a fresh
+             `.env`. Connection credentials (host/user/pass) come from `.env`'s
+             database.default.* — only the schema name is forced to webschedulr_test.
+             Credentials/host for a separate CI MySQL service are provided by
+             phpunit.mysql.xml.dist. -->
+        <env name="database.default.database" value="webschedulr_test"/>
+        <env name="database.default.DBPrefix" value="xs_"/>
+        <env name="database.tests.database" value="webschedulr_test"/>
+        <env name="database.tests.DBDriver" value="MySQLi"/>
+        <env name="database.tests.DBPrefix" value="xs_"/>
+        <env name="database.tests.port" value="3306"/>
     </php>
 </phpunit>
