@@ -193,27 +193,42 @@ Configuration (Settings → Notifications → Customer Reminder Offsets):
 `NotificationQueueService::enqueueDueReminders()` processes each offset separately:
 
 ```
-For each appointment where start_at in (now, +30 days]:
+For each appointment where start_at in (now-48h, +30 days]:
   For each channel (email, sms, whatsapp):
     For each offset in that channel's offset list:
       dueAt = start_at - offset_minutes
-      If now >= dueAt → enqueue a row with marker 'offset:N'
-      Else → skip (not yet due)
+      If now < dueAt        → skip (not yet due)
+      If dueAt < created_at → skip (offset window elapsed BEFORE booking existed —
+                                    would just echo the confirmation; NOT a real reminder)
+      Else → enqueue a row with marker 'offset:N'
 ```
 
 There is no cross-offset dependency. An offset that is already past-due does not affect a future offset that has not yet arrived.
 
+**Booking-window guard (the `dueAt < created_at` check).** A reminder only fires when its
+scheduled moment is at or after the appointment was booked. This distinguishes a genuine
+cron-downtime **catch-up** (appointment booked earlier, reminder became due while cron was
+stopped → `dueAt >= created_at` → still fires) from a **short-lead booking** whose offset window
+had already passed before the appointment even existed (`dueAt < created_at` → suppressed).
+Without this guard, booking inside the primary reminder window (e.g. an appointment 1 day out
+with a 3-day offset) sends an "Upcoming Appointment" reminder seconds after the confirmation —
+reported and fixed 2026-07-04. `created_at` is UTC (BaseModel `useTimestamps` + `app.appTimezone`),
+compared against the UTC `dueAt`.
+
 ### 10.2 Concrete Example — Appointment Booked 1 Day in Advance
 
 **Config:** `[4320 min (3 days), 60 min (1 hour)]`
-**Booking time:** today 14:00 UTC. **Appointment:** tomorrow 14:00 UTC.
+**Booking time (`created_at`):** today 14:00 UTC. **Appointment:** tomorrow 14:00 UTC.
 
-| Offset | dueAt | now >= dueAt | Result |
-|--------|-------|-------------|--------|
-| 4320 min (3 days) | 3 days ago | ✅ TRUE | Enqueued immediately (catch-up) |
-| 60 min (1 hour) | tomorrow 13:00 | ❌ FALSE | Skipped — enqueued when tomorrow 13:00 arrives |
+| Offset | dueAt | now >= dueAt | dueAt >= created_at | Result |
+|--------|-------|-------------|---------------------|--------|
+| 4320 min (3 days) | 2 days ago | ✅ TRUE | ❌ FALSE (window passed before booking) | **Suppressed** — would only echo the confirmation |
+| 60 min (1 hour) | tomorrow 13:00 | ❌ FALSE | — | Skipped for now; enqueued when tomorrow 13:00 arrives |
 
-Both reminders will send. The first being past-due at booking time does not block the second.
+Only the 1-hour reminder sends. The 3-day reminder is correctly suppressed because the
+appointment was booked *inside* the 3-day window. (If the same appointment had instead been
+booked 5 days ago and cron had been down, the 3-day offset's `dueAt` would be ≥ `created_at`
+and it *would* fire as a legitimate catch-up.)
 
 ### 10.3 Queue Row Identity
 

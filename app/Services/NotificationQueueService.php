@@ -107,7 +107,7 @@ class NotificationQueueService
 
         $model   = new AppointmentModel();
         $builder = $model->builder();
-        $builder->select('xs_appointments.id, xs_appointments.start_at');
+        $builder->select('xs_appointments.id, xs_appointments.start_at, xs_appointments.created_at');
         $builder->whereIn('xs_appointments.status', AppointmentStatus::UPCOMING);
         $builder->where('xs_appointments.start_at >=', $lookbackStart->format('Y-m-d H:i:s'));
         $builder->where('xs_appointments.start_at <=', $windowEnd->format('Y-m-d H:i:s'));
@@ -121,10 +121,33 @@ class NotificationQueueService
                 $stats['skipped']++;
                 continue;
             }
+
+            // When the appointment was booked (UTC; see BaseModel useTimestamps + app.appTimezone).
+            // Used to suppress "catch-up" reminders whose offset window had already passed
+            // BEFORE the appointment existed — e.g. a 3-day reminder for an appointment booked
+            // 1 day out. A genuine cron-downtime catch-up has dueAt >= createdAt (the reminder
+            // became due after booking) and is preserved; a short-lead booking is not fired.
+            $createdAt = null;
+            $createdRaw = trim((string) ($appt['created_at'] ?? ''));
+            if ($createdRaw !== '') {
+                try {
+                    $createdAt = new \DateTimeImmutable($createdRaw, new \DateTimeZone('UTC'));
+                } catch (\Throwable $e) {
+                    $createdAt = null;
+                }
+            }
+
             foreach ($enabledChannels as $channel => $offsetMinutesList) {
                 foreach ($offsetMinutesList as $offsetMinutes) {
                     $dueAt = $start->modify('-' . ((int) $offsetMinutes) . ' minutes');
                     if ($now < $dueAt) {
+                        $stats['skipped']++;
+                        continue;
+                    }
+
+                    // Offset window already elapsed before the booking was created →
+                    // this is not a real reminder, just an immediate echo of the confirmation.
+                    if ($createdAt !== null && $dueAt < $createdAt) {
                         $stats['skipped']++;
                         continue;
                     }

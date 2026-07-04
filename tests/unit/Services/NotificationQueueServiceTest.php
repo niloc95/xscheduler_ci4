@@ -167,7 +167,9 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
 
     public function testEnqueueDueRemindersQueuesOnlyDueAppointmentsForActiveChannels(): void
     {
-        $dueAppointmentId = $this->seedAppointment('+30 minutes');
+        // Booked a week ago → the 60-min reminder becoming due now is a legitimate
+        // catch-up (dueAt >= created_at), not an immediate post-booking echo.
+        $dueAppointmentId = $this->seedAppointment('+30 minutes', '-7 days');
         $laterAppointmentId = $this->seedAppointment('+3 hours');
         $db = \Config\Database::connect('tests');
         $now = date('Y-m-d H:i:s');
@@ -241,7 +243,9 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
             $this->markTestSkipped('reminder_offsets_json column is not available in test schema.');
         }
 
-        $appointmentId = $this->seedAppointment('+30 minutes');
+        // Booked 7 days ago → both the 3-day (4320) and 60-min offset windows fall
+        // after creation, so both are legitimate catch-ups rather than post-booking echoes.
+        $appointmentId = $this->seedAppointment('+30 minutes', '-7 days');
         $now = date('Y-m-d H:i:s');
 
         $db->table('business_notification_rules')->insert([
@@ -288,10 +292,66 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
         $this->assertContains('email:appointment_reminder:appt:' . $appointmentId . ':off:offset:60', $keys);
     }
 
+    /**
+     * A freshly-booked appointment whose reminder offset windows already elapsed
+     * before the booking existed must NOT fire those reminders immediately — they
+     * would just echo the confirmation. Regression guard for the "second email sent
+     * immediately after booking" report.
+     */
+    public function testEnqueueDueRemindersSuppressesOffsetWindowsThatPassedBeforeBooking(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $ruleFields = $db->getFieldNames('business_notification_rules');
+        if (!in_array('reminder_offsets_json', $ruleFields, true)) {
+            $this->markTestSkipped('reminder_offsets_json column is not available in test schema.');
+        }
+
+        // Booked NOW, starting in 30 minutes. Both the 3-day (4320) and 60-min offset
+        // windows are already in the past relative to created_at → both must be suppressed.
+        $appointmentId = $this->seedAppointment('+30 minutes');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('business_notification_rules')->insert([
+            'business_id' => 1,
+            'event_type' => 'appointment_reminder',
+            'channel' => 'email',
+            'is_enabled' => 1,
+            'reminder_offset_minutes' => 60,
+            'reminder_offsets_json' => json_encode([4320, 60]),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $db->table('business_integrations')->insert([
+            'business_id' => 1,
+            'channel' => 'email',
+            'provider_name' => 'smtp',
+            'encrypted_config' => 'configured',
+            'is_active' => 1,
+            'health_status' => 'ok',
+            'last_tested_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $service = new NotificationQueueService();
+        $stats = $service->enqueueDueReminders();
+
+        $rows = $db->table('notification_queue')
+            ->where('appointment_id', $appointmentId)
+            ->where('event_type', 'appointment_reminder')
+            ->get()
+            ->getResultArray();
+
+        $this->assertSame(0, (int) ($stats['enqueued'] ?? 0));
+        $this->assertCount(0, $rows);
+    }
+
     public function testEnqueueDueRemindersIgnoresReminderSentFlagForQueueControl(): void
     {
         $db = \Config\Database::connect('tests');
-        $appointmentId = $this->seedAppointment('+30 minutes');
+        // Booked a week ago so the due 60-min reminder is a legitimate catch-up.
+        $appointmentId = $this->seedAppointment('+30 minutes', '-7 days');
         $now = date('Y-m-d H:i:s');
 
         $appointmentFields = $db->getFieldNames('appointments');
@@ -347,7 +407,8 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
     public function testEnqueueDueRemindersCreatesNewIdentityAfterScheduleChanges(): void
     {
         $db = \Config\Database::connect('tests');
-        $appointmentId = $this->seedAppointment('+30 minutes');
+        // Booked a week ago so the due 60-min reminder is a legitimate catch-up.
+        $appointmentId = $this->seedAppointment('+30 minutes', '-7 days');
         $now = date('Y-m-d H:i:s');
 
         $db->table('business_notification_rules')->insert([
@@ -407,10 +468,20 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
         $this->assertCount(2, array_unique(array_column($rows, 'idempotency_key')));
     }
 
-    private function seedAppointment(string $relativeStart): int
+    /**
+     * @param string      $relativeStart   strtotime-relative start_at (e.g. '+30 minutes')
+     * @param string|null $relativeCreated  strtotime-relative created_at; defaults to now.
+     *                                       Pass a past value (e.g. '-7 days') to simulate a
+     *                                       booking whose reminder offset windows are legitimate
+     *                                       catch-ups rather than immediate post-booking echoes.
+     */
+    private function seedAppointment(string $relativeStart, ?string $relativeCreated = null): int
     {
         $db = \Config\Database::connect('tests');
         $now = date('Y-m-d H:i:s');
+        $appointmentCreatedAt = $relativeCreated !== null
+            ? (new \DateTimeImmutable($relativeCreated, new \DateTimeZone('UTC')))->format('Y-m-d H:i:s')
+            : $now;
 
         $db->table('users')->insert([
             'name' => 'Queue Service Provider ' . uniqid('', true),
@@ -462,7 +533,7 @@ final class NotificationQueueServiceTest extends CIUnitTestCase
             'end_at' => $endAt->format('Y-m-d H:i:s'),
             'status' => 'confirmed',
             'notes' => 'Notification queue regression fixture',
-            'created_at' => $now,
+            'created_at' => $appointmentCreatedAt,
             'updated_at' => $now,
         ]);
 
