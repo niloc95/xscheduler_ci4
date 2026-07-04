@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.2.2] - 2026-07-04
+
+### Fixed
+- fix: suppress catch-up reminders whose offset window passed before booking
+
 ## [2.2.1] - 2026-07-04
 
 ### Changed
@@ -513,7 +518,7 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 
 ---
 
-[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.2...HEAD
 [1.0.4]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.4
 [1.0.3]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.3
 [1.0.2]: https://github.com/niloc95/xscheduler_ci4/releases/tag/v1.0.2
@@ -544,3 +549,4 @@ For upgrade instructions between major versions, add or consult a dedicated upgr
 [2.1.2]: https://github.com/niloc95/xscheduler_ci4/compare/v2.1.1...v2.1.2
 [2.2.0]: https://github.com/niloc95/xscheduler_ci4/compare/v2.1.2...v2.2.0
 [2.2.1]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.0...v2.2.1
+[2.2.2]: https://github.com/niloc95/xscheduler_ci4/compare/v2.2.1...v2.2.2
