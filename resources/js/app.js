@@ -105,6 +105,10 @@ export {
  * Called on initial page load and after SPA navigation
  */
 function initializeComponents() {
+    // Start inactivity monitor first — session security must not depend on the
+    // success of chart/scheduler/page-UI initializers below.
+    initInactivityMonitor();
+
     // Initialize charts and dashboard widgets
     if (Charts) {
         Charts.initAllCharts();
@@ -157,9 +161,6 @@ function initializeComponents() {
     // Initialize the live profile page tab and avatar interactions.
     initProfilePage(document);
 
-    // Start inactivity monitor — shows warning modal 5 min before session expiry.
-    initInactivityMonitor();
-    
     // Pre-fill appointment form if URL parameters exist
     prefillAppointmentForm();
 
