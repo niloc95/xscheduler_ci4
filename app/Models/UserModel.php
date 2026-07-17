@@ -145,11 +145,13 @@ class UserModel extends BaseModel
      */
     public function getStats()
     {
+        // Membership counts via xs_user_roles (authoritative): a multi-role user
+        // counts in every bucket they hold, so bucket sums may exceed 'total'.
         return [
             'total' => $this->countAll(),
-            'providers' => $this->where('role', 'provider')->countAllResults(false),
-            'staff' => $this->where('role', 'staff')->countAllResults(false),
-            'admins' => $this->where('role', 'admin')->countAllResults(false),
+            'providers' => $this->whereHasRole('provider')->countAllResults(),
+            'staff' => $this->whereHasRole('staff')->countAllResults(),
+            'admins' => $this->whereHasRole('admin')->countAllResults(),
             'recent' => $this->where('created_at >=', date('Y-m-d', strtotime('-30 days')))->countAllResults()
         ];
     }
@@ -325,6 +327,8 @@ class UserModel extends BaseModel
      */
     public function countActiveAdmins(): int
     {
+        // Primary-role read is complete here: any user holding 'admin' in
+        // xs_user_roles has 'admin' as their derived primary (highest privilege).
         $builder = $this->where('role', 'admin');
 
         if ($this->hasUsersColumn('is_active')) {
@@ -426,6 +430,7 @@ class UserModel extends BaseModel
      */
     public function getFirstAdmin()
     {
+        // Primary-role read is complete: admin membership implies primary 'admin'.
         return $this->where('role', 'admin')->first();
     }
 
@@ -792,9 +797,10 @@ class UserModel extends BaseModel
             '#F43F5E', // Rose
         ];
 
-        // Get color usage count for active providers
+        // Get color usage count for active providers (role membership via
+        // xs_user_roles so dual-role users' colors stay in the pool)
         $colorUsage = [];
-        $providerBuilder = $this->where('role', 'provider')->select('color');
+        $providerBuilder = $this->whereHasRole('provider')->select('color');
 
         if ($this->hasUsersColumn('is_active')) {
             $providerBuilder->where('is_active', true);

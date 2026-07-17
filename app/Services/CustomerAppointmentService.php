@@ -491,6 +491,9 @@ class CustomerAppointmentService
         if ($scopedProviderIds !== null && empty($scopedProviderIds)) {
             return [];
         }
+        // Deliberate primary-role read: pure admins belong in this filter too,
+        // and a multi-role user's derived primary (highest of their set) is
+        // always covered by this list — no dual-role exclusion is possible.
         $query = $this->users
             ->whereIn('role', ['provider', 'admin'])
             ->where('status', 'active')

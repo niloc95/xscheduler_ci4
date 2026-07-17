@@ -211,6 +211,10 @@ class UserPermissionModel extends BaseModel
      */
     public function getProviders(): array
     {
+        // Deliberate primary-role read: ALL admins are treated as bookable
+        // providers here, including pure admins with no provider role. A
+        // multi-role user's derived primary is the highest of their set, so it
+        // is always in this list — no dual-role exclusion is possible.
         $builder = $this->whereIn('role', ['admin', 'provider']);
         $this->applyActiveUserFilter($builder);
 

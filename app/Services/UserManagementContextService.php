@@ -93,7 +93,7 @@ class UserManagementContextService
             'availableStaff' => $availableStaff,
             'assignedStaff' => [],
             'assignedProviders' => [],
-            'canManageAssignments' => ($currentUser['role'] ?? '') === 'admin',
+            'canManageAssignments' => in_array('admin', $currentUser['roles'] ?? (empty($currentUser['role']) ? [] : [$currentUser['role']]), true),
             'stats' => $this->getUserStatsBasedOnRole($currentUserId),
             'validation' => $validation,
             'providerSchedule' => $this->scheduleValidation->prepareScheduleForView($scheduleInput),
@@ -204,7 +204,11 @@ class UserManagementContextService
         }
 
         if ($role && in_array($role, ['admin', 'provider', 'staff'], true)) {
-            $users = array_values(array_filter($users, static fn($user) => ($user['role'] ?? '') === $role));
+            // Filter on authoritative role membership so dual-role users match
+            $users = array_values(array_filter(
+                $users,
+                static fn($user) => in_array($role, $user['roles'] ?? (empty($user['role']) ? [] : [$user['role']]), true)
+            ));
         }
 
         return [
@@ -295,8 +299,7 @@ class UserManagementContextService
 
     public function canChangeUserRole(int $currentUserId, int $targetUserId): bool
     {
-        $currentUser = $this->userModel->find($currentUserId);
-        return ($currentUser['role'] ?? null) === 'admin';
+        return in_array('admin', $this->userModel->getRolesForUser($currentUserId), true);
     }
 
     /**
@@ -309,7 +312,7 @@ class UserManagementContextService
         $usersHasStatus = method_exists($db, 'fieldExists') ? $db->fieldExists('status', 'xs_users') : true;
 
         $builder = $this->userModel
-            ->where('role', $role)
+            ->whereHasRole($role)
             ->orderBy('name', 'ASC');
 
         if ($usersHasIsActive) {
@@ -401,25 +404,24 @@ class UserManagementContextService
             return [];
         }
 
+        $currentUserRoles = $this->userModel->getRolesForUser($currentUserId);
+
         $users = [];
-        switch ($currentUser['role']) {
-            case 'admin':
-                $users = $this->userModel
-                    ->whereIn('role', ['admin', 'provider', 'staff'])
-                    ->findAll();
-                break;
-
-            case 'provider':
-                $staff = $this->providerStaffModel->getStaffByProvider($currentUserId);
-                $users = array_merge([$currentUser], $staff);
-                break;
-
-            case 'staff':
-                $users = [$currentUser];
-                break;
-
-            default:
-                return [];
+        if (in_array('admin', $currentUserRoles, true)) {
+            // whereIn on the primary role is deliberate here: the derived primary
+            // is always the highest-privilege member of the authoritative set, so
+            // no multi-role user is excluded. Its purpose is filtering out legacy
+            // customer-account rows, which xs_user_roles' ENUM cannot express.
+            $users = $this->userModel
+                ->whereIn('role', ['admin', 'provider', 'staff'])
+                ->findAll();
+        } elseif (in_array('provider', $currentUserRoles, true)) {
+            $staff = $this->providerStaffModel->getStaffByProvider($currentUserId);
+            $users = array_merge([$currentUser], $staff);
+        } elseif (in_array('staff', $currentUserRoles, true)) {
+            $users = [$currentUser];
+        } else {
+            return [];
         }
 
         $users = $this->enrichUsersWithRoles($users);
@@ -489,10 +491,15 @@ class UserManagementContextService
         $providerIds = [];
         $staffIds = [];
 
+        // Classify by authoritative role membership (rows are enriched with
+        // 'roles' by enrichUsersWithRoles before this runs); a provider+staff
+        // user belongs in both assignment lookups.
         foreach ($users as $user) {
-            if (($user['role'] ?? null) === 'provider') {
+            $roles = $user['roles'] ?? (empty($user['role']) ? [] : [$user['role']]);
+            if (in_array('provider', $roles, true)) {
                 $providerIds[] = $user['id'];
-            } elseif (($user['role'] ?? null) === 'staff') {
+            }
+            if (in_array('staff', $roles, true)) {
                 $staffIds[] = $user['id'];
             }
         }
@@ -540,9 +547,10 @@ class UserManagementContextService
         }
 
         foreach ($users as &$user) {
-            if (($user['role'] ?? null) === 'provider') {
+            $roles = $user['roles'] ?? (empty($user['role']) ? [] : [$user['role']]);
+            if (in_array('provider', $roles, true)) {
                 $user['assignments'] = $providerAssignments[$user['id']] ?? null;
-            } elseif (($user['role'] ?? null) === 'staff') {
+            } elseif (in_array('staff', $roles, true)) {
                 $user['assignments'] = $staffAssignments[$user['id']] ?? null;
             } else {
                 $user['assignments'] = null;
@@ -560,25 +568,35 @@ class UserManagementContextService
             return [];
         }
 
-        if (($currentUser['role'] ?? null) === 'admin') {
-            $rows = $usersForContext ?: $this->userModel->whereIn('role', ['admin', 'provider', 'staff'])->findAll();
+        $currentUserRoles = $this->userModel->getRolesForUser($currentUserId);
+
+        if (in_array('admin', $currentUserRoles, true)) {
+            // See getUsersBasedOnRole(): the primary-role whereIn only excludes
+            // legacy customer-account rows; enrichment adds authoritative 'roles'.
+            $rows = $usersForContext ?: $this->enrichUsersWithRoles(
+                $this->userModel->whereIn('role', ['admin', 'provider', 'staff'])->findAll()
+            );
             $admins = 0;
             $providers = 0;
             $staff = 0;
 
+            // Count membership: a dual-role user increments every bucket they
+            // hold, while 'total' stays the number of distinct users.
             foreach ($rows as $user) {
-                $role = $user['role'] ?? '';
-                if ($role === 'admin') {
+                $roles = $user['roles'] ?? (empty($user['role']) ? [] : [$user['role']]);
+                if (in_array('admin', $roles, true)) {
                     $admins++;
-                } elseif ($role === 'provider') {
+                }
+                if (in_array('provider', $roles, true)) {
                     $providers++;
-                } elseif ($role === 'staff') {
+                }
+                if (in_array('staff', $roles, true)) {
                     $staff++;
                 }
             }
 
             return [
-                'total' => $admins + $providers + $staff,
+                'total' => count($rows),
                 'admins' => $admins,
                 'providers' => $providers,
                 'staff' => $staff,
@@ -586,7 +604,7 @@ class UserManagementContextService
             ];
         }
 
-        if (($currentUser['role'] ?? null) === 'provider') {
+        if (in_array('provider', $currentUserRoles, true)) {
             $staff = $this->userModel->getStaffForProvider($currentUserId);
             return [
                 'total' => count($staff) + 1,
