@@ -31,11 +31,20 @@ class CustomerService
      * - Email absent: match by first_name + last_name.
      * - Optional customer_id hint is honored when no email match exists.
      *
-     * @return array{id:int,wasCreated:bool,changedFields:array<int,string>}
+     * Options:
+     * - preserveNames (bool, default false): never overwrite an existing
+     *   non-blank first/last name with a differing value — only fill blanks.
+     *   Used by the public booking flow so a booking made with a shared email
+     *   but a different name (e.g. a parent booking for their child) cannot
+     *   rename the stored customer. Admin/staff paths keep the default
+     *   overwrite behavior for correcting typos.
+     *
+     * @return array{id:int,wasCreated:bool,changedFields:array<int,string>,skippedFields:array<int,string>}
      */
-    public function upsertCustomer(array $data): array
+    public function upsertCustomer(array $data, array $options = []): array
     {
         $normalized = $this->normalizePayload($data);
+        $preserveNames = (bool) ($options['preserveNames'] ?? false);
 
         $preferredCustomerId = isset($data['customer_id']) && is_numeric($data['customer_id'])
             ? (int) $data['customer_id']
@@ -49,7 +58,7 @@ class CustomerService
         );
 
         if ($existing !== null) {
-            $update = $this->buildUpdatePatch($existing, $normalized);
+            [$update, $skippedFields] = $this->buildUpdatePatch($existing, $normalized, $preserveNames);
             $changedFields = array_keys($update);
 
             if ($update !== []) {
@@ -61,10 +70,19 @@ class CustomerService
                 $this->logCustomerMutation('customer_updated', (int) $existing['id'], $changedFields);
             }
 
+            if ($skippedFields !== []) {
+                helper('logging');
+                log_structured('info', 'customer.upsert_name_conflict', [
+                    'customer_id' => (int) $existing['id'],
+                    'skipped_fields' => $skippedFields,
+                ]);
+            }
+
             return [
                 'id' => (int) $existing['id'],
                 'wasCreated' => false,
                 'changedFields' => $changedFields,
+                'skippedFields' => $skippedFields,
             ];
         }
 
@@ -81,6 +99,7 @@ class CustomerService
             'id' => (int) $insertId,
             'wasCreated' => true,
             'changedFields' => array_keys($insertData),
+            'skippedFields' => [],
         ];
     }
 
@@ -175,9 +194,13 @@ class CustomerService
         return $insert;
     }
 
-    private function buildUpdatePatch(array $existing, array $normalized): array
+    /**
+     * @return array{0:array<string,string>,1:array<int,string>} [patch, skipped fields]
+     */
+    private function buildUpdatePatch(array $existing, array $normalized, bool $preserveNames = false): array
     {
         $patch = [];
+        $skipped = [];
 
         foreach ($normalized as $field => $newValue) {
             if ($newValue === null || $newValue === '') {
@@ -185,12 +208,24 @@ class CustomerService
             }
 
             $existingValue = $existing[$field] ?? null;
-            if ((string) $existingValue !== (string) $newValue) {
-                $patch[$field] = $newValue;
+            if ((string) $existingValue === (string) $newValue) {
+                continue;
             }
+
+            // With preserveNames, a differing non-blank name is kept as-is
+            // (fill-only-if-blank); other fields keep the refresh behavior.
+            if ($preserveNames
+                && in_array($field, ['first_name', 'last_name'], true)
+                && trim((string) $existingValue) !== ''
+            ) {
+                $skipped[] = $field;
+                continue;
+            }
+
+            $patch[$field] = $newValue;
         }
 
-        return $patch;
+        return [$patch, $skipped];
     }
 
     private function normalizeEmail($email): ?string

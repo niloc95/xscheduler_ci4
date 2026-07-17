@@ -56,6 +56,99 @@ final class CustomerServiceUpsertTest extends CIUnitTestCase
         $this->assertSame('+27835556666', $row2['phone'] ?? null);
     }
 
+    public function testPreserveNamesKeepsExistingNameOnSharedEmail(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('customers')->insert([
+            'first_name' => 'Pat',
+            'last_name' => 'Parent',
+            'email' => 'family@example.com',
+            'phone' => '+27111222333',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $customerId = (int) $db->insertID();
+
+        $svc = new CustomerService();
+
+        // Parent books again for their child: same email, different name.
+        $upsert = $svc->upsertCustomer([
+            'first_name' => 'Charlie',
+            'last_name' => 'Child',
+            'email' => 'family@example.com',
+            'phone' => '+27835556666',
+        ], ['preserveNames' => true]);
+
+        $this->assertFalse($upsert['wasCreated']);
+        $this->assertSame($customerId, (int) $upsert['id']);
+        $this->assertSame(['first_name', 'last_name'], $upsert['skippedFields']);
+
+        $row = $db->table('customers')->where('id', $customerId)->get()->getRowArray();
+        $this->assertSame('Pat', $row['first_name'] ?? null);
+        $this->assertSame('Parent', $row['last_name'] ?? null);
+        $this->assertSame('+27835556666', $row['phone'] ?? null);
+    }
+
+    public function testPreserveNamesFillsBlankName(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('customers')->insert([
+            'first_name' => '',
+            'last_name' => null,
+            'email' => 'blank-name@example.com',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $customerId = (int) $db->insertID();
+
+        $svc = new CustomerService();
+        $upsert = $svc->upsertCustomer([
+            'first_name' => 'Filled',
+            'last_name' => 'In',
+            'email' => 'blank-name@example.com',
+        ], ['preserveNames' => true]);
+
+        $this->assertFalse($upsert['wasCreated']);
+        $this->assertSame([], $upsert['skippedFields']);
+
+        $row = $db->table('customers')->where('id', $customerId)->get()->getRowArray();
+        $this->assertSame('Filled', $row['first_name'] ?? null);
+        $this->assertSame('In', $row['last_name'] ?? null);
+    }
+
+    public function testDefaultUpsertStillOverwritesNames(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $now = date('Y-m-d H:i:s');
+
+        $db->table('customers')->insert([
+            'first_name' => 'Old',
+            'last_name' => 'Name',
+            'email' => 'admin-edit@example.com',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $customerId = (int) $db->insertID();
+
+        // Admin/staff paths (no options) keep overwrite-for-typo-fixes behavior.
+        $svc = new CustomerService();
+        $upsert = $svc->upsertCustomer([
+            'first_name' => 'New',
+            'last_name' => 'Name',
+            'email' => 'admin-edit@example.com',
+        ]);
+
+        $this->assertFalse($upsert['wasCreated']);
+        $this->assertSame([], $upsert['skippedFields']);
+
+        $row = $db->table('customers')->where('id', $customerId)->get()->getRowArray();
+        $this->assertSame('New', $row['first_name'] ?? null);
+    }
+
     public function testUpsertCreatesDifferentCustomerForSameNameDifferentEmail(): void
     {
         $db = \Config\Database::connect('tests');

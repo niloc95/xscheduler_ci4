@@ -1444,10 +1444,13 @@ class PublicBookingService
         $data = $this->extractCustomerFields($payload, $fieldConfig, $customConfig);
 
         try {
+            // preserveNames: a public booking with a shared email but a
+            // different name (parent booking for their child) must not rename
+            // the stored customer record.
             $upsert = $this->customerService->upsertCustomer(array_merge($data, [
                 'customer_id' => $existingId,
                 'phone_country_code' => $payload['phone_country_code'] ?? null,
-            ]));
+            ]), ['preserveNames' => true]);
         } catch (\InvalidArgumentException $e) {
             throw new PublicBookingException($e->getMessage(), 422, ['phone' => 'invalid']);
         } catch (\Throwable $e) {
