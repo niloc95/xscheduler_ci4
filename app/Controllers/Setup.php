@@ -648,7 +648,7 @@ class Setup extends BaseController
 
             // Insert admin user
             $result = $db->table($builderTable)->insert($userData);
-            
+
             if (!$result) {
                 return [
                     'success' => false,
@@ -656,17 +656,33 @@ class Setup extends BaseController
                 ];
             }
 
-            log_message('info', 'Admin user created successfully: ' . $userData['email']);
-            return [
-                'success' => true,
-                'message' => 'Admin user created successfully'
-            ];
+            $newAdminId = (int) $db->insertID();
 
             } finally {
                 if ($prefixTemporarilyCleared) {
                     $db->setPrefix($prefix);
                 }
             }
+
+            // xs_user_roles is the authoritative role store; xs_users.role is only
+            // the derived primary. Written after the prefix restore so the builder
+            // resolves the prefixed pivot table. Non-fatal: getRolesForUser() falls
+            // back to the primary role until the backfill migration heals the row.
+            try {
+                $db->table($db->prefixTable('user_roles'))->insert([
+                    'user_id'    => $newAdminId,
+                    'role'       => 'admin',
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            } catch (\Throwable $e) {
+                log_message('warning', 'Setup: could not write user_roles admin row: ' . $e->getMessage());
+            }
+
+            log_message('info', 'Admin user created successfully: ' . $userData['email']);
+            return [
+                'success' => true,
+                'message' => 'Admin user created successfully'
+            ];
 
         } catch (\Exception $e) {
             log_message('error', 'Admin user creation failed: ' . $e->getMessage());
