@@ -4,10 +4,13 @@ namespace App\Database\Seeds;
 
 use App\Models\CategoryModel;
 use App\Models\CustomerModel;
+use App\Models\LocationModel;
 use App\Models\ProviderScheduleModel;
 use App\Models\ProviderStaffModel;
 use App\Models\ServiceModel;
 use App\Models\UserModel;
+use App\Services\AppointmentBookingService;
+use App\Services\AvailabilityService;
 use CodeIgniter\Database\Seeder;
 use DateInterval;
 use DatePeriod;
@@ -16,14 +19,34 @@ use DateTimeZone;
 use Faker\Factory;
 use Faker\Generator;
 
+/**
+ * Production-like sample dataset.
+ *
+ * Base data (providers, staff, services, locations, schedules, customers) and
+ * PAST appointment history are inserted directly. FUTURE appointments are
+ * created through AppointmentBookingService::createAppointment() so every
+ * normal application process runs: availability validation, customer
+ * upsert/onboarding, UTC conversion, video-link generation, and notification
+ * enqueue + inline dispatch. Reminders then flow via the enqueueDueReminders
+ * scan (php spark notifications:dispatch-queue / web heartbeat).
+ *
+ * Email safety: an ACTIVE xs_business_integrations email row takes priority
+ * over the Mailpit dev fallback — deactivate it before seeding if it points
+ * at a real SMTP host.
+ */
 class SchedulingSampleDataSeeder extends Seeder
 {
     private const SAMPLE_DOMAIN = 'sample.local';
     private const CUSTOMER_DOMAIN = 'samplepatients.local';
-    private const STAFF_PER_PROVIDER = 2;
-    private const EXTRA_STAFF = 10;
-    private const CUSTOMER_COUNT = 120;
-    private const APPOINTMENTS_MONTHS = 6;
+    private const STAFF_COUNT = 2;
+    private const CUSTOMER_COUNT = 40;
+    private const APPOINTMENTS_MONTHS = 3;
+    private const PAST_HISTORY_WEEKS = 4;
+    private const APPOINTMENTS_PER_PROVIDER_PER_DAY = 2;
+    private const NEW_CUSTOMER_RATIO = 0.3;
+    private const CONFIRMED_RATIO = 0.6;
+    private const ONLINE_DELIVERY_RATIO = 0.15;
+    private const SERVICES_PER_PROVIDER = 6;
     private const DAILY_SLOTS = ['08:00', '09:30', '11:00', '13:30', '15:00'];
     private const TIMEZONE = 'Africa/Johannesburg';
 
@@ -32,7 +55,6 @@ class SchedulingSampleDataSeeder extends Seeder
         ['slug' => 'kabelo-naidoo', 'name' => 'Dr. Kabelo Naidoo', 'specialty' => 'Sports Physiotherapy',  'color' => '#22C55E'],
         ['slug' => 'lindiwe-jacobs','name' => 'Dr. Lindiwe Jacobs','specialty' => 'Dermatology',           'color' => '#F97316'],
         ['slug' => 'thabo-radebe',  'name' => 'Dr. Thabo Radebe',  'specialty' => 'Cardiology',            'color' => '#8B5CF6'],
-        ['slug' => 'naledi-khumalo','name' => 'Dr. Naledi Khumalo','specialty' => 'Mental Wellness',       'color' => '#EC4899'],
     ];
 
     private const CATEGORY_DEFINITIONS = [
@@ -69,6 +91,10 @@ class SchedulingSampleDataSeeder extends Seeder
         ['code' => 'teen-coaching',       'name' => 'Teen Wellness Coaching',           'category' => 'peds',      'duration' => 45, 'price' => 650.00],
         ['code' => 'corporate-wellness',  'name' => 'Corporate Wellness Workshop',      'category' => 'wellness',  'duration' => 90, 'price' => 1850.00],
         ['code' => 'executive-reset',     'name' => 'Executive Energy Reset',           'category' => 'wellness',  'duration' => 75, 'price' => 1650.00],
+        ['code' => 'chronic-care',        'name' => 'Chronic Care Review',              'category' => 'general',   'duration' => 45, 'price' => 700.00],
+        ['code' => 'acne-program',        'name' => 'Acne Treatment Program',           'category' => 'derm',      'duration' => 60, 'price' => 860.00],
+        ['code' => 'hydro-therapy',       'name' => 'Hydrotherapy Session',             'category' => 'physio',    'duration' => 60, 'price' => 750.00],
+        ['code' => 'bp-consult',          'name' => 'Blood Pressure Consultation',      'category' => 'cardio',    'duration' => 30, 'price' => 550.00],
     ];
 
     private const HOLIDAYS = [
@@ -79,6 +105,8 @@ class SchedulingSampleDataSeeder extends Seeder
         '2026-03-21' => 'Human Rights Day',
         '2026-04-03' => 'Good Friday',
         '2026-04-06' => 'Family Day',
+        '2026-08-10' => 'National Women\'s Day (observed)',
+        '2026-09-24' => 'Heritage Day',
     ];
 
     public function run(): void
@@ -92,7 +120,8 @@ class SchedulingSampleDataSeeder extends Seeder
         $services = $this->seedServices($categoryIds);
         $serviceDurations = array_column($services, 'duration', 'id');
         $providerIds = $this->seedProviders($faker);
-        $staffIds = $this->seedStaff((count($providerIds) * self::STAFF_PER_PROVIDER) + self::EXTRA_STAFF, $faker);
+        $staffIds = $this->seedStaff(self::STAFF_COUNT, $faker);
+        $this->seedUserRoles($providerIds, $staffIds);
         $providerServiceMap = $this->linkServicesToProviders($providerIds, array_column($services, 'id'));
         $this->assignStaffToProviders($providerIds, $staffIds);
 
@@ -101,18 +130,36 @@ class SchedulingSampleDataSeeder extends Seeder
         $this->seedBusinessHours($providerIds, $weeklyTemplate);
         $holidayBlocks = $this->seedPublicHolidays();
 
+        $locationMap = $this->seedLocations($providerIds, $faker);
         $customerIds = $this->seedCustomers(self::CUSTOMER_COUNT, $faker);
 
-        $this->seedAppointments(
+        $this->seedPastAppointments(
             $providerIds,
             $providerServiceMap,
             $serviceDurations,
             $customerIds,
+            $locationMap,
             $weeklyTemplate,
             $holidayBlocks
         );
 
         $this->db->transComplete();
+
+        echo "✅ Base sample data seeded (providers, staff, services, locations, customers, past history).\n";
+        echo "→ Creating future appointments through the booking pipeline (notifications dispatch inline)...\n";
+
+        // Runs OUTSIDE the transaction: createAppointment opens its own
+        // transaction and dispatches SMTP inline — neither may nest inside
+        // an open seeder transaction.
+        $this->seedFutureAppointments(
+            $providerIds,
+            $providerServiceMap,
+            $locationMap,
+            $customerIds,
+            $weeklyTemplate,
+            $holidayBlocks,
+            $faker
+        );
 
         echo "✅ Scheduling sample data seeded successfully.\n";
     }
@@ -131,11 +178,25 @@ class SchedulingSampleDataSeeder extends Seeder
             $staffIds    = array_map('intval', array_column(array_filter($sampleUsers, static fn ($row) => $row['role'] === 'staff'), 'id'));
 
             if ($providerIds) {
+                $this->purgeNotificationRowsForAppointments(
+                    $this->collectAppointmentIds('provider_id', $providerIds)
+                );
                 $this->db->table('appointments')->whereIn('provider_id', $providerIds)->delete();
                 $this->db->table('providers_services')->whereIn('provider_id', $providerIds)->delete();
                 $this->db->table('provider_schedules')->whereIn('provider_id', $providerIds)->delete();
                 $this->db->table('business_hours')->whereIn('provider_id', $providerIds)->delete();
                 $this->db->table('blocked_times')->whereIn('provider_id', $providerIds)->delete();
+
+                $locationRows = $this->db->table('locations')
+                    ->select('id')
+                    ->whereIn('provider_id', $providerIds)
+                    ->get()
+                    ->getResultArray();
+                if ($locationRows) {
+                    $locationIds = array_map('intval', array_column($locationRows, 'id'));
+                    $this->db->table('location_days')->whereIn('location_id', $locationIds)->delete();
+                    $this->db->table('locations')->whereIn('id', $locationIds)->delete();
+                }
             }
 
             if ($providerIds || $staffIds) {
@@ -153,7 +214,9 @@ class SchedulingSampleDataSeeder extends Seeder
                 $builder->delete();
             }
 
-            $userBuilder->whereIn('id', array_column($sampleUsers, 'id'))->delete();
+            $sampleUserIds = array_map('intval', array_column($sampleUsers, 'id'));
+            $this->db->table('user_roles')->whereIn('user_id', $sampleUserIds)->delete();
+            $userBuilder->whereIn('id', $sampleUserIds)->delete();
         }
 
         $customerBuilder = $this->db->table('customers');
@@ -164,6 +227,9 @@ class SchedulingSampleDataSeeder extends Seeder
             ->getResultArray();
         if ($sampleCustomers) {
             $ids = array_column($sampleCustomers, 'id');
+            $this->purgeNotificationRowsForAppointments(
+                $this->collectAppointmentIds('customer_id', $ids)
+            );
             $this->db->table('appointments')->whereIn('customer_id', $ids)->delete();
             $customerBuilder->whereIn('id', $ids)->delete();
         }
@@ -177,6 +243,9 @@ class SchedulingSampleDataSeeder extends Seeder
                 ->getResultArray();
             if ($serviceRows) {
                 $serviceIds = array_column($serviceRows, 'id');
+                $this->purgeNotificationRowsForAppointments(
+                    $this->collectAppointmentIds('service_id', $serviceIds)
+                );
                 $this->db->table('appointments')->whereIn('service_id', $serviceIds)->delete();
                 $this->db->table('providers_services')->whereIn('service_id', $serviceIds)->delete();
                 $this->db->table('services')->whereIn('id', $serviceIds)->delete();
@@ -189,6 +258,29 @@ class SchedulingSampleDataSeeder extends Seeder
         }
 
         $this->db->table('blocked_times')->like('reason', 'Public Holiday (SA):', 'after')->delete();
+    }
+
+    private function collectAppointmentIds(string $column, array $values): array
+    {
+        if (!$values) {
+            return [];
+        }
+
+        $rows = $this->db->table('appointments')
+            ->select('id')
+            ->whereIn($column, $values)
+            ->get()
+            ->getResultArray();
+
+        return array_map('intval', array_column($rows, 'id'));
+    }
+
+    private function purgeNotificationRowsForAppointments(array $appointmentIds): void
+    {
+        foreach (array_chunk($appointmentIds, 500) as $chunk) {
+            $this->db->table('notification_queue')->whereIn('appointment_id', $chunk)->delete();
+            $this->db->table('notification_delivery_logs')->whereIn('appointment_id', $chunk)->delete();
+        }
     }
 
     private function seedCategories(): array
@@ -261,9 +353,9 @@ class SchedulingSampleDataSeeder extends Seeder
             }
 
             $ids[$def['slug']] = (int) $userModel->insert([
-                    'name'          => $def['name'],
-                    'email'         => $email,
-                    'phone'         => $this->fakerPhone($faker),
+                'name'          => $def['name'],
+                'email'         => $email,
+                'phone'         => $this->fakerPhone($faker),
                 'password_hash' => password_hash('SamplePass!23', PASSWORD_BCRYPT),
                 'role'          => 'provider',
                 'permissions'   => json_encode(['appointments' => true, 'calendar' => true]),
@@ -293,7 +385,7 @@ class SchedulingSampleDataSeeder extends Seeder
             $staffIds[] = (int) $userModel->insert([
                 'name'          => $faker->name(),
                 'email'         => $email,
-                    'phone'         => $this->fakerPhone($faker),
+                'phone'         => $this->fakerPhone($faker),
                 'password_hash' => password_hash('SamplePass!23', PASSWORD_BCRYPT),
                 'role'          => 'staff',
                 'permissions'   => json_encode(['appointments' => true]),
@@ -307,6 +399,34 @@ class SchedulingSampleDataSeeder extends Seeder
         return $staffIds;
     }
 
+    /**
+     * xs_user_roles is the authoritative role membership (auth-rbac contract);
+     * xs_users.role is only the compatibility primary role. Mirrors the write
+     * pattern in UserManagementMutationService::createUser().
+     */
+    private function seedUserRoles(array $providerIds, array $staffIds): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $rows = [];
+        foreach ($providerIds as $userId) {
+            $rows[] = ['user_id' => (int) $userId, 'role' => 'provider', 'created_at' => $now];
+        }
+        foreach ($staffIds as $userId) {
+            $rows[] = ['user_id' => (int) $userId, 'role' => 'staff', 'created_at' => $now];
+        }
+
+        if (!$rows) {
+            return;
+        }
+
+        $this->db->table('user_roles')->whereIn('user_id', array_column($rows, 'user_id'))->delete();
+        $this->db->table('user_roles')->insertBatch($rows);
+    }
+
+    /**
+     * Each staff member covers multiple providers (round-robin): with 2 staff
+     * and 4 providers, staff01 → providers 1+3, staff02 → providers 2+4.
+     */
     private function assignStaffToProviders(array $providerIds, array $staffIds): void
     {
         if (!$providerIds || !$staffIds) {
@@ -314,18 +434,11 @@ class SchedulingSampleDataSeeder extends Seeder
         }
 
         $providerStaff = new ProviderStaffModel();
-        $cursor = 0;
+        $staffCount = count($staffIds);
 
-        foreach ($providerIds as $providerId) {
-            $assigned = array_slice($staffIds, $cursor, self::STAFF_PER_PROVIDER);
-            if (!$assigned) {
-                break;
-            }
-            $cursor += self::STAFF_PER_PROVIDER;
-
-            foreach ($assigned as $staffId) {
-                $providerStaff->assignStaff($providerId, $staffId, null, 'active');
-            }
+        foreach (array_values($providerIds) as $index => $providerId) {
+            $staffId = $staffIds[$index % $staffCount];
+            $providerStaff->assignStaff((int) $providerId, (int) $staffId, null, 'active');
         }
     }
 
@@ -336,8 +449,7 @@ class SchedulingSampleDataSeeder extends Seeder
             return $map;
         }
 
-        $chunkSize = 4;
-        $serviceChunks = array_chunk($serviceIds, $chunkSize);
+        $serviceChunks = array_chunk($serviceIds, self::SERVICES_PER_PROVIDER);
         $now = date('Y-m-d H:i:s');
 
         $index = 0;
@@ -365,8 +477,8 @@ class SchedulingSampleDataSeeder extends Seeder
             $entries = [];
             foreach ($weeklyTemplate as $day => $config) {
                 $entries[$day] = [
-                    'start_at'  => $config['start'],
-                    'end_at'    => $config['end'],
+                    'start_time'  => $config['start'],
+                    'end_time'    => $config['end'],
                     'break_start' => $config['break_start'],
                     'break_end'   => $config['break_end'],
                     'is_active'   => $config['active'] ? 1 : 0,
@@ -389,8 +501,8 @@ class SchedulingSampleDataSeeder extends Seeder
                 $this->db->table('business_hours')->insert([
                     'provider_id' => $providerId,
                     'weekday'     => $weekday,
-                    'start_at'  => $config['start'],
-                    'end_at'    => $config['end'],
+                    'start_time'  => $config['start'],
+                    'end_time'    => $config['end'],
                     'breaks_json' => json_encode([
                         ['start' => $config['break_start'], 'end' => $config['break_end']],
                     ]),
@@ -425,6 +537,50 @@ class SchedulingSampleDataSeeder extends Seeder
         return $blocked;
     }
 
+    /**
+     * One primary location per provider. Locations MUST be created with
+     * working days (xs_location_days) — availability rejects every day for a
+     * location that has no day rows. Days use 0=Sunday..6=Saturday; the weekly
+     * template is Mon–Fri, so [1..5].
+     *
+     * @return array<int,int> providerId → locationId
+     */
+    private function seedLocations(array $providerIds, Generator $faker): array
+    {
+        $locationModel = new LocationModel();
+        $map = [];
+
+        foreach ($providerIds as $slug => $providerId) {
+            $name = ucwords(str_replace('-', ' ', (string) $slug)) . ' Primary Practice';
+
+            $existing = $locationModel->where('provider_id', $providerId)->where('name', $name)->first();
+            if ($existing) {
+                $locationId = (int) $existing['id'];
+                if (empty($locationModel->getLocationDays($locationId))) {
+                    $locationModel->setLocationDays($locationId, [1, 2, 3, 4, 5]);
+                }
+                $map[(int) $providerId] = $locationId;
+                continue;
+            }
+
+            $locationId = $locationModel->createWithDays([
+                'provider_id'    => (int) $providerId,
+                'name'           => $name,
+                'address'        => $faker->streetAddress() . ', ' . $faker->city(),
+                'city'           => $faker->city(),
+                'contact_number' => $this->fakerPhone($faker),
+                'is_primary'     => 1,
+                'is_active'      => 1,
+            ], [1, 2, 3, 4, 5]);
+
+            if ($locationId) {
+                $map[(int) $providerId] = (int) $locationId;
+            }
+        }
+
+        return $map;
+    }
+
     private function seedCustomers(int $count, Generator $faker): array
     {
         $customerModel = new CustomerModel();
@@ -441,7 +597,7 @@ class SchedulingSampleDataSeeder extends Seeder
                 'first_name' => $faker->firstName(),
                 'last_name'  => $faker->lastName(),
                 'email'      => $email,
-                'phone'      => $this->fakerPhone($faker),
+                'phone'      => $this->samplePhone(),
                 'address'    => $faker->streetAddress(),
                 'created_at' => date('Y-m-d H:i:s'),
             ], true);
@@ -450,11 +606,19 @@ class SchedulingSampleDataSeeder extends Seeder
         return $ids;
     }
 
-    private function seedAppointments(
+    /**
+     * Past appointment history for the returning-customer pool. Inserted
+     * directly (terminal statuses only) — the booking pipeline would dispatch
+     * confirmation emails for them, which is wrong for history. Times are
+     * stored in UTC with stored_timezone + location snapshot, matching what
+     * the pipeline persists.
+     */
+    private function seedPastAppointments(
         array $providerIds,
         array $providerServiceMap,
         array $serviceDurations,
         array $customerIds,
+        array $locationMap,
         array $weeklyTemplate,
         array $holidayBlocks
     ): void {
@@ -462,11 +626,17 @@ class SchedulingSampleDataSeeder extends Seeder
             return;
         }
 
-        $tz = new DateTimeZone(self::TIMEZONE);
-        $startDate = new DateTimeImmutable('today', $tz);
-        $endDate = $startDate->add(new DateInterval('P' . self::APPOINTMENTS_MONTHS . 'M'));
+        $locationModel = new LocationModel();
+        $snapshots = [];
+        foreach ($locationMap as $providerId => $locationId) {
+            $snapshots[$providerId] = $locationModel->getLocationSnapshot((int) $locationId);
+        }
 
-        $appointmentBuilder = $this->db->table('appointments');
+        $tz = new DateTimeZone(self::TIMEZONE);
+        $utc = new DateTimeZone('UTC');
+        $endDate = new DateTimeImmutable('today', $tz);
+        $startDate = $endDate->sub(new DateInterval('P' . (self::PAST_HISTORY_WEEKS * 7) . 'D'));
+
         $batch = [];
         $customerCount = count($customerIds);
         $customerIndex = 0;
@@ -476,10 +646,7 @@ class SchedulingSampleDataSeeder extends Seeder
             $dateKey = $day->format('Y-m-d');
             $dayKey = strtolower($day->format('l'));
             $dayConfig = $weeklyTemplate[$dayKey] ?? null;
-            if (!$dayConfig || !$dayConfig['active']) {
-                continue;
-            }
-            if (isset($holidayBlocks[$dateKey])) {
+            if (!$dayConfig || !$dayConfig['active'] || isset($holidayBlocks[$dateKey])) {
                 continue;
             }
 
@@ -489,9 +656,16 @@ class SchedulingSampleDataSeeder extends Seeder
                     continue;
                 }
 
+                $slots = self::DAILY_SLOTS;
+                shuffle($slots);
                 $appointmentsForDay = 0;
-                foreach (self::DAILY_SLOTS as $slot) {
-                    $serviceId = $services[$appointmentsForDay % count($services)];
+
+                foreach ($slots as $slot) {
+                    if ($appointmentsForDay >= self::APPOINTMENTS_PER_PROVIDER_PER_DAY) {
+                        break;
+                    }
+
+                    $serviceId = $services[array_rand($services)];
                     $duration = $serviceDurations[$serviceId] ?? 60;
                     if (!$this->slotFitsSchedule($slot, $duration, $dayConfig)) {
                         continue;
@@ -510,35 +684,179 @@ class SchedulingSampleDataSeeder extends Seeder
                     $customerId = $customerIds[$customerIndex % $customerCount];
                     $customerIndex++;
 
+                    $snapshot = $snapshots[$providerId] ?? [];
+                    $bookedAt = $startTime->sub(new DateInterval('P' . random_int(3, 14) . 'D'));
+
                     $batch[] = [
                         'provider_id'      => $providerId,
                         'customer_id'      => $customerId,
                         'service_id'       => $serviceId,
-                        'start_at'       => $startTime->format('Y-m-d H:i:s'),
-                        'end_at'         => $endTime->format('Y-m-d H:i:s'),
-                        'status'           => $this->randomStatus($startTime),
+                        'start_at'         => $startTime->setTimezone($utc)->format('Y-m-d H:i:s'),
+                        'end_at'           => $endTime->setTimezone($utc)->format('Y-m-d H:i:s'),
+                        'stored_timezone'  => self::TIMEZONE,
+                        'status'           => $this->pastStatus(),
                         'notes'            => 'Auto-generated sample appointment',
                         'hash'             => bin2hex(random_bytes(16)),
-                        'created_at'       => date('Y-m-d H:i:s'),
-                        'updated_at'       => date('Y-m-d H:i:s'),
+                        'location_id'      => $snapshot['location_id'] ?? null,
+                        'location_name'    => $snapshot['location_name'] ?? null,
+                        'location_address' => $snapshot['location_address'] ?? null,
+                        'location_contact' => $snapshot['location_contact'] ?? null,
+                        'created_at'       => $bookedAt->setTimezone($utc)->format('Y-m-d H:i:s'),
+                        'updated_at'       => $bookedAt->setTimezone($utc)->format('Y-m-d H:i:s'),
                     ];
 
                     $appointmentsForDay++;
-                    if ($appointmentsForDay >= 5) {
-                        break;
-                    }
                 }
-            }
-
-            if (count($batch) >= 400) {
-                $appointmentBuilder->insertBatch($batch);
-                $batch = [];
             }
         }
 
         if ($batch) {
-            $appointmentBuilder->insertBatch($batch);
+            $this->db->table('appointments')->insertBatch($batch);
         }
+
+        echo '→ Past history: ' . count($batch) . " appointments inserted for the returning-customer pool.\n";
+    }
+
+    /**
+     * Future appointments through the REAL booking pipeline — this is what
+     * makes the dataset production-like: availability validation, customer
+     * upsert (returning vs new), UTC conversion, video links for online
+     * sessions, and notification enqueue + inline dispatch all execute per
+     * booking.
+     */
+    private function seedFutureAppointments(
+        array $providerIds,
+        array $providerServiceMap,
+        array $locationMap,
+        array $customerIds,
+        array $weeklyTemplate,
+        array $holidayBlocks,
+        Generator $faker
+    ): void {
+        if (!$providerIds || !$customerIds) {
+            return;
+        }
+
+        $bookingService = new AppointmentBookingService();
+        // One instance for the whole run: static lookups (schedules, hours,
+        // locations, settings) are cached per instance, while busy periods are
+        // queried fresh per call — so booking #2 on a day sees booking #1.
+        $availability = new AvailabilityService();
+
+        $tz = new DateTimeZone(self::TIMEZONE);
+        $startDate = new DateTimeImmutable('today', $tz);
+        $endDate = $startDate->add(new DateInterval('P' . self::APPOINTMENTS_MONTHS . 'M'));
+
+        $created = 0;
+        $failed = 0;
+        $skipped = 0;
+        $newCustomers = 0;
+
+        $period = new DatePeriod($startDate, new DateInterval('P1D'), $endDate);
+        foreach ($period as $day) {
+            $dateKey = $day->format('Y-m-d');
+            $dayKey = strtolower($day->format('l'));
+            $dayConfig = $weeklyTemplate[$dayKey] ?? null;
+            if (!$dayConfig || !$dayConfig['active'] || isset($holidayBlocks[$dateKey])) {
+                continue;
+            }
+
+            $dayCreated = 0;
+            foreach ($providerIds as $providerId) {
+                $providerId = (int) $providerId;
+                $services = $providerServiceMap[$providerId] ?? [];
+                if (!$services) {
+                    continue;
+                }
+
+                for ($i = 0; $i < self::APPOINTMENTS_PER_PROVIDER_PER_DAY; $i++) {
+                    $servicePick = null;
+                    $slotPick = null;
+
+                    $shuffled = $services;
+                    shuffle($shuffled);
+                    foreach ($shuffled as $serviceId) {
+                        $slots = $availability->getAvailableSlots(
+                            $providerId,
+                            $dateKey,
+                            (int) $serviceId,
+                            0,
+                            self::TIMEZONE,
+                            null,
+                            $locationMap[$providerId] ?? null
+                        );
+                        if ($slots) {
+                            $servicePick = (int) $serviceId;
+                            $slotPick = $slots[array_rand($slots)];
+                            break;
+                        }
+                    }
+
+                    if (!$slotPick) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    $payload = [
+                        'service_id'       => $servicePick,
+                        'provider_id'      => $providerId,
+                        'appointment_date' => $dateKey,
+                        'appointment_time' => $slotPick['start']->format('H:i'),
+                        'booking_channel'  => 'internal',
+                        'status'           => (random_int(1, 100) <= self::CONFIRMED_RATIO * 100) ? 'confirmed' : 'pending',
+                        'delivery_mode'    => (random_int(1, 100) <= self::ONLINE_DELIVERY_RATIO * 100) ? 'online_jitsi' : 'onsite',
+                        'notes'            => 'Sample dataset booking',
+                    ];
+                    if (!empty($locationMap[$providerId])) {
+                        $payload['location_id'] = $locationMap[$providerId];
+                    }
+
+                    if (random_int(1, 100) <= self::NEW_CUSTOMER_RATIO * 100) {
+                        // Brand-new customer — exercises the onboarding/upsert path.
+                        $first = $faker->firstName();
+                        $last = $faker->lastName();
+                        $payload['customer_first_name'] = $first;
+                        $payload['customer_last_name'] = $last;
+                        $payload['customer_email'] = sprintf(
+                            '%s.%s.%04d@%s',
+                            strtolower(preg_replace('/[^A-Za-z]/', '', $first) ?: 'new'),
+                            strtolower(preg_replace('/[^A-Za-z]/', '', $last) ?: 'patient'),
+                            random_int(0, 9999),
+                            self::CUSTOMER_DOMAIN
+                        );
+                        $payload['customer_phone'] = $this->samplePhone();
+                        $newCustomers++;
+                    } else {
+                        // Returning customer from the pre-seeded pool.
+                        $payload['customer_id'] = $customerIds[array_rand($customerIds)];
+                    }
+
+                    try {
+                        $result = $bookingService->createAppointment($payload, self::TIMEZONE);
+                    } catch (\Throwable $e) {
+                        $result = ['success' => false, 'message' => $e->getMessage()];
+                    }
+
+                    if (!empty($result['success'])) {
+                        $created++;
+                        $dayCreated++;
+                    } else {
+                        $failed++;
+                        echo sprintf("  [fail] provider %d %s %s: %s\n", $providerId, $dateKey, $payload['appointment_time'], $result['message'] ?? 'unknown error');
+                    }
+                }
+            }
+
+            echo sprintf("  %s: +%d booked (total %d, skipped %d, failed %d)\n", $dateKey, $dayCreated, $created, $skipped, $failed);
+        }
+
+        echo sprintf(
+            "→ Future bookings: %d created via the booking pipeline (%d new customers onboarded, %d slots skipped, %d failed).\n",
+            $created,
+            $newCustomers,
+            $skipped,
+            $failed
+        );
     }
 
     private function getWeeklyTemplate(): array
@@ -590,15 +908,20 @@ class SchedulingSampleDataSeeder extends Seeder
         return $start < $breakEnd && $end > $breakStart;
     }
 
-    private function randomStatus(DateTimeImmutable $start): string
+    private function pastStatus(): string
     {
-        $now = new DateTimeImmutable('now', new DateTimeZone(self::TIMEZONE));
-        if ($start < $now) {
-            $options = ['completed', 'completed', 'completed', 'no-show', 'cancelled'];
-        } else {
-            $options = ['confirmed', 'confirmed', 'pending', 'confirmed', 'cancelled'];
-        }
+        $options = ['completed', 'completed', 'completed', 'no-show', 'cancelled'];
         return $options[array_rand($options)];
+    }
+
+    /**
+     * E.164 ZA mobile number — CustomerService normalizes phones through
+     * PhoneNumberService and an unparseable phone fails the whole booking,
+     * so generate strictly valid numbers.
+     */
+    private function samplePhone(): string
+    {
+        return sprintf('+2782%07d', random_int(0, 9999999));
     }
 
     private function fakerPhone(Generator $faker): string

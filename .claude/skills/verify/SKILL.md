@@ -14,7 +14,7 @@ description: Build, launch, and drive WebScheduler CI4 to verify a change end-to
 ## Authenticated session
 
 - Playwright 1.59 is a devDependency; chromium already installed. E2e spec pattern: `tests/e2e/appointments-header.spec.js` (`ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars are NOT set in `.env`).
-- No known-password user exists in the dev DB. Create a throwaway admin and delete it afterwards:
+- Seeded sample logins (after `php spark db:seed SchedulingSampleDataSeeder`): providers `ayanda-mbeki@sample.local` / `kabelo-naidoo@…` / `lindiwe-jacobs@…` / `thabo-radebe@…` and staff `staff01`/`staff02@sample.local`, all password `SamplePass!23`. Prefer these; only create a throwaway admin if sample data is absent:
   ```sql
   -- HASH from: php -r "echo password_hash('<pw>', PASSWORD_DEFAULT);"
   INSERT INTO xs_users (name,email,password_hash,role,status,is_active,created_at)

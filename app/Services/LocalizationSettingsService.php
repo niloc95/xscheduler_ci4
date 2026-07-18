@@ -155,7 +155,13 @@ class LocalizationSettingsService
      */
     public function getTimezone(): string
     {
-        $session = session();
+        // Session service is unavailable in CLI contexts (spark commands,
+        // seeders) — mirror the guard used in TimezoneService::detect().
+        try {
+            $session = session();
+        } catch (\Throwable $e) {
+            $session = null;
+        }
 
         // Priority 1: Check settings database first (authoritative source)
         $configured = $this->get('localization.timezone');
