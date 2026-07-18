@@ -2,7 +2,7 @@
  * @webScheduler - Online Appointment Scheduler
  *
  * @package     @webScheduler - Online Appointments
- * @author      N N.Cara <nilo.cara@frontend.co.za>
+ * @author      N N.Cara <nilo.cara@webscheduler.co.za>
  * @copyright   Copyright (c) Nilo Cara
  * @license     https://opensource.org/licenses/GPL-3.0 - GPLv3
  * @link        https://webscheduler.co.za
@@ -397,3 +397,7 @@ Temporary Items
 # Playwright E2E
 tests/e2e/screenshots/
 tests/e2e/reports/
+
+# Production sample-data export — contains real password hashes and production
+# mailbox addresses; must never land in the public repo
+sample-data-export/
