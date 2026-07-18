@@ -187,17 +187,6 @@ class UserPermissionModel extends BaseModel
     }
 
     /**
-     * Get users by role
-     */
-    public function getUsersByRole(string $role): array
-    {
-        $builder = $this->where('role', $this->normalizeRole($role));
-        $this->applyActiveUserFilter($builder);
-
-        return $builder->findAll();
-    }
-
-    /**
      * Get staff members for a provider
      */
     public function getStaffForProvider(int $providerId): array
