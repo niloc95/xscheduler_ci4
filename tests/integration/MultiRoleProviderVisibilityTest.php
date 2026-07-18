@@ -130,6 +130,62 @@ final class MultiRoleProviderVisibilityTest extends CIUnitTestCase
         $this->assertSame('Owner Dual', $byId[$this->staffId]['assignments'] ?? null);
     }
 
+    public function testDualRoleOwnerCreatingStaffGetsAutoAssigned(): void
+    {
+        $db = \Config\Database::connect('tests');
+
+        $result = (new \App\Services\UserManagementMutationService())->createUser(
+            $this->ownerId,
+            [
+                'id' => $this->ownerId,
+                'role' => 'admin',
+                'roles' => ['admin', 'provider'],
+            ],
+            [
+                'name' => 'New Staffer',
+                'email' => 'new-staffer-' . uniqid('', true) . '@example.com',
+                'roles' => ['staff'],
+                'password' => 'password123',
+            ]
+        );
+
+        $this->assertTrue((bool) ($result['success'] ?? false), 'createUser failed: ' . ($result['message'] ?? ''));
+
+        $assignment = $db->table('provider_staff_assignments')
+            ->where('provider_id', $this->ownerId)
+            ->where('staff_id', (int) $result['userId'])
+            ->get()
+            ->getRowArray();
+        $this->assertNotNull($assignment, 'Dual-role owner must get their new staff auto-assigned');
+    }
+
+    public function testPureAdminCreatingStaffGetsNoAutoAssignment(): void
+    {
+        $db = \Config\Database::connect('tests');
+
+        $result = (new \App\Services\UserManagementMutationService())->createUser(
+            $this->pureAdminId,
+            [
+                'id' => $this->pureAdminId,
+                'role' => 'admin',
+                'roles' => ['admin'],
+            ],
+            [
+                'name' => 'Unassigned Staffer',
+                'email' => 'unassigned-staffer-' . uniqid('', true) . '@example.com',
+                'roles' => ['staff'],
+                'password' => 'password123',
+            ]
+        );
+
+        $this->assertTrue((bool) ($result['success'] ?? false), 'createUser failed: ' . ($result['message'] ?? ''));
+
+        $count = $db->table('provider_staff_assignments')
+            ->where('staff_id', (int) $result['userId'])
+            ->countAllResults();
+        $this->assertSame(0, $count, 'Pure admin holds no provider role; no auto-assignment expected');
+    }
+
     private function seedUser($db, string $name, string $primaryRole, ?string $color): int
     {
         $now = date('Y-m-d H:i:s');

@@ -195,7 +195,11 @@ class UserManagementMutationService
             ['role' => $userData['role'] ?? null, 'email' => $userData['email']]
         );
 
-        if (($currentUser['role'] ?? '') === 'provider' && in_array('staff', $roles)) {
+        // Auto-assign on provider role MEMBERSHIP, not the primary role: a
+        // dual-role admin+provider owner (primary 'admin') creating staff must
+        // get them assigned too. Pure admins hold no provider role — unchanged.
+        $creatorRoles = $currentUser['roles'] ?? [$currentUser['role'] ?? ''];
+        if (in_array('provider', $creatorRoles, true) && in_array('staff', $roles)) {
             log_message('info', 'Auto-assigning staff ' . $userId . ' to provider ' . $currentUserId);
             $assigned = $this->providerStaffModel->assignStaff($currentUserId, (int) $userId, $currentUserId, 'active');
 
