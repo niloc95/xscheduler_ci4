@@ -315,6 +315,12 @@ class AppointmentBookingService
             }
             $customerId = $customerResult['customerId'];
 
+            $notes = $this->appendBookedForNote(
+                (string) ($data['notes'] ?? ''),
+                $data,
+                $customerResult['skippedFields'] ?? []
+            );
+
             $appointmentData = [
                 'customer_id'   => $customerId,
                 'provider_id'   => $data['provider_id'],
@@ -323,7 +329,7 @@ class AppointmentBookingService
                 'end_at'        => $timeData['endUtc'],
                 'stored_timezone' => $timeData['timezone'],
                 'status'        => $status,
-                'notes'         => $data['notes'] ?? '',
+                'notes'         => $notes,
                 'location_id'   => $resolvedLocationId,
                 'delivery_mode' => in_array($data['delivery_mode'] ?? '', \App\Services\VideoSessionService::VALID_MODES, true)
                     ? $data['delivery_mode']
@@ -821,6 +827,27 @@ class AppointmentBookingService
      * @param array $data Customer data from form
      * @return array ['success' => bool, 'customerId' => int|null, 'message' => string]
      */
+    /**
+     * When a name-preserving upsert skipped a differing submitted name (shared
+     * email, different person — e.g. a parent booking for their child), record
+     * the submitted name on the appointment so staff can see who it is for.
+     */
+    protected function appendBookedForNote(string $notes, array $data, array $skippedFields): string
+    {
+        if (array_intersect(['first_name', 'last_name'], $skippedFields) === []) {
+            return $notes;
+        }
+
+        $bookedFor = trim(
+            trim((string) ($data['customer_first_name'] ?? '')) . ' ' . trim((string) ($data['customer_last_name'] ?? ''))
+        );
+        if ($bookedFor === '') {
+            return $notes;
+        }
+
+        return trim($notes . ($notes !== '' ? "\n" : '') . 'Booked for: ' . $bookedFor);
+    }
+
     protected function resolveCustomer(array $data): array
     {
         // If customer ID provided, verify it exists
@@ -834,6 +861,9 @@ class AppointmentBookingService
         }
 
         try {
+            // Public bookings must not rename an existing customer who shares
+            // the email (parent booking for their child); internal channels keep
+            // overwrite behavior so staff can correct typos.
             $result = $this->customerService->upsertCustomer([
                 'customer_id' => $data['customer_id'] ?? null,
                 'first_name' => $data['customer_first_name'] ?? null,
@@ -843,9 +873,15 @@ class AppointmentBookingService
                 'phone_country_code' => $data['customer_phone_country_code'] ?? null,
                 'address' => $data['customer_address'] ?? null,
                 'notes' => $data['customer_notes'] ?? null,
+            ], [
+                'preserveNames' => (($data['booking_channel'] ?? 'internal') === 'public'),
             ]);
 
-            return ['success' => true, 'customerId' => (int) ($result['id'] ?? 0)];
+            return [
+                'success' => true,
+                'customerId' => (int) ($result['id'] ?? 0),
+                'skippedFields' => $result['skippedFields'] ?? [],
+            ];
         } catch (\InvalidArgumentException $e) {
             return [
                 'success' => false,
