@@ -68,6 +68,8 @@ For SPA-intercepted form posts:
 
 **Critical rule:** If the success destination equals the current page, **include `redirect` so SPA navigation can force-reload**. Without `redirect`, `spa.js` cannot reliably refresh the current view after a mutation.
 
+**Optional error key `helpLink`** (added 2026-07-18): error responses may include `"helpLink": { "url": "...", "label": "...", "field": "email" }`. `spa.js` renders it as an internal link below the named field (or at the top of the form when `field` is omitted/not found) and clears it on the next submit. Used by the user-create duplicate-email 409/422 to offer "Edit the existing user instead".
+
 This is the most commonly missed contract — verify it on every controller action that returns to the same page after save. Note: `formSuccess()` (see below) enforces the `redirect` key automatically for any controller using `FormResponseTrait`.
 
 ## Form Surface — FormResponseTrait

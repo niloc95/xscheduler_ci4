@@ -678,6 +678,35 @@ final class UserManagementJourneyTest extends CIUnitTestCase
         }
     }
 
+    public function testDuplicateEmailStoreOffersEditExistingUserLink(): void
+    {
+        $db = \Config\Database::connect('tests');
+        $admin = $db->table('users')->where('id', $this->adminId)->get()->getRowArray();
+        $this->assertNotNull($admin);
+
+        $this->primeCsrfCookie();
+
+        $response = $this->withSession($this->adminSession())
+            ->withHeaders($this->ajaxHeaders())
+            ->post('/user-management/store', [
+                $this->csrfTokenName() => $this->csrfToken(),
+                'name' => 'Duplicate Email User',
+                'email' => $admin['email'],
+                'role' => 'staff',
+                'password' => 'password123',
+                'password_confirm' => 'password123',
+            ]);
+
+        $response->assertStatus(422);
+
+        $payload = json_decode($response->getJSON(), true);
+        $this->assertFalse((bool) ($payload['success'] ?? true));
+        $this->assertArrayHasKey('email', $payload['errors'] ?? []);
+        $this->assertSame('email', $payload['helpLink']['field'] ?? null);
+        $this->assertSame('Edit the existing user instead', $payload['helpLink']['label'] ?? null);
+        $this->assertStringContainsString('/user-management/edit/' . $this->adminId, $payload['helpLink']['url'] ?? '');
+    }
+
     private function adminSession(): array
     {
         return [

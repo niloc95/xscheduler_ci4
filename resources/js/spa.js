@@ -485,6 +485,7 @@ const SPA = (() => {
         if (data && data.errors && typeof data.errors === 'object') {
           injectValidationErrors(form, data.errors);
         }
+        injectHelpLink(form, data && data.helpLink);
         return;
       }
 
@@ -516,12 +517,34 @@ const SPA = (() => {
         if (data.errors && typeof data.errors === 'object') {
           injectValidationErrors(form, data.errors);
         }
+        injectHelpLink(form, data.helpLink);
       }
     } catch (e) {
       console.error('Form submission failed:', e);
       dispatchFlash('error', 'Form submission failed: ' + e.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Optional contextual action from the form JSON contract:
+  // helpLink = { url, label, field? }. Rendered as an internal link below the
+  // named field (or at the top of the form), e.g. "Edit the existing user
+  // instead" on a duplicate-email 409. Cleared on every submit cycle.
+  const injectHelpLink = (form, helpLink) => {
+    form.querySelectorAll('.spa-form-help-link').forEach(el => el.remove());
+    if (!helpLink || !helpLink.url || !helpLink.label) return;
+
+    const link = document.createElement('a');
+    link.className = 'spa-form-help-link block text-sm mt-1 text-blue-600 dark:text-blue-400 hover:underline';
+    link.href = helpLink.url;
+    link.textContent = helpLink.label + ' →';
+
+    const anchorField = helpLink.field ? form.querySelector(`[name="${helpLink.field}"]`) : null;
+    if (anchorField && anchorField.parentElement) {
+      anchorField.parentElement.appendChild(link);
+    } else {
+      form.prepend(link);
     }
   };
 

@@ -197,9 +197,19 @@ class UserManagement extends BaseController
         if (!$this->validate($rules)) {
             log_message('warning', 'Validation failed: ' . json_encode($this->validator->getErrors()));
             if ($this->request->isAJAX()) {
-                return $this->respondUserActionFailure('Validation failed', 422, null, [
-                    'errors' => $this->validator->getErrors()
-                ]);
+                $errors = $this->validator->getErrors();
+                $extra = ['errors' => $errors];
+
+                // Duplicate email (is_unique): point the user at the supported
+                // path — edit the existing account and add roles there.
+                if (isset($errors['email'])) {
+                    $existing = $this->userModel->findByEmail((string) $this->request->getPost('email'));
+                    if ($existing !== null) {
+                        $extra['helpLink'] = $this->buildEditExistingUserLink((int) $existing['id']);
+                    }
+                }
+
+                return $this->respondUserActionFailure('Validation failed', 422, null, $extra);
             }
             return redirect()->to(base_url('user-management/create'))->withInput()->with('validation', $this->validator);
         }
@@ -223,10 +233,15 @@ class UserManagement extends BaseController
 
         if (!$result['success']) {
             if ($this->request->isAJAX()) {
-                return $this->respondUserActionFailure($result['message'], $result['statusCode'] ?? 400, null, [
+                $extra = [
                     'errors' => $result['errors'] ?? null,
                     'userId' => $result['userId'] ?? null,
-                ]);
+                ];
+                if (!empty($result['existingUserId'])) {
+                    $extra['helpLink'] = $this->buildEditExistingUserLink((int) $result['existingUserId']);
+                }
+
+                return $this->respondUserActionFailure($result['message'], $result['statusCode'] ?? 400, null, $extra);
             }
 
             $redirect = !empty($result['redirect']) ? redirect()->to($result['redirect']) : redirect()->to(base_url('user-management/create'))->withInput();
@@ -569,6 +584,19 @@ class UserManagement extends BaseController
     }
 
     // Helper methods
+
+    /**
+     * SPA form helpLink payload pointing at the existing user's edit page —
+     * shown when a create attempt hits a duplicate email.
+     */
+    private function buildEditExistingUserLink(int $userId): array
+    {
+        return [
+            'url' => base_url('user-management/edit/' . $userId),
+            'label' => 'Edit the existing user instead',
+            'field' => 'email',
+        ];
+    }
 
     private function respondUserActionFailure(
         string $message,

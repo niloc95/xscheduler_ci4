@@ -98,14 +98,18 @@ class UserManagementMutationService
             }
         }
 
-        // Duplicate-email guard: reject at service layer before any DB write
+        // Duplicate-email guard: reject at service layer before any DB write.
+        // existingUserId lets the UI offer "edit the existing user" directly —
+        // the supported path for adding roles (e.g. single-owner admin+provider).
         $emailValue = trim((string) ($payload['email'] ?? ''));
-        if ($emailValue !== '' && $this->userModel->findByEmail($emailValue) !== null) {
+        $existingUser = $emailValue !== '' ? $this->userModel->findByEmail($emailValue) : null;
+        if ($existingUser !== null) {
             return [
-                'success'    => false,
-                'statusCode' => 409,
-                'message'    => 'A user with this email address already exists. To assign additional roles, edit the existing user.',
-                'errors'     => ['email' => 'This email address is already registered.'],
+                'success'        => false,
+                'statusCode'     => 409,
+                'message'        => 'A user with this email address already exists. To assign additional roles, edit the existing user.',
+                'errors'         => ['email' => 'This email address is already registered.'],
+                'existingUserId' => (int) ($existingUser['id'] ?? 0),
             ];
         }
 
