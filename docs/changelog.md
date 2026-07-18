@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - No unreleased changes documented yet.
 
+## [2.3.0] - 2026-07-18
+
+### Added
+- feat: offer 'edit the existing user' link on duplicate-email user creation (new optional `helpLink` key in the SPA form JSON contract)
+- feat: production-like sample seeder that books future appointments through the real booking pipeline
+
+### Fixed
+- fix: write the setup admin's authoritative xs_user_roles row (with self-heal migration for existing installs)
+- fix: make legacy role reads role-aware so dual-role admin+provider owners are visible in stats, pickers, and APIs
+- fix: public bookings no longer rename customers who share an email (create and reschedule paths); the submitted name is recorded as "Booked for: …" on the appointment
+- fix: auto-assign new staff to dual-role admin+provider creators
+
+### Changed
+- chore: remove dead UserPermissionModel::getUsersByRole()
+- chore: update contact email to nilo.cara@webscheduler.co.za; ignore sample-data-export/
+
 ## [2.2.4] - 2026-07-16
 
 ### Fixed
